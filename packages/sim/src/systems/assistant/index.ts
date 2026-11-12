@@ -44,9 +44,11 @@ import { anotherSystemOwns } from '../settlers/action-owner.js';
 import { atomicHoldsSettler } from '../settlers/atomics/busy.js';
 import type { INTENT_WEAPON_CLASS } from '../settlers/atomics/effects/goods/weapon-class.js';
 import { BARRACKS_DRILL_TICKS } from '../settlers/drives/training.js';
-import { armableIntents, armingGoodPreference } from '../settlers/planner/recruit-arming.js';
+import { armingGoodPreference, reachableStock } from '../settlers/planner/recruit-arming.js';
 import { FetchableStock, interactionCell } from '../settlers/targets/index.js';
 import { goodsSearchLimitAt } from '../signposts/reach.js';
+import { hexNodeDistance } from '../spatial/metric.js';
+import { entityNode } from '../spatial/nodes.js';
 import { foundFamilies } from './families.js';
 
 /**
@@ -262,7 +264,7 @@ function dispatchTraining(
     vetoed: playerGoodList(world, AssistantWeaponVetoes, player),
     // Beat-rotated starting intent: fairness without stored state.
     turn: Math.floor(ctx.tick / ASSISTANT_DECISION_PERIOD_TICKS) % wanted.length,
-    doorReach: new Map(),
+    doorUnits: new Map(),
   };
   const terrain = ctx.terrain;
   if (terrain !== undefined) rebookStrandedRecruits(world, ctx, terrain, beat);
@@ -295,9 +297,8 @@ function dispatchTraining(
     const intent = taken ?? held;
     // Taken or not this beat, he holds a slot: no man is drafted while a bare soldier waits for it.
     remaining.set(intent, (remaining.get(intent) ?? 1) - 1);
-    if (taken === undefined) continue;
-    // The barracks the armed soldier gathers at, as a drafted recruit does at the one he drilled at.
-    const house = houses.find((h) => mayWalkToDrill(world, ctx, e, h)) ?? houses[0];
+    if (taken === undefined || terrain === undefined) continue;
+    const house = gatheringBarracks(world, ctx, terrain, e, houses);
     if (house === undefined) continue;
     world.add(e, AssistantRecruit, { intent: taken, armed: false, barracks: house });
     unarmed.set(taken, (unarmed.get(taken) ?? 0) + 1);
@@ -335,8 +336,8 @@ interface TrainingBeat {
   readonly vetoed: readonly number[];
   /** The round robin's position over `wanted`. */
   turn: number;
-  /** Whether a barracks door reaches a class's weapon, by `house/tribe/intent`: drafting moves no stock. */
-  readonly doorReach: Map<string, boolean>;
+  /** The class weapons in reach of a barracks door, by `house/tribe/intent`: drafting moves no stock. */
+  readonly doorUnits: Map<string, number>;
 }
 
 /**
@@ -435,7 +436,8 @@ function drillableHouses(
   return spare.concat(full);
 }
 
-/** Whether `house`'s door reaches a weapon of `intent`'s class for a `tribe` recruit, read once per beat. */
+/** Whether `house`'s door reaches a weapon of `intent`'s class for a `tribe` recruit past the class's unpaid
+ *  bookings, its count read once per beat. */
 function doorReaches(
   world: World,
   ctx: SystemContext,
@@ -446,14 +448,47 @@ function doorReaches(
   intent: ClassIntent,
 ): boolean {
   const key = `${house}/${tribe}/${intent}`;
-  let reaches = beat.doorReach.get(key);
-  if (reaches === undefined) {
+  let units = beat.doorUnits.get(key);
+  if (units === undefined) {
     const door = interactionCell(world, ctx, terrain, house);
-    const at = { hx: terrain.xOf(door), hy: terrain.yOf(door) };
-    reaches = classInGoodsReach(world, ctx, terrain, beat, at, tribe, intent);
-    beat.doorReach.set(key, reaches);
+    units = classUnitsInReach(
+      world,
+      ctx,
+      terrain,
+      beat,
+      { hx: terrain.xOf(door), hy: terrain.yOf(door) },
+      tribe,
+      intent,
+    );
+    beat.doorUnits.set(key, units);
   }
-  return reaches;
+  return units > unpaidAhead(beat, intent, false);
+}
+
+/**
+ * The barracks a bare soldier the counter arms gathers at, as a drafted recruit does at the one he drilled
+ * at: the nearest by door he may walk to, the lower id breaking a tie, else the first standing. The outing
+ * makes its door his post, so a far one would station him across the map.
+ */
+function gatheringBarracks(
+  world: World,
+  ctx: SystemContext,
+  terrain: TerrainGraph,
+  e: Entity,
+  houses: readonly Entity[],
+): Entity | undefined {
+  const here = entityNode(world, terrain, e);
+  let nearest: Entity | undefined;
+  let nearestDistance = Number.POSITIVE_INFINITY;
+  for (const house of houses) {
+    if (!mayWalkToDrill(world, ctx, e, house)) continue;
+    const distance = hexNodeDistance(terrain, here, interactionCell(world, ctx, terrain, house, here));
+    if (distance < nearestDistance) {
+      nearest = house;
+      nearestDistance = distance;
+    }
+  }
+  return nearest ?? houses[0];
 }
 
 /** The half-cell node `e` stands on, or undefined without a position. */
@@ -505,8 +540,9 @@ export function isBareSoldier(world: World, ctx: SystemContext, e: Entity, playe
   return towerPostFor(world, ctx, e, jobType) === null;
 }
 
-/** Whether a man of `tribe` standing `at` could be armed for `intent` now ({@link classStockCovers} and
- *  {@link classInGoodsReach}): he is taken, kept or drafted for a class only when its weapon is his to fetch. */
+/** Whether a man of `tribe` standing `at` could be armed for `intent` now: the class's weapons inside his
+ *  goods reach outnumber its unpaid bookings, less his own when he holds one of them (`booked`). He is
+ *  taken, kept or drafted for a class only when its weapon is his to fetch. */
 function weaponInReach(
   world: World,
   ctx: SystemContext,
@@ -519,12 +555,17 @@ function weaponInReach(
 ): boolean {
   return (
     classStockCovers(world, ctx, beat, tribe, intent, booked) &&
-    classInGoodsReach(world, ctx, terrain, beat, at, tribe, intent)
+    classUnitsInReach(world, ctx, terrain, beat, at, tribe, intent) > unpaidAhead(beat, intent, booked)
   );
 }
 
-/** Whether the side's stock of `intent`'s class holds a unit past the beat's unpaid bookings of that class,
- *  less the asking man's own when he holds one of them (`booked`). */
+/** The class's unpaid bookings this beat, less the asking man's own when he holds one of them (`booked`). */
+function unpaidAhead(beat: TrainingBeat, intent: ClassIntent, booked: boolean): number {
+  return (beat.unarmed.get(intent) ?? 0) - (booked ? 1 : 0);
+}
+
+/** Whether the side's stock of `intent`'s class anywhere outnumbers {@link unpaidAhead}: the cheap bound
+ *  checked before the count inside a reach. */
 function classStockCovers(
   world: World,
   ctx: SystemContext,
@@ -538,11 +579,12 @@ function classStockCovers(
   for (const good of armingGoodPreference(ctx.content, tribe, intent, beat.vetoed)) {
     units += stock.lendableUnits(beat.player, good);
   }
-  return units > (beat.unarmed.get(intent) ?? 0) - (booked ? 1 : 0);
+  return units > unpaidAhead(beat, intent, booked);
 }
 
-/** Whether a store lending a weapon of `intent`'s class lies within the goods reach at `at`. */
-function classInGoodsReach(
+/** The units of `intent`'s class weapons a `tribe` recruit standing `at` may fetch: the side's and nobody's
+ *  stores inside the goods reach there ({@link reachableStock}). */
+function classUnitsInReach(
   world: World,
   ctx: SystemContext,
   terrain: TerrainGraph,
@@ -550,9 +592,14 @@ function classInGoodsReach(
   at: HalfCellNode,
   tribe: number,
   intent: ClassIntent,
-): boolean {
+): number {
   const reach = goodsSearchLimitAt(world, ctx.content, terrain, beat.player, at.hx, at.hy);
-  return armableIntents(world, ctx, terrain, beat.player, tribe, [intent], reach, beat.vetoed).length > 0;
+  const stock = reachableStock(world, ctx, terrain, beat.player, reach);
+  let units = 0;
+  for (const good of armingGoodPreference(ctx.content, tribe, intent, beat.vetoed)) {
+    units += stock.units(good);
+  }
+  return units;
 }
 
 /**

@@ -96,7 +96,7 @@ export const barracksMixedOrdersScene: SceneDefinition = {
         sim.assistantCounters(HUMAN_PLAYER).trainSword.value === ORDERED_PER_CLASS - SWORDS_IN_STORE,
     },
     {
-      label: 'back from the armory, the armed stand spread at the barracks, each holding his own post',
+      label: 'back from the armory, the armed stand on separate nodes, each holding his own post',
       predicate: (sim) => {
         const terrain = sim.terrain;
         const units = armed(sim);

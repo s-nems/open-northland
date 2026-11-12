@@ -19,10 +19,12 @@ import {
   MISSION_BEHAVIOUR,
   MoveGoal,
   Owner,
+  PathFollow,
   PickupClaim,
   Position,
   Residence,
   Settler,
+  Stance,
   Stockpile,
   setMissionBehaviour,
   setNeedsEnabled,
@@ -93,6 +95,8 @@ const BEYOND_TILE = 70;
 const NEAR_BARRACKS_TILE = 22;
 const MIDWAY_TILE = 40;
 const FAR_BARRACKS_TILE = 58;
+/** How far from a barracks door the men gathering there fan out: onto the free nodes beside it. */
+const DOOR_FAN_OUT_NODES = 2;
 
 function trainContent(): ContentSet {
   const base = testContent();
@@ -1070,6 +1074,67 @@ describe('the training queue', () => {
       3000,
       'the owed bow armed its recruit',
     );
+  });
+
+  it('drafts no more men for a class than its weapons inside the barracks reach', () => {
+    const sim = trainSim(grassMap(96, 6));
+    sim.enqueueSetup({ kind: 'setSignpostNavigation', enabled: true });
+    sim.step();
+    barracksAt(sim, 6, 3);
+    const men = [settlerAt(sim, CIVILIST, 3, 2), settlerAt(sim, CIVILIST, 3, 4)];
+    pileAt(sim, 9, 3, new Map([[SWORD_LONG_GOOD, 1]]));
+    pileAt(sim, BEYOND_TILE, 3, new Map([[SWORD_LONG_GOOD, 1]])); // the side's, but past the door's reach
+
+    setCounter(sim, 'trainSword', 2);
+    run(sim, 4 * BEAT_TICKS);
+    expect(men.filter((e) => sim.world.has(e, AssistantRecruit))).toHaveLength(1);
+  });
+
+  it('posts recruits back from the armory at the barracks door, each on his own node', () => {
+    // Three, so at least one comes back to a door another holds, off the post he stepped to out of drill.
+    const sim = trainSim();
+    const barracks = barracksAt(sim, 6, 3);
+    const men = [
+      settlerAt(sim, CIVILIST, 3, 1),
+      settlerAt(sim, CIVILIST, 3, 3),
+      settlerAt(sim, CIVILIST, 3, 5),
+    ];
+    pileAt(sim, 12, 3, new Map([[SWORD_LONG_GOOD, 3]]));
+
+    setCounter(sim, 'trainSword', 3);
+    runUntil(
+      sim,
+      () =>
+        men.every(
+          (e) =>
+            sim.world.get(e, Settler).jobType === SWORDSMAN_LONG &&
+            !sim.world.has(e, AssistantRecruit) &&
+            !sim.world.has(e, EquipOrder),
+        ),
+      6000,
+      'both armed and back',
+    );
+    // The idle beats that fan the men out from their shared post.
+    run(sim, 4 * BEAT_TICKS);
+    for (const e of men) expect(sim.world.has(e, MoveGoal) || sim.world.has(e, PathFollow)).toBe(false);
+    const door = doorOf(sim, barracks);
+    expect(new Set(men.map((e) => nodeOf(sim, e))).size).toBe(men.length);
+    for (const e of men) {
+      expect(sim.world.get(e, Stance).anchorCell).toBe(nodeOf(sim, e));
+      expect(hexNodeDistance(terrainOf(sim), nodeOf(sim, e), door)).toBeLessThanOrEqual(DOOR_FAN_OUT_NODES);
+    }
+  });
+
+  it('gathers an armed bare-handed soldier at the nearest barracks he may walk to', () => {
+    const sim = trainSim(grassMap(32, 6));
+    barracksAt(sim, 4, 3);
+    const near = barracksAt(sim, 24, 3);
+    const soldier = settlerAt(sim, SOLDIER, 20, 3);
+    pileAt(sim, 18, 3, new Map([[SWORD_LONG_GOOD, 1]]));
+
+    setCounter(sim, 'trainSword', 1);
+    runUntil(sim, () => sim.world.has(soldier, AssistantRecruit), BEAT_TICKS, 'booked');
+    expect(sim.world.get(soldier, AssistantRecruit).barracks).toBe(near);
   });
 
   it('drafts a man at the barracks whose door reaches the weapon, not the first one he may drill at', () => {
