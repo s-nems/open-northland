@@ -1,5 +1,6 @@
 import {
   ComputerColony,
+  mooringOf,
   Settler,
   Vehicle,
   type VehicleSeat,
@@ -17,7 +18,7 @@ import { isShipVehicle } from '../../../readviews/vehicles.js';
 import { vehicleIndex } from '../../../vehicles/registry.js';
 import { type ColonyEnv, type ColonyView, homeLandOf, type SeatEnv } from '../env.js';
 import { colonists } from '../roster.js';
-import { dock, lyingStill, mooredOn, mooringOf, unloadAt } from './moorings.js';
+import { dock, lyingStill, mooredOn, unloadAt } from './moorings.js';
 
 /** The seat's ships no colony holds, with their riders. */
 function strayShips(env: SeatEnv): { ship: Entity; riders: DeepReadonly<VehicleSeat>[] }[] {

@@ -4,6 +4,7 @@ import {
   HaulingCart,
   Health,
   Marriage,
+  mooringOf,
   Position,
   Residence,
   Settler,
@@ -45,7 +46,7 @@ import { strandedShip } from '../../sea-route.js';
 import { type ColonyEnv, type ColonyView, homeLandOf } from '../env.js';
 import { sparePartyMen } from '../party.js';
 import { colonists, colonyBuildings, standsOn } from '../roster.js';
-import { lyingStill, mooredOn, mooringOf, unloadAt } from '../sea/moorings.js';
+import { lyingStill, mooredOn, unloadAt } from '../sea/moorings.js';
 import { lineWayClear, sailOrders, withDanger } from '../sea/sea-danger.js';
 import { carryingShip, newRoute, type RouteSlot, takeRouteShip } from '../sea/ship-claims.js';
 import { storesHeld } from '../settlement/provision.js';

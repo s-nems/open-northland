@@ -5,6 +5,7 @@ import {
   Female,
   Marriage,
   mapBriefOf,
+  mooringOf,
   SettlerNeeds,
   Vehicle,
   vehicleCommander,
@@ -37,7 +38,7 @@ import {
   storeBill,
   wantManifest,
 } from '../sea/cargo.js';
-import { dock, landOf, lyingStill, mooredOn, mooringOf, unloadAt } from '../sea/moorings.js';
+import { dock, landOf, lyingStill, mooredOn, unloadAt } from '../sea/moorings.js';
 import { carryingShip, shipId, takeRouteShip } from '../sea/ship-claims.js';
 import { TRADE_SHIP_ID } from '../sea/trade-ship.js';
 import { colonyStoreType } from '../store-type.js';

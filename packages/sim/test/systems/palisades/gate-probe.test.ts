@@ -183,7 +183,7 @@ describe('palisadeGateProbe', () => {
     const edge = wallAt(sim, SPAN_HX[0]);
     for (const wall of [centre, edge]) {
       sim.world.mut(wall, Health).hitpoints = THREE_QUARTERS_HP;
-      markShortPool(sim.world, wall);
+      markShortPool(sim.world, sim, wall);
     }
     expect(probe(sim).canConvert).toBe(true);
 

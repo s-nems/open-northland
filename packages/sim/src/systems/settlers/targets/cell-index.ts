@@ -177,6 +177,9 @@ export class InteractionCellIndex {
     private readonly ctx: MapContext,
     private readonly terrain: TerrainGraph,
     candidates: readonly Entity[] = [],
+    /** A candidate's seeker-independent interaction cell, null for a loose one; a building's door unless
+     *  the candidates are reached elsewhere, as a moored ship is from its mooring point. */
+    private readonly doorOf: (e: Entity) => NodeId | null = (e) => interactionCellOf(world, ctx, terrain, e),
   ) {
     this.slack = contentIndex(ctx.content).maxResourceWorkOffset;
     this.all = new CandidateSet();
@@ -188,7 +191,7 @@ export class InteractionCellIndex {
   add(e: Entity): void {
     this.revision++;
     const { world, terrain } = this;
-    const cell = interactionCellOf(world, this.ctx, terrain, e);
+    const cell = this.doorOf(e);
     if (cell !== null) {
       this.doorCell.set(e, cell);
       this.all.addDoor(e, terrain.xOf(cell), terrain.yOf(cell));

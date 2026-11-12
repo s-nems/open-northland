@@ -534,6 +534,11 @@ export const enContent = {
       summary:
         'A starving crew of soldiers aboard a moored ship with an empty hold. Each drinks the mead it carries; those still hungry step ashore, eat at the warehouse and board again.',
     },
+    'vehicle-ship-repair': {
+      title: 'Ship repair',
+      summary:
+        'A damaged ship burns where it lies moored at the shore, and another lies hurt out in the strait. Three builders walk down to the shore by the moored ship and hammer it whole, and its fire goes out; the ship at sea is out of their reach and stays hurt.',
+    },
     'hauling-cart': {
       title: 'Hauling cart',
       summary:

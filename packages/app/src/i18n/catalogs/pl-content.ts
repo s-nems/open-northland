@@ -532,6 +532,11 @@ export const plContent = {
       summary:
         'Głodująca załoga żołnierzy na zacumowanym statku z pustą ładownią. Każdy wypija miód pitny, który ma przy sobie; wciąż głodni schodzą na brzeg, jedzą w magazynie i wracają na pokład.',
     },
+    'vehicle-ship-repair': {
+      title: 'Naprawa statku',
+      summary:
+        'Uszkodzony statek płonie zacumowany przy brzegu, a drugi, też uszkodzony, stoi na środku cieśniny. Trzech budowniczych schodzi na brzeg przy zacumowanym statku i naprawia go do pełna, a pożar gaśnie; statek na morzu jest poza ich zasięgiem i zostaje uszkodzony.',
+    },
     'hauling-cart': {
       title: 'Wózek tragarza',
       summary:

@@ -68,6 +68,8 @@ export interface TargetCandidates {
   /** Walls carrying {@link Damaged}, indexed like {@link repairSiteCells}; kept apart because builders
    *  mend walls only once no building site is left. */
   readonly wallRepairCells: InteractionCellIndex;
+  /** Moored ships carrying {@link Damaged}, indexed like {@link repairSiteCells} by their mooring point. */
+  readonly shipRepairCells: InteractionCellIndex;
   /** The unfinished vehicle sites, for the yard drive's reuse pick. Mutable: the drive appends a site it
    *  opens, so a workmate planned later in the same pass reuses it instead of opening its own. */
   readonly vehicleSites: Entity[];
@@ -140,6 +142,7 @@ class TickTargets implements TargetCandidates {
   private roadSiteCellsMemo: InteractionCellIndex | undefined;
   private repairSiteCellsMemo: InteractionCellIndex | undefined;
   private wallRepairCellsMemo: InteractionCellIndex | undefined;
+  private shipRepairCellsMemo: InteractionCellIndex | undefined;
   private zones: NodeMembership | undefined;
   private groundDropsByGoodMemo: Map<number, Entity[]> | undefined;
   private harvesterMarksMemo: ReadonlyMap<Entity, readonly Entity[]> | undefined;
@@ -215,6 +218,11 @@ class TickTargets implements TargetCandidates {
   get wallRepairCells(): InteractionCellIndex {
     this.wallRepairCellsMemo ??= repairSiteCells(this.world, this.ctx.content, this.terrain, 'wall');
     return this.wallRepairCellsMemo;
+  }
+
+  get shipRepairCells(): InteractionCellIndex {
+    this.shipRepairCellsMemo ??= repairSiteCells(this.world, this.ctx.content, this.terrain, 'ship');
+    return this.shipRepairCellsMemo;
   }
 
   get groundDropsByGood(): ReadonlyMap<number, readonly Entity[]> {

@@ -132,6 +132,12 @@ export const VehicleOrderQueue = defineComponent<{ orders: QueuedVehicleOrder[];
   'movement',
 );
 
+/** Where `ship` lies moored, or null. */
+export function mooringOf(world: World, ship: Entity): DeepReadonly<HalfCellNode> | null {
+  const state = world.tryGet(ship, Vehicle);
+  return state?.moored === true ? state.mooring : null;
+}
+
 /** Drop the drives `e` queued behind its current order: every vehicle order that takes it at once does. */
 export function dropVehicleOrderQueue(world: World, e: Entity): void {
   world.remove(e, VehicleOrderQueue);

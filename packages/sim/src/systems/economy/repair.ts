@@ -2,26 +2,31 @@ import {
   Building,
   Damaged,
   Health,
+  mooringOf,
   ownerOf,
   Palisade,
   SiteAssignment,
   UnderConstruction,
   Upgrading,
+  Vehicle,
 } from '../../components/index.js';
+import { contentIndex } from '../../core/content-index.js';
 import type { Entity, World } from '../../ecs/world.js';
-import type { SystemContext } from '../context.js';
+import type { ContentContext, SystemContext } from '../context.js';
 import { toolWorkFactorPct } from '../equipment/index.js';
 import { buildStepsPerSwing, jobExperiencePercent } from '../progression/index.js';
+import { isShipVehicle } from '../readviews/index.js';
 
-/** Hitpoints one construction step gives back to a damaged building. Original behavior: repair takes no
- *  material, and a swing is worth the same steps as on a construction site. Approximation: the original
- *  spends a swing's steps left over once the pool is whole on a damaged upgrade site's progress; here the
- *  repair swing ends with the pool. A wall takes its own record's gain per swing instead. */
+/** Hitpoints one construction step gives back to a damaged building or ship. Original behavior for a
+ *  building: repair takes no material, and a swing is worth the same steps as on a construction site.
+ *  Approximation: the original spends a swing's steps left over once the pool is whole on a damaged
+ *  upgrade site's progress; here the repair swing ends with the pool. A wall takes its own record's gain
+ *  per swing instead. */
 export const HITPOINTS_PER_REPAIR_STEP = 100;
 
-/** Builders one damaged building takes at a time, the player's own orders included. Original behavior
- *  for a standing building; approximation for a damaged upgrade site, where the original also admits one
- *  builder per construction good still owed. */
+/** Builders one damaged building or ship takes at a time, the player's own orders included. Original
+ *  behavior for a standing building; approximation for a damaged upgrade site, where the original also
+ *  admits one builder per construction good still owed. */
 export const REPAIR_CREW_LIMIT = 5;
 
 /** Builders one damaged wall takes at a time: a single node leaves room beside it for one, as a new
@@ -33,23 +38,30 @@ export function repairCrewLimit(world: World, site: Entity): number {
   return world.has(site, Palisade) ? WALL_REPAIR_CREW_LIMIT : REPAIR_CREW_LIMIT;
 }
 
-/** A building, or a wall with an owner: an unowned wall has no crew to mend it. */
-function mendable(world: World, e: Entity): boolean {
-  return world.has(e, Building) || (world.has(e, Palisade) && ownerOf(world, e) !== undefined);
+/** A building, or a wall or ship with an owner: an unowned one has no crew to mend it. Builders mending
+ *  a ship is an owner rule; the original mends houses and walls only. */
+function mendable(world: World, ctx: ContentContext, e: Entity): boolean {
+  if (world.has(e, Building)) return true;
+  if (ownerOf(world, e) === undefined) return false;
+  if (world.has(e, Palisade)) return true;
+  const vehicle = world.tryGet(e, Vehicle);
+  const type =
+    vehicle === undefined ? undefined : contentIndex(ctx.content).vehicles.get(vehicle.vehicleType);
+  return type !== undefined && isShipVehicle(type);
 }
 
-/** Record damage that just landed on `e`: a building or wall left short of its max Health is marked, or
- *  has its mark re-stamped with this tick. */
+/** Record damage that just landed on `e`: a building, wall or ship left short of its max Health is
+ *  marked, or has its mark re-stamped with this tick. */
 export function markStructureDamaged(world: World, ctx: SystemContext, e: Entity): void {
-  if (!mendable(world, e)) return;
+  if (!mendable(world, ctx, e)) return;
   const health = world.tryGet(e, Health);
   if (health === undefined || health.hitpoints <= 0 || health.hitpoints >= health.max) return;
   world.add(e, Damaged, { lastHitTick: ctx.tick });
 }
 
 /** Mark `e` short of its max Health with no blow behind it, keeping an existing mark's last hit. */
-export function markShortPool(world: World, e: Entity): void {
-  if (world.has(e, Damaged) || !mendable(world, e)) return;
+export function markShortPool(world: World, ctx: ContentContext, e: Entity): void {
+  if (world.has(e, Damaged) || !mendable(world, ctx, e)) return;
   const health = world.tryGet(e, Health);
   if (health === undefined || health.hitpoints <= 0 || health.hitpoints >= health.max) return;
   world.add(e, Damaged, { lastHitTick: null });
@@ -62,13 +74,14 @@ export function clearRepairedDamage(world: World, e: Entity): void {
 }
 
 /**
- * Whether builders may mend `e` now: a standing, damaged building, upgrade site or wall. A foundation or
- * wall segment still rising is not mended; its pool climbs with the build and fills on completion.
- * Original behavior for buildings.
+ * Whether builders may mend `e` now: a standing, damaged building, upgrade site or wall, or a damaged
+ * ship lying moored, its crew ashore or aboard. A foundation or wall segment still rising is not mended;
+ * its pool climbs with the build and fills on completion. Original behavior for buildings.
  */
 export function needsRepair(world: World, e: Entity): boolean {
   if (!world.has(e, Damaged)) return false;
   if (world.has(e, UnderConstruction) && !world.has(e, Upgrading)) return false;
+  if (world.has(e, Vehicle) && mooringOf(world, e) === null) return false;
   const health = world.tryGet(e, Health);
   return health !== undefined && health.hitpoints > 0 && health.hitpoints < health.max;
 }
@@ -85,7 +98,7 @@ export function builderCrewSize(world: World, site: Entity): number {
 
 /**
  * One repair swing of `builder` at `site`, the `repair` atomic's effect, clamped to the max. A building
- * gets the steps the builder's experience and tool are worth, each restoring
+ * or ship gets the steps the builder's experience and tool are worth, each restoring
  * {@link HITPOINTS_PER_REPAIR_STEP}. A wall gets its record's readable repair gain per swing, an amount
  * the original applies per strike; that experience and tool leave it alone is an approximation. True
  * when hitpoints were restored.

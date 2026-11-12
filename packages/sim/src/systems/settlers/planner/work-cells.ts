@@ -1,5 +1,5 @@
 import { footprintCellDx } from '@open-northland/data';
-import { Building, Palisade, Position, RoadSite } from '../../../components/index.js';
+import { Building, mooringOf, Palisade, Position, RoadSite, Vehicle } from '../../../components/index.js';
 import type { Fixed } from '../../../core/fixed.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import type { BlockOverlay } from '../../../nav/block-overlay.js';
@@ -29,7 +29,8 @@ export function openWorkCells(
  * Where a site's builders stand and its material lands: its perimeter, and for a ship site also the
  * work-area cells its crew may work it from on each shore the perimeter does not reach, so a hull lying
  * off its crew's shore still takes its bill. Approximation: where the original sets a ship's material down
- * is not confirmed; here it lands on the cells a crew works the hull from.
+ * is not confirmed; here it lands on the cells a crew works the hull from. A moored ship under repair
+ * takes {@link mooredShipStandCells}.
  */
 function standCells(
   world: World,
@@ -38,12 +39,28 @@ function standCells(
   blocked: BlockOverlay,
   site: Entity,
 ): readonly NodeId[] {
+  if (world.has(site, Vehicle)) return mooredShipStandCells(world, terrain, blocked, site);
   const perimeter = constructionWorkCells(world, ctx, terrain, site, blocked);
   const crewCells = shipSiteWorkCells(world, ctx, terrain, site, blocked);
   if (crewCells.length === 0) return perimeter;
   const shores = new Set(perimeter.map((cell) => terrain.componentOf(cell)));
   const beyond = crewCells.filter((cell) => !shores.has(terrain.componentOf(cell)));
   return beyond.length === 0 ? perimeter : [...perimeter, ...beyond];
+}
+
+/** Where builders mending a moored ship stand: the free land beside its mooring point, ascending, else the
+ *  mooring point itself, so the gangway stays open to its crew. Authored, with ship repair (owner rule). */
+function mooredShipStandCells(
+  world: World,
+  terrain: TerrainGraph,
+  blocked: BlockOverlay,
+  ship: Entity,
+): readonly NodeId[] {
+  const mooring = mooringOf(world, ship);
+  if (mooring === null || !terrain.inBounds(mooring.hx, mooring.hy)) return [];
+  const door = terrain.nodeAt(mooring.hx, mooring.hy);
+  const beside = terrain.walkableNeighbours(door).filter((cell) => !blocked.has(cell));
+  return beside.length > 0 ? beside.sort((a, b) => a - b) : [door];
 }
 
 /** Nodes past a building's body its {@link openWorkCells} read: the one-node box margin the exterior

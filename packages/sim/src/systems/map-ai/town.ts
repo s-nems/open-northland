@@ -14,6 +14,7 @@ import {
   Stockpile,
   setStockAmount,
   UnderConstruction,
+  Vehicle,
   Wedding,
 } from '../../components/index.js';
 import type { PlayerCommand } from '../../core/commands/index.js';
@@ -149,7 +150,7 @@ function spareMen(world: World, ctx: SystemContext, terrain: TerrainGraph, seat:
 
 /** Turn the nearest spare men builders until the house and wall sites and the repairs have their crews;
  *  the builders find their sites themselves. A workshop's vehicle yard is its own crew's work and wants
- *  no builder. */
+ *  no builder, and a moored ship hires none: the town's builders mend it once its buildings are whole. */
 function builderOrders(
   world: World,
   ctx: SystemContext,
@@ -177,7 +178,8 @@ function builderOrders(
     if (ownerOf(world, e) === seat) consider(e, repairCrewLimit(world, e));
   }
   for (const e of world.query(Damaged)) {
-    if (ownerOf(world, e) !== seat || world.has(e, UnderConstruction) || !needsRepair(world, e)) continue;
+    if (ownerOf(world, e) !== seat || world.has(e, UnderConstruction) || world.has(e, Vehicle)) continue;
+    if (!needsRepair(world, e)) continue;
     consider(e, Math.min(repairCrewLimit(world, e), TOWN_REPAIR_BUILDERS));
   }
   if (sites.length === 0) return [];

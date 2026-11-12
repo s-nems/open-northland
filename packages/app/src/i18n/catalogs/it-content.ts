@@ -537,6 +537,11 @@ export const itContent = {
       summary:
         "Un equipaggio di soldati affamati a bordo di una nave ormeggiata con la stiva vuota. Ognuno beve l'idromele che porta con sé; chi ha ancora fame scende a terra, mangia al magazzino e risale a bordo.",
     },
+    'vehicle-ship-repair': {
+      title: 'Riparazione della nave',
+      summary:
+        "Una nave danneggiata brucia ormeggiata alla riva e un'altra, anch'essa danneggiata, sta in mezzo allo stretto. Tre costruttori scendono alla riva accanto alla nave ormeggiata e la riparano del tutto, e il fuoco si spegne; la nave in mare è fuori dalla loro portata e resta danneggiata.",
+    },
     'hauling-cart': {
       title: 'Carro da trasporto',
       summary:

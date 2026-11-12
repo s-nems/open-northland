@@ -536,6 +536,11 @@ export const deContent = {
       summary:
         'Eine hungernde Besatzung aus Soldaten an Bord eines vertäuten Schiffs mit leerem Laderaum. Jeder trinkt den Met, den er bei sich trägt; wer noch hungrig ist, geht an Land, isst im Lagerhaus und geht wieder an Bord.',
     },
+    'vehicle-ship-repair': {
+      title: 'Schiffsreparatur',
+      summary:
+        'Ein beschädigtes Schiff brennt, wo es am Ufer vertäut liegt, ein zweites liegt beschädigt draußen in der Meerenge. Drei Bauarbeiter gehen zum Ufer beim vertäuten Schiff hinunter und reparieren es vollständig, und sein Feuer erlischt; das Schiff auf See ist außer ihrer Reichweite und bleibt beschädigt.',
+    },
     'hauling-cart': {
       title: 'Trägerkarren',
       summary:

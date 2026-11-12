@@ -2,6 +2,7 @@ import {
   Female,
   Health,
   Marriage,
+  mooringOf,
   Rider,
   Settler,
   Vehicle,
@@ -29,7 +30,7 @@ import { Schooling } from '../../technology/schooling.js';
 import { type ColonyEnv, type ColonyView, homeLandOf } from '../env.js';
 import { boardOrders, homeMaySpare, sparePartyMen, topUpParty } from '../party.js';
 import { colonists, colonyBuildings, standsOn } from '../roster.js';
-import { lyingStill, mooredOn, mooringOf, unloadAt } from '../sea/moorings.js';
+import { lyingStill, mooredOn, unloadAt } from '../sea/moorings.js';
 import { lineWayClear, sailOrders, withDanger, withoutLapsed } from '../sea/sea-danger.js';
 import { atWorkshop, fitsTrade, openCraftSeats } from './craft.js';
 import { garrisonOwed } from './garrison.js';

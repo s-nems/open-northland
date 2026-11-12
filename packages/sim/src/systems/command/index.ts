@@ -648,7 +648,7 @@ function applyCommand(
       debugErase(world, ctx, command);
       return;
     case 'debugSetHealth':
-      debugSetHealth(world, command);
+      debugSetHealth(world, ctx, command);
       return;
     case 'debugSetNeeds':
       // Commands apply before the tick's needs pass.
