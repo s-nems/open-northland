@@ -1,4 +1,4 @@
-import { Container, Graphics, type Texture } from 'pixi.js';
+import { Container, Graphics, type Mesh, type Texture } from 'pixi.js';
 import { depthKey, halfCellToScreen, TILE_HALF_H, TILE_HALF_W } from '../../data/projection/index.js';
 import type { DrawItem } from '../../data/scene/index.js';
 import { type PalisadeLayout, planShiftX } from '../../data/scene/palisades/connections.js';
@@ -206,7 +206,7 @@ export class PlacementGhostLayer {
   readonly rangeContainer = new Container();
   readonly plotContainer = new Container();
   private plot: { ground: Container; key: string; elevation: ElevationField } | null = null;
-  private rangeRing: { g: Graphics; radiusNodes: number; kind: 'defence' | 'blessing' } | null = null;
+  private rangeRing: { g: Mesh; radiusNodes: number; kind: 'defence' | 'blessing' } | null = null;
   private builtForKey: string | null = null;
   /** The line plan and wall layout the memoized `lineShifts` were worked out for. The app hands a new
    *  node list every frame, so the plan compares by value. */

@@ -1,5 +1,5 @@
 import { entityById, type WorldSnapshot } from '@open-northland/sim';
-import { Container, Graphics } from 'pixi.js';
+import { Container, Graphics, type Mesh } from 'pixi.js';
 import { TILE_HALF_H, TILE_HALF_W } from '../../data/projection/index.js';
 import { classify, readPosition } from '../../data/scene/snapshot-readers/index.js';
 import type { ElevationField } from '../../data/terrain/index.js';
@@ -69,7 +69,7 @@ export class SelectionLayer {
   /** Per kind, one persistent range circle per centre entity id, kept with the radius it was authored at
    *  so a re-sized range redraws rather than keeping a stale circle. */
   private readonly rangeRings: Readonly<
-    Record<RangeRingKind, Map<number, { g: Graphics; radiusNodes: number; metric: RangeMetric }>>
+    Record<RangeRingKind, Map<number, { g: Mesh; radiusNodes: number; metric: RangeMetric }>>
   > = {
     work: new Map(),
     defence: new Map(),

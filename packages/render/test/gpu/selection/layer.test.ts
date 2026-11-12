@@ -1,4 +1,4 @@
-import { Graphics } from 'pixi.js';
+import { Graphics, Mesh } from 'pixi.js';
 import { describe, expect, it } from 'vitest';
 import { SelectionLayer } from '../../../src/gpu/selection/layer.js';
 import { mintRangeRing } from '../../../src/gpu/selection/range-ring.js';
@@ -227,13 +227,9 @@ it('leaves work flags to their sprite outline and keeps their work radii in ever
     layer.draw({ snapshot, selectionStyle }, flags, flags, areas);
     expect(layer.container.children).toHaveLength(1);
     const area = layer.container.children[0];
-    if (!(area instanceof Graphics)) throw new Error('Missing work radius');
+    if (!(area instanceof Mesh)) throw new Error('Missing work radius');
     expect(area.getLocalBounds().width).toBeGreaterThan(150);
-    expect(
-      area.context.instructions
-        .filter((entry) => entry.action === 'stroke')
-        .map((entry) => entry.data.style.color),
-    ).toEqual([0xffc020]);
+    expect(area.tint).toBe(0xffc020);
   }
   layer.draw({ snapshot }, new Set());
   expect(layer.container.children).toHaveLength(0);
@@ -250,8 +246,8 @@ it('draws a defence range red beside a work range on the same centre', () => {
   ];
   layer.draw({ snapshot }, new Set(), new Set(), ranges);
   const colours = layer.container.children.map((ring) => {
-    if (!(ring instanceof Graphics)) throw new Error('Missing range');
-    return ring.context.instructions.find((entry) => entry.action === 'stroke')?.data.style.color;
+    if (!(ring instanceof Mesh)) throw new Error('Missing range');
+    return ring.tint;
   });
   expect(colours).toEqual([0xffc020, 0xe03a2a, 0xc5edff]);
   layer.draw({ snapshot }, new Set(), new Set(), ranges.slice(0, 1));
@@ -271,4 +267,15 @@ it('draws a range inside its true shape: a Manhattan diamond at 1/√2 of its ra
   };
   expect(width('manhattan')).toBeCloseTo(2 * RADIUS * NODE_PX * Math.SQRT1_2, 0);
   expect(width('hex')).toBeCloseTo((2 * RADIUS * NODE_PX * Math.sqrt(3)) / 2, 0);
+});
+
+it('draws a range from geometry of its own, outside the batches, and frees it with the ring', () => {
+  const ring = mintRangeRing(10, 'hex', 'defence');
+  const geometry = ring.geometry;
+  expect(geometry.batchMode).toBe('no-batch');
+  const vertices = geometry.positions.length / 2;
+  expect(vertices).toBeGreaterThan(0);
+  expect(Math.max(...geometry.indices)).toBe(vertices - 1);
+  ring.destroy();
+  expect(geometry.attributes).toBeNull();
 });

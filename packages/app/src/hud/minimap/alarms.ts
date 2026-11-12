@@ -1,6 +1,6 @@
 import { ONE, tileToScreenX, tileToScreenY, type WorldBounds } from '@open-northland/render';
 import { type HalfCellNode, positionOfNode } from '@open-northland/sim';
-import { Assets, Container, Graphics, Rectangle, Sprite, Texture } from 'pixi.js';
+import { Assets, Container, Graphics, Mesh, MeshGeometry, Rectangle, Sprite, Texture } from 'pixi.js';
 import { uiFoundationArt } from '../../content/gui/ui-foundation.js';
 import type { Rect } from '../geometry.js';
 import { MARKER_RIM_COLOUR } from './palette.js';
@@ -31,6 +31,9 @@ const RING_FADE_SHARE = 0.3;
 /** The dark stroke under a red one reaches this far past it on each side. */
 const RIM = 1;
 const RIM_ALPHA = 0.75;
+
+/** Segments around a ring: at the start radius a chord strays about a tenth of a minimap px off the circle. */
+const RING_SEGMENTS = 128;
 
 const GLOW_RADIUS = 9;
 const GLOW_SWING = 2;
@@ -187,6 +190,61 @@ function bakeGlow(): Texture {
   return Texture.from(canvas);
 }
 
+/** One collapsing ring: a dark band under a red one, each a mesh that owns its vertices. */
+interface RingBands {
+  readonly rim: Mesh<MeshGeometry>;
+  readonly red: Mesh<MeshGeometry>;
+}
+
+/** A band around the origin, {@link RING_SEGMENTS} quads between an inner and an outer circle, drawn
+ *  outside the batches from its own buffers. Its vertices pair up inner then outer per step and wait for
+ *  {@link shapeBand}. */
+function mintBand(): Mesh<MeshGeometry> {
+  const steps = RING_SEGMENTS + 1;
+  const indices = new Uint32Array(RING_SEGMENTS * 6);
+  for (let i = 0; i < RING_SEGMENTS; i++) {
+    const a = 2 * i;
+    indices.set([a, a + 1, a + 2, a + 1, a + 3, a + 2], 6 * i);
+  }
+  const geometry = new MeshGeometry({
+    positions: new Float32Array(steps * 4),
+    uvs: new Float32Array(steps * 4),
+    indices,
+  });
+  geometry.batchMode = 'no-batch';
+  const band = new Mesh({ geometry, texture: Texture.WHITE });
+  band.once('destroyed', () => geometry.destroy());
+  return band;
+}
+
+/** Lay `band` out around `centre` as a circle of `radius` stroked `width` wide, in `colour` at `alpha`. */
+function shapeBand(
+  band: Mesh<MeshGeometry>,
+  centre: { readonly x: number; readonly y: number },
+  radius: number,
+  width: number,
+  colour: number,
+  alpha: number,
+): void {
+  const positions = band.geometry.positions;
+  const inner = Math.max(0, radius - width / 2);
+  const outer = radius + width / 2;
+  for (let i = 0; i <= RING_SEGMENTS; i++) {
+    const angle = (2 * Math.PI * i) / RING_SEGMENTS;
+    const cos = Math.cos(angle);
+    const sin = Math.sin(angle);
+    positions[4 * i] = inner * cos;
+    positions[4 * i + 1] = inner * sin;
+    positions[4 * i + 2] = outer * cos;
+    positions[4 * i + 3] = outer * sin;
+  }
+  band.geometry.getBuffer('aPosition').update();
+  band.position.set(centre.x, centre.y);
+  band.tint = colour;
+  band.alpha = alpha;
+  band.visible = true;
+}
+
 /** Hand `onLoad` the attack notice's swords cell once the HUD chrome pack's notice atlas has loaded;
  *  without the pack the medallion stays bare. */
 function loadSwords(onLoad: (texture: Texture) => void): void {
@@ -220,7 +278,9 @@ export function createAlarmLayer(
   const glows = new Container();
   const graphics = new Graphics();
   const icons = new Container();
-  const rings = new Graphics();
+  const rings = new Container();
+  /** Ring bands in draw order, kept and reshaped: as many as rings ever showed at once. */
+  const ringBands: RingBands[] = [];
   clipped.addChild(glows, graphics, icons);
   unclipped.addChild(rings);
   let glowTexture: Texture | null = null;
@@ -245,7 +305,7 @@ export function createAlarmLayer(
     draw: (now, px, visible) => {
       if (alarms.length === 0 && !drawn) return;
       graphics.clear();
-      rings.clear();
+      let shownRings = 0;
       const showing: Alarm[] = [];
       for (const alarm of alarms) {
         const frame = alarmFrame(now - alarm.start);
@@ -262,15 +322,17 @@ export function createAlarmLayer(
         alarm.glow.alpha = GLOW_ALPHA * frame.glowAlpha * frame.alpha;
         const centre = ringCentre(alarm, visible);
         for (const ring of frame.rings) {
-          rings
-            .circle(centre.x, centre.y, ring.radius * px)
-            .stroke({
-              width: (ring.width + 2 * RIM) * px,
-              color: MARKER_RIM_COLOUR,
-              alpha: RIM_ALPHA * ring.alpha,
-            })
-            .circle(centre.x, centre.y, ring.radius * px)
-            .stroke({ width: ring.width * px, color: frame.colour, alpha: ring.alpha });
+          let bands = ringBands[shownRings];
+          if (bands === undefined) {
+            bands = { rim: mintBand(), red: mintBand() };
+            ringBands.push(bands);
+            rings.addChild(bands.rim, bands.red);
+          }
+          shownRings++;
+          const radius = ring.radius * px;
+          const rimWidth = (ring.width + 2 * RIM) * px;
+          shapeBand(bands.rim, centre, radius, rimWidth, MARKER_RIM_COLOUR, RIM_ALPHA * ring.alpha);
+          shapeBand(bands.red, centre, radius, ring.width * px, frame.colour, ring.alpha);
         }
         const radius = PIN_RADIUS * frame.pinScale * px;
         const cy = y - frame.pinLift * frame.pinScale * px;
@@ -291,6 +353,12 @@ export function createAlarmLayer(
         alarm.swords.position.set(x, cy);
         alarm.swords.setSize(iconSide, iconSide);
         alarm.swords.alpha = frame.alpha;
+      }
+      for (let i = shownRings; i < ringBands.length; i++) {
+        const bands = ringBands[i];
+        if (bands === undefined) continue;
+        bands.rim.visible = false;
+        bands.red.visible = false;
       }
       alarms = showing;
       drawn = showing.length > 0;
