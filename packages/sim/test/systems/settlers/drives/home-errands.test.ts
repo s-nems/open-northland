@@ -4,6 +4,7 @@ import {
   addCurrentAtomic,
   Building,
   CurrentAtomic,
+  Marriage,
   MISSION_BEHAVIOUR,
   MoveGoal,
   Owner,
@@ -401,6 +402,37 @@ describe('the at-home top-up - a settler home for one need serves the rest befor
 
     expect(needsOf(sim, settler).hunger).toBeGreaterThanOrEqual(HALF_SPENT); // nothing to eat
     expect(sim.world.has(settler, Resting)).toBe(false); // and it did not wait indoors for food
+  });
+});
+
+describe('company at home - a married settler fills its company bar on stepping in', () => {
+  /** A lonely settler: company well past the drive trigger. */
+  const LONELY: Fixed = justAbove(NEED_DRIVE_THRESHOLD);
+
+  /** `settler` married to a spouse standing out of the house, across the map. */
+  function marryAway(sim: Simulation, settler: Entity): void {
+    const spouse = needsSettlerAt(sim, 6, 4, {});
+    sim.world.add(settler, Marriage, { spouse, child: null });
+    sim.world.add(spouse, Marriage, { spouse: settler, child: null });
+  }
+
+  it('fills it on coming home for a nap or a meal alone, its spouse away; a single settler gets nothing', () => {
+    for (const needs of [{ fatigue: TIRED }, { hunger: HUNGRY }]) {
+      const sim = simWithHomes();
+      const married = needsSettlerAt(sim, 3, 2, { ...needs, enjoyment: LONELY });
+      const home = homeAt(sim, 3, 2);
+      sim.world.add(married, Residence, { home });
+      stock(sim, home, 2);
+      marryAway(sim, married);
+      const single = needsSettlerAt(sim, 3, 2, { ...needs, enjoyment: LONELY });
+      sim.world.add(single, Residence, { home });
+
+      plannerSystem(sim.world, ctxOf(sim));
+
+      expect(sim.world.get(married, Resting).at).toBe(home);
+      expect(needsOf(sim, married).enjoyment).toBe(0);
+      expect(needsOf(sim, single).enjoyment).toBeGreaterThanOrEqual(LONELY);
+    }
   });
 });
 

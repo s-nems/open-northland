@@ -81,10 +81,17 @@ export function topsUpAtHome(world: World, ctx: SystemContext, supply: SupplyTal
 }
 
 /**
- * Serve one round of the at-home chain. A married settler's company bar is filled outright rather than
- * paid out by a clip - the approximation standing in for a chat with the spouse under the same roof,
- * which no clip in the data covers.
+ * A married settler stepping into its own home leaves its company bar full, wherever its spouse is.
+ * Approximation standing in for time with the family, which no clip in the data covers.
  */
+export function keepSpouseCompany(world: World, ctx: SystemContext, e: Entity): void {
+  if (!needsEnabled(world) || !world.has(e, Marriage) || !carriesNeeds(world, ctx.content, e)) return;
+  const needs = world.tryGet(e, SettlerNeeds);
+  if (needs !== undefined && needLevel(needs, 'enjoyment', ctx.tick) !== ZERO)
+    mutNeeds(world, e, ctx.tick).enjoyment = ZERO;
+}
+
+/** Serve one round of the at-home chain. */
 export function planHomeTopUp(
   world: World,
   ctx: SystemContext,
@@ -102,8 +109,6 @@ export function planHomeTopUp(
       amount: MEAL_UNITS,
     });
   }
-  if (world.has(e, Marriage) && needLevel(world.get(e, SettlerNeeds), 'enjoyment', ctx.tick) !== ZERO)
-    mutNeeds(world, e, ctx.tick).enjoyment = ZERO;
   startAtomic(
     world,
     e,

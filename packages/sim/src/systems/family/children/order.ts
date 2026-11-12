@@ -28,6 +28,7 @@ import { isTravelling } from '../../movement/nav-state.js';
 import { isFood, jobIgnoresHomeHouse } from '../../readviews/index.js';
 import { atomicHoldsSettler } from '../../settlers/atomics/busy.js';
 import { startDrop } from '../../settlers/atomics/start.js';
+import { keepSpouseCompany } from '../../settlers/drives/at-home.js';
 import { isServedAtHome } from '../../settlers/drives/home-errands.js';
 import { anyNeedPressing } from '../../settlers/drives/needs.js';
 import { enterBuilding, isInside, stepIn, stepOut } from '../../settlers/indoors.js';
@@ -373,10 +374,13 @@ function enterHome(
   removeCurrentAtomic(world, e);
   if (terrain === undefined) {
     stepIn(world, e, home);
+    keepSpouseCompany(world, ctx, e);
     return;
   }
   const p = world.get(e, Position);
   const hereNode = nodeOfPosition(p.x, p.y);
   const here = terrain.nodeAtClamped(hereNode.hx, hereNode.hy);
-  enterBuilding(world, e, home, here, interactionCell(world, ctx, terrain, home, here));
+  enterBuilding(world, e, home, here, interactionCell(world, ctx, terrain, home, here), () =>
+    keepSpouseCompany(world, ctx, e),
+  );
 }
