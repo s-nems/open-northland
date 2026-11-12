@@ -380,7 +380,7 @@ describe('templeAuraSystem - a temple that stores fuel blesses only while it bur
     const sim = fresh(fuelledContent());
     const site = fuelledTempleAt(sim, 10, 0);
     sim.world.mut(site, Building).built = fx.fromInt(0);
-    sim.world.add(site, UnderConstruction, {});
+    sim.world.add(site, UnderConstruction, { labor: fx.fromInt(0) });
     const unowned = fuelledTempleAt(sim, 30, 1);
     sim.world.remove(unowned, Owner);
     douse(sim, site);
