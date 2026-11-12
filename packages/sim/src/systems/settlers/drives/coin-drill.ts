@@ -28,9 +28,10 @@ const NO_EXPERIENCE: ReadonlyMap<number, number> = new Map();
 
 /**
  * The coin-drill rung: walk a soldier's `CoinDrillOrder` to the barracks door and run one repetition at a
- * time inside while he may drill and the barracks holds a coin; otherwise he steps out and walks back to
- * the node he left from, where the order ends. A soldier ordered to a barracks with no coin so walks there
- * and straight back. Our rule.
+ * time inside while he may drill and the barracks holds a coin no other man speaks for
+ * ({@link freeDrillCoins}); otherwise he steps out and walks back to the node he left from, where the order
+ * ends. A soldier whose coin was taken out of the stock on his way so walks there and straight back. Our
+ * rule.
  */
 export function planCoinDrill(plan: PlannerContext, settler: SettlerIdentity): boolean {
   const { world, ctx, terrain, entity: e, here } = plan;
@@ -41,9 +42,8 @@ export function planCoinDrill(plan: PlannerContext, settler: SettlerIdentity): b
     const clip = coinDrillClip(ctx.content, settler);
     if (clip !== undefined && drillGoesOn(plan, settler, order.house, door)) {
       const house = order.house;
-      // The coin is looked for at the door, so an ordered soldier walks to an empty barracks anyway.
       enterBuilding(world, e, house, here, door, () => {
-        if (drillCoinsAt(world, ctx, house) <= 0) {
+        if (freeDrillCoins(world, ctx, house, e) <= 0) {
           turnBackFromCoinDrill(world, e);
           return;
         }
@@ -78,10 +78,26 @@ function drillGoesOn(plan: PlannerContext, settler: SettlerIdentity, house: Enti
 }
 
 /** The drill coins on `house`'s shelf. */
-export function drillCoinsAt(world: World, ctx: SystemContext, house: Entity): number {
+function drillCoinsAt(world: World, ctx: SystemContext, house: Entity): number {
   const coin = drillCoinGood(ctx.content);
   if (coin === undefined) return 0;
   return world.tryGet(house, Stockpile)?.amounts.get(coin) ?? 0;
+}
+
+/**
+ * The coins on `house`'s shelf no man but `self` speaks for: each drilling order to `house` whose next
+ * repetition has not taken its coin yet holds one. A soldier is sent, and drills each repetition, only for
+ * a free coin, so a drilling man never takes the coin another is walking to. Our rule. The work scales
+ * with the drilling men.
+ */
+export function freeDrillCoins(world: World, ctx: SystemContext, house: Entity, self: Entity): number {
+  let free = drillCoinsAt(world, ctx, house);
+  for (const e of world.query(CoinDrillOrder)) {
+    if (e === self) continue;
+    const order = world.get(e, CoinDrillOrder);
+    if (order.house === house && order.stage === 'drill' && !order.paid) free -= 1;
+  }
+  return free;
 }
 
 /** End the drilling half of `e`'s coin drill: he steps out and walks back on the next planning. */

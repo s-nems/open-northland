@@ -17,6 +17,7 @@ import type { SystemContext } from '../context.js';
 import { clearNavState } from '../movement/nav-state.js';
 import { mayCoinDrill } from '../progression/coin-drill.js';
 import { isBarracks } from '../readviews/index.js';
+import { freeDrillCoins } from '../settlers/drives/coin-drill.js';
 import { releaseTowerPost } from '../settlers/drives/tower-post.js';
 import { wakeIdle } from '../settlers/planner/idle-replan.js';
 import { entityNode } from '../spatial/nodes.js';
@@ -42,9 +43,9 @@ export function orderCoinDrill(
 }
 
 /**
- * Whether `e` may be sent to coin-drill at `house` now, the order's gate: his own side's finished barracks,
- * {@link mayCoinDrill} on his state and a door he can walk to. A coin in the barracks is not asked for: an
- * ordered soldier walks there anyway.
+ * Whether `e` may be sent to coin-drill at `house` now, the order's gate: his own side's finished barracks
+ * holding a coin no other man speaks for ({@link freeDrillCoins}), {@link mayCoinDrill} on his state and a
+ * door he can walk to. A volley of orders in one tick so sends no more men than there are free coins.
  */
 export function mayCoinDrillAt(world: World, ctx: SystemContext, e: Entity, house: Entity): boolean {
   if (!isOrderableSettler(world, e)) return false;
@@ -52,6 +53,7 @@ export function mayCoinDrillAt(world: World, ctx: SystemContext, e: Entity, hous
   const experience = world.tryGet(e, SettlerProgress)?.experience ?? NO_EXPERIENCE;
   if (!mayCoinDrill(ctx.content, world.get(e, Settler), world.tryGet(e, Weapon)?.weaponTypeId, experience))
     return false;
+  if (freeDrillCoins(world, ctx, house, e) <= 0) return false;
   return mayWalkToDrill(world, ctx, e, house);
 }
 

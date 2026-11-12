@@ -1,5 +1,11 @@
 import type { BuildingType, ContentSet } from '@open-northland/data';
-import { entityById, systems, type WorldSnapshot } from '@open-northland/sim';
+import {
+  entityById,
+  hexDistanceBetween,
+  nodeOfPosition,
+  systems,
+  type WorldSnapshot,
+} from '@open-northland/sim';
 import {
   buildingTypeOf,
   isFinishedBuilding,
@@ -7,6 +13,7 @@ import {
   isSettler,
   num,
   ownerPlayerOf,
+  positionOf,
   type SnapshotEntity,
   settlerExperienceOf,
 } from '../../../game/snapshot/index.js';
@@ -16,8 +23,8 @@ type BuildingInfo = Pick<BuildingType, 'kind' | 'workers'>;
 
 /**
  * The sim's `mayCoinDrillAt` as far as a snapshot shows it: a finished barracks of the soldier's own owner,
- * and `mayCoinDrill` on his trade, weapon and fight points. The walk to its door is the sim's to judge, and
- * a coin in the barracks is not asked for, as the order does not ask for one.
+ * and `mayCoinDrill` on his trade, weapon and fight points. The walk to its door and the barracks' free
+ * coins are the sim's to judge: it refuses the men past the free coins, who then stay where they are.
  */
 export function mayCoinDrillHere(
   content: ContentSet,
@@ -44,7 +51,7 @@ export function mayCoinDrillHere(
   );
 }
 
-/** The settlers among `settlers` a coin drill at `building` takes, in their order. */
+/** The settlers among `settlers` a coin drill at `building` takes, {@link nearestToBuildingFirst}. */
 export function coinDrillersAt(
   content: ContentSet,
   snapshot: WorldSnapshot,
@@ -54,8 +61,36 @@ export function coinDrillersAt(
 ): number[] {
   const house = entityById(snapshot, building);
   if (house === undefined) return [];
-  return settlers.filter((id) => {
+  const drillers = settlers.filter((id) => {
     const settler = entityById(snapshot, id);
     return settler !== undefined && mayCoinDrillHere(content, settler, house, byType);
   });
+  return nearestToBuildingFirst(snapshot, building, drillers, (id) => id);
+}
+
+/**
+ * `units` ordered nearest to `building` first, then by id; an unplaced one goes last. The sim admits a
+ * group's drill orders in command order while free coins last, so the nearest men get them.
+ */
+export function nearestToBuildingFirst<T>(
+  snapshot: WorldSnapshot,
+  building: number,
+  units: readonly T[],
+  idOf: (unit: T) => number,
+): T[] {
+  const house = entityById(snapshot, building);
+  const at = house === undefined ? undefined : positionOf(house);
+  if (at === undefined) return [...units];
+  const target = nodeOfPosition(at.x, at.y);
+  const distanceOf = (unit: T): number => {
+    const settler = entityById(snapshot, idOf(unit));
+    const pos = settler === undefined ? undefined : positionOf(settler);
+    if (pos === undefined) return Number.POSITIVE_INFINITY;
+    const node = nodeOfPosition(pos.x, pos.y);
+    return hexDistanceBetween(node.hx, node.hy, target.hx, target.hy);
+  };
+  return units
+    .map((unit) => ({ unit, id: idOf(unit), distance: distanceOf(unit) }))
+    .sort((a, b) => a.distance - b.distance || a.id - b.id)
+    .map(({ unit }) => unit);
 }

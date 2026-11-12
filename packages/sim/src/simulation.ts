@@ -121,7 +121,6 @@ import {
   type OpenTribute,
   openTributes,
 } from './systems/missions/index.js';
-import { mayCoinDrillAt } from './systems/orders/coin-drill.js';
 import {
   type FormationOrder,
   type FormationSlotGroup,
@@ -729,12 +728,6 @@ export class Simulation {
   /** Whether `player`'s assistant houses its homeless women and weds the housed single ones. */
   assistantFoundsFamilies(player: number): boolean {
     return assistantFoundsFamilies(this.world, player);
-  }
-
-  /** Whether `entity` may be sent to coin-drill at `house` now: the `orderCoinDrill` gate, the barracks'
-   *  coins aside. */
-  mayCoinDrillAt(entity: Entity, house: Entity): boolean {
-    return mayCoinDrillAt(this.world, this.context(), entity, house);
   }
 
   /** Changes whenever an `assistant*` read of any seat may answer differently. */

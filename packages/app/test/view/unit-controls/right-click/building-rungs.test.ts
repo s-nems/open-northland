@@ -127,6 +127,22 @@ describe('the building rungs', () => {
     expect(at('foundation')).toMatchObject({ drillers: [], trainees: [sword, archer, bare, veteran] });
   });
 
+  it('list the drillers nearest to the barracks first, then by id, so the free coins go to them', () => {
+    const [far, near, tied] = units(3);
+    if (far === undefined || near === undefined || tied === undefined)
+      throw new Error('setup: three soldiers');
+    const placed = (unit: FormationUnit, x: number): Ent => {
+      const ent = settler(unit.ref, JOB_SOLDIER_SWORD);
+      return { ...ent, components: { ...ent.components, Position: { x: x * ONE, y: 4 * ONE } } };
+    };
+    const intent = atBuilding(
+      contextOf([placed(far, 12), placed(near, 6), placed(tied, 6), building(BUILDING_BARRACKS, 'standing')]),
+      [far, tied, near],
+      BUILDING,
+    );
+    expect(intent).toMatchObject({ drillers: [near, tied, far] });
+  });
+
   it('queue the crew and the recruits under Shift and walk the rest there', () => {
     const [builder, idle, collector] = units(3);
     if (builder === undefined || idle === undefined || collector === undefined)

@@ -8,6 +8,7 @@ import {
   Position,
   SettlerProgress,
   Stockpile,
+  setStockAmount,
   TrainingOrder,
 } from '../../../../src/components/index.js';
 import type { Entity } from '../../../../src/ecs/world.js';
@@ -199,18 +200,61 @@ describe('orderCoinDrill - the coin-paid soldier drill', () => {
     expect(nodeOf(sim, soldier)).toBe(start);
   });
 
-  it('walks a soldier ordered to an empty barracks there and back, the order ending with nothing paid', () => {
+  it('refuses a soldier at a barracks without coins, and walks one back whose coin was taken meanwhile', () => {
     const sim = freshSim();
-    const house = barracksAt(sim, 8, 3, 0);
+    const empty = barracksAt(sim, 8, 6, 0);
+    const house = barracksAt(sim, 8, 2, 1);
+    const refused = soldierAt(sim, SPEAR_JOB, 2, 6);
     const soldier = soldierAt(sim, SPEAR_JOB, 2, 3);
+    const refusedStart = nodeOf(sim, refused);
     const start = nodeOf(sim, soldier);
+    sim.enqueueSetup({ kind: 'orderCoinDrill', entity: refused, house: empty });
     sim.enqueueSetup({ kind: 'orderCoinDrill', entity: soldier, house });
     sim.step();
+    expect(sim.world.has(refused, CoinDrillOrder)).toBe(false);
     expect(sim.world.has(soldier, CoinDrillOrder)).toBe(true);
+    setStockAmount(sim.world, house, COIN_GOOD, 0);
     run(sim, 2 * WALK_TICKS);
     expect(sim.world.has(soldier, CoinDrillOrder)).toBe(false);
     expect(nodeOf(sim, soldier)).toBe(start);
     expect(pointsOf(sim, soldier)).toBe(0);
+    expect(nodeOf(sim, refused)).toBe(refusedStart);
+  });
+
+  it('sends only as many of a group as the barracks has free coins, the nearest first as the order lists them', () => {
+    const sim = freshSim();
+    const house = barracksAt(sim, 8, 3, 2);
+    const near = [soldierAt(sim, SWORD_JOB, 6, 3, 40), soldierAt(sim, BOW_JOB, 5, 4, 40)];
+    const far = [soldierAt(sim, SPEAR_JOB, 2, 2, 40), soldierAt(sim, SWORD_JOB, 1, 5, 40)];
+    const farStarts = far.map((e) => nodeOf(sim, e));
+    sim.enqueueSetup({
+      kind: 'unitActionGroup',
+      members: [...near, ...far].map((entity) => ({ entity })),
+      action: { kind: 'orderCoinDrill', house },
+    });
+    sim.step();
+    expect([...near, ...far].map((e) => sim.world.has(e, CoinDrillOrder))).toEqual([
+      true,
+      true,
+      false,
+      false,
+    ]);
+    run(sim, WALK_TICKS + 2 * TRAIN_CLIP_TICKS);
+    expect(near.map((e) => pointsOf(sim, e))).toEqual([65, 65]);
+    expect(far.map((e) => nodeOf(sim, e))).toEqual(farStarts);
+    expect(coinsOf(sim, house)).toBe(0);
+  });
+
+  it('leaves the coin another soldier is walking to rather than drill it himself', () => {
+    const sim = freshSim();
+    const house = barracksAt(sim, 8, 3, 2);
+    const near = soldierAt(sim, SWORD_JOB, 6, 3);
+    const far = soldierAt(sim, BOW_JOB, 1, 3);
+    sim.enqueueSetup({ kind: 'orderCoinDrill', entity: near, house });
+    sim.enqueueSetup({ kind: 'orderCoinDrill', entity: far, house });
+    run(sim, 2 * WALK_TICKS + 2 * TRAIN_CLIP_TICKS);
+    expect([pointsOf(sim, near), pointsOf(sim, far)]).toEqual([POINTS_PER_COIN, POINTS_PER_COIN]);
+    expect(coinsOf(sim, house)).toBe(0);
   });
 
   it("refuses another side's barracks, and a walk order calls the drill off", () => {
