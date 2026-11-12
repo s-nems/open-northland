@@ -25,6 +25,7 @@ export {
   SIGN_STEP,
   signRowAt,
 } from './building-signs/sign-gfx.js';
+export { DraughtGlowLayer } from './draught-glow-layer.js';
 export { CombatEffectsLayer } from './effects-layer.js';
 export {
   type ExperienceStar,

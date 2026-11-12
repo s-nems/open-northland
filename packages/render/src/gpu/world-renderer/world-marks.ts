@@ -18,6 +18,7 @@ import {
   type ConstructionSign,
   ConstructionSignLayer,
   type DoorBadge,
+  DraughtGlowLayer,
   type ExperienceStar,
   type ExperienceStarGfx,
   ExperienceStarLayer,
@@ -138,6 +139,7 @@ export class WorldMarks {
    *  front of a chain occludes it. */
   private readonly badges: BadgeLayer;
   private readonly familyEffects: FamilyEffectsLayer;
+  private readonly draughtGlows: DraughtGlowLayer;
   /** Prints in their own ground slot, dust in the depth-sorted sprite layer. */
   private readonly footfall: FootfallLayer;
   private readonly constructionSigns: ConstructionSignLayer;
@@ -171,6 +173,7 @@ export class WorldMarks {
     this.collapses = new CollapseLayer(spriteLayer, textures, sheet, captureDamage, wreckAnchor);
     this.shots = new ShotLayer(spriteLayer, textures, sheet);
     this.familyEffects = new FamilyEffectsLayer(spriteLayer, textures, sheet);
+    this.draughtGlows = new DraughtGlowLayer(spriteLayer);
     this.footfall = new FootfallLayer(spriteLayer, textures, sheet);
     this.badges = new BadgeLayer(spriteLayer, playerColourOf);
     this.constructionSigns = new ConstructionSignLayer(playerColourOf);
@@ -201,6 +204,7 @@ export class WorldMarks {
     this.collapses.ingest(events, tick);
     this.shots.ingest(events, tick);
     this.familyEffects.ingest(events, tick);
+    this.draughtGlows.ingest(events, tick);
   }
 
   /** Call once per map; `null` leaves every step without a mark. */
@@ -210,6 +214,11 @@ export class WorldMarks {
 
   setBloodEnabled(enabled: boolean): void {
     this.blood.setEnabled(enabled);
+  }
+
+  /** Good type → the colour a sip of it glows in; `null` shows no sip. */
+  setDraughtGlowColours(colourOfGood: ReadonlyMap<number, number> | null): void {
+    this.draughtGlows.setColours(colourOfGood);
   }
 
   setBonesFade(fades: boolean): void {
@@ -281,6 +290,7 @@ export class WorldMarks {
     const detail = frame.detail;
     this.badges.draw(frame.doorBadges, elevation, viewport, renderTime, detail.buildingSigns);
     this.familyEffects.draw(frame);
+    this.draughtGlows.draw({ drawn, viewport, renderTime });
     this.footfall.draw({
       snapshot: frame.snapshot,
       walkers: detail.footfalls ? frame.walkers : NO_WALKERS,
@@ -337,6 +347,7 @@ export class WorldMarks {
     this.shots.destroy();
     this.badges.destroy();
     this.familyEffects.destroy();
+    this.draughtGlows.destroy();
     this.footfall.destroy();
     this.constructionSigns.destroy();
     this.bubbles.destroy();

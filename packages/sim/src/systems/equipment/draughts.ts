@@ -69,7 +69,9 @@ export function draughtFor(
 /** Spend one sip of the draught in misc `slot`; the last one empties the slot, and an amulet never wears. */
 export function spendSip(world: World, ctx: SystemContext, e: Entity, slot: number): void {
   const held = world.get(e, Equipment).misc[slot];
-  if (held != null) applyEquipWear(world, e, 'misc', slot, wearStepOf(ctx, held.goodType));
+  if (held == null) return;
+  ctx.events.emit({ kind: 'draughtDrunk', entity: e, goodType: held.goodType });
+  applyEquipWear(world, e, 'misc', slot, wearStepOf(ctx, held.goodType));
 }
 
 /**

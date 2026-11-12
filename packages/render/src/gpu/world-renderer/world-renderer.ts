@@ -446,6 +446,11 @@ export class WorldRenderer {
     this.marks.setBonesFade(fades);
   }
 
+  /** Good type → the colour a settler glows in as it sips that draught; `null` shows no sip. */
+  setDraughtGlowColours(colourOfGood: ReadonlyMap<number, number> | null): void {
+    this.marks.setDraughtGlowColours(colourOfGood);
+  }
+
   setCombatBonesGfx(gfx: CombatBonesGfx | null): void {
     this.marks.setBonesGfx(gfx);
   }

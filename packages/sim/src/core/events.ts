@@ -423,6 +423,13 @@ export type SimEvent =
       readonly razed: readonly Entity[];
     }
   | {
+      /** A settler took one sip of a carried draught where it stands: mead, a potion, or an amulet's
+       *  top-up of its need. */
+      readonly kind: 'draughtDrunk';
+      readonly entity: Entity;
+      readonly goodType: number;
+    }
+  | {
       /** A settler opened `chest` this tick and its contents were handed out. The original transitions
        *  its logic to `void` while retaining the paired open-chest graphics record. */
       readonly kind: 'chestOpened';

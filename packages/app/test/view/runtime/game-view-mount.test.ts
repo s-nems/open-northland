@@ -87,6 +87,7 @@ it.each([false, true])(
           setHoverOutline() {},
           setGroupNumbersShown() {},
           setDetailMode() {},
+          setDraughtGlowColours() {},
         },
         driver: {},
         saveEntrySearch: '?scene=mount-test',

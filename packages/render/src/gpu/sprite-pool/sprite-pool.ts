@@ -1257,6 +1257,11 @@ export class SpritePool {
     return anchorOf(pe, this.currentFrameOf(pe));
   }
 
+  depthOf(ref: number): number | undefined {
+    const pe = this.pool.get(ref);
+    return anchorOf(pe, this.currentFrameOf(pe)) === undefined ? undefined : pe?.container.zIndex;
+  }
+
   /**
    * Scope one portrait inset's render: re-place the self-placing paletted meshes for the inset camera,
    * reveal the inset's force-hidden `subjects`, solo an indoor or riding one, then restore all of it even

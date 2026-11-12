@@ -958,6 +958,11 @@ export const plContent = {
       summary:
         'Dwaj zbieracze maszerują do lasu - ten w butach wyraźnie szybciej, a buty zużywają się w drodze; młynarz z żelaznym narzędziem miele 5 pszenicy z premią do produkcji, a osadnicy sami piją miód i mikstury, gdy dopada ich głód lub zmęczenie.',
     },
+    'potion-sips': {
+      title: 'Łyki mikstur',
+      summary:
+        'Osadnicy piją sami i to widać: czterej głodni zbieracze po kolei piją miksturę odżywczą, czterej zmęczeni miksturę wytrzymałości, a ranny wojownik z miksturami leczenia broni się przed trzema rywalami. Każdy łyk rozświetla pijącego kolorem mikstury, puszcza po ziemi krąg i kilka iskier w górę.',
+    },
     amulets: {
       title: 'Amulety',
       summary:

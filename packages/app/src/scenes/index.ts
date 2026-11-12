@@ -40,6 +40,7 @@ import { equipmentScene } from './combat/equipment.js';
 import { equipmentEffectsScene } from './combat/equipment-effects.js';
 import { maceBlowsScene } from './combat/mace-blows.js';
 import { overheadIconsScene } from './combat/overhead-icons.js';
+import { potionSipsScene } from './combat/potion-sips.js';
 import { weaponFacingsScene } from './combat/weapon-facings.js';
 import { buildingDamageScene, buildingDamageVariantsScene } from './construction/building-damage.js';
 import { buildingDemolitionScene } from './construction/building-demolition.js';
@@ -256,6 +257,7 @@ export const SCENES: readonly SceneDefinition[] = [
   audioMixScene,
   netPanelScene,
   amuletsScene,
+  potionSipsScene,
   barracksScene,
   barracksArmoryScene,
   barracksExitScene,

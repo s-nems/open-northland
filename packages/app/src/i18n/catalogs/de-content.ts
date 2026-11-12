@@ -970,6 +970,11 @@ export const deContent = {
       summary:
         'Zwei Abbauer gehen zu einem Wald. Der mit Schuhen ist sichtbar schneller, doch seine Schuhe nutzen sich unterwegs ab. Ein Müller mit Eisenwerkzeug mahlt 5 Weizen mit einem Produktionsbonus, und Siedler trinken ihren Met und ihre Tränke selbstständig, wenn Hunger oder Müdigkeit drängen.',
     },
+    'potion-sips': {
+      title: 'Trankschlucke',
+      summary:
+        'Siedler trinken von selbst, und man sieht es: Vier hungrige Sammler nehmen nacheinander einen Schluck Nahrungstrank, vier müde einen Schluck Ausdauertrank, und ein verwundeter Schwertkämpfer hält sich mit Heiltränken gegen drei Gegner. Jeder Schluck lässt den Trinkenden in der Farbe des Tranks aufleuchten, schickt einen Ring über den Boden und ein paar Funken nach oben.',
+    },
     amulets: {
       title: 'Amulette',
       summary:

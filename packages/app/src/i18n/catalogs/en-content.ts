@@ -961,6 +961,11 @@ export const enContent = {
       summary:
         'Two extractors trek to a forest - the shod one visibly faster, its shoes wearing down on the road; an iron-tooled miller grinds 5 wheat with a production bonus, and settlers drink their mead and potions by themselves when hunger or fatigue presses.',
     },
+    'potion-sips': {
+      title: 'Potion sips',
+      summary:
+        "Settlers drink by themselves and it shows: four hungry extractors sip their food potions one after another, four tired ones their stamina potions, and a wounded swordsman holds against three rivals on healing potions. Each sip flushes the drinker in the potion's colour, sends a ring over the ground and a few sparks up.",
+    },
     amulets: {
       title: 'Amulets',
       summary:

@@ -142,6 +142,10 @@ describe('drink drive - hunger and fatigue draughts', () => {
     const s = needsOf(sim, settler);
     expect(s.hunger).toBe(fx.sub(PRESSING, ONE));
     expect(s.fatigue).toBe(fx.sub(PRESSING, ONE));
+    expect(sim.events.current()).toEqual([
+      { kind: 'draughtDrunk', entity: settler, goodType: POTION_FOOD },
+      { kind: 'draughtDrunk', entity: settler, goodType: POTION_STAMINA },
+    ]);
   });
 
   it('takes an opened bottle first, then a small one before a large one, then the lowest slot', () => {

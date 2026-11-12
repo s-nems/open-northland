@@ -5,6 +5,7 @@ export * from './building-points.js';
 export * from './construction-signs.js';
 export * from './diplomacy-rows.js';
 export * from './door-badges.js';
+export * from './draught-glow.js';
 export * from './entity-anchor.js';
 export * from './experience-stars.js';
 export * from './fog-gates.js';

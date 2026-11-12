@@ -973,6 +973,11 @@ export const itContent = {
       summary:
         'Due estrattori si incamminano verso una foresta - quello con le scarpe è visibilmente più veloce, e le scarpe si consumano lungo la strada; un mugnaio con attrezzi di ferro macina 5 unità di grano con un bonus di produzione, e i coloni bevono da soli idromele e pozioni quando fame o fatica si fanno sentire.',
     },
+    'potion-sips': {
+      title: 'Sorsi di pozione',
+      summary:
+        "I coloni bevono da soli e si vede: quattro estrattori affamati sorseggiano uno dopo l'altro la pozione nutriente, quattro stanchi la pozione di resistenza, e uno spadaccino ferito resiste a tre rivali grazie alle pozioni curative. Ogni sorso illumina chi beve con il colore della pozione, manda un anello sul terreno e qualche scintilla verso l'alto.",
+    },
     amulets: {
       title: 'Amuleti',
       summary:

@@ -146,6 +146,7 @@ import {
   diplomacyMapNations,
   diplomacyMetSeats,
   diplomacyPanelRows,
+  draughtGlowColours,
   entityAnchor,
   memoBySnapshot,
   messageTargetAnchor,
@@ -507,6 +508,8 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
         seed: saveLoad.worldSeed,
       }),
     );
+
+    renderer.setDraughtGlowColours(draughtGlowColours(host.content.goods));
 
     // A checkout without a decoded sound bank degrades to silence.
     const weatherAllowed = deps.weatherMode !== 'off';
