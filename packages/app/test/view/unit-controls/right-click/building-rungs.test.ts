@@ -117,7 +117,7 @@ describe('the building rungs', () => {
     expect(at(SCHOOL)).toEqual({ kind: 'school', building: BUILDING, crew: [builder], learners: [idle] });
   });
 
-  it('drill the armed soldiers below the limit for coins at a standing barracks and never enlist one', () => {
+  it('drill every soldier below the limit, armed or bare, for coins at a standing barracks and never enlist one', () => {
     const [sword, archer, bare, veteran] = units(4);
     if (sword === undefined || archer === undefined || bare === undefined || veteran === undefined)
       throw new Error('setup: four soldiers');
@@ -133,7 +133,7 @@ describe('the building rungs', () => {
         [sword, archer, bare, veteran],
         BUILDING,
       );
-    expect(at('standing')).toMatchObject({ drillers: [sword, archer], trainees: [] });
+    expect(at('standing')).toMatchObject({ drillers: [sword, archer, bare], trainees: [] });
     // A foundation, or a barracks with no coin, drills nobody, and a soldier gets no order there.
     expect(at('foundation')).toMatchObject({ drillers: [], trainees: [] });
     expect(at('standing', 0)).toMatchObject({ drillers: [], trainees: [] });

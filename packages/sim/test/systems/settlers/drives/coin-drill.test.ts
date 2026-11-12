@@ -29,7 +29,7 @@ import { testContent } from '../../../fixtures/content.js';
 import { grassMap } from '../../../fixtures/needs.js';
 
 /**
- * The coin drill: an armed soldier pays one barracks coin per repetition of his
+ * The coin drill: a soldier, armed or bare, pays one barracks coin per repetition of his
  * `..._soldier_train` clip and gains its points, below the drill limit; not the recruit's `trainSoldier`
  * enlistment. The fixture binds the clip to the bare soldier alone, as the real tribes do, with the real
  * events: `CHANGE_GOLD -1` early and `GET_TRAINING 25` late.
@@ -183,21 +183,18 @@ function nodeOf(sim: Simulation, e: Entity): NodeId {
 }
 
 describe('orderCoinDrill - the coin-paid soldier drill', () => {
-  it('drills every armed soldier for a coin each and refuses the bare soldier and a civilian', () => {
+  it('drills every soldier for a coin each, armed or bare, and refuses a civilian', () => {
     const sim = freshSim();
-    const armedJobs = [SWORD_JOB, SPEAR_JOB, SABER_JOB, BOW_JOB];
-    const house = barracksAt(sim, 8, 3, armedJobs.length);
-    const armed = armedJobs.map((job, i) => soldierAt(sim, job, 2, 1 + i, 40));
-    const bare = soldierAt(sim, SOLDIER_JOB, 3, 5);
+    const soldierJobs = [SWORD_JOB, SPEAR_JOB, SABER_JOB, BOW_JOB, SOLDIER_JOB];
+    const house = barracksAt(sim, 8, 3, soldierJobs.length);
+    const soldiers = soldierJobs.map((job, i) => soldierAt(sim, job, 2, 1 + i, 40));
     const civilian = soldierAt(sim, CIVILIST_JOB, 3, 6);
-    for (const entity of [...armed, bare, civilian])
-      sim.enqueueSetup({ kind: 'orderCoinDrill', entity, house });
+    for (const entity of [...soldiers, civilian]) sim.enqueueSetup({ kind: 'orderCoinDrill', entity, house });
     sim.step();
-    expect(armed.map((e) => sim.world.has(e, CoinDrillOrder))).toEqual([true, true, true, true]);
-    expect(sim.world.has(bare, CoinDrillOrder)).toBe(false);
+    expect(soldiers.map((e) => sim.world.has(e, CoinDrillOrder))).toEqual([true, true, true, true, true]);
     expect(sim.world.has(civilian, CoinDrillOrder)).toBe(false);
     run(sim, WALK_TICKS + 2 * TRAIN_CLIP_TICKS);
-    expect(armed.map((e) => pointsOf(sim, e))).toEqual([65, 65, 65, 65]);
+    expect(soldiers.map((e) => pointsOf(sim, e))).toEqual([65, 65, 65, 65, 65]);
     expect(coinsOf(sim, house)).toBe(0);
   });
 

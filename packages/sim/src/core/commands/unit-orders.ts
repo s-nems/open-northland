@@ -581,7 +581,7 @@ export type UnitOrderCommand =
     }
   | {
       /**
-       * Send one owned armed soldier to coin-drill at his side's finished barracks `house`:
+       * Send one owned soldier, armed or bare, to coin-drill at his side's finished barracks `house`:
        * each repetition inside takes a coin off its shelf and adds the clip's points to his personal fight
        * counter while it stays below `COIN_DRILL_LIMIT`; then, or when no free coin is left, he walks back to
        * where he stood. Refused while the barracks holds no coin another ordered man does not speak for, so

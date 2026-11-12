@@ -38,6 +38,7 @@ import { grassCellMap } from '../../../fixtures/terrain.js';
 const VIKING = 1;
 const SEAT = 0;
 const CARRIER_JOB = 24;
+const CIVILIST_JOB = 6;
 const SOLDIER_JOB = 31;
 const SWORD_JOB = 34;
 const SWORD_WEAPON = 41;
@@ -176,9 +177,9 @@ describe('the computer seat coin drill', () => {
       const sim = seatSim();
       if (barracks) barracksAt(sim, 0);
       swordsmen(sim, drillers);
-      // Men who may not drill do not count: one at the limit, one bare-handed.
+      // Men who may not drill do not count: a soldier at the limit and a civilian.
       soldierAt(sim, 2, 12, SWORD_JOB, COIN_DRILL_LIMIT);
-      soldierAt(sim, 4, 12, SOLDIER_JOB);
+      soldierAt(sim, 4, 12, CIVILIST_JOB);
       return coinDrillPorters(sim.world, ctxOf(sim), SEAT);
     };
     expect(porters(0)).toBe(0);
@@ -247,7 +248,7 @@ describe('the computer seat coin drill', () => {
     ]);
   });
 
-  it('passes over a soldier out of reach, one who may not drill and one on an errand', () => {
+  it('drills a bare soldier and passes over one out of reach, one at the limit and one on an errand', () => {
     const sim = seatSim();
     const barracks = barracksAt(sim, 5);
     const outOfReach = soldierAt(sim, FAR_X, BARRACKS_AT.y);
@@ -267,6 +268,7 @@ describe('the computer seat coin drill', () => {
     sim.world.add(drilling, CoinDrillOrder, { house: barracks, returnTo: 0, stage: 'return', paid: false });
     const free = soldierAt(sim, 10, 10);
     expect(drillOrders(sim, [outOfReach, atLimit, bare, busy, drilling, free])).toEqual([
+      { kind: 'orderCoinDrill', entity: bare, house: barracks },
       { kind: 'orderCoinDrill', entity: free, house: barracks },
     ]);
   });

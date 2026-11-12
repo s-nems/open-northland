@@ -7,7 +7,7 @@ import {
   ATOMIC_EVENT_TYPE_GET_TRAINING,
   atomicClip,
 } from '../readviews/animations.js';
-import { isSoldierJob, WEAPON_MAIN_TYPE, weaponClassOf } from '../readviews/index.js';
+import { isSoldierJob, weaponClassOf } from '../readviews/index.js';
 import { personalFightPoints } from './bonus.js';
 import { FIGHT_EXPERIENCE_TYPE, fightExperienceTypeFor } from './experience.js';
 
@@ -36,24 +36,19 @@ export function drillCoinGood(content: ContentSet): number | undefined {
 }
 
 /**
- * Whether a soldier with `settler`'s identity holding `weaponTypeId` (his worn `Weapon`, else his class
- * default) fights with a weapon that trains the personal counter: any but his fists. Never a hero, a
- * civilian, a catapult crew or a bare-handed soldier.
+ * Whether `settler` drills as a soldier: any man in a soldier trade, armed or bare-handed, so a soldier is a
+ * soldier. `weaponTypeId` is his worn `Weapon`, else his class default; a catapult crew's weapon trains the
+ * catapult's own bucket, so he never drills. Heroes and civilians hold no soldier trade. Our rule.
  */
-function fightsWithDrillWeapon(
+function drillsAsSoldier(
   content: ContentSet,
   settler: SettlerIdentity,
   weaponTypeId: number | undefined,
 ): boolean {
   if (!isSoldierJob(content, settler.jobType)) return false;
   const armed = attackerWeapon({ content }, settler.tribe, settler.jobType, weaponTypeId, settler.humanForm);
-  if (armed === null) return false;
-  const mainType = weaponClassOf(armed.weapon);
-  return (
-    mainType !== undefined &&
-    mainType !== WEAPON_MAIN_TYPE.UNARMED &&
-    fightExperienceTypeFor(mainType) === FIGHT_EXPERIENCE_TYPE.PERSONAL
-  );
+  const mainType = armed === null ? undefined : weaponClassOf(armed.weapon);
+  return mainType === undefined || fightExperienceTypeFor(mainType) !== FIGHT_EXPERIENCE_TYPE.CATAPULT;
 }
 
 /**
@@ -92,8 +87,8 @@ export function coinDrillPointsPerCoin(content: ContentSet, settler: SettlerIden
 }
 
 /**
- * Whether a soldier may run another coin-drill repetition, from his plain state alone: an armed soldier,
- * below {@link COIN_DRILL_LIMIT} on his personal counter, with a clip that spends a coin. The
+ * Whether a soldier may run another coin-drill repetition, from his plain state alone: a soldier, armed or
+ * bare, below {@link COIN_DRILL_LIMIT} on his personal counter, with a clip that spends a coin. The
  * world gate (`orders/coin-drill.ts`) adds the barracks and the walk; a HUD reads the same fields off a
  * snapshot.
  */
@@ -103,7 +98,7 @@ export function mayCoinDrill(
   weaponTypeId: number | undefined,
   experience: ReadonlyMap<number, number>,
 ): boolean {
-  if (!fightsWithDrillWeapon(content, settler, weaponTypeId)) return false;
+  if (!drillsAsSoldier(content, settler, weaponTypeId)) return false;
   if (personalFightPoints(experience) >= COIN_DRILL_LIMIT) return false;
   const clip = coinDrillClip(content, settler);
   return clip !== undefined && coinDrillCoinsOf(clip) > 0;

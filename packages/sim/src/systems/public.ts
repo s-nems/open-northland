@@ -262,6 +262,7 @@ export {
 } from './progression/bonus.js';
 // What the HUD asks of a coin drill: who may drill, the limit and what one coin buys.
 export {
+  COIN_DRILL_ATOMIC_ID,
   COIN_DRILL_LIMIT,
   coinDrillPointsPerCoin,
   drillCoinGood,
