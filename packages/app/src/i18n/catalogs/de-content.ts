@@ -21,6 +21,7 @@ export const deContent = {
     herbalist: 'Kräutergärtner',
     druid: 'Druide',
     scout: 'Kundschafter',
+    ferryman: 'Fährmann',
     trader: 'Händler',
     trader_sea: 'Seehändler',
     soldier: 'Soldat',

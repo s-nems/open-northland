@@ -14,6 +14,7 @@ import {
   TERRAIN_MARGIN,
   TERRAIN_OPEN,
 } from '../../src/catalog/terrain.js';
+import { JOB_CARRIER, JOB_FERRYMAN } from '../../src/catalog/jobs.js';
 import { loadRuntimeRealContent, mergeRealContent } from '../../src/content/real-content.js';
 import { EQUIP_CLASS_BY_SLUG } from '../../src/game/sandbox/combat.js';
 import { sandboxContent } from '../../src/game/sandbox/index.js';
@@ -261,6 +262,38 @@ describe('mergeRealContent', () => {
     expect(content.landscape.find((t) => t.typeId === TERRAIN_OPEN)?.plantable).toBe(true);
     expect(content.landscape.find((t) => t.typeId === TERRAIN_IMPASSABLE)?.walkable).toBe(false);
     expect(() => buildTerrainGraph(content, grid)).not.toThrow();
+  });
+
+  it('admits the ferryman at every tribe that ships an initial allow table', () => {
+    // Real ir.json's tribes ship `permissions` allow lists transcribed from the original's per-tribe
+    // flags, and a trade an existing table leaves unlisted is banned - the profession picker hides it
+    // wholesale. The stand-in gives every tribe such a table (one already carrying the ferryman), and
+    // leaves one tribe without a table, like the shipped mix.
+    const raw = rawRealLike();
+    const first = raw.tribes[0];
+    if (first === undefined || raw.tribes.length < 2) throw new Error('fixture: no tribes');
+    const realLike = parseContentSet({
+      ...raw,
+      tribes: raw.tribes.map((tribe, i) => {
+        if (i === raw.tribes.length - 1) return tribe; // one unrestricted, no table at all
+        return {
+          ...tribe,
+          permissions: {
+            job: [JOB_CARRIER, ...(tribe.typeId === first.typeId ? [JOB_FERRYMAN] : [])],
+            house: [],
+            good: [],
+          },
+        };
+      }),
+    });
+
+    const { content } = mergeRealContent(realLike);
+
+    for (const tribe of content.tribes) {
+      if (tribe.permissions === undefined) continue; // a synthetic catalog's unrestricted tribe passes through
+      expect(tribe.permissions.job.filter((id) => id === JOB_FERRYMAN)).toHaveLength(1);
+    }
+    expect(content.tribes.at(-1)?.permissions).toBeUndefined();
   });
 });
 

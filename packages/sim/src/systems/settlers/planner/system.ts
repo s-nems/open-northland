@@ -2,12 +2,15 @@ import {
   Age,
   CurrentAtomic,
   chatAtomicRunning,
+  FerryPassenger,
+  FerryWaiting,
   IdleStand,
   inPastimeChat,
   MoveGoal,
   ownerOf,
   Position,
   Resting,
+  Rider,
   Settler,
 } from '../../../components/index.js';
 import type { Entity, World } from '../../../ecs/world.js';
@@ -67,6 +70,14 @@ function atomicPlanner(world: World, ctx: SystemContext, terrain: TerrainGraph):
     }
     const settler = world.get(e, Settler);
     if (settler.jobType === null) continue; // an unemployed settler has no job atomics to run
+    // A dispatched crossing holds its waiting passenger on the wait shore it booked for them, and a
+    // held booking walks the berth its away ship comes back to: the ladder must not re-task either
+    // while they wait - a work walk would read as the settler leaving the booking and end it. Riders
+    // keep their rung - the boarding ask lives there.
+    const booked = world.tryGet(e, FerryPassenger);
+    if (booked !== undefined && !world.has(e, Rider) && booked.wait !== null) continue;
+    const held = world.tryGet(e, FerryWaiting);
+    if (held !== undefined && held.wait !== null) continue;
     // Key on Age, not the age-class job ids: only a born-young settler carries one, so a fixture's
     // adult job id colliding with an age-class id cannot misroute an adult here.
     if (world.has(e, Age)) {

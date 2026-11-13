@@ -92,10 +92,17 @@ export function startMealBreak(world: World, e: Entity): void {
 /**
  * Take `e`, walking an order and standing on a node, off it for a meal: the order goes back to the head
  * of its queue, to start afresh once it has eaten, and an explore sweep keeps its own marker and picks
- * its next leg then. The route goes too, so the planner sees the settler free and plans the meal.
+ * its next leg then. The route goes too, so the planner sees the settler free and plans the meal. The
+ * queued command is the walking order `resumableOrder` reads back, unless the caller names one itself -
+ * a hold's walk aims at the berth its booking reads, and it is the move order behind the hold that must
+ * come back, not that spot.
  */
-export function suspendWalkForMeal(world: World, terrain: TerrainGraph, e: Entity): void {
-  const resume = resumableOrder(world, terrain, e);
+export function suspendWalkForMeal(
+  world: World,
+  terrain: TerrainGraph,
+  e: Entity,
+  resume: QueueableOrderCommand | null = resumableOrder(world, terrain, e),
+): void {
   if (resume !== null) {
     const origin = world.tryGet(e, AiOrder);
     const pending = { ...resume, ...(origin === undefined ? {} : { aiOrder: { ...origin } }) };

@@ -52,6 +52,7 @@ import { announceLostWay, liftLostWalk, markLostWay } from '../settlers/lost-way
 import { navigationLimitFor } from '../signposts/index.js';
 import { entityNode } from '../spatial/nodes.js';
 import { pullsHaulingCart } from '../vehicles/hauling-cart.js';
+import { ferryLandingOf, tryFerryPassage } from '../vehicles/ferry.js';
 import { recordAiOrder } from './ai-lifecycle.js';
 import { moveAnchor } from './combat.js';
 import { deferOrderDuringAtomic, supersedeStandingOrders } from './guards.js';
@@ -193,19 +194,42 @@ function startPlayerWalk(
     confined && command.kind === 'moveUnit'
       ? walkerSideMoveGoal(world, ctx, terrain, clicked, entityNode(world, terrain, e))
       : reachableMoveGoal(world, ctx, terrain, clicked);
-  // Signpost confinement: a civilian ordered beyond its allowed area doesn't know the way, so the order is
-  // refused and the unit stays put. Approximation: the original starts the walk and lets its guided
-  // pathfinder fail it, raising the same "lost" note.
+  // Signpost confinement: a civilian ordered beyond its allowed area doesn't know the way, so the
+  // order is refused and the unit stays put. Approximation: the original starts the walk and lets its
+  // guided pathfinder fail it, raising the same "lost" note. A goal on another island is judged at the
+  // crossing's landing place instead of the far spot: the posts must lead the settler to the shore
+  // where they board or wait for the ship, and whether they could walk the far island themselves is
+  // the ferryman's business - the scout at the helm knows it. Still refused before the ferry hold is
+  // considered: a landing place the signposts forbid is refused whatever the ships could do for it.
   if (confined) {
     const limit = navigationLimitFor(world, ctx.content, terrain, e);
     if (limit !== null && !limit.allowsNode(goal)) {
-      // A settler busy with something else is not left standing lost: the refusal is news for a moment.
-      // A walk to a chat partner is not business.
-      const busy = (isTravelling(world, e) && !world.has(e, Chat)) || atomicHoldsSettler(world, e);
-      if (busy) announceLostWay(world, ctx, e);
-      else markLostWay(world, ctx, e, goal);
-      return false;
+      // The landing-place exception belongs to the crossing alone: an attack-move never takes a
+      // ship, so it refuses on the far goal as any walk does.
+      const landing = command.kind === 'moveUnit' ? ferryLandingOf(world, ctx, terrain, e, goal) : null;
+      if (landing === null || !limit.allowsNode(landing)) {
+        // A settler busy with something else is not left standing lost: the refusal is news for a moment.
+        // A walk to a chat partner is not business.
+        const busy = (isTravelling(world, e) && !world.has(e, Chat)) || atomicHoldsSettler(world, e);
+        if (busy) announceLostWay(world, ctx, e);
+        else markLostWay(world, ctx, e, goal);
+        return false;
+      }
     }
+  }
+  // A goal across open water is no walk, the route dying at the sea. With the owner's idle ship
+  // moored at a shore of this island with a scout aboard, the order becomes a crossing instead: the
+  // settler boards, the ship docks at the target island, the walk on resumes there. No ship takes the
+  // booking, the order stands as a hold and the ferry system retries it until a ship comes free. A
+  // settler held by an atomic waits for the parked order the
+  // same way a walk does.
+  if (
+    confined &&
+    command.kind === 'moveUnit' &&
+    !atomicHoldsSettler(world, e) &&
+    tryFerryPassage(world, ctx, terrain, e, goal)
+  ) {
+    return true;
   }
   const existingOrder = world.tryGet(e, PlayerOrder);
   if (

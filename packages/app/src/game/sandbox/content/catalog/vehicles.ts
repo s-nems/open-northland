@@ -2,6 +2,7 @@ import type { VehicleType } from '@open-northland/data';
 import { ANIMAL_TRIBE_CATTLE } from '../../../../catalog/animal-tribes.js';
 import {
   JOB_CARRIER,
+  JOB_FERRYMAN,
   JOB_HEROINE_BOW,
   JOB_SOLDIER_UNARMED,
   JOB_TRADER,
@@ -21,9 +22,9 @@ import {
 /**
  * The six `vehicletypes.ini` records with their extracted slot, size, door and pool values
  * (docs/formats/VEHICLES.md), keyed on the sandbox's own good and job ids: every good but the sentinel
- * may ride in a hold, and the ships take every adult job while the carts take the two haulers and the
- * catapult the fighters; the script captain is the trader on a cart, the carrier on a ship and the
- * unarmed soldier on the catapult, as `logiccommander` authors them. `jobId` follows
+ * may ride in a hold, and the ships take every adult job plus the ferryman while the carts take the two
+ * haulers and the catapult the fighters; the script captain is the trader on a cart, the carrier on a
+ * ship and the unarmed soldier on the catapult, as `logiccommander` authors them. `jobId` follows
  * `JOB_TYPE_VEHICLE_* = type + 49` (`logicdefines.inc`); the sandbox declares only the catapult's, for
  * its weapon row.
  */
@@ -32,7 +33,11 @@ export function buildSandboxVehicles(
   jobTypes: readonly number[],
 ): VehicleType[] {
   const cargoGoods = goods.map((g) => g.typeId).filter((id) => id !== GOOD_NONE);
-  const adults = jobTypes.filter((job) => job >= JOB_WOMAN && job <= JOB_HEROINE_BOW);
+  // The ferryman joins the adults: the trade the ferry dispatch crews crossings with, whose id sits
+  // past the original's band.
+  const adults = jobTypes.filter(
+    (job) => (job >= JOB_WOMAN && job <= JOB_HEROINE_BOW) || job === JOB_FERRYMAN,
+  );
   const fighters = jobTypes.filter((job) => job >= JOB_SOLDIER_UNARMED && job <= JOB_HEROINE_BOW);
   const haulers = jobTypes.filter((job) => job === JOB_TRADER || job === JOB_CARRIER);
   const jobOf = (typeId: number): number => typeId + VEHICLE_JOB_OFFSET;

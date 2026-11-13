@@ -159,6 +159,7 @@ export interface ContentIndex {
   readonly scoutJobs: ReadonlySet<number>;
   readonly hunterJobs: ReadonlySet<number>;
   readonly druidJobs: ReadonlySet<number>;
+  readonly ferrymanJobs: ReadonlySet<number>;
   /** Catalog slug → typeId over the goods, buildings, jobs and tribes, first declaration wins: the join
    *  for a rule authored by name, such as the chest-contents table. */
   readonly goodTypeBySlug: ReadonlyMap<string, number>;
@@ -254,6 +255,7 @@ function buildIndex(content: ContentSet): ContentIndex {
     heroJobs: roles.hero,
     scoutJobs: roles.scout,
     druidJobs: roles.druid,
+    ferrymanJobs: roles.ferryman,
     goodTypeBySlug: valueByKey(
       content.goods,
       (g) => g.id,

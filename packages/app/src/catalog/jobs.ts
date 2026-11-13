@@ -45,6 +45,11 @@ export const JOB_SCOUT = 27;
 export const JOB_HERBALIST = 29; // jobtypes.ini "herb & mush guy"
 export const JOB_DRUID = 30;
 
+// This project's own trade, which no `jobtypes.ini` record carries: the crew the ferry dispatch
+// requires aboard a booked ship. It takes the first free id past the original's band - the records
+// and vehicle pseudo-jobs end at 55 - so it can never alias an extracted row.
+export const JOB_FERRYMAN = 56;
+
 // Soldiers ride the real `jobtypes.ini` ids 31..41 so each class draws its own warrior body and weapon
 // animation set.
 export const JOB_SOLDIER_UNARMED = 31; // soldier_unarmed - the fists warrior
@@ -88,11 +93,13 @@ export const SOLDIER_JOB_MAX = JOB_ARCHER_LONG;
 /** The trades `jobtypes.ini` marks `needsReligionFlag`: the only ones that go to pray unordered. */
 export const RELIGION_JOBS: ReadonlySet<number> = new Set([JOB_JOINER, JOB_ARMORER, JOB_SMITH]);
 
-/** The trades `jobtypes.ini` marks `ignoresHomeHouseFlag`: the two that travel, plus every soldier and
- *  hero. They never go home, so nothing they spend in the field is halved for being spent there. */
+/** The trades `jobtypes.ini` marks `ignoresHomeHouseFlag`: the two that travel, the ferryman that
+ *  crews the crossings, plus every soldier and hero. They never go home, so nothing they spend in the
+ *  field is halved for being spent there. */
 export const HOMELESS_JOBS: ReadonlySet<number> = new Set([
   JOB_TRADER,
   JOB_SCOUT,
+  JOB_FERRYMAN,
   ...Array.from({ length: JOB_ARCHER_LONG - JOB_SOLDIER_UNARMED + 1 }, (_, i) => JOB_SOLDIER_UNARMED + i),
   ...Array.from({ length: JOB_HEROINE_BOW - JOB_HERO_UNARMED + 1 }, (_, i) => JOB_HERO_UNARMED + i),
 ]);

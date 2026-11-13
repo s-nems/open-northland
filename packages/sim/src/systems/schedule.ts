@@ -65,6 +65,7 @@ import {
   vehicleMovementSystem,
   vehicleOrderQueueSystem,
 } from './vehicles/index.js';
+import { ferrySystem } from './vehicles/ferry.js';
 import { shipboardNeedsSystem } from './vehicles/shipboard-needs.js';
 import { visionSystem } from './vision/index.js';
 import { wildlifeSystem } from './wildlife/index.js';
@@ -151,6 +152,10 @@ export const SYSTEM_ORDER: readonly ScheduledSystem[] = [
   // After the drives advance and before combat, so a queued drive starts the tick the one ahead arrives and
   // no stance scan sees the vehicle standing idle between two legs.
   { name: 'vehicleOrderQueue', system: vehicleOrderQueueSystem },
+  // After the movement pass, so a voyage reads the mooring this tick's drive laid down and any dock it
+  // starts advances from the next pass, and before the next rider pass, which carries a leaving the sail
+  // sets out the moment the ship moors.
+  { name: 'ferry', system: ferrySystem },
   { name: 'separation', system: separationSystem },
   // After the walk settles, so a scout's claim uses this tick's final nodes; the herd then re-anchors
   // before the summon walks a slaughter candidate to the door, and a calf grows up before the breeder

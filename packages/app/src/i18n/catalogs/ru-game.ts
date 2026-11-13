@@ -1097,6 +1097,7 @@ export const ruGame = {
         herbalist: 'Травники',
         druid: 'Друиды',
         scout: 'Разведчики',
+        ferryman: 'Перевозчики',
         trader: 'Купцы',
         trader_sea: 'Морские купцы',
         soldier: 'Солдаты',

@@ -6,6 +6,8 @@ import {
   CurrentAtomic,
   Engagement,
   FamilyDuty,
+  FerryPassenger,
+  FerryWaiting,
   Fleeing,
   inPastimeChat,
   LostWay,
@@ -78,7 +80,12 @@ function freeForChat(world: World, tick: number, e: Entity): boolean {
     world.has(e, Fleeing) ||
     world.has(e, PlayerOrder) ||
     world.has(e, Resting) ||
-    world.has(e, Carrying)
+    world.has(e, Carrying) ||
+    // A settler booked on a crossing or holding one stands reserved: the ferryman walks them to the
+    // shore or berth their booking reads, and a claim here would clear that walk, then read the talk
+    // atomic as their own business and quietly end the booking while the ship stays out.
+    world.has(e, FerryWaiting) ||
+    world.has(e, FerryPassenger)
   ) {
     return false;
   }

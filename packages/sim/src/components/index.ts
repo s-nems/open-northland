@@ -22,6 +22,7 @@ export * from './defence.js';
 export * from './economy/index.js';
 export * from './equipment.js';
 export * from './family.js';
+export * from './ferry.js';
 export * from './landscape.js';
 export * from './livestock.js';
 export * from './match.js';
