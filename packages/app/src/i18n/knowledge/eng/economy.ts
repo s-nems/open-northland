@@ -528,7 +528,7 @@ export const ECONOMY: ArticleGroup = {
           h: 'Priority',
         },
         {
-          p: "You set priority in a warehouse, Headquarters, Barracks or tower. That building's Carriers then bring the good in from other warehouses, workshops and piles as long as there is room for it.",
+          p: "You set priority in a warehouse, Headquarters, Barracks or tower. That building's Carriers then bring the good in from other warehouses, workshops and piles as long as there is room for it. A newly built Barracks starts with priority on [[good:coin|Coins]]; once you take it off in any of your Barracks, Barracks you build later start without it until the end of the match.",
         },
         {
           h: 'Storage minimum',

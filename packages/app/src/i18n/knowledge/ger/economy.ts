@@ -531,7 +531,7 @@ export const ECONOMY: ArticleGroup = {
           h: 'Vorrang',
         },
         {
-          p: 'Vorrang stellst du in einem Lagerhaus, Hauptquartier, einer Kaserne oder einem Turm ein. Die Träger dieses Gebäudes holen die Ware dann aus anderen Lagern, Werkstätten und Haufen, solange Platz für sie ist.',
+          p: 'Vorrang stellst du in einem Lagerhaus, Hauptquartier, einer Kaserne oder einem Turm ein. Die Träger dieses Gebäudes holen die Ware dann aus anderen Lagern, Werkstätten und Haufen, solange Platz für sie ist. Eine neu gebaute Kaserne hat von Anfang an Vorrang für [[good:coin|Münzen]]; nimmst du ihn in einer deiner Kasernen weg, starten später gebaute Kasernen bis zum Ende der Partie ohne ihn.',
         },
         {
           h: 'Minimum',

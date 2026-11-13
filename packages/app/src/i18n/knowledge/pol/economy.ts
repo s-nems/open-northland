@@ -525,7 +525,7 @@ export const ECONOMY: ArticleGroup = {
           h: 'Priorytet',
         },
         {
-          p: 'Priorytet ustawiasz w magazynie, Kwaterze głównej, Koszarach lub wieży. Tragarze tego budynku zwożą wtedy dany towar z innych magazynów, warsztatów i stosów, dopóki jest na niego miejsce.',
+          p: 'Priorytet ustawiasz w magazynie, Kwaterze głównej, Koszarach lub wieży. Tragarze tego budynku zwożą wtedy dany towar z innych magazynów, warsztatów i stosów, dopóki jest na niego miejsce. Nowo zbudowane Koszary mają od razu priorytet na [[good:coin|Monety]]; gdy zdejmiesz go w którychkolwiek swoich Koszarach, kolejne Koszary do końca meczu startują bez niego.',
         },
         {
           h: 'Minimum',

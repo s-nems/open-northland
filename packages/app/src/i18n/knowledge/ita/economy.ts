@@ -538,7 +538,7 @@ export const ECONOMY: ArticleGroup = {
           h: 'Priorità',
         },
         {
-          p: "Imposti la priorità in un magazzino, nel quartier generale, in una caserma o in una torre. I trasportatori di quell'edificio portano allora il bene da altri magazzini, botteghe e mucchi finché c'è spazio.",
+          p: "Imposti la priorità in un magazzino, nel quartier generale, in una caserma o in una torre. I trasportatori di quell'edificio portano allora il bene da altri magazzini, botteghe e mucchi finché c'è spazio. Una caserma appena costruita ha subito la priorità sulle [[good:coin|Monete]]; se la togli in una qualsiasi delle tue caserme, quelle costruite dopo partono senza fino alla fine della partita.",
         },
         {
           h: 'Scorta minima',
