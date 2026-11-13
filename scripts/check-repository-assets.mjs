@@ -105,7 +105,7 @@ const reviewedBinaryAssets = new Set([
   // https://opengameart.org/node/5765, trimmed and levelled as Ogg Opus; notice as above.
   'packages/app/public/audio/mace-swing.ogg',
   // A mead sip: "heavy_swallow.wav" by Mikes-MultiMedia, CC0, from https://freesound.org/s/368711/,
-  // encoded as Ogg FLAC; notice as above.
+  // levelled as Ogg FLAC; notice as above.
   'packages/app/public/audio/mead-sip.ogg',
   // Original OpenNorthland branding (commissioned art, no original-game material). The masters live
   // in tools/brand/source; `npm run brand` derives the rest, including the README logo above. The

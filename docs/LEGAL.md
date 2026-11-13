@@ -42,8 +42,8 @@ notice is in the same file.
 A settler drinking mead swallows with "heavy_swallow.wav" by Mikes-MultiMedia
 (https://freesound.org/s/368711/), under Creative Commons CC0 1.0
 (https://creativecommons.org/publicdomain/zero/1.0/). The app ships it as
-`packages/app/public/audio/mead-sip.ogg`, encoded as Ogg FLAC from Freesound's MP3 preview; its notice is
-in the same file.
+`packages/app/public/audio/mead-sip.ogg`, levelled to the game's eating sounds and encoded as Ogg FLAC from
+Freesound's MP3 preview; its notice is in the same file.
 
 Text imported from game or mod tables is also generated content, including UI labels. Keep table/id
 bindings in code and load the wording through the pipeline. Project-authored UI text, intentional

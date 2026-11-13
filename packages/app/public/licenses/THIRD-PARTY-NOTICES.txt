@@ -70,6 +70,6 @@ Mead sip (a settler drinking mead, audio/mead-sip.ogg)
   "heavy_swallow.wav" by Mikes-MultiMedia, dedicated to the public domain under Creative Commons CC0 1.0
   Universal, https://creativecommons.org/publicdomain/zero/1.0/.
   Source: https://freesound.org/s/368711/
-  Modified: encoded as Ogg FLAC from Freesound's MP3 preview.
+  Modified: levelled to the game's eating sounds and encoded as Ogg FLAC from Freesound's MP3 preview.
 
 The bundled fonts carry their own licenses beside them, under /fonts/ in the same bundle.
