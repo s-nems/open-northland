@@ -184,7 +184,7 @@ describe('golden: a seeded fight over the extracted weapon and armor rows', () =
   // bow on leather, 13/14 long bow on plate), then 15 the amuleted champion, 16 its rival, 17 the
   // convalescent. Hitpoints are read after the tick, so a victim between blows shows its regeneration.
   // Civilians now return 400-point fist blows, changing facing, hit interruptions and subsequent rolls.
-  // The champion's first 1456 is 1600 x13/10 cut to 70% by the defence amulet, its second a critical
+  // The champion's first 1344 is 1600 x14/10 cut to 60% by the defence amulet, its second a critical
   // double of that, raised a little by fight experience; the rival's first 1600 is the plain short-sword
   // blow on bare cloth.
   const GOLDEN_TRACE: readonly string[] = [
@@ -201,7 +201,7 @@ describe('golden: a seeded fight over the extracted weapon and armor rows', () =
     '32:miss:12',
     '34:hit:8>7:4055',
     '35:hit:16>15:3400',
-    '36:hit:15>16:3544',
+    '36:hit:15>16:3656',
     '36:miss:14',
     '39:hit:2>1:3418',
     '39:hit:6>5:4220',
@@ -212,7 +212,7 @@ describe('golden: a seeded fight over the extracted weapon and armor rows', () =
     '44:hit:9>10:4214',
     '46:hit:7>8:4214',
     '47:hit:16>15:1804',
-    '48:hit:15>16:630',
+    '48:hit:15>16:967',
     '51:hit:2>1:2627',
     '51:hit:6>5:3833',
     '52:miss:12',

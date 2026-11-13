@@ -26,8 +26,8 @@ const SPEAR = 2;
 const BOW = 6;
 const CATAPULT = 7;
 const BLOCKING = 5;
-const STRENGTH_DAMAGE_PCT = 130;
-const DEFENSE_TAKEN_PCT = 70;
+const STRENGTH_DAMAGE_PCT = 140;
+const DEFENSE_TAKEN_PCT = 60;
 
 const weapon = (over: Partial<KnowledgeWeapon> = {}): KnowledgeWeapon => ({
   typeId: 1,
@@ -76,7 +76,7 @@ describe('landed', () => {
 
   it('gives a building the experience and the amulet, but no direction or block', () => {
     const strong = { ...NO_MODIFIERS, hits: CAP_HITS, strength: true, direction: HIT_DIRECTION.behind };
-    expect(landed(weapon(), target('building'), strong)).toBe(78);
+    expect(landed(weapon(), target('building'), strong)).toBe(84);
   });
 
   it('gives an animal the leather column with no blocking', () => {

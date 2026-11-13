@@ -110,10 +110,10 @@ const IRON_TOOL_WORK_FACTOR_PCT = 175;
  *  up their need by 4000 of its 10000 units whenever it falls to the drive level, and never wear. */
 const AMULET_RESTORE_PCT = 40;
 /** Our balance, departing from the original's 150. */
-const AMULET_STRENGTH_DAMAGE_PCT = 130;
+const AMULET_STRENGTH_DAMAGE_PCT = 140;
 const AMULET_CRITICAL_HIT = { chancePct: 20, damagePct: 200 } as const;
 /** Our balance, departing from the original's 50. */
-const AMULET_DEFENSE_DAMAGE_TAKEN_PCT = 70;
+const AMULET_DEFENSE_DAMAGE_TAKEN_PCT = 60;
 const AMULET_SPEED_STEP_TICKS_SAVED = 2;
 
 /**

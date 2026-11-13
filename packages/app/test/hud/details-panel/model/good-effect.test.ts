@@ -20,7 +20,7 @@ describe('good effect line', () => {
       setActiveLocale('pol');
       expect(effect(GOOD_POTION_HEAL_SMALL)).toBe('Leczy 30% zdrowia · Łyków: 2');
       expect(effect(GOOD_MEAD)).toBe('Zaspokaja 50% głodu · Usuwa 50% zmęczenia · Łyków: 2');
-      expect(effect(GOOD_AMULET_DEFENSE)).toBe('-30% otrzymanych obrażeń · Nie zużywa się');
+      expect(effect(GOOD_AMULET_DEFENSE)).toBe('-40% otrzymanych obrażeń · Nie zużywa się');
       expect(effect(GOOD_AMULET_CRITICAL_HIT)).toBe('20% szans na cios ×2 · Nie zużywa się');
       expect(effect(GOOD_SWORD_LONG)).toBe('');
     } finally {

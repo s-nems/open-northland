@@ -263,7 +263,7 @@ describe('duelResult', () => {
 
   it("uses each fighter's own amulets against the other's armour", () => {
     const guarded = duelResult(armed, [fighter({}), fighter({ defense: true })]);
-    expect(guarded?.sides[0].damage).toBe(700);
+    expect(guarded?.sides[0].damage).toBe(600);
     expect(guarded?.sides[1].damage).toBe(1000);
   });
 });
