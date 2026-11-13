@@ -138,11 +138,18 @@ export function engageVehicle(
     }
   }
 
-  const { attack: held, march } = world.get(e, Vehicle);
+  const judged = world.get(e, Vehicle);
+  const held = judged.attack;
   const standing = held !== null && targetStands(world, ctx, e, identity, held) ? held.target : null;
   const ordered = standing !== null && held?.ordered === true;
-  // A march fights in the attack stance whatever the vehicle's own stance says.
-  const stance: VehicleStance = march !== null ? 'attack' : state.stance;
+  // The fight a march waits behind is over once the vehicle holds nothing that still stands.
+  let march = judged.march;
+  if (march?.behindFight === true && standing === null) {
+    march = { ...march, behindFight: false };
+    world.mut(e, Vehicle).march = march;
+  }
+  // A march fights in the attack stance whatever the vehicle's own stance says, once it has started.
+  const stance: VehicleStance = march !== null && !march.behindFight ? 'attack' : state.stance;
   let target = standing;
   if (!ordered) {
     // A resting march drives on without looking.

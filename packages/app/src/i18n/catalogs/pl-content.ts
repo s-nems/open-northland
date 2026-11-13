@@ -557,6 +557,11 @@ export const plContent = {
       summary:
         'Dwie obsadzone katapulty dostają rozkaz ataku z marszu na wschód. Na starcie żadna wroga chata nie jest w zasięgu; każda pojawia się po drodze, więc katapulty stają, burzą ją i jadą dalej do celu. Zaznacz katapultę, naciśnij klawisz ataku z marszu i kliknij punkt, aby poprowadzić ją samemu.',
     },
+    'vehicle-attack-move-fight': {
+      title: 'Atak z marszu w trakcie ostrzału',
+      summary:
+        'Katapulta w postawie utrzymania pozycji ostrzeliwuje wrogą chatę w swoim zasięgu, a tuż za zasięgiem stoi wroga wieża. Rozkaz ataku z marszu na wschód, wydany w trakcie ostrzału, nie rusza jej z miejsca: strzela dalej, aż chata padnie, i dopiero wtedy rusza, podjeżdża pod wieżę, burzy ją i jedzie do celu. Zaznacz katapultę, naciśnij klawisz ataku z marszu i kliknij za wieżą, gdy strzela, aby wydać rozkaz samemu.',
+    },
     'vehicle-tight-gap': {
       title: 'Wąskie przejazdy',
       summary:

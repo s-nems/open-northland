@@ -561,6 +561,11 @@ export const deContent = {
       summary:
         'Zwei bemannte Katapulte erhalten eine Angriffsbewegung nach Osten. Anfangs ist keine der beiden feindlichen Hütten in Reichweite. Unterwegs wird jede sichtbar, woraufhin die Katapulte anhalten, sie zerstören und zu ihren Zielen weiterfahren. Wähle ein Katapult aus, drücke die Taste für die Angriffsbewegung und klicke auf einen Ort, um es selbst loszuschicken.',
     },
+    'vehicle-attack-move-fight': {
+      title: 'Angriffsbewegung mitten im Beschuss',
+      summary:
+        'Ein Katapult in Haltestellung beschießt eine feindliche Hütte in seiner Reichweite, knapp dahinter steht ein feindlicher Turm. Erhält es während des Beschusses eine Angriffsbewegung nach Osten an beiden vorbei, schießt es von seinem Platz weiter, bis die Hütte fällt; erst dann rückt es vor, fährt an den Turm heran, zerstört ihn und fährt weiter zu seinem Ziel. Wähle das Katapult aus, drücke die Taste für die Angriffsbewegung und klicke hinter den Turm, während es schießt, um den Befehl selbst zu geben.',
+    },
     'vehicle-tight-gap': {
       title: 'Fahrzeuge in engen Durchgängen',
       summary:

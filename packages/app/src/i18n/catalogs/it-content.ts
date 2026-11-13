@@ -562,6 +562,11 @@ export const itContent = {
       summary:
         "Due catapulte con equipaggio marciano verso est con un attacco in movimento. All'inizio nessuna capanna nemica è a portata; ognuna entra in vista lungo la strada, quindi le catapulte si fermano, la radono al suolo e proseguono verso i loro obiettivi. Seleziona una catapulta, premi il tasto di attacco in movimento e fai clic su un punto per farla marciare tu.",
     },
+    'vehicle-attack-move-fight': {
+      title: 'Attacco in movimento durante il tiro',
+      summary:
+        "Una catapulta in posizione di tenuta bersaglia una capanna nemica a portata, con una torre nemica appena oltre. Se riceve un attacco in movimento verso est mentre tira, continua a tirare da dove si trova finché la capanna non crolla; solo allora si muove, si avvicina alla torre, la rade al suolo e prosegue verso il suo obiettivo. Seleziona la catapulta, premi il tasto di attacco in movimento e fai clic oltre la torre mentre tira per dare l'ordine tu.",
+    },
     'vehicle-tight-gap': {
       title: 'Varchi stretti per i veicoli',
       summary:

@@ -40,11 +40,14 @@ export interface VehicleAttack {
 /**
  * An attack-move: a siege vehicle drives to `goal` in the attack stance, fights what its scan finds on
  * the way, then drives on. `restUntil` is the tick before which it drives without scanning, set when a
- * chase could not reach its find. Null under every other order.
+ * chase could not reach its find. `behindFight` holds a march ordered while the vehicle was shooting:
+ * it fights on under its own stance, and the march starts once it holds no target.
+ * Null under every other order.
  */
 export interface VehicleMarch {
   goal: HalfCellNode;
   restUntil: number;
+  behindFight: boolean;
 }
 
 /** One occupied slot: who holds it, and whether the rider is aboard (off the map) rather than still

@@ -993,9 +993,10 @@ function abandonDock(world: World, vehicle: Entity): void {
  * snaps to nothing on the vehicle's continent or has no route. A pinned trader who can reach its ship
  * commands it from ashore. A crew still outside is boarded first: the goal is held under the
  * `waitsForHuman` task and the drive starts once everyone is inside (the original boards its crew ahead
- * of any target). Approximation: the original ignores an off-continent
- * target silently and raises `vehicleNoPath` only from its pathfinder. Returns whether a drive or a held
- * goal now stands.
+ * of any target). A siege vehicle's attack-move ordered while it shoots at a unit, house or vehicle
+ * waits behind that fight (`VehicleMarch.behindFight`). Approximation: the original ignores an
+ * off-continent target silently and raises `vehicleNoPath` only from its pathfinder. Returns whether a
+ * drive, a held goal or a waiting march now stands.
  */
 export function moveVehicle(
   world: World,
@@ -1022,18 +1023,32 @@ export function moveVehicle(
     refuseMove(world, ctx, e, 'noCommander');
     return false;
   }
-  dropAttack(world, e);
+  const marches = command.attackMove === true && type !== undefined && isSiegeVehicle(type);
+  // An attack-move leaves a fight under way alone: the march waits behind it instead of driving off.
+  const behindFight = marches && shootsAtUnitOrHouse(world, e);
+  if (behindFight) endMarch(world, e);
+  else dropAttack(world, e);
   const goal = snapVehicleTarget(world, ctx, terrain, e, { hx: command.x, hy: command.y });
   if (goal === null) {
     refuseMove(world, ctx, e, 'noPath');
     return false;
   }
-  if (!sendVehicleTo(world, ctx, terrain, e, goal, orders)) return false;
-  if (command.attackMove === true && type !== undefined && isSiegeVehicle(type)) {
-    world.mut(e, Vehicle).march = { goal: nodeOf(terrain, goal), restUntil: 0 };
-  }
+  if (behindFight) {
+    if (vehicleRouteTo(world, ctx, terrain, e, goal, orders) === null) {
+      refuseMove(world, ctx, e, 'noPath');
+      return false;
+    }
+  } else if (!sendVehicleTo(world, ctx, terrain, e, goal, orders)) return false;
+  if (marches) world.mut(e, Vehicle).march = { goal: nodeOf(terrain, goal), restUntil: 0, behindFight };
   recordAiOrder(world, e, origin);
   return true;
+}
+
+/** Whether `e` is shooting at a unit, house or vehicle: it holds one as its target and plays its attack
+ *  clip. A battered map point never falls, so it is no fight to wait for. */
+function shootsAtUnitOrHouse(world: World, e: Entity): boolean {
+  const state = world.get(e, Vehicle);
+  return state.attack?.target.kind === 'entity' && state.attackClipStart !== null;
 }
 
 /**

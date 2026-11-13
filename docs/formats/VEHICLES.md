@@ -485,6 +485,8 @@ The original's goto never scans while the vehicle drives. Open Northland adds an
 (`moveVehicle` with `attackMove`: the attack-move key with a catapult selected, or its commander's own
 attack-move). The march fights in the attack stance whatever the vehicle's stance, a find ends the
 drive on the node it crosses, and once nothing is left to fight the vehicle drives on to the goal.
+Ordered while the vehicle is shooting at a unit, house or vehicle, the march waits: the vehicle fights
+on under its own stance (a holding one where it stands) and starts the march once it holds no target.
 After a find no firing node reaches, the march drives on for 5 seconds without scanning
 (approximation). A goto, stop, ordered attack, loading into a ship, unloading the crew, losing the
 commander or a script teleport ends the march; with no route left it ends where it stands with the

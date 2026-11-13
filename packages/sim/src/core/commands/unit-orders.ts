@@ -329,7 +329,7 @@ export type UnitOrderCommand =
        * Refused with a `vehicleMoveRefused` event while nobody commands it or
        * when nothing leads there. `attackMove` makes a siege vehicle's drive a march: it fights the
        * enemies it meets on the way in the attack stance, then drives on (an addition: the original's
-       * goto never scans while it drives).
+       * goto never scans while it drives). A vehicle shooting at a unit or house finishes that fight first.
        */
       readonly kind: 'moveVehicle';
       readonly vehicle: Entity;

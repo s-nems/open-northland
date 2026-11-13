@@ -559,6 +559,11 @@ export const enContent = {
       summary:
         'Two crewed catapults are marched east with an attack-move. Neither enemy hut is in reach at the start; each comes into sight on the way, so the catapults stop, raze it and drive on to their goals. Select a catapult, press the attack-move key and click a spot to march it yourself.',
     },
+    'vehicle-attack-move-fight': {
+      title: 'Catapult attack-move mid-fight',
+      summary:
+        'A holding catapult batters an enemy hut inside its range, with an enemy tower just beyond it. Ordered to attack-move east past both while it fires, it keeps firing from where it stands until the hut falls; only then does it march, roll up to the tower, raze it and drive on to its goal. Select the catapult, press the attack-move key and click past the tower while it fires to order it yourself.',
+    },
     'vehicle-tight-gap': {
       title: 'Vehicle tight gaps',
       summary:

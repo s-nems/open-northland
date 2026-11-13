@@ -1292,6 +1292,49 @@ describe('the attack-move march', () => {
     expect(s.world.get(catapult, Position)).toEqual(positionOfNode(GOAL.hx, GOAL.hy));
   });
 
+  it('ordered mid-fight, fires on at its mark from where it stands, and marches once the mark falls', () => {
+    const s = sim(grass(40, 12));
+    const catapult = catapultAt(s, 4, 8, P1); // holding
+    toughen(s, catapult);
+    const house = houseAt(s, 20, 8, P2, TOUGH_HOUSE); // 16 map points: inside the band
+    // 32 map points: past the band, but within the reach a started march rolls up to a shooter at.
+    const archer = fighterAt(s, 36, 8, P2, ARCHER);
+    s.world.mut(archer, Stance).mode = MILITARY_MODE.IGNORE;
+    for (let i = 0; i < SHOT_TICKS && s.world.get(catapult, Vehicle).attackClipStart === null; i++) s.step();
+    const stood = anchorOf(s, catapult);
+    march(s, catapult, true);
+    const hits = collect(s, 2 * SHOT_TICKS, ['projectileHit']);
+    expect(anchorOf(s, catapult)).toEqual(stood);
+    expect(s.world.has(catapult, VehicleDrive)).toBe(false);
+    expect(hits.length).toBeGreaterThan(0);
+    expect(hits.every((ev) => ev.kind === 'projectileHit' && ev.target === house)).toBe(true);
+    s.world.mut(house, Health).hitpoints = 0;
+    // Only the started march's attack stance takes the archer: holding, the catapult never looks past its band.
+    const aimsAtArcher = () => {
+      const target = s.world.get(catapult, Vehicle).attack?.target;
+      return target?.kind === 'entity' && target.entity === archer;
+    };
+    for (let i = 0; i < SHOT_TICKS && !aimsAtArcher(); i++) s.step();
+    expect(aimsAtArcher()).toBe(true);
+    s.world.mut(archer, Health).hitpoints = 0;
+    runToGoal(s, catapult, GOAL);
+    expect(s.world.get(catapult, Position)).toEqual(positionOfNode(GOAL.hx, GOAL.hy));
+  });
+
+  it('ordered while it batters a map point, drives off at once', () => {
+    const s = sim(grass(40, 12));
+    const catapult = catapultAt(s, 4, 8, P1);
+    const ground = { kind: 'ground', hx: 20, hy: 8 } as const;
+    s.enqueue(playerCommand(P1, { kind: 'attackWithVehicle', vehicle: catapult, target: ground }));
+    for (let i = 0; i < SHOT_TICKS && s.world.get(catapult, Vehicle).attackClipStart === null; i++) s.step();
+    expect(s.world.get(catapult, Vehicle).attackClipStart).not.toBeNull();
+    expect(s.world.has(catapult, VehicleDrive)).toBe(false);
+    march(s, catapult, true);
+    s.run(1);
+    expect(s.world.get(catapult, Vehicle).attack).toBeNull();
+    expect(s.world.has(catapult, VehicleDrive)).toBe(true);
+  });
+
   it('ends beside a goal another catapult reached first, without the no-path note', () => {
     const s = sim(grass(40, 12));
     const first = catapultAt(s, 56, 8, P1);
@@ -1441,7 +1484,7 @@ describe('the attack-move march', () => {
     s.run(1);
     // The goal moves across the strait under the drive, as if the way there had closed.
     const farShore = { hx: 70, hy: 8 };
-    s.world.mut(catapult, Vehicle).march = { goal: farShore, restUntil: 0 };
+    s.world.mut(catapult, Vehicle).march = { goal: farShore, restUntil: 0, behindFight: false };
     const refused = collect(s, MARCH_TICKS, ['vehicleMoveRefused']);
     const state = s.world.get(catapult, Vehicle);
     expect(state.march).toBeNull();

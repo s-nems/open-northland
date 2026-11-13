@@ -142,6 +142,7 @@ import { cartDriversScene } from './vehicles/cart-drivers.js';
 import { haulingCartScene } from './vehicles/hauling-cart.js';
 import { shipWakesScene } from './vehicles/ship-wakes.js';
 import { vehicleAttackMoveScene } from './vehicles/vehicle-attack-move.js';
+import { vehicleAttackMoveFightScene } from './vehicles/vehicle-attack-move-fight.js';
 import { vehicleBuildingClearanceScene } from './vehicles/vehicle-building-clearance.js';
 import { vehicleCargoScene } from './vehicles/vehicle-cargo.js';
 import { vehicleCatapultScene } from './vehicles/vehicle-catapult.js';
@@ -340,6 +341,7 @@ export const SCENES: readonly SceneDefinition[] = [
   haulingCartScene,
   vehicleCatapultScene,
   vehicleAttackMoveScene,
+  vehicleAttackMoveFightScene,
   vehicleTightGapScene,
   vehicleCatapultSpreadScene,
   vehicleCatapultTargetsScene,
