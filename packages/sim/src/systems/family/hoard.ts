@@ -131,8 +131,8 @@ function larderCapacity(ctx: SystemContext, homeType: BuildingType): number {
   return capacity;
 }
 
-/** The original searches one candidate set containing food and household goods. Reproduce its observable
- * nearest-source result; entity id breaks an exact distance tie. */
+/** The nearer of the food source and the household-goods source, entity id breaking an exact distance tie:
+ *  the original searches both in one candidate set. The food source is the food search's own pick. */
 function nearerSource(
   world: World,
   from: { hx: number; hy: number },

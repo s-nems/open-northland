@@ -191,7 +191,7 @@ export const SETTLERS: ArticleGroup = {
         },
         {
           steps: [
-            'A [[job:woman|Woman]] with a finished dwelling looks for the nearest food outside dwellings.',
+            'A [[job:woman|Woman]] with a finished dwelling first fetches the nearest [[good:meat|Meat]], as on a [[building:work_animal_farm|Cattle Farm]], and otherwise the nearest food outside dwellings.',
             'She carries {{haul.carry}} piece home.',
             'With [[good:crockery|Crockery]] in the dwelling, each delivery puts {{haul.crockeryDelivery}} pieces in the larder.',
           ],

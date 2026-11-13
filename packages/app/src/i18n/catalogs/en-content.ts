@@ -931,6 +931,11 @@ export const enContent = {
       summary:
         'Sheep and cattle gather at the nearer warehouse in the north. The southern herd has no storage and gathers beside the nearer dwelling.',
     },
+    'farm-larder': {
+      title: 'Housewives at the cattle farm',
+      summary:
+        "Three women live beside a headquarters full of food, the cattle farm stands further east with a full meat shelf. The women walk past the headquarters and fetch the farm's meat, so the stock farmer keeps slaughtering cattle instead of carrying meat out, and the leather piles up.",
+    },
     livestock: {
       title: 'Animal husbandry',
       summary:

@@ -187,7 +187,7 @@ export const SETTLERS: ArticleGroup = {
         },
         {
           steps: [
-            '[[job:woman|Kobieta]] z gotowym domem szuka najbliższego jedzenia poza domami.',
+            '[[job:woman|Kobieta]] z gotowym domem bierze najpierw najbliższe [[good:meat|Mięso]], np. z [[building:work_animal_farm|Fermy bydła]], a dopiero potem najbliższe jedzenie poza domami.',
             'Niesie {{haul.carry}} sztukę do domu.',
             'Z [[good:crockery|Naczyniami]] w domu każda dostawa daje {{haul.crockeryDelivery}} sztuki w spiżarni.',
           ],

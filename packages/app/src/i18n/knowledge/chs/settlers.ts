@@ -167,7 +167,7 @@ export const SETTLERS: ArticleGroup = {
         },
         {
           steps: [
-            '有已建成住所的[[job:woman|妇女]]寻找住所以外最近的食物。',
+            '有已建成住所的[[job:woman|妇女]]先取最近的[[good:meat|肉]]，例如[[building:work_animal_farm|畜牧场]]的肉，否则取住所以外最近的食物。',
             '拿{{haul.carry}}份回家。',
             '家里有[[good:crockery|陶器]]时，每次运回都算{{haul.crockeryDelivery}}份存粮。',
           ],

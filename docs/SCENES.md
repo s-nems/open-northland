@@ -143,6 +143,10 @@ run they go back to their trade.
 `?scene=cow-raid` runs a red scout at a blue farm's cattle and back. The cows in his reach run, each
 its own way, the sheep beyond it keep grazing, and once he is gone the cows walk back to the farm.
 
+`?scene=farm-larder` stands three homes beside a headquarters full of food and a cattle farm further
+east with a full meat shelf. Watch the women walk past the headquarters and carry meat home from the
+farm, while the stock farmer keeps slaughtering cattle and the farm's leather grows.
+
 `?scene=creature-forms` lines up the five animal-body looks authored for the weresnake tribe: sheep,
 chicken, lion, wolf and bear. The lion, wolf and bear forms have soldiers nearby for observing their
 combat motions; the sheep and chicken forms remain clear for inspecting their idle and walk poses.

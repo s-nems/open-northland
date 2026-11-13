@@ -943,6 +943,11 @@ export const itContent = {
       summary:
         "Pecore e bovini si radunano presso il magazzino più vicino a nord. La mandria meridionale non ha un magazzino e si raduna accanto all'abitazione più vicina.",
     },
+    'farm-larder': {
+      title: "Massaie all'allevamento",
+      summary:
+        "Tre donne vivono accanto a un quartier generale pieno di cibo, l'allevamento sta più a est con lo scaffale della carne pieno. Le donne passano oltre il quartier generale e prendono la carne dell'allevamento, così l'allevatore continua a macellare i bovini e il cuoio cresce, invece di portare fuori lui la carne.",
+    },
     livestock: {
       title: 'Allevamento di animali',
       summary:

@@ -27,9 +27,13 @@ import { ctxOf } from '../../fixtures/context.js';
 const WOOD = 1;
 const FOOD = 16; // `food_simple`: the `food_` prefix is what makes it edible
 const FOOD_EXTRA = 17;
+/** A dish (`readviews/food.ts`): a family lifts it as `food_simple`. */
+const MEAT = 21;
 const LARDER_SLOT = 5;
 const HOME = 2;
 const WAREHOUSE = 7;
+/** The animal farm, whose slaughter lands meat on its shelf. */
+const ANIMAL_FARM = 17;
 const VIKING = 1;
 
 function foodContent(): ContentSet {
@@ -40,6 +44,7 @@ function foodContent(): ContentSet {
       { typeId: WOOD, id: 'wood' },
       { typeId: FOOD, id: 'food_simple' },
       { typeId: FOOD_EXTRA, id: 'food_extra' },
+      { typeId: MEAT, id: 'meat' },
     ],
     jobs: [],
     landscape: [],
@@ -63,6 +68,12 @@ function foodContent(): ContentSet {
           { goodType: FOOD, capacity: 99 },
           { goodType: FOOD_EXTRA, capacity: 99 },
         ],
+      },
+      {
+        typeId: ANIMAL_FARM,
+        id: 'animal_farm',
+        kind: 'workplace',
+        stock: [{ goodType: MEAT, capacity: 30 }],
       },
     ],
   });
@@ -262,6 +273,39 @@ describe('foodSourcesOf', () => {
     expect(search()).toBeNull();
     sim.world.mut(home, Stockpile).amounts.set(FOOD, LARDER_SLOT - 1);
     expect(search()).toEqual({ store: near, goodType: FOOD });
+  });
+
+  it("takes meat before a nearer store's food, while it is hers and unclaimed", () => {
+    const SEEKER = 0;
+    const RIVAL = 1;
+    const sim = new Simulation({ seed: 1, content: foodContent() });
+    const home = storeAt(sim, 0, FOOD, 0, HOME);
+    const near = storeAt(sim, 1, FOOD, 3, WAREHOUSE);
+    const farm = storeAt(sim, 9, MEAT, 1, ANIMAL_FARM);
+    sim.world.add(farm, Owner, { player: SEEKER });
+    const supply = collectSupplyTally(sim.world);
+    const search = (): ReturnType<ExternalFoodIndex['nearest']> =>
+      new ExternalFoodIndex(sim.world, ctxOf(sim), undefined, supply).nearest(
+        { hx: 0, hy: 2 },
+        SEEKER,
+        home,
+        null,
+      );
+
+    expect(search()).toEqual({ store: farm, goodType: MEAT });
+    sim.world.mut(farm, Owner).player = RIVAL;
+    expect(search()).toEqual({ store: near, goodType: FOOD });
+    expect(sim.world.verifyCaches()).toEqual([]);
+    sim.world.mut(farm, Owner).player = SEEKER;
+    supply.stampPickupClaim(sim.world.create(), { source: farm, goodType: MEAT, amount: 1 });
+    expect(search()).toEqual({ store: near, goodType: FOOD });
+    expect(sim.world.verifyCaches()).toEqual([]);
+    // Drained of meat but still holding food, the farm stays a source and leaves the meat list.
+    setAccessibleStockAmount(sim.world, farm, FOOD, 1);
+    setAccessibleStockAmount(sim.world, farm, MEAT, 0);
+    expect(foodSourcesOf(sim.world, sim.content).candidates).toContain(farm);
+    expect(foodSourcesOf(sim.world, sim.content).meatOn(SEEKER)).toEqual([]);
+    expect(sim.world.verifyCaches()).toEqual([]);
   });
 
   it('passes over a pile a placement displaced after the pass caught its sources up', () => {

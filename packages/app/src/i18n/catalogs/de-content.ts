@@ -940,6 +940,11 @@ export const deContent = {
       summary:
         'Schafe und Rinder sammeln sich beim näheren Lagerhaus im Norden. Die südliche Herde hat kein Lager und sammelt sich beim näheren Wohnhaus.',
     },
+    'farm-larder': {
+      title: 'Hausfrauen an der Viehzüchterei',
+      summary:
+        'Drei Frauen wohnen neben einem Hauptquartier voller Nahrung, die Viehzüchterei steht weiter östlich mit vollem Fleischregal. Die Frauen gehen am Hauptquartier vorbei und holen das Fleisch der Viehzüchterei, so schlachtet der Viehzüchter weiter Rinder und das Leder wächst, statt dass er Fleisch hinausträgt.',
+    },
     livestock: {
       title: 'Viehzucht',
       summary:

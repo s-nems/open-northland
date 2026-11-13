@@ -928,6 +928,11 @@ export const plContent = {
       summary:
         'Owce i woły na północy idą do bliższego magazynu. Południowe stado nie ma magazynu i zbiera się przy bliższym domu.',
     },
+    'farm-larder': {
+      title: 'Kobiety przy fermie bydła',
+      summary:
+        'Trzy kobiety mieszkają obok kwatery głównej pełnej jedzenia, a ferma bydła stoi dalej na wschodzie z pełną półką mięsa. Kobiety mijają kwaterę i biorą mięso z fermy, więc hodowca dalej ubija bydło i przybywa skóry, zamiast żeby sam wynosił mięso.',
+    },
     livestock: {
       title: 'Hodowla zwierząt',
       summary:

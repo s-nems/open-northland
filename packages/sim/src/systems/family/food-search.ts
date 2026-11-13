@@ -10,7 +10,7 @@ import { edibleGoodFormOf, isFoodIn } from '../readviews/index.js';
 import { hasRoom } from '../settlers/drives/economy/store-policy.js';
 import { interactionCell, unclaimedGoodsAt } from '../settlers/targets/index.js';
 import { accessibleStockAmounts, mayFetchGoodFrom, type SupplyTally } from '../stores/index.js';
-import { type FoodSources, foodSourcesOf } from './food-sources.js';
+import { type FoodSources, foodSourcesOf, meatGoodOf } from './food-sources.js';
 
 /**
  * The greatest Manhattan ring radius (half-cell nodes) {@link ExternalFoodIndex.nearest} expands to before
@@ -48,12 +48,16 @@ export class ExternalFoodIndex {
   }
 
   /**
-   * The nearest external food source to `from` holding an unclaimed unit of a food `home`'s larder has
-   * room for, or null when none exists anywhere. A food whose slot is full is skipped, since the delivery
+   * The external food source a seeker at `from` hauls from: the nearest one holding an unclaimed unit of
+   * meat, else the nearest holding an unclaimed unit of any food, either one a food `home`'s larder has
+   * room for; null when none exists anywhere. A food whose slot is full is skipped, since the delivery
    * would be refused and the unit carried straight back. `gate` is the seeker's signpost confinement (null
    * when unlimited), `avoid` her failed-goal veto, probed at the source's interaction cell, the node
    * `fetchFrom` walks to. `owner` is her player: she hauls only out of her own side's stores. The shared
    * candidate list is owner-blind, so her side is checked per seeker.
+   *
+   * Departure (owner ruling): the original takes the nearest source of any food. Meat goes first, the
+   * reason at `MEAT_GOOD_ID`.
    */
   nearest(
     from: { hx: number; hy: number },
@@ -69,19 +73,34 @@ export class ExternalFoodIndex {
     // No store can then offer her a unit, so the scan over every candidate is skipped.
     if (roomy.length === 0) return null;
     // The area test goes before the stock read: on islands most of a side's stores stand on other land.
-    const accept = (e: Entity): boolean =>
+    const usable = (e: Entity, only: number | undefined): boolean =>
       ownersCompatible(owner, ownerOf(this.world, e)) &&
       this.inArea(e, gate) &&
-      this.liftableFood(e, roomy) !== null &&
+      this.liftableFood(e, roomy, only) !== null &&
       !this.standRetired(e, from, avoid);
+    const meat = meatGoodOf(this.ctx.content);
+    if (meat !== null && roomy.includes(meat)) {
+      // Scanned whole without the ring: meat lies only on the few stores it was produced or carried to.
+      const held = this.linearNearest(this.sources.meatOn(owner), from, (e) => usable(e, meat), -1);
+      if (held !== null) return this.liftAt(held, roomy, meat);
+    }
+    const accept = (e: Entity): boolean => usable(e, undefined);
     const side = this.onSide(owner);
     const ringed = side.length > RING_MIN_CANDIDATES;
     const hit = ringed ? buckets.nearest(from.hx, from.hy, 0, RING_MAX_RADIUS, accept) : null;
     // A ring sweep that missed rejected every candidate inside its radius already.
     const store = hit?.entity ?? this.linearNearest(side, from, accept, ringed ? RING_MAX_RADIUS : -1);
-    if (store === null) return null;
-    const goodType = this.liftableFood(store, roomy);
-    // A null here would mean a mid-pass mutation drained the winner: fail the query rather than guess.
+    return store === null ? null : this.liftAt(store, roomy, undefined);
+  }
+
+  /** The unit the query lifts at its winner. A null here would mean a mid-pass mutation drained the
+   *  winner: fail the query rather than guess. */
+  private liftAt(
+    store: Entity,
+    roomy: readonly number[],
+    only: number | undefined,
+  ): { store: Entity; goodType: number } | null {
+    const goodType = this.liftableFood(store, roomy, only);
     return goodType === null ? null : { store, goodType };
   }
 
@@ -101,9 +120,10 @@ export class ExternalFoodIndex {
     return roomy;
   }
 
-  /** The lowest of the ascending `roomy` foods `store` holds a unit of that no walker has claimed: the
-   *  `lowestStockedFood` pick, probed per food rather than over the store's whole inventory. */
-  private liftableFood(store: Entity, roomy: readonly number[]): number | null {
+  /** The lowest of the ascending `roomy` foods, or `only` among them when given, that `store` holds a unit
+   *  of no walker has claimed: the `lowestStockedFood` pick, probed per food rather than over the store's
+   *  whole inventory. */
+  private liftableFood(store: Entity, roomy: readonly number[], only: number | undefined): number | null {
     const { world, supply } = this;
     const amounts = accessibleStockAmounts(world, store);
     if (amounts === undefined) return null;
@@ -111,6 +131,7 @@ export class ExternalFoodIndex {
     for (let i = 0; i < roomy.length; i++) {
       const goodType = roomy[i];
       if (goodType === undefined || (amounts.get(goodType) ?? 0) <= 0) continue;
+      if (only !== undefined && goodType !== only) continue;
       if (!mayFetchGoodFrom(world, this.ctx, store, goodType)) continue;
       if (unclaimed === null) unclaimed = unclaimedGoodsAt(world, this.ctx, supply, store);
       if (unclaimed === undefined || unclaimed(goodType)) return goodType;

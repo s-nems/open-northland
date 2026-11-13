@@ -2,6 +2,7 @@ import { bearHuntScene } from './animals/bear-hunt.js';
 import { cowRaidScene } from './animals/cow-raid.js';
 import { creatureFormsScene } from './animals/creature-forms.js';
 import { creaturesScene } from './animals/creatures.js';
+import { farmLarderScene } from './animals/farm-larder.js';
 import { huntingScene } from './animals/hunting.js';
 import { livestockScene } from './animals/livestock.js';
 import { livestockYardScene } from './animals/livestock-yard.js';
@@ -249,6 +250,7 @@ export const SCENES: readonly SceneDefinition[] = [
   farPostScene,
   livestockScene,
   livestockYardScene,
+  farmLarderScene,
   cowRaidScene,
   scoutClaimScene,
   scoutExploreScene,
