@@ -1260,7 +1260,7 @@ export class SpritePool {
 
   depthOf(ref: number): number | undefined {
     const pe = this.pool.get(ref);
-    return anchorOf(pe, this.currentFrameOf(pe)) === undefined ? undefined : pe?.container.zIndex;
+    return pe !== undefined && pe.lastSeen === this.currentFrameOf(pe) ? pe.container.zIndex : undefined;
   }
 
   /**

@@ -151,6 +151,19 @@ export const amuletsScene: SceneDefinition = {
       },
     },
     {
+      label: 'the company stood whole east of the duel',
+      predicate: (sim) => {
+        const company = [...sim.world.query(Settler)].filter((e) => {
+          const job = sim.world.get(e, Settler).jobType;
+          return job !== null && COMPANY_JOBS.includes(job);
+        });
+        return (
+          company.length === COMPANY.files * COMPANY.ranks &&
+          company.every((e) => sim.world.get(e, Position).x >= fx.fromInt(COMPANY.x))
+        );
+      },
+    },
+    {
       label: 'the food and stamina amulets topped both needs up below the drive level and stayed whole',
       predicate: (sim) => {
         const wearer = carriers(sim, 'amulet_food')[0];

@@ -17,9 +17,13 @@ import { retireUndrawn } from './retained-pool.js';
 
 /** A wearer's arcs are a bit set of colours, so the strip holds at most this many. */
 const MAX_ARC_COLOURS = 30;
+/** A dot owns a sprite under its wearer and one over, and shows the one on its side of the feet line. */
+const DOT_SIDES = 2;
+const SPRITES_PER_ARC = ARC_DOTS * DOT_SIDES;
 
 interface ArcNode {
-  /** {@link ARC_DOTS} sprites per arc, the arcs in rising colour order. */
+  /** {@link SPRITES_PER_ARC} sprites per arc, the arcs in rising colour order; each dot's back sprite,
+   *  then its front one. */
   readonly sprites: Sprite[];
   /** The colours the sprites were dressed for, a bit each. */
   colours: number;
@@ -39,8 +43,10 @@ export interface AmuletArcFrame {
  * The arcs of light round each drawn human who carries an amulet the app gave a colour (see
  * `data/effects/amulet-arcs.ts`): one per colour carried, however many amulets share it. The sprites sit
  * in the depth-sorted sprite layer just over or under their wearer, so an arc passes behind the body and
- * whatever stands in front of the wearer covers it. They draw through the world batch off one strip, so
- * a company of wearers adds quads to the batch rather than breaking it.
+ * whatever stands in front of the wearer covers it. A sprite keeps its side for life and a dot crossing
+ * the feet line hands over by alpha, so a standing wearer's arcs never re-sort their depth band. They
+ * draw through the world batch off one strip, so a company of wearers adds quads to the batch rather
+ * than breaking it.
  */
 export class AmuletArcLayer {
   private colourOfGood: ReadonlyMap<number, number> | undefined;
@@ -116,7 +122,7 @@ export class AmuletArcLayer {
     for (let colour = 0; colour < this.textures.length; colour++) {
       const texture = (worn & (1 << colour)) === 0 ? undefined : this.textures[colour];
       if (texture === undefined) continue;
-      for (let dot = 0; dot < ARC_DOTS; dot++) {
+      for (let slot = 0; slot < SPRITES_PER_ARC; slot++) {
         let sprite = node.sprites[used];
         if (sprite === undefined) {
           sprite = worldBatched(new Sprite());
@@ -140,15 +146,20 @@ export class AmuletArcLayer {
     renderTime: number,
   ): void {
     const dot = this.dot;
-    const arcs = node.sprites.length / ARC_DOTS;
-    for (let i = 0; i < node.sprites.length; i++) {
-      const sprite = node.sprites[i];
-      if (sprite === undefined) continue;
+    const dots = node.sprites.length / DOT_SIDES;
+    const arcs = dots / ARC_DOTS;
+    for (let i = 0; i < dots; i++) {
+      const back = node.sprites[i * DOT_SIDES];
+      const front = node.sprites[i * DOT_SIDES + 1];
+      if (back === undefined || front === undefined) continue;
       arcDot(renderTime, ref, Math.trunc(i / ARC_DOTS), arcs, i % ARC_DOTS, dot);
-      sprite.position.set(feet.x + dot.x, feet.y + dot.y);
-      sprite.scale.set(dot.scale * ARC_DRAW_SCALE);
-      sprite.alpha = dot.alpha;
-      sprite.zIndex = dot.front ? depth + SHADOW_DEPTH_EPS : depth - SHADOW_DEPTH_EPS;
+      const shown = dot.front ? front : back;
+      shown.position.set(feet.x + dot.x, feet.y + dot.y);
+      shown.scale.set(dot.scale * ARC_DRAW_SCALE);
+      shown.alpha = dot.alpha;
+      (dot.front ? back : front).alpha = 0;
+      back.zIndex = depth - SHADOW_DEPTH_EPS;
+      front.zIndex = depth + SHADOW_DEPTH_EPS;
     }
   }
 

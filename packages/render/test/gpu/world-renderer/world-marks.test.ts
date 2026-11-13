@@ -166,6 +166,32 @@ describe('WorldMarks', () => {
     marks.destroy();
   });
 
+  it('draws amulet arcs only with equipment effects on and in a tier that keeps them', () => {
+    const { marks, sprites } = marksIn();
+    const amulet = 52;
+    const worn = { boots: null, tool: null, weapon: null, armor: null, misc: [{ goodType: amulet }] };
+    const carrier = {
+      snapshot: snapshotOf([entity(SETTLER, 3, 4, { Settler: {}, Equipment: worn })]),
+      walkers: [{ ref: SETTLER, marksGround: false }],
+      drawn: { boundsOf: () => undefined, anchorOf: () => ({ x: 0, y: 0 }), depthOf: () => 1 },
+    };
+    marks.draw(frameOf(carrier));
+    const bare = sprites.children.length;
+    marks.setAmuletArcColours(new Map([[amulet, 0xff0000]]));
+    marks.draw(frameOf(carrier));
+    const lit = sprites.children.length;
+    expect(lit).toBeGreaterThan(bare);
+    marks.draw(frameOf({ ...carrier, detail: VIEW_DETAILS.sparse }));
+    expect(sprites.children).toHaveLength(bare);
+    marks.setEquipmentEffects(false);
+    marks.draw(frameOf(carrier));
+    expect(sprites.children).toHaveLength(bare);
+    marks.setEquipmentEffects(true);
+    marks.draw(frameOf(carrier));
+    expect(sprites.children).toHaveLength(lit);
+    marks.destroy();
+  });
+
   it('draws nothing for an empty frame and tears every slot down', () => {
     const { marks } = marksIn();
     marks.draw(frameOf());
