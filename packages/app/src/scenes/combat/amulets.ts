@@ -5,6 +5,7 @@ import {
   JOB_COLLECTOR,
   JOB_SOLDIER_BROADSWORD,
   JOB_SOLDIER_SPEAR,
+  JOB_SOLDIER_SPEAR_WOODEN,
   JOB_SOLDIER_SWORD,
 } from '../../catalog/jobs.js';
 import { ENEMY_PLAYER, HUMAN_PLAYER } from '../../game/rules.js';
@@ -28,6 +29,9 @@ const DUEL_AMULET_X = 8;
 const DUEL_RIVAL_X = 10;
 /** Past the drive level at 8/10, so the food and stamina amulets fire on the first ticks. */
 const WEARER = { x: 20, y: 14 } as const;
+/** A troop of wooden-spear men and civilians with the speed amulet, between the parade and the company and out
+ *  of the duel's reach, for the viewer to march about: the wind a whole group trails. */
+const TROOP = { x: 40, y: 10, columns: 5, rows: 4 } as const;
 const PRESSING_NEED = fx.div(fx.fromInt(9), fx.fromInt(10));
 /** Idle collectors side by side, to compare the arcs round their feet: one kind, two, four, and one
  *  kind carried three times, which shows a single arc. */
@@ -81,6 +85,14 @@ function build(sim: Simulation): void {
   const champion = spawnSettlerDirect(sim, JOB_SOLDIER_SWORD, DUEL_AMULET_X, DUEL_Y, HUMAN_PLAYER);
   carrying(sim, champion, ['amulet_strength', 'amulet_crithit', 'amulet_defense']);
   spawnSettlerDirect(sim, JOB_SOLDIER_SWORD, DUEL_RIVAL_X, DUEL_Y, ENEMY_PLAYER);
+
+  for (let row = 0; row < TROOP.rows; row++) {
+    for (let column = 0; column < TROOP.columns; column++) {
+      const job = row % 2 === 0 ? JOB_SOLDIER_SPEAR_WOODEN : JOB_COLLECTOR;
+      const member = spawnSettlerDirect(sim, job, TROOP.x + column, TROOP.y + row, HUMAN_PLAYER);
+      carrying(sim, member, ['amulet_speed']);
+    }
+  }
 
   const wearer = spawnSettlerDirect(sim, JOB_COLLECTOR, WEARER.x, WEARER.y, HUMAN_PLAYER);
   carrying(sim, wearer, ['amulet_food', 'amulet_stamina']);
