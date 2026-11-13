@@ -197,6 +197,11 @@ export const plContent = {
       summary:
         '1000 na 1000 na powiększonym polu bitwy: rozproszone oddziały, pięć rodzajów broni i różne pancerze.',
     },
+    'precision-battle': {
+      title: 'Bitwa amuletu precyzji',
+      summary:
+        '60 wojowników w zbrojach płytowych z amuletem precyzji, po dziesięciu z każdą bronią, przeciw 78 bez amuletu, po trzynastu z każdą bronią. Na wschodzie mała walka: pięciu przeciw siedmiu.',
+    },
     'overhead-icons': {
       title: 'Ikony nad głową',
       summary:

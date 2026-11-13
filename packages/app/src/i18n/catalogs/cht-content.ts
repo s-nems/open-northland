@@ -197,6 +197,11 @@ export const chtContent = {
       title: '大規模會戰',
       summary: '在擴大的戰場上 1000 對 1000：分散的部隊、五種武器類別與混合護甲。',
     },
+    'precision-battle': {
+      title: '精準護符之戰',
+      summary:
+        '60名身穿板甲、佩戴精準護符的戰士（每種武器10名）對陣78名沒有護符的戰士（每種武器13名）。東邊還有一場五對七的小戰鬥。',
+    },
     'overhead-icons': {
       title: '頭頂圖示',
       summary:

@@ -3,6 +3,7 @@ import {
   Building,
   BuildMode,
   Carrying,
+  isStunned,
   JobAssignment,
   ownerOf,
   Palisade,
@@ -261,8 +262,8 @@ export function unassignBuilder(
  *  trade, load and gear alone. */
 function cancelActionAndRoute(world: World, ctx: SystemContext, e: Entity): void {
   // setJob vets interruptibility before reaching here; the employment orders still cancel unconditionally,
-  // a remaining member of the uninterruptible-atomic class.
-  removeCurrentAtomic(world, e);
+  // a remaining member of the uninterruptible-atomic class. A stun stays.
+  if (!isStunned(world, e)) removeCurrentAtomic(world, e);
   world.remove(e, SupplyRun); // an interrupted errand stops counting as inbound
   world.remove(e, PickupClaim); // and frees its source immediately
   supersedeStandingOrders(world, ctx, e);

@@ -104,6 +104,9 @@ describe('blood event history', () => {
     expect(Math.max(...small.map((drop) => drop.size))).toBeLessThan(
       Math.min(...large.map((drop) => drop.size)),
     );
+    const [critical] = makeBloodMarks([{ ...shot, damage: 1, critical: true }], 0);
+    if (critical === undefined) throw new Error('Missing critical wound');
+    expect(bloodDrops(critical).length).toBeGreaterThan(large.length * 2);
     const [fatal] = makeBloodMarks([{ ...shot, damage: 1 }, death], 0);
     expect(fatal).toMatchObject({ fatal: true, amount: graze.amount });
   });

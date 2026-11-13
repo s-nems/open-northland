@@ -172,4 +172,6 @@ export type AtomicEffect =
       readonly slot: number;
       readonly sink: Entity | null;
     }
-  | { readonly kind: 'idle' };
+  | { readonly kind: 'idle' }
+  /** A critical hit's stun: occupancy like `idle`, told apart so a viewer can mark the stunned body. */
+  | { readonly kind: 'stunned' };

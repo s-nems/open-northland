@@ -2096,6 +2096,22 @@
     "reason": "Bohater może nosić amulety siły, obrony, precyzji i wiatru: działają bez potrzeb. Mennica wytwarza wszystkie sześć amuletów."
   },
   {
+    "lang": "pol",
+    "table": "goodsHelp",
+    "id": 54,
+    "from": "20 procentową szansę podwojenia siły",
+    "to": "35 procentową szansę zwiększenia o połowę siły",
+    "reason": "Amulet precyzji: 35% szansy na cios o połowę mocniejszy, który może ogłuszyć trafionego."
+  },
+  {
+    "lang": "pol",
+    "table": "goodsHelp",
+    "id": 54,
+    "from": "wrogów.",
+    "to": "wrogów. Taki cios może też ogłuszyć trafionego.",
+    "reason": "Amulet precyzji: 35% szansy na cios o połowę mocniejszy, który może ogłuszyć trafionego."
+  },
+  {
     "lang": "eng",
     "table": "goodsHelp",
     "id": 54,
@@ -2128,6 +2144,22 @@
     "reason": "Bohater może nosić amulety siły, obrony, precyzji i wiatru: działają bez potrzeb. Mennica wytwarza wszystkie sześć amuletów."
   },
   {
+    "lang": "eng",
+    "table": "goodsHelp",
+    "id": 54,
+    "from": "20 percent chance of doubling the strength",
+    "to": "35 percent chance of raising the strength by half",
+    "reason": "Amulet precyzji: 35% szansy na cios o połowę mocniejszy, który może ogłuszyć trafionego."
+  },
+  {
+    "lang": "eng",
+    "table": "goodsHelp",
+    "id": 54,
+    "from": "enemies.",
+    "to": "enemies. Such a blow can also stun its victim.",
+    "reason": "Amulet precyzji: 35% szansy na cios o połowę mocniejszy, który może ogłuszyć trafionego."
+  },
+  {
     "lang": "ger",
     "table": "goodsHelp",
     "id": 54,
@@ -2152,12 +2184,44 @@
     "reason": "Bohater może nosić amulety siły, obrony, precyzji i wiatru: działają bez potrzeb. Mennica wytwarza wszystkie sześć amuletów."
   },
   {
+    "lang": "ger",
+    "table": "goodsHelp",
+    "id": 54,
+    "from": "verdoppelt mit einer Wahrscheinlichkeit von 20 Prozent",
+    "to": "erhöht mit einer Wahrscheinlichkeit von 35 Prozent um die Hälfte",
+    "reason": "Amulet precyzji: 35% szansy na cios o połowę mocniejszy, który może ogłuszyć trafionego."
+  },
+  {
+    "lang": "ger",
+    "table": "goodsHelp",
+    "id": 54,
+    "from": "Feinde.",
+    "to": "Feinde. Ein solcher Treffer kann das Opfer auch betäuben.",
+    "reason": "Amulet precyzji: 35% szansy na cios o połowę mocniejszy, który może ogłuszyć trafionego."
+  },
+  {
     "lang": "rus",
     "table": "goodsHelp",
     "id": 54,
     "from": "нельзя создать, но его можно",
     "to": "можно создать на монетном дворе, а также",
     "reason": "Mennica wytwarza wszystkie sześć amuletów."
+  },
+  {
+    "lang": "rus",
+    "table": "goodsHelp",
+    "id": 54,
+    "from": "20 процентный шанс удвоения силы удара",
+    "to": "35 процентный шанс увеличения силы удара в полтора раза",
+    "reason": "Amulet precyzji: 35% szansy na cios o połowę mocniejszy, który może ogłuszyć trafionego."
+  },
+  {
+    "lang": "rus",
+    "table": "goodsHelp",
+    "id": 54,
+    "from": "атаки.",
+    "to": "атаки. Такой удар может ещё и оглушить жертву.",
+    "reason": "Amulet precyzji: 35% szansy na cios o połowę mocniejszy, który może ogłuszyć trafionego."
   },
   {
     "lang": "pol",

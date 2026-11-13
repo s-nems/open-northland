@@ -274,6 +274,8 @@ export type SimEvent =
       /** Wounding hitpoints after protection, capped to the living pool before instant healing. */
       readonly damage: number;
       readonly targetMaxHealth: number;
+      /** The striker's critical hit came up for this blow. */
+      readonly critical?: true;
       /** Identity at impact survives death and subsequent transformations. */
       readonly targetIdentity?: SettlerIdentity;
       readonly attacker: Entity;
@@ -348,9 +350,10 @@ export type SimEvent =
        * included.
        */
       readonly kind: 'projectileHit';
-      /** Wounding hitpoints and pool size, with the same semantics as combatHit. */
+      /** Wounding hitpoints, pool size and critical mark, with the same semantics as combatHit. */
       readonly damage: number;
       readonly targetMaxHealth: number;
+      readonly critical?: true;
       /** Identity at impact survives death and subsequent transformations. */
       readonly targetIdentity?: SettlerIdentity;
       readonly projectile: Entity;

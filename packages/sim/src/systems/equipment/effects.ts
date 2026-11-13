@@ -52,6 +52,12 @@ function carriedEffect<K extends CarriedEffect>(
   return undefined;
 }
 
+/** A blow's damage after its striker's carried effects, and whether the critical hit came up for it. */
+export interface DealtBlow {
+  readonly damage: number;
+  readonly critical: boolean;
+}
+
 /**
  * A landed blow's damage after the striker's own raises. Original behavior, for a blow on any target: the
  * strength amulet scales it to its `damageDealtPct`, then the critical-hit amulet rolls, drawn only while
@@ -65,17 +71,16 @@ export function damageDealtBy(
   attacker: Entity,
   damage: number,
   fightUnits = 0,
-): number {
+): DealtBlow {
   const health = world.tryGet(attacker, Health);
-  if (health !== undefined && health.hitpoints <= 0) return damage;
+  if (health !== undefined && health.hitpoints <= 0) return { damage, critical: false };
   const dealtPct = carriedEffect(world, ctx.content, attacker, 'damageDealtPct');
   let dealt =
     dealtPct === undefined && fightUnits === 0 ? damage : withDealtBonuses(damage, fightUnits, dealtPct);
-  const critical = carriedEffect(world, ctx.content, attacker, 'criticalHit');
-  if (critical !== undefined && ctx.rng.int(PERCENT) < critical.chancePct) {
-    dealt = Math.floor((dealt * critical.damagePct) / PERCENT);
-  }
-  return dealt;
+  const criticalHit = carriedEffect(world, ctx.content, attacker, 'criticalHit');
+  const critical = criticalHit !== undefined && ctx.rng.int(PERCENT) < criticalHit.chancePct;
+  if (critical) dealt = Math.floor((dealt * criticalHit.damagePct) / PERCENT);
+  return { damage: dealt, critical };
 }
 
 /** `damage` cut by a target's `damageTakenPct`, truncating. */

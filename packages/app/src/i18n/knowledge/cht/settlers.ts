@@ -541,6 +541,7 @@ export const SETTLERS: ArticleGroup = {
           list: [
             '相同護符第二枚無效。',
             '不同護符同時生效：力量加精準，暴擊時×{{amulet.comboFactor}}。',
+            '暴擊可以在被擊中的敵人出手前打斷其攻擊，並使其暈眩{{amulet.stunSeconds}}秒。機率為{{amulet.stunBasePct}}%加上這一擊奪走的生命值百分比。對載具無效。',
             '有營養護符的居民從不去吃飯，有耐力護符的從不去睡覺。',
           ],
         },

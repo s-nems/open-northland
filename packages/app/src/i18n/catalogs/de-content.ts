@@ -198,6 +198,11 @@ export const deContent = {
       summary:
         '1000 gegen 1000 auf einem größeren Schlachtfeld: verstreute Truppen, fünf Waffenklassen und gemischte Rüstungen.',
     },
+    'precision-battle': {
+      title: 'Schlacht des Trefferamuletts',
+      summary:
+        '60 Krieger in Plattenrüstung mit Trefferamulett, zehn je Waffe, gegen 78 ohne Amulett, dreizehn je Waffe. Im Osten ein kleiner Kampf: fünf gegen sieben.',
+    },
     'overhead-icons': {
       title: 'Symbole über dem Kopf',
       summary:

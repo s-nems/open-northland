@@ -626,6 +626,7 @@ export const SETTLERS: ArticleGroup = {
           list: [
             'Una seconda copia dello stesso amuleto non fa nulla.',
             'Amuleti diversi agiscono insieme: forza e precisione danno ×{{amulet.comboFactor}} con un colpo fortunato.',
+            "Un colpo critico può interrompere l'attacco del nemico colpito prima che vada a segno e stordirlo per {{amulet.stunSeconds}} s. La probabilità è {{amulet.stunBasePct}}% più la percentuale di salute tolta dal colpo. I veicoli non ne risentono.",
             'Con un amuleto del nutrimento un colono non va mai a mangiare, e con un amuleto della resistenza non va mai a dormire.',
           ],
         },

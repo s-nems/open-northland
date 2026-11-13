@@ -24,6 +24,7 @@ import {
   PERCENT,
   seconds,
   stockOf,
+  twoDecimals,
   whole,
 } from './reader.js';
 
@@ -157,7 +158,9 @@ export const HEALTH_FACTS: Readonly<Record<string, Fact>> = {
   'amulet.critFactor': oneDecimal((base) =>
     pctFactor(equipOf(base, 'amulet_crithit')?.criticalHit?.damagePct),
   ),
-  'amulet.comboFactor': oneDecimal((base) => {
+  'amulet.stunBasePct': whole(systems.CRITICAL_STUN_BASE_PCT),
+  'amulet.stunSeconds': whole(seconds(systems.CRITICAL_STUN_TICKS)),
+  'amulet.comboFactor': twoDecimals((base) => {
     const critical = pctFactor(equipOf(base, 'amulet_crithit')?.criticalHit?.damagePct);
     return critical === undefined ? undefined : (critical * STRENGTH_PCT) / PERCENT;
   }),

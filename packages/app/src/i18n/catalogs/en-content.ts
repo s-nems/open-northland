@@ -199,6 +199,11 @@ export const enContent = {
       summary:
         '1000 against 1000 on an expanded battlefield: scattered troops, five weapon classes and mixed armour.',
     },
+    'precision-battle': {
+      title: 'Precision amulet battle',
+      summary:
+        '60 plate-armoured warriors with the Amulet of Precision, ten of each weapon, against 78 without it, thirteen of each weapon. A small fight of five against seven stands to the east.',
+    },
     'overhead-icons': {
       title: 'Over-head icons',
       summary:

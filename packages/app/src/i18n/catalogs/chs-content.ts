@@ -197,6 +197,11 @@ export const chsContent = {
       title: '大规模战斗',
       summary: '在扩大的战场上 1000 对 1000：部队分散，五类武器，护甲混搭。',
     },
+    'precision-battle': {
+      title: '精准护符之战',
+      summary:
+        '60名身穿板甲、佩戴精准护符的战士（每种武器10名）对阵78名没有护符的战士（每种武器13名）。东边还有一场五对七的小战斗。',
+    },
     'overhead-icons': {
       title: '头顶图标',
       summary:

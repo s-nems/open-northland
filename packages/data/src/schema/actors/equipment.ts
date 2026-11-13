@@ -18,7 +18,8 @@ export const EquipRestorePct = z.strictObject({
 });
 export type EquipRestorePct = z.infer<typeof EquipRestorePct>;
 
-/** A carried item's chance to multiply a landed blow's damage. */
+/** A carried item's chance to multiply a landed blow's damage. Such a blow can also break the swing its
+ *  victim has in flight and stun the victim. */
 export const EquipCriticalHit = z.strictObject({
   chancePct: z.number().int().min(1).max(100),
   damagePct: z.number().int().positive(),
@@ -60,7 +61,7 @@ export const EquipClass = z
     stopsToDrink: z.boolean().optional(),
     /** Percent of its damage a landed blow of the bearer deals (the strength amulet). */
     damageDealtPct: z.number().int().positive().optional(),
-    /** Rolled per landed blow of the bearer, after `damageDealtPct` (critical-hit amulet: 20% for 200%). */
+    /** Rolled per landed blow of the bearer, after `damageDealtPct` (the critical-hit amulet). */
     criticalHit: EquipCriticalHit.optional(),
     /** Percent of an incoming blow's damage the bearer takes, truncated (the defense amulet). */
     damageTakenPct: z.number().int().min(0).max(100).optional(),

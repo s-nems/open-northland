@@ -43,7 +43,7 @@ import { atomicClipSounds, type SoundingAtomic } from '../../../sound-cue.js';
 import { spawnCarcasses } from './carcass.js';
 import { landedDamage } from './damage.js';
 import { launchProjectile } from './projectile-launch.js';
-import { collectHitReaction, type PendingHitReaction } from './reaction.js';
+import { collectCriticalSwingBreak, collectHitReaction, type PendingHitReaction } from './reaction.js';
 import { provokeHostility, reactToBlowOnAnimal, turnOnAttacker } from './reactions.js';
 
 /**
@@ -127,6 +127,8 @@ function meleeTargetOutOfReach(
 export interface HitDamage {
   readonly damage: number;
   readonly targetMaxHealth: number;
+  /** The striker's critical hit came up for this blow. */
+  readonly critical?: true;
   readonly targetIdentity?: SettlerIdentity;
 }
 
@@ -163,7 +165,7 @@ export function resolveCombatHit(
   // A melee blow draws on its striker's fight experience as it lands; a shot draws on none.
   const experience = source === 'melee' ? world.tryGet(attacker, SettlerProgress)?.experience : undefined;
   const fightUnits = experience === undefined ? 0 : fightUnitsWith(experience, weaponMainType);
-  const damage = landedDamage(
+  const landed = landedDamage(
     world,
     ctx,
     attacker,
@@ -173,6 +175,7 @@ export function resolveCombatHit(
     blow.vehicleShot !== true,
     fightUnits,
   );
+  const damage = landed.damage;
   // A blow counts as damaging by its damage value, so an overkill still earns fight experience. Original
   // behavior: a blow that does no damage is silent, earns nothing and is no attack on the victim's side.
   const dealtDamage = damage > 0;
@@ -181,6 +184,7 @@ export function resolveCombatHit(
   const wound: HitDamage = {
     damage: Math.min(pool.hitpoints, dealt),
     targetMaxHealth: pool.max,
+    ...(landed.critical ? { critical: true as const } : {}),
     ...(identity === undefined ? {} : { targetIdentity: { ...identity } }),
   };
   // Ranged hits do not emit this, because `projectileSystem` announces its own `projectileHit`.
@@ -243,7 +247,11 @@ export function resolveCombatHit(
     // Only humans are counted: a hunted animal and a razed house belong to no kill tally a goal reads.
     if (world.has(target, Person)) recordHumanKill(world, ownerOf(world, attacker));
   } else {
-    collectHitReaction(world, ctx, target, pendingReactions); // applied after the caller's loop
+    // Both are applied after the caller's loop.
+    if (landed.critical) {
+      collectCriticalSwingBreak(world, ctx, target, wound.damage, pool.max, pendingReactions);
+    }
+    collectHitReaction(world, ctx, target, pendingReactions);
   }
   return dealtDamage ? wound : null;
 }

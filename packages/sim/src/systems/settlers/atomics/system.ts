@@ -14,7 +14,7 @@ import type { Entity } from '../../../ecs/world.js';
 import type { System } from '../../context.js';
 import { religionAllowsClip } from '../../lifecycle/needs/religion.js';
 import { WHOLE_CLIP } from '../../progression/index.js';
-import { atomicClip, eventTick } from '../../readviews/animations.js';
+import { atomicClip, eventTick, eventTickWithin } from '../../readviews/animations.js';
 import { prayerSiteAvailable } from '../../readviews/prayer-sites.js';
 import { applyEffect } from './effects/apply.js';
 import {
@@ -175,11 +175,4 @@ function lungesOn(frames: readonly number[], elapsed: number): boolean {
     if (eventTick(frames[i] as number) === elapsed) return true;
   }
   return false;
-}
-
-/** The tick an animation's event frame fires on, clamped into the `duration` ticks the atomic actually runs.
- *  Approximation: the original never fires a frame past its clip; here such a blow lands once, on the last
- *  tick, so an attack clip authored that way still hits. No shipped clip has one. */
-function eventTickWithin(frame: number, duration: number): number {
-  return Math.min(eventTick(frame), duration);
 }

@@ -24,6 +24,13 @@ export function readAtomicDuration(components: Readonly<Record<string, unknown>>
   return readNumFieldOrNull(components, 'CurrentAtomic', 'duration');
 }
 
+/** Whether a critical hit has the unit stunned (the `stunned` atomic effect). */
+export function readsStun(components: Readonly<Record<string, unknown>>): boolean {
+  return (
+    (components.CurrentAtomic as { effect?: { kind?: unknown } } | undefined)?.effect?.kind === 'stunned'
+  );
+}
+
 /** Whether the running atomic lifts a unit into or out of a hold (`haulLoad`, `haulUnload`, `tradeLoad`,
  *  `tradeUnload`, `tradeShipStow`, `tradeShipFetch`), whose length a cart's kind sets; a trader on foot's lift lasts its clip. */
 export function readsCartLift(components: Readonly<Record<string, unknown>>): boolean {

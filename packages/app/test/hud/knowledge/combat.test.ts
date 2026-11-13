@@ -128,8 +128,8 @@ describe('blow arithmetic', () => {
     expect(hitsToKill(0)).toBeNull();
   });
 
-  it('doubles a critical hit', () => {
-    expect(criticalDamage(75)).toBe(150);
+  it('raises a critical hit by the amulet factor', () => {
+    expect(criticalDamage(75)).toBe(112);
   });
 
   it('spreads a clip over its blows', () => {

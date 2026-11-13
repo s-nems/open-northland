@@ -10,6 +10,7 @@ export {
 export {
   BARE_HANDS_WORK_FACTOR_PCT,
   carriedStepTicksSaved,
+  type DealtBlow,
   damageDealtBy,
   damageTakenBy,
   isCraftingOperator,

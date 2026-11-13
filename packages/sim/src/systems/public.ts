@@ -360,6 +360,10 @@ export {
   HIT_DIRECTION_PCT,
   hitDirectionBin,
 } from './settlers/atomics/effects/combat/hit/damage.js';
+export {
+  CRITICAL_STUN_BASE_PCT,
+  CRITICAL_STUN_TICKS,
+} from './settlers/atomics/effects/combat/hit/reaction.js';
 export { KIN_ALARM_RADIUS_NODES } from './settlers/atomics/effects/combat/hit/reactions.js';
 export { SPILL_MAX_RADIUS } from './settlers/atomics/effects/goods/piles.js';
 export { CROCKERY_BONUS_UNITS } from './settlers/atomics/effects/goods/transfer.js';

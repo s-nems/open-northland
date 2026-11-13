@@ -601,6 +601,7 @@ export const SETTLERS: ArticleGroup = {
           list: [
             'A second copy of the same amulet does nothing.',
             'Different amulets work together: Strength and Precision give ×{{amulet.comboFactor}} on a lucky roll.',
+            'A critical blow can break the swing of the enemy it hits before that swing lands and stun him for {{amulet.stunSeconds}} s. The chance is {{amulet.stunBasePct}}% plus the percent of health the blow took. Vehicles are not affected.',
             'With a Nourishing Amulet a settler never goes to eat, and with an Amulet of Stamina he never goes to sleep.',
           ],
         },

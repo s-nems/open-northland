@@ -11,6 +11,7 @@ import {
   Fleeing,
   Health,
   HuntFocus,
+  isStunned,
   NeedOrder,
   OpenChestOrder,
   Owner,
@@ -149,8 +150,8 @@ export function attackUnit(
   const sameFight = repeatsFight(world, e, target);
   const swinging = world.tryGet(e, CurrentAtomic)?.effect.kind === 'attack';
   // Unlike moveUnit and setJob anything else still cancels a non-interruptible atomic, a remaining member
-  // of that class.
-  if (!sameFight || !swinging) removeCurrentAtomic(world, e);
+  // of that class. A stun stays: the order takes hold once it has run out.
+  if ((!sameFight || !swinging) && !isStunned(world, e)) removeCurrentAtomic(world, e);
   world.remove(e, SupplyRun); // cancel the inbound site claim
   world.remove(e, PickupClaim); // and the source promise of its pickup leg
   supersedeStandingOrders(world, ctx, e);

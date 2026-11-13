@@ -193,6 +193,7 @@ export function applyEffect(
     // its hit frame, and crafting cycles advance from the workplace, never from a worker's atomic.
     case 'move':
     case 'idle':
+    case 'stunned':
     case 'attack':
     case 'produce':
       return;

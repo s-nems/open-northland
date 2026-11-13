@@ -250,6 +250,8 @@ export type SettlerState =
 const ATOMIC_STATE: Readonly<Record<AtomicEffect['kind'], SettlerState>> = {
   move: 'walking',
   idle: 'idle',
+  // A stun only lands mid-fight.
+  stunned: 'fighting',
   eat: 'eating',
   drink: 'drinking',
   sleep: 'sleeping',

@@ -212,7 +212,7 @@ describe('golden: a seeded fight over the extracted weapon and armor rows', () =
     '44:hit:9>10:4219',
     '46:hit:7>8:4217',
     '47:hit:16>15:1813',
-    '48:hit:15>16:992',
+    '48:hit:15>16:1662',
     '51:hit:2>1:2643',
     '51:hit:6>5:3842',
     '52:miss:12',
@@ -223,15 +223,16 @@ describe('golden: a seeded fight over the extracted weapon and armor rows', () =
     '57:hit:1>2:3834',
     '57:died:3',
     '59:hit:16>15:226',
-    '60:hit:15>16:gone',
+    '60:hit:15>16:337',
     '60:hit:9>10:3837',
-    '60:died:16',
     '61:miss:14',
     '62:hit:7>8:3834',
     '63:hit:8>7:3144',
     '63:hit:2>1:1862',
     '63:hit:6>5:3461',
     '63:shot:12>11:4232',
+    '71:hit:16>15:gone',
+    '71:died:15',
     '72:hit:5>6:3451',
     '73:hit:1>2:3451',
     '74:shot:12>11:3850',
@@ -293,7 +294,7 @@ describe('golden: a seeded fight over the extracted weapon and armor rows', () =
   it('matches the golden final state hash', () => {
     // Moves on any intentional combat change, including a new shape of the stored swing that leaves the
     // hit trace alone; name the change in the commit that moves it.
-    expect(combat().hash).toBe('187e43b4');
+    expect(combat().hash).toBe('a6dfa3fc');
   });
 
   it('matches the golden hit trace', () => {

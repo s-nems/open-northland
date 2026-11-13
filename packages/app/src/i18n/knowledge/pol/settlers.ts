@@ -605,6 +605,7 @@ export const SETTLERS: ArticleGroup = {
           list: [
             'Drugi taki sam amulet nic nie daje.',
             'Różne amulety działają razem: Siła i Precyzja dają ×{{amulet.comboFactor}} przy udanym losowaniu.',
+            'Cios krytyczny może zerwać zamach trafionego wroga, zanim ten uderzy, i ogłuszyć go na {{amulet.stunSeconds}} s. Szansa to {{amulet.stunBasePct}}% plus procent życia, który cios zabrał. Pojazdów to nie dotyczy.',
             'Z Odżywczym Amuletem osadnik nie chodzi jeść, a z Amuletem Wytrzymałości nie chodzi spać.',
           ],
         },

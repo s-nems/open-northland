@@ -115,6 +115,13 @@ export function eventTick(at: number): number {
   return at + 1;
 }
 
+/** The tick an animation's event frame fires on, clamped into the `duration` ticks the atomic actually runs.
+ *  Approximation: the original never fires a frame past its clip; here such a blow lands once, on the last
+ *  tick, so an attack clip authored that way still hits. No shipped clip has one. */
+export function eventTickWithin(frame: number, duration: number): number {
+  return Math.min(eventTick(frame), duration);
+}
+
 /**
  * Resolve an {@link AtomicAnimation} by its exact `name` - the join key a tribe's `setatomic <job> <atomic>
  * "anim"` binding references, not the lowercased `id`. An unresolved name is expected, since the readable

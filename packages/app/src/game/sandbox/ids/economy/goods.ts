@@ -111,7 +111,8 @@ const IRON_TOOL_WORK_FACTOR_PCT = 175;
 const AMULET_RESTORE_PCT = 40;
 /** Our balance, departing from the original's 150. */
 const AMULET_STRENGTH_DAMAGE_PCT = 140;
-const AMULET_CRITICAL_HIT = { chancePct: 20, damagePct: 200 } as const;
+/** Our balance, departing from the original's 20% for 200%. */
+const AMULET_CRITICAL_HIT = { chancePct: 35, damagePct: 150 } as const;
 /** Our balance, departing from the original's 50. */
 const AMULET_DEFENSE_DAMAGE_TAKEN_PCT = 60;
 const AMULET_SPEED_STEP_TICKS_SAVED = 2;

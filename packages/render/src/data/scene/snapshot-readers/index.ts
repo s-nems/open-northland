@@ -46,6 +46,7 @@ export {
   readSpriteState,
   readStoreExchangeRef,
   readsCartLift,
+  readsStun,
   readVisualScale,
   readWearsLiveBoots,
 } from './unit-readers.js';

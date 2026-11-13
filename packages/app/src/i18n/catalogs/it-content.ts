@@ -199,6 +199,11 @@ export const itContent = {
       summary:
         '1000 contro 1000 su un campo di battaglia ampliato: truppe sparse, cinque classi di armi e armature miste.',
     },
+    'precision-battle': {
+      title: 'Battaglia dell’amuleto della precisione',
+      summary:
+        '60 guerrieri in armatura a piastre con l’amuleto della precisione, dieci per arma, contro 78 senza amuleto, tredici per arma. A est un piccolo scontro: cinque contro sette.',
+    },
     'overhead-icons': {
       title: 'Icone sopra la testa',
       summary:

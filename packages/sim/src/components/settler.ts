@@ -264,6 +264,11 @@ export function removeCurrentAtomic(world: World, settler: Entity): void {
   world.remove(settler, AtomicClock);
 }
 
+/** Whether a critical hit has `settler` stunned. No order ends a stun: it runs its ticks out. */
+export function isStunned(world: World, settler: Entity): boolean {
+  return world.tryGet(settler, CurrentAtomic)?.effect.kind === 'stunned';
+}
+
 /** Goods a settler is physically hauling; goods never teleport to a global bank. */
 export const Carrying = defineComponent<{ goodType: number; amount: number }>('Carrying', 'settlers');
 

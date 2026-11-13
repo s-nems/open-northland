@@ -43,6 +43,7 @@ import {
   SettlerBubbleLayer,
   ShipWakeLayer,
   ShotLayer,
+  StunStarLayer,
   TempleGlowLayer,
   WindTrailLayer,
 } from '../overlays/index.js';
@@ -147,6 +148,7 @@ export class WorldMarks {
   private readonly familyEffects: FamilyEffectsLayer;
   private readonly draughtGlows: DraughtGlowLayer;
   private readonly amuletArcs: AmuletArcLayer;
+  private readonly stunStars: StunStarLayer;
   private equipmentEffects = true;
   private readonly windTrails: WindTrailLayer;
   /** Prints in their own ground slot, dust in the depth-sorted sprite layer. */
@@ -184,6 +186,7 @@ export class WorldMarks {
     this.familyEffects = new FamilyEffectsLayer(spriteLayer, textures, sheet);
     this.draughtGlows = new DraughtGlowLayer(spriteLayer);
     this.amuletArcs = new AmuletArcLayer(spriteLayer);
+    this.stunStars = new StunStarLayer(spriteLayer);
     this.windTrails = new WindTrailLayer(spriteLayer);
     this.footfall = new FootfallLayer(spriteLayer, textures, sheet);
     this.badges = new BadgeLayer(spriteLayer, playerColourOf);
@@ -335,6 +338,13 @@ export class WorldMarks {
       viewport,
       renderTime,
     });
+    this.stunStars.draw({
+      snapshot: frame.snapshot,
+      walkers: detail.overheadIcons ? frame.walkers : NO_WALKERS,
+      drawn,
+      viewport,
+      renderTime,
+    });
     if (this.equipmentEffects && detail.windTrails)
       this.windTrails.draw({ snapshot: frame.snapshot, walkers: frame.walkers, drawn, viewport, renderTime });
     else this.windTrails.clear();
@@ -397,6 +407,7 @@ export class WorldMarks {
     this.familyEffects.destroy();
     this.draughtGlows.destroy();
     this.amuletArcs.destroy();
+    this.stunStars.destroy();
     this.windTrails.destroy();
     this.footfall.destroy();
     this.constructionSigns.destroy();

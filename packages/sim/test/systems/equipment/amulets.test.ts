@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   Armor,
+  addCurrentAtomic,
   addWildlife,
   CurrentAtomic,
   Equipment,
@@ -9,6 +10,7 @@ import {
   MISC_EQUIP_SLOTS,
   MISSION_BEHAVIOUR,
   MoveGoal,
+  Owner,
   SettlerProgress,
   setMissionBehaviour,
   WALK_DIRECTION,
@@ -24,7 +26,10 @@ import {
   WHOLE_CLIP,
 } from '../../../src/systems/index.js';
 import { walkStepModifiersOf } from '../../../src/systems/movement/walk-cost.js';
+import { attackUnit } from '../../../src/systems/orders/combat.js';
 import {
+  applyPendingHitReactions,
+  type PendingHitReaction,
   resolveAttackHit,
   resolveCombatHit,
 } from '../../../src/systems/settlers/atomics/effects/combat/index.js';
@@ -216,6 +221,90 @@ describe('combat amulets', () => {
     const between = s.world.get(target, Health).hitpoints;
     resolveCombatHit(s.world, ctxOf(s), attacker, target, shot, [], 'projectile');
     expect(between - s.world.get(target, Health).hitpoints).toBe(151); // strength alone
+  });
+
+  it('a critical hit breaks a swing with its blow still ahead and stuns, likelier the more hitpoints it took', () => {
+    const s = sim();
+    const { attacker, target } = duel(s, [worn(AMULET_CRITICAL_HIT)]);
+    const swing = (hitFrames: readonly number[]): void =>
+      addCurrentAtomic(
+        s.world,
+        target,
+        {
+          atomicId: ATTACK_SWING.atomicId,
+          duration: 10,
+          effect: { kind: 'attack', target: attacker, damage: BLOW, hitFrames },
+          targetEntity: attacker,
+          targetTile: null,
+        },
+        5,
+      );
+    // A critical blow takes 4000 of 10000 hitpoints, a plain one 2000.
+    const blow = { kind: 'attack', target, damage: 2000 } as const;
+    const breaksOver = (
+      blows: number,
+      hitFrames: readonly number[],
+    ): { critical: number; broken: number } => {
+      let critical = 0;
+      let broken = 0;
+      for (let i = 0; i < blows; i++) {
+        s.world.add(target, Health, { hitpoints: HP, max: HP });
+        swing(hitFrames);
+        const reactions: PendingHitReaction[] = [];
+        resolveAttackHit(s.world, ctxOf(s), attacker, ATTACK_SWING, blow, reactions, WHOLE_CLIP);
+        const wasCritical = s.world.get(target, Health).hitpoints === HP - 4000;
+        if (wasCritical) critical++;
+        if (reactions.some((r) => r.kind === 'stun')) {
+          expect(wasCritical).toBe(true);
+          broken++;
+          applyPendingHitReactions(s.world, reactions);
+          // The swing gives way to a three-second stun.
+          expect(s.world.get(target, CurrentAtomic)).toMatchObject({
+            duration: 36,
+            effect: { kind: 'stunned' },
+          });
+        }
+      }
+      return { critical, broken };
+    };
+    const ahead = breaksOver(1500, [8]);
+    // 30% and the 40% of hitpoints the blow took.
+    expect(ahead.broken).toBeGreaterThan(ahead.critical * 0.6);
+    expect(ahead.broken).toBeLessThan(ahead.critical * 0.8);
+    expect(breaksOver(300, [2]).broken).toBe(0); // the blow has landed: nothing left to break
+  });
+
+  it('an attack order cancels what its unit is doing but leaves a stun to run out', () => {
+    const s = sim();
+    const { attacker, target } = duel(s, []);
+    s.world.add(target, Owner, { player: 0 });
+    s.world.add(attacker, Owner, { player: 1 });
+    s.world.add(attacker, Health, { hitpoints: HP, max: HP });
+    const occupied = (kind: 'idle' | 'stunned'): boolean => {
+      addCurrentAtomic(s.world, target, {
+        atomicId: ATTACK_SWING.atomicId,
+        duration: 36,
+        effect: { kind },
+        targetEntity: null,
+        targetTile: null,
+      });
+      attackUnit(s.world, ctxOf(s), { kind: 'attackUnit', entity: target, target: attacker });
+      return s.world.tryGet(target, CurrentAtomic)?.effect.kind === kind;
+    };
+    expect(occupied('idle')).toBe(false);
+    expect(occupied('stunned')).toBe(true);
+  });
+
+  it("a critical hit comes up on a blow that strikes the striker's own side", () => {
+    const s = sim();
+    const { attacker, target } = duel(s, [worn(AMULET_CRITICAL_HIT)]);
+    let critical = 0;
+    for (let i = 0; i < 200; i++) {
+      s.world.add(target, Health, { hitpoints: HP, max: HP });
+      const wound = resolveCombatHit(s.world, ctxOf(s), attacker, target, { damage: BLOW }, [], 'collateral');
+      if (wound?.critical === true) critical++;
+    }
+    expect(critical).toBeGreaterThan(20);
   });
 
   it('a critical hit doubles about one blow in five, after strength, drawn only while carried', () => {

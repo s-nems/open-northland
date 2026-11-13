@@ -614,6 +614,7 @@ export const SETTLERS: ArticleGroup = {
           list: [
             'Ein zweites gleiches Amulett bringt nichts.',
             'Verschiedene Amulette wirken zusammen: Stärke und Treffer ergeben bei erfolgreichem Wurf ×{{amulet.comboFactor}}.',
+            'Ein kritischer Treffer kann den Schlag des getroffenen Gegners abbrechen, bevor er trifft, und ihn {{amulet.stunSeconds}} s lang betäuben. Die Chance beträgt {{amulet.stunBasePct}}% plus den Prozentsatz der Lebenspunkte, den der Treffer gekostet hat. Fahrzeuge sind nicht betroffen.',
             'Mit Nahrungsamulett geht der Siedler nie essen, mit Wachbleibamulett nie schlafen.',
           ],
         },

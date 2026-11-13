@@ -16,7 +16,7 @@ import {
 } from '../../../../../../nav/halfcell.js';
 import { targetBlocking } from '../../../../../conflict/weapons.js';
 import type { SystemContext } from '../../../../../context.js';
-import { damageDealtBy, damageTakenBy } from '../../../../../equipment/index.js';
+import { type DealtBlow, damageDealtBy, damageTakenBy } from '../../../../../equipment/index.js';
 import { hexHeadingOfWalk, INITIAL_WALK_DIRECTION } from '../../../../../movement/turning.js';
 
 const PERCENT = 100;
@@ -42,7 +42,7 @@ export const HIT_DIRECTION_PCT: readonly number[] = [PERCENT, PERCENT, BACK_SIDE
  * The striker's raises are his amulets and, our rule, the `fightUnits` of a melee blow, summed
  * ({@link damageDealtBy}); original behavior, a wall and a vehicle take no experience. `strikerAmulets` is false for a
  * vehicle's shot, which nothing raises. A result at or below zero does nothing: no damage and no fight
- * experience.
+ * experience. `critical` tells whether the striker's critical hit came up.
  */
 export function landedDamage(
   world: World,
@@ -53,16 +53,17 @@ export function landedDamage(
   from: { readonly x: Fixed; readonly y: Fixed } | undefined,
   strikerAmulets: boolean,
   fightUnits = 0,
-): number {
-  const dealtBy = (raw: number, units = fightUnits): number =>
-    strikerAmulets ? damageDealtBy(world, ctx, attacker, raw, units) : raw;
-  if (world.has(target, Palisade)) return base === 0 ? 0 : dealtBy(base, 0);
-  if (world.has(target, Building)) return base === 0 ? 0 : dealtBy(base);
+): DealtBlow {
+  const none: DealtBlow = { damage: 0, critical: false };
+  const dealtBy = (raw: number, units = fightUnits): DealtBlow =>
+    strikerAmulets ? damageDealtBy(world, ctx, attacker, raw, units) : { damage: raw, critical: false };
+  if (world.has(target, Palisade)) return base === 0 ? none : dealtBy(base, 0);
+  if (world.has(target, Building)) return base === 0 ? none : dealtBy(base);
   if (world.has(target, Vehicle)) return dealtBy(base, 0);
   if (isWildlife(world, target)) return dealtBy(base);
   const directed = directedDamage(base, hitDirectionPct(world, target, from));
-  const blocked = directed - targetBlocking(world, ctx, target);
-  return damageTakenBy(world, ctx, target, dealtBy(blocked));
+  const dealt = dealtBy(directed - targetBlocking(world, ctx, target));
+  return { damage: damageTakenBy(world, ctx, target, dealt.damage), critical: dealt.critical };
 }
 
 /**
