@@ -7,15 +7,19 @@ import {
   AssistantRecruit,
   AssistantWeaponOrders,
   AssistantWeaponVetoes,
+  addCurrentAtomic,
   addPerson,
   Building,
   ChildOrder,
+  CurrentAtomic,
   Equipment,
+  type EquipmentSlot,
   EquipOrder,
   FamilyDuty,
   Female,
   JobAssignment,
   Marriage,
+  MISC_EQUIP_SLOTS,
   MISSION_BEHAVIOUR,
   MoveGoal,
   Owner,
@@ -38,6 +42,7 @@ import { nodeOfPosition } from '../../../src/nav/halfcell.js';
 import type { NodeId, TerrainGraph } from '../../../src/nav/terrain/index.js';
 import { ASSISTANT_DECISION_PERIOD_TICKS } from '../../../src/systems/assistant/index.js';
 import { WEAPON_MAIN_TYPE } from '../../../src/systems/readviews/index.js';
+import { SLEEP_ATOMIC_ID } from '../../../src/systems/settlers/atomics/start.js';
 import { BARRACKS_DRILL_TICKS } from '../../../src/systems/settlers/drives/training.js';
 import { ASSISTANT_SCAN_PERIOD_TICKS } from '../../../src/systems/settlers/planner/assistant-grants.js';
 import { interactionCell } from '../../../src/systems/settlers/targets/index.js';
@@ -1123,6 +1128,39 @@ describe('the training queue', () => {
       expect(sim.world.get(e, Stance).anchorCell).toBe(nodeOf(sim, e));
       expect(hexNodeDistance(terrainOf(sim), nodeOf(sim, e), door)).toBeLessThanOrEqual(DOOR_FAN_OUT_NODES);
     }
+  });
+
+  it('lets a dressed recruit sleep out his nap before posting him at the barracks', () => {
+    const sim = trainSim();
+    const barracks = barracksAt(sim, 6, 3);
+    const recruit = settlerAt(sim, SWORDSMAN_LONG, 12, 3);
+    sim.world.add(recruit, Equipment, {
+      boots: null,
+      tool: null,
+      weapon: { goodType: SWORD_LONG_GOOD, degreeOfUse: fx.fromInt(0) },
+      armor: { goodType: ARMOR_WOOL_GOOD, degreeOfUse: fx.fromInt(0) },
+      misc: new Array<EquipmentSlot | null>(MISC_EQUIP_SLOTS).fill(null),
+    });
+    sim.world.add(recruit, AssistantRecruit, { intent: 'trainSword', armed: true, barracks });
+    const napTicks = 3 * ASSISTANT_SCAN_PERIOD_TICKS;
+    addCurrentAtomic(sim.world, recruit, {
+      atomicId: SLEEP_ATOMIC_ID,
+      duration: napTicks,
+      effect: { kind: 'sleep' },
+      targetEntity: recruit,
+      targetTile: null,
+    });
+
+    runUntil(
+      sim,
+      () => {
+        expect(sim.world.has(recruit, MoveGoal) || sim.world.has(recruit, PathFollow)).toBe(false);
+        return !sim.world.has(recruit, CurrentAtomic);
+      },
+      napTicks + 1,
+      'nap over',
+    );
+    runUntil(sim, () => nodeOf(sim, recruit) === doorOf(sim, barracks), 1000, 'posted at the door');
   });
 
   it('gathers an armed bare-handed soldier at the nearest barracks he may walk to', () => {

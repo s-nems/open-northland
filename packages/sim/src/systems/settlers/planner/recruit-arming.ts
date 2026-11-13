@@ -44,6 +44,7 @@ import { goodsSearchLimitAt } from '../../signposts/reach.js';
 import { entityNode } from '../../spatial/nodes.js';
 import { mayFetchGoodFrom, type SupplyTally } from '../../stores/index.js';
 import { anotherSystemOwns } from '../action-owner.js';
+import { atomicHoldsSettler } from '../atomics/busy.js';
 import { EQUIP_FETCH_UNITS, equipFromStore } from '../atomics/effects/goods/index.js';
 import { INTENT_WEAPON_CLASS } from '../atomics/effects/goods/weapon-class.js';
 import {
@@ -86,12 +87,15 @@ export function dispatchRecruitArming(pass: PlannerPass): void {
     if (!isSoldierJob(ctx.content, settler.jobType)) continue; // fell out - the assistant sweep drops it
     if (world.has(e, EquipOrder) || world.has(e, Age) || anotherSystemOwns(world, e)) continue;
     // A recruit with its hands or its walk spoken for is left to finish: a dispatch now would restamp the
-    // claim it holds onto the weapon while it keeps walking elsewhere.
+    // claim it holds onto the weapon while it keeps walking elsewhere. One held by its clip (asleep,
+    // eating) waits too: the sweep plans no walk under it, so a post stamped now would slide him there
+    // in the clip.
     if (
       world.has(e, Carrying) ||
       world.has(e, SupplyRun) ||
       world.has(e, PickupClaim) ||
-      isTravelling(world, e)
+      isTravelling(world, e) ||
+      atomicHoldsSettler(world, e)
     )
       continue;
     const owner = ownerOf(world, e);
