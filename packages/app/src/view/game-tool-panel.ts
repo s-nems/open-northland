@@ -32,6 +32,7 @@ import {
 import type {
   MessageTarget,
   MetSeat,
+  NoticeFilter,
   NoticeGallery,
   ShownNote,
   SiteSeam,
@@ -184,6 +185,8 @@ export interface GameToolPanelDeps {
   readonly onNoteShown?: (note: ShownNote) => void;
   /** Set, the notification column shows one note of every type (`?debug=notices`). */
   readonly noticeGallery?: NoticeGallery;
+  /** Whether each settings-filtered notice still raises, read as its event lands; absent, all raise. */
+  readonly noticeFilter?: NoticeFilter;
   /** The seat's workshops and the sim's diagnosis of their workers, for the stalled-workshop notes. */
   readonly prayerNeeds?: ReadonlySet<number> | undefined;
   readonly workshops?: WorkshopSeam;
@@ -365,6 +368,7 @@ export async function mountGameToolPanel(deps: GameToolPanelDeps): Promise<GameT
     ...(deps.onAttackShown !== undefined ? { onAttackShown: deps.onAttackShown } : {}),
     ...(deps.onNoteShown !== undefined ? { onNoteShown: deps.onNoteShown } : {}),
     ...(deps.noticeGallery !== undefined ? { noticeGallery: deps.noticeGallery } : {}),
+    ...(deps.noticeFilter !== undefined ? { noticeFilter: deps.noticeFilter } : {}),
     prayerNeeds: deps.prayerNeeds,
     ...(deps.workshops !== undefined ? { workshops: deps.workshops } : {}),
     ...(deps.sites !== undefined ? { sites: deps.sites } : {}),

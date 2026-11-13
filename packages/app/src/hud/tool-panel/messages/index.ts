@@ -56,7 +56,7 @@ import { sightingOf } from './sighting.js';
 import type { SiteSeam } from './site-shortages.js';
 import { composeMessageText, fightSummary } from './text.js';
 import { tradeRefusedNote } from './trade-refused.js';
-import type { PendingMessage, UserMessage } from './types.js';
+import type { NoticeFilter, PendingMessage, UserMessage } from './types.js';
 import type { WorkshopSeam } from './workshop-stalls.js';
 
 export type { AssistantReminderSeam } from './assistant-reminders.js';
@@ -64,6 +64,7 @@ export type { MessageFeedState, ShownNote } from './feed.js';
 export type { MetSeat } from './from-diplomacy.js';
 export { NOTICE_GALLERY_DEBUG_FLAG, type NoticeGallery } from './gallery.js';
 export type { SiteSeam } from './site-shortages.js';
+export type { NoticeFilter } from './types.js';
 export type { WorkshopSeam } from './workshop-stalls.js';
 
 /** A note this young slides in as it arrives; an older one (a restored feed) simply stands. */
@@ -118,6 +119,9 @@ export interface MessageCenterDeps {
   readonly sites?: SiteSeam | undefined;
   /** The viewer seat's assistant; absent, no reminder of a switch that is off is raised. */
   readonly assistant?: AssistantReminderSeam | undefined;
+  /** Whether each settings-filtered notice still raises, read as its event lands; absent, all raise.
+   *  A held-out kind raises no note, so its sound does not play either. */
+  readonly noticeFilter?: NoticeFilter | undefined;
   /** Open the assistant window, where a reminder's press leads. */
   readonly onOpenAssistant?: (() => void) | undefined;
   readonly playerLabel: (player: number) => string | null;
@@ -433,6 +437,7 @@ export function createMessageCenter(deps: MessageCenterDeps): MessageCenter {
             fights,
             deps.isVehicleSite,
             sighting,
+            deps.noticeFilter,
           )) {
             take(raised, snapshot.tick);
           }
