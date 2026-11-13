@@ -349,6 +349,9 @@ export const itSurfaces = {
       bonesFade: 'Ossa che svaniscono',
       bonesFadeTip:
         "Le ossa dei caduti restano intere per un po', poi svaniscono lentamente e spariscono dopo cinque minuti di tempo di gioco. Disattivato le lascia a terra per sempre.",
+      equipmentEffects: "Effetti dell'equipaggiamento",
+      equipmentEffectsTip:
+        "L'equipaggiamento indossato si vede sul personaggio: attorno ai piedi di chi porta un amuleto corre un arco di luce del colore dell'amuleto, uno per ogni tipo.",
       weather: 'Meteo',
       weatherTip:
         'Pioggia, neve e tempeste di sabbia dove la mappa le prevede: gocce e fiocchi che cadono, nebbia e luce di tempesta, terreno bagnato e innevato, schizzi, vento e tuoni. Il meteo non cambia mai il gioco in sé. Disattivato mostra cieli sereni e zittisce il meteo.',

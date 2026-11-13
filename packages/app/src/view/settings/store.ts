@@ -122,6 +122,9 @@ export interface MenuSettings {
   readonly blood: boolean;
   /** Bone piles fade out with age; off keeps them for good. Local presentation only. */
   readonly bonesFade: boolean;
+  /** The signs worn equipment shows on a person, such as an amulet's arc of light. Local presentation
+   *  only. */
+  readonly equipmentEffects: boolean;
   readonly fpsLimit: FpsLimit;
   /** The frame rate on the top bar; hovering it breaks down what holds the game back. */
   readonly fpsCounter: boolean;
@@ -226,6 +229,7 @@ export function defaultSettings(): MenuSettings {
     dayNight: true,
     blood: true,
     bonesFade: true,
+    equipmentEffects: true,
     fpsLimit: DEFAULT_FPS_LIMIT,
     fpsCounter: import.meta.env?.DEV === true,
     cursorTheme: DEFAULT_CURSOR_THEME,
@@ -411,6 +415,8 @@ export function parseStoredSettings(raw: string | null): MenuSettings {
     dayNight: typeof record.dayNight === 'boolean' ? record.dayNight : defaults.dayNight,
     blood: typeof record.blood === 'boolean' ? record.blood : defaults.blood,
     bonesFade: typeof record.bonesFade === 'boolean' ? record.bonesFade : defaults.bonesFade,
+    equipmentEffects:
+      typeof record.equipmentEffects === 'boolean' ? record.equipmentEffects : defaults.equipmentEffects,
     fpsLimit: parseFpsLimit(record.fpsLimit),
     fpsCounter: typeof record.fpsCounter === 'boolean' ? record.fpsCounter : defaults.fpsCounter,
     cursorTheme: parseCursorTheme(record.cursorTheme),

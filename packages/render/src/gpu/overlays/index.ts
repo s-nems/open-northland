@@ -1,5 +1,6 @@
 // Files inside this folder import their deps directly, not through this barrel.
 
+export { AmuletArcLayer } from './amulet-arc-layer.js';
 export {
   type SettlerBubble,
   type SettlerBubbleGfx,
@@ -25,7 +26,6 @@ export {
   SIGN_STEP,
   signRowAt,
 } from './building-signs/sign-gfx.js';
-export { AmuletArcLayer } from './amulet-arc-layer.js';
 export { DraughtGlowLayer } from './draught-glow-layer.js';
 export { CombatEffectsLayer } from './effects-layer.js';
 export {

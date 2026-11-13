@@ -35,6 +35,7 @@ export interface LiveGameSettingsDeps {
   readonly setDayNightShown: (shown: boolean) => void;
   readonly setBloodEnabled: (enabled: boolean) => void;
   readonly setBonesFade: (fades: boolean) => void;
+  readonly setEquipmentEffects: (shown: boolean) => void;
   readonly setFpsCounterShown: (shown: boolean) => void;
   readonly setFpsLimit: (limit: MenuSettings['fpsLimit']) => void;
 }
@@ -122,6 +123,7 @@ export function createLiveGameSettings(deps: LiveGameSettingsDeps): LiveGameSett
     setDayNightShown: deps.setDayNightShown,
     setBloodEnabled: deps.setBloodEnabled,
     setBonesFade: deps.setBonesFade,
+    setEquipmentEffects: deps.setEquipmentEffects,
     setFpsCounterShown: deps.setFpsCounterShown,
     setFpsLimit: deps.setFpsLimit,
     ...(sound !== null ? { previewBus: (bus) => sound.previewBus(bus) } : {}),

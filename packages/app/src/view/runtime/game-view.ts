@@ -1496,6 +1496,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       setDistantDetail: (enabled) => renderer.setDetailMode(detailModeOf(enabled)),
       setBloodEnabled: applyWhenWarmed((enabled) => renderer.setBloodEnabled(enabled), turnedOn),
       setBonesFade: (fades) => renderer.setBonesFade(fades),
+      setEquipmentEffects: (shown) => renderer.setEquipmentEffects(shown),
       setFpsCounterShown: perfReadout.setShown,
       setFpsLimit: (limit) => {
         loop?.setFpsLimit(limit);

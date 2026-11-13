@@ -315,6 +315,9 @@ export const enSurfaces = {
       bonesFade: 'Fading bones',
       bonesFadeTip:
         'The bones of the fallen lie whole for a while, then slowly fade, gone after five minutes of game time. Off leaves them on the ground for good.',
+      equipmentEffects: 'Equipment effects',
+      equipmentEffectsTip:
+        "Worn equipment shows on a person: an arc of light in the amulet's colour runs round the feet of anyone carrying an amulet, one arc per kind.",
       weather: 'Weather',
       weatherTip:
         'Rain, snow and sandstorms where the map calls for them: falling drops and flakes, mist and storm light, wet and snowy ground, splashes, wind and thunder. Weather never changes the game itself. Off shows clear skies and silences the weather.',

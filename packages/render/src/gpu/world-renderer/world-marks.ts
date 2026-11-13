@@ -13,13 +13,13 @@ import { CollapseLayer, type WreckAnchor } from '../demolition/collapse-layer.js
 import { FamilyEffectsLayer } from '../overlays/family-effects-layer.js';
 import { FootfallLayer } from '../overlays/footfall-layer.js';
 import {
+  AmuletArcLayer,
   BadgeLayer,
   type BuildingSignGfx,
   CombatEffectsLayer,
   type ConstructionSign,
   ConstructionSignLayer,
   type DoorBadge,
-  AmuletArcLayer,
   DraughtGlowLayer,
   type ExperienceStar,
   type ExperienceStarGfx,
@@ -146,6 +146,7 @@ export class WorldMarks {
   private readonly familyEffects: FamilyEffectsLayer;
   private readonly draughtGlows: DraughtGlowLayer;
   private readonly amuletArcs: AmuletArcLayer;
+  private equipmentEffects = true;
   /** Prints in their own ground slot, dust in the depth-sorted sprite layer. */
   private readonly footfall: FootfallLayer;
   private readonly constructionSigns: ConstructionSignLayer;
@@ -227,6 +228,10 @@ export class WorldMarks {
   /** Good type → the colour a sip of it glows in; `null` shows no sip. */
   setDraughtGlowColours(colourOfGood: ReadonlyMap<number, number> | null): void {
     this.draughtGlows.setColours(colourOfGood);
+  }
+
+  setEquipmentEffects(shown: boolean): void {
+    this.equipmentEffects = shown;
   }
 
   /** Good type → the colour of the arc round a carrier of that amulet; `null` draws none. */
@@ -317,7 +322,7 @@ export class WorldMarks {
     this.draughtGlows.draw({ drawn, viewport, renderTime });
     this.amuletArcs.draw({
       snapshot: frame.snapshot,
-      walkers: detail.amuletArcs ? frame.walkers : NO_WALKERS,
+      walkers: this.equipmentEffects && detail.amuletArcs ? frame.walkers : NO_WALKERS,
       drawn,
       viewport,
       renderTime,

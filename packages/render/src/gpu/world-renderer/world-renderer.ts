@@ -260,6 +260,7 @@ export class WorldRenderer {
     this.setGraphicsEnhancements(opts?.enhancements ?? BASELINE_ENHANCEMENTS);
     this.setBloodEnabled(opts?.bloodEnabled ?? true);
     this.setBonesFade(opts?.bonesFade ?? true);
+    this.setEquipmentEffects(opts?.equipmentEffects ?? true);
   }
 
   /** One render of the screen as the world stands, weather and light included, without the chrome or
@@ -450,6 +451,11 @@ export class WorldRenderer {
   /** Good type → the colour a settler glows in as it sips that draught; `null` shows no sip. */
   setDraughtGlowColours(colourOfGood: ReadonlyMap<number, number> | null): void {
     this.marks.setDraughtGlowColours(colourOfGood);
+  }
+
+  /** Off draws no sign of worn equipment: the amulet arcs. */
+  setEquipmentEffects(shown: boolean): void {
+    this.marks.setEquipmentEffects(shown);
   }
 
   /** Good type → the colour of the arc of light round a human carrying that amulet; `null` draws none. */
