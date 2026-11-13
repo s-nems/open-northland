@@ -1,42 +1,36 @@
-import { colonyHeldShips } from '../ai-shared/home-roster.js';
 import {
   CurrentAtomic,
   FerryPassenger,
   FerryVoyage,
-  FerryWaiting,
   type FerryVoyageState,
-  MoveGoal,
-  PlayerOrder,
-  PathRequest,
-  TradeShip,
-  type VehicleStateView,
-  VehicleDrive,
+  FerryWaiting,
   hasFreeSeat,
+  MoveGoal,
   ownerOf,
+  PathRequest,
+  PlayerOrder,
   Position,
   Rider,
   Settler,
+  TradeShip,
   Vehicle,
+  VehicleDrive,
+  type VehicleStateView,
   vehicleCommander,
 } from '../../components/index.js';
 import { contentIndex } from '../../core/content-index.js';
-import { type DeepReadonly, type Entity, type World } from '../../ecs/world.js';
+import type { DeepReadonly, Entity, World } from '../../ecs/world.js';
 import { hexDistanceBetween } from '../../nav/halfcell.js';
 import { NO_COMPONENT, type NodeId, type TerrainGraph } from '../../nav/terrain/index.js';
+import { colonyHeldShips } from '../ai-shared/home-roster.js';
 import type { System, SystemContext } from '../context.js';
 import { stopAtNextNode } from '../movement/nav-state.js';
+import { breaksForMeal, suspendWalkForMeal } from '../orders/meal-break.js';
 import { isFerrymanJob } from '../readviews/jobs.js';
 import { isShipVehicle } from '../readviews/vehicles.js';
 import { markLostWay } from '../settlers/lost-way.js';
-import { breaksForMeal, suspendWalkForMeal } from '../orders/meal-break.js';
 import { entityNode } from '../spatial/nodes.js';
-import {
-  attachToVehicle,
-  boardVehicle,
-  detachFromVehicle,
-  doorReachable,
-  landingOf,
-} from './crew.js';
+import { attachToVehicle, boardVehicle, detachFromVehicle, doorReachable, landingOf } from './crew.js';
 import { dockRoute, dockVehicle, mooringSpotsOf } from './dock.js';
 import { nodeOf } from './movement.js';
 import { vehicleIndex } from './registry.js';
@@ -220,8 +214,7 @@ function returnBerthOf(
     if (state.carrier !== null || state.hauler !== null) continue; // riding or pinned out of service
     if (world.has(ship, TradeShip)) continue;
     const voyage = world.tryGet(ship, FerryVoyage);
-    const point =
-      voyage !== undefined ? voyage.home : state.task === 'docks' ? state.mooring : null;
+    const point = voyage !== undefined ? voyage.home : state.task === 'docks' ? state.mooring : null;
     if (point === null) continue; // no trip that ends at a mooring of its own
     const berth = terrain.nodeAtClamped(point.hx, point.hy);
     if (terrain.componentOf(berth) !== home) continue; // it comes back to another island, not this one
@@ -466,12 +459,7 @@ export const ferrySystem: System = (world, ctx) => {
 function retryHolds(world: World, ctx: SystemContext, terrain: TerrainGraph): void {
   for (const e of world.canonicalQuery(FerryWaiting)) {
     const marker = world.get(e, FerryWaiting);
-    if (
-      !world.isAlive(e) ||
-      !world.has(e, Settler) ||
-      !world.has(e, Position) ||
-      world.has(e, PlayerOrder)
-    ) {
+    if (!world.isAlive(e) || !world.has(e, Settler) || !world.has(e, Position) || world.has(e, PlayerOrder)) {
       world.remove(e, FerryWaiting); // gone, or a fresh command of their own is in the slot
       continue;
     }
@@ -755,8 +743,7 @@ function sailToShore(
     candidates.sort(
       (a, b) =>
         hexDistanceBetween(terrain.xOf(a), terrain.yOf(a), goal.x, goal.y) -
-          hexDistanceBetween(terrain.xOf(b), terrain.yOf(b), goal.x, goal.y) ||
-        a - b,
+          hexDistanceBetween(terrain.xOf(b), terrain.yOf(b), goal.x, goal.y) || a - b,
     );
     for (const spot of candidates) {
       const at = nodeOf(terrain, spot);
@@ -801,7 +788,14 @@ function startReturnVoyage(
   voyage: VehicleVoyageView,
 ): boolean {
   const home = voyage.home;
-  const taken = takeReturnDock(world, ctx, terrain, ship, voyage, home === null || home === undefined ? null : { hx: home.hx, hy: home.hy });
+  const taken = takeReturnDock(
+    world,
+    ctx,
+    terrain,
+    ship,
+    voyage,
+    home === null || home === undefined ? null : { hx: home.hx, hy: home.hy },
+  );
   const live = world.mut(ship, FerryVoyage);
   live.phase = 'return';
   if (taken) watchRetry.get(world)?.delete(ship);
@@ -864,8 +858,7 @@ function takeReturnDock(
   candidates.sort(
     (a, b) =>
       hexDistanceBetween(terrain.xOf(a), terrain.yOf(a), home.hx, home.hy) -
-        hexDistanceBetween(terrain.xOf(b), terrain.yOf(b), home.hx, home.hy) ||
-      a - b,
+        hexDistanceBetween(terrain.xOf(b), terrain.yOf(b), home.hx, home.hy) || a - b,
   );
   for (const spot of candidates) {
     const at = nodeOf(terrain, spot);
@@ -876,7 +869,10 @@ function takeReturnDock(
 }
 
 /** Whether `state` lies moored at `point`: the watcher compares shores by node. */
-function atMooring(state: VehicleStateView, point: { readonly hx: number; readonly hy: number } | null): boolean {
+function atMooring(
+  state: VehicleStateView,
+  point: { readonly hx: number; readonly hy: number } | null,
+): boolean {
   return (
     state.moored &&
     state.mooring !== null &&

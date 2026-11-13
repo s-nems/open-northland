@@ -17,8 +17,8 @@ import {
   vehiclePassengers,
   WALK_RANGE_NODES,
 } from '../../../src/components/index.js';
-import type { Entity } from '../../../src/ecs/world.js';
 import { fx, ONE } from '../../../src/core/fixed.js';
+import type { Entity } from '../../../src/ecs/world.js';
 import {
   halfCellMapFromCells,
   hexDistanceBetween,
@@ -29,8 +29,8 @@ import {
 } from '../../../src/index.js';
 import { navigationLimitFor } from '../../../src/systems/index.js';
 import { dockVehicle } from '../../../src/systems/vehicles/dock.js';
-import { createVehicle } from '../../../src/systems/vehicles/index.js';
 import { ferryLandingOf } from '../../../src/systems/vehicles/ferry.js';
+import { createVehicle } from '../../../src/systems/vehicles/index.js';
 import { testContent } from '../../fixtures/content.js';
 import { ctxOf } from '../../fixtures/context.js';
 import { stampPost } from '../signposts/support.js';
@@ -527,7 +527,7 @@ describe('ferryPassage', () => {
 
   it('an order of their own takes a held settler off the hold', () => {
     const s = sim();
-    const ship = spawnShip(s); // moored, nobody aboard: no booking, the order holds
+    spawnShip(s); // moored, nobody aboard: no booking, the order holds
     const passenger = spawnSettler(s, HOME.hx, HOME.hy);
 
     s.enqueue(playerCommand(P0, { kind: 'moveUnit', entity: passenger, x: FAR.hx, y: FAR.hy }));
@@ -904,8 +904,7 @@ describe('ferryPassage', () => {
     for (let t = 0; t < 120 && !held; t++) {
       s.step();
       const at = nodeOf(s, passenger);
-      held =
-        at !== null && hexDistanceBetween(at.hx, at.hy, shore!.hx, shore!.hy) <= 2;
+      held = at !== null && hexDistanceBetween(at.hx, at.hy, shore!.hx, shore!.hy) <= 2;
       expect(s.world.tryGet(ship, FerryVoyage)?.phase).toBe('pickup');
     }
     expect(held).toBe(true);
@@ -951,7 +950,9 @@ describe('ferryPassage', () => {
       since: 0,
       home: { hx: home.hx, hy: home.hy },
     });
-    expect(dockVehicle(s.world, ctxOf(s), { kind: 'dockVehicle', vehicle: ship, x: home.hx, y: home.hy })).toBe(true);
+    expect(
+      dockVehicle(s.world, ctxOf(s), { kind: 'dockVehicle', vehicle: ship, x: home.hx, y: home.hy }),
+    ).toBe(true);
     let underWay = false;
     for (let t = 0; t < 40 && !underWay; t++) {
       s.step();

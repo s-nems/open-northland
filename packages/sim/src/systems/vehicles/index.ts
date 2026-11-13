@@ -26,7 +26,6 @@ export {
   passengerJobAllowed,
   unloadPeople,
 } from './crew.js';
-export { ferrySystem, tryFerryPassage } from './ferry.js';
 export { dockVehicle, type MooringProbe, type MooringSpots, mooringProbe, mooringSpotsOf } from './dock.js';
 export {
   DRAUGHT_BREEDING_PAIR,
@@ -35,6 +34,7 @@ export {
   harnessVehicle,
   pickDraughtAnimal,
 } from './draught.js';
+export { ferrySystem, tryFerryPassage } from './ferry.js';
 export {
   attachToVehicleGroup,
   canTakeHaulingCart,

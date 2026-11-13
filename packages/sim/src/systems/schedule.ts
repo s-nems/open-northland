@@ -57,6 +57,7 @@ import { plannerSystem } from './settlers/planner/system.js';
 import { signpostLinksSystem } from './signposts/links.js';
 import { gossipSystem } from './social/index.js';
 import { tradePartnerStockSystem, traderTakesUpCartSystem, tradeVoyageSystem } from './trade/index.js';
+import { ferrySystem } from './vehicles/ferry.js';
 import {
   cargoHandDisembarkSystem,
   draughtAnimalSystem,
@@ -65,7 +66,6 @@ import {
   vehicleMovementSystem,
   vehicleOrderQueueSystem,
 } from './vehicles/index.js';
-import { ferrySystem } from './vehicles/ferry.js';
 import { shipboardNeedsSystem } from './vehicles/shipboard-needs.js';
 import { visionSystem } from './vision/index.js';
 import { wildlifeSystem } from './wildlife/index.js';

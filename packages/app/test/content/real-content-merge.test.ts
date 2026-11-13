@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest';
 import { DEFAULT_SHELTER_CAPACITY, shelterCapacityById } from '../../src/catalog/defence.js';
 import { FARMING_BALANCE_BY_ID } from '../../src/catalog/farming.js';
 import { WOOD_YIELD_PER_NODE } from '../../src/catalog/felling.js';
+import { JOB_CARRIER, JOB_FERRYMAN } from '../../src/catalog/jobs.js';
 import { MINE_LEVELS, STONE_DEPOSIT_UNITS } from '../../src/catalog/mining.js';
 import {
   NAV_LANDSCAPE_TYPES,
@@ -14,7 +15,6 @@ import {
   TERRAIN_MARGIN,
   TERRAIN_OPEN,
 } from '../../src/catalog/terrain.js';
-import { JOB_CARRIER, JOB_FERRYMAN } from '../../src/catalog/jobs.js';
 import { loadRuntimeRealContent, mergeRealContent } from '../../src/content/real-content.js';
 import { EQUIP_CLASS_BY_SLUG } from '../../src/game/sandbox/combat.js';
 import { sandboxContent } from '../../src/game/sandbox/index.js';
