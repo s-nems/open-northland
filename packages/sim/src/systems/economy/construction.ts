@@ -25,7 +25,6 @@ import type { System, SystemContext } from '../context.js';
 import { toolWorkFactorPct } from '../equipment/index.js';
 import { interactionNodeId } from '../footprint/interaction.js';
 import { evictSettlersFromFootprint } from '../movement/evict.js';
-import { markFinishedBarracksDefault } from '../orders/store-priority.js';
 import { settleClosedWall, travellerOnClosing } from '../palisades/index.js';
 import { buildStepsPerSwing, jobExperiencePercent } from '../progression/index.js';
 import { templeFuelSlotOf } from '../readviews/index.js';
@@ -38,6 +37,7 @@ import {
   constructionTotalUnits,
   deliveredConstructionFraction,
   isWorkplaceOperator,
+  markFinishedBarracksCoin,
 } from '../stores/index.js';
 import { createVehicle } from '../vehicles/create.js';
 import { evictVehiclesFromFootprint } from '../vehicles/evict.js';
@@ -231,7 +231,7 @@ function finishBuilding(
   fillHealth(world, e);
   if (adoptedTier) retargetHomeErrands(world, ctx, e, previousDoor);
   settleFootprint(world, ctx, e);
-  markFinishedBarracksDefault(world, ctx, e);
+  markFinishedBarracksCoin(world, ctx, e);
   ctx.events.emit(
     adoptedTier
       ? { kind: 'buildingUpgraded', entity: e, level: building.level }

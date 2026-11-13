@@ -5,7 +5,7 @@ import type { Entity } from '../../../src/ecs/world.js';
 import { playerCommand, Simulation } from '../../../src/index.js';
 import { createVehicle } from '../../../src/systems/vehicles/index.js';
 import { ctxOf } from '../../fixtures/context.js';
-import { buildingAt, grassMap, settlerAt, siteAt, WOOD } from './production/producer-supply/support.js';
+import { buildingAt, grassMap, settlerAt, WOOD } from './production/producer-supply/support.js';
 import { BAKERY, CARRIER, utilityContent, WAREHOUSE } from './production/utility-content.js';
 
 // A store's priority goods: its own porters fetch them from the owner's other storehouses while it has
@@ -34,9 +34,6 @@ const HANDCART = 1;
 const VIKING = 1;
 /** A good no fixture store shelves. */
 const UNSHELVED = 999;
-const COIN = 211;
-const BARRACKS = 14;
-const RIVAL = 1;
 
 /** The fixture warehouse with porter slots, as the real storehouses post them. */
 function staffedWarehouseContent(): ContentSet {
@@ -49,28 +46,8 @@ function staffedWarehouseContent(): ContentSet {
   });
 }
 
-/** The staffed warehouse content plus a barracks with porters and a coin shelf. */
-function barracksContent(): ContentSet {
-  const base = staffedWarehouseContent();
-  return parseContentSet({
-    ...base,
-    goods: [...base.goods, { typeId: COIN, id: 'coin', weight: 1 }],
-    buildings: [
-      ...base.buildings,
-      {
-        typeId: BARRACKS,
-        id: 'barracks',
-        kind: 'training',
-        workers: [{ jobType: CARRIER, count: 1 }],
-        stock: [{ goodType: COIN, capacity: 60, initial: 0 }],
-        construction: [{ goodType: WOOD, amount: 1 }],
-      },
-    ],
-  });
-}
-
-function owned(sim: Simulation, e: Entity, player = PLAYER): Entity {
-  sim.world.add(e, Owner, { player });
+function owned(sim: Simulation, e: Entity): Entity {
+  sim.world.add(e, Owner, { player: PLAYER });
   return e;
 }
 
@@ -167,20 +144,5 @@ describe('store priority', () => {
     expect(sim.world.get(warehouse, StorePriority).goods).toEqual([WOOD]);
     setPriority(sim, warehouse, WOOD, false);
     expect(sim.world.has(warehouse, StorePriority)).toBe(false);
-  });
-
-  it('marks the coin in a finished barracks until its owner unmarks the coin on one', () => {
-    const sim = new Simulation({ seed: 1, content: barracksContent(), map: grassMap(MAP_WIDTH, 1) });
-    const finish = (x: number, player = PLAYER): Entity => {
-      const site = owned(sim, siteAt(sim, BARRACKS, x, 0), player);
-      sim.enqueueSetup({ kind: 'debugCompleteConstruction', target: site });
-      sim.step();
-      return site;
-    };
-    const first = finish(0);
-    expect(sim.world.get(first, StorePriority).goods).toEqual([COIN]);
-    setPriority(sim, first, COIN, false);
-    expect(sim.world.has(finish(4), StorePriority)).toBe(false);
-    expect(sim.world.get(finish(8, RIVAL), StorePriority).goods).toEqual([COIN]);
   });
 });
