@@ -1048,6 +1048,11 @@ export const itContent = {
       summary:
         'Sei civili si addestrano insieme in una caserma ed escono come soldati disarmati. Ognuno lascia il nodo della porta comune per uno libero accanto e mantiene quel posto, così la squadra si dispone intorno alla porta invece di ammassarsi su di essa.',
     },
+    'barracks-rally': {
+      title: 'Punto di raccolta della caserma',
+      summary:
+        "Cinque civili addestrati a mano e tre che l'assistente arma con spade dal quartier generale vanno alla bandiera di raccolta della caserma. Ognuno prende il proprio posto nelle file a una casella di distanza intorno a essa e lo mantiene, invece di ammassarsi tutti sulla bandiera.",
+    },
     'coin-drill': {
       title: 'Esercitazione a monete',
       summary:

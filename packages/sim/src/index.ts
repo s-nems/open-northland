@@ -188,7 +188,7 @@ export { storageMinimumsView } from './inspect/storage-minimums.js';
 export { bucketsReach, TILE_BUCKET_SIZE, type TileBox, TileBuckets } from './inspect/tile-buckets.js';
 export type { BlockOverlay } from './nav/block-overlay.js';
 export { ClearanceField, MAX_CLEARANCE_CLASS } from './nav/clearance.js';
-export { formationNodes, pairBySpace } from './nav/formation.js';
+export { formationNodes, MILITARY_ROW_SPACING, pairBySpace } from './nav/formation.js';
 export {
   cellAnchorNode,
   cellOfAnchorNode,

@@ -110,7 +110,7 @@ export const MILITARY: ArticleGroup = {
         {
           list: [
             'Im Panel der [[building:barracks|Kaserne]] kannst du eine Sammelflagge setzen oder mit Rechtsklick auf den Boden klicken, während nur die Kaserne ausgewählt ist.',
-            'Soldaten, die die Kaserne danach ausbildet, gehen zur Flagge und halten sie als ihren Posten. Ein Rekrut, der zuerst eine Waffe holt, beendet diesen Weg an der Flagge.',
+            'Soldaten, die die Kaserne danach ausbildet, gehen zur Flagge, und jeder nimmt seinen eigenen Platz in den Reihen um sie herum als seinen Posten ein. Ein Rekrut, der zuerst eine Waffe holt, beendet diesen Weg an der Flagge.',
             'Ohne Flagge bleiben neue Soldaten an der Tür der Kaserne.',
           ],
         },

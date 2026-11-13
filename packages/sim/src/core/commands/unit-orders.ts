@@ -725,10 +725,10 @@ export type UnitOrderCommand =
       readonly prioritized: boolean;
     }
   | {
-      /** Send the soldiers an owned finished barracks trains from now on to the half-cell node (x,y), where
-       *  each takes its guard post. A blocked node resolves to the nearest free one beside it when they
-       *  walk. A building that is no barracks, or not finished, skips the command, and so does a node on
-       *  another land than the barracks' own. */
+      /** Plant an owned finished barracks' rally flag at the half-cell node (x,y), snapped to legal flag
+       *  ground: the soldiers it trains from now on each take their own place in the ranks around it as
+       *  their guard post. A building that is no barracks, or not finished, skips the command, and so does
+       *  a node on another land than the barracks' own. */
       readonly kind: 'setRallyPoint';
       readonly building: Entity;
       readonly x: number;

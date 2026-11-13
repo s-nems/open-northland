@@ -110,7 +110,7 @@ export const MILITARY: ArticleGroup = {
         {
           list: [
             'W panelu [[building:barracks|Koszar]] możesz wbić flagę zbiórki albo kliknąć prawym na ziemi, gdy zaznaczone są same Koszary.',
-            'Żołnierze wyszkoleni potem w tych Koszarach idą do flagi i trzymają ją jako swój posterunek. Rekrut, który najpierw idzie po broń, kończy tę drogę przy fladze.',
+            'Żołnierze wyszkoleni potem w tych Koszarach idą do flagi i każdy zajmuje własne miejsce w szeregach wokół niej jako swój posterunek. Rekrut, który najpierw idzie po broń, kończy tę drogę przy fladze.',
             'Bez flagi nowi żołnierze zostają przy drzwiach Koszar.',
           ],
         },

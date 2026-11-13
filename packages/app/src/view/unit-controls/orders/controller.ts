@@ -10,6 +10,7 @@ import {
   type FormationSlotGroup,
   type HalfCellNode,
   MAX_UNIT_ORDER_MEMBERS,
+  MILITARY_ROW_SPACING,
   nodeOfPosition,
   type PlayerCommand,
   systems,
@@ -231,7 +232,7 @@ export function createUnitOrderController(deps: UnitOrderDeps): UnitOrderControl
               width,
               height,
               occupiedTiles(new Set(currentMovers.map((mover) => mover.ref))),
-              military ? 2 : 1,
+              military ? MILITARY_ROW_SPACING : 1,
             )
           : groups.flatMap((group) => {
               const ids = new Set<number>(group.members);
@@ -289,7 +290,7 @@ export function createUnitOrderController(deps: UnitOrderDeps): UnitOrderControl
       void request(
         { hx: seat.col, hy: seat.row },
         movers.map(({ ref }) => ref as Entity),
-        military ? 2 : 1,
+        military ? MILITARY_ROW_SPACING : 1,
         kind === 'moveUnit' ? 'move' : 'attackMove',
       ).then((groups) => {
         for (const group of groups ?? []) {

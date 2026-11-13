@@ -4,6 +4,7 @@ import {
   components,
   type Entity,
   type HalfCellNode,
+  MILITARY_ROW_SPACING,
   nodeOfPosition,
   playerCommand,
   type Simulation,
@@ -38,8 +39,6 @@ const ORDER_WAKE_TICKS = 50;
 /** Ticks the spawned fighters stand in the world before the order, so their first plans have run. */
 const DEFAULT_SPAWN_LEAD_TICKS = 300;
 
-/** Military rows, as the app spaces a group that holds a fighter. */
-const MILITARY_ROW_SPACING = 2;
 /** Systems each phase line names, heaviest mean first. */
 const PHASE_SYSTEMS = 8;
 

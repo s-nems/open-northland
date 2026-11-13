@@ -33,6 +33,7 @@ import {
 } from '../../../../src/components/index.js';
 import type { Entity } from '../../../../src/ecs/world.js';
 import { fx, ONE, type SimEvent, Simulation } from '../../../../src/index.js';
+import { MILITARY_ROW_SPACING } from '../../../../src/nav/formation.js';
 import { hexDistanceBetween, nodeOfPosition } from '../../../../src/nav/halfcell.js';
 import type { NodeId, TerrainGraph } from '../../../../src/nav/terrain/index.js';
 import { plannerSystem } from '../../../../src/systems/index.js';
@@ -78,6 +79,8 @@ const PRESET_WEAPON_GOOD = 99;
 const SWORD_GOOD = 7;
 /** The weapon rows' sword `maintype`. */
 const SWORD_CLASS = 3;
+/** Recruits the assistant books for a sword in the rally formation test; the rest are drilled by hand. */
+const BOOKED_RECRUITS = 3;
 /** Well over the drive threshold - this recruit seeks food before anything else. */
 const STARVING = fx.div(fx.fromInt(9), fx.fromInt(10));
 /** The planner's yard around a door, where a settler waiting at a foundation stands. */
@@ -515,6 +518,41 @@ describe('trainSoldier - the barracks drill', () => {
       expect(sim.world.get(recruit, Stance).anchorCell).toBe(node); // so the combat walk-back keeps it there
       return node;
     });
+    expect(new Set(nodes).size).toBe(recruits.length);
+  });
+
+  it('gives every soldier posted at the flag his own place in rows a cell apart, drilled or armed', () => {
+    const sim = new Simulation({ seed: 1, content: barracksContent(), map: grassMap(16, 12) });
+    const house = barracksAt(sim, 6, 3);
+    const store = larderAt(sim, 2, 10);
+    sim.world.mut(store, Stockpile).amounts.set(SWORD_GOOD, BOOKED_RECRUITS);
+    sim.world.add(sim.world.create(), AssistantCounters, {
+      player: HUMAN_PLAYER,
+      counters: { ...defaultAssistantCounters(), trainSword: { value: BOOKED_RECRUITS, infinite: false } },
+    });
+    sim.enqueueSetup({ kind: 'setRallyPoint', building: house, x: 14, y: 14 });
+    sim.step();
+    const terrain = terrainOf(sim);
+    const flag = terrain.coordsOf(entityNode(sim.world, terrain, sim.world.get(house, RallyPoint).flag));
+    const recruits = [2, 3, 4, 5, 6, 7].map((y) => settlerAt(sim, CIVILIST_JOB, 2, y));
+    for (const recruit of recruits.slice(0, BOOKED_RECRUITS))
+      sim.world.add(recruit, AssistantRecruit, { intent: 'trainSword', armed: false, barracks: house });
+    for (const recruit of recruits) sim.enqueueSetup({ kind: 'trainSoldier', entity: recruit, house });
+    run(sim, recruits.length * RUN_TICKS + SUPPLY_TICKS);
+
+    const nodes = recruits.map((recruit) => {
+      expect(jobOf(sim, recruit)).toBe(SOLDIER_JOB);
+      expect(sim.world.has(recruit, MoveGoal)).toBe(false); // settled, not pressing into a crowd
+      const node = entityNode(sim.world, terrain, recruit);
+      expect(sim.world.get(recruit, Stance).anchorCell).toBe(node);
+      const { x, y } = terrain.coordsOf(node);
+      expect(Math.abs(y - flag.y) % MILITARY_ROW_SPACING).toBe(0);
+      expect(hexDistanceBetween(x, y, flag.x, flag.y)).toBeLessThanOrEqual(MILITARY_ROW_SPACING);
+      return node;
+    });
+    expect(recruits.slice(0, BOOKED_RECRUITS).every((r) => sim.world.get(r, Equipment).weapon !== null)).toBe(
+      true,
+    );
     expect(new Set(nodes).size).toBe(recruits.length);
   });
 

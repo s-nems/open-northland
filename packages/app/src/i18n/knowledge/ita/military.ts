@@ -116,7 +116,7 @@ export const MILITARY: ArticleGroup = {
         {
           list: [
             'Nel pannello della [[building:barracks|caserma]] puoi piantare una bandiera di raduno, oppure fare clic destro sul terreno con solo la caserma selezionata.',
-            "I soldati che la caserma addestra da quel momento vanno alla bandiera e la tengono come loro posto. Una recluta che prima va a prendere un'arma finisce quel cammino alla bandiera.",
+            "I soldati che la caserma addestra da quel momento vanno alla bandiera e ognuno prende il proprio posto nelle file intorno a essa. Una recluta che prima va a prendere un'arma finisce quel cammino alla bandiera.",
             'Senza bandiera i nuovi soldati restano davanti alla porta della caserma.',
           ],
         },

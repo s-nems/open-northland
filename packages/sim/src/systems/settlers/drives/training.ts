@@ -20,13 +20,11 @@ import { contentIndex } from '../../../core/content-index.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
 import { postGraduate } from '../../assistant/graduates.js';
-import { guardPost } from '../../conflict/chase.js';
 import type { SystemContext } from '../../context.js';
 import { heldGatherGood, holdToGatherGood, jobGathersGood } from '../../economy/gather-goods.js';
-import { moveAnchor } from '../../orders/combat.js';
 import { isSchoolOrFoundation, schoolMethodJob } from '../../orders/education.js';
 import { keepingOrderQueue } from '../../orders/guards.js';
-import { rallyNodeOf } from '../../orders/rally-point.js';
+import { takeRallyPost } from '../../orders/rally-point.js';
 import { takeSeat } from '../../orders/training-seats.js';
 import { reidleAsJob } from '../../orders/work/index.js';
 import { typeAllowed } from '../../progression/unlocks.js';
@@ -272,20 +270,16 @@ function abandonDrill(world: World, e: Entity): boolean {
 }
 
 /**
- * Post a fresh soldier at its barracks' rally point: the point becomes its guard anchor and it walks there
- * from the door, armed or not (owner's ruling). A barracks with no rally point leaves it anchored at its
- * feet. So does a booking: an assistant recruit keeps the door until the arming pass posts him, with the
- * weapon in hand or on the outing that fetches it (`recruit-arming.ts`).
+ * Post a fresh soldier at its barracks' rally point: his own place there becomes his guard anchor and he
+ * walks to it from the door, armed or not (owner's ruling). A barracks with no rally point leaves him
+ * anchored at his feet. So does a booking: an assistant recruit keeps the door until the arming pass posts
+ * him, with the weapon in hand or on the outing that fetches it (`recruit-arming.ts`).
  */
 function sendToRallyPoint(world: World, ctx: SystemContext, e: Entity, barracks: Entity): void {
   if (ctx.terrain === undefined || world.has(e, AssistantRecruit)) return;
-  const rally = rallyNodeOf(world, ctx.terrain, barracks);
-  if (rally === undefined) return;
-  moveAnchor(world, ctx.content, e, rally);
-  // The post is the anchor, or the open node beside it when something stands on the anchor.
-  const here = entityNode(world, ctx.terrain, e);
-  const post = guardPost(world, ctx, ctx.terrain, rally, here);
-  if (post !== here) world.add(e, MoveGoal, { cell: post });
+  const post = takeRallyPost(world, ctx, ctx.terrain, barracks, e);
+  if (post !== undefined && post !== entityNode(world, ctx.terrain, e))
+    world.add(e, MoveGoal, { cell: post });
 }
 
 /**

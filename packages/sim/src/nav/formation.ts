@@ -1,5 +1,8 @@
 import type { HalfCellNode } from './halfcell.js';
 
+/** The row spacing a group of fighters stands in: rows a full cell apart. Authored. */
+export const MILITARY_ROW_SPACING = 2;
+
 /** Nearest square rings in fixed order. Military rows skip alternate half-rows; clipped edges visit
  *  each eligible on-map node at most once, even when the whole target area is unavailable. */
 export function formationNodes(

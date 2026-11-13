@@ -1045,6 +1045,11 @@ export const deContent = {
       summary:
         'Sechs Siedler üben gleichzeitig in einer Kaserne und kommen als unbewaffnete Soldaten heraus. Jeder tritt vom gemeinsamen Feld vor der Tür auf ein freies daneben und hält dort seinen Posten, sodass der Trupp verteilt um die Tür steht statt übereinander gestapelt.',
     },
+    'barracks-rally': {
+      title: 'Sammelpunkt der Kaserne',
+      summary:
+        'Fünf von Hand ausgebildete Siedler und drei, die der Assistent mit Schwertern aus dem Hauptquartier bewaffnet, gehen zur Sammelflagge der Kaserne. Jeder nimmt seinen eigenen Platz in Reihen im Abstand eines Feldes um sie herum ein und hält dort seinen Posten, statt dass sich der ganze Trupp auf der Flagge drängt.',
+    },
     'coin-drill': {
       title: 'Exerzieren für Münzen',
       summary:

@@ -25,12 +25,11 @@ import type { Entity, World } from '../../../ecs/world.js';
 import { nodeOfPosition } from '../../../nav/halfcell.js';
 import type { SpatialGate } from '../../../nav/node-circle.js';
 import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
-import { guardPost } from '../../conflict/chase.js';
 import type { SystemContext } from '../../context.js';
 import { buildingBlockedCells } from '../../footprint/index.js';
 import { isTravelling } from '../../movement/nav-state.js';
 import { moveAnchor } from '../../orders/combat.js';
-import { rallyNodeOf } from '../../orders/rally-point.js';
+import { takeRallyPost } from '../../orders/rally-point.js';
 import {
   armorGoodsByProtection,
   isBarracks,
@@ -552,26 +551,22 @@ export function armRecruitInPlace(search: ArmingSearch, e: Entity, barracks: Ent
 const BARE_TARGET = 0;
 
 /**
- * Where an arming outing ends: the booking barracks' rally post when its owner planted one, else the door
- * (owner's ruling: armed soldiers gather at the barracks). That node becomes the recruit's guard anchor
- * here, read once with the walk's end, so a flag moved or taken away later cannot part the two, and men
- * arriving on one node fan out from their shared post as they do from a drill. `null` when that barracks is
- * gone or another side's at dispatch; a barracks lost later still draws him to the node stamped here. A
- * rally post only stands at a finished barracks, so a foundation's outing ends at its door.
+ * Where an arming outing ends: the recruit's own place at the booking barracks' rally point when its owner
+ * planted one on his land, else the door (owner's ruling: armed soldiers gather at the barracks). That node
+ * becomes the recruit's guard anchor here, read once with the walk's end, so a flag moved or taken away
+ * later cannot part the two; men arriving at the door fan out from it as they do from a drill. `null` when
+ * that barracks is gone or another side's at dispatch; a barracks lost later still draws him to the node
+ * stamped here. A rally post only stands at a finished barracks, so a foundation's outing ends at its door.
  */
 function takeBarracksPost(search: ArmingSearch, e: Entity, barracks: Entity, here: NodeId): NodeId | null {
   const { world, ctx, terrain } = search;
   if (!isBarracksOrFoundation(world, ctx, barracks) || !sameSide(world, e, barracks)) return null;
-  const rally = rallyNodeOf(world, terrain, barracks);
-  // A node on another shore than his own is no post he can take: a booked soldier of a colony keeps his.
-  const land = terrain.componentOf(here);
-  if (rally === undefined || terrain.componentOf(rally) !== land) {
-    const door = interactionCell(world, ctx, terrain, barracks, here);
-    if (terrain.componentOf(door) === land) moveAnchor(world, ctx.content, e, door);
-    return door;
-  }
-  moveAnchor(world, ctx.content, e, rally);
-  return guardPost(world, ctx, terrain, rally, here);
+  const post = takeRallyPost(world, ctx, terrain, barracks, e);
+  if (post !== undefined) return post;
+  // A door on another shore than his own is no post he can take: a booked soldier of a colony keeps his.
+  const door = interactionCell(world, ctx, terrain, barracks, here);
+  if (terrain.componentOf(door) === terrain.componentOf(here)) moveAnchor(world, ctx.content, e, door);
+  return door;
 }
 
 /**

@@ -1033,6 +1033,11 @@ export const plContent = {
       summary:
         'Sześciu osadników ćwiczy naraz w jednych koszarach i wychodzi jako żołnierze bez broni. Każdy schodzi ze wspólnego pola przed drzwiami na wolne obok i tam trzyma posterunek, więc oddział stoi rozstawiony wokół drzwi, a nie w jednym stosie.',
     },
+    'barracks-rally': {
+      title: 'Punkt zbiórki koszar',
+      summary:
+        'Pięciu osadników wyszkolonych ręcznie i trzech, których asystent uzbraja w miecze z kwatery głównej, idzie do flagi zbiórki koszar. Każdy zajmuje własne miejsce w szeregach co jedno pole wokół niej i tam trzyma posterunek, zamiast żeby cały oddział tłoczył się na fladze.',
+    },
     'coin-drill': {
       title: 'Musztra za monety',
       summary:

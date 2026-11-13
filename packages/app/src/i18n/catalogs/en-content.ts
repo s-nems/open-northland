@@ -1036,6 +1036,11 @@ export const enContent = {
       summary:
         'Six civilians drill in one barracks at once and walk out unarmed soldiers. Each steps off the shared door node onto a free one beside it and holds that post, so the squad stands spread around the door instead of stacked on it.',
     },
+    'barracks-rally': {
+      title: 'Barracks rally point',
+      summary:
+        "Five civilians drilled by hand and three the assistant arms with swords from the headquarters walk to the barracks' rally flag. Each takes his own place in ranks a cell apart around it and holds that post, instead of the whole squad crowding onto the flag.",
+    },
     'coin-drill': {
       title: 'Coin drill',
       summary:

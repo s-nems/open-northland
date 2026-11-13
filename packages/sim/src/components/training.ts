@@ -29,13 +29,23 @@ export const GraduateWait = defineComponent<{ school: Entity }>('GraduateWait', 
 
 /**
  * The flag a barracks sends the soldiers it trains to: a {@link DeliveryFlag} marker the owner planted, the
- * same flag a gatherer's work area uses. A recruit that finishes its drill takes the flag's node as its
- * guard anchor, so it walks there from the door and holds it. Soldiers already trained keep their own
- * anchors. The flag is minted and moved by the owner's order and destroyed with the barracks; our own
- * rule, not the original's. Absent while the barracks keeps no rally point, and its recruits then stay
- * where they step out.
+ * same flag a gatherer's work area uses. Each soldier posted there takes his own place of the formation
+ * around the flag as his guard anchor, so he walks there and holds it; `posts` are the places handed out,
+ * each kept while its soldier lives and still holds it. Soldiers already trained keep their own anchors.
+ * The flag is minted and moved by the owner's order and destroyed with the barracks; our own rule, not the
+ * original's. Absent while the barracks keeps no rally point, and its recruits then stay where they step
+ * out.
  */
-export const RallyPoint = defineComponent<{ flag: Entity }>('RallyPoint', 'settlers');
+export const RallyPoint = defineComponent<{ flag: Entity; posts: RallyPost[] }>('RallyPoint', 'settlers', {
+  simOnlyFields: ['posts'],
+});
+
+export interface RallyPost {
+  readonly soldier: Entity;
+  readonly node: NodeId;
+  /** The flag's node when the place was handed out. */
+  readonly centre: NodeId;
+}
 
 /**
  * A soldier's coin drill: paid fight practice in his own side's barracks, one term for each coin of its

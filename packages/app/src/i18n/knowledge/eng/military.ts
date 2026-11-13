@@ -110,7 +110,7 @@ export const MILITARY: ArticleGroup = {
         {
           list: [
             'In the [[building:barracks|Barracks]] panel you can plant a rally flag, or right-click the ground with only the Barracks selected.',
-            'Soldiers the Barracks trains after that walk to the flag and hold it as their post. A recruit who first goes for a weapon ends that walk at the flag.',
+            'Soldiers the Barracks trains after that walk to the flag and each takes his own place in the ranks around it as his post. A recruit who first goes for a weapon ends that walk at the flag.',
             'Without a flag, new soldiers stay at the Barracks door.',
           ],
         },
