@@ -12,11 +12,14 @@ import type { NodeId } from '../../../nav/terrain/index.js';
 import { guardPost } from '../../conflict/chase.js';
 import type { SystemContext } from '../../context.js';
 import { walkBlockMask } from '../../footprint/walk-block-mask.js';
+import { takeSeat } from '../../orders/training-seats.js';
 import { COIN_DRILL_ATOMIC_ID, coinDrillClip, mayCoinDrill } from '../../progression/coin-drill.js';
 import { isBarracks } from '../../readviews/index.js';
 import { atOrWalk, startAtomic } from '../atomics/start.js';
 import { enterBuilding, isInside } from '../indoors.js';
 import type { PlannerContext } from '../planner/context.js';
+import type { IdleStands } from '../planner/idle-replan.js';
+import type { PlannerSpacing } from '../planner/spacing.js';
 import { interactionCell } from '../targets/index.js';
 import { isUnreachableGoal, unreachableGoals } from '../unreachable-goals.js';
 import {
@@ -25,18 +28,24 @@ import {
   startCoinDrillTerm,
   turnBackFromCoinDrill,
 } from './coin-drill-coins.js';
-import { drillDoorOpen } from './training.js';
+import { drillDoorOpen, waitInYard } from './training.js';
 
 const NO_EXPERIENCE: ReadonlyMap<number, number> = new Map();
 
 /**
- * The coin-drill rung: walk a soldier's `CoinDrillOrder` to the barracks door and drill inside one term
- * after another while he may drill: a term starts on a coin no other man speaks for ({@link freeDrillCoins})
- * and repeats the drill clip until it is served; a needs detour leaves it running. Otherwise he steps out and
- * walks back to the node he left from, where the order ends. A soldier whose coin was taken out of the stock
- * on his way so walks there and straight back. Our rule.
+ * The coin-drill rung: walk a soldier's `CoinDrillOrder` to the barracks door, wait beside it for a seat
+ * shared with the house's recruits ({@link takeSeat}), and drill inside one term after another while he
+ * may drill: a term starts on a coin no other man speaks for ({@link freeDrillCoins}) and repeats the
+ * drill clip until it is served; a needs detour leaves it running. Otherwise he steps out and walks back
+ * to the node he left from, where the order ends. A soldier whose coin was taken out of the stock on his
+ * way or while he waits so walks there and straight back. Our rule.
  */
-export function planCoinDrill(plan: PlannerContext, settler: SettlerIdentity): boolean {
+export function planCoinDrill(
+  plan: PlannerContext,
+  settler: SettlerIdentity,
+  spacing: PlannerSpacing,
+  idle: IdleStands,
+): boolean {
   const { world, ctx, terrain, entity: e, here } = plan;
   const order = world.tryGet(e, CoinDrillOrder);
   if (order === undefined) return false;
@@ -58,9 +67,20 @@ export function planCoinDrill(plan: PlannerContext, settler: SettlerIdentity): b
         startAtomic(world, e, COIN_DRILL_ATOMIC_ID, { kind: 'coinDrill', house }, clip.length, house);
       };
       // One the re-plan kept inside drills on where he stands, which may be a stand-in beside the door.
-      if (isInside(world, e, house)) drill();
-      else enterBuilding(world, e, house, here, door, drill);
-      return true;
+      if (isInside(world, e, house)) {
+        drill();
+        return true;
+      }
+      if (takeSeat(world, ctx, e)) {
+        enterBuilding(world, e, house, here, door, drill);
+        return true;
+      }
+      // Waiting for a seat he still speaks for his coin; one taken off the shelf meanwhile sends him back.
+      if (
+        freeDrillCoins(world, ctx, house, e) > 0 &&
+        waitInYard(world, ctx, terrain, e, here, door, spacing, idle)
+      )
+        return true;
     }
     turnBackFromCoinDrill(world, ctx, e);
   }

@@ -234,6 +234,9 @@ export const plKnowledge = {
         limitValue: 'Tylko poniżej {{coinDrill.limit}} pkt',
         cut: 'Przerwana',
         cutValue: 'Gdy przerwie ją walka albo nowy rozkaz, moneta wraca, punktów nie ma',
+        seats: 'Naraz',
+        seatsValue:
+          '{{barracks.seats}} żołnierzy, na tych samych miejscach co rekruci; reszta czeka pod drzwiami',
       },
       workers: 'Pracownicy',
       seats: { one: '{count} miejsce', few: '{count} miejsca', many: '{count} miejsc' },

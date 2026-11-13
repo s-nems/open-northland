@@ -256,6 +256,9 @@ export const deKnowledge = {
         limitValue: 'Nur unter {{coinDrill.limit}} Punkten',
         cut: 'Abgebrochen',
         cutValue: 'Ein Kampf oder ein neuer Befehl gibt die Münze zurück, ohne Punkte',
+        seats: 'Gleichzeitig',
+        seatsValue:
+          '{{barracks.seats}} Soldaten, auf denselben Plätzen wie die Rekruten; der Rest wartet an der Tür',
       },
       workers: 'Arbeiter',
       seats: {

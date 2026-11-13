@@ -11,6 +11,7 @@ import {
   Position,
   SettlerProgress,
   Stockpile,
+  TrainingOrder,
 } from '../../../../src/components/index.js';
 import type { PlayerCommand } from '../../../../src/core/commands/index.js';
 import type { Entity } from '../../../../src/ecs/world.js';
@@ -51,6 +52,8 @@ const COIN_FRAME = 2;
 const POINTS_FRAME = 22;
 const POINTS_PER_COIN = 25;
 const BARRACKS_CARRIER_SLOTS = 4;
+/** The men the barracks drills at once, recruits and coin-drillers together. */
+const BARRACKS_SEATS = 3;
 /** The most porters the seat posts for the drill. */
 const MOST_DRILL_PORTERS = 3;
 const MAP = { width: 48, height: 16 } as const;
@@ -90,6 +93,7 @@ function drillContent(): ContentSet {
         kind: 'training',
         workers: [{ jobType: CARRIER_JOB, count: BARRACKS_CARRIER_SLOTS }],
         stock: [{ goodType: COIN_GOOD, capacity: 100, initial: 0 }],
+        schoolSize: BARRACKS_SEATS,
       },
     ],
     atomicAnimations: [
@@ -248,6 +252,26 @@ describe('the computer seat coin drill', () => {
     ]);
   });
 
+  it('sends no more men than the seats the recruits and drillers already there leave free', () => {
+    const sim = seatSim();
+    const barracks = barracksAt(sim, 5);
+    const recruit = soldierAt(sim, 6, 6, CIVILIST_JOB);
+    sim.world.add(recruit, TrainingOrder, { house: barracks, drillTicksLeft: 1, enrolled: 0, seated: true });
+    const walking = soldierAt(sim, 6, 8);
+    sim.world.add(walking, CoinDrillOrder, {
+      house: barracks,
+      returnTo: 0,
+      stage: 'drill',
+      termTicksLeft: 0,
+      enrolled: 0,
+      seated: false,
+    });
+    const nearest = soldierAt(sim, 8, 2);
+    expect(drillOrders(sim, [nearest, soldierAt(sim, 10, 2), soldierAt(sim, 12, 2)])).toEqual([
+      { kind: 'orderCoinDrill', entity: nearest, house: barracks },
+    ]);
+  });
+
   it('drills a bare soldier and passes over one out of reach, one at the limit and one on an errand', () => {
     const sim = seatSim();
     const barracks = barracksAt(sim, 5);
@@ -270,6 +294,8 @@ describe('the computer seat coin drill', () => {
       returnTo: 0,
       stage: 'return',
       termTicksLeft: 0,
+      enrolled: 0,
+      seated: false,
     });
     const free = soldierAt(sim, 10, 10);
     expect(drillOrders(sim, [outOfReach, atLimit, bare, busy, drilling, free])).toEqual([
@@ -287,6 +313,8 @@ describe('the computer seat coin drill', () => {
       returnTo: 0,
       stage: 'drill',
       termTicksLeft: 0,
+      enrolled: 0,
+      seated: false,
     });
     expect(drillOrders(sim, [soldierAt(sim, 8, 4)])).toEqual([]);
   });

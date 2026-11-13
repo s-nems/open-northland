@@ -272,8 +272,8 @@ function filledFacts(context: KnowledgeContext, template: string): string {
   return fillTokens(template, (name) => factText(name, context.base));
 }
 
-/** What a barracks does for soldiers who pay it a coin: who drills, how to order it, what a term costs,
- *  lasts and gives, and the limit. */
+/** What a barracks does for soldiers who pay it a coin: who drills, how to order it, what a term costs
+ *  and lasts, how many drill at once, what a term gives, and the limit. */
 function coinDrillBlock(context: KnowledgeContext): EntryBlock {
   const text = copy().building.coinDrill;
   const filled = (template: string): string => filledFacts(context, template);
@@ -286,6 +286,7 @@ function coinDrillBlock(context: KnowledgeContext): EntryBlock {
         [text.order, text.orderValue],
         [text.cost, filled(text.costValue)],
         [text.term, filled(text.termValue)],
+        [text.seats, filled(text.seatsValue)],
         [text.points, filled(text.pointsValue)],
         [text.limit, filled(text.limitValue)],
         [text.cut, text.cutValue],

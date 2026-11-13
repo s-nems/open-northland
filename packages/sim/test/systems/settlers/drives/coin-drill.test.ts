@@ -25,6 +25,8 @@ import { walkBlockMask } from '../../../../src/systems/footprint/walk-block-mask
 import { personalFightPoints } from '../../../../src/systems/progression/bonus.js';
 import { COIN_DRILL_TERM_TICKS } from '../../../../src/systems/progression/coin-drill.js';
 import { FIGHT_EXPERIENCE_TYPE, fightUnitsOfPoints } from '../../../../src/systems/progression/experience.js';
+import { isInside } from '../../../../src/systems/settlers/indoors.js';
+import { IDLE_REPLAN_PERIOD_TICKS } from '../../../../src/systems/settlers/planner/idle-replan.js';
 import { interactionCell } from '../../../../src/systems/settlers/targets/index.js';
 import { entityNode } from '../../../../src/systems/spatial/nodes.js';
 import { testContent } from '../../../fixtures/content.js';
@@ -64,7 +66,8 @@ const WALK_TICKS = 120;
 /** Enough hitpoints to outlast the few blows a test reads. */
 const FIGHTER_HP = 500;
 
-function coinDrillContent(): ContentSet {
+/** `seats` is the barracks' `schoolSize`, the men it drills at once; unset seats everyone. */
+function coinDrillContent(seats?: number): ContentSet {
   const base = testContent();
   const viking = base.tribes[0];
   if (viking === undefined) throw new Error('fixture tribe missing');
@@ -103,6 +106,7 @@ function coinDrillContent(): ContentSet {
         kind: 'training',
         workers: [{ jobType: CARRIER_JOB, count: 4 }],
         stock: [{ goodType: COIN_GOOD, capacity: 100, initial: 1 }],
+        ...(seats === undefined ? {} : { schoolSize: seats }),
       },
       {
         typeId: HUT_TYPE,
@@ -136,8 +140,8 @@ function coinDrillContent(): ContentSet {
   });
 }
 
-function freshSim(): Simulation {
-  return new Simulation({ seed: 1, content: coinDrillContent(), map: grassMap(12, 8) });
+function freshSim(seats?: number): Simulation {
+  return new Simulation({ seed: 1, content: coinDrillContent(seats), map: grassMap(12, 8) });
 }
 
 function barracksAt(sim: Simulation, x: number, y: number, coins: number, owner = PLAYER): Entity {
@@ -446,5 +450,56 @@ describe('orderCoinDrill - the coin-paid soldier drill', () => {
     }
     expect(insideTicks).toBeGreaterThanOrEqual(2 * SERVED_TERM_TICKS);
     expect([pointsOf(sim, driller), coinsOf(sim, house)]).toEqual([2 * POINTS_PER_COIN, 0]);
+  });
+
+  it('shares the barracks seats with recruits in enrolment order, the rest waiting outside', () => {
+    const sim = freshSim(2);
+    const house = barracksAt(sim, 8, 3, 3);
+    const [firstRecruit, lateRecruit] = [
+      soldierAt(sim, CIVILIST_JOB, 6, 3),
+      soldierAt(sim, CIVILIST_JOB, 6, 4),
+    ];
+    const [firstDriller, lateDriller] = [soldierAt(sim, SWORD_JOB, 5, 3), soldierAt(sim, SWORD_JOB, 5, 4)];
+    sim.enqueueSetup({ kind: 'trainSoldier', entity: firstRecruit, house });
+    sim.step();
+    sim.enqueueSetup({ kind: 'orderCoinDrill', entity: firstDriller, house });
+    sim.step();
+    // The same tick: the recruit, the lower id, comes first.
+    sim.enqueueSetup({ kind: 'orderCoinDrill', entity: lateDriller, house });
+    sim.enqueueSetup({ kind: 'trainSoldier', entity: lateRecruit, house });
+    sim.step();
+    run(sim, WALK_TICKS);
+    const men = [firstRecruit, firstDriller, lateRecruit, lateDriller];
+    expect(men.map((e) => isInside(sim.world, e, house))).toEqual([true, true, false, false]);
+    expect(sim.world.get(lateDriller, CoinDrillOrder).seated).toBe(false);
+    sim.enqueueSetup({ kind: 'moveUnit', entity: firstDriller, x: 2, y: 6 });
+    run(sim, IDLE_REPLAN_PERIOD_TICKS + 1);
+    expect(sim.world.get(lateRecruit, TrainingOrder).seated).toBe(true);
+    expect(sim.world.get(lateDriller, CoinDrillOrder).seated).toBe(false);
+  });
+
+  it('frees the place of a waiting driller called off, and his coin', () => {
+    const sim = freshSim(1);
+    const house = barracksAt(sim, 8, 3, 3);
+    const seated = soldierAt(sim, SWORD_JOB, 5, 4);
+    const calledOff = soldierAt(sim, SWORD_JOB, 6, 4);
+    const next = soldierAt(sim, SWORD_JOB, 7, 4);
+    for (const entity of [seated, calledOff, next]) {
+      sim.enqueueSetup({ kind: 'orderCoinDrill', entity, house });
+      sim.step();
+    }
+    run(sim, WALK_TICKS);
+    expect(sim.world.get(calledOff, CoinDrillOrder).seated).toBe(false);
+    sim.enqueueSetup({ kind: 'moveUnit', entity: calledOff, x: 2, y: 6 });
+    sim.step();
+    expect(sim.world.has(calledOff, CoinDrillOrder)).toBe(false);
+    run(sim, 3 * SERVED_TERM_TICKS + WALK_TICKS);
+    // The coin he spoke for buys the seated man a second term; the next in line drills the last.
+    expect([seated, calledOff, next].map((e) => pointsOf(sim, e))).toEqual([
+      2 * POINTS_PER_COIN,
+      0,
+      POINTS_PER_COIN,
+    ]);
+    expect(coinsOf(sim, house)).toBe(0);
   });
 });

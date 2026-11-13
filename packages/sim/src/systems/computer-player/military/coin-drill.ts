@@ -7,6 +7,7 @@ import { homeSettlers } from '../../ai-shared/home-roster.js';
 import { spokenFor } from '../../ai-shared/military/errand.js';
 import type { SystemContext } from '../../context.js';
 import { mayCoinDrillAt } from '../../orders/coin-drill.js';
+import { unclaimedSeats } from '../../orders/training-seats.js';
 import { drillCoinGood } from '../../progression/coin-drill.js';
 import { isBarracks, isSoldierJob } from '../../readviews/index.js';
 import { soldierMayCoinDrill } from '../../settlers/drives/coin-drill.js';
@@ -87,8 +88,9 @@ export function coinPriorityOrders(
 /**
  * The coin-drill orders for `idle`, the soldiers the seat's other standing orders leave at home this
  * decision: at each finished barracks among `owned`, the men within {@link COIN_DRILL_REACH_NODES} of its
- * door who pass {@link mayCoinDrillAt} and are on no errand, nearest first, then by id, one per free coin.
- * A man is sent to one barracks only. The same order a player gives.
+ * door who pass {@link mayCoinDrillAt} and are on no errand, nearest first, then by id, one per free coin
+ * and no more than its free seats ({@link unclaimedSeats}). A man is sent to one barracks only. The
+ * same order a player gives.
  */
 export function coinDrillOrders(
   world: World,
@@ -101,9 +103,13 @@ export function coinDrillOrders(
   const sent = new Set<Entity>();
   for (const barracks of owned) {
     if (!isBarracks(world, ctx, barracks)) continue;
-    // The barracks itself holds no drill order, so every coin no man speaks for counts.
-    const coins = freeDrillCoins(world, ctx, barracks, barracks);
-    if (coins <= 0) continue;
+    // The barracks itself holds no drill order, so every coin no man speaks for counts. A man past the free
+    // seats would only wait at the door, so the seats cap the sends too.
+    const sends = Math.min(
+      freeDrillCoins(world, ctx, barracks, barracks),
+      unclaimedSeats(world, ctx, barracks),
+    );
+    if (sends <= 0) continue;
     const door = interactionCell(world, ctx, terrain, barracks);
     const near: { e: Entity; distance: number }[] = [];
     for (const e of idle) {
@@ -113,7 +119,7 @@ export function coinDrillOrders(
       near.push({ e, distance });
     }
     near.sort((a, b) => a.distance - b.distance || a.e - b.e);
-    for (const { e } of near.slice(0, coins)) {
+    for (const { e } of near.slice(0, sends)) {
       sent.add(e);
       commands.push({ kind: 'orderCoinDrill', entity: e, house: barracks });
     }

@@ -326,8 +326,8 @@ function liveSettlerState(
   if (awaitsItsWorkplace(snapshot, components)) return 'awaitingWorkplace';
   // Sent ahead to a barracks or school foundation, it waits beside the door until the house stands.
   if (awaitsItsTrainingHouse(snapshot, components)) return 'awaitingTraining';
-  // Sent to a full school or barracks, it waits in the yard for a seat to free.
-  if ((components.TrainingOrder as { seated?: unknown } | undefined)?.seated === false) return 'awaitingSeat';
+  // Sent to a full school or barracks, or to coin-drill at a full barracks, it waits in the yard for a seat.
+  if (awaitsSeat(components)) return 'awaitingSeat';
   // A trader aboard its pinned ship is on its route, however long the crossing.
   if (ridesPinnedShip(components)) return 'sailingRoute';
   // A unit holding its ground under the battle alert takes no work and no rest, which without its own
@@ -370,6 +370,14 @@ function awaitsItsTrainingHouse(snapshot: WorldSnapshot, components: Comp): bool
   const house = num((components.TrainingOrder as { house?: unknown } | undefined)?.house);
   if (house === undefined) return false;
   return entityById(snapshot, house)?.components.UnderConstruction !== undefined;
+}
+
+/** A training order, or a coin drill on its way to its barracks, still waiting for a seat there. */
+function awaitsSeat(components: Comp): boolean {
+  const training = components.TrainingOrder as { seated?: unknown } | undefined;
+  if (training !== undefined) return training.seated === false;
+  const drill = components.CoinDrillOrder as { stage?: unknown; seated?: unknown } | undefined;
+  return drill?.stage === 'drill' && drill.seated === false;
 }
 
 function awaitsItsWorkplace(snapshot: WorldSnapshot, components: Comp): boolean {

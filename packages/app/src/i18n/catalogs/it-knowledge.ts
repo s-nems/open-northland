@@ -256,6 +256,9 @@ export const itKnowledge = {
         limitValue: 'Solo sotto i {{coinDrill.limit}} punti',
         cut: 'Interrotta',
         cutValue: 'Una battaglia o un nuovo ordine restituisce la moneta, senza punti',
+        seats: 'Insieme',
+        seatsValue:
+          '{{barracks.seats}} soldati, sugli stessi posti delle reclute; gli altri aspettano alla porta',
       },
       workers: 'Lavoratori',
       seats: {

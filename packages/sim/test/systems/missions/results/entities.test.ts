@@ -378,6 +378,8 @@ describe('the ownership results', () => {
       returnTo,
       stage: 'return',
       termTicksLeft: 0,
+      enrolled: 0,
+      seated: false,
     });
     loadPassAfter(sim, 0);
     expect(ownerOf(sim.world, moved)).toBe(4);

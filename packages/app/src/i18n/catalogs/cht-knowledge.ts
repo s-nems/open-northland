@@ -232,6 +232,8 @@ export const chtKnowledge = {
         limitValue: '只在低於 {{coinDrill.limit}} 點時',
         cut: '中斷',
         cutValue: '戰鬥或新命令打斷時退回金幣，不得點數',
+        seats: '同時',
+        seatsValue: '{{barracks.seats}} 名士兵，與新兵共用位置；其餘的在門口等候',
       },
       workers: '工人',
       seats: { one: '{count}個職位', few: '{count}個職位', many: '{count}個職位' },

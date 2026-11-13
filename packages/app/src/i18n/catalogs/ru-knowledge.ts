@@ -234,6 +234,8 @@ export const ruKnowledge = {
         limitValue: 'Только ниже {{coinDrill.limit}} очков',
         cut: 'Прерванная',
         cutValue: 'Бой или новый приказ возвращает монету, очков нет',
+        seats: 'Одновременно',
+        seatsValue: '{{barracks.seats}} солдат, на тех же местах, что и новобранцы; остальные ждут у двери',
       },
       workers: 'Работники',
       seats: { one: '{count} место', few: '{count} места', many: '{count} мест' },

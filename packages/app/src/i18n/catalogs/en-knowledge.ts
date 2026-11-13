@@ -233,6 +233,8 @@ export const enKnowledge = {
         limitValue: 'Only below {{coinDrill.limit}} points',
         cut: 'Cut short',
         cutValue: 'A fight or a new order gives the coin back, with no points',
+        seats: 'At once',
+        seatsValue: '{{barracks.seats}} soldiers, on the places recruits use too; the rest wait at the door',
       },
       workers: 'Workers',
       seats: { one: '{count} place', few: '{count} places', many: '{count} places' },

@@ -149,6 +149,30 @@ describe('building staff readers', () => {
     expect(buildingModel([buildingEntity(1, BUILDING_HEADQUARTERS)], 1).orders?.rally).toBeNull();
   });
 
+  it('lists coin-drillers with the recruits whose seats they share, seated or queued', () => {
+    const settler = (id: number, order: Record<string, unknown>) => ({
+      id,
+      components: { Settler: { jobType: JOB_CARRIER }, ...order },
+    });
+    const drill = (seated: boolean, stage = 'drill') => ({
+      CoinDrillOrder: { house: 1, returnTo: 0, stage, termTicksLeft: 0, enrolled: 0, seated },
+    });
+    const model = buildingModel(
+      [
+        buildingEntity(1, BUILDING_BARRACKS),
+        settler(2, { TrainingOrder: { house: 1, drillTicksLeft: 1, enrolled: 0, seated: true } }),
+        settler(3, drill(true)),
+        settler(4, drill(false)),
+        // On his way back he holds no place.
+        settler(5, drill(true, 'return')),
+      ],
+      1,
+    );
+    const group = (key: string) =>
+      model.staff?.groups.find((g) => g.key === key)?.people.map((person) => person.entity);
+    expect([group('trainees'), group('traineesQueued')]).toEqual([[2, 3], [4]]);
+  });
+
   it('lists a worker who shelters where it works on its trade line only', () => {
     const model = buildingModel(
       [

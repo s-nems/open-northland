@@ -7,8 +7,9 @@ import type { NodeId } from '../nav/terrain/index.js';
  * `drillTicksLeft` by less than one exercise clip. It survives a needs detour; a move order, a player
  * equip order, a profession change, or a script fixing the trade calls it off.
  *
- * A house trains at most its `schoolSize` settlers at once. A free seat goes to the earliest `enrolled`
- * tick, then the lowest id; the others wait in the yard. A seat is kept until the order ends.
+ * A house trains at most its `schoolSize` settlers at once, coin-drillers ({@link CoinDrillOrder}) among
+ * them. A free seat goes to the earliest `enrolled` tick, then the lowest id; the others wait in the yard.
+ * A seat is kept until the order ends.
  */
 export const TrainingOrder = defineComponent<{
   house: Entity;
@@ -43,11 +44,14 @@ export const RallyPoint = defineComponent<{ flag: Entity }>('RallyPoint', 'settl
  * order was given, or the open node nearest it once a building covers it, and the order ends there.
  * `termTicksLeft` is what the term he paid for still owes, drawn down per completed repetition; 0 while no
  * paid term runs, so the coins still spoken for are the drilling orders at 0, and a term cut short gives
- * its coin back. Our rule.
+ * its coin back. While `drill`, he holds a place on the barracks' seat list as a {@link TrainingOrder}
+ * does, `enrolled` and `seated` alike: one queue for both, a seat kept for all his terms. Our rule.
  */
 export const CoinDrillOrder = defineComponent<{
   house: Entity;
   returnTo: NodeId;
   stage: 'drill' | 'return';
   termTicksLeft: number;
+  enrolled: number;
+  seated: boolean;
 }>('CoinDrillOrder', 'settlers');

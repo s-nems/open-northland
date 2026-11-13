@@ -324,7 +324,7 @@ function planBreak(
   if (planTraining(plan, settler, pass.spacing, pass.idle, load)) return true;
   // COIN DRILL: a soldier's paid practice, a player errand above the equip errand and the
   // standing soldier rungs below, which take him back over once he has walked home.
-  if (planCoinDrill(plan, settler)) return true;
+  if (planCoinDrill(plan, settler, pass.spacing, pass.idle)) return true;
   // EQUIP ERRAND: the player's or the assistant's, outranking the DEFEND hold below, socialising and every
   // economy rung, but under the needs drives and the ownership gate. A DEFEND guard walks the errand and
   // re-holds its unchanged anchor afterwards, since the combat walk-back pass defers to a live errand. A

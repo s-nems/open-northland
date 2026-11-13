@@ -27,7 +27,7 @@ import { moveAnchor } from '../../orders/combat.js';
 import { isSchoolOrFoundation, schoolMethodJob } from '../../orders/education.js';
 import { keepingOrderQueue } from '../../orders/guards.js';
 import { rallyNodeOf } from '../../orders/rally-point.js';
-import { takeTrainingSeat } from '../../orders/training-seats.js';
+import { takeSeat } from '../../orders/training-seats.js';
 import { reidleAsJob } from '../../orders/work/index.js';
 import { typeAllowed } from '../../progression/unlocks.js';
 import { atomicDuration } from '../../readviews/animations.js';
@@ -179,8 +179,8 @@ export function planTraining(
   if (!drillDoorOpen(world, ctx, e, door, limit)) return abandonDrill(world, e);
   const foundation = world.has(order.house, UnderConstruction);
   if (foundation && supplyFoundation(plan, spacing, order.house, load)) return true;
-  if (!takeTrainingSeat(world, ctx, e) || foundation)
-    return waitInYard(world, ctx, terrain, e, here, door, spacing, idle);
+  if (!takeSeat(world, ctx, e) || foundation)
+    return waitInYard(world, ctx, terrain, e, here, door, spacing, idle) || abandonDrill(world, e);
   enterBuilding(world, e, order.house, here, door, () =>
     startAtomic(
       world,
@@ -212,11 +212,12 @@ function supplyFoundation(
 }
 
 /**
- * Wait beside the house's door for it to stand or for a free seat, re-checked on the idle beat. The walk
- * goes to a yard cell, not the door, so a failed walk to any yard cell is what tells an unreachable house:
- * the errand is then dropped as it would be at a standing house's door.
+ * Wait beside the house's door for it to stand or for a free seat, re-checked on the idle beat; false, with
+ * nothing started, when the house is unreachable. The walk goes to a yard cell, not the door, so a failed
+ * walk to any yard cell is what tells an unreachable house: the caller then drops the errand as it would
+ * at a standing house's door.
  */
-function waitInYard(
+export function waitInYard(
   world: World,
   ctx: SystemContext,
   terrain: TerrainGraph,
@@ -229,7 +230,7 @@ function waitInYard(
   const failed = unreachableGoals(world, ctx, e);
   if (failed !== null) {
     const yard = spacing.yard(door);
-    if (failed.some((goal) => yard.has(goal.cell))) return abandonDrill(world, e);
+    if (failed.some((goal) => yard.has(goal.cell))) return false;
   }
   idle.stand(e, false);
   atOrWalk(world, e, here, loiterCell(world, terrain, e, here, door, spacing), () => {});
