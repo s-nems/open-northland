@@ -164,9 +164,9 @@ export function readCarriesLiveGood(
   components: Readonly<Record<string, unknown>>,
   goods: ReadonlySet<number>,
 ): boolean {
-  const misc = (components.Equipment as { misc?: unknown } | undefined)?.misc;
-  if (!Array.isArray(misc)) return false;
-  for (const slot of misc as readonly ({ goodType?: unknown; degreeOfUse?: unknown } | null)[]) {
+  const misc = readEquipmentMisc(components);
+  if (misc === undefined) return false;
+  for (const slot of misc) {
     if (typeof slot?.goodType !== 'number' || !goods.has(slot.goodType)) continue;
     if (typeof slot.degreeOfUse === 'number' && slot.degreeOfUse < ONE) return true;
   }
@@ -197,7 +197,7 @@ function readEquipSlotGood(
  *  carries no equipment. */
 export function readEquipmentMisc(
   components: Readonly<Record<string, unknown>>,
-): readonly ({ readonly goodType?: unknown } | null)[] | undefined {
+): readonly ({ readonly goodType?: unknown; readonly degreeOfUse?: unknown } | null)[] | undefined {
   const misc = (components.Equipment as { misc?: unknown } | undefined)?.misc;
   return Array.isArray(misc) ? misc : undefined;
 }

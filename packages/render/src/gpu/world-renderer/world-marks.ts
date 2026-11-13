@@ -335,13 +335,9 @@ export class WorldMarks {
       viewport,
       renderTime,
     });
-    this.windTrails.draw({
-      snapshot: frame.snapshot,
-      walkers: this.equipmentEffects && detail.windTrails ? frame.walkers : NO_WALKERS,
-      drawn,
-      viewport,
-      renderTime,
-    });
+    if (this.equipmentEffects && detail.windTrails)
+      this.windTrails.draw({ snapshot: frame.snapshot, walkers: frame.walkers, drawn, viewport, renderTime });
+    else this.windTrails.clear();
     this.footfall.draw({
       snapshot: frame.snapshot,
       walkers: detail.footfalls ? frame.walkers : NO_WALKERS,

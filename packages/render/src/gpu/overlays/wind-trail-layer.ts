@@ -6,6 +6,7 @@ import {
   WIND_GUST_FRAME_H,
   WIND_GUST_FRAME_W,
   WIND_GUST_FRAMES,
+  WIND_GUST_LIFE_TICKS,
   WIND_GUST_MAX_SPEED,
   WIND_GUST_MIN_SPEED,
   WIND_GUST_SHAPES,
@@ -36,8 +37,9 @@ export interface WindTrailFrame {
 /** Ticks between two readings of a walker's drawn feet: long enough that the heading between them is
  *  steady, short enough that a turn shows in the next gust. */
 const SAMPLE_TICKS = 0.5;
-/** A longer gap between readings is a pause or a jump of the clock, not a walk. */
-const MAX_SAMPLE_TICKS = 3;
+/** A longer gap between readings is a jump of the clock, not a walk: the gap of a slow frame at the
+ *  fastest game speed stays well under a gust's life. */
+const MAX_SAMPLE_TICKS = WIND_GUST_LIFE_TICKS;
 const NO_FRAME = -1;
 
 /** A fast walker as last read: where its feet were drawn, and when it is due its next gust. */
@@ -125,10 +127,17 @@ export class WindTrailLayer {
     this.place(frame, time);
   }
 
-  destroy(): void {
+  /** Drop every gust and trail at once: the wind is switched off, which a paused clock would not age out. */
+  clear(): void {
+    if (this.gusts.length === 0 && this.trails.size === 0) return;
     for (const gust of this.gusts) gust.node.destroy();
     this.gusts.length = 0;
     this.trails.clear();
+    this.lastSnapshot = undefined;
+  }
+
+  destroy(): void {
+    this.clear();
     this.textures.destroy();
   }
 

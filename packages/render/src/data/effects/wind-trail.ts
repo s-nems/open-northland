@@ -13,6 +13,8 @@ export const WIND_GUST_LIFE_TICKS = 12;
 export const WIND_GUST_FRAMES = 20;
 /** The line shapes a gust is drawn along: an arc, a wave, and a line that curls once. */
 export const WIND_GUST_SHAPES = 3;
+const SHAPE_ARC = 0;
+const SHAPE_WAVE = 1;
 /** A gust's opacity at its strongest; its frames carry the fade. */
 export const WIND_GUST_ALPHA = 0.85;
 
@@ -122,8 +124,8 @@ function smoothstep(edge0: number, edge1: number, x: number): number {
 /** The point of `shape`'s line at share `s` of its run, tail 0 to head 1, in frame px. */
 function linePoint(shape: number, s: number): readonly [x: number, y: number] {
   const x = WIND_GUST_TAIL_X + (HEAD_X - WIND_GUST_TAIL_X) * s;
-  if (shape === 0) return [x, MID_Y + ARC_RISE * (0.5 - Math.sin(Math.PI * s))];
-  if (shape === 1) return [x, MID_Y + WAVE_RISE * Math.sin(TURN * s)];
+  if (shape === SHAPE_ARC) return [x, MID_Y + ARC_RISE * (0.5 - Math.sin(Math.PI * s))];
+  if (shape === SHAPE_WAVE) return [x, MID_Y + WAVE_RISE * Math.sin(TURN * s)];
   const turn = smoothstep(CURL_FROM, CURL_TO, s) * TURN;
   return [
     x - CURL_RADIUS * Math.sin(turn),
