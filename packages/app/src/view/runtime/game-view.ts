@@ -142,6 +142,7 @@ import { nodeBounds } from '../picking.js';
 import { createPlacementGates } from '../placement/gates.js';
 import { makeGhostPlotAt } from '../placement/ghost-plot.js';
 import {
+  amuletArcColours,
   createFogGates,
   diplomacyMapNations,
   diplomacyMetSeats,
@@ -510,6 +511,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
     );
 
     renderer.setDraughtGlowColours(draughtGlowColours(host.content.goods));
+    renderer.setAmuletArcColours(amuletArcColours(host.content.goods));
 
     // A checkout without a decoded sound bank degrades to silence.
     const weatherAllowed = deps.weatherMode !== 'off';

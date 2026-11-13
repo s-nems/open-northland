@@ -1,4 +1,12 @@
 export {
+  ARC_DOTS,
+  ARC_DRAW_SCALE,
+  ARC_FRAME_PX,
+  type ArcDot,
+  arcDot,
+  arcDotStrip,
+} from './amulet-arcs.js';
+export {
   BONES_LIFETIME_TICKS,
   type BonePileMark,
   boneAlpha,

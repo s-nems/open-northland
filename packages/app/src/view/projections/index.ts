@@ -1,6 +1,8 @@
 /**
  * Pure reads over a frozen `WorldSnapshot`: no DOM and no Pixi, the interactive glue lives one level up.
  */
+
+export * from './amulet-arcs.js';
 export * from './building-points.js';
 export * from './construction-signs.js';
 export * from './diplomacy-rows.js';

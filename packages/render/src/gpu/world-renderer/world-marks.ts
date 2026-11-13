@@ -19,6 +19,7 @@ import {
   type ConstructionSign,
   ConstructionSignLayer,
   type DoorBadge,
+  AmuletArcLayer,
   DraughtGlowLayer,
   type ExperienceStar,
   type ExperienceStarGfx,
@@ -144,6 +145,7 @@ export class WorldMarks {
   private readonly badges: BadgeLayer;
   private readonly familyEffects: FamilyEffectsLayer;
   private readonly draughtGlows: DraughtGlowLayer;
+  private readonly amuletArcs: AmuletArcLayer;
   /** Prints in their own ground slot, dust in the depth-sorted sprite layer. */
   private readonly footfall: FootfallLayer;
   private readonly constructionSigns: ConstructionSignLayer;
@@ -178,6 +180,7 @@ export class WorldMarks {
     this.shots = new ShotLayer(spriteLayer, textures, sheet);
     this.familyEffects = new FamilyEffectsLayer(spriteLayer, textures, sheet);
     this.draughtGlows = new DraughtGlowLayer(spriteLayer);
+    this.amuletArcs = new AmuletArcLayer(spriteLayer);
     this.footfall = new FootfallLayer(spriteLayer, textures, sheet);
     this.badges = new BadgeLayer(spriteLayer, playerColourOf);
     this.constructionSigns = new ConstructionSignLayer(playerColourOf);
@@ -224,6 +227,11 @@ export class WorldMarks {
   /** Good type → the colour a sip of it glows in; `null` shows no sip. */
   setDraughtGlowColours(colourOfGood: ReadonlyMap<number, number> | null): void {
     this.draughtGlows.setColours(colourOfGood);
+  }
+
+  /** Good type → the colour of the arc round a carrier of that amulet; `null` draws none. */
+  setAmuletArcColours(colourOfGood: ReadonlyMap<number, number> | null): void {
+    this.amuletArcs.setColours(colourOfGood);
   }
 
   setHouseBodies(bodyOf: HouseBodyOf | null): void {
@@ -307,6 +315,13 @@ export class WorldMarks {
     this.badges.draw(frame.doorBadges, elevation, viewport, renderTime, detail.buildingSigns);
     this.familyEffects.draw(frame);
     this.draughtGlows.draw({ drawn, viewport, renderTime });
+    this.amuletArcs.draw({
+      snapshot: frame.snapshot,
+      walkers: detail.amuletArcs ? frame.walkers : NO_WALKERS,
+      drawn,
+      viewport,
+      renderTime,
+    });
     this.footfall.draw({
       snapshot: frame.snapshot,
       walkers: detail.footfalls ? frame.walkers : NO_WALKERS,
@@ -365,6 +380,7 @@ export class WorldMarks {
     this.badges.destroy();
     this.familyEffects.destroy();
     this.draughtGlows.destroy();
+    this.amuletArcs.destroy();
     this.footfall.destroy();
     this.constructionSigns.destroy();
     this.bubbles.destroy();

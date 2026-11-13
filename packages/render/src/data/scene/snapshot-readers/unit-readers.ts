@@ -178,6 +178,15 @@ function readEquipSlotGood(
   return typeof goodType === 'number' ? goodType : null;
 }
 
+/** A settler's `Equipment.misc` slots (drinks and amulets), empty ones `null`, or undefined when it
+ *  carries no equipment. */
+export function readEquipmentMisc(
+  components: Readonly<Record<string, unknown>>,
+): readonly ({ readonly goodType?: unknown } | null)[] | undefined {
+  const misc = (components.Equipment as { misc?: unknown } | undefined)?.misc;
+  return Array.isArray(misc) ? misc : undefined;
+}
+
 /** Whether a human's mission behaviour mask asks for the hero glow. */
 export function readBehaviourGlow(components: Readonly<Record<string, unknown>>): boolean {
   const flags = readNumField(components, 'MissionBehaviour', 'flags') ?? 0;

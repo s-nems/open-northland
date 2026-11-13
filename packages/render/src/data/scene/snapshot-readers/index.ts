@@ -36,6 +36,7 @@ export {
   readCraftWorkplace,
   readEngaged,
   readEquipmentArmorGood,
+  readEquipmentMisc,
   readEquipmentWeaponGood,
   readJobType,
   readOwnerPlayer,

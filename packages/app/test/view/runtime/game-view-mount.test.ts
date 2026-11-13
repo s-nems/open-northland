@@ -88,6 +88,7 @@ it.each([false, true])(
           setGroupNumbersShown() {},
           setDetailMode() {},
           setDraughtGlowColours() {},
+          setAmuletArcColours() {},
         },
         driver: {},
         saveEntrySearch: '?scene=mount-test',

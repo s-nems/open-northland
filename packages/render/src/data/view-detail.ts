@@ -23,6 +23,8 @@ export interface ViewDetail {
   readonly motion: boolean;
   /** Thought bubbles, life hearts and experience stars over settlers. */
   readonly overheadIcons: boolean;
+  /** The arcs of light round an amulet's carrier. */
+  readonly amuletArcs: boolean;
   /** The cast shadows of trees, bushes, stumps, goods piles and flat decor. */
   readonly landscapeShadows: boolean;
   /** Sign chains at doors and construction stands. Garrison flags stay: they tell who holds a tower. */
@@ -57,6 +59,7 @@ export const VIEW_DETAILS: Readonly<Record<DetailTier, ViewDetail>> = {
     footfalls: true,
     motion: true,
     overheadIcons: true,
+    amuletArcs: true,
     landscapeShadows: true,
     buildingSigns: true,
   },
@@ -66,6 +69,7 @@ export const VIEW_DETAILS: Readonly<Record<DetailTier, ViewDetail>> = {
     footfalls: false,
     motion: false,
     overheadIcons: true,
+    amuletArcs: true,
     landscapeShadows: true,
     buildingSigns: true,
   },
@@ -75,6 +79,7 @@ export const VIEW_DETAILS: Readonly<Record<DetailTier, ViewDetail>> = {
     footfalls: false,
     motion: false,
     overheadIcons: false,
+    amuletArcs: false,
     landscapeShadows: false,
     buildingSigns: true,
   },
@@ -84,6 +89,7 @@ export const VIEW_DETAILS: Readonly<Record<DetailTier, ViewDetail>> = {
     footfalls: false,
     motion: false,
     overheadIcons: false,
+    amuletArcs: false,
     landscapeShadows: false,
     buildingSigns: false,
   },
