@@ -66,8 +66,9 @@ export function planCoinDrill(
         }
         startAtomic(world, e, COIN_DRILL_ATOMIC_ID, { kind: 'coinDrill', house }, clip.length, house);
       };
-      // One the re-plan kept inside drills on where he stands, which may be a stand-in beside the door.
-      if (isInside(world, e, house)) {
+      // One the re-plan kept inside drills on where he stands, which may be a stand-in beside the door;
+      // a man the order found indoors still needs a seat.
+      if (isInside(world, e, house) && takeSeat(world, ctx, e)) {
         drill();
         return true;
       }
