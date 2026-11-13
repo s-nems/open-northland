@@ -158,6 +158,21 @@ export function readWearsLiveBoots(components: Readonly<Record<string, unknown>>
   return typeof degree === 'number' && degree < ONE;
 }
 
+/** Whether a settler carries a live unit of one of `goods` in its misc row: a slot whose wear has not
+ *  reached ONE, the sim's rule for a carried effect. */
+export function readCarriesLiveGood(
+  components: Readonly<Record<string, unknown>>,
+  goods: ReadonlySet<number>,
+): boolean {
+  const misc = (components.Equipment as { misc?: unknown } | undefined)?.misc;
+  if (!Array.isArray(misc)) return false;
+  for (const slot of misc as readonly ({ goodType?: unknown; degreeOfUse?: unknown } | null)[]) {
+    if (typeof slot?.goodType !== 'number' || !goods.has(slot.goodType)) continue;
+    if (typeof slot.degreeOfUse === 'number' && slot.degreeOfUse < ONE) return true;
+  }
+  return false;
+}
+
 /** {@link readEquipmentWeaponGood}'s twin for the `Equipment.armor` slot, same tri-state. */
 export function readEquipmentArmorGood(
   components: Readonly<Record<string, unknown>>,

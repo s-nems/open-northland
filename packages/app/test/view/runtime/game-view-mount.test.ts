@@ -89,6 +89,7 @@ it.each([false, true])(
           setDetailMode() {},
           setDraughtGlowColours() {},
           setAmuletArcColours() {},
+          setWindTrailGoods() {},
         },
         driver: {},
         saveEntrySearch: '?scene=mount-test',

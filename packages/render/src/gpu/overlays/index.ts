@@ -55,3 +55,4 @@ export { type RallyBanner, RallyBannerLayer } from './rally-banner-layer.js';
 export { ShipWakeLayer } from './ship-wake-layer.js';
 export { type ShotFrame, ShotLayer } from './shot-layer.js';
 export { type TempleGlowFrame, TempleGlowLayer } from './temple-glow-layer.js';
+export { WindTrailLayer } from './wind-trail-layer.js';

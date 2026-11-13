@@ -17,6 +17,8 @@ export interface ViewDetail {
   readonly figureShadows: boolean;
   /** Footprints and the dust of a step. */
   readonly footfalls: boolean;
+  /** The wind a fast walker trails. It stays a tier longer than the footfalls: it tells who is fast. */
+  readonly windTrails: boolean;
   /** The landscape's own motion: the frame loops of trees and bushes, the sway of vegetation and the
    *  breeze on it, and smoothed fish. Without it shore waves step every {@link WAVE_STEP_TICKS} ticks.
    *  One-shot clips, flat decor's GPU-played loops and the wind in sails are not part of it. */
@@ -57,6 +59,7 @@ export const VIEW_DETAILS: Readonly<Record<DetailTier, ViewDetail>> = {
     tier: 'full',
     figureShadows: true,
     footfalls: true,
+    windTrails: true,
     motion: true,
     overheadIcons: true,
     amuletArcs: true,
@@ -67,6 +70,7 @@ export const VIEW_DETAILS: Readonly<Record<DetailTier, ViewDetail>> = {
     tier: 'reduced',
     figureShadows: false,
     footfalls: false,
+    windTrails: true,
     motion: false,
     overheadIcons: true,
     amuletArcs: true,
@@ -77,6 +81,7 @@ export const VIEW_DETAILS: Readonly<Record<DetailTier, ViewDetail>> = {
     tier: 'sparse',
     figureShadows: false,
     footfalls: false,
+    windTrails: false,
     motion: false,
     overheadIcons: false,
     amuletArcs: false,
@@ -87,6 +92,7 @@ export const VIEW_DETAILS: Readonly<Record<DetailTier, ViewDetail>> = {
     tier: 'minimal',
     figureShadows: false,
     footfalls: false,
+    windTrails: false,
     motion: false,
     overheadIcons: false,
     amuletArcs: false,

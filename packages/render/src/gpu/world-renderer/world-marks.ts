@@ -44,6 +44,7 @@ import {
   ShipWakeLayer,
   ShotLayer,
   TempleGlowLayer,
+  WindTrailLayer,
 } from '../overlays/index.js';
 import { SelectionLayer } from '../selection/layer.js';
 import type { RangeRing } from '../selection/range-ring.js';
@@ -147,6 +148,7 @@ export class WorldMarks {
   private readonly draughtGlows: DraughtGlowLayer;
   private readonly amuletArcs: AmuletArcLayer;
   private equipmentEffects = true;
+  private readonly windTrails: WindTrailLayer;
   /** Prints in their own ground slot, dust in the depth-sorted sprite layer. */
   private readonly footfall: FootfallLayer;
   private readonly constructionSigns: ConstructionSignLayer;
@@ -182,6 +184,7 @@ export class WorldMarks {
     this.familyEffects = new FamilyEffectsLayer(spriteLayer, textures, sheet);
     this.draughtGlows = new DraughtGlowLayer(spriteLayer);
     this.amuletArcs = new AmuletArcLayer(spriteLayer);
+    this.windTrails = new WindTrailLayer(spriteLayer);
     this.footfall = new FootfallLayer(spriteLayer, textures, sheet);
     this.badges = new BadgeLayer(spriteLayer, playerColourOf);
     this.constructionSigns = new ConstructionSignLayer(playerColourOf);
@@ -237,6 +240,11 @@ export class WorldMarks {
   /** Good type → the colour of the arc round a carrier of that amulet; `null` draws none. */
   setAmuletArcColours(colourOfGood: ReadonlyMap<number, number> | null): void {
     this.amuletArcs.setColours(colourOfGood);
+  }
+
+  /** The goods whose live carrier trails wind as it walks; `null` trails none. */
+  setWindTrailGoods(goods: ReadonlySet<number> | null): void {
+    this.windTrails.setGoods(goods);
   }
 
   setHouseBodies(bodyOf: HouseBodyOf | null): void {
@@ -327,6 +335,13 @@ export class WorldMarks {
       viewport,
       renderTime,
     });
+    this.windTrails.draw({
+      snapshot: frame.snapshot,
+      walkers: this.equipmentEffects && detail.windTrails ? frame.walkers : NO_WALKERS,
+      drawn,
+      viewport,
+      renderTime,
+    });
     this.footfall.draw({
       snapshot: frame.snapshot,
       walkers: detail.footfalls ? frame.walkers : NO_WALKERS,
@@ -386,6 +401,7 @@ export class WorldMarks {
     this.familyEffects.destroy();
     this.draughtGlows.destroy();
     this.amuletArcs.destroy();
+    this.windTrails.destroy();
     this.footfall.destroy();
     this.constructionSigns.destroy();
     this.bubbles.destroy();

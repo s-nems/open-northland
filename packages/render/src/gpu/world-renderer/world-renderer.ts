@@ -453,7 +453,7 @@ export class WorldRenderer {
     this.marks.setDraughtGlowColours(colourOfGood);
   }
 
-  /** Off draws no sign of worn equipment: the amulet arcs. */
+  /** Off draws no sign of worn equipment: the amulet arcs and the wind trail. */
   setEquipmentEffects(shown: boolean): void {
     this.marks.setEquipmentEffects(shown);
   }
@@ -461,6 +461,11 @@ export class WorldRenderer {
   /** Good type → the colour of the arc of light round a human carrying that amulet; `null` draws none. */
   setAmuletArcColours(colourOfGood: ReadonlyMap<number, number> | null): void {
     this.marks.setAmuletArcColours(colourOfGood);
+  }
+
+  /** The goods whose live carrier trails wind as it walks; `null` trails none. */
+  setWindTrailGoods(goods: ReadonlySet<number> | null): void {
+    this.marks.setWindTrailGoods(goods);
   }
 
   /** The body cells a temple's aura spreads from; `null` spreads it from the temple's anchor. */

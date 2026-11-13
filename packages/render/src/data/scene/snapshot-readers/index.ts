@@ -31,6 +31,7 @@ export {
   readAtomicTargetEntity,
   readBehaviourGlow,
   readBehaviourImported,
+  readCarriesLiveGood,
   readCarrying,
   readCraftPerformance,
   readCraftWorkplace,

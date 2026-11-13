@@ -19,3 +19,4 @@ export * from './range-rings.js';
 export * from './selected-flags.js';
 export * from './settler-bubbles.js';
 export * from './snapshot-projections.js';
+export * from './wind-trail.js';

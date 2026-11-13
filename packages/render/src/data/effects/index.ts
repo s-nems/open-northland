@@ -92,3 +92,23 @@ export {
   wetStepStrength,
   wetStepStrip,
 } from './wet-step.js';
+export {
+  WIND_GUST_ALPHA,
+  WIND_GUST_EVERY_TICKS,
+  WIND_GUST_FRAME_H,
+  WIND_GUST_FRAME_W,
+  WIND_GUST_FRAMES,
+  WIND_GUST_LIFE_TICKS,
+  WIND_GUST_MAX_SPEED,
+  WIND_GUST_MIN_SPEED,
+  WIND_GUST_SHAPES,
+  WIND_GUST_TAIL_X,
+  WIND_GUST_TEXELS_PER_PX,
+  type WindGust,
+  windGust,
+  windGustFrame,
+  windGustSheet,
+  windGustStretch,
+  windGustTailX,
+  windGustTailY,
+} from './wind-trail.js';
