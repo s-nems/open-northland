@@ -124,7 +124,7 @@ export const ECONOMY: ArticleGroup = {
           h: 'What a Builder does first',
         },
         {
-          p: 'A Builder repairs first, then puts up buildings, and leaves stockades and roads for last. If you assign him to a site, he stays there even when there is work elsewhere. A site you give priority in its panel comes before all other sites and even calls their last Builder away.',
+          p: 'A Builder repairs first, then puts up buildings, and leaves stockades and roads for last. If you assign him to a site, he stays there even when there is work elsewhere. A site you give priority in its panel comes before every site without priority and calls even the last Builder away from such a site.',
         },
         {
           h: 'Upgrades',
@@ -254,6 +254,10 @@ export const ECONOMY: ArticleGroup = {
               [
                 'Right-click a resource',
                 'The "Gather" order: this good ∞, rest 0, and the work flag moves to the resource. Without a flag only the good changes.',
+              ],
+              [
+                'Ctrl + right-click',
+                'The flag moves to that spot, and on a resource the good changes as above',
               ],
               ['All counters at 0', 'The Extractor shows "All set to 0" and gathers nothing'],
               [
@@ -657,7 +661,7 @@ export const ECONOMY: ArticleGroup = {
           h: 'Planting a flag',
         },
         {
-          p: '"Plant a flag" places the flag on the spot you pick or moves it there, just like a right-click on a resource he gathers. If the spot is taken, the flag goes to a free one within {{flag.snap}} hexes, and if there is none, the order is lost.',
+          p: '"Plant a flag" places the flag on the spot you pick or moves it there, just like Ctrl + right-click. If the spot is taken, the flag goes to a free one within {{flag.snap}} hexes, and if there is none, the order is lost.',
         },
         {
           p: "In the [[article:assistant|Assistant]] you can let Extractors move their flags themselves. An Extractor then plants it {{assistant.flagMin}}-{{assistant.flagMax}} hexes from the resource, and once everything nearby runs out, he moves to the resource nearest his building. Hunters and Fishermen don't do this.",
@@ -694,7 +698,7 @@ export const ECONOMY: ArticleGroup = {
             'Your new signpost has to stand at least {{reach.spacing}} hexes from another one.',
             'A settler looks for goods closer than {{reach.goods}} hexes from himself or from signposts within that reach.',
             "A building placed on a signpost moves it up to {{reach.displace}} hexes aside, and if that isn't possible, the signpost is gone.",
-            'A new signpost pushes a work flag aside and clears mushrooms, crops and herbs from its spot.',
+            'A new signpost pushes a work flag aside and clears its spot of mushrooms, clay, crops, herbs, bushes, stumps and opened chests.',
           ],
         },
         {

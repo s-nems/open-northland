@@ -231,7 +231,7 @@ export const WORLD: ArticleGroup = {
             'Z pokładu [[vehicle:ship_small|Statku]], tego, który wozi Katapultę, strzela do wrogów, których widzisz, najwyżej {{deck.archers}} żołnierzy z łukiem. Najpierw celują we wrogie statki. Statek handlowy nie ma łuczników na pokładzie.',
             'Z pokładu łuk sięga o {{deck.rangeLoss}} hexy mniej niż na lądzie, między strzałami czeka o {{deck.slowerPct}}% dłużej i rozrzuca szerzej: [[article:aim|Trafienie i strzelanie]].',
             'Kamień z Katapulty zabiera statkowi {{ship.stoneFactor}} razy więcej niż innemu pojazdowi.',
-            'Poniżej {{ship.firePct}}% zdrowia statek płonie i traci {{ship.fireLoss}} zdrowia na sekundę, aż zatonie. Budowniczowie naprawiają statek przy brzegu jak budynek, a powyżej {{ship.firePct}}% ogień gaśnie.',
+            'Poniżej {{ship.firePct}}% zdrowia statek płonie i traci {{ship.fireLoss}} zdrowia na sekundę, aż zatonie. Budowniczowie naprawiają statek przy brzegu jak budynek, a ogień gaśnie, gdy zdrowie wróci do {{ship.firePct}}%.',
           ],
         },
         {

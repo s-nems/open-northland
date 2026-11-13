@@ -127,7 +127,7 @@ export const ECONOMY: ArticleGroup = {
           h: 'Cosa fa prima un costruttore',
         },
         {
-          p: "Un costruttore prima ripara, poi costruisce edifici, e lascia per ultime palizzate e strade. Se lo assegni a un cantiere, resta lì anche quando c'è lavoro altrove. Un cantiere a cui dai la priorità nel suo pannello viene prima di tutti gli altri e richiama perfino il loro ultimo costruttore.",
+          p: "Un costruttore prima ripara, poi costruisce edifici, e lascia per ultime palizzate e strade. Se lo assegni a un cantiere, resta lì anche quando c'è lavoro altrove. Un cantiere a cui dai la priorità nel suo pannello viene prima di ogni cantiere senza priorità e ne richiama perfino l'ultimo costruttore.",
         },
         {
           h: 'Miglioramenti',
@@ -264,6 +264,10 @@ export const ECONOMY: ArticleGroup = {
               [
                 'Clic destro su una risorsa',
                 "L'ordine «Raccogli»: questo bene ∞, il resto 0, e la bandierina di lavoro si sposta sulla risorsa. Senza bandierina cambia solo il bene.",
+              ],
+              [
+                'Ctrl + clic destro',
+                'La bandierina si sposta in quel punto, e su una risorsa cambia anche il bene come sopra',
               ],
               ['Tutti i contatori a 0', "L'estrattore mostra «Tutto a 0» e non raccoglie niente"],
               [
@@ -690,7 +694,7 @@ export const ECONOMY: ArticleGroup = {
           h: 'Piantare una bandierina',
         },
         {
-          p: "«Pianta una bandierina» mette la bandierina nel punto che scegli o la sposta lì, proprio come un clic destro su una risorsa che raccoglie. Se il punto è occupato, la bandierina va in un punto libero entro {{flag.snap}} esagoni, e se non ce n'è nessuno, l'ordine va perso.",
+          p: "«Pianta una bandierina» mette la bandierina nel punto che scegli o la sposta lì, proprio come Ctrl + clic destro. Se il punto è occupato, la bandierina va in un punto libero entro {{flag.snap}} esagoni, e se non ce n'è nessuno, l'ordine va perso.",
         },
         {
           p: "Nell'[[article:assistant|Assistente]] puoi lasciare che gli estrattori spostino da soli le loro bandierine. Un estrattore la pianta allora a {{assistant.flagMin}}-{{assistant.flagMax}} esagoni dalla risorsa, e quando tutto quello che c'è intorno è esaurito, si sposta alla risorsa più vicina al suo edificio. Cacciatori e pescatori non lo fanno.",
@@ -727,7 +731,7 @@ export const ECONOMY: ArticleGroup = {
             'Un tuo nuovo cartello deve stare ad almeno {{reach.spacing}} esagoni da un altro.',
             'Un colono cerca i beni a meno di {{reach.goods}} esagoni da sé o dai cartelli entro quella portata.',
             'Un edificio piazzato su un cartello lo sposta di lato fino a {{reach.displace}} esagoni, e se non è possibile, il cartello sparisce.',
-            'Un nuovo cartello sposta di lato una bandierina di lavoro e toglie dal suo posto funghi, raccolti ed erbe.',
+            'Un nuovo cartello sposta di lato una bandierina di lavoro e toglie dal suo posto funghi, argilla, raccolti, erbe, cespugli, ceppi e casse aperte.',
           ],
         },
         {

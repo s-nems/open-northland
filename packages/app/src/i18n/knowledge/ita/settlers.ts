@@ -476,8 +476,8 @@ export const SETTLERS: ArticleGroup = {
         {
           list: [
             'Con «Fonda famiglie» acceso, una [[job:woman|Donna]] adulta senza casa si trasferisce nella casa più vicina con un posto libero che può raggiungere.',
-            "Una donna con una casa riceve l'ordine «Sposa» appena c'è un uomo libero. Una donna senza casa non si sposa.",
-            'Anche una famiglia che ha dovuto traslocare per mancanza di [[good:furniture|Mobilio]] va in un posto libero, anche ammobiliato: [[article:family|Famiglia e casa]].',
+            "Una donna con una casa riceve l'ordine «Sposa» appena c'è un uomo libero. L'assistente non fa sposare una donna senza casa.",
+            'Anche una famiglia che ha dovuto traslocare per mancanza di [[good:furniture|Mobilio]] va in un posto libero, pure ammobiliato: [[article:family|Famiglia e casa]].',
           ],
         },
         {

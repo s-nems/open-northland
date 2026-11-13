@@ -455,7 +455,7 @@ export const SETTLERS: ArticleGroup = {
         {
           list: [
             'With "Found families" on, a homeless adult [[job:woman|Woman]] moves into the nearest dwelling with a free place she can walk to.',
-            'A Woman with a dwelling gets the "Marry" order once a man is free. A homeless Woman doesn\'t marry.',
+            'A Woman with a dwelling gets the "Marry" order once a man is free. The Assistant doesn\'t marry off a homeless Woman.',
             'A family that had to move out for lack of [[good:furniture|Furniture]] moves into a free place too, a furnished one included: [[article:family|Family and Home]].',
           ],
         },

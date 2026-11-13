@@ -464,7 +464,7 @@ export const SETTLERS: ArticleGroup = {
         {
           list: [
             'Ist „Familien gründen“ an, zieht eine obdachlose erwachsene [[job:woman|Frau]] in das nächste Wohnhaus mit freiem Platz, das sie erreichen kann.',
-            'Eine Frau mit Wohnhaus bekommt den Befehl „Heirate“, sobald ein Mann frei ist. Eine obdachlose Frau heiratet nicht.',
+            'Eine Frau mit Wohnhaus bekommt den Befehl „Heirate“, sobald ein Mann frei ist. Eine obdachlose Frau verheiratet der Assistent nicht.',
             'Eine Familie, die mangels [[good:furniture|Möbeln]] ausziehen musste, zieht ebenfalls auf einen freien Platz, auch einen möblierten: [[article:family|Familie und Wohnhaus]].',
           ],
         },

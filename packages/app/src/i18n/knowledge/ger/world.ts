@@ -239,7 +239,7 @@ export const WORLD: ArticleGroup = {
             'Vom Deck eines [[vehicle:ship_small|Schiffs]], des Schiffs, das ein Katapult trägt, schießen bis zu {{deck.archers}} Soldaten mit Bogen auf Feinde, die du siehst. Feindliche Schiffe kommen zuerst. Ein Großes Schiff hat keine Bogenschützen an Deck.',
             'Vom Deck reicht ein Bogen {{deck.rangeLoss}} Hexfelder weniger weit als an Land, wartet zwischen den Schüssen {{deck.slowerPct}}% länger und streut breiter: [[article:aim|Treffen und Schießen]].',
             'Ein Stein des Katapults nimmt einem Schiff {{ship.stoneFactor}}-mal so viel wie einem anderen Fahrzeug.',
-            'Unter {{ship.firePct}}% Gesundheit brennt ein Schiff und verliert {{ship.fireLoss}} Gesundheit pro Sekunde, bis es sinkt. Bauarbeiter reparieren ein angedocktes Schiff wie ein Gebäude, und über {{ship.firePct}}% erlischt das Feuer.',
+            'Unter {{ship.firePct}}% Gesundheit brennt ein Schiff und verliert {{ship.fireLoss}} Gesundheit pro Sekunde, bis es sinkt. Bauarbeiter reparieren ein angedocktes Schiff wie ein Gebäude, und das Feuer erlischt, sobald es wieder {{ship.firePct}}% hat.',
           ],
         },
         {

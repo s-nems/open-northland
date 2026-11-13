@@ -462,7 +462,7 @@ export const SETTLERS: ArticleGroup = {
         {
           list: [
             'Przy włączonym "Zakładaj rodziny" bezdomna dorosła [[job:woman|Kobieta]] wprowadza się do najbliższego domu z wolnym miejscem, do którego dojdzie.',
-            'Kobieta z domem dostaje rozkaz "Zawrzyj małżeństwo", gdy jest wolny mężczyzna. Bezdomna Kobieta nie wychodzi za mąż.',
+            'Kobieta z domem dostaje rozkaz "Zawrzyj małżeństwo", gdy jest wolny mężczyzna. Bezdomnej Kobiety Asystent nie wydaje za mąż.',
             'Rodzina, która musiała się wyprowadzić z braku [[good:furniture|Mebli]], też wprowadza się na wolne miejsce, także umeblowane: [[article:family|Rodzina i dom]].',
           ],
         },

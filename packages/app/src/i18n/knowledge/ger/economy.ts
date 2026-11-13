@@ -124,7 +124,7 @@ export const ECONOMY: ArticleGroup = {
           h: 'Was ein Bauarbeiter zuerst tut',
         },
         {
-          p: 'Ein Bauarbeiter repariert zuerst, baut dann Gebäude und lässt Palisaden und Straßen für den Schluss. Weist du ihn einer Baustelle zu, bleibt er dort, auch wenn anderswo Arbeit wartet. Eine Baustelle, der du in ihrem Panel Priorität gibst, geht allen anderen vor und holt sogar deren letzten Bauarbeiter ab.',
+          p: 'Ein Bauarbeiter repariert zuerst, baut dann Gebäude und lässt Palisaden und Straßen für den Schluss. Weist du ihn einer Baustelle zu, bleibt er dort, auch wenn anderswo Arbeit wartet. Eine Baustelle, der du in ihrem Panel Priorität gibst, geht jeder Baustelle ohne Priorität vor und holt sogar deren letzten Bauarbeiter ab.',
         },
         {
           h: 'Ausbau',
@@ -254,6 +254,10 @@ export const ECONOMY: ArticleGroup = {
               [
                 'Rechtsklick auf Vorkommen',
                 'Befehl „Sammeln“: diese Ware ∞, Rest 0, und die Arbeitsfahne wandert zum Vorkommen. Ohne Fahne ändert sich nur die Ware.',
+              ],
+              [
+                'Ctrl und Rechtsklick',
+                'Die Fahne wandert an diese Stelle, auf einem Vorkommen wechselt auch die Ware wie oben',
               ],
               ['Alle Zähler auf 0', 'Der Abbauer hat den Status „Alles auf 0 gestellt“ und baut nichts ab'],
               [
@@ -660,7 +664,7 @@ export const ECONOMY: ArticleGroup = {
           h: 'Fahne setzen',
         },
         {
-          p: '„Arbeitsfahne setzen“ stellt die Fahne an den gewählten Ort oder versetzt sie dorthin, genau wie ein Rechtsklick auf ein Vorkommen, das er abbaut. Ist der Ort belegt, kommt die Fahne auf einen freien bis {{flag.snap}} Hexfelder daneben, und gibt es keinen, verfällt der Befehl.',
+          p: '„Arbeitsfahne setzen“ stellt die Fahne an den gewählten Ort oder versetzt sie dorthin, genau wie Ctrl und Rechtsklick. Ist der Ort belegt, kommt die Fahne auf einen freien bis {{flag.snap}} Hexfelder daneben, und gibt es keinen, verfällt der Befehl.',
         },
         {
           p: 'Im [[article:assistant|Assistenten]] kannst du Abbauern erlauben, ihre Fahne selbst zu versetzen. Ein Abbauer setzt sie dann {{assistant.flagMin}}-{{assistant.flagMax}} Hexfelder vom Vorkommen, und ist in der Gegend alles erschöpft, zieht er zum Vorkommen, das seinem Gebäude am nächsten liegt. Jäger und Fischer tun das nicht.',
@@ -697,7 +701,7 @@ export const ECONOMY: ArticleGroup = {
             'Dein neuer Wegweiser muss mindestens {{reach.spacing}} Hexfelder vom nächsten entfernt stehen.',
             'Ware sucht ein Siedler näher als {{reach.goods}} Hexfelder von sich oder von Wegweisern in dieser Reichweite.',
             'Ein Gebäude auf einem Wegweiser rückt ihn bis zu {{reach.displace}} Hexfelder beiseite, und geht das nicht, ist der Wegweiser weg.',
-            'Ein neuer Wegweiser schiebt eine Arbeitsfahne beiseite und räumt Pilze, Getreide und Kräuter von seinem Platz.',
+            'Ein neuer Wegweiser schiebt eine Arbeitsfahne beiseite und räumt Pilze, Lehm, Getreide, Kräuter, Büsche, Baumstümpfe und geöffnete Kisten von seinem Platz.',
           ],
         },
         {
