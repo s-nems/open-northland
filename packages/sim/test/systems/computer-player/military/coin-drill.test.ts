@@ -4,6 +4,7 @@ import {
   AiControl,
   addPerson,
   Building,
+  barracksCoinOptedOut,
   CoinDrillOrder,
   computerModuleEnables,
   EquipOrder,
@@ -237,6 +238,29 @@ describe('the computer seat coin drill', () => {
       .mut(man, SettlerProgress)
       .experience.set(FIGHT_EXPERIENCE_TYPE.PERSONAL, fightUnitsOfPoints(COIN_DRILL_LIMIT));
     expect(orders()).toEqual([{ ...mark, priority: false }]);
+  });
+
+  it('marks coin again on every barracks once its unmarking opted the seat out of the default mark', () => {
+    const sim = seatSim();
+    const first = barracksAt(sim, 0);
+    soldierAt(sim, 10, 2, SWORD_JOB, COIN_DRILL_LIMIT);
+    const orders = () => coinPriorityOrders(sim.world, ctxOf(sim), SEAT, ownedBuildings(sim.world, SEAT));
+    const mark = { kind: 'setStorePriority', goodType: COIN_GOOD } as const;
+    sim.enqueueSetup({ ...mark, building: first, priority: true });
+    sim.step();
+    for (const command of orders()) sim.enqueueSetup(command);
+    sim.step();
+    expect(barracksCoinOptedOut(sim.world, SEAT)).toBe(true);
+    const second = barracksAt(sim, 0);
+    swordsmen(sim, 1);
+    const marks = orders();
+    expect(marks).toEqual([
+      { ...mark, building: first, priority: true },
+      { ...mark, building: second, priority: true },
+    ]);
+    for (const command of marks) sim.enqueueSetup(command);
+    sim.step();
+    expect(orders()).toEqual([]);
   });
 
   it('sends the idle soldiers near the barracks nearest first, then by id, one per free coin', () => {
