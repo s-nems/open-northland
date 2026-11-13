@@ -174,7 +174,7 @@ function clampedUnits(units: number): number {
 /**
  * The dealt-damage factor of a striker's fight `units` and his carried `dealtPct`, over
  * {@link FIGHT_EXPERIENCE_FACTOR_SCALE}. Our rule: the two raises add, so full experience (+40%) with a
- * 130 strength amulet (+30%) deals x1.70, not x1.82.
+ * 140 strength amulet (+40%) deals x1.80, not x1.96.
  */
 export function dealtDamageFactor(units: number, dealtPct: number = PERCENT): number {
   return fightExperienceDealtFactor(units) + (dealtPct - PERCENT) * (FIGHT_EXPERIENCE_FACTOR_SCALE / PERCENT);
@@ -187,7 +187,7 @@ export function withDealtBonuses(damage: number, units: number, dealtPct: number
 
 /**
  * `damage` a person with fight `units` takes under his carried `takenPct`, truncating once. Our rule: the
- * experience cut multiplies with the defence amulet, so full experience under a x0.7 amulet takes x0.42.
+ * experience cut multiplies with the defence amulet, so full experience under a x0.6 amulet takes x0.36.
  */
 export function withTakenBonuses(damage: number, units: number, takenPct: number = PERCENT): number {
   const experienceFactor = fightExperienceTakenFactor(units);

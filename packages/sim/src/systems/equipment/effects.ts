@@ -86,8 +86,8 @@ export function scaledTakenDamage(damage: number, takenPct: number): number {
 /**
  * The share of a blow's damage its target person takes, after the striker's effects. Original behavior:
  * the defence amulet scales it to its `damageTakenPct`. Our rule: the person's own fight experience cuts
- * it by up to 40%, multiplying with the amulet in one truncation, so full experience under a x0.7 amulet
- * takes x0.42. Every blow on a person passes here once, whatever struck it.
+ * it by up to 40%, multiplying with the amulet in one truncation, so full experience under a x0.6 amulet
+ * takes x0.36. Every blow on a person passes here once, whatever struck it.
  */
 export function damageTakenBy(world: World, ctx: SystemContext, target: Entity, damage: number): number {
   const takenPct = carriedEffect(world, ctx.content, target, 'damageTakenPct') ?? PERCENT;
