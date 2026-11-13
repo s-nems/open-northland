@@ -293,7 +293,7 @@ describe('the seat strategy shapes the build order', () => {
       'work_pottery_02',
     ];
     const counts = (archetype: 'rich' | 'standard' | 'cramped') => buildings.map((b) => top(archetype, b));
-    expect(counts('rich')).toEqual([3, 3, 6, 6, 2, 14, 4, 2]);
+    expect(counts('rich')).toEqual([4, 3, 6, 6, 2, 14, 4, 2]);
     expect(counts('standard')).toEqual([3, 3, 6, 4, 2, 10, 2, 2]);
     expect(counts('cramped')).toEqual([2, 2, 4, 4, 2, 8, 1, 1]);
   });

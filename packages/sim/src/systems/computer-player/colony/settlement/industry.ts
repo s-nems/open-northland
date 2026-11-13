@@ -161,7 +161,7 @@ const HOME_GOODS: Readonly<Record<Exclude<Industry, 'temple'>, readonly string[]
   armoury: ['bow_short', 'spear_wooden'],
   smithy: ['sword_shord', 'sword_long', 'spear_iron'],
   druid: ['potion_heal_big'],
-  amulets: ['amulet_strength', 'amulet_defense'],
+  amulets: ['amulet_strength', 'amulet_defense', 'amulet_crithit'],
   carpentry: ['tool_iron'],
 };
 
@@ -234,14 +234,20 @@ const SHARED_STEPS: ReadonlySet<string> = new Set(
     .filter((building, i, all) => all.indexOf(building) !== i),
 );
 
-/** Owner ruling: an amulet takes a short sword or a leather armour beside its gold and iron, so the mint
- *  makes them only where the colony's land could arm a smithy or a tailor, or home makes either. A potion
- *  takes crockery, which no colony makes, so the druid brews only while home makes it. */
+/** Owner ruling: an amulet takes a short sword, a leather armour or a long bow beside its gold and iron, so
+ *  the mint makes them only where the colony's land could arm a smithy or a tailor, or home makes one. A
+ *  potion takes crockery, which no colony makes, so the druid brews only while home makes it. */
 function fed(industry: Exclude<Industry, 'temple'>, site: SiteFacts, seat: SeatRead): boolean {
   const made = (good: string): boolean => seat.worth(good) !== 'lacking';
   if (industry === 'druid') return made('crockery');
   if (industry !== 'amulets') return true;
-  return SITE_FITS.smithy(site) || SITE_FITS.husbandry(site) || made('sword_shord') || made('armor_leather');
+  return (
+    SITE_FITS.smithy(site) ||
+    SITE_FITS.husbandry(site) ||
+    made('sword_shord') ||
+    made('armor_leather') ||
+    made('bow_long')
+  );
 }
 
 /** Whether the colony earns `step`'s trade itself ({@link EarnedBy}): its land holds the deposit, or the

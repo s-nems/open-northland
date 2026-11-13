@@ -380,16 +380,17 @@ const IRON_ARMS_SMITHY: StockCraftPlan = {
 /** Owner ruling: a seat with little iron forges weapons alone and dresses its army in tunics. */
 const IRON_WEAPONS_SMITHY: StockCraftPlan = { wants: WEAPON_WANTS, overflow: SMITH_OVERFLOW };
 
-/** Owner ruling: short bows only to arm the archers and earn the long bow, then long bows alone; wooden
- *  spears as the iron spear's input and, until the iron spear is earned or where no smith forges one, for
- *  the spearmen. Past every want an armourer makes both earners while the long bow is still to earn, and
- *  from then on the wanted goods for stock. */
+/** Owner ruling: short bows only to arm the archers and earn the long bow, then long bows alone, for the
+ *  archers and as the precision amulet's input; wooden spears as the iron spear's input and, until the
+ *  iron spear is earned or where no smith forges one, for the spearmen. Past every want an armourer makes
+ *  both earners while the long bow is still to earn, and from then on the wanted goods for stock. */
 const ARMORY: StockCraftPlan = {
   wants: [
     { goods: ['bow_long'], target: ARMY_BOW },
     { goods: ['bow_short'], target: ARMY_BOW, until: 'bow_long' },
     { goods: ['spear_wooden'], target: ARMY_SPEAR, until: 'spear_iron' },
     { goods: ['spear_wooden'], target: INPUT_BUFFER },
+    { goods: ['bow_long'], target: INPUT_BUFFER },
   ],
   overflow: [{ until: 'bow_long', works: ['bow_short', 'spear_wooden'], otherwise: REST_SEAT }],
 };
@@ -427,34 +428,27 @@ const LEATHER_SEWERY: StockCraftPlan = {
   overflow: [],
 };
 
-const DEFENCE_AMULET_LINE = { good: 'amulet_defense', input: 'armor_leather' } as const;
 const STRENGTH_AMULET_LINE = { good: 'amulet_strength', input: 'sword_shord' } as const;
+const DEFENCE_AMULET_LINE = { good: 'amulet_defense', input: 'armor_leather' } as const;
+const PRECISION_AMULET_LINE = { good: 'amulet_crithit', input: 'bow_long' } as const;
+const AMULET_LINES = [STRENGTH_AMULET_LINE, DEFENCE_AMULET_LINE, PRECISION_AMULET_LINE] as const;
 
-/** The coins a mint seat strikes while it has no amulet to make. */
+/** The coins a mint seat strikes. */
 const COIN_SEAT: CraftSeat = ['coin'];
 
-/** Amulet seats: each strikes its own amulet while its input is in store and the other one's meanwhile, so
- *  the seat never idles on a line the tailors or the smiths have not fed. Owner ruling: while neither is,
- *  it strikes coins, with no cap, as the barracks coin drill spends them, and goes back to the amulets once
- *  an input is in store. */
-const STRENGTH_AMULET_SEAT: CraftSeat = {
-  firstFed: [STRENGTH_AMULET_LINE, DEFENCE_AMULET_LINE],
-  unfed: COIN_SEAT,
-};
-const DEFENCE_AMULET_SEAT: CraftSeat = {
-  firstFed: [DEFENCE_AMULET_LINE, STRENGTH_AMULET_LINE],
-  unfed: COIN_SEAT,
-};
+/** An amulet seat, coins until the amulet is earned. Owner ruling: a coiner keeps to his own amulet, so
+ *  its inputs and experience pile up, and strikes coins, with no cap, as the barracks coin drill spends
+ *  them, only while its input is out of store. */
+function amuletSeat(line: (typeof AMULET_LINES)[number]): CraftSeat {
+  return { until: line.good, works: COIN_SEAT, otherwise: { firstFed: [line], unfed: COIN_SEAT } };
+}
 
-/** Owner ruling: the mint turns its gold into amulets by the inputs in store, strength-first and
- *  defence-first seats in turn, and into coins while it has no amulet to make, as the barracks coin drill
- *  spends them; it strikes coins until an amulet is earned too. */
+/** Owner ruling: the seat's coiners, over all its mints, take the strength, defence and precision amulets
+ *  and the coins in turn, so a lone mint strikes strength and defence, the second adds precision and
+ *  coins. */
 const MINT: StockCraftPlan = {
   wants: [],
-  overflow: [
-    { until: 'amulet_strength', works: COIN_SEAT, otherwise: STRENGTH_AMULET_SEAT },
-    { until: 'amulet_defense', works: COIN_SEAT, otherwise: DEFENCE_AMULET_SEAT },
-  ],
+  overflow: [...AMULET_LINES.map(amuletSeat), COIN_SEAT],
 };
 
 /** The bows and wooden spears in stock at which the easy seat's first armourer drops that line (authored). */

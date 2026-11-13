@@ -87,12 +87,12 @@ describe('a colony industry', () => {
     expect(industries(chooseIndustries(site, seatRead({ worth: homeCrockery })))).toContain('druid');
   });
 
-  it('mints amulets only where a sword or a leather armour can be had', () => {
-    const noSwords = (good: string): Worth =>
-      good === 'sword_shord' || good === 'armor_leather' ? 'lacking' : 'wanted';
-    expect(industries(chooseIndustries({ ...BARE, gold: true }, seatRead({ worth: noSwords })))).toEqual([]);
-    const homeSwords = (good: string): Worth => (good === 'sword_shord' ? 'wanted' : 'lacking');
-    expect(industries(chooseIndustries({ ...BARE, gold: true }, seatRead({ worth: homeSwords })))).toEqual([
+  it('mints amulets only where a sword, a leather armour or a long bow can be had', () => {
+    const noInputs = (good: string): Worth =>
+      good === 'sword_shord' || good === 'armor_leather' || good === 'bow_long' ? 'lacking' : 'wanted';
+    expect(industries(chooseIndustries({ ...BARE, gold: true }, seatRead({ worth: noInputs })))).toEqual([]);
+    const homeBows = (good: string): Worth => (good === 'bow_long' ? 'wanted' : 'lacking');
+    expect(industries(chooseIndustries({ ...BARE, gold: true }, seatRead({ worth: homeBows })))).toEqual([
       'amulets',
     ]);
   });

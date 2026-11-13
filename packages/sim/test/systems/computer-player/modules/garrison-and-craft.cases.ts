@@ -501,6 +501,8 @@ const ARMOUR_PLATE = 73;
 const ARMOUR_CHAIN = 74;
 const SWORD_LONG = 75;
 const SPEAR_IRON = 76;
+/** A free fixture slot for the precision amulet. */
+const PRECISION_AMULET = 77;
 
 /** The fixture joinery recast as the mint: two operator seats, one recipe per coin or amulet. */
 /** The fixture joinery recast as the workshop `id`, one wood recipe per product, so the type's own plan
@@ -532,6 +534,7 @@ function mintContent(): ContentSet {
     { typeId: COIN, id: 'coin' },
     { typeId: DEFENCE_AMULET, id: 'amulet_defense' },
     { typeId: STRENGTH_AMULET, id: 'amulet_strength' },
+    { typeId: PRECISION_AMULET, id: 'amulet_crithit' },
   ]);
   return parseContentSet({
     ...recast,
@@ -539,6 +542,7 @@ function mintContent(): ContentSet {
       ...recast.goods,
       { typeId: LEATHER_ARMOUR, id: 'armor_leather', weight: 1 },
       { typeId: SWORD_SHORT, id: 'sword_shord', weight: 1 },
+      { typeId: BOW_LONG, id: 'bow_long', weight: 1 },
     ],
   });
 }
@@ -1943,33 +1947,34 @@ describe('workforce module - the barracks and craft selections', () => {
   }
 
   it('strikes coins to earn the amulets while they are unearned', () => {
-    const mints = crewedWorkshops(withUnearned(mintContent(), [DEFENCE_AMULET, STRENGTH_AMULET]), 1, 2);
+    const mints = crewedWorkshops(
+      withUnearned(mintContent(), [DEFENCE_AMULET, STRENGTH_AMULET, PRECISION_AMULET]),
+      1,
+      2,
+    );
     mints.hire(0, 2);
     expect(mints.products()).toEqual([[COIN], [COIN]]);
   });
 
-  it('alternates strength-first and defence-first amulet seats, each falling back to the other line while its own input is out and to coins while both are', () => {
+  it('keeps each coiner on his own amulet or the coins, in turn over every mint, and on coins while his input is out', () => {
     const mints = crewedWorkshops(mintContent(), 3, 6);
-    mints.stock(LEATHER_ARMOUR, 1);
     mints.stock(SWORD_SHORT, 1);
+    mints.stock(LEATHER_ARMOUR, 1);
+    mints.stock(BOW_LONG, 1);
     mints.hire(0, 6);
-    // Both inputs in store: the six amulet seats split three strength, three defence.
-    const strength = [STRENGTH_AMULET];
-    const defence = [DEFENCE_AMULET];
-    expect(mints.products()).toEqual([strength, defence, strength, defence, strength, defence]);
-    // No short sword: the strength-first seats turn to defence amulets.
+    const [strength, defence, precision, coins] = [
+      [STRENGTH_AMULET],
+      [DEFENCE_AMULET],
+      [PRECISION_AMULET],
+      [COIN],
+    ];
+    expect(mints.products()).toEqual([strength, defence, precision, coins, strength, defence]);
+    // No short sword: only the strength coiners turn to coins, nobody takes another amulet.
     mints.stock(SWORD_SHORT, 0);
-    expect(mints.products()).toEqual([defence, defence, defence]);
-    // No leather armour: every seat strikes strength amulets.
-    mints.stock(LEATHER_ARMOUR, 0);
+    expect(mints.products()).toEqual([coins, coins]);
+    // The sword back in store: they go back to the strength amulet.
     mints.stock(SWORD_SHORT, 1);
-    expect(mints.products()).toEqual([strength, strength, strength, strength, strength, strength]);
-    // Neither in store: every seat strikes coins, with no cap.
-    mints.stock(SWORD_SHORT, 0);
-    expect(mints.products()).toEqual([[COIN], [COIN], [COIN], [COIN], [COIN], [COIN]]);
-    // An input back in store: the seats go back to the amulets.
-    mints.stock(LEATHER_ARMOUR, 1);
-    expect(mints.products()).toEqual([defence, defence, defence, defence, defence, defence]);
+    expect(mints.products()).toEqual([strength, strength]);
   });
 
   /** The wood's supply lines at `tick`. */

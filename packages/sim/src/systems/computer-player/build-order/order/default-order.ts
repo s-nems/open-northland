@@ -208,14 +208,17 @@ export const LATE_SMITHIES: readonly BuildOrderEntry[] = [
  *  children from the start; a cramped seat keeps to the first three (`./seat-order.ts`). */
 export const ROOMY_OPENING_HOMES: BuildOrderEntry = { kind: 'place', building: 'home_level_00', count: 4 };
 
-/** Owner ruling: a rich seat (room, iron and gold to spare) opens on five homes, ends on six upper smithies
- *  and about four upper bakeries; every other archetype leaves these steps out (`./seat-order.ts`). */
+/** Owner ruling: a rich seat (room, iron and gold to spare) opens on five homes, ends on six upper smithies,
+ *  about four upper bakeries and four mints; every other archetype leaves these steps out
+ *  (`./seat-order.ts`). */
 const RICH_OPENING_HOMES: BuildOrderEntry = { kind: 'place', building: 'home_level_00', count: 5 };
 
 const RICH_SMITHIES: readonly BuildOrderEntry[] = [
   { kind: 'place', building: 'work_smithy_01', count: 5, near: [{ kind: 'resource', good: 'iron' }] },
   { kind: 'place', building: 'work_smithy_01', count: 6, near: [{ kind: 'resource', good: 'iron' }] },
 ];
+
+const RICH_MINT: BuildOrderEntry = mints(4);
 
 const RICH_BAKERIES: readonly BuildOrderEntry[] = [
   {
@@ -243,6 +246,7 @@ export const RICH_STEPS: readonly BuildOrderEntry[] = [
   RICH_OPENING_HOMES,
   ...RICH_SMITHIES,
   ...RICH_BAKERIES,
+  RICH_MINT,
 ];
 
 /** Owner ruling: an iron-poor seat arms with tunics and wants many of them fast, so its two tailors are
@@ -696,13 +700,14 @@ export const DEFAULT_BUILD_ORDER: BuildOrder = {
       id: 'coins',
       // Owner ruling: one mint early enough to earn experience, since the coiner learns the amulets the
       // big potion also wants; never two at once as the first. Once he has learned the amulets, the late
-      // game's move into high-end equipment, two more follow, each waiting for the crews of those standing
-      // (`../steps/holds.ts`). The gold gatherer and the first mint wait for the food and arms like the
-      // herb hut.
+      // game's move into high-end equipment, two more follow (a rich seat's three), each waiting for the
+      // crews of those standing (`../steps/holds.ts`). The gold gatherer and the first mint wait for the
+      // food and arms like the herb hut.
       steps: [
         { kind: 'collector', good: 'gold', fromTick: GOLD_FROM_TICKS, holdUntil: AFTER_FOOD_AND_ARMS },
         { ...mints(1), holdUntil: AFTER_FOOD_AND_ARMS },
         ...LATER_MINTS,
+        RICH_MINT,
       ],
     },
   ],
