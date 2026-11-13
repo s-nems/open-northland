@@ -727,7 +727,7 @@ export const MILITARY: ArticleGroup = {
           h: 'Genauigkeit',
         },
         {
-          p: 'Die Genauigkeit steigt wie beim Bogenschützen: [[article:aim|Treffen und Schießen]]. Auf {{catapult.max}} Hexfeldern landet ein ungenauer Stein bei 0 Treffern bis {{stone.spread.0}} Hexfelder neben dem Ziel, bei 25 bis {{stone.spread.25}}, bei 50 bis {{stone.spread.50}}. Ab {{aim.noSpreadPoints}} Treffern landet er im Ziel. Die Treffer sammelt der Kommandant: Es zählt jeder Stein, der etwas beschädigt hat, auch ein Gebäude, aber nur einmal, auch wenn er mehrere Ziele trifft.',
+          p: 'Die Genauigkeit steigt wie beim Bogenschützen: [[article:aim|Treffen und Schießen]]. Auf {{catapult.max}} Hexfeldern landet ein ungenauer Stein bei 0 Treffern bis {{stone.spread.0}} Hexfelder neben dem Ziel, bei 25 bis {{stone.spread.25}}, bei 50 bis {{stone.spread.50}}. Er landet nie hinter dem Ziel: Ein Stein, der darüber hinausfliegen würde, fällt stattdessen davor. Ab {{aim.noSpreadPoints}} Treffern landet er im Ziel. Die Treffer sammelt der Kommandant: Es zählt jeder Stein, der etwas beschädigt hat, auch ein Gebäude, aber nur einmal, auch wenn er mehrere Ziele trifft.',
         },
         {
           h: 'Katapultmodi',

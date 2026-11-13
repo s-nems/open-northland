@@ -694,7 +694,7 @@ export const MILITARY: ArticleGroup = {
           h: '命中率',
         },
         {
-          p: '命中率增長與弓手相同：[[article:aim|命中與射擊]]。在{{catapult.max}}格處，未命中的石彈偏離目標：0次命中時最多{{stone.spread.0}}格，25次{{stone.spread.25}}格，50次{{stone.spread.50}}格。命中{{aim.noSpreadPoints}}次起落在目標上。命中次數歸指揮官：每發造成損傷的石彈都算，打建築也算，但即使打中多個目標也只算一次。',
+          p: '命中率增長與弓手相同：[[article:aim|命中與射擊]]。在{{catapult.max}}格處，未命中的石彈偏離目標：0次命中時最多{{stone.spread.0}}格，25次{{stone.spread.25}}格，50次{{stone.spread.50}}格。石彈不會落到目標後方：本會飛過目標的石彈改為落在目標前方。命中{{aim.noSpreadPoints}}次起落在目標上。命中次數歸指揮官：每發造成損傷的石彈都算，打建築也算，但即使打中多個目標也只算一次。',
         },
         {
           h: '投石機的姿態',

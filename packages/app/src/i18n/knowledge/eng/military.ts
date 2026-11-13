@@ -727,7 +727,7 @@ export const MILITARY: ArticleGroup = {
           h: 'Accuracy',
         },
         {
-          p: 'Accuracy grows as with an archer: [[article:aim|Hitting and Shooting]]. At {{catapult.max}} hexes an inaccurate stone lands up to {{stone.spread.0}} hexes from the target at 0 hits, {{stone.spread.25}} at 25, {{stone.spread.50}} at 50. From {{aim.noSpreadPoints}} hits it lands on target. The commander collects the hits: every stone that damaged something counts, a building included, but only once, even if it hit several targets.',
+          p: 'Accuracy grows as with an archer: [[article:aim|Hitting and Shooting]]. At {{catapult.max}} hexes an inaccurate stone lands up to {{stone.spread.0}} hexes from the target at 0 hits, {{stone.spread.25}} at 25, {{stone.spread.50}} at 50. It never lands past the target: a stone that would fly over it falls short instead. From {{aim.noSpreadPoints}} hits it lands on target. The commander collects the hits: every stone that damaged something counts, a building included, but only once, even if it hit several targets.',
         },
         {
           h: 'Catapult stances',

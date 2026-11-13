@@ -742,7 +742,7 @@ export const MILITARY: ArticleGroup = {
           h: 'Precisione',
         },
         {
-          p: 'La precisione cresce come per un arciere: [[article:aim|Colpire e tirare]]. A {{catapult.max}} esagoni una pietra imprecisa cade fino a {{stone.spread.0}} esagoni dal bersaglio con 0 colpi a segno, {{stone.spread.25}} con 25, {{stone.spread.50}} con 50. Da {{aim.noSpreadPoints}} colpi cade sul bersaglio. I colpi a segno li accumula il comandante: conta ogni pietra che ha danneggiato qualcosa, anche un edificio, ma una volta sola, anche se ha colpito più bersagli.',
+          p: 'La precisione cresce come per un arciere: [[article:aim|Colpire e tirare]]. A {{catapult.max}} esagoni una pietra imprecisa cade fino a {{stone.spread.0}} esagoni dal bersaglio con 0 colpi a segno, {{stone.spread.25}} con 25, {{stone.spread.50}} con 50. Non cade mai oltre il bersaglio: una pietra che lo supererebbe cade invece prima. Da {{aim.noSpreadPoints}} colpi cade sul bersaglio. I colpi a segno li accumula il comandante: conta ogni pietra che ha danneggiato qualcosa, anche un edificio, ma una volta sola, anche se ha colpito più bersagli.',
         },
         {
           h: 'Atteggiamenti della catapulta',

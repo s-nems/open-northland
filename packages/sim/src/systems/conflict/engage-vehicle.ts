@@ -17,7 +17,15 @@ import {
 import { contentIndex } from '../../core/content-index.js';
 import { TICKS_PER_SECOND } from '../../core/loop.js';
 import type { Entity, World } from '../../ecs/world.js';
-import { type HalfCellNode, hexDistance, hexDistanceBetween, positionOfNode } from '../../nav/halfcell.js';
+import {
+  type HalfCellNode,
+  HEX_DIRECTIONS,
+  hexDistance,
+  hexDistanceBetween,
+  hexHeadingBetween,
+  positionOfNode,
+  stepHex,
+} from '../../nav/halfcell.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
 import { vehicleAnchor } from '../footprint/index.js';
@@ -552,7 +560,8 @@ function fire(
 /**
  * The scattered landing node: a percent roll `r` above the commander's accuracy (`skill + 10`)
  * offsets the aim by up to `(r - accuracy) * (dist / 4) / r` on each axis, centred on the aim
- * (original behavior). The result is clamped onto the map.
+ * (original behavior), never landing farther from the vehicle than the aim ({@link shortOfAim}). The
+ * result is clamped onto the map.
  */
 function scatter(
   ctx: SystemContext,
@@ -564,13 +573,34 @@ function scatter(
   const roll = ctx.rng.int(SCATTER_ROLL);
   const accuracy = skill + SCATTER_BASE_ACCURACY;
   if (roll <= accuracy) return { hx: aim.x, hy: aim.y };
-  const dist = hexNodeDistance(terrain, here, terrain.nodeAt(aim.x, aim.y));
+  const from = pointOf(terrain, here);
+  const mark = { hx: aim.x, hy: aim.y };
+  const dist = hexDistance(from, mark);
   const spread = Math.floor(((roll - accuracy) * Math.floor(dist / SCATTER_DISTANCE_DIVISOR)) / roll);
   const half = spread >> 1;
   const dx = ctx.rng.int(spread + 1) - half;
   const dy = ctx.rng.int(spread + 1) - half;
-  const clamped = terrain.coordsOf(terrain.nodeAtClamped(aim.x + dx, aim.y + dy));
+  const landing = shortOfAim(from, mark, dx, dy);
+  const clamped = terrain.coordsOf(terrain.nodeAtClamped(landing.hx, landing.hy));
   return { hx: clamped.x, hy: clamped.y };
+}
+
+/**
+ * The miss `(dx, dy)` off `aim`, kept no farther from the vehicle at `from` than the aim, so a stone
+ * never strays forward onto what stands past its mark or its reach. Deviation (owner's rule): an
+ * overshoot falls as far short instead, and a sideways miss the map-point metric still counts as
+ * farther is drawn back toward the vehicle onto the aim's distance.
+ */
+function shortOfAim(from: HalfCellNode, aim: HalfCellNode, dx: number, dy: number): HalfCellNode {
+  const reach = hexDistance(from, aim);
+  let landing = { hx: aim.hx + dx, hy: aim.hy + dy };
+  if (hexDistance(from, landing) > reach) landing = { hx: aim.hx - dx, hy: aim.hy - dy };
+  // Each step along the heading toward the vehicle is one map point nearer.
+  while (hexDistance(from, landing) > reach) {
+    const toward = HEX_DIRECTIONS[hexHeadingBetween(landing.hx, landing.hy, from.hx, from.hy)] ?? 'east';
+    landing = stepHex(landing, toward);
+  }
+  return landing;
 }
 
 function pointOf(terrain: TerrainGraph, node: NodeId): HalfCellNode {

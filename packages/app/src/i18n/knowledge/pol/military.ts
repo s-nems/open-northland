@@ -723,7 +723,7 @@ export const MILITARY: ArticleGroup = {
           h: 'Celność',
         },
         {
-          p: 'Celność rośnie jak u łucznika: [[article:aim|Trafienie i strzelanie]]. Na {{catapult.max}} hexach niecelny kamień spada do {{stone.spread.0}} hexów od celu przy 0 trafień, {{stone.spread.25}} przy 25, {{stone.spread.50}} przy 50. Od {{aim.noSpreadPoints}} trafień spada w cel. Trafienia zbiera dowódca: liczy się każdy kamień, który coś uszkodził, także budynek, ale tylko raz, nawet gdy trafił kilka celów.',
+          p: 'Celność rośnie jak u łucznika: [[article:aim|Trafienie i strzelanie]]. Na {{catapult.max}} hexach niecelny kamień spada do {{stone.spread.0}} hexów od celu przy 0 trafień, {{stone.spread.25}} przy 25, {{stone.spread.50}} przy 50. Nigdy nie spada za celem: kamień, który by go przeleciał, spada przed nim. Od {{aim.noSpreadPoints}} trafień spada w cel. Trafienia zbiera dowódca: liczy się każdy kamień, który coś uszkodził, także budynek, ale tylko raz, nawet gdy trafił kilka celów.',
         },
         {
           h: 'Postawy Katapulty',
