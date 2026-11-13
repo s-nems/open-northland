@@ -345,6 +345,17 @@ export function createSettingsPage(opts: {
       });
       invertDragScroll.setAttribute('aria-label', text.invertDragScroll);
       invertDragScroll.dataset.settingsFocus = 'invert-drag-scroll';
+      const noticeToggle = (
+        key: 'noticeNewSoldier' | 'noticeAdultMan' | 'noticeAdultWoman',
+        focus: string,
+      ): HTMLDivElement => {
+        const toggle = togglePill(settings[key], (on) => {
+          void opts.settings.update({ [key]: on });
+        });
+        toggle.setAttribute('aria-label', text[key]);
+        toggle.dataset.settingsFocus = focus;
+        return settingRow(text[key], toggle, { tip: text[`${key}Tip`] });
+      };
       const debugTools = togglePill(settings.debugToolsEnabled, (enabled) => {
         void opts.settings.update({ debugToolsEnabled: enabled });
       });
@@ -361,6 +372,7 @@ export function createSettingsPage(opts: {
           language.root,
           opts.settings.bootOwnedChangesDeferred === true ? { tip: text.nextGameTip } : undefined,
         ),
+        settingsHeading(text.cameraHeading),
         settingRow(
           text.keyboardScrollSpeed,
           scrollSpeed(
@@ -390,6 +402,11 @@ export function createSettingsPage(opts: {
           ),
         ),
         settingRow(text.invertDragScroll, invertDragScroll, { tip: text.invertDragScrollTip }),
+        settingsHeading(text.noticesHeading),
+        noticeToggle('noticeNewSoldier', 'notice-new-soldier'),
+        noticeToggle('noticeAdultMan', 'notice-adult-man'),
+        noticeToggle('noticeAdultWoman', 'notice-adult-woman'),
+        settingsHeading(text.debugHeading),
         settingRow(text.debugTools, debugTools, { tip: text.debugToolsTip }),
         settingRow(text.autoReports, autoReports, { tip: text.autoReportsTip }),
         settingRow(

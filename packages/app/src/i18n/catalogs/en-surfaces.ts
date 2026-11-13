@@ -382,6 +382,18 @@ export const enSurfaces = {
       cursorConfineModes: { never: 'Never', fullscreen: 'In fullscreen', always: 'Always' },
       invertDragScroll: 'Invert drag scrolling',
       invertDragScrollTip: 'When enabled, dragging right moves the map left, and vice versa.',
+      cameraHeading: 'Camera',
+      debugHeading: 'Debug',
+      noticesHeading: 'Notices',
+      noticeNewSoldier: 'New soldier',
+      noticeNewSoldierTip:
+        'Notes when a man finishes his training in the barracks and takes up arms. Off keeps the note out of the feed, its jingle included.',
+      noticeAdultMan: 'Grown man',
+      noticeAdultManTip:
+        'Notes when a child becomes an adult man, who can take a trade and marry. Off keeps the note out of the feed, its jingle included.',
+      noticeAdultWoman: 'Grown woman',
+      noticeAdultWomanTip:
+        'Notes when a child becomes an adult woman, who can marry. Off keeps the note out of the feed, its jingle included.',
       originalGame: 'Original game',
       originalGameTip:
         'The installed Cultures game the check found. The browser version remembers only which game it was.',

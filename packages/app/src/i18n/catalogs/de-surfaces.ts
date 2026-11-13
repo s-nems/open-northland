@@ -422,6 +422,18 @@ export const deSurfaces = {
       cursorConfineModes: { never: 'Nie', fullscreen: 'Im Vollbild', always: 'Immer' },
       invertDragScroll: 'Ziehen umkehren',
       invertDragScrollTip: 'Beim Ziehen nach rechts bewegt sich die Karte nach links und umgekehrt.',
+      cameraHeading: 'Kamera',
+      debugHeading: 'Debug',
+      noticesHeading: 'Benachrichtigungen',
+      noticeNewSoldier: 'Neuer Soldat',
+      noticeNewSoldierTip:
+        'Meldet, wenn ein Mann die Ausbildung in der Kaserne abschließt und zu den Waffen greift. Aus hält die Notiz samt Melodie aus der Liste.',
+      noticeAdultMan: 'Erwachsener Mann',
+      noticeAdultManTip:
+        'Meldet, wenn ein Kind zum erwachsenen Mann wird, der einen Beruf erhalten und heiraten kann. Aus hält die Notiz samt Melodie aus der Liste.',
+      noticeAdultWoman: 'Erwachsene Frau',
+      noticeAdultWomanTip:
+        'Meldet, wenn ein Kind zur erwachsenen Frau wird, die heiraten kann. Aus hält die Notiz samt Melodie aus der Liste.',
       originalGame: 'Originalspiel',
       originalGameTip:
         'Das installierte Cultures-Spiel, das die Prüfung gefunden hat. Die Browserversion merkt sich nur, welches Spiel es war.',

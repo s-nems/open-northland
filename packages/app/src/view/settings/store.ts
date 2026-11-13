@@ -151,6 +151,12 @@ export interface MenuSettings {
   readonly monoSound: boolean;
   /** The jingles for something done (a building, a birth, a discovery); alerts ring regardless. */
   readonly jinglesEnabled: boolean;
+  /** Whether the feed notes a man the barracks trained into a soldier. */
+  readonly noticeNewSoldier: boolean;
+  /** Whether the feed notes a child that grew into an adult man. */
+  readonly noticeAdultMan: boolean;
+  /** Whether the feed notes a child that grew into an adult woman. */
+  readonly noticeAdultWoman: boolean;
   /** Which of an order and a selection a settler's voice answers. */
   readonly unitResponses: UnitResponses;
   /** Whether a game plays the map's own music or the local nation's. */
@@ -243,6 +249,9 @@ export function defaultSettings(): MenuSettings {
     soundInBackground: defaultSoundInBackground(),
     monoSound: false,
     jinglesEnabled: true,
+    noticeNewSoldier: true,
+    noticeAdultMan: true,
+    noticeAdultWoman: true,
     unitResponses: DEFAULT_UNIT_RESPONSES,
     musicSource: DEFAULT_MUSIC_SOURCE,
     narrationRate: 1,
@@ -431,6 +440,12 @@ export function parseStoredSettings(raw: string | null): MenuSettings {
     monoSound: typeof record.monoSound === 'boolean' ? record.monoSound : defaults.monoSound,
     jinglesEnabled:
       typeof record.jinglesEnabled === 'boolean' ? record.jinglesEnabled : defaults.jinglesEnabled,
+    noticeNewSoldier:
+      typeof record.noticeNewSoldier === 'boolean' ? record.noticeNewSoldier : defaults.noticeNewSoldier,
+    noticeAdultMan:
+      typeof record.noticeAdultMan === 'boolean' ? record.noticeAdultMan : defaults.noticeAdultMan,
+    noticeAdultWoman:
+      typeof record.noticeAdultWoman === 'boolean' ? record.noticeAdultWoman : defaults.noticeAdultWoman,
     unitResponses: parseUnitResponses(record.unitResponses),
     musicSource: parseMusicSource(record.musicSource),
     narrationRate: isNarrationRate(record.narrationRate) ? record.narrationRate : defaults.narrationRate,

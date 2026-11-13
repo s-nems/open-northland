@@ -72,6 +72,7 @@ import {
   createMessageCenter,
   type MessageTarget,
   type MetSeat,
+  type NoticeFilter,
   type NoticeGallery,
   type ShownNote,
   type SiteSeam,
@@ -290,6 +291,8 @@ export interface ToolPanelOptions {
   readonly onNoteShown?: (note: ShownNote) => void;
   /** Set, the notification column shows one note of every type (`?debug=notices`). */
   readonly noticeGallery?: NoticeGallery;
+  /** Whether each settings-filtered notice still raises; absent, all raise. */
+  readonly noticeFilter?: NoticeFilter;
   /** The seat's workshops and the sim's diagnosis of their workers, for the stalled-workshop notes. */
   readonly prayerNeeds?: ReadonlySet<number> | undefined;
   readonly workshops?: WorkshopSeam;
@@ -845,6 +848,7 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
       onAttackShown: opts.onAttackShown,
       onNoteShown: opts.onNoteShown,
       gallery: opts.noticeGallery,
+      ...(opts.noticeFilter !== undefined ? { noticeFilter: opts.noticeFilter } : {}),
       prayerNeeds: opts.prayerNeeds,
       workshops: opts.workshops,
       sites: opts.sites,

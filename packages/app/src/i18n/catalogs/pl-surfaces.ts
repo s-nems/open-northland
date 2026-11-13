@@ -382,6 +382,18 @@ export const plSurfaces = {
       cursorConfineModes: { never: 'Nigdy', fullscreen: 'Na pełnym ekranie', always: 'Zawsze' },
       invertDragScroll: 'Odwróć przewijanie przeciąganiem',
       invertDragScrollTip: 'Po włączeniu przeciągnięcie w prawo przesuwa mapę w lewo i odwrotnie.',
+      cameraHeading: 'Kamera',
+      debugHeading: 'Debug',
+      noticesHeading: 'Powiadomienia',
+      noticeNewSoldier: 'Nowy żołnierz',
+      noticeNewSoldierTip:
+        'Informuje, gdy mężczyzna ukończy szkolenie w koszarach i chwyci za broń. Wyłączenie usuwa tę wiadomość z listy razem z melodią.',
+      noticeAdultMan: 'Dorosły mężczyzna',
+      noticeAdultManTip:
+        'Informuje, gdy dziecko staje się dorosłym mężczyzną, który może przyjąć zawód i ożenić się. Wyłączenie usuwa tę wiadomość z listy razem z melodią.',
+      noticeAdultWoman: 'Dorosła kobieta',
+      noticeAdultWomanTip:
+        'Informuje, gdy dziecko staje się dorosłą kobietą, która może wyjść za mąż. Wyłączenie usuwa tę wiadomość z listy razem z melodią.',
       originalGame: 'Oryginalna gra',
       originalGameTip:
         'Zainstalowana gra Cultures, którą znalazło sprawdzenie. Wersja w przeglądarce pamięta tylko, która to gra.',
