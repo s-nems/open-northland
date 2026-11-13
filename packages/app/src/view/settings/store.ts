@@ -122,8 +122,8 @@ export interface MenuSettings {
   readonly blood: boolean;
   /** Bone piles fade out with age; off keeps them for good. Local presentation only. */
   readonly bonesFade: boolean;
-  /** The signs worn equipment shows on a person, such as an amulet's arc of light. Local presentation
-   *  only. */
+  /** The signs worn equipment shows on a person, such as an amulet's arc of light or the wind a
+   *  fast walker trails. Local presentation only. */
   readonly equipmentEffects: boolean;
   readonly fpsLimit: FpsLimit;
   /** The frame rate on the top bar; hovering it breaks down what holds the game back. */

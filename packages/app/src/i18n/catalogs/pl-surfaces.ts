@@ -318,7 +318,7 @@ export const plSurfaces = {
         'Kości poległych chwilę leżą nietknięte, a potem powoli znikają, po pięciu minutach gry nie ma po nich śladu. Wyłączone zostają na ziemi na zawsze.',
       equipmentEffects: 'Efekty ekwipunku',
       equipmentEffectsTip:
-        'Noszony ekwipunek widać na postaci: wokół stóp każdego, kto ma amulet, krąży łuk światła w kolorze amuletu, po jednym na każdy rodzaj.',
+        'Noszony ekwipunek widać na postaci: wokół stóp każdego, kto ma amulet, krąży łuk światła w kolorze amuletu, po jednym na każdy rodzaj, a za idącym z amuletem wiatru ciągną się podmuchy wiatru.',
       weather: 'Pogoda',
       weatherTip:
         'Deszcz, śnieg i burze piaskowe tam, gdzie przewiduje je mapa: padające krople i płatki, mgła i światło burzy, mokra i zaśnieżona ziemia, rozpryski, wiatr i grzmoty. Pogoda nigdy nie zmienia samej rozgrywki. Po wyłączeniu niebo jest czyste, a pogody nie słychać.',
