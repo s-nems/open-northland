@@ -199,7 +199,7 @@ export class SoundDriver {
    *  the context; resolves with what the cache holds, or null when audio never starts or the driver
    *  closes first. */
   preload(): Promise<SoundPreloadReport | null> {
-    const samples = preloadPlan(this.index, this.bindings.wielderSounds).map(({ file, tier }) => ({
+    const samples = preloadPlan(this.index, this.bindings).map(({ file, tier }) => ({
       file,
       pinned: PINNED_PRELOAD_TIERS.has(tier),
     }));

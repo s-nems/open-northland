@@ -259,6 +259,9 @@ export type SimEvent =
       /** The body the sound comes from when `entity` stands nowhere on the map: the warship a deck
        *  bowman draws on, whose clip sounds as if he played it there. */
       readonly from?: Entity;
+      /** The clip plays a sip of a carried draught on the eat clip, so its authored cue is a meal's
+       *  chewing that a sink may swap for a sip. */
+      readonly sip?: true;
     }
   | {
       /**

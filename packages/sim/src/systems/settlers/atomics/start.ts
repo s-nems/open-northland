@@ -76,7 +76,8 @@ export function startMeal(
 
 /**
  * Start a sip of the carried draught in misc `slot` on the plain eat slot's clip, for a good that
- * `stopsToDrink`. Approximation: the clip's eating sound plays with it, as the data has no drinking sound.
+ * `stopsToDrink`. Its sound cues carry `sip`, since the clip's own sound is chewing and the data has no
+ * drinking sound.
  */
 export function startDrink(
   world: World,

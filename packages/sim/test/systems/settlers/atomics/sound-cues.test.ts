@@ -120,7 +120,7 @@ function cuesOverSwing(
   atomicId: number,
   duration = CHOP_LENGTH,
   effect: AtomicEffect = { kind: 'idle' },
-): { tick: number; soundType: number }[] {
+): { tick: number; soundType: number; sip?: true }[] {
   const sim = new Simulation({ seed: 1, content: cueContent() });
   const e: Entity = settlerAt(sim, { jobType });
   addCurrentAtomic(sim.world, e, {
@@ -130,12 +130,13 @@ function cuesOverSwing(
     targetEntity: null,
     targetTile: null,
   });
-  const fired: { tick: number; soundType: number }[] = [];
+  const fired: { tick: number; soundType: number; sip?: true }[] = [];
   for (let tick = 1; tick <= Math.max(duration, CHOP_LENGTH); tick++) {
     sim.events.clear();
     atomicSystem(sim.world, nextTickCtxOf(sim));
     for (const ev of sim.events.current()) {
-      if (ev.kind === 'atomicSound') fired.push({ tick, soundType: ev.soundType });
+      if (ev.kind === 'atomicSound')
+        fired.push({ tick, soundType: ev.soundType, ...(ev.sip ? { sip: ev.sip } : {}) });
     }
   }
   return fired;
@@ -182,6 +183,13 @@ describe('atomicSystem - authored sound cues', () => {
     const double = CHOP_LENGTH * 2;
     expect(cuesOverSwing(COLLECTOR_JOB, CHOP_ATOMIC, half, lift)).toEqual([{ tick: 3, soundType: AXE }]);
     expect(cuesOverSwing(COLLECTOR_JOB, CHOP_ATOMIC, double, lift)).toEqual([{ tick: 10, soundType: AXE }]);
+  });
+
+  it('marks the cues of a draught drunk on a clip as a sip', () => {
+    const drink: AtomicEffect = { kind: 'drink', slot: 0, goodType: 1 };
+    expect(cuesOverSwing(COLLECTOR_JOB, CHOP_ATOMIC, CHOP_LENGTH, drink)).toEqual([
+      { tick: 5, soundType: AXE, sip: true },
+    ]);
   });
 
   it('sounds a clip a trade inherits from the civilist body', () => {

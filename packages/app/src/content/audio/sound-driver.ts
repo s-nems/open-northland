@@ -54,9 +54,13 @@ export function soundIndexOf(ir: ContentIr, sounds: SoundBank): SoundIndex {
   );
 }
 
-/** The event bindings of the game: the bank's own plus the app's {@link WIELDER_SOUNDS}. */
+/** A swallow for a draught drunk on the eat clip, which the data sounds only as chewing. CC0 (notice in
+ *  public/licenses), kept well under the chewing's loudness. */
+const SIP_CUE = ['/audio/mead-sip.ogg'];
+
+/** The event bindings of the game: the bank's own plus the app's {@link WIELDER_SOUNDS} and sip. */
 export function gameSoundBindings(): SoundBindings {
-  return { ...defaultBindings(), wielderSounds: WIELDER_SOUNDS };
+  return { ...defaultBindings(), wielderSounds: WIELDER_SOUNDS, sipCue: SIP_CUE };
 }
 
 /**

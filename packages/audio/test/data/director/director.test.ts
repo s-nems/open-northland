@@ -255,6 +255,16 @@ describe('directAudio one-shots', () => {
     expect(done.oneShots).toHaveLength(0);
   });
 
+  it("sounds a sip's cue with the sip binding at the clip sound's gain, the clip sound without one", () => {
+    const sip = ['/audio/sip.ogg'];
+    const event: SimEvent = { kind: 'atomicSound', entity: entity(3), soundType: SOUND_AXE, sip: true };
+    const chewing = direct([{ kind: 'atomicSound', entity: entity(3), soundType: SOUND_AXE }]).oneShots[0];
+    const sipped = direct([event], { bindings: { ...bindings, sipCue: sip } }).oneShots;
+    expect(sipped.map((shot) => shot.files)).toEqual([sip]);
+    expect(sipped[0]?.gain).toBe(chewing?.gain);
+    expect(direct([event]).oneShots.map((shot) => shot.files)).toEqual([['static/axe01.wav']]);
+  });
+
   it('sounds a cue of a rider who stands nowhere on the map where the body it rides lies', () => {
     // A deck bowman has no position of his own; the building at (5,5) stands in for his ship.
     const aboard = entity(40);

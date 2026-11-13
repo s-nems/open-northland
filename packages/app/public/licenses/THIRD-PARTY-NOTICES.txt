@@ -66,4 +66,10 @@ Mace swing (the Byzantine sword soldiers' swing, audio/mace-swing.ogg)
   Source: https://opengameart.org/node/5765
   Modified: trimmed of its 40 ms lead-in, levelled and encoded as Ogg Opus.
 
+Mead sip (a settler drinking mead, audio/mead-sip.ogg)
+  "heavy_swallow.wav" by Mikes-MultiMedia, dedicated to the public domain under Creative Commons CC0 1.0
+  Universal, https://creativecommons.org/publicdomain/zero/1.0/.
+  Source: https://freesound.org/s/368711/
+  Modified: lowered by 11.5 dB and encoded as Ogg FLAC from Freesound's MP3 preview.
+
 The bundled fonts carry their own licenses beside them, under /fonts/ in the same bundle.
