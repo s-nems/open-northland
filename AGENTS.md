@@ -89,7 +89,8 @@ the canonical legal wording.
   mechanic, number or recipe updates, in the same commit, what it contradicts there: the articles in
   every language under `packages/app/src/i18n/knowledge/`, and the pack help text through
   `tools/asset-pipeline/corrections/strings/tables.json` and the `chs` help overlays with their
-  derived `cht`. A number the game owns enters an article as a `{{token}}` read in
+  derived `cht`; the official Italian help text is fixed in the pack builder (`translations/AGENTS.md`).
+  A number the game owns enters an article as a `{{token}}` read in
   `packages/app/src/hud/knowledge/facts/`, never retyped.
 
 ## Persisted state
