@@ -34,8 +34,8 @@ import {
   MAP_AI_DEFENCE_REACH_POINTS,
   mannedTowers,
   raidOnTheSettlement,
-  seatDeckShips,
   seatRaiders,
+  seatVehicleThreats,
   sortieOrders,
   towerPostOrders,
 } from './defence/index.js';
@@ -236,7 +236,7 @@ function deriveSettlementDefence(
     intruders: answered,
     commands: [
       ...enlistOrders(world, ctx, player),
-      ...alarmOrders(world, ctx, terrain, owned, raiders, seatDeckShips(world, ctx, terrain, player)),
+      ...alarmOrders(world, ctx, terrain, owned, raiders, seatVehicleThreats(world, ctx, terrain, player)),
       ...posts.commands,
       ...sortie,
     ],

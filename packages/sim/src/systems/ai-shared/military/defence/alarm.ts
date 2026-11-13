@@ -12,20 +12,23 @@ import {
   type Raider,
   raidersNearAny,
   type Shooter,
+  SIEGE_ALARM_MARGIN_NODES,
+  THREAT_STAND_DOWN_MARGIN_NODES,
   threatWatchNodes,
+  type VehicleThreats,
   watchBandOf,
 } from './threat.js';
 
 /** Ring and unring the seat's shelters: defence mode goes up on every standing shelter a raider has closed
- *  inside its {@link watchBandOf}, or an armed ship (`ships`) inside its plain watch, and comes down once
- *  the last one is out of it. */
+ *  inside its {@link watchBandOf}, an armed ship inside its plain watch or a crewed catapult inside its
+ *  {@link siegeBandOf}, and comes down once the last one is out of it. */
 export function alarmOrders(
   world: World,
   ctx: SystemContext,
   terrain: TerrainGraph,
   owned: readonly Entity[],
   raiders: readonly Raider[],
-  ships: readonly Shooter[],
+  vehicles: VehicleThreats,
 ): PlayerCommand[] {
   const commands: PlayerCommand[] = [];
   const near = raidersNearAny(world, ctx, terrain, owned, raiders);
@@ -35,7 +38,9 @@ export function alarmOrders(
     const up = world.has(e, DefenceMode);
     const threatened =
       isBuilt(world, e) &&
-      ((near.length > 0 && closedOn(world, ctx, terrain, e, near)) || shipOff(world, ctx, terrain, e, ships));
+      ((near.length > 0 && closedOn(world, ctx, terrain, e, near)) ||
+        shipOff(world, ctx, terrain, e, vehicles.ships) ||
+        siegeOff(world, ctx, terrain, e, vehicles.siege));
     if (threatened === up) continue;
     commands.push({ kind: 'setDefenceMode', building: e, enabled: threatened });
   }
@@ -71,4 +76,33 @@ function shipOff(
   const at = terrain.coordsOf(entityNode(world, terrain, shelter));
   const watch = threatWatchNodes(ctx, world.get(shelter, Building).tribe);
   return ships.some((ship) => hexDistanceBetween(ship.x, ship.y, at.x, at.y) <= watch);
+}
+
+/**
+ * Whether a crewed catapult lies inside `shelter`'s siege band: the farther of the house bow's reach and
+ * the catapult's own, plus {@link SIEGE_ALARM_MARGIN_NODES}, widened by
+ * {@link THREAT_STAND_DOWN_MARGIN_NODES} while the alarm stands so a catapult on the rim does not flick
+ * the town in and out of cover.
+ */
+function siegeOff(
+  world: World,
+  ctx: SystemContext,
+  terrain: TerrainGraph,
+  shelter: Entity,
+  siege: readonly Shooter[],
+): boolean {
+  if (siege.length === 0) return false;
+  const at = terrain.coordsOf(entityNode(world, terrain, shelter));
+  const watch = threatWatchNodes(ctx, world.get(shelter, Building).tribe);
+  const standDown = world.has(shelter, DefenceMode) ? THREAT_STAND_DOWN_MARGIN_NODES : 0;
+  return siege.some(
+    (catapult) =>
+      hexDistanceBetween(catapult.x, catapult.y, at.x, at.y) <=
+      siegeBandOf(watch, catapult.reach) + standDown,
+  );
+}
+
+/** How close a catapult of `reach` comes before a shelter watching `watch` nodes rings. */
+function siegeBandOf(watch: number, reach: number): number {
+  return Math.max(watch, reach) + SIEGE_ALARM_MARGIN_NODES;
 }

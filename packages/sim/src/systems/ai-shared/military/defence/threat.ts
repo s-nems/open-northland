@@ -13,6 +13,7 @@ import {
   Position,
   Settler,
   Vehicle,
+  vehicleCommander,
   Weapon,
 } from '../../../../components/index.js';
 import type { ChangeFeed, Entity, World } from '../../../../ecs/world.js';
@@ -21,7 +22,7 @@ import type { TerrainGraph } from '../../../../nav/terrain/index.js';
 import { deckReachOf } from '../../../conflict/deck-fire.js';
 import { SIGHT_RADIUS_NODES } from '../../../conflict/targeting.js';
 import { garrisonReach, mannedPostOf, standsAtPost } from '../../../conflict/tower-post.js';
-import { attackerWeapon } from '../../../conflict/weapons.js';
+import { attackerWeapon, vehicleWeapon } from '../../../conflict/weapons.js';
 import type { SystemContext } from '../../../context.js';
 import { ownedFighters } from '../../../movement/collision/owned-fighters.js';
 import { houseBow } from '../../../readviews/index.js';
@@ -72,6 +73,14 @@ export interface EnemyFire {
  *  every decision. */
 export const THREAT_STAND_DOWN_MARGIN_NODES = 6;
 
+/** How far past the house bow's reach a raider is still seen coming: the alarm rings early enough for the
+ *  people to be indoors before he can strike, instead of at the rim of the bow. Owner rule. */
+export const ALARM_EARLY_MARGIN_NODES = 6;
+
+/** The wider early margin a crewed enemy catapult is met with, past the farther of the house bow's reach
+ *  and its own: a stone thrown from out of bow range still lands in the street. Owner rule. */
+export const SIEGE_ALARM_MARGIN_NODES = 12;
+
 /** The house bow's extracted `maximumrange` (`weapons.ini` type 20), for content that declares no wall bow
  *  and whose shelters therefore take their people in unarmed - they still have to be indoors in time. */
 const HOUSE_BOW_REACH_NODES = 29;
@@ -84,15 +93,16 @@ export function threatWatchNodes(ctx: SystemContext, tribe: number): number {
 }
 
 /**
- * The band `building` watches this decision, widened by {@link THREAT_STAND_DOWN_MARGIN_NODES} while its
- * alarm already stands.
+ * The band `building` watches this decision: its {@link threatWatchNodes} plus
+ * {@link ALARM_EARLY_MARGIN_NODES}, widened by {@link THREAT_STAND_DOWN_MARGIN_NODES} while its alarm
+ * already stands.
  *
  * The alarm and the sortie read the same band on purpose. A raider inside the margin but outside the plain
  * reach holds the town in cover while standing where nothing indoors can shoot him, so he has to be
  * somebody the seat comes out at - otherwise one man shuts a settlement down for good.
  */
 export function watchBandOf(world: World, ctx: SystemContext, building: Entity): number {
-  const watch = threatWatchNodes(ctx, world.get(building, Building).tribe);
+  const watch = threatWatchNodes(ctx, world.get(building, Building).tribe) + ALARM_EARLY_MARGIN_NODES;
   return world.has(building, DefenceMode) ? watch + THREAT_STAND_DOWN_MARGIN_NODES : watch;
 }
 
@@ -409,32 +419,48 @@ function sameFighter(
   );
 }
 
+/** The enemy vehicles that put a seat's town in cover: armed warships and crewed catapults. */
+export interface VehicleThreats {
+  /** Ships with a bowman on deck, at the reach of their farthest deck bow. */
+  readonly ships: Shooter[];
+  /** Catapults standing on the map with a commander aboard, at their weapon's far reach. */
+  readonly siege: Shooter[];
+}
+
 /**
- * Every enemy ship with a bowman on its deck that `player` sees, ascending id, with the reach of its
- * farthest deck bow: the alarm takes cover from it as from a bowman ashore. A fresh list per call over
- * the map's few vehicles.
+ * Every enemy vehicle that `player` sees and that can fire on it, ascending id: a warship with a bowman on
+ * its deck, which the alarm takes cover from as from a bowman ashore, and a crewed catapult. An empty or
+ * carried catapult is a hulk, never a threat. Fresh lists per call over the map's few vehicles.
  */
-export function seatDeckShips(
+export function seatVehicleThreats(
   world: World,
   ctx: SystemContext,
   terrain: TerrainGraph,
   player: number,
-): Shooter[] {
+): VehicleThreats {
   stanceOf.fill(UNREAD);
   const sight = sightOf(world, ctx, player);
   const ships: Shooter[] = [];
+  const siege: Shooter[] = [];
   for (const e of world.canonicalQuery(Vehicle, Health, Position)) {
     const owner = world.tryGet(e, Owner)?.player;
     if (owner === undefined || world.get(e, Health).hitpoints <= 0 || !engages(world, owner, player))
       continue;
+    const state = world.get(e, Vehicle);
+    if (state.carrier !== null) continue;
     const at = entityNode(world, terrain, e);
     const x = terrain.xOf(at);
     const y = terrain.yOf(at);
     if (sight !== null && !playerSeesNode(sight, player, x, y)) continue;
+    const weapon = vehicleWeapon(ctx, state);
+    if (weapon !== null) {
+      if (vehicleCommander(state) !== null) siege.push({ x, y, reach: weapon.maxRange });
+      continue;
+    }
     const reach = deckReachOf(world, ctx, e);
     if (reach > 0) ships.push({ x, y, reach });
   }
-  return ships;
+  return { ships, siege };
 }
 
 /** Rewrites `raiders` in place to the `fighters` whose player would engage `player`, in their order: an
