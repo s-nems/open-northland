@@ -1019,7 +1019,7 @@ export const enContent = {
     barracks: {
       title: 'Barracks training',
       summary:
-        'A civilian sent to the barracks drills inside for one term and walks out an unarmed soldier; beside him a civilian who never drilled but may still take the soldier profession.',
+        'A civilian sent to the barracks drills inside for one term and walks out an unarmed soldier; beside him a civilian who never drilled, for whom the soldier profession stays shut.',
     },
     'barracks-armory': {
       title: 'Barracks armory',

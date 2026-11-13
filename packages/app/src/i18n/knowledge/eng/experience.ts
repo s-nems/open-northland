@@ -155,7 +155,7 @@ export const EXPERIENCE: ArticleGroup = {
       lead: 'A discovered profession stays with the whole settlement, even if the settler who discovered it dies.',
       blocks: [
         {
-          p: 'The lobby setting "Profession development: All unlocked from start" removes the requirements for civilian professions and products. Soldier professions have no requirements, and map bans stay.',
+          p: 'The lobby setting "Profession development: All unlocked from start" removes the requirements for civilian professions and products. Map bans stay. Only the [[building:barracks|Barracks]] turns a Civilian into a soldier, under either setting; a soldier, or a settler who once was one, takes any soldier profession without requirements.',
         },
         {
           h: 'What opens a profession',

@@ -44,7 +44,7 @@ import {
 } from '../../../src/systems/settlers/planner/idle-replan.js';
 import { TEST_MANIFEST } from '../../fixtures/content.js';
 import { ctxOf } from '../../fixtures/context.js';
-import { needsOf, setNeeds } from '../../fixtures/settler.js';
+import { heldTrade, needsOf, setNeeds } from '../../fixtures/settler.js';
 
 // DEFENCE MODE - the alarm a player raises on a garrison building: its civilians run inside, the building
 // shoots the house bow at a rate their number sets, and they stay there until it drops. Source basis: the
@@ -322,6 +322,7 @@ describe('defence mode', () => {
     const sim = new Simulation({ seed: 1, content: defenceContent(), map: grass(10, 4) });
     const tower = buildingAt(sim, 5, 1, TOWER, P1);
     const civilians = [1, 2, 3].map((x) => settlerAt(sim, x, 1, P1, FARMER));
+    for (const e of civilians) heldTrade(sim.world, e, SOLDIER); // former soldiers, free to re-enlist
     sim.enqueueSetup({ kind: 'setDefenceMode', building: tower, enabled: true });
     stepUntil(sim, 400, () => civilians.filter((e) => insideOf(sim, e) === tower).length >= TOWER_CAPACITY);
     const [outside] = civilians.filter((e) => shelterOf(sim, e) === undefined);

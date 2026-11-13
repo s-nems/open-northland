@@ -155,7 +155,7 @@ export const EXPERIENCE: ArticleGroup = {
       lead: 'Ein entdeckter Beruf bleibt dem ganzen Dorf, auch wenn der Siedler stirbt, der ihn entdeckt hat.',
       blocks: [
         {
-          p: 'Die Lobby-Einstellung „Berufsentwicklung: Alles von Anfang an freigeschaltet“ hebt die Voraussetzungen ziviler Berufe und Produkte auf. Soldatenberufe haben keine Voraussetzungen, Kartenverbote bleiben.',
+          p: 'Die Lobby-Einstellung „Berufsentwicklung: Alles von Anfang an freigeschaltet“ hebt die Voraussetzungen ziviler Berufe und Produkte auf. Kartenverbote bleiben. Zum Soldaten wird ein Zivilist nur in der [[building:barracks|Kaserne]], bei jeder Einstellung; ein Soldat oder ein Siedler, der einmal einer war, ergreift jeden Soldatenberuf ohne Voraussetzungen.',
         },
         {
           h: 'Was einen Beruf freischaltet',

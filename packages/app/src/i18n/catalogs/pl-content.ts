@@ -1016,7 +1016,7 @@ export const plContent = {
     barracks: {
       title: 'Szkolenie w koszarach',
       summary:
-        'Osadnik wysłany do koszar ćwiczy w środku do końca szkolenia i wychodzi jako żołnierz bez broni; obok cywil, który nie ćwiczył, a i tak może zostać żołnierzem.',
+        'Osadnik wysłany do koszar ćwiczy w środku do końca szkolenia i wychodzi jako żołnierz bez broni; obok cywil, który nie ćwiczył, więc zawód żołnierza pozostaje dla niego zamknięty.',
     },
     'barracks-armory': {
       title: 'Zbrojownia koszar',

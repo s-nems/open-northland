@@ -103,13 +103,13 @@ export const barracksScene: SceneDefinition = {
       },
     },
     {
-      label: 'the colonist who never drilled may take the soldier trade too: no experience gates it',
+      label: 'the colonist who never drilled is refused the soldier trade: only the barracks makes one',
       predicate: (sim) => {
         const { bystander } = cast(sim);
         return (
           bystander !== undefined &&
           sim.world.get(bystander, Settler).jobType === JOB_CIVILIST &&
-          soldierOffered(sim, bystander)
+          !soldierOffered(sim, bystander)
         );
       },
     },

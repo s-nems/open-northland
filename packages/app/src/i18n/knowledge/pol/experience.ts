@@ -150,7 +150,7 @@ export const EXPERIENCE: ArticleGroup = {
       lead: 'Odkryty zawód zostaje dla całej osady, nawet gdy osadnik, który go odkrył, zginie.',
       blocks: [
         {
-          p: 'Ustawienie lobby "Rozwój zawodów: Wszystkie od początku" znosi wymogi zawodów cywilnych i wyrobów. Zawody żołnierskie nie mają wymogów, a zakazy mapy zostają.',
+          p: 'Ustawienie lobby "Rozwój zawodów: Wszystkie od początku" znosi wymogi zawodów cywilnych i wyrobów. Zakazy mapy zostają. Cywila w żołnierza zmieniają tylko [[building:barracks|Koszary]], przy każdym ustawieniu; żołnierz albo osadnik, który kiedyś nim był, bierze każdy zawód żołnierski bez wymogów.',
         },
         {
           h: 'Co otwiera zawód',

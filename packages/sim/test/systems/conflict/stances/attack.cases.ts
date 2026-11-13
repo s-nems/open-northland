@@ -17,8 +17,9 @@ import { fx, ONE } from '../../../../src/core/fixed.js';
 import type { Entity } from '../../../../src/ecs/world.js';
 import { hexDistanceBetween, nodeOfPosition, Simulation } from '../../../../src/index.js';
 import { ATTACK_RETURN_SLACK_NODES } from '../../../../src/systems/conflict/chase.js';
+import { applyTradeChange } from '../../../../src/systems/economy/jobs/index.js';
 import { combatSystem, NEED_DRIVE_THRESHOLD } from '../../../../src/systems/index.js';
-import { attackUnit, moveUnit, setJob, setStance } from '../../../../src/systems/orders/index.js';
+import { attackUnit, moveUnit, setStance } from '../../../../src/systems/orders/index.js';
 import { MILITARY_MODE } from '../../../../src/systems/readviews/index.js';
 import { spawnSettler } from '../../../../src/systems/spawn/index.js';
 import { landRider } from '../../../../src/systems/vehicles/crew.js';
@@ -127,11 +128,12 @@ describe('ATTACK - a fighter walks back to its own place once the fight is over'
     const ctx = ctxOf(sim);
     const soldier = soldierAt(sim, 12);
     sim.world.mut(soldier, Stance).anchorCell = cell(sim, 2, 0);
-    setJob(sim.world, ctx, { kind: 'setJob', entity: soldier, jobType: HERO });
+    // The trade change a weapon picked up at a store or a served barracks term makes.
+    applyTradeChange(sim.world, ctx, soldier, HERO);
     expect(anchorOf(sim, soldier)).toBe(cell(sim, 2, 0)); // armed at a store far from its post, it keeps it
 
     const recruit = combatant(sim, 6, 0, P0, MILITARY_MODE.FLEE);
-    setJob(sim.world, ctx, { kind: 'setJob', entity: recruit, jobType: SOLDIER });
+    applyTradeChange(sim.world, ctx, recruit, SOLDIER);
     expect(anchorOf(sim, recruit)).toBe(cell(sim, 6, 0));
   });
 

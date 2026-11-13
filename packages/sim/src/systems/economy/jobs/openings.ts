@@ -14,15 +14,12 @@ import { isFighterJob, isSoldierJob } from '../../readviews/index.js';
 import { assignedWorkers } from '../../stores/assigned-workers.js';
 import { buildingWorkerJobs } from '../../stores/index.js';
 
-/** The settler-side context an openness probe reads: the same tribe/owner/experience triple the
- *  `needfor*` gate judges. */
+/** The settler-side context an openness probe reads: the subject the `needfor*` gate judges. */
 export interface OpeningsQuery extends NeedSubject {
   /** Initial map attachments retain their authored trade even before its building technology opens. */
   readonly authored?: boolean;
   readonly world: World;
   readonly ctx: SystemContext;
-  /** The settler's current trade, null when it holds none; read only by the garrison gate. */
-  readonly jobType: number | null;
 }
 
 /** A worker order's outcome at one building: the trade it seats the settler in, or why it seats nobody. */
@@ -102,8 +99,7 @@ export function workerOpening(
       refuse('locked', jobType);
       continue;
     }
-    // A bow soldier's `needforjob 40 5 69` reads a fight track only fighting accrues, so re-gating a
-    // settler already in the trade would leave every tower post unmannable.
+    // A settler already in the trade keeps its post, earned or not: a map places tradesmen with no XP.
     if (!alreadyHoldsTrade && !settlerMeetsNeed(world, ctx, query, 'job', jobType)) {
       // The need gate also reads the map's permission table, which is a lock rather than experience.
       refuse(typeAllowed(world, ctx, query.owner, tribe, 'job', jobType) ? 'experience' : 'locked', jobType);

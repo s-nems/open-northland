@@ -155,7 +155,7 @@ export const EXPERIENCE: ArticleGroup = {
       lead: "Una professione scoperta resta a disposizione di tutto l'insediamento, anche se il colono che l'ha scoperta muore.",
       blocks: [
         {
-          p: "L'impostazione della lobby «Sviluppo delle professioni: Tutte sbloccate dall'inizio» toglie i requisiti per le professioni civili e i prodotti. Le professioni militari non hanno requisiti, e i divieti della mappa restano.",
+          p: "L'impostazione della lobby «Sviluppo delle professioni: Tutte sbloccate dall'inizio» toglie i requisiti per le professioni civili e i prodotti. I divieti della mappa restano. Un civile diventa soldato solo in [[building:barracks|caserma]], con qualsiasi impostazione; un soldato, o un colono che lo è stato, prende qualsiasi professione militare senza requisiti.",
         },
         {
           h: 'Cosa sblocca una professione',

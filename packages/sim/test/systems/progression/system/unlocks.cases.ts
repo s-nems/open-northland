@@ -17,8 +17,7 @@ import { ctxOf } from './support.js';
 
 const HUMAN_PLAYER = 0;
 const AI_PLAYER = 1;
-/** The fixture's `soldier_unarmed` - a job the content classifies as a fighter, so no experience row
- *  gates it. */
+/** The fixture's `soldier_unarmed` - a job the content classifies as a fighter. */
 const SOLDIER_JOB = 31;
 
 /** Flag `player`'s seat AI-driven, the state the `setAiControl` command lands (no tick needed). */
@@ -123,6 +122,7 @@ describe('settlerMeetsNeed - all needfor thresholds gating a target', () => {
   const human = (xp?: number): NeedSubject => ({
     tribe: VIKING,
     owner: HUMAN_PLAYER,
+    jobType: null,
     experience: xp === undefined ? new Map() : new Map([[WOOD_TRACK, xp]]),
     learned: undefined,
   });
@@ -166,7 +166,13 @@ describe('settlerMeetsNeed - all needfor thresholds gating a target', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
     const ctx = ctxOf(sim);
     makeAiSeat(sim, AI_PLAYER);
-    const bot: NeedSubject = { tribe: VIKING, owner: AI_PLAYER, experience: new Map(), learned: undefined };
+    const bot: NeedSubject = {
+      tribe: VIKING,
+      owner: AI_PLAYER,
+      jobType: null,
+      experience: new Map(),
+      learned: undefined,
+    };
     expect(settlerMeetsNeed(sim.world, ctx, bot, 'good', PLANK)).toBe(false);
     expect(goodEnabled(sim.world, ctx, AI_PLAYER, VIKING, PLANK)).toBe(false);
     setProfessionProgression(sim.world, false);
@@ -177,38 +183,57 @@ describe('settlerMeetsNeed - all needfor thresholds gating a target', () => {
 
 describe('settlerMeetsNeed - a fighter trade', () => {
   const VIKING = 1;
-  /** The extracted rows' spear fight bucket and training bucket, both track-less. */
-  const SPEAR_BUCKET = 72;
-  const TRAINING_BUCKET = 77;
+  const SWORD_SOLDIER_JOB = 34;
+  const HERO_JOB = 45;
+  /** The extracted rows' sword fight bucket, track-less. */
+  const SWORD_BUCKET = 73;
 
-  it('is met by a fresh civilian whatever its need and train rows, with progression on and off', () => {
-    const sim = new Simulation({ seed: 1, content: testContent() });
-    const ctx = ctxOf(sim);
-    sim.content.tribes[0]?.jobRequirements.push(
-      {
-        requirement: 'need',
-        target: 'job',
-        targetId: SOLDIER_JOB,
-        amount: 10,
-        experienceTypes: [SPEAR_BUCKET],
-      },
-      {
-        requirement: 'train',
-        target: 'job',
-        targetId: SOLDIER_JOB,
-        amount: 5,
-        experienceTypes: [TRAINING_BUCKET],
-      },
-    );
-    const fresh: NeedSubject = {
+  /** The fixture plus a second soldier class, gated by an unmet `needforjob` row. */
+  function fighterSim(): Simulation {
+    const content = testContent();
+    const unarmed = content.jobs.find((job) => job.typeId === SOLDIER_JOB);
+    if (unarmed === undefined) throw new Error('fixture lost its soldier trade');
+    content.jobs.push({ ...unarmed, typeId: SWORD_SOLDIER_JOB, id: 'soldier_sword_short' });
+    content.tribes[0]?.jobRequirements.push({
+      requirement: 'need',
+      target: 'job',
+      targetId: SWORD_SOLDIER_JOB,
+      amount: 10,
+      experienceTypes: [SWORD_BUCKET],
+    });
+    return new Simulation({ seed: 1, content });
+  }
+
+  function subject(jobType: number | null, learnedJobs: readonly number[] = []): NeedSubject {
+    return {
       tribe: VIKING,
       owner: HUMAN_PLAYER,
+      jobType,
       experience: new Map(),
-      learned: undefined,
+      learned: { job: learnedJobs, good: [] },
     };
-    expect(settlerMeetsNeed(sim.world, ctx, fresh, 'job', SOLDIER_JOB)).toBe(true);
-    setProfessionProgression(sim.world, false);
-    expect(settlerMeetsNeed(sim.world, ctx, fresh, 'job', SOLDIER_JOB)).toBe(true);
+  }
+
+  it('is refused to a civilian, with progression on and off: the barracks makes soldiers', () => {
+    const sim = fighterSim();
+    const ctx = ctxOf(sim);
+    const civilian = subject(null);
+    for (const progression of [true, false]) {
+      setProfessionProgression(sim.world, progression);
+      expect(settlerMeetsNeed(sim.world, ctx, civilian, 'job', SOLDIER_JOB)).toBe(false);
+      expect(settlerMeetsNeed(sim.world, ctx, civilian, 'job', HERO_JOB)).toBe(false);
+    }
+  });
+
+  it('opens every class of its band, unthresholded, to one who holds or once held a trade of it', () => {
+    const sim = fighterSim();
+    const ctx = ctxOf(sim);
+    const soldier = subject(SOLDIER_JOB);
+    const veteran = subject(null, [SOLDIER_JOB]);
+    expect(settlerMeetsNeed(sim.world, ctx, soldier, 'job', SWORD_SOLDIER_JOB)).toBe(true);
+    expect(settlerMeetsNeed(sim.world, ctx, veteran, 'job', SWORD_SOLDIER_JOB)).toBe(true);
+    expect(settlerMeetsNeed(sim.world, ctx, soldier, 'job', HERO_JOB)).toBe(false);
+    expect(settlerMeetsNeed(sim.world, ctx, subject(HERO_JOB), 'job', SOLDIER_JOB)).toBe(false);
   });
 });
 

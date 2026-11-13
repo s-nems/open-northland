@@ -1,9 +1,9 @@
-import type { JobRequirement, JobRequirementTarget } from '@open-northland/data';
+import type { ContentSet, JobRequirement, JobRequirementTarget } from '@open-northland/data';
 import { ownerOf, professionProgressionEnabled, Settler, SettlerProgress } from '../../components/index.js';
 import { contentIndex } from '../../core/content-index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { ContentContext } from '../context.js';
-import { isFighterJob } from '../readviews/index.js';
+import { isFighterJob, isHeroJob, isSoldierJob } from '../readviews/index.js';
 import { jobEnabled, typeAllowed } from './availability.js';
 import { requirementRepeats } from './bonus.js';
 
@@ -35,27 +35,32 @@ export interface NeedSubject {
   readonly tribe: number;
   /** The owning player, or `undefined` for a neutral settler (which the gates do apply to). */
   readonly owner: number | undefined;
+  /** The settler's current trade, null when it holds none. */
+  readonly jobType: number | null;
   readonly experience: ReadonlyMap<number, number>;
   readonly learned: { readonly job: readonly number[]; readonly good: readonly number[] } | undefined;
 }
 
 export function needSubjectOf(world: World, settler: Entity): NeedSubject {
   const { experience, learned } = world.get(settler, SettlerProgress);
-  return { tribe: world.get(settler, Settler).tribe, owner: ownerOf(world, settler), experience, learned };
+  const { tribe, jobType } = world.get(settler, Settler);
+  return { tribe, owner: ownerOf(world, settler), jobType, experience, learned };
 }
 
 /** A {@link NeedSubject} a caller owns and refills, for a per-tick loop that keeps none past its gates. */
 export type NeedSubjectScratch = { -readonly [K in keyof NeedSubject]: NeedSubject[K] };
 
 export function emptyNeedSubject(): NeedSubjectScratch {
-  return { tribe: 0, owner: undefined, experience: new Map(), learned: undefined };
+  return { tribe: 0, owner: undefined, jobType: null, experience: new Map(), learned: undefined };
 }
 
 /** {@link needSubjectOf} written into `into`. */
 export function needSubjectInto(world: World, settler: Entity, into: NeedSubjectScratch): NeedSubject {
   const progress = world.get(settler, SettlerProgress);
-  into.tribe = world.get(settler, Settler).tribe;
+  const settlerState = world.get(settler, Settler);
+  into.tribe = settlerState.tribe;
   into.owner = ownerOf(world, settler);
+  into.jobType = settlerState.jobType;
   into.experience = progress.experience;
   into.learned = progress.learned;
   return into;
@@ -63,8 +68,8 @@ export function needSubjectInto(world: World, settler: Entity, into: NeedSubject
 
 /**
  * Whether a settler meets every `needfor*` XP threshold gating a `(target, targetId)` for its tribe. A
- * target with several must clear all of them, and a tribe absent from content thresholds nothing.
- * Our rule: a fighter trade reads no experience row at all; the weapon a man carries is his rank.
+ * target with several must clear all of them, and a tribe absent from content thresholds nothing. A
+ * fighter trade reads no experience row: {@link fighterTradeOpen} decides it, progression on or off.
  */
 export function settlerMeetsNeed(
   world: World,
@@ -76,7 +81,8 @@ export function settlerMeetsNeed(
   const { tribe, owner, experience } = subject;
   if (!typeAllowed(world, ctx, owner, tribe, target, targetId)) return false;
   if (subject.learned?.[target].includes(targetId)) return true;
-  if (target === 'job' && isFighterJob(ctx.content, targetId)) return true;
+  if (target === 'job' && isFighterJob(ctx.content, targetId))
+    return fighterTradeOpen(ctx.content, subject, targetId);
   if (!professionProgressionEnabled(world)) return true;
   const tribeType = contentIndex(ctx.content).tribes.get(tribe);
   if (tribeType === undefined) return true;
@@ -86,6 +92,20 @@ export function settlerMeetsNeed(
     if (!experienceRequirementMet(ctx, experience, req)) return false;
   }
   return true;
+}
+
+/**
+ * Whether a settler may take a fighter trade: only from inside its band, the soldier trades or the hero
+ * trades, now or earlier, since a trade left behind stays learned. Inside the band the weapon is the
+ * rank, so no threshold stands between classes; a civilian enters the soldier band through a barracks
+ * term alone. Our rule, after the tribe tables, whose `needforjob` rows for both bands read fight tracks
+ * only that band accrues and whose `trainforjob` rows name the barracks course.
+ */
+function fighterTradeOpen(content: ContentSet, subject: NeedSubject, jobType: number): boolean {
+  const inBand = isHeroJob(content, jobType) ? isHeroJob : isSoldierJob;
+  return (
+    inBand(content, subject.jobType) || (subject.learned?.job.some((held) => inBand(content, held)) ?? false)
+  );
 }
 
 /** A tribe's `needfor*` rows by target table and target id, in content order, indexed from the first

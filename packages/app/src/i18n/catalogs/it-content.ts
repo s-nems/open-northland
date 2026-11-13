@@ -1031,7 +1031,7 @@ export const itContent = {
     barracks: {
       title: 'Addestramento in caserma',
       summary:
-        'Un civile mandato in caserma si esercita dentro per un turno ed esce come soldato disarmato; accanto a lui un civile che non si è mai esercitato ma può comunque diventare soldato.',
+        'Un civile mandato in caserma si esercita dentro per un turno ed esce come soldato disarmato; accanto a lui un civile che non si è mai esercitato, per cui la professione di soldato resta chiusa.',
     },
     'barracks-armory': {
       title: 'Armeria della caserma',
