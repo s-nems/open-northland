@@ -51,6 +51,12 @@ const LOOK_CLASS: Readonly<Record<PersonLook, string>> = {
   child: 'on-seat-well--child',
 };
 
+/** A trade's name with what its workers handle at this house: "Extractor (Wood)", "Tailor (Shoes,
+ *  Leather Armor)". A trade that neither gathers nor makes anything here, or any line off a workplace,
+ *  keeps the bare name. */
+const withMakes = (job: string, makes: readonly string[] | undefined): string =>
+  makes !== undefined && makes.length > 0 ? `${job} (${makes.join(', ')})` : job;
+
 /** Workers, Residents or Builders: a line per group (a trade's seats, the sheltering crowd, a
  *  family) with a well per person showing it live, and the filled and declared seats on the rule, with
  *  "Release the garrison" beside them on a tower. A press on a person selects it; a press on a trade's
@@ -111,7 +117,10 @@ export function createStaffSection(
     setClass(node, 'on-seat-well--more', shown.kind === 'more');
     const tip =
       person !== null
-        ? formatMessage(copy.person, { name: person.name, job: person.job })
+        ? formatMessage(copy.person, {
+            name: person.name,
+            job: withMakes(person.job, person.makes ?? group.makes),
+          })
         : shown.kind === 'more'
           ? formatMessage(copy.morePeople, { count: shown.count })
           : group.jobType !== null

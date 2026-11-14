@@ -21,7 +21,13 @@ import {
   supplyRunsTo,
 } from '../../../game/snapshot/index.js';
 import { messages } from '../../../i18n/index.js';
-import { type BuildingDef, jobDisplayName, type UnitPanelModelContext } from './context.js';
+import {
+  type BuildingDef,
+  goodLabel,
+  isCarrierJob,
+  jobDisplayName,
+  type UnitPanelModelContext,
+} from './context.js';
 
 /** The figure a person's well shows: a soldier in steel, a woman, a man, or a smaller child. */
 export type PersonLook = 'man' | 'woman' | 'soldier' | 'child';
@@ -31,6 +37,9 @@ export interface StaffPerson {
   readonly name: string;
   readonly job: string;
   readonly look: PersonLook;
+  /** What this person is set to make at this house, as localized good names: the running products the
+   *  worker's own panel lists with its counters. It overrides the line's pool; absent keeps the pool. */
+  readonly makes?: readonly string[] | undefined;
 }
 
 /** One run of wells: a worker slot's trade, the sheltering crowd, a family. */
@@ -43,6 +52,12 @@ export interface StaffGroup {
   readonly capacity: number | null;
   /** The trade a free seat takes, for a worker slot's line. */
   readonly jobType: number | null;
+  /** What a worker of this line works on at this house, as localized good names, so the well's tooltip
+   *  can name the resource. A gathering trade names the goods the building stocks; a craft operator one
+   *  entry per recipe. The pool stands for the line's seats and for a worker without a product choice
+   *  of its own; a worker's own selection overrides it (StaffPerson.makes). Empty for a trade that
+   *  neither gathers nor operates the craft here, and absent off a workplace's staff. */
+  readonly makes?: readonly string[] | undefined;
 }
 
 /**
@@ -140,12 +155,17 @@ function workerGroups(
   building: number,
 ): StaffGroup[] {
   const byJob = byJobType(staffOf(snapshot, building));
+  const person = (e: SnapshotEntity): StaffPerson => ({
+    ...personOf(ctx, e),
+    ...makesForPerson(ctx, snapshot, e),
+  });
   const groups: StaffGroup[] = (def?.workers ?? []).map((slot) => ({
     key: `job:${slot.jobType}`,
     label: jobDisplayName(ctx, slot.jobType),
-    people: (byJob.get(slot.jobType) ?? []).map((e) => personOf(ctx, e)),
+    people: (byJob.get(slot.jobType) ?? []).map(person),
     capacity: slot.count,
     jobType: slot.jobType,
+    ...makesOf(ctx, def, slot.jobType),
   }));
   const slotted = new Set((def?.workers ?? []).map((slot) => slot.jobType));
   for (const [jobType, people] of byJob) {
@@ -153,12 +173,103 @@ function workerGroups(
     groups.push({
       key: `job:${jobType}`,
       label: jobDisplayName(ctx, jobType),
-      people: people.map((e) => personOf(ctx, e)),
+      people: people.map(person),
       capacity: null,
       jobType,
+      ...makesOf(ctx, def, jobType),
     });
   }
   return groups;
+}
+
+/**
+ * A worker line's goods, as `StaffGroup.makes` carries them: what this trade works on at this house, as
+ * localized good names. A gathering trade names the goods the house stocks — the same narrowing the sim
+ * applies to a building-employed roamer; a craft operator names one entry per recipe, in recipe order, the
+ * rotation pool the sim's craft loop walks. A trade that neither gathers nor operates the craft here (a
+ * posted carrier, the sheltering crowd) leaves the field out.
+ */
+function makesOf(
+  ctx: UnitPanelModelContext,
+  def: BuildingDef | undefined,
+  jobType: number | null,
+): { makes: readonly string[] } | Record<string, never> {
+  if (jobType === null) return {};
+  const gathered = gatheredGoodsOf(ctx, def, jobType);
+  if (gathered !== null) return { makes: gathered };
+  const crafted = craftedGoodsOf(ctx, def, jobType);
+  return crafted === null ? {} : { makes: crafted };
+}
+
+/**
+ * What this posted worker is set to make, from the production counters the worker's own panel edits:
+ * the open products with a running count, in recipe order, each a localized good name. An empty list
+ * means every product is stopped, so the well keeps the bare trade; no production choice here (the
+ * seam absent, the trade listing none) leaves the line's pool standing.
+ */
+function makesForPerson(
+  ctx: UnitPanelModelContext,
+  snapshot: WorldSnapshot,
+  ent: SnapshotEntity,
+): { makes: readonly string[] } | Record<string, never> {
+  const rows = ctx.productionOf?.(snapshot, ent)?.rows;
+  if (rows === undefined) return {};
+  return { makes: rows.filter((row) => row.locked === null && row.count > 0).map((row) => row.label) };
+}
+
+/**
+ * The goods a gathering trade works on here, or null when the trade gathers nothing off the map: the
+ * trade's goods this house stocks, the same narrowing the sim applies to a building-employed roamer (an
+ * employed gatherer forages only what its workplace stocks, a dish banked in its edible form included).
+ * A type declaring no stock slots leaves its gatherer unfiltered, so the whole trade's goods stand.
+ */
+function gatheredGoodsOf(
+  ctx: UnitPanelModelContext,
+  def: BuildingDef | undefined,
+  jobType: number,
+): readonly string[] | null {
+  const trade = ctx.gatherGoods?.(jobType) ?? [];
+  if (trade.length === 0) return null;
+  const stored = def?.stock ?? [];
+  // The sim's `storedGoodsByBuilding` is absent for a slot-less type, which leaves its roamer unfiltered.
+  const slots = stored.length === 0 ? null : new Set(stored.map((slot) => slot.goodType));
+  const stocked =
+    slots === null
+      ? trade
+      : trade.filter(
+          (goodType) => slots.has(goodType) || slots.has(ctx.edibleGoodForm?.(goodType) ?? goodType),
+        );
+  return stocked.map((goodType) => goodLabel(ctx, goodType));
+}
+
+/**
+ * The products a craft operator of this house turns out, in recipe order, or null when the trade runs no
+ * craft here. Each recipe contributes its first output, the product the sim's cycle names, and the
+ * operator slots follow the sim's rule: any slot trade but a carrier or a gatherer, else every slot,
+ * since a type with none of those has its lone carrier run the craft.
+ */
+function craftedGoodsOf(
+  ctx: UnitPanelModelContext,
+  def: BuildingDef | undefined,
+  jobType: number,
+): readonly string[] | null {
+  if (def === undefined || def.recipes.length === 0) return null;
+  if (!operatorSlotsOf(ctx, def).some((slot) => slot.jobType === jobType)) return null;
+  return def.recipes
+    .flatMap((recipe) => recipe.outputs[0]?.goodType ?? [])
+    .map((goodType) => goodLabel(ctx, goodType));
+}
+
+/** The sim's operator-slot rule over a type's worker slots: the trades that are neither carriers nor
+ *  gatherers, or all of them when that leaves nothing. */
+function operatorSlotsOf(
+  ctx: UnitPanelModelContext,
+  def: BuildingDef,
+): readonly { readonly jobType: number; readonly count: number }[] {
+  const operators = def.workers.filter(
+    (slot) => !isCarrierJob(ctx, slot.jobType) && (ctx.gatherGoods?.(slot.jobType) ?? []).length === 0,
+  );
+  return operators.length > 0 ? operators : def.workers;
 }
 
 /** The owner's traders whose route stops at the house, one line per trade. A route takes no seat, so
