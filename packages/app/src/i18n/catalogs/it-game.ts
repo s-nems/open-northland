@@ -1050,6 +1050,7 @@ export const itGame = {
         herbalist: 'Erboristi',
         druid: 'Druidi',
         scout: 'Esploratori',
+        ferryman: 'Traghettatori',
         trader: 'Mercanti',
         trader_sea: 'Mercanti di mare',
         soldier: 'Soldati',
