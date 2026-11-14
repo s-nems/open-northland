@@ -51,8 +51,8 @@ const LOOK_CLASS: Readonly<Record<PersonLook, string>> = {
   child: 'on-seat-well--child',
 };
 
-/** A trade's name with what its workers handle at this house: "Abbauer (Holz)", "Näher (Schuhe,
- *  Lederrüstung)". A trade that neither gathers nor makes anything here, or any line off a workplace,
+/** A trade's name with what its workers handle at this house: "Extractor (Wood)", "Tailor (Shoes,
+ *  Leather Armor)". A trade that neither gathers nor makes anything here, or any line off a workplace,
  *  keeps the bare name. */
 const withMakes = (job: string, makes: readonly string[] | undefined): string =>
   makes !== undefined && makes.length > 0 ? `${job} (${makes.join(', ')})` : job;
