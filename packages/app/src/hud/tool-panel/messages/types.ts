@@ -80,6 +80,13 @@ export type UserMessageTypeName = keyof typeof USER_MESSAGE_TYPE;
  *  flag follow. */
 export type AssistantReminderSwitch = GiveSwitchId | 'moveFlags';
 
+/** The notices a player's settings can keep out of the feed: a man the barracks trained into a soldier,
+ *  and a child that grew into an adult man or woman. */
+export type NoticeKind = 'newSoldier' | 'adultMan' | 'adultWoman';
+
+/** Whether a notice kind still raises, per the player's settings; asked as a note of it is due. */
+export type NoticeFilter = (kind: NoticeKind) => boolean;
+
 /** What an order the peace refused would have done: send someone there, or build there. */
 export type PeaceRefusedOrder = Extract<SimEvent, { kind: 'peaceRefused' }>['what'];
 export type UserMessageType = (typeof USER_MESSAGE_TYPE)[UserMessageTypeName];

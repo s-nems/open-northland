@@ -2,6 +2,7 @@ import { entityById, type HalfCellNode, type SimEvent, type WorldSnapshot } from
 import { isSoldierJob, professionDefForJob } from '../../../catalog/professions.js';
 import {
   isBuilding,
+  isFemale,
   isPalisade,
   isVehicle,
   ownerPlayerOf,
@@ -22,6 +23,7 @@ import type { NamedSettler } from './text.js';
 import {
   type FightTally,
   type MessageTechnology,
+  type NoticeFilter,
   type PendingMessage,
   USER_MESSAGE_TYPE,
   type UserMessageType,
@@ -58,6 +60,8 @@ export type VehicleSiteTest = (typeId: number) => boolean;
 
 const NO_VEHICLE_SITES: VehicleSiteTest = () => false;
 const NOWHERE: SightingOf = () => null;
+/** Every kind passes the filter; the player's settings hold some notices out. */
+const ALL_NOTICES_PASS: NoticeFilter = () => true;
 
 /** The two notes one settler's discoveries make: the trades and goods it learned, and the buildings
  *  they open. */
@@ -245,7 +249,8 @@ export function courseNoteKeeps(
  * still be named, and a body a killing blow felled can still be told. A blow on the seat's own settler,
  * building or vehicle files a hit under `fights`, unless it is the seat's own fire or splash from a
  * side not at war with it; each fight a frame touched raises one note. A defeated seat's note points
- * where `sightingOf` finds it.
+ * where `sightingOf` finds it. A kind `noticeFilter` holds out raises no note at all, sound included:
+ * the soldier the barracks trained, and the grown man or woman.
  */
 export function messagesFromEvents(
   events: readonly SimEvent[],
@@ -257,6 +262,7 @@ export function messagesFromEvents(
   fights: FightAreas,
   isVehicleSite: VehicleSiteTest = NO_VEHICLE_SITES,
   sightingOf: SightingOf = NOWHERE,
+  noticeFilter: NoticeFilter = ALL_NOTICES_PASS,
 ): RaisedMessage[] {
   const raiser = new MessageRaiser(snapshot, naming);
   const discoveries = new Map<number, MessageTechnology[]>();
@@ -384,7 +390,8 @@ export function messagesFromEvents(
       }
       case 'settlerGrewUp': {
         const e = ownedPerson(ev.entity);
-        if (e !== undefined) raiser.settler(USER_MESSAGE_TYPE.grewUp, e);
+        if (e === undefined || !noticeFilter(isFemale(e) ? 'adultWoman' : 'adultMan')) break;
+        raiser.settler(USER_MESSAGE_TYPE.grewUp, e);
         break;
       }
       case 'explorationFinished': {
@@ -411,8 +418,12 @@ export function messagesFromEvents(
         const nameless = naming.technology(ev.target, ev.typeId) === undefined;
         if (nameless && !(ev.course === 'barracks' && ev.target === 'job')) break;
         if (keeps(ev.entity) === 'unlock') break;
-        if (ev.target === 'job') raiser.trained(USER_MESSAGE_TYPE.canDoNewJob, e, ev.course, ev.typeId);
-        else raiser.settler(USER_MESSAGE_TYPE.canProduceNewGood, e, ev.typeId);
+        if (ev.target === 'job') {
+          // The barracks course makes the soldier, whose note alone the settings filter; a school's
+          // trades and every good lesson stay.
+          if (ev.course === 'barracks' && !noticeFilter('newSoldier')) break;
+          raiser.trained(USER_MESSAGE_TYPE.canDoNewJob, e, ev.course, ev.typeId);
+        } else raiser.settler(USER_MESSAGE_TYPE.canProduceNewGood, e, ev.typeId);
         break;
       }
       case 'playerDefeated':

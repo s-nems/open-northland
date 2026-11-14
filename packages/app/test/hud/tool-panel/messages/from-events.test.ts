@@ -9,7 +9,11 @@ import {
 } from '../../../../src/hud/tool-panel/messages/from-events.js';
 import type { MessageNaming } from '../../../../src/hud/tool-panel/messages/raise.js';
 import type { MessageText } from '../../../../src/hud/tool-panel/messages/text.js';
-import { USER_MESSAGE_TYPE } from '../../../../src/hud/tool-panel/messages/types.js';
+import {
+  type NoticeFilter,
+  USER_MESSAGE_TYPE,
+  type UserMessageType,
+} from '../../../../src/hud/tool-panel/messages/types.js';
 
 const LOCAL = 0;
 const ENEMY = 1;
@@ -21,6 +25,7 @@ interface Actor {
   readonly player: number;
   readonly kind: 'person' | 'animal' | 'building' | 'vehicle';
   readonly col?: number;
+  readonly female?: boolean;
 }
 
 function snapshot(tick: number, actors: readonly Actor[]): WorldSnapshot {
@@ -40,6 +45,7 @@ function snapshot(tick: number, actors: readonly Actor[]): WorldSnapshot {
               ? { Vehicle: { vehicleType: 2, tribe: 1, task: 'none', passengers: [null] } }
               : { Settler: { tribe: 1, jobType: 7 } }),
           ...(a.kind === 'person' ? { Person: { person: true } } : {}),
+          ...(a.female === true ? { Female: { female: true } } : {}),
         },
       })),
   };
@@ -683,6 +689,66 @@ describe('user messages from sim events', () => {
         USER_MESSAGE_TYPE.canDoNewJob,
         USER_MESSAGE_TYPE.experienceUnlocks,
       ]);
+    });
+  });
+
+  describe('the notices the settings filter', () => {
+    const MAN = 1;
+    const WOMAN = 2;
+    const grown = (): WorldSnapshot =>
+      snapshot(50, [
+        { id: MAN, player: LOCAL, kind: 'person' },
+        { id: WOMAN, player: LOCAL, kind: 'person', col: 5, female: true },
+      ]);
+    const eventsOf = (course: 'barracks' | 'school'): SimEvent[] => [
+      { kind: 'settlerTrained', entity: e(MAN), course, target: 'job', typeId: 31 },
+      { kind: 'settlerGrewUp', entity: e(MAN) },
+      { kind: 'settlerGrewUp', entity: e(WOMAN) },
+    ];
+    const typesWith = (course: 'barracks' | 'school', filter?: NoticeFilter): readonly UserMessageType[] =>
+      messagesFromEvents(
+        eventsOf(course),
+        grown(),
+        [],
+        LOCAL,
+        naming,
+        NO_MENU,
+        new FightAreas(),
+        undefined,
+        undefined,
+        filter,
+      ).map((r) => r.pending.type);
+
+    it('raises the soldier and both grown notes while nothing is filtered', () => {
+      expect(typesWith('barracks')).toEqual([
+        USER_MESSAGE_TYPE.canDoNewJob,
+        USER_MESSAGE_TYPE.grewUp,
+        USER_MESSAGE_TYPE.grewUp,
+      ]);
+    });
+
+    it('holds every filtered kind out at once, so no note and no sound of it stays', () => {
+      expect(typesWith('barracks', () => false)).toEqual([]);
+    });
+
+    it('holds only the soldier out, which a school trade is not; both grown notes stay', () => {
+      expect(typesWith('barracks', (kind) => kind !== 'newSoldier')).toEqual([
+        USER_MESSAGE_TYPE.grewUp,
+        USER_MESSAGE_TYPE.grewUp,
+      ]);
+      expect(typesWith('school', (kind) => kind !== 'newSoldier')).toEqual([
+        USER_MESSAGE_TYPE.canDoNewJob,
+        USER_MESSAGE_TYPE.grewUp,
+        USER_MESSAGE_TYPE.grewUp,
+      ]);
+    });
+
+    it('holds the grown woman out alone, then the grown man with her', () => {
+      expect(typesWith('school', (kind) => kind !== 'adultWoman')).toEqual([
+        USER_MESSAGE_TYPE.canDoNewJob,
+        USER_MESSAGE_TYPE.grewUp,
+      ]);
+      expect(typesWith('school', (kind) => kind === 'newSoldier')).toEqual([USER_MESSAGE_TYPE.canDoNewJob]);
     });
   });
 });

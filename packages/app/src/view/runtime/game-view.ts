@@ -898,6 +898,16 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       onAttackShown: (at) => minimap?.ping(at),
       // Each shown note's sound: the attack alert, a settler's own voice, or the card cue.
       ...(soundDriver !== null ? { onNoteShown: (note) => soundShownNote(note, soundDriver) } : {}),
+      // The notice filters read the live settings as each event lands, so a gameplay-tab toggle takes
+      // hold at once; `liveSettings` mounts later in this body, before any frame presents.
+      noticeFilter: (kind) => {
+        const settings = liveSettings.settings.current();
+        return kind === 'newSoldier'
+          ? settings.noticeNewSoldier
+          : kind === 'adultMan'
+            ? settings.noticeAdultMan
+            : settings.noticeAdultWoman;
+      },
       ...(hasDebugFlag(params, NOTICE_GALLERY_DEBUG_FLAG)
         ? { noticeGallery: { goodType: goodLabelByType.keys().next().value ?? null } }
         : {}),
