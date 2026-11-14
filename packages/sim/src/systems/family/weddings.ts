@@ -20,6 +20,7 @@ import {
   approachPartner,
   driveMirroredPairs,
   haltBeside,
+  pauseForOwnedWalks,
   standsBeside,
   startPairedAtomics,
 } from '../rendezvous.js';
@@ -107,6 +108,9 @@ function drivePair(
     return;
   }
   if (busyA || busyB) return; // let a running action finish first
+  // A player order, flight or fight on either partner holds the approach without cancelling it, and a
+  // failed route under that owner is its own. Approximation: the original's handling is unconfirmed.
+  if (pauseForOwnedWalks(world, terrain, a, b)) return;
   // A craft worker remained inside to finish its batch. The ceremony and the walk both happen outdoors.
   stepOut(world, a);
   stepOut(world, b);
