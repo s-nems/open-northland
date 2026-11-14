@@ -16,8 +16,8 @@
   "devDependencies": {
     "@open-northland/map-import": "*",
     "@open-northland/ownership": "*",
-    "@types/node": "^26.6.5",
-    "electron": "^45.1.0",
+    "@types/node": "^26.6.6",
+    "electron": "^45.2.2",
     "electron-builder": "^26.18.0",
     "esbuild": "^0.28.2"
   },

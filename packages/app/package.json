@@ -22,7 +22,7 @@
     "@open-northland/ownership": "*",
     "@open-northland/render": "*",
     "@open-northland/sim": "*",
-    "@pmndrs/detect-gpu": "6.0.28",
+    "@pmndrs/detect-gpu": "6.0.29",
     "@open-northland/map-import": "*",
     "flag-icons": "7.6.0",
     "node-unrar-js": "2.0.2"
