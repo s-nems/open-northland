@@ -11,11 +11,13 @@ import {
   CurrentAtomic,
   FamilyDuty,
   Female,
+  Fleeing,
   MakingLove,
   Marriage,
   MoveGoal,
   PathFollow,
   PickupClaim,
+  PlayerOrder,
   Position,
   Residence,
   Resting,
@@ -31,6 +33,7 @@ import {
 import type { Entity } from '../../../src/ecs/world.js';
 import { fx, ONE, playerCommand, type SimEvent, Simulation } from '../../../src/index.js';
 import { nodeOfPosition, nodesAdjacent, positionOfNode } from '../../../src/nav/halfcell.js';
+import { runFromBlow } from '../../../src/systems/conflict/flee.js';
 import { FOOD_SEARCH_RETRY_TICKS } from '../../../src/systems/family/children/order.js';
 import {
   ADULT_AGE_TICKS,
@@ -244,6 +247,25 @@ function expectHomeMealIndoors(sim: Simulation, woman: Entity, home: Entity): vo
   }
   expect(mealTicks).toBeGreaterThan(1);
   expect(needsOf(sim, woman).hunger).toBeLessThan(ONE);
+}
+
+/** A matched pair a few ticks into its approach on an open strip: the lower-id woman walks, the man waits. */
+function approachingPair(): { sim: Simulation; woman: Entity; man: Entity } {
+  const sim = new Simulation({ seed: 3, content: familyContent(), map: grassMap(60, 4) });
+  sim.enqueueSetup({ kind: 'spawnSettler', jobType: WOMAN, x: 20, y: 0, tribe: VIKING, owner: PLAYER });
+  sim.enqueueSetup({ kind: 'spawnSettler', jobType: CIVILIST, x: 40, y: 0, tribe: VIKING, owner: PLAYER });
+  sim.step();
+  const [woman, man] = [...sim.world.query(Settler)].sort((a, b) => a - b);
+  if (woman === undefined || man === undefined) throw new Error('setup: settlers missing');
+  sim.enqueueSetup({ kind: 'marry', entity: woman });
+  for (let i = 0; i < 4; i++) sim.step();
+  expect(sim.world.get(man, Wedding).partner).toBe(woman);
+  return { sim, woman, man };
+}
+
+function hxOfSettler(sim: Simulation, e: Entity): number {
+  const p = sim.world.get(e, Position);
+  return nodeOfPosition(p.x, p.y).hx;
 }
 
 /** Step until `done()` or `max` ticks, collecting events; throws past `max` (a hung stage fails loudly). */
@@ -710,6 +732,47 @@ describe('e2e: marriage → household → child (full step schedule)', () => {
     runUntil(sim, () => hxOf(woman) <= 1, 400, 'the ordered walk west');
     runUntil(sim, () => sim.world.has(woman, Marriage), 600, 'wedding');
     expect(sim.world.get(woman, Marriage).spouse).toBe(man);
+  });
+
+  it('lets a player move order take the waiting partner away while the walker waits, then resumes', () => {
+    const { sim, woman, man } = approachingPair();
+    sim.enqueue(playerCommand(PLAYER, { kind: 'moveUnit', entity: man, x: 58, y: 0 }));
+    sim.step();
+    runUntil(
+      sim,
+      () => {
+        // The walker stands for the order instead of re-aiming at every node the partner passes.
+        if (sim.world.has(man, PlayerOrder)) expect(sim.world.has(woman, MoveGoal)).toBe(false);
+        return hxOfSettler(sim, man) >= 57;
+      },
+      400,
+      'the ordered walk east',
+    );
+    runUntil(sim, () => sim.world.has(woman, Marriage), 600, 'wedding');
+    expect(sim.world.get(woman, Marriage).spouse).toBe(man);
+  });
+
+  it('lets the waiting partner run from a blow, then resumes the wedding', () => {
+    const { sim, woman, man } = approachingPair();
+    const terrain = sim.terrain;
+    if (terrain === undefined) throw new Error('mapped sim expected');
+    runFromBlow(sim.world, ctxOf(sim), terrain, man, terrain.nodeAt(hxOfSettler(sim, man) - 1, 0));
+    expect(sim.world.has(man, MoveGoal)).toBe(true);
+    sim.step();
+    expect(sim.world.has(man, Fleeing)).toBe(true);
+    expect(sim.world.has(woman, Wedding)).toBe(true);
+    runUntil(sim, () => sim.world.has(woman, Marriage), 600, 'wedding');
+    expect(sim.world.get(woman, Marriage).spouse).toBe(man);
+  });
+
+  it('cancels a paused wedding when a partner dies, keeping the other partner on its order', () => {
+    const { sim, woman, man } = approachingPair();
+    sim.enqueue(playerCommand(PLAYER, { kind: 'moveUnit', entity: man, x: 58, y: 0 }));
+    sim.step();
+    sim.enqueueSetup({ kind: 'debugKill', target: woman });
+    runUntil(sim, () => !sim.world.isAlive(woman), 5, 'death');
+    expect(sim.world.has(man, Wedding)).toBe(false);
+    expect(sim.world.has(man, PlayerOrder)).toBe(true);
   });
 
   it('marrying after one spouse is already housed moves the other in (co-housed as one household)', () => {
