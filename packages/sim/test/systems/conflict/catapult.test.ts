@@ -721,7 +721,7 @@ describe('an ordered target', () => {
     }
   });
 
-  it("never lands a novice's stray stone farther from the catapult than the spot it was aimed at", () => {
+  it("never lands a novice's stray stone past the catapult's far reach", () => {
     const s = sim(grass(40, MAP_CELL_ROWS));
     const catapult = catapultAt(s, 12, ROW, P1, 0);
     const target = 12 + CATAPULT_MAX_RANGE;
@@ -732,6 +732,16 @@ describe('an ordered target', () => {
       expect(from).toEqual({ hx: 12, hy: ROW });
       expect(hexDistanceBetween(from.hx, from.hy, at.hx, at.hy)).toBeLessThanOrEqual(CATAPULT_MAX_RANGE);
     }
+  });
+
+  it("may land a novice's stray stone past a spot aimed at inside its far reach", () => {
+    const s = sim(grass(40, MAP_CELL_ROWS));
+    const catapult = catapultAt(s, 12, ROW, P1, 0);
+    const aimed = (CATAPULT_MIN_RANGE + CATAPULT_MAX_RANGE) / 2;
+    orderGround(s, catapult, 12 + aimed);
+    const fired = shots(s, catapult, 40 * VEHICLE_ATTACK_CLIP_TICKS);
+    const landed = fired.map(({ from, at }) => hexDistanceBetween(from.hx, from.hy, at.hx, at.hy));
+    expect(Math.max(...landed)).toBeGreaterThan(aimed);
   });
 
   it('defending, chases an ordered house past the leash its scan keeps to', () => {

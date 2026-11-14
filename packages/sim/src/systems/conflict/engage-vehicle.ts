@@ -525,7 +525,7 @@ function fire(
   if (weapon.speed === undefined || weapon.speed <= 0 || weapon.munitionType === undefined) return;
   const aim = terrain.coordsOf(aimNode(world, ctx, terrain, here, attack.target));
   const skill = world.tryGet(commander, SettlerProgress)?.experience.get(FIGHT_EXPERIENCE_TYPE.CATAPULT) ?? 0;
-  const impactAt = scatter(ctx, terrain, here, aim, skill);
+  const impactAt = scatter(ctx, terrain, here, aim, skill, weapon.maxRange);
   const impact = positionOfNode(impactAt.hx, impactAt.hy);
   const shot = world.create();
   world.add(shot, Position, { x: from.x, y: from.y });
@@ -567,8 +567,8 @@ function fire(
 /**
  * The scattered landing node: a percent roll `r` above the commander's accuracy (`skill + 10`)
  * offsets the aim by up to `(r - accuracy) * (dist / 4) / r` on each axis, centred on the aim
- * (original behavior), never landing farther from the vehicle than the aim ({@link shortOfAim}). The
- * result is clamped onto the map.
+ * (original behavior), never landing past the weapon's `maxRange` ({@link withinReach}). The result
+ * is clamped onto the map.
  */
 function scatter(
   ctx: SystemContext,
@@ -576,6 +576,7 @@ function scatter(
   here: NodeId,
   aim: { readonly x: number; readonly y: number },
   skill: number,
+  maxRange: number,
 ): HalfCellNode {
   const roll = ctx.rng.int(SCATTER_ROLL);
   const accuracy = skill + SCATTER_BASE_ACCURACY;
@@ -587,23 +588,28 @@ function scatter(
   const half = spread >> 1;
   const dx = ctx.rng.int(spread + 1) - half;
   const dy = ctx.rng.int(spread + 1) - half;
-  const landing = shortOfAim(from, mark, dx, dy);
+  const landing = withinReach(from, mark, dx, dy, maxRange);
   const clamped = terrain.coordsOf(terrain.nodeAtClamped(landing.hx, landing.hy));
   return { hx: clamped.x, hy: clamped.y };
 }
 
 /**
- * The miss `(dx, dy)` off `aim`, kept no farther from the vehicle at `from` than the aim, so a stone
- * never strays forward onto what stands past its mark or its reach. Deviation (owner's rule): an
- * overshoot falls as far short instead, and a sideways miss the map-point metric still counts as
- * farther is drawn back toward the vehicle onto the aim's distance.
+ * The miss `(dx, dy)` off `aim`, kept within `maxRange` map points of the vehicle at `from`, so a
+ * stone never strikes what stands out of range. Deviation (owner's rule): a miss past the range falls
+ * as far short of the aim instead, and one the map-point metric still counts as out of range is drawn
+ * back toward the vehicle onto the range. A miss inside the range may still land past the aim.
  */
-function shortOfAim(from: HalfCellNode, aim: HalfCellNode, dx: number, dy: number): HalfCellNode {
-  const reach = hexDistance(from, aim);
+function withinReach(
+  from: HalfCellNode,
+  aim: HalfCellNode,
+  dx: number,
+  dy: number,
+  maxRange: number,
+): HalfCellNode {
   let landing = { hx: aim.hx + dx, hy: aim.hy + dy };
-  if (hexDistance(from, landing) > reach) landing = { hx: aim.hx - dx, hy: aim.hy - dy };
+  if (hexDistance(from, landing) > maxRange) landing = { hx: aim.hx - dx, hy: aim.hy - dy };
   // Each step along the heading toward the vehicle is one map point nearer.
-  while (hexDistance(from, landing) > reach) {
+  while (hexDistance(from, landing) > maxRange) {
     const toward = HEX_DIRECTIONS[hexHeadingBetween(landing.hx, landing.hy, from.hx, from.hy)] ?? 'east';
     landing = stepHex(landing, toward);
   }

@@ -507,9 +507,9 @@ commander's raw weapon-21 (main type 7) experience counter, capped at 10000. Whe
 the impact moves by `spread = (r - accuracy) * (dist / 4) / r`: two more draws give `dx = rand %
 (spread + 1) - spread / 2` and `dy` alike (integer arithmetic, so the offset is biased toward the
 positive side). Deviation (owner's rule): the landing never lies farther from the vehicle than the
-aim, so a stray stone cannot reach past its mark or its range. An offset that would overshoot is
-negated, and one still farther in the hex metric (sideways off a hexagon corner) steps toward the
-vehicle until it is at the aim's distance. Flight ticks `dist * 8 / speed` to the scattered point; the impact reveals radius 2
+weapon's `maxRange`, so a stray stone cannot strike out of range; inside the range it may still land
+past the aim. An offset that would leave the range is negated, and one still out of range in the hex
+metric (sideways off a hexagon corner) steps toward the vehicle until it is back on the range. Flight ticks `dist * 8 / speed` to the scattered point; the impact reveals radius 2
 for the owner. The delayed hit reads ONE node, the
 landing point: every human and animal standing on it, the vehicle or house whose body covers it,
 and the landscape there, the owner's own included (`hitself`). Humans, animals, houses and vehicles
