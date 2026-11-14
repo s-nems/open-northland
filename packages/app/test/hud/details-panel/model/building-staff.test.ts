@@ -7,10 +7,18 @@ import {
   type WorkStatus,
 } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
-import { JOB_ARCHER, JOB_CARRIER, JOB_COLLECTOR, JOB_TRADER } from '../../../../src/catalog/jobs.js';
+import {
+  JOB_ARCHER,
+  JOB_CARRIER,
+  JOB_COLLECTOR,
+  JOB_DRUID,
+  JOB_MILLER,
+  JOB_TRADER,
+} from '../../../../src/catalog/jobs.js';
 import { HUMAN_PLAYER, PRIMARY_TRIBE } from '../../../../src/game/rules.js';
 import {
   BUILDING_BARRACKS,
+  BUILDING_DRUID_HUT_01,
   BUILDING_FARM,
   BUILDING_HEADQUARTERS,
   BUILDING_HOME_00,
@@ -20,9 +28,18 @@ import {
   BUILDING_WATCHTOWER,
   BUILDING_WELL,
   GOOD_FLOUR,
+  GOOD_HOLY_OIL,
+  GOOD_MUSHROOM,
+  GOOD_POTION_FOOD_BIG,
+  GOOD_POTION_FOOD_SMALL,
+  GOOD_POTION_HEAL_BIG,
+  GOOD_POTION_HEAL_SMALL,
+  GOOD_POTION_STAMINA_BIG,
+  GOOD_POTION_STAMINA_SMALL,
   GOOD_STONE,
   GOOD_WHEAT,
   GOOD_WOOD,
+  rebaseSlotJob,
 } from '../../../../src/game/sandbox/ids/index.js';
 import { workerRoleOf } from '../../../../src/game/sandbox/index.js';
 import { fixedViewerSeat } from '../../../../src/game/viewer-seat.js';
@@ -36,6 +53,8 @@ import {
   type StaffGroup,
   shelteringIn,
 } from '../../../../src/hud/details-panel/model/building.js';
+import { goodLabel } from '../../../../src/hud/details-panel/model/context.js';
+import { createProductionModelCache } from '../../../../src/hud/details-panel/model/settler-work.js';
 import { orderViews } from '../../../../src/hud/dom/building-panel/portrait.js';
 import { STAFF_WELLS_MAX, staffWells } from '../../../../src/hud/dom/building-panel/staff.js';
 import { currentLocale, formatMessage, installNameOverlay, messages } from '../../../../src/i18n/index.js';
@@ -191,6 +210,178 @@ describe('building staff readers', () => {
     const people = model.staff?.groups.flatMap((group) => group.people.map((person) => person.entity));
     expect(people).toEqual([2]);
     expect(model.staff?.groups.some((group) => group.key === 'sheltered')).toBe(false);
+  });
+
+  it('names the goods a gatherer gathers at the house on its line, and leaves a craft trade bare', () => {
+    const ctx = sandboxCtx();
+    const collectorJob = rebaseSlotJob(JOB_COLLECTOR);
+    const model = buildingModel(
+      [
+        buildingEntity(1, BUILDING_HEADQUARTERS),
+        { id: 2, components: { Settler: { jobType: collectorJob }, JobAssignment: { workplace: 1 } } },
+        { id: 3, components: { Settler: { jobType: JOB_CARRIER }, JobAssignment: { workplace: 1 } } },
+      ],
+      1,
+      ctx,
+    );
+    const collector = model.staff?.groups.find((group) => group.key === `job:${collectorJob}`);
+    // The headquarters stocks every gathered good, so the collector's line names them all, wood included.
+    expect(collector?.makes).toContain(goodLabel(ctx, GOOD_WOOD));
+    // Without the production seam the well has nothing of its own and falls back to the line's pool.
+    expect(collector?.people[0]?.makes).toBeUndefined();
+    const carrier = model.staff?.groups.find((group) => group.key === `job:${JOB_CARRIER}`);
+    expect(carrier?.makes ?? []).toEqual([]);
+  });
+
+  it('names the products a craft trade turns out here, one per recipe, and leaves its carrier bare', () => {
+    const ctx = sandboxCtx();
+    const millerJob = rebaseSlotJob(JOB_MILLER);
+    const model = buildingModel(
+      [
+        buildingEntity(1, BUILDING_MILL),
+        { id: 2, components: { Settler: { jobType: millerJob }, JobAssignment: { workplace: 1 } } },
+        { id: 3, components: { Settler: { jobType: JOB_CARRIER }, JobAssignment: { workplace: 1 } } },
+      ],
+      1,
+      ctx,
+    );
+    const miller = model.staff?.groups.find((group) => group.key === `job:${millerJob}`);
+    // One recipe, wheat into flour: the miller's line names the product, the carrier's names nothing.
+    expect(miller?.makes).toEqual([goodLabel(ctx, GOOD_FLOUR)]);
+    const carrier = model.staff?.groups.find((group) => group.key === `job:${JOB_CARRIER}`);
+    expect(carrier?.makes ?? []).toEqual([]);
+  });
+
+  it("splits a mixed house's lines: the druid brews every recipe, its collector gathers its stock", () => {
+    const ctx = sandboxCtx();
+    const druidJob = rebaseSlotJob(JOB_DRUID);
+    const collectorJob = rebaseSlotJob(JOB_COLLECTOR);
+    const model = buildingModel(
+      [
+        buildingEntity(1, BUILDING_DRUID_HUT_01),
+        { id: 2, components: { Settler: { jobType: druidJob }, JobAssignment: { workplace: 1 } } },
+        { id: 3, components: { Settler: { jobType: collectorJob }, JobAssignment: { workplace: 1 } } },
+        { id: 4, components: { Settler: { jobType: JOB_CARRIER }, JobAssignment: { workplace: 1 } } },
+      ],
+      1,
+      ctx,
+    );
+    const druid = model.staff?.groups.find((group) => group.key === `job:${druidJob}`);
+    // Seven recipes: the holy oil first, then the six bottles in recipe order.
+    expect(druid?.makes).toEqual([
+      goodLabel(ctx, GOOD_HOLY_OIL),
+      goodLabel(ctx, GOOD_POTION_FOOD_SMALL),
+      goodLabel(ctx, GOOD_POTION_FOOD_BIG),
+      goodLabel(ctx, GOOD_POTION_STAMINA_SMALL),
+      goodLabel(ctx, GOOD_POTION_STAMINA_BIG),
+      goodLabel(ctx, GOOD_POTION_HEAL_SMALL),
+      goodLabel(ctx, GOOD_POTION_HEAL_BIG),
+    ]);
+    const collector = model.staff?.groups.find((group) => group.key === `job:${collectorJob}`);
+    // The mushroom is the only gathered good the hut slots, so the collector's line names it alone.
+    expect(collector?.makes).toEqual([goodLabel(ctx, GOOD_MUSHROOM)]);
+    const carrier = model.staff?.groups.find((group) => group.key === `job:${JOB_CARRIER}`);
+    expect(carrier?.makes ?? []).toEqual([]);
+  });
+
+  it('names what each worker is set to make, and keeps the pool on the line and its seats', () => {
+    const base = sandboxCtx();
+    const ctx = { ...base, productionOf: createProductionModelCache(base, () => 0) };
+    const druidJob = rebaseSlotJob(JOB_DRUID);
+    const model = buildingModel(
+      [
+        buildingEntity(1, BUILDING_DRUID_HUT_01),
+        {
+          id: 2,
+          components: {
+            Settler: { jobType: druidJob },
+            JobAssignment: { workplace: 1 },
+            ProductionCounters: {
+              counters: [
+                [GOOD_POTION_FOOD_SMALL, 0],
+                [GOOD_POTION_FOOD_BIG, 2],
+              ],
+            },
+          },
+        },
+      ],
+      1,
+      ctx,
+    );
+    const druid = model.staff?.groups.find((group) => group.key === `job:${druidJob}`);
+    const pool = druid?.makes ?? [];
+    // The line keeps the hut's whole recipe list for its seats; the worker's well names its running
+    // set: the stopped food brew drops out, the limited one and every unset one stay.
+    expect(pool).toHaveLength(7);
+    expect(druid?.people[0]?.makes).toEqual(
+      pool.filter((label) => label !== goodLabel(ctx, GOOD_POTION_FOOD_SMALL)),
+    );
+  });
+
+  it('keeps a worker with every product stopped bare, while its line still names the pool', () => {
+    const base = sandboxCtx();
+    const ctx = { ...base, productionOf: createProductionModelCache(base, () => 0) };
+    const druidJob = rebaseSlotJob(JOB_DRUID);
+    const stopAll = [
+      GOOD_HOLY_OIL,
+      GOOD_POTION_FOOD_SMALL,
+      GOOD_POTION_FOOD_BIG,
+      GOOD_POTION_STAMINA_SMALL,
+      GOOD_POTION_STAMINA_BIG,
+      GOOD_POTION_HEAL_SMALL,
+      GOOD_POTION_HEAL_BIG,
+    ].map((good) => [good, 0]);
+    const model = buildingModel(
+      [
+        buildingEntity(1, BUILDING_DRUID_HUT_01),
+        {
+          id: 2,
+          components: {
+            Settler: { jobType: druidJob },
+            JobAssignment: { workplace: 1 },
+            ProductionCounters: { counters: stopAll },
+          },
+        },
+      ],
+      1,
+      ctx,
+    );
+    const druid = model.staff?.groups.find((group) => group.key === `job:${druidJob}`);
+    expect(druid?.people[0]?.makes).toEqual([]);
+    expect(druid?.makes).toHaveLength(7);
+  });
+
+  it("narrows a gatherer's well to the goods its counters leave running", () => {
+    const base = sandboxCtx();
+    const ctx = { ...base, productionOf: createProductionModelCache(base, () => 0) };
+    const collectorJob = rebaseSlotJob(JOB_COLLECTOR);
+    const model = buildingModel(
+      [
+        buildingEntity(1, BUILDING_HEADQUARTERS),
+        {
+          id: 2,
+          components: {
+            Settler: { jobType: collectorJob },
+            JobAssignment: { workplace: 1 },
+            ProductionCounters: { counters: [[GOOD_WOOD, 0]] },
+          },
+        },
+        { id: 3, components: { Settler: { jobType: collectorJob }, JobAssignment: { workplace: 1 } } },
+      ],
+      1,
+      ctx,
+    );
+    const collector = model.staff?.groups.find((group) => group.key === `job:${collectorJob}`);
+    const pool = collector?.makes ?? [];
+    const [stopped, running] = collector?.people ?? [];
+    // The worker's own rows walk the content catalog, the line's pool the sim's gather list, so the
+    // same goods compare as sets.
+    const sorted = (labels: readonly string[] | undefined) => [...(labels ?? [])].sort();
+    expect(sorted(stopped?.makes)).toEqual(
+      sorted(pool.filter((label) => label !== goodLabel(ctx, GOOD_WOOD))),
+    );
+    // A worker without counters never stops: its well names the whole stocked pool like the line does.
+    expect(sorted(running?.makes)).toEqual(sorted(pool));
   });
 
   it('reads a tower by its garrison posts, whatever its carriers do', () => {

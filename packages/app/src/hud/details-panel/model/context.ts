@@ -25,6 +25,7 @@ import {
   tribeName,
 } from '../../../i18n/index.js';
 import type { SettlerStateHold } from './settler.js';
+import type { SettlerProductionModel } from './settler-work.js';
 
 export type BuildingDef = ContentSet['buildings'][number];
 export type GoodDef = ContentSet['goods'][number];
@@ -70,6 +71,9 @@ export interface UnitPanelModelContext {
   /** The sim's flag-trade test (`jobUsesWorkFlag`): a gatherer or a fisher, whose workplace pick also
    *  plants the flag. Absent = no trade works from a flag. */
   readonly usesWorkFlag?: ((jobType: number) => boolean) | undefined;
+  /** The sim's gathered-goods list (`jobGatherGoods`): every good the trade harvests off the map, the
+   *  fisher's catch included. Absent = no trade gathers. */
+  readonly gatherGoods?: ((jobType: number) => readonly number[]) | undefined;
   /** The trade of a settler whose post takes a flag, null when its post takes none. Absent = none does. */
   readonly postFlagTrade?:
     | ((snapshot: WorldSnapshot, ent: SnapshotEntity) => PostFlagTrade | null)
@@ -98,6 +102,12 @@ export interface UnitPanelModelContext {
   /** The sim's work-status read seam (`Simulation.workStatus`) for the one selected tradesman; absent
    *  leaves the status line without a product or an idle reason. */
   readonly workStatus?: ((entity: number) => SettlerWorkStatus | undefined) | undefined;
+  /** The settler's Production section (`settlerWork`'s), as the worker's own panel lists it with its
+   *  counters: a craft operator's products or a gatherer's goods, each with its running count. Absent
+   *  leaves a staff well reading the line's pool alone. */
+  readonly productionOf?:
+    | ((snapshot: WorldSnapshot, ent: SnapshotEntity) => SettlerProductionModel | null)
+    | undefined;
   /** The sim's fight-experience read (`systems.fightExperienceEffects`): what a person's fight counter
    *  buys with the weapon he holds. Absent leaves the fight row without its bonuses. */
   readonly fightEffects?:
