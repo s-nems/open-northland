@@ -51,6 +51,7 @@ import { heldIndoors, stepOut } from '../settlers/indoors.js';
 import { announceLostWay, liftLostWalk, markLostWay } from '../settlers/lost-way.js';
 import { navigationLimitFor } from '../signposts/index.js';
 import { entityNode } from '../spatial/nodes.js';
+import { ferryLandingOf, tryFerryPassage } from '../vehicles/ferry.js';
 import { pullsHaulingCart } from '../vehicles/hauling-cart.js';
 import { recordAiOrder } from './ai-lifecycle.js';
 import { moveAnchor } from './combat.js';
@@ -199,13 +200,29 @@ function startPlayerWalk(
   if (confined) {
     const limit = navigationLimitFor(world, ctx.content, terrain, e);
     if (limit !== null && !limit.allowsNode(goal)) {
-      // A settler busy with something else is not left standing lost: the refusal is news for a moment.
-      // A walk to a chat partner is not business.
-      const busy = (isTravelling(world, e) && !world.has(e, Chat)) || atomicHoldsSettler(world, e);
-      if (busy) announceLostWay(world, ctx, e);
-      else markLostWay(world, ctx, e, goal);
-      return false;
+      // The landing-place exception belongs to the crossing alone: an attack-move never takes a
+      // ship, so it refuses on the far goal as any walk does.
+      const landing = command.kind === 'moveUnit' ? ferryLandingOf(world, ctx, terrain, e, goal) : null;
+      if (landing === null || !limit.allowsNode(landing)) {
+        // A settler busy with something else is not left standing lost: the refusal is news for a moment.
+        // A walk to a chat partner is not business.
+        const busy = (isTravelling(world, e) && !world.has(e, Chat)) || atomicHoldsSettler(world, e);
+        if (busy) announceLostWay(world, ctx, e);
+        else markLostWay(world, ctx, e, goal);
+        return false;
+      }
     }
+  }
+  // A goal across open water is no walk, the route dying at the sea. A ferryman-led ship can take it:
+  // the settler boards, the ship docks at the target island, and the walk resumes on the far shore.
+  // When no ship is free, the order stands as a hold and retries until a suitable ship comes free.
+  if (
+    confined &&
+    command.kind === 'moveUnit' &&
+    !atomicHoldsSettler(world, e) &&
+    tryFerryPassage(world, ctx, terrain, e, goal)
+  ) {
+    return true;
   }
   const existingOrder = world.tryGet(e, PlayerOrder);
   if (

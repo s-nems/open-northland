@@ -169,6 +169,10 @@ export const economyContent = {
     // The scout (job 27 - `JOB_TYPE_HUMAN_SCOUT`) is permitted only the build-guide atomic (43), the
     // signpost-erecting swing - mirrors the original's `allowatomic 43`.
     { typeId: 27, id: 'scout', allowedAtomics: [43] },
+    // The ferryman - this project's own ferry trade, which no `jobtypes.ini` record carries - at the
+    // first free id past the original's job band: the crew the ferry dispatch requires aboard a booked
+    // ship (`jobRoleOfId` reads the trade off the slug, so the fixture row must carry the real vocabulary).
+    { typeId: 56, id: 'ferryman' },
     // The fighter trades, at their real `jobtypes.ini` ids and slugs - the role is read off the slug
     // (`core/content-index/jobs.ts`), so a fixture soldier/hero must carry the real vocabulary.
     // `jobtypes.ini` marks every soldier `ignoresHomeHouseFlag 1`: they never go home, so nothing they
@@ -431,8 +435,9 @@ export const economyContent = {
       passengerSlots: 19,
       logicSize: 2,
       cargoGoods: [1, 2, 3],
-      // The crew jobs plus the vehicle jobs it carries, the way the original's ship rows list them.
-      passengerJobs: [6, 24, 25, 27, 31, 50, 54],
+      // The crew jobs - the ferryman included, the ferry dispatch's required trade - plus the vehicle
+      // jobs it carries, the way the original's ship rows list them.
+      passengerJobs: [6, 24, 25, 27, 31, 50, 54, 56],
       commanderJob: 24,
       passengerVector: { direction: 2, distance: 4 },
       vehicleSlots: 1,

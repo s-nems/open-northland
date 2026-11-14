@@ -1,7 +1,7 @@
 import type { JobType } from '@open-northland/data';
 
 /** The rule-relevant trades a job id can name; any other civilian trade names none ({@link jobRoleOfId}). */
-export type JobRole = 'soldier' | 'hero' | 'scout' | 'hunter' | 'druid';
+export type JobRole = 'soldier' | 'hero' | 'scout' | 'hunter' | 'druid' | 'ferryman';
 
 /**
  * The role a `jobtypes` id slug names; `hero` matches by prefix, so the `heroine_*` classes count too.
@@ -9,6 +9,8 @@ export type JobRole = 'soldier' | 'hero' | 'scout' | 'hunter' | 'druid';
  *
  * Approximation over the extracted job name: `jobtypes.ini` declares no role field, and slug
  * classification is the existing precedent for a trade the data does not flag (`_sea`, `carrier`).
+ * `ferryman` names this project's own ferry trade, which no original record carries: the index splits
+ * it off so the ferry's crew rule keys on its own trade rather than a borrowed one.
  */
 export function jobRoleOfId(id: string): JobRole | null {
   if (id.startsWith('soldier')) return 'soldier';
@@ -16,6 +18,7 @@ export function jobRoleOfId(id: string): JobRole | null {
   if (id === 'scout') return 'scout';
   if (id === 'hunter') return 'hunter';
   if (id === 'druid') return 'druid';
+  if (id === 'ferryman') return 'ferryman';
   return null;
 }
 
@@ -51,6 +54,7 @@ export function jobRoleSets(jobs: ReadonlyMap<number, JobType>): JobRoleSets {
     scout: new Set(),
     hunter: new Set(),
     druid: new Set(),
+    ferryman: new Set(),
   };
   for (const [typeId, job] of jobs) {
     const role = jobRoleOfId(job.id);

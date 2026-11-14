@@ -34,6 +34,7 @@ export {
   harnessVehicle,
   pickDraughtAnimal,
 } from './draught.js';
+export { ferrySystem, tryFerryPassage } from './ferry.js';
 export {
   attachToVehicleGroup,
   canTakeHaulingCart,

@@ -1117,6 +1117,7 @@ export const deGame = {
         herbalist: 'Kräutergärtner',
         druid: 'Druiden',
         scout: 'Kundschafter',
+        ferryman: 'Fährmänner',
         trader: 'Händler',
         trader_sea: 'Seehändler',
         soldier: 'Soldaten',

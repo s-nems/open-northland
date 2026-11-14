@@ -107,8 +107,13 @@ export function startMealBreak(world: World, e: Entity): void {
  * of its queue, to start afresh once it has eaten, and an explore sweep keeps its own marker and picks
  * its next leg then. The route goes too, so the planner sees the settler free and plans the meal.
  */
-export function suspendWalkForMeal(world: World, terrain: TerrainGraph, e: Entity): void {
-  suspendWalk(world, terrain, e);
+export function suspendWalkForMeal(
+  world: World,
+  terrain: TerrainGraph,
+  e: Entity,
+  resume: QueueableOrderCommand | null = resumableOrder(world, terrain, e),
+): void {
+  suspendWalk(world, terrain, e, resume);
   startMealBreak(world, e);
 }
 
@@ -130,8 +135,12 @@ export function suspendWalkToDrink(
   return true;
 }
 
-function suspendWalk(world: World, terrain: TerrainGraph, e: Entity): void {
-  const resume = resumableOrder(world, terrain, e);
+function suspendWalk(
+  world: World,
+  terrain: TerrainGraph,
+  e: Entity,
+  resume: QueueableOrderCommand | null = resumableOrder(world, terrain, e),
+): void {
   if (resume !== null) {
     const origin = world.tryGet(e, AiOrder);
     const pending = { ...resume, ...(origin === undefined ? {} : { aiOrder: { ...origin } }) };

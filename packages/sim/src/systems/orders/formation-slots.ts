@@ -5,7 +5,7 @@ import type { Entity, World } from '../../ecs/world.js';
 import { formationNodes } from '../../nav/formation.js';
 import { type HalfCellNode, nodeOfPosition, positionOfNode } from '../../nav/halfcell.js';
 import { hasOpenSide } from '../../nav/nearest.js';
-import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
+import { NO_COMPONENT, type NodeId, type TerrainGraph } from '../../nav/terrain/index.js';
 import { buildingDoorwayNodes } from '../footprint/building-blocked-cache.js';
 import { walkBlockMask } from '../footprint/walk-block-mask.js';
 import { routeStartCell } from '../movement/route-start.js';
@@ -40,7 +40,17 @@ export function formationSlotsFor(
   )
     throw new RangeError('invalid formation query');
   if (terrain === undefined) return null;
-  return formationSlotGroups(world, content, terrain, target, members, rowSpacing, settlersStanding, order);
+  return formationSlotGroups(
+    world,
+    content,
+    terrain,
+    target,
+    members,
+    rowSpacing,
+    settlersStanding,
+    order,
+    true,
+  );
 }
 
 /** Which nodes a group's slots must avoid, given the group's own members. */
@@ -85,8 +95,15 @@ interface SlotGroup {
   remaining: number;
 }
 
-/** One open slot around `target` per member, on the land component the member stands on and off the
- *  nodes `occupancy` names. A move also keeps each member on its side of every closed gate or wall. */
+/**
+ * One open slot around `target` per member, on the land component the member stands on and off the
+ * nodes `occupancy` names. A move also keeps each member on its side of every closed gate or wall.
+ *
+ * With `crossIslandRaw`, a move-order member standing on another land component than the click keeps
+ * the raw clicked node as its own singleton slot: its order is no formation but the crossing itself,
+ * which the sim's move order judges - the ferry booking, or the plain refusal when no ship takes it -
+ * instead of the fan re-aiming the member at its own coast. Scripts keep the projection.
+ */
 export function formationSlotGroups(
   world: World,
   content: ContentSet,
@@ -96,6 +113,7 @@ export function formationSlotGroups(
   rowSpacing: 1 | 2,
   occupancy: Occupancy,
   order: FormationOrder,
+  crossIslandRaw = false,
 ): FormationSlotGroup[] {
   const seat = {
     hx: Math.max(0, Math.min(terrain.width - 1, target.hx)),
@@ -128,6 +146,20 @@ export function formationSlotGroups(
     // With `blocked`, a member mid-step beside a wall starts from the open node on its own side.
     const start = routeStartCell(terrain, position.x, position.y, 'land', blocked);
     if (!terrain.isWalkable(start)) continue;
+    // A move order across the water is the member's own crossing, not a fan seat: the raw click goes
+    // through, so the move order's ferry booking (or its refusal) judges it. Only a click that names
+    // walkable ground keeps this - a water or unwalkable click still fans its banks as before.
+    const clickedComponent = terrain.componentOf(clicked);
+    if (
+      crossIslandRaw &&
+      order === 'move' &&
+      terrain.isWalkable(clicked) &&
+      clickedComponent !== NO_COMPONENT &&
+      terrain.componentOf(start) !== clickedComponent
+    ) {
+      entries.push({ members: [entity], slots: [{ ...seat }] });
+      continue;
+    }
     entries.push({
       entity,
       component: terrain.componentOf(start),

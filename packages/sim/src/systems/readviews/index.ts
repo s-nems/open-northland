@@ -68,6 +68,7 @@ export {
   hunterJobType,
   isCarrierJobRow,
   isDruidJob,
+  isFerrymanJob,
   isFighterJob,
   isFighterJobRow,
   isFisherJob,

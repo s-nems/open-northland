@@ -2,6 +2,7 @@ import type { VehicleType } from '@open-northland/data';
 import { ANIMAL_TRIBE_CATTLE } from '../../../../catalog/animal-tribes.js';
 import {
   JOB_CARRIER,
+  JOB_FERRYMAN,
   JOB_HEROINE_BOW,
   JOB_SOLDIER_UNARMED,
   JOB_TRADER,
@@ -32,7 +33,11 @@ export function buildSandboxVehicles(
   jobTypes: readonly number[],
 ): VehicleType[] {
   const cargoGoods = goods.map((g) => g.typeId).filter((id) => id !== GOOD_NONE);
-  const adults = jobTypes.filter((job) => job >= JOB_WOMAN && job <= JOB_HEROINE_BOW);
+  // The ferryman joins the adults: the trade the ferry dispatch crews crossings with, whose id sits
+  // past the original's band.
+  const adults = jobTypes.filter(
+    (job) => (job >= JOB_WOMAN && job <= JOB_HEROINE_BOW) || job === JOB_FERRYMAN,
+  );
   const fighters = jobTypes.filter((job) => job >= JOB_SOLDIER_UNARMED && job <= JOB_HEROINE_BOW);
   const haulers = jobTypes.filter((job) => job === JOB_TRADER || job === JOB_CARRIER);
   const jobOf = (typeId: number): number => typeId + VEHICLE_JOB_OFFSET;

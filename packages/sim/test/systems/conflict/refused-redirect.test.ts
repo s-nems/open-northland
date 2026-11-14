@@ -35,7 +35,9 @@ it.each(['straight', 'diagonal-first', 'diagonal-second', 'replace-stop'] as con
         break;
     }
     expect(sim.world.has(e, PathFollow)).toBe(true);
-    sim.enqueueSetup({ kind: 'moveUnit', entity: e, x: 20, y: 4 });
+    // The redirect aims across the water as an attack move: a plain move order would now stand as a
+    // ferry hold, so the refused-redirect cleanup is exercised on the march flavour of the order.
+    sim.enqueueSetup({ kind: 'attackMoveUnit', entity: e, x: 20, y: 4 });
     sim.step();
     expect(sim.world.get(e, PathRequest).failed).toBe(true);
     const follow = sim.world.get(e, PathFollow);

@@ -993,6 +993,7 @@ export const chsGame = {
         herbalist: '草药师',
         druid: '德鲁伊',
         scout: '侦察兵',
+        ferryman: '摆渡人',
         trader: '商人',
         trader_sea: '海商',
         soldier: '士兵',

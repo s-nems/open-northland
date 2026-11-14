@@ -126,6 +126,15 @@ export function isScoutJob(content: ContentSet, jobType: number | null): boolean
 }
 
 /**
+ * The trade that crews the crossings: this project's own ferryman, which steers the owner's ships for
+ * the ferry dispatch. The content declares it under the `ferryman` slug ({@link jobRoleOfId}); where a
+ * content set carries none, no ship takes a booking.
+ */
+export function isFerrymanJob(content: ContentSet, jobType: number | null): boolean {
+  return jobType !== null && contentIndex(content).ferrymanJobs.has(jobType);
+}
+
+/**
  * The civilization job that hunts game. Every tribe's hunter binds the same attack atomic
  * (`setatomic <hunter> 81 "..._hunter_attack"` in `tribetypes.ini`), so its strike reuses the combat path.
  */

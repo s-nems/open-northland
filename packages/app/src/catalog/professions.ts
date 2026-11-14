@@ -11,6 +11,7 @@ import {
   JOB_COLLECTOR,
   JOB_DRUID,
   JOB_FARMER,
+  JOB_FERRYMAN,
   JOB_FISHER,
   JOB_HERBALIST,
   JOB_HUNTER,
@@ -33,6 +34,8 @@ import {
  * profession, since a soldier's class is its weapon, and collecting is the single `collector` (8), the
  * original's one outdoor gatherer. Life stages, animals, vehicles and heroes (1..6, 42..55) are not
  * professions; the sea variants (23, 26) need a harbour, and the jester (28) is not in this game.
+ * One row is this project's own, with no original record behind it: the ferryman (56), the trade that
+ * crews the crossings.
  */
 
 /** The picker's ordered groups. */
@@ -223,6 +226,12 @@ export const PROFESSIONS: readonly ProfessionDef[] = [
     source: 'jobtypes.ini 30 "druid"',
   },
   { key: 'scout', jobType: JOB_SCOUT, category: 'special', source: 'jobtypes.ini 27 "scout"' },
+  {
+    key: 'ferryman',
+    jobType: JOB_FERRYMAN,
+    category: 'special',
+    source: 'this project: the ferry trade, no jobtypes.ini record',
+  },
   {
     key: 'trader',
     jobType: JOB_TRADER,

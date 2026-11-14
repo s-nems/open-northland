@@ -21,6 +21,7 @@ export const plContent = {
     herbalist: 'Zielarz',
     druid: 'Druid',
     scout: 'Zwiadowca',
+    ferryman: 'Promowy',
     trader: 'Kupiec',
     trader_sea: 'Kupiec morski',
     soldier: 'Żołnierz',

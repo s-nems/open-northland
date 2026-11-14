@@ -21,6 +21,7 @@ export const enContent = {
     herbalist: 'Herbalist',
     druid: 'Druid',
     scout: 'Scout',
+    ferryman: 'Ferryman',
     trader: 'Merchant',
     trader_sea: 'Sea Merchant',
     soldier: 'Soldier',

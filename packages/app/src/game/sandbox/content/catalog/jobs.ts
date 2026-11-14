@@ -28,6 +28,7 @@ import {
   JOB_CIVILIST,
   JOB_COLLECTOR,
   JOB_DRUID,
+  JOB_FERRYMAN,
   JOB_FISHER,
   JOB_HUNTER,
   JOB_IDLE,
@@ -109,6 +110,15 @@ export function buildSandboxJobs(extras: SandboxContentExtras): Map<number, Sand
       id: 'scout',
       name: professionLabel('scout'),
       allowedAtomics: [BUILD_GUIDE_ATOMIC],
+    },
+    // This project's own ferry trade, which no original record carries: the crew the ferry dispatch
+    // requires at the helm of a booked ship. No atomics - it steers, it does not swing - and the
+    // civilist ancestry the band trades inherit, stated directly since its id sits outside that rule.
+    {
+      typeId: JOB_FERRYMAN,
+      id: 'ferryman',
+      name: professionLabel('ferryman'),
+      baseJob: JOB_CIVILIST,
     },
     {
       typeId: JOB_HUNTER,

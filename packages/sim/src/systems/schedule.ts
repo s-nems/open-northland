@@ -57,6 +57,7 @@ import { plannerSystem } from './settlers/planner/system.js';
 import { signpostLinksSystem } from './signposts/links.js';
 import { gossipSystem } from './social/index.js';
 import { tradePartnerStockSystem, traderTakesUpCartSystem, tradeVoyageSystem } from './trade/index.js';
+import { ferrySystem } from './vehicles/ferry.js';
 import { hullFireSystem } from './vehicles/hull-fire.js';
 import {
   cargoHandDisembarkSystem,
@@ -152,6 +153,8 @@ export const SYSTEM_ORDER: readonly ScheduledSystem[] = [
   // After the drives advance and before combat, so a queued drive starts the tick the one ahead arrives and
   // no stance scan sees the vehicle standing idle between two legs.
   { name: 'vehicleOrderQueue', system: vehicleOrderQueueSystem },
+  // The crossing reads the mooring laid down by this tick's movement pass and advances its dock next tick.
+  { name: 'ferry', system: ferrySystem },
   { name: 'separation', system: separationSystem },
   // After the walk settles, so a scout's claim uses this tick's final nodes; the herd then re-anchors
   // before the summon walks a slaughter candidate to the door, and a calf grows up before the breeder

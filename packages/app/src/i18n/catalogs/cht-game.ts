@@ -994,6 +994,7 @@ export const chtGame = {
         herbalist: '草藥師',
         druid: '德魯伊',
         scout: '偵察兵',
+        ferryman: '擺渡人',
         trader: '商人',
         trader_sea: '海商',
         soldier: '士兵',

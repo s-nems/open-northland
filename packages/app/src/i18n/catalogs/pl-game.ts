@@ -1012,6 +1012,7 @@ export const plGame = {
         herbalist: 'Zielarze',
         druid: 'Druidzi',
         scout: 'Zwiadowcy',
+        ferryman: 'Promowi',
         trader: 'Kupcy',
         trader_sea: 'Kupcy morscy',
         soldier: 'Żołnierze',

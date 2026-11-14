@@ -21,6 +21,7 @@ export const ruContent = {
     herbalist: 'Травник',
     druid: 'Друид',
     scout: 'Разведчик',
+    ferryman: 'Перевозчик',
     trader: 'Купец',
     trader_sea: 'Морской купец',
     soldier: 'Солдат',

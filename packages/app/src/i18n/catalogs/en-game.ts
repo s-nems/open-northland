@@ -1034,6 +1034,7 @@ export const enGame = {
         herbalist: 'Herbalists',
         druid: 'Druids',
         scout: 'Scouts',
+        ferryman: 'Ferrymen',
         trader: 'Merchants',
         trader_sea: 'Sea Merchants',
         soldier: 'Soldiers',
