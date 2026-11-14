@@ -4,6 +4,7 @@ import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
 import type { SystemContext } from '../../context.js';
 import { homeQualityActive } from '../../family/home-quality.js';
 import { builtHomeType, homeUsedBy } from '../../family/households.js';
+import { wearLodging } from '../../family/lodging.js';
 import { atomicDuration } from '../../readviews/animations.js';
 import { ATOMIC_EVENT_CHANNEL } from '../../readviews/index.js';
 import type { NavigationLimit } from '../../signposts/index.js';
@@ -12,15 +13,16 @@ import { enterBuilding, isInside } from '../indoors.js';
 import type { PlannerSpacing } from '../planner/spacing.js';
 import { homeErrandDoor } from '../targets/index.js';
 import { unreachableGoals } from '../unreachable-goals.js';
-import { homeClipServes } from './at-home.js';
+import { fillCompanyOnComingHome, homeClipServes } from './at-home.js';
 import { prayerStand } from './prayer-stand.js';
 
 // Sleeping at home: a settler with a house walks to its door, goes inside, and comes back out rested; the
 // homeless keep the open-ground rule.
 //
 // Original behavior: a settler sleeps at home on the same clip as outdoors. Away from home only half the
-// rest counts, at home all of it, and twice that on a bed the home's furniture pays for
-// (`applyAtomicNeedEvents`). The data's `<clip>_home` and `<body>_eat_athome` clips are never played: no
+// rest counts, at home all of it (`applyAtomicNeedEvents`). The original's furniture bonus to rest is
+// replaced by the owner's housing rule: furniture lets a home take extra families, and a sleep there wears
+// it (`family/lodging.ts`). The data's `<clip>_home` and `<body>_eat_athome` clips are never played: no
 // `setatomic` binds them. The approximation is the trigger: this rung fires whenever the settler is housed
 // within the home errand range of its door, with no time-of-day gate.
 //
@@ -50,7 +52,8 @@ export function sleepAtHome(
   if (home === undefined || builtHomeType(world, ctx, home) === undefined) return false;
   const door = homeErrandDoor(world, ctx, terrain, home, here, limit, unreachableGoals(world, ctx, e));
   if (door === null) return false;
-  enterBuilding(world, e, home, here, door, () =>
+  enterBuilding(world, e, home, here, door, () => {
+    fillCompanyOnComingHome(world, ctx, e);
     startAtomic(
       world,
       e,
@@ -58,8 +61,9 @@ export function sleepAtHome(
       { kind: 'sleep' },
       atomicDuration(ctx.content, settler, SLEEP_ATOMIC_ID),
       e,
-    ),
-  );
+    );
+    wearLodging(world, ctx, home, e, 'sleep');
+  });
   return true;
 }
 

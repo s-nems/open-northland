@@ -97,6 +97,9 @@ const drawable = (stem: string, ids: Iterable<number>): DrawableFrames => new Ma
 const range = (n: number): number[] => Array.from({ length: n }, (_, i) => i);
 const CART_FRAMES = range(512);
 
+/** An attack clip longer than the original's 48 ticks. */
+const LONG_SHOT_TICKS = 78;
+
 describe('the vehicle look join', () => {
   it('names every body atlas and shadow twin the rows draw from, one bake per body whatever the owner', () => {
     const { stems, shadowByStem } = vehicleAtlasStems([vikingOxcart, catapult, vikingBigShip]);
@@ -144,18 +147,24 @@ describe('the vehicle look join', () => {
     expect(idle.frameLists.every((list) => list.length === 1)).toBe(true);
   });
 
-  it('stretches the catapult shot so its 40 frames fill the 48-tick attack cadence', () => {
-    const look = vehicleLook(
-      catapult,
-      new Set(['cr_veh_body_00.goods_bow']),
-      drawable('cr_veh_body_00.goods_bow', CART_FRAMES),
-    );
-    const attack = look?.attack;
-    if (attack === undefined || typeof attack === 'number' || !('frameLists' in attack))
-      throw new Error('shot is a frame list');
-    expect(attack.ticks).toBe(VEHICLE_ATTACK_TICKS);
-    expect(attack.loop).toBeUndefined();
-    expect(attack.frameLists[GFX_DIR_TO_FACING[0]]).toHaveLength(40);
+  it('stretches the catapult shot so its 40 frames fill one attack clip, the content length or 48 ticks', () => {
+    const shot = (attackTicks?: number) => {
+      const stem = 'cr_veh_body_00.goods_bow';
+      const attack = vehicleLook(
+        catapult,
+        new Set([stem]),
+        drawable(stem, CART_FRAMES),
+        undefined,
+        attackTicks,
+      )?.attack;
+      if (attack === undefined || typeof attack === 'number' || !('frameLists' in attack))
+        throw new Error('shot is a frame list');
+      return attack;
+    };
+    expect(shot().ticks).toBe(VEHICLE_ATTACK_TICKS);
+    expect(shot().loop).toBeUndefined();
+    expect(shot().frameLists[GFX_DIR_TO_FACING[0]]).toHaveLength(40);
+    expect(shot(LONG_SHOT_TICKS).ticks).toBe(LONG_SHOT_TICKS);
   });
 
   it('binds the indexed body of the rows in the palette family whose owner LUT loaded', () => {

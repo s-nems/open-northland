@@ -28,17 +28,18 @@ import { isTravelling } from '../../movement/nav-state.js';
 import { isFood, jobIgnoresHomeHouse } from '../../readviews/index.js';
 import { atomicHoldsSettler } from '../../settlers/atomics/busy.js';
 import { startDrop } from '../../settlers/atomics/start.js';
+import { fillCompanyOnComingHome } from '../../settlers/drives/at-home.js';
 import { isServedAtHome } from '../../settlers/drives/home-errands.js';
 import { anyNeedPressing } from '../../settlers/drives/needs.js';
 import { enterBuilding, isInside, stepIn, stepOut } from '../../settlers/indoors.js';
-import { interactionCell } from '../../settlers/targets/index.js';
-import { unreachableGoalVeto } from '../../settlers/unreachable-goals.js';
+import { interactionCell, unreachableCellVeto } from '../../settlers/targets/index.js';
 import { landReachAt, navigationLimitFor } from '../../signposts/index.js';
 import { heldMoverNode } from '../../spatial/node-moves.js';
 import type { SupplyTally } from '../../stores/index.js';
 import { deliverHome, fetchFrom, HAUL_LIFT_UNITS } from '../food-haul.js';
 import type { ExternalFoodIndex } from '../food-search.js';
 import { builtHomeType, consumeFoodUnits, isMinor, storedFoodUnits } from '../households.js';
+import { wearLodging } from '../lodging.js';
 import { birth, makeLoveDuration } from './make-love.js';
 
 /**
@@ -152,6 +153,9 @@ export function driveOrder(
 
   claimDuty(world, woman, pass);
   if (!ensureInside(world, ctx, terrain, woman, home)) return;
+  // A need pulling the husband away leaves him off duty: his needs drive serves it, or, with nothing that
+  // can, his trade keeps him rather than the duty fence standing him idle. He is called once it passes.
+  if (anyNeedPressing(world, ctx, husband)) return;
   claimDuty(world, husband, pass);
   if (!ensureInside(world, ctx, terrain, husband, home)) return;
   // Another couple's session holds the home: wait for our turn.
@@ -163,6 +167,7 @@ export function driveOrder(
     elapsed: 0,
     duration: makeLoveDuration(ctx, world.get(woman, Settler).tribe),
   });
+  wearLodging(world, ctx, home, woman, 'child');
 }
 
 /**
@@ -290,7 +295,9 @@ function haulFood(
     ownerOf(world, woman),
     home,
     limit,
-    unreachableGoalVeto(world, ctx, woman),
+    terrain === undefined
+      ? undefined
+      : unreachableCellVeto(world, ctx, terrain, woman, terrain.nodeAtClamped(hereNode.hx, hereNode.hy)),
   );
   if (source === null) {
     // No reachable food outside homes, so she waits and the order stands.
@@ -373,10 +380,13 @@ function enterHome(
   removeCurrentAtomic(world, e);
   if (terrain === undefined) {
     stepIn(world, e, home);
+    fillCompanyOnComingHome(world, ctx, e);
     return;
   }
   const p = world.get(e, Position);
   const hereNode = nodeOfPosition(p.x, p.y);
   const here = terrain.nodeAtClamped(hereNode.hx, hereNode.hy);
-  enterBuilding(world, e, home, here, interactionCell(world, ctx, terrain, home, here));
+  enterBuilding(world, e, home, here, interactionCell(world, ctx, terrain, home, here), () =>
+    fillCompanyOnComingHome(world, ctx, e),
+  );
 }

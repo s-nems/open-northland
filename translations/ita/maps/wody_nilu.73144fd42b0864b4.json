@@ -1,0 +1,22 @@
+{
+  "version": 1,
+  "map": "wody_nilu",
+  "basis": {
+    "lang": "eng",
+    "digest": "dfd2a176a25b6ceb89cae198b6e720bce59ddf9a6d068397dbc2872129b9c49a"
+  },
+  "strings": {
+    "0": "LE ACQUE DEL NILO",
+    "1": "Due tribù si contendono le risorse dell'Egitto.",
+    "40": "Sconfiggi la tribù nemica",
+    "50": "Giocatore 1",
+    "51": "Giocatore 2",
+    "52": "Spettatore",
+    "60": "Giocatore 1",
+    "61": "Giocatore 2",
+    "62": "Spettatore"
+  },
+  "briefings": {
+    "500": "<font:$local$\\fonts\\fonthead16bld.fnt>\nLE ACQUE DEL NILO\n\n<font:$local$\\fonts\\font12.fnt>\nGiungemmo in questa terra spinti dal desiderio di impadronirci di parte delle sue ricchezze.\nLe leggende sui tanti tesori della valle del Nilo attirano conquistatori e avventurieri d'ogni risma, e non senza motivo.\nPer nostra sfortuna, però, non fummo i soli ad avere quell'idea.\n\nSull'altra sponda del fiume i nostri esploratori avvistarono un altro popolo. A nessuno piace spartire il bottino, giusto?\n\nAutore: Zohanowaty"
+  }
+}

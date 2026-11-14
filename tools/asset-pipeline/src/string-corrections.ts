@@ -1,9 +1,8 @@
 import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
-import { MAP_TEXT_LANGUAGES } from '@open-northland/data';
+import { MAP_TEXT_LANGUAGES, PACK_LANGUAGES, SOURCE_LANGUAGES } from '@open-northland/data';
 import type { MapStringTables } from '@open-northland/map-import';
 import { errorMessage } from './errors.js';
-import { GUI_LANGS } from './stages/gui/paths.js';
 import { EXPORTED_TABLES, OBJECT_HELP_TABLES } from './stages/gui/strings.js';
 
 /** The committed fixes to decoded display strings; this package's AGENTS.md sets the rules. */
@@ -16,8 +15,8 @@ export const MAP_STRING_CORRECTIONS_FILE = fileURLToPath(
   new URL('../corrections/strings/maps.json', import.meta.url),
 );
 
-/** One display string replaced while it reads `from`, a phrase of a help text, or a missing map string
- *  added with `from: null`. */
+/** One display string replaced while it reads `from`, a phrase of a help text, or a missing string added
+ *  whole with `from: null`. */
 export interface StringCorrection {
   /** The text folder, e.g. `rus`. */
   readonly lang: string;
@@ -62,15 +61,21 @@ const CORRECTABLE_TABLES: readonly string[] = [...EXPORTED_TABLES, ...OBJECT_HEL
 
 const TABLE_KIND: CorrectionKind = {
   scopeKey: 'table',
-  langs: GUI_LANGS,
+  // A correction quotes the text it fixes, so it never names a language whose shipped text stays private.
+  langs: SOURCE_LANGUAGES,
   checkScope: (table) =>
     CORRECTABLE_TABLES.includes(table) ? undefined : `table must be one of ${CORRECTABLE_TABLES.join(', ')}`,
   isPhrased: (table) => (OBJECT_HELP_TABLES as readonly string[]).includes(table),
 };
 
+/** Pack languages whose shipped text stays private, so no correction may quote it. */
+const PRIVATE_PACK_LANGUAGES: readonly string[] = PACK_LANGUAGES.filter(
+  (lang) => !(SOURCE_LANGUAGES as readonly string[]).includes(lang),
+);
+
 const MAP_KIND: CorrectionKind = {
   scopeKey: 'map',
-  langs: MAP_TEXT_LANGUAGES,
+  langs: MAP_TEXT_LANGUAGES.filter((lang) => !PRIVATE_PACK_LANGUAGES.includes(lang)),
   checkScope: (map) => (map.trim() === '' ? 'map must name a map id' : undefined),
   isPhrased: () => false,
 };
@@ -134,9 +139,10 @@ async function loadCorrections(path: string, kind: CorrectionKind): Promise<Stri
       for (const entry of list) {
         if (entry.lang !== lang || entry.scope !== scope) continue;
         const actual = corrected[entry.id];
-        const fixed = kind.isPhrased(scope)
-          ? phraseFixed(entry, actual)
-          : wholeFixed(entry, actual, Object.hasOwn(byId, entry.id));
+        const fixed =
+          kind.isPhrased(scope) && entry.from !== null
+            ? phraseFixed(entry, actual)
+            : wholeFixed(entry, actual, Object.hasOwn(byId, entry.id));
         if (typeof fixed === 'string') {
           corrected[entry.id] = fixed;
           applied.add(entry);
@@ -217,15 +223,14 @@ function parseStringCorrections(path: string, kind: CorrectionKind, raw: unknown
     const badScope = kind.checkScope(scope);
     if (badScope !== undefined) at(badScope);
     if (typeof id !== 'number' || !Number.isSafeInteger(id) || id < 0) return at('id must be a string id');
-    const addsMapString = kind.scopeKey === 'map' && from === null;
-    if ((!addsMapString && typeof from !== 'string') || typeof to !== 'string' || from === to) {
+    if ((from !== null && typeof from !== 'string') || typeof to !== 'string' || from === to) {
       return at('"from" and "to" must be two different strings');
     }
     if (typeof reason !== 'string' || reason.trim() === '') return at('reason must say why the fix exists');
     const phrased = kind.isPhrased(scope);
     if (phrased && from === '') at('"from" must name a phrase of the text');
     const key = `${lang}/${scope}/${id}`;
-    if (!phrased && seen.has(key)) at(`a second entry for ${key}`);
+    if ((!phrased || from === null) && seen.has(key)) at(`a second entry for ${key}`);
     seen.add(key);
     return { lang, scope, id, from, to, reason };
   });

@@ -58,6 +58,7 @@ export type UnitSelectionAction =
   | { readonly kind: 'setJob'; readonly jobType: number; readonly goods?: readonly number[] }
   | { readonly kind: 'assignBuilder'; readonly site: Entity; readonly queued?: boolean }
   | { readonly kind: 'trainSoldier'; readonly house: Entity; readonly queued?: boolean }
+  | { readonly kind: 'orderCoinDrill'; readonly house: Entity }
   | {
       readonly kind: 'learn';
       readonly house: Entity;
@@ -328,7 +329,7 @@ export type UnitOrderCommand =
        * Refused with a `vehicleMoveRefused` event while nobody commands it or
        * when nothing leads there. `attackMove` makes a siege vehicle's drive a march: it fights the
        * enemies it meets on the way in the attack stance, then drives on (an addition: the original's
-       * goto never scans while it drives).
+       * goto never scans while it drives). A vehicle shooting at a unit or house finishes that fight first.
        */
       readonly kind: 'moveVehicle';
       readonly vehicle: Entity;
@@ -499,9 +500,10 @@ export type UnitOrderCommand =
       /**
        * Place or move one worker's flag to (x,y). An unposted gatherer searches its radius; an unposted
        * fisher uses it as the yard where the catch is banked. A carrier posted to a warehouse or a recipe
-       * workshop collects loose goods around it for its post, and a posted gatherer, hunter or fisher works
-       * around it while it banks at its post. Any other posted worker banks at its post, so the order is
-       * ignored. The flag itself holds no stockpile.
+       * workshop collects loose goods around it for its post, a posted gatherer, hunter or fisher works
+       * around it while it banks at its post, and a farm's sower tends his plot around it instead of around
+       * the farm. Any other posted worker banks at its post, so the order is ignored. The flag itself holds
+       * no stockpile.
        */
       readonly kind: 'setWorkFlag';
       readonly entity: Entity;
@@ -510,7 +512,8 @@ export type UnitOrderCommand =
     }
   | {
       /** Take a posted worker's flag away: a carrier or gatherer works wherever its signposts reach again,
-       *  a hunter around its workplace and a fisher searches for a shore from where it stands. */
+       *  a hunter and a farm's sower around the workplace, and a fisher searches for a shore from where it
+       *  stands. */
       readonly kind: 'clearHaulFlag';
       readonly entity: Entity;
     }
@@ -566,14 +569,30 @@ export type UnitOrderCommand =
       /**
        * Send one owned adult settler to drill at barracks `house` for `BARRACKS_DRILL_TICKS`; it comes
        * out enlisted as the base soldier class and stays qualified for the soldier trades. A settler that
-       * already holds a fighter trade only drills. A barracks still under construction is accepted: the
-       * settler waits beside its door until it stands. A `moveUnit` order calls the errand off.
+       * already holds a fighter trade is refused: his barracks drill is `orderCoinDrill`. A barracks still
+       * under construction is accepted: the settler waits beside its door until it stands. A `moveUnit`
+       * order calls the errand off.
        */
       readonly kind: 'trainSoldier';
       readonly entity: Entity;
       readonly house: Entity;
       /** As `moveUnit`'s; the barracks is judged when the order starts. */
       readonly queued?: boolean;
+    }
+  | {
+      /**
+       * Send one owned soldier, armed or bare, to coin-drill at his side's finished barracks `house`:
+       * each `COIN_DRILL_TERM_TICKS` term (15 s) inside takes one coin off its shelf as it starts and adds
+       * the drill clip's points to his personal fight counter as it ends, term after term while he stays
+       * below `COIN_DRILL_LIMIT`; then, or when no free coin is left, he walks back to where he stood.
+       * Refused while the barracks holds no coin another ordered man does not speak for, so a group order
+       * sends only as many men as there are free coins, in command order. Not the recruit's `trainSoldier`
+       * enlistment. Any order that takes him, or a fight, calls the term off and gives its coin back; a
+       * driller who dies mid-term, or whose barracks is razed, loses the coin.
+       */
+      readonly kind: 'orderCoinDrill';
+      readonly entity: Entity;
+      readonly house: Entity;
     }
   | {
       readonly kind: 'learn';
@@ -596,9 +615,10 @@ export type UnitOrderCommand =
   | {
       /**
        * House one owned adult settler's whole family (the settler, its spouse, their still-growing child)
-       * in `house`. A home holds up to `homeSize` families (`houses.ini` `logichomesize`, 1..5 by level);
-       * re-assigning moves the family out of its previous home. A home beyond the settler's signpost
-       * reach still binds, and the settler stands lost as with `assignWorker`.
+       * in `house`. A home holds up to `homeSize` families (`houses.ini` `logichomesize`, 1..5 by level),
+       * `furnishedFamilies` more while furnished; re-assigning moves the family out of its previous home. A
+       * home beyond the settler's signpost reach still binds, and the settler stands lost as with
+       * `assignWorker`.
        */
       readonly kind: 'assignHouse';
       readonly entity: Entity;
@@ -671,7 +691,8 @@ export type UnitOrderCommand =
       readonly enabled: boolean;
     }
   | {
-      /** Allow or forbid consumption of one durable household quality in an owned finished home. */
+      /** Allow or forbid one durable household good across `player`'s homes: its deliveries, and its use
+       *  except holy oil's. Forbidding furniture moves out the extra families it housed. */
       readonly kind: 'setHouseholdGoodUse';
       readonly player: number;
       readonly effect: HomeQualityEffect;
@@ -704,10 +725,10 @@ export type UnitOrderCommand =
       readonly prioritized: boolean;
     }
   | {
-      /** Send the soldiers an owned finished barracks trains from now on to the half-cell node (x,y), where
-       *  each takes its guard post. A blocked node resolves to the nearest free one beside it when they
-       *  walk. A building that is no barracks, or not finished, skips the command, and so does a node on
-       *  another land than the barracks' own. */
+      /** Plant an owned finished barracks' rally flag at the half-cell node (x,y), snapped to legal flag
+       *  ground: the soldiers it trains from now on each take their own place in the ranks around it as
+       *  their guard post. A building that is no barracks, or not finished, skips the command, and so does
+       *  a node on another land than the barracks' own. */
       readonly kind: 'setRallyPoint';
       readonly building: Entity;
       readonly x: number;
@@ -717,6 +738,13 @@ export type UnitOrderCommand =
       /** Take a barracks' rally point away: its recruits stay where they step out again. */
       readonly kind: 'clearRallyPoint';
       readonly building: Entity;
+    }
+  | {
+      /** Light or put out a temple's holy fire (owner ruling): put out, it burns no fuel and blesses no
+       *  one. Refused for a house that burns no fuel. */
+      readonly kind: 'setTempleFire';
+      readonly building: Entity;
+      readonly lit: boolean;
     };
 
 /**

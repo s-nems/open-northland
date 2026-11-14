@@ -9,7 +9,7 @@ export interface LeavePrompt {
   readonly stay: string;
 }
 
-const LOCALE_CODES = ['pol', 'eng', 'ger', 'rus', 'chs', 'cht'] as const;
+const LOCALE_CODES = ['pol', 'eng', 'ger', 'rus', 'ita', 'chs', 'cht'] as const;
 /** The app's locale codes, which the shell's own native dialogs speak too. */
 export type LocaleCode = (typeof LOCALE_CODES)[number];
 
@@ -19,6 +19,7 @@ const LOCALE_OF_LANGUAGE: ReadonlyMap<string, LocaleCode> = new Map([
   ['en', 'eng'],
   ['de', 'ger'],
   ['ru', 'rus'],
+  ['it', 'ita'],
 ]);
 
 const CHINESE = 'zh';
@@ -52,6 +53,12 @@ const PROMPTS: Readonly<Record<LocaleCode, LeavePrompt>> = {
     message: 'Закрыть игру? Несохранённый прогресс будет потерян.',
     leave: 'Закрыть',
     stay: 'Вернуться в игру',
+  },
+  ita: {
+    title: 'Open Northland',
+    message: 'Chiudere il gioco? I progressi non salvati andranno persi.',
+    leave: 'Chiudi',
+    stay: 'Torna al gioco',
   },
   chs: {
     title: 'Open Northland',

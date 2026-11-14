@@ -252,7 +252,8 @@ describe('tribe voice borrowing', () => {
 
   it('borrows every class, the hero rule included', () => {
     const jobs = [{ typeId: HERO_JOB, id: 'hero_unarmed' }];
-    const index = buildSoundIndex(voiced(saracenRows), [], [], jobs, tribes);
+    const figures = [{ tribe: EGYPT, job: HERO_JOB }];
+    const index = buildSoundIndex(voiced(saracenRows), [], [], jobs, tribes, [], figures);
     expect(humanVoicesOf(index, egyptian(2, { Female: { female: true } }))?.scream).toBe('Woman Get Hit');
     expect(humanVoicesOf(index, egyptian(2, { Age: { ticks: 1 } }))?.generic).toBe('Generic Viking Children');
     const hero = egyptian(3, { Settler: { tribe: EGYPT, jobType: HERO_JOB } });

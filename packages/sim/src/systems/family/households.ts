@@ -2,6 +2,7 @@ import type { BuildingType } from '@open-northland/data';
 import {
   Age,
   Building,
+  Evicted,
   Marriage,
   Residence,
   Settler,
@@ -15,14 +16,15 @@ import type { SystemContext } from '../context.js';
 import { isFood, jobIgnoresHomeHouse } from '../readviews/index.js';
 import { EntityReferences } from '../spatial/entity-references.js';
 import { accessibleStockAmounts, setAccessibleStockAmount } from '../stores/index.js';
+import { homeFamilyCapacity } from './home-quality.js';
 
 /** Whether `house` is a home building, built or not. */
 export function isHome(world: World, ctx: SystemContext, house: Entity): boolean {
-  return homeType(world, ctx, house) !== undefined;
+  return homeTypeOf(world, ctx, house) !== undefined;
 }
 
 /** The `home`-kind {@link BuildingType} of a house entity, including one still under construction. */
-function homeType(world: World, ctx: SystemContext, house: Entity): BuildingType | undefined {
+export function homeTypeOf(world: World, ctx: SystemContext, house: Entity): BuildingType | undefined {
   const b = world.isAlive(house) ? world.tryGet(house, Building) : undefined;
   return b === undefined ? undefined : homeKindOf(ctx, b.buildingType);
 }
@@ -58,7 +60,7 @@ export function builtHomeType(world: World, ctx: SystemContext, house: Entity): 
 }
 
 /** The settlers living in `house`, ascending entity id. */
-const residentIndexes = new WeakMap<World, EntityReferences<{ home: Entity }>>();
+const residentIndexes = new WeakMap<World, EntityReferences<{ home: Entity; since: number }>>();
 
 export function residentsOf(world: World, house: Entity): readonly Entity[] {
   let index = residentIndexes.get(world);
@@ -181,19 +183,27 @@ export function familyCountOf(world: World, house: Entity): number {
 /**
  * Reserve `house` for `e`'s household, where `e` is a settler. The reservation may be made while the home
  * is under construction; household drives continue to require {@link builtHomeType} before using it.
- * Refuses a home without a free family slot; any tribe's home on the settler's side will do.
+ * Refuses a home without a free family slot ({@link homeFamilyCapacity}); any tribe's home on the
+ * settler's side will do.
  */
 export function moveFamilyInto(world: World, ctx: SystemContext, e: Entity, house: Entity): void {
-  const type = homeType(world, ctx, house);
+  const type = homeTypeOf(world, ctx, house);
   if (type === undefined) return;
   const family = familyOf(world, e);
   const members = new Set(family);
   // The mover's own household is excluded, so a re-assign into the same home costs no extra slot.
   const others = familiesOf(world, house).filter((fam) => !fam.some((m) => members.has(m))).length;
-  if (others + 1 > type.homeSize) return; // no free family slot
-  for (const member of family) {
-    world.add(member, Residence, { home: house }); // add overwrites - a move drops the old home
-  }
+  if (others + 1 > homeFamilyCapacity(world, ctx, house, type)) return; // no free family slot
+  for (const member of family) settleIn(world, member, house, ctx.tick);
+}
+
+/**
+ * Make `e` live in `home` from `tick`, every {@link Residence} write's one path: a move drops the old home,
+ * one into the home it already lives in keeps its move-in tick, and either ends an {@link Evicted} claim.
+ */
+export function settleIn(world: World, e: Entity, home: Entity, tick: number): void {
+  if (world.tryGet(e, Residence)?.home !== home) world.add(e, Residence, { home, since: tick });
+  world.remove(e, Evicted);
 }
 
 /** Total edible units ({@link isFood}) in `house`'s accessible inventory - the family larder. */

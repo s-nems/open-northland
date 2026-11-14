@@ -430,7 +430,7 @@ describe('ai program town - posts, homes and stores', () => {
     const hq = place(sim, HQ_TYPE, HQ);
     const health = sim.world.mut(hq, Health);
     health.hitpoints = Math.trunc(health.max / 2);
-    markShortPool(sim.world, hq);
+    markShortPool(sim.world, sim, hq);
     spawn(sim, 4, { x: HQ.x + 6, y: HQ.y + 8 }, CIVILIST);
     const builders = staffing(sim).filter((c) => c.kind === 'setJob');
     expect(builders).toHaveLength(TOWN_REPAIR_BUILDERS);

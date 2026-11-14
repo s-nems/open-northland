@@ -16,7 +16,7 @@ import type { SceneDefinition } from '../types.js';
  * A level-3 joinery whose joiners are set to make handcarts: each opens a hidden yard site beside the shop,
  * carries the wood in from the warehouse, hammers on it, and the finished site becomes a cart standing
  * where the yard stood (docs/formats/VEHICLES.md "Construction"). The browser view is the check that
- * the yard draws as the cart house's construction and the cart takes its place.
+ * the yard shows the whole cart faintly, the built part rising in it, and the cart takes its place.
  */
 
 const MAP_W = 24;

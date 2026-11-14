@@ -75,6 +75,7 @@ export const plSurfaces = {
         eng: 'angielski',
         ger: 'niemiecki',
         rus: 'rosyjski',
+        ita: 'włoski',
         chs: 'chiński (uproszczony)',
         cht: 'chiński (tradycyjny)',
       },
@@ -315,6 +316,9 @@ export const plSurfaces = {
       bonesFade: 'Znikające kości',
       bonesFadeTip:
         'Kości poległych chwilę leżą nietknięte, a potem powoli znikają, po pięciu minutach gry nie ma po nich śladu. Wyłączone zostają na ziemi na zawsze.',
+      equipmentEffects: 'Efekty ekwipunku',
+      equipmentEffectsTip:
+        'Noszony ekwipunek widać na postaci: wokół stóp każdego, kto ma amulet, krąży łuk światła w kolorze amuletu, po jednym na każdy rodzaj, a za idącym z amuletem wiatru ciągną się podmuchy wiatru.',
       weather: 'Pogoda',
       weatherTip:
         'Deszcz, śnieg i burze piaskowe tam, gdzie przewiduje je mapa: padające krople i płatki, mgła i światło burzy, mokra i zaśnieżona ziemia, rozpryski, wiatr i grzmoty. Pogoda nigdy nie zmienia samej rozgrywki. Po wyłączeniu niebo jest czyste, a pogody nie słychać.',
@@ -369,6 +373,7 @@ export const plSurfaces = {
         eng: 'English',
         ger: 'Deutsch',
         rus: 'Русский',
+        ita: 'Italiano',
         chs: '简体中文',
         cht: '繁體中文',
       },
@@ -426,11 +431,15 @@ export const plSurfaces = {
         defenceOff: 'Wyłącz tryb obrony we wszystkich budynkach',
         buildingAlarm: 'Bij na alarm lub odwołaj alarm w zaznaczonym budynku',
         nextCivilian: 'Następny cywil',
+        addCivilians: 'Dodaj wszystkich wolnych cywilów do zaznaczenia',
         nextScout: 'Następny zwiadowca',
+        addScouts: 'Dodaj wszystkich zwiadowców do zaznaczenia',
         nextSingleWoman: 'Następna niezamężna kobieta bez domu',
+        addSingleWomen: 'Dodaj wszystkie niezamężne kobiety bez domu do zaznaczenia',
         selectSoldiers: 'Zaznacz wszystkich żołnierzy',
         addSoldiers: 'Dodaj wszystkich żołnierzy do zaznaczenia',
         selectHeroes: 'Zaznacz wszystkich bohaterów',
+        addHeroes: 'Dodaj wszystkich bohaterów do zaznaczenia',
         keepHeroes: 'Zostaw w zaznaczeniu tylko bohaterów',
         keepSoldiers: 'Zostaw w zaznaczeniu tylko żołnierzy',
         numpadPan: 'Przesuwanie mapy (klawiatura numeryczna, także po skosie)',
@@ -634,7 +643,7 @@ export const plSurfaces = {
         'Budynki można stawiać na drogowskazach, własnych i cudzych. Drogowskazy przesuną się na bok, a ich połączenia zostaną.',
       scoutExplore: 'Zwiadowca akcją „Badaj” samodzielnie eksploruje mapę.',
       porterFlag:
-        'Tragarze magazynu i warsztatu mogą dostać flagę odbioru, spod której zbierają towary, a zbieracze, myśliwi i rybacy przypisani do budynku flagę, przy której pracują. Ustawisz ją w wierszu „{area}” panelu osadnika.',
+        'Tragarze magazynu i warsztatu mogą dostać flagę odbioru, spod której zbierają towary, a zbieracze, myśliwi, rybacy, farmerzy i zielarze przypisani do budynku flagę, przy której pracują. Ustawisz ją w wierszu „{area}” panelu osadnika.',
       nationSwitch:
         'Mając osadników innego plemienia, w oknie budowy ({key}) przełączysz się na jego budynki.',
     },

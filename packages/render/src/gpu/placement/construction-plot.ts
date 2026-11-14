@@ -13,13 +13,15 @@ import { hashCells } from './cell-signature.js';
 /**
  * The ground a placed foundation occupies until its house stands: trampled earth over the building's
  * footprint (the `blocked` body cells the sim hands over), one rounded outline per contiguous region.
- * A project choice: the original washes the cells grey. Colours, alphas and the corner radius are
- * tuned by eye.
+ * A vehicle's yard lays no foundation and draws no plot. A project choice: the original washes the cells
+ * grey. Colours, alphas and the corner radius are tuned by eye.
  */
 
 /** The half-cell `(col,row)` body cells one site occupies. */
 export interface ConstructionPlotFrame {
   readonly ref: number;
+  /** False for a vehicle's yard, which draws no earth but is still picked by its outline. */
+  readonly foundation: boolean;
   readonly cells: readonly { readonly col: number; readonly row: number }[];
 }
 
@@ -92,17 +94,18 @@ export class ConstructionPlotLayer {
       pick.shape?.destroy();
       this.picks.delete(ref);
     }
-    const key = signatureOf(plots);
+    const earth = plots.filter(hasFoundation);
+    const key = signatureOf(earth);
     if (key === this.key && !elevationChanged) return;
     this.key = key;
 
     if (elevationChanged) this.islands.clear();
     const g = this.g.clear();
-    if (plots.length === 0) {
+    if (earth.length === 0) {
       this.islands.clear();
       return;
     }
-    fillLoops(g.context, this.outlinedLoops(plots, elevation), this.earth);
+    fillLoops(g.context, this.outlinedLoops(earth, elevation), this.earth);
   }
 
   /** Every outline loop of `plots` in {@link plotOutlines}' order, reusing the projected loops of each
@@ -132,7 +135,7 @@ export class ConstructionPlotLayer {
     this.container.destroy({ children: true });
   }
 
-  /** The visible ground plot remains selectable before its building has any revealed pixels. */
+  /** A site's plot remains selectable before its building has any revealed pixels, drawn or not. */
   hit(ref: number, x: number, y: number): boolean {
     const pick = this.pickPlot(ref);
     this.point.x = x;
@@ -164,6 +167,8 @@ export class ConstructionPlotLayer {
     return pick;
   }
 }
+
+const hasFoundation = (plot: ConstructionPlotFrame): boolean => plot.foundation;
 
 function sameCells(a: ConstructionPlotFrame['cells'], b: ConstructionPlotFrame['cells']): boolean {
   if (a === b) return true;

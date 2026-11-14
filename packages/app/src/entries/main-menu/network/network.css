@@ -115,7 +115,8 @@
 .network-menu__create .main-menu__lobby-option-row {
   font: inherit;
 }
-.network-menu input,
+/* The form controls here; the HUD's save list inside the screen keeps its own (saves/panel.ts). */
+.network-menu input:where(:not(.on-hud *)),
 .network-menu .main-menu__dropdown-btn {
   width: 100%;
   min-width: 0;
@@ -159,13 +160,13 @@
   background: linear-gradient(var(--bronze-hi), var(--bronze));
   font-weight: 700;
 }
-.network-menu button:hover:not(:disabled) {
+.network-menu button:where(:not(.on-hud *)):hover:not(:disabled) {
   border-color: var(--bronze-hi);
   filter: brightness(1.1);
   transform: none;
   box-shadow: none;
 }
-.network-menu button:disabled {
+.network-menu button:where(:not(.on-hud *)):disabled {
   opacity: 0.45;
   cursor: var(--cursor-default, default);
 }
@@ -339,6 +340,10 @@
 .network-menu__map-pick .main-menu__map-thumb {
   width: calc(var(--u) * 64);
   height: calc(var(--u) * 64);
+}
+/* A save's picture is a scaled-down screenshot, which hard pixels would only make jagged. */
+.network-menu__map-pick .network-menu__save-picture {
+  image-rendering: auto;
 }
 .network-menu__map-pick .main-menu__map-row-name {
   font-size: calc(var(--u) * 18);

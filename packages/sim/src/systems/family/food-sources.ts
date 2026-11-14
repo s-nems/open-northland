@@ -17,12 +17,20 @@ import { NodeBuckets } from '../spatial/nodes.js';
 import { accessibleStockAmounts, recipeConsumes } from '../stores/index.js';
 import { SidedCandidates, sidesMatch } from './candidate-sides.js';
 
-/** A food source's anchor node and owner, captured so a withdrawal finds its bucket and side after the
- *  store is gone. */
+/**
+ * Meat, the food women fetch for their larders before any other (owner ruling): the animal farm's
+ * slaughter lands it, and a full shelf of it keeps the breeder carrying meat out instead of slaughtering.
+ */
+const MEAT_GOOD_ID = 'meat';
+
+/** A food source's anchor node, owner and meat flag, captured so a withdrawal finds its bucket and sides
+ *  after the store is gone. */
 interface SourceNode {
   readonly hx: number;
   readonly hy: number;
   readonly owner: number | undefined;
+  /** Whether the store holds a unit of {@link MEAT_GOOD_ID}. */
+  readonly meat: boolean;
 }
 
 /**
@@ -32,6 +40,7 @@ interface SourceNode {
  */
 export class FoodSources {
   private readonly sides = new SidedCandidates();
+  private readonly meat = new SidedCandidates();
   private nodeBuckets: NodeBuckets;
   readonly captures: JournaledCaptures<SourceNode>;
 
@@ -48,17 +57,20 @@ export class FoodSources {
       },
       () => world.canonicalQuery(Stockpile, Position),
       {
-        capture: (e) => (isFoodSource(world, content, e) ? anchorNode(world, e) : null),
+        capture: (e) => (isFoodSource(world, content, e) ? sourceNode(world, content, e) : null),
         apply: (e, node) => {
           this.sides.insert(e, node.owner);
+          if (node.meat) this.meat.insert(e, node.owner);
           this.nodeBuckets.insert(e, node.hx, node.hy);
         },
         withdraw: (e, node) => {
           this.sides.remove(e, node.owner);
+          if (node.meat) this.meat.remove(e, node.owner);
           this.nodeBuckets.remove(e, node.hx, node.hy);
         },
         clear: () => {
           this.sides.clear();
+          this.meat.clear();
           this.nodeBuckets = new NodeBuckets(world, []);
         },
       },
@@ -75,6 +87,11 @@ export class FoodSources {
     return this.sides.of(owner);
   }
 
+  /** {@link onSide} narrowed to the sources holding meat, ascending id. */
+  meatOn(owner: number | undefined): readonly Entity[] {
+    return this.meat.of(owner);
+  }
+
   get buckets(): NodeBuckets {
     return this.nodeBuckets;
   }
@@ -88,6 +105,10 @@ export class FoodSources {
     const same = fresh.length === held.length && fresh.every((e, i) => e === held[i]);
     if (!same) return ['familyFoodSources disagree with a fresh store scan'];
     if (!sidesMatch(this.world, fresh, this.sides)) return ['familyFoodSources hold a store on a stale side'];
+    const meat = fresh.filter((e) => holdsMeat(this.world, this.content, e));
+    if (!sidesMatch(this.world, meat, this.meat)) {
+      return ['familyFoodSources disagree with a fresh scan on the stores holding meat'];
+    }
     for (const e of fresh) {
       const node = anchorNode(this.world, e);
       if (!this.nodeBuckets.at(node.hx, node.hy).includes(e)) {
@@ -115,9 +136,31 @@ export function foodSourcesOf(world: World, content: ContentSet): FoodSources {
   return held;
 }
 
-function anchorNode(world: World, e: Entity): SourceNode {
+function sourceNode(world: World, content: ContentSet, e: Entity): SourceNode {
+  const { hx, hy } = anchorNode(world, e);
+  return { hx, hy, owner: ownerOf(world, e), meat: holdsMeat(world, content, e) };
+}
+
+function anchorNode(world: World, e: Entity): { readonly hx: number; readonly hy: number } {
   const p = world.get(e, Position);
-  return { hx: nodeHxOfPosition(p.x, p.y), hy: nodeHyOfPosition(p.x, p.y), owner: ownerOf(world, e) };
+  return { hx: nodeHxOfPosition(p.x, p.y), hy: nodeHyOfPosition(p.x, p.y) };
+}
+
+const meatByContent = new WeakMap<ContentSet, number | null>();
+
+/** The meat good's type, or null for a content set without one. */
+export function meatGoodOf(content: ContentSet): number | null {
+  let meat = meatByContent.get(content);
+  if (meat === undefined) {
+    meat = content.goods.find((g) => g.id === MEAT_GOOD_ID)?.typeId ?? null;
+    meatByContent.set(content, meat);
+  }
+  return meat;
+}
+
+function holdsMeat(world: World, content: ContentSet, e: Entity): boolean {
+  const meat = meatGoodOf(content);
+  return meat !== null && (accessibleStockAmounts(world, e)?.get(meat) ?? 0) > 0;
 }
 
 function isFoodSource(world: World, content: ContentSet, e: Entity): boolean {

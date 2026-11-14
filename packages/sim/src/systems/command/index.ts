@@ -1,6 +1,7 @@
 import { jobCanPray } from '@open-northland/data';
 import type { AiOrderOrigin } from '../../components/ai/order.js';
 import {
+  AttackOrder,
   addPaper,
   continueMatch,
   endMatchContinuation,
@@ -26,7 +27,9 @@ import type { System, SystemContext } from '../context.js';
 import { forceFinishConstruction } from '../economy/construction.js';
 import { carriesFoodAmulet } from '../equipment/effects.js';
 import { setHouseholdGoodUse } from '../family/home-quality.js';
+import { moveOutOfUnfurnishedHomes } from '../family/lodging.js';
 import { razePalisade } from '../lifecycle/cleanup.js';
+import { setTempleFire } from '../lifecycle/temple/index.js';
 import { type PeaceRefusal, peaceRefusal } from '../match/peace.js';
 import { payTribute } from '../missions/tributes.js';
 // Deliberately the module, not the orders barrel: the handler reaches into
@@ -52,6 +55,7 @@ import {
   marry,
   moveUnit,
   orderClaimAnimal,
+  orderCoinDrill,
   orderNeed,
   orderOpenChest,
   placeSignpost,
@@ -417,7 +421,10 @@ function applyCommand(
       setJob(world, ctx, command);
       return;
     case 'attackUnit':
-      attackUnit(world, ctx, command, origin);
+      obeyDespiteHunger(world, ctx, command.entity, () => {
+        attackUnit(world, ctx, command, origin);
+        return world.tryGet(command.entity, AttackOrder)?.target === command.target;
+      });
       return;
     case 'setStance':
       setStance(world, ctx, command);
@@ -442,13 +449,16 @@ function applyCommand(
       assignBuilder(world, ctx, command);
       return;
     case 'unassignBuilder':
-      unassignBuilder(world, command);
+      unassignBuilder(world, ctx, command);
       return;
     case 'learn':
       learn(world, ctx, command);
       return;
     case 'trainSoldier':
       trainSoldier(world, ctx, command);
+      return;
+    case 'orderCoinDrill':
+      orderCoinDrill(world, ctx, command);
       return;
     case 'cancelTraining':
       cancelTraining(world, command);
@@ -473,6 +483,8 @@ function applyCommand(
       return;
     case 'setHouseholdGoodUse':
       setHouseholdGoodUse(world, ctx, command);
+      if (command.effect === 'lodging' && !command.allowed)
+        moveOutOfUnfurnishedHomes(world, ctx, command.player);
       return;
     case 'setStorageMinimum':
       setStorageMinimum(world, ctx, command);
@@ -488,6 +500,9 @@ function applyCommand(
       return;
     case 'clearRallyPoint':
       clearRallyPoint(world, command);
+      return;
+    case 'setTempleFire':
+      setTempleFire(world, ctx, command);
       return;
     case 'placeSignpost':
       obeyDespiteHunger(world, ctx, command.entity, () => placeSignpost(world, ctx, command, origin));
@@ -637,7 +652,7 @@ function applyCommand(
       debugErase(world, ctx, command);
       return;
     case 'debugSetHealth':
-      debugSetHealth(world, command);
+      debugSetHealth(world, ctx, command);
       return;
     case 'debugSetNeeds':
       // Commands apply before the tick's needs pass.

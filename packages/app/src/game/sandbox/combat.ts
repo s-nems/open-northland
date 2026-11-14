@@ -38,10 +38,28 @@ const ROCK_MUNITION = 2;
 const CATAPULT_MAIN_TYPE = 7;
 const CATAPULT_SPEED = 3;
 const SIEGE_DAMAGE_TYPE = 2;
-const CATAPULT_MIN_RANGE = 8;
-const CATAPULT_MAX_RANGE = 24;
-/** Extracted `weapons.ini` type 21 columns: bare, wool, leather, chain, plate, vehicle/wood, house. */
-const CATAPULT_DAMAGE = { '0': 8000, '1': 4000, '2': 6000, '3': 2000, '4': 2000, '6': 350, '7': 3625 };
+/** The catapult's `weapons.ini` type 21 row as the data pack sets it: the pack's balance raises the far
+ *  reach from 24 and every damage column to 125%, rounded down. Extracted damage columns: bare, wool,
+ *  leather, chain, plate, vehicle/wood, house. */
+export const CATAPULT_MIN_RANGE = 8;
+export const CATAPULT_MAX_RANGE = 26;
+const EXTRACTED_CATAPULT_DAMAGE = {
+  '0': 8000,
+  '1': 4000,
+  '2': 6000,
+  '3': 2000,
+  '4': 2000,
+  '6': 350,
+  '7': 3625,
+};
+const CATAPULT_DAMAGE_PERCENT = 125;
+const PERCENT = 100;
+const CATAPULT_DAMAGE: Readonly<Record<string, number>> = Object.fromEntries(
+  Object.entries(EXTRACTED_CATAPULT_DAMAGE).map(([column, value]) => [
+    column,
+    Math.floor((value * CATAPULT_DAMAGE_PERCENT) / PERCENT),
+  ]),
+);
 /** The `logicdefines.inc` `WEAPON_MAIN_TYPE_*` classes the viking rows carry. */
 const UNARMED_MAIN_TYPE = 1;
 const SPEAR_MAIN_TYPE = 2;
@@ -65,7 +83,7 @@ export const SHORT_BOW_DRAW_LENGTH = 12; // viking_soldier_attack_bow_short
 export const SHORT_BOW_RELEASE_FRAME = 10;
 export const LONG_BOW_DRAW_LENGTH = 28; // viking_soldier_attack_bow_long
 export const LONG_BOW_RELEASE_FRAME = 22;
-export const CATAPULT_SHOT_LENGTH = 48; // viking_catapult_attack
+export const CATAPULT_SHOT_LENGTH = 96; // viking_catapult_attack, as the data pack lengthens it
 export const CATAPULT_SHOT_FRAME = 1;
 // Bare-target damage per weapon, extracted from `weapons.ini` `damagevalue 0`, so sandbox combat
 // resolves on the same scale as real content.
@@ -113,13 +131,13 @@ const LONG_BOW_VS_BUILDING = 200;
 
 // Extracted per-material columns (`damagevalue <material> <value>`, materials 1..4 are wool, leather,
 // chain, plate; 6 is the vehicle column). The iron spear vs long sword chain/plate flip is the source's own
-// data, not a typo.
+// data, not a typo. The bows' vehicle column is the data pack's: 80% of the extracted 40 and 125.
 const FIST_VS_MATERIALS = { '1': 80, '2': 300, '3': 40, '4': 40, '6': 15 };
 const SPEAR_VS_MATERIALS = { '1': 1900, '2': 2850, '3': 950, '4': 2090, '6': 125 };
 const SWORD_VS_MATERIALS = { '1': 800, '2': 1200, '3': 400, '4': 400, '6': 40 };
 const BROADSWORD_VS_MATERIALS = { '1': 1900, '2': 2850, '3': 2090, '4': 950, '6': 125 };
-const SHORT_BOW_VS_MATERIALS = { '1': 128, '2': 400, '3': 100, '4': 100, '6': 40 };
-const LONG_BOW_VS_MATERIALS = { '1': 448, '2': 560, '3': 360, '4': 360, '6': 125 };
+const SHORT_BOW_VS_MATERIALS = { '1': 128, '2': 400, '3': 100, '4': 100, '6': 32 };
+const LONG_BOW_VS_MATERIALS = { '1': 448, '2': 560, '3': 360, '4': 360, '6': 100 };
 
 export const EQUIP_CLASS_BY_TYPE: ReadonlyMap<number, EquipClass> = new Map(
   EQUIP_GOODS.map(({ typeId, id: _id, ...equip }) => [typeId, equip]),

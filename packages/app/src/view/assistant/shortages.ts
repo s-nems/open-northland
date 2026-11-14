@@ -1,5 +1,7 @@
 import type { ContentSet } from '@open-northland/data';
 import {
+  type AssistantGrantGroup,
+  components,
   type EntitySnapshot,
   indexesOf,
   type SnapshotIndexSpec,
@@ -18,11 +20,11 @@ import {
 
 /** How many of a seat's men a give switch would still dress: those in the switch's pool (the working
  *  trades for a tool, every grown man otherwise) with room for its good and none of its goods carried,
- *  and the soldiers among them. Approximation of the assistant's pass, which also leaves a posted guard,
- *  a man on an errand and a rider where they are: a count that stays above zero may hold such men. */
+ *  in all and by group. Approximation of the assistant's pass, which also leaves a posted guard, a man
+ *  on an errand and a rider where they are: a count that stays above zero may hold such men. */
 export interface AssistantShortage {
   readonly lacking: number;
-  readonly soldiersLacking: number;
+  readonly byGroup: Readonly<Record<AssistantGrantGroup, number>>;
 }
 export type AssistantShortages = Readonly<Record<GiveSwitchId, AssistantShortage>>;
 
@@ -39,7 +41,7 @@ interface SeatTally {
 }
 type GearTallies = Map<number, SeatTally>;
 
-const NO_SHORTAGE: AssistantShortage = { lacking: 0, soldiersLacking: 0 };
+const NO_SHORTAGE: AssistantShortage = { lacking: 0, byGroup: { civilians: 0, workers: 0, soldiers: 0 } };
 export const NO_SHORTAGES: AssistantShortages = Object.fromEntries(
   GIVE_SWITCH_IDS.map((id) => [id, NO_SHORTAGE]),
 ) as Record<GiveSwitchId, AssistantShortage>;
@@ -146,11 +148,11 @@ export function gearTalliesOf(snapshot: WorldSnapshot): GearTallies {
   return indexesOf(snapshot).get(GEAR_TALLIES);
 }
 
-/** The jobs of a switch's pools: every dressed trade (a hero keeps the arms its job carries), the soldiers
- *  among them, and the trades a tool helps; with the slot each wearable fills. Memoized per content. */
+/** The jobs of a switch's pools: every dressed trade (a hero keeps the arms its job carries) by the group
+ *  it takes carried goods as, and the trades a tool helps; with the slot each wearable fills. Memoized
+ *  per content. */
 interface ContentPools {
-  readonly men: readonly number[];
-  readonly soldiers: readonly number[];
+  readonly men: Readonly<Record<AssistantGrantGroup, readonly number[]>>;
   readonly trades: readonly number[];
   /** Each give switch's goods the content has, and the slot they fill. */
   readonly switches: ReadonlyMap<
@@ -176,9 +178,10 @@ function poolsOf(content: ContentSet): ContentPools {
       if (category !== 'boots' && category !== 'tool' && category !== 'misc') continue;
       switches.set(id, { goods: goods.map((good) => good.typeId), slot: category });
     }
+    const menOf = (group: AssistantGrantGroup): number[] =>
+      men.filter((job) => systems.assistantGrantGroupOf(content, job) === group);
     pools = {
-      men,
-      soldiers: men.filter((job) => systems.isFighterJob(content, job)),
+      men: { civilians: menOf('civilians'), workers: menOf('workers'), soldiers: menOf('soldiers') },
       trades: men.filter((job) => systems.toolHelpsJob(content, job)),
       switches,
     };
@@ -216,10 +219,17 @@ export function assistantShortagesOf(
         slot === 'misc' ? goods.reduce((n, good) => n + sum(tallies.heldOpen.get(good), jobs), 0) : 0;
       return Math.max(0, open - carried);
     };
-    shortages[id] = {
-      lacking: lackingAmong(slot === 'tool' ? pools.trades : pools.men),
-      soldiersLacking: slot === 'tool' ? 0 : lackingAmong(pools.soldiers),
-    };
+    // A tool goes to the working trades alone, every one of them a worker.
+    const byGroup =
+      slot === 'tool'
+        ? { civilians: 0, workers: lackingAmong(pools.trades), soldiers: 0 }
+        : {
+            civilians: lackingAmong(pools.men.civilians),
+            workers: lackingAmong(pools.men.workers),
+            soldiers: lackingAmong(pools.men.soldiers),
+          };
+    const lacking = components.ASSISTANT_GRANT_GROUPS.reduce((sum, group) => sum + byGroup[group], 0);
+    shortages[id] = { lacking, byGroup };
   }
   return shortages as AssistantShortages;
 }

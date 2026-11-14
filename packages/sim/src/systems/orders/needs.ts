@@ -1,6 +1,7 @@
 import { jobCanPray } from '@open-northland/data';
 import {
   AttackOrder,
+  MealBreakRetry,
   NeedOrder,
   NoRegeneration,
   Person,
@@ -36,8 +37,10 @@ export function orderNeed(
   if (world.get(e, Settler).jobType === null) return;
   if (command.need === 'piety' && !jobCanPray(ctx.content.jobs, world.get(e, Settler).jobType)) return;
   world.add(e, NeedOrder, { need: command.need });
+  // A retry left by an earlier failed search or an obeyed walk says nothing about this order.
+  if (command.need === 'hunger') world.remove(e, MealBreakRetry);
   removeCurrentAtomic(world, e);
-  supersedeStandingOrders(world, e);
+  supersedeStandingOrders(world, ctx, e);
   world.remove(e, PlayerOrder); // and any walk the settler was on
   // And any standing attack order, which would otherwise pull the settler back into the fight the drive
   // ladder breaks off for the errand, leaving the order looking ignored.

@@ -6,7 +6,14 @@ import { readable2dContext } from '../textures/drawable-resource.js';
 import { drawableFrame, drawableTexture } from '../textures/recoloured-pages.js';
 import { DamageAtlas, type DamageTile } from './atlas.js';
 import { DamageEffectTextures } from './effect-textures.js';
-import { DamageEffects, type DamageOrigin } from './effects.js';
+import {
+  BUILDING_DAMAGE_STYLE,
+  type DamageEffectStyle,
+  DamageEffects,
+  type DamageOrigin,
+  LAND_VEHICLE_DAMAGE_STYLE,
+  PLAIN_DAMAGE_STYLE,
+} from './effects.js';
 import { DamagePaintCache } from './paint-cache.js';
 import { type GroundContact, groundContacts } from './rubble.js';
 import { analyseSurface, damageLevel, type Fracture } from './surface.js';
@@ -31,6 +38,16 @@ export interface FallenBody {
 const NO_GROUND: readonly GroundContact[] = [];
 const MAX_DAMAGE_NODES = 128;
 const MAX_PIXEL_BYTES = 32 * 1024 * 1024;
+/** Scarred frames one turning, working vehicle keeps beside the one it shows. */
+const MAX_PARKED_SURFACES = 24;
+/** Scarred frames every vehicle together may keep parked, so a column of them cannot crowd the
+ *  buildings out of the shared atlas. A vehicle past it bakes its frames again as it turns. */
+const MAX_PARKED_TOTAL = 96;
+/** The plume and chip source of a body whose pixels are not read for a roof: its size and wood colour. */
+const PLAIN_ORIGIN_SIZE = 13;
+const PLAIN_ORIGIN_COLOUR = 0x947953;
+/** A vehicle's one plume, sized so its few puffs still read. Tuned by eye. */
+const VEHICLE_ORIGIN_SIZE = 20;
 
 interface Surface {
   readonly sprite: Sprite;
@@ -49,6 +66,10 @@ interface Surface {
 interface DamageNode {
   readonly subject: DamageSubject;
   readonly surfaces: Map<Sprite, Surface>;
+  /** A vehicle's scarred frames it is not showing, by their source texture, oldest first: it returns
+   *  to each as it turns and works, so they are kept instead of baked again. */
+  readonly parked: Map<Texture, Surface>;
+  readonly vehicle: boolean;
   effects: DamageEffects;
   detailed: boolean;
   readonly origins: DamageOrigin[];
@@ -68,6 +89,7 @@ export class BuildingDamage {
   private scratch: ReturnType<typeof readable2dContext> = null;
   private scratchTried = false;
   private pixelBytes = 0;
+  private parkedTotal = 0;
   private scanOffset = 0;
   private readonly unreadable = new WeakSet<Texture>();
 
@@ -147,6 +169,7 @@ export class BuildingDamage {
       const item = damaged[(start + i) % damaged.length];
       if (item === undefined) continue;
       const { ref, hpFrac, ghost } = item;
+      const vehicle = item.vehicle === true;
       const level = damageLevel(hpFrac);
       // Retain a baked blend until the next small health increment.
       const bakedLevel = Math.round(level * 16) / 16;
@@ -165,7 +188,9 @@ export class BuildingDamage {
         node = {
           subject,
           surfaces: new Map(),
-          effects: this.createEffects(ref, detailed),
+          parked: new Map(),
+          vehicle,
+          effects: this.createEffects(ref, detailed, vehicle),
           detailed,
           origins: [],
           bodyOffset: 0,
@@ -174,7 +199,7 @@ export class BuildingDamage {
         subject.container.addChild(node.effects.container);
       } else if (node.detailed !== detailed) {
         node.effects.destroy();
-        node.effects = this.createEffects(ref, detailed);
+        node.effects = this.createEffects(ref, detailed, vehicle);
         node.detailed = detailed;
         subject.container.addChild(node.effects.container);
       }
@@ -183,11 +208,11 @@ export class BuildingDamage {
       if (subject.container.children.at(-1) !== node.effects.container)
         subject.container.addChild(node.effects.container);
       for (const [sprite, surface] of node.surfaces) {
-        if (
-          sprite.destroyed ||
-          !subject.damageBodies.includes(sprite) ||
-          (sprite.texture !== surface.original && sprite.texture !== surface.tile?.texture)
-        ) {
+        const rebound = sprite.texture !== surface.original && sprite.texture !== surface.tile?.texture;
+        if (rebound && detailed && vehicle && !sprite.destroyed && subject.damageBodies.includes(sprite)) {
+          this.park(node, surface);
+          node.surfaces.delete(sprite);
+        } else if (sprite.destroyed || !subject.damageBodies.includes(sprite) || rebound) {
           this.release(surface);
           this.pixelBytes -= surface.bytes;
           node.surfaces.delete(sprite);
@@ -196,6 +221,7 @@ export class BuildingDamage {
           surface.level = 0;
         }
       }
+      if (!detailed) this.clearParked(node);
       const bodyStart = node.bodyOffset % subject.damageBodies.length;
       let firstWorkedBody: number | undefined;
       for (let body = 0; body < subject.damageBodies.length; body++) {
@@ -203,6 +229,15 @@ export class BuildingDamage {
         if (sprite === undefined) continue;
         if (!sprite.visible || sprite.alpha <= 0 || sprite.destroyed) continue;
         let surface = node.surfaces.get(sprite);
+        if (surface === undefined) {
+          const parked = node.parked.get(sprite.texture);
+          if (parked !== undefined && parked.sprite === sprite) {
+            node.parked.delete(sprite.texture);
+            this.parkedTotal--;
+            node.surfaces.set(sprite, parked);
+            surface = parked;
+          }
+        }
         if (surface === undefined) {
           if (!detailed || this.unreadable.has(sprite.texture)) continue;
           if (preparations <= 0) continue;
@@ -234,7 +269,7 @@ export class BuildingDamage {
         node.bodyOffset = (bodyStart + firstWorkedBody + 1) % subject.damageBodies.length;
       const ground = this.placeOrigins(node);
       node.effects.container.visible = ghost !== true;
-      if (ghost !== true) node.effects.draw(node.origins, hpFrac, level, tick, wind, detailed, zoom, ground);
+      if (ghost !== true) node.effects.draw(node.origins, hpFrac, level, tick, wind, zoom, ground);
     }
     for (const [ref, node] of this.nodes) {
       if (this.seen.has(ref)) continue;
@@ -293,13 +328,19 @@ export class BuildingDamage {
     }
   }
 
-  private createEffects(ref: number, detailed: boolean): DamageEffects {
+  /** The smoke and fire art, shared with the other damage passes. */
+  effectArt(): DamageEffectTextures {
+    this.art ??= new DamageEffectTextures();
+    return this.art;
+  }
+
+  private createEffects(ref: number, detailed: boolean, vehicle: boolean): DamageEffects {
     if (detailed) {
-      this.art ??= new DamageEffectTextures();
-      return new DamageEffects(this.art, ref);
+      const style: DamageEffectStyle = vehicle ? LAND_VEHICLE_DAMAGE_STYLE : BUILDING_DAMAGE_STYLE;
+      return new DamageEffects(this.effectArt(), ref, style);
     }
     this.baselineArt ??= new DamageEffectTextures(false);
-    return new DamageEffects(this.baselineArt, ref, false);
+    return new DamageEffects(this.baselineArt, ref, PLAIN_DAMAGE_STYLE);
   }
 
   private readScaffold(
@@ -350,13 +391,20 @@ export class BuildingDamage {
       }
       const x = sprite.x + sprite.width * 0.5;
       const y = sprite.y + sprite.height * 0.35;
-      const previous = node.origins[0];
-      if (previous?.x !== x || previous.y !== y)
-        node.origins[0] = { x, y, size: 13, seed: 0, colour: 0x947953 };
-      node.origins.length = 1;
+      this.plainOrigin(node, x, y, PLAIN_ORIGIN_SIZE);
       return NO_GROUND;
     }
     const { sprite, fractures } = largest;
+    // A vehicle's frame has no roof to break through: one plume leaves the middle of its body.
+    if (node.vehicle) {
+      this.plainOrigin(
+        node,
+        sprite.x + largest.width * sprite.scale.x * 0.5,
+        sprite.y + largest.height * sprite.scale.y * 0.35,
+        VEHICLE_ORIGIN_SIZE,
+      );
+      return NO_GROUND;
+    }
     let count = 0;
     for (const f of fractures) {
       if (!f.roof || f.open || count >= 4) continue;
@@ -373,6 +421,44 @@ export class BuildingDamage {
     return largest.ground;
   }
 
+  private plainOrigin(node: DamageNode, x: number, y: number, size: number): void {
+    const previous = node.origins[0];
+    if (previous?.x !== x || previous.y !== y || previous.size !== size)
+      node.origins[0] = { x, y, size, seed: 0, colour: PLAIN_ORIGIN_COLOUR };
+    node.origins.length = 1;
+  }
+
+  /** Keep `surface` for the frame its vehicle left. The binder has already put the next frame on the
+   *  sprite, so nothing is restored. */
+  private park(node: DamageNode, surface: Surface): void {
+    const stale = node.parked.get(surface.original);
+    if (stale !== undefined) {
+      this.discard(stale);
+      node.parked.delete(surface.original);
+      this.parkedTotal--;
+    }
+    node.parked.set(surface.original, surface);
+    this.parkedTotal++;
+    if (node.parked.size <= MAX_PARKED_SURFACES && this.parkedTotal <= MAX_PARKED_TOTAL) return;
+    for (const [texture, oldest] of node.parked) {
+      this.discard(oldest);
+      node.parked.delete(texture);
+      this.parkedTotal--;
+      break;
+    }
+  }
+
+  private clearParked(node: DamageNode): void {
+    for (const surface of node.parked.values()) this.discard(surface);
+    this.parkedTotal -= node.parked.size;
+    node.parked.clear();
+  }
+
+  private discard(surface: Surface): void {
+    this.release(surface);
+    this.pixelBytes -= surface.bytes;
+  }
+
   private release(surface: Surface): void {
     this.painter.forget(surface);
     if (surface.tile === null) return;
@@ -383,10 +469,8 @@ export class BuildingDamage {
   }
 
   private retire(node: DamageNode): void {
-    for (const surface of node.surfaces.values()) {
-      this.release(surface);
-      this.pixelBytes -= surface.bytes;
-    }
+    for (const surface of node.surfaces.values()) this.discard(surface);
+    this.clearParked(node);
     node.effects.destroy();
   }
 

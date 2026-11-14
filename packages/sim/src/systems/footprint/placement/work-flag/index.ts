@@ -4,7 +4,7 @@
 // ./flag-moves.ts the relocation counter no component generation sees; ./queries.ts the placement picks.
 
 export { noteWorkFlagMove } from './flag-moves.js';
-export { workFlagPlacementBlocks } from './incremental-blocks.js';
+export { workFlagBlockerCounts, workFlagPlacementBlocks } from './incremental-blocks.js';
 export {
   canPlaceWorkFlag,
   nearestWorkFlagPlacement,

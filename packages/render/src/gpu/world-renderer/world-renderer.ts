@@ -8,6 +8,7 @@ import type { LightGrade } from '../../data/lighting/types.js';
 import { cameraViewport, snapCameraToDevicePixels } from '../../data/projection/index.js';
 import {
   type DrawItem,
+  type HouseBodyOf,
   palisadeLayoutOf,
   RoadShardTracker,
   type SceneTerrain,
@@ -203,6 +204,7 @@ export class WorldRenderer {
       opts?.sheet,
       opts?.playerColourOf,
       (ref) => pool.captureBuildingDamage(ref),
+      (ref) => pool.wreckAnchor(ref),
       opts?.mapPingPin,
       opts?.rallyBanner,
     );
@@ -258,6 +260,7 @@ export class WorldRenderer {
     this.setGraphicsEnhancements(opts?.enhancements ?? BASELINE_ENHANCEMENTS);
     this.setBloodEnabled(opts?.bloodEnabled ?? true);
     this.setBonesFade(opts?.bonesFade ?? true);
+    this.setEquipmentEffects(opts?.equipmentEffects ?? true);
   }
 
   /** One render of the screen as the world stands, weather and light included, without the chrome or
@@ -437,11 +440,37 @@ export class WorldRenderer {
   ingestCombatEffects(events: readonly SimEvent[], tick: number, snapshot?: WorldSnapshot): void {
     this.marks.ingest(events, tick, snapshot);
     this.pool.ingestBlood(events, tick);
+    this.pool.ingestSinkings(events, tick);
   }
 
   /** Off keeps every bone pile whole for good; on fades each out slowly by its age. */
   setBonesFade(fades: boolean): void {
     this.marks.setBonesFade(fades);
+  }
+
+  /** Good type → the colour a settler glows in as it sips that draught; `null` shows no sip. */
+  setDraughtGlowColours(colourOfGood: ReadonlyMap<number, number> | null): void {
+    this.marks.setDraughtGlowColours(colourOfGood);
+  }
+
+  /** Off draws no sign of worn equipment: the amulet arcs and the wind trail. */
+  setEquipmentEffects(shown: boolean): void {
+    this.marks.setEquipmentEffects(shown);
+  }
+
+  /** Good type → the colour of the arc of light round a human carrying that amulet; `null` draws none. */
+  setAmuletArcColours(colourOfGood: ReadonlyMap<number, number> | null): void {
+    this.marks.setAmuletArcColours(colourOfGood);
+  }
+
+  /** The goods whose live carrier trails wind as it walks; `null` trails none. */
+  setWindTrailGoods(goods: ReadonlySet<number> | null): void {
+    this.marks.setWindTrailGoods(goods);
+  }
+
+  /** The body cells a temple's aura spreads from; `null` spreads it from the temple's anchor. */
+  setHouseBodies(bodyOf: HouseBodyOf | null): void {
+    this.marks.setHouseBodies(bodyOf);
   }
 
   setCombatBonesGfx(gfx: CombatBonesGfx | null): void {
@@ -655,6 +684,7 @@ export class WorldRenderer {
       ships: this.pool.shipsAfloat(),
       walkers: this.pool.walkersDrawn(),
       roadAt: this.terrain.roadAt,
+      wetAt: this.weatherGround.wetnessAt,
       water: this.terrain.waterField(),
       selection,
       flagged,

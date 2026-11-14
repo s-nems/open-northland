@@ -19,7 +19,7 @@ import { hexNeighboursOf, nodeHxOfPosition, nodeHyOfPosition } from '../../nav/h
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { System, SystemContext } from '../context.js';
 import { landStrandedDrops } from '../economy/goods-evict.js';
-import { grantFightExperience } from '../progression/index.js';
+import { grantFightExperience, WHOLE_CLIP } from '../progression/index.js';
 import { weaponDamageVsMaterial } from '../readviews/index.js';
 import {
   applyPendingHitReactions,
@@ -94,6 +94,7 @@ function land(
 ): void {
   const at = eventAt(proj.aimX, proj.aimY);
   let struckAny = false;
+  let struckLiving = false;
   for (const victim of struckVictims(world, ctx, proj)) {
     if (peaceSpares(world, proj, victim)) continue;
     const hitSoundType = hitSoundVsMaterial(proj, targetMaterial(world, ctx, victim));
@@ -104,6 +105,7 @@ function land(
     const wound = strike(world, ctx, proj, victim, source, pendingReactions);
     if (wound === null) continue;
     struckAny = true;
+    if (!isStructureTarget(world, victim)) struckLiving = true;
     // Ranged: the projectile announces its own `projectileHit`, not a melee `combatHit`.
     ctx.events.emit({
       kind: 'projectileHit',
@@ -119,8 +121,14 @@ function land(
       ...(isStructureTarget(world, victim) ? { structure: true } : {}),
     });
   }
-  // Original behavior: a shot that did damage trains its shooter once, however many it struck.
-  if (struckAny) grantFightExperience(world, ctx, proj.source, proj.weaponMainType ?? undefined);
+  // Original behavior: a shot that did damage trains its shooter once, however many it struck; our rule
+  // gives the full share when any of them lived.
+  if (struckAny) {
+    const struck = struckLiving ? 'living' : 'structure';
+    const weapon = proj.weaponMainType ?? undefined;
+    const share = proj.blowShare ?? WHOLE_CLIP;
+    grantFightExperience(world, ctx, proj.source, weapon, 'shot', proj.blowTicks, struck, share);
+  }
   if (!struckAny) {
     ctx.events.emit({
       kind: 'projectileMissed',
@@ -162,11 +170,13 @@ function strike(
 ): ReturnType<typeof resolveCombatHit> {
   const material = targetMaterial(world, ctx, victim);
   const blow = {
-    damage: damageVsTarget(world, victim, weaponDamageVsMaterial(proj, material)),
+    damage: damageVsTarget(world, ctx, victim, weaponDamageVsMaterial(proj, material), proj.impact !== null),
     weaponMainType: proj.weaponMainType,
     hitSoundType: hitSoundVsMaterial(proj, material) ?? null,
     from: { x: proj.originX, y: proj.originY },
     vehicleShot: proj.impact !== null,
+    blowTicks: proj.blowTicks,
+    ...(proj.blowShare !== undefined ? { blowShare: proj.blowShare } : {}),
   };
   return resolveCombatHit(world, ctx, proj.source, victim, blow, pendingReactions, source);
 }
@@ -191,8 +201,8 @@ function atWar(world: World, shooter: number | undefined, victim: number | undef
  * thing is that victim when it stands there, then the lowest-id man, beast or vehicle, then a house whose
  * body covers the node, then a wall. An area shot here collects every man and beast of the seven nodes
  * before any house, where the original fills its list node by node; the two differ only past its
- * 100-object cap. With no combat pass this tick no fight was possible, so only the victim loosed at can be
- * struck.
+ * 100-object cap. With no combat pass this tick no fight was possible, so only the victim loosed at, or
+ * the house it went into, can be struck.
  */
 function struckVictims(world: World, ctx: SystemContext, proj: Flight): readonly Entity[] {
   const terrain = ctx.terrain;
@@ -201,8 +211,9 @@ function struckVictims(world: World, ctx: SystemContext, proj: Flight): readonly
   const landing = landingNode(terrain, proj);
   const nodes = proj.area ? [landing, ...inBoundsNeighbours(terrain, landing)] : [landing];
   const targetThere = target !== null && nodes.some((node) => stands(world, ctx, terrain, target, node));
+  const shelter = shelterStruck(world, ctx, terrain, proj, nodes);
   const index = passIndexOf(world, ctx.tick);
-  if (index === null) return targetThere && target !== null ? [target] : [];
+  if (index === null) return targetThere && target !== null ? [target] : shelter === null ? [] : [shelter];
   if (targetThere && target !== null && !proj.area) return [target];
   const seeker = proj.hitSelf ? null : proj.player;
   const onNode = (building: boolean) => (e: Entity) =>
@@ -212,6 +223,7 @@ function struckVictims(world: World, ctx: SystemContext, proj: Flight): readonly
     const y = terrain.yOf(landing);
     const first =
       index.nearest(x, y, 0, 0, onNode(false), seeker)?.entity ??
+      shelter ??
       index.nearest(x, y, 0, 0, onNode(true), seeker)?.entity ??
       wallsCovering(world, ctx, terrain, proj, nodes)[0];
     return first === undefined ? [] : [first];
@@ -228,11 +240,33 @@ function struckVictims(world: World, ctx: SystemContext, proj: Flight): readonly
       }
     }
   }
+  if (shelter !== null && struck.size < STRUCK_LIST_CAPACITY) struck.add(shelter);
   for (const wall of wallsCovering(world, ctx, terrain, proj, nodes)) {
     if (struck.size >= STRUCK_LIST_CAPACITY) break;
     struck.add(wall);
   }
   return [...struck];
+}
+
+/**
+ * The house that takes a shot whose victim went indoors before it landed: the one the victim is inside,
+ * when the shot comes down on the doorstep the victim stands on there and may strike that house. Not the
+ * original's rule: without it such a shot thuds into the empty doorstep, since a house's body leaves its
+ * door node out.
+ */
+function shelterStruck(
+  world: World,
+  ctx: SystemContext,
+  terrain: TerrainGraph,
+  proj: Flight,
+  nodes: readonly NodeId[],
+): Entity | null {
+  if (proj.target === null || !world.has(proj.target, Position)) return null;
+  const house = world.tryGet(proj.target, Resting)?.at;
+  if (house === undefined || !strikeable(world, house) || !strayMayStrike(world, ctx, proj, house))
+    return null;
+  if (sparedSide(world, proj, ownerOf(world, house))) return null;
+  return nodes.includes(entityNode(world, terrain, proj.target)) ? house : null;
 }
 
 /**

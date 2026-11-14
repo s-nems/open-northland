@@ -10,6 +10,7 @@ import { ZERO } from '../../../core/fixed.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import type { SystemContext } from '../../context.js';
 import { homeUsedBy } from '../../family/households.js';
+import { wearLodging } from '../../family/lodging.js';
 import { carriesNeeds, mutNeeds, NEED_SATED_THRESHOLD, needLevel } from '../../lifecycle/needs/index.js';
 import { atomicClipName, atomicDuration, atomicEventChannelDelta } from '../../readviews/animations.js';
 import { ATOMIC_EVENT_CHANNEL } from '../../readviews/index.js';
@@ -26,10 +27,11 @@ const { REST, HUNGER } = ATOMIC_EVENT_CHANNEL;
 // NEED_SATED target are authored. It plays the same clips as anywhere else; being at home only scales what
 // they pay (`applyAtomicNeedEvents`).
 
-/** One round of the at-home chain: the atomic to run, what it does, and what it faces. */
+/** One round of the at-home chain in `home`: the atomic to run, what it does, and what it faces. */
 interface HomeRound {
+  readonly home: Entity;
   readonly atomicId: number;
-  readonly effect: AtomicEffect;
+  readonly effect: Extract<AtomicEffect, { kind: 'sleep' | 'eat' }>;
   readonly target: Entity;
 }
 
@@ -50,14 +52,14 @@ function nextHomeRound(world: World, ctx: SystemContext, supply: SupplyTally, e:
     needLevel(needs, 'fatigue', ctx.tick) > NEED_SATED_THRESHOLD &&
     homeClipServes(ctx, settler, SLEEP_ATOMIC_ID, REST)
   ) {
-    return { atomicId: SLEEP_ATOMIC_ID, effect: { kind: 'sleep' }, target: e };
+    return { home, atomicId: SLEEP_ATOMIC_ID, effect: { kind: 'sleep' }, target: e };
   }
   if (needLevel(needs, 'hunger', ctx.tick) > NEED_SATED_THRESHOLD) {
     const goodType = storedFoodGood(world, ctx, home, supply);
     if (goodType !== null) {
       const atomicId = mealAtomicId(ctx.content, settler, goodType);
       if (homeClipServes(ctx, settler, atomicId, HUNGER))
-        return { atomicId, effect: { kind: 'eat', goodType, from: home }, target: home };
+        return { home, atomicId, effect: { kind: 'eat', goodType, from: home }, target: home };
     }
   }
   return null;
@@ -81,10 +83,17 @@ export function topsUpAtHome(world: World, ctx: SystemContext, supply: SupplyTal
 }
 
 /**
- * Serve one round of the at-home chain. A married settler's company bar is filled outright rather than
- * paid out by a clip - the approximation standing in for a chat with the spouse under the same roof,
- * which no clip in the data covers.
+ * Owner's rule: a married settler stepping into its own home leaves its company bar full, wherever its
+ * spouse is. Filling it outright is the approximation: no clip in the data pays company at home.
  */
+export function fillCompanyOnComingHome(world: World, ctx: SystemContext, e: Entity): void {
+  if (!needsEnabled(world) || !world.has(e, Marriage) || !carriesNeeds(world, ctx.content, e)) return;
+  const needs = world.tryGet(e, SettlerNeeds);
+  if (needs !== undefined && needLevel(needs, 'enjoyment', ctx.tick) !== ZERO)
+    mutNeeds(world, e, ctx.tick).enjoyment = ZERO;
+}
+
+/** Serve one round of the at-home chain. */
 export function planHomeTopUp(
   world: World,
   ctx: SystemContext,
@@ -102,8 +111,6 @@ export function planHomeTopUp(
       amount: MEAL_UNITS,
     });
   }
-  if (world.has(e, Marriage) && needLevel(world.get(e, SettlerNeeds), 'enjoyment', ctx.tick) !== ZERO)
-    mutNeeds(world, e, ctx.tick).enjoyment = ZERO;
   startAtomic(
     world,
     e,
@@ -112,5 +119,6 @@ export function planHomeTopUp(
     atomicDuration(ctx.content, settler, round.atomicId),
     round.target,
   );
+  wearLodging(world, ctx, round.home, e, round.effect.kind === 'sleep' ? 'sleep' : 'meal');
   return true;
 }

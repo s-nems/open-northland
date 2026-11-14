@@ -302,7 +302,7 @@ export function gfxAtomicProgramsByAction(
  * tribe binds no clip to, or a bound clip the IR carries no length for, which the simulation runs at its own
  * default length.
  */
-function atomicClipTicks(
+export function atomicClipTicks(
   ir: ContentIr | null,
   tribe: number,
 ): (job: number, action: number) => number | undefined {
@@ -492,7 +492,7 @@ export function clipLookupChain(ir: ContentIr | null, jobs: readonly number[]): 
  * there is one), the attack swing and the other actions' records. Every slot lists the answer of each job
  * on the lookup chain of `jobs` in turn, so a job that authors no record of its own inherits its base
  * job's, the way the original resolves a hero to its soldier class. The tribes disagree on which clip a
- * job plays - the egyptian unarmed soldier is authored on the spear clips, the saracen longbowman on the
+ * job plays - the egyptian unarmed soldier is authored on the spear clips, its longbowman on the
  * shortbow's - so a look that cannot draw the transcribed viking clip takes the answer its own tribe gives.
  *
  * Approximation: where a job authors several records for any other action, the original rolls among them

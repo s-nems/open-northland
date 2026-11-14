@@ -8,6 +8,7 @@ import {
   type SimEvent,
   Simulation,
 } from '../../../src/index.js';
+import { SHELTER_SHOT_PERIOD_TICKS } from '../../../src/systems/conflict/shelter-fire.js';
 import { attackUnit } from '../../../src/systems/orders/index.js';
 import { fightExperienceTypeFor } from '../../../src/systems/progression/experience.js';
 import { ARMOR_MATERIAL, WEAPON_MAIN_TYPE } from '../../../src/systems/readviews/index.js';
@@ -139,6 +140,7 @@ function shootAt(
       missSounds: {},
     },
     weaponMainType: null,
+    blowTicks: SHELTER_SHOT_PERIOD_TICKS,
     cover: null,
     aim: positionOfNode(landing.hx, landing.hy),
   });

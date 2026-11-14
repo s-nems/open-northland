@@ -1,0 +1,46 @@
+{
+  "version": 1,
+  "map": "wonder-campaign_03_05_sub1",
+  "basis": {
+    "lang": "eng",
+    "digest": "0da4eeed25dfbeb9e9630ffbff1c128873a82e88c4a79fa254eace3342d5b727"
+  },
+  "strings": {
+    "0": "@TROVA EROSTRATO IL GIOVANE E RINCHIUDILO NELLE SEGRETE!",
+    "1": "Trova le segrete!",
+    "2": "Cerca di superare Erostrato il Giovane!",
+    "3": "Riporta gli eroi all'ingresso!",
+    "55": "Eredi di Erostrato",
+    "56": "Erostrato",
+    "65": "Eredi",
+    "66": "Erostrato",
+    "71": "Bjarni",
+    "72": "Cyra",
+    "73": "Hatchie",
+    "74": "Sigurd",
+    "75": "Norbert",
+    "76": "Mani",
+    "77": "Erostrato",
+    "98": "",
+    "99": "GLI EREDI DI EROSTRATO"
+  },
+  "briefings": {
+    "100": "<font:$local$\\fonts\\fonthead16bld.fnt>\nMISSIONE FALLITA!\n<font:$local$\\fonts\\font12.fnt>\n<picture:$local$\\graphics\\Hero_Dead_F.pcx>\nEroismo o imprudenza? Alla morte di BJARNI gli dèi piansero... senza questo eroe, l'esito di questa missione ti resterà ignoto!",
+    "200": "<font:$local$\\fonts\\fonthead16bld.fnt>\nMISSIONE FALLITA!\n<font:$local$\\fonts\\font12.fnt>\n<picture:$local$\\graphics\\Hero_Dead_F.pcx>\nBasta un attimo di distrazione per perdere la vita! La tua eroina CYRA è morta per la tua negligenza! Senza questa eroina, l'esito di questa missione ti resterà ignoto! ",
+    "300": "<font:$local$\\fonts\\fonthead16bld.fnt>\nMISSIONE FALLITA!\n<font:$local$\\fonts\\font12.fnt>\n<picture:$local$\\graphics\\Hero_Dead_F.pcx>\nBasta un attimo di distrazione per perdere la vita! Il tuo amico ed eroe HATCHIE è morto per la tua negligenza! Senza questo eroe, l'esito di questa missione ti resterà ignoto! ",
+    "400": "<font:$local$\\fonts\\fonthead16bld.fnt>\nMISSIONE FALLITA!\n<font:$local$\\fonts\\font12.fnt>\n<picture:$local$\\graphics\\Hero_Dead_F.pcx>\nBasta un attimo di distrazione per perdere la vita! Il tuo amico ed eroe SIGURD è morto per la tua negligenza! Senza questo eroe, l'esito di questa missione ti resterà ignoto! ",
+    "500": "<font:$local$\\fonts\\fonthead16bld.fnt>\nMISSIONE FALLITA!\n<font:$local$\\fonts\\font12.fnt>\n<picture:$local$\\graphics\\Hero_Dead_F.pcx>\nBasta un attimo di distrazione per perdere la vita! Il tuo amico ed eroe NORBERT, il drago, è morto per la tua negligenza! Senza questo eroe, l'esito di questa missione ti resterà ignoto!",
+    "600": "<font:$local$\\fonts\\fonthead16bld.fnt>\nMISSIONE FALLITA!\n<font:$local$\\fonts\\font12.fnt>\n<picture:$local$\\graphics\\Hero_Dead_F.pcx>\nBasta un attimo di distrazione per perdere la vita! MANI, figlio di Bjarni e Cyra, è morto per la tua negligenza! Senza di lui, l'esito di questa missione ti resterà ignoto!",
+    "header": "GLI EREDI DI EROSTRATO",
+    "00_start": "Per allontanare il pericolo dal Tempio, seguimmo l'esercito degli incendiari lungo un sentiero di montagna fino a quello che sembrava un altro mondo. A questo luogo si accedeva solo da quell'ingresso. Non ci saremmo mai aspettati un posto simile tra i monti!\n\n<usericon:1,40,298>",
+    "00_start1": "Per mettere fine al gioco degli \"eredi di Erostrato\", dovevamo superare i suoi seguaci e il drago sputafuoco! \n\nDopotutto sapevamo che gli attacchi non sarebbero cessati finché Erostrato il Giovane non fosse stato trovato e rinchiuso nelle segrete, così da non poter più sobillare altra gente.\n\nTrova Erostrato il Giovane e rinchiudilo nelle segrete! Fa' attenzione ai sentieri e ai passaggi segreti!",
+    "50_endheader": "MISSIONE COMPIUTA! ",
+    "50_end": "Eravamo tornati all'ingresso del mondo tra i monti dopo aver consegnato Erostrato al custode delle segrete. Lì sarebbe stato sorvegliato e non avrebbe più potuto istigare la gente ad appiccare incendi.\n\n<usericon:1,24,287>",
+    "50_end1": "",
+    "01": "GLI EREDI DI EROSTRATO\n\n\"Ehi, voi! Chi vi ha dato il permesso di entrare nel nostro territorio?\"",
+    "02": "IL NASCONDIGLIO SEGRETO DEGLI EREDI\n\n\"Volete rinchiudere il nostro capo Erostrato nelle segrete? Non lo permetteremo mai!\"",
+    "03": "IL CUSTODE DELLE SEGRETE\n\n\"Salute! Vi aspettavo. Gli incendi degli eredi hanno causato danni terribili che non giovano a nessuno.\n\n<usericon:1,43,175>\n\nQuesto luogo è sacro e gli eredi di Erostrato non vi mettono piede. Rinchiudete qui Erostrato. Poi me ne occuperò io.\"",
+    "04": "EROSTRATO\n\n\"Volete rinchiudermi nelle segrete? Non illudetevi che vi seguirò così, senza opporre resistenza!\"\n\n<usericon:2,7>\n\nPorta Erostrato nelle segrete!",
+    "05": "EROSTRATO NELLE SEGRETE!\n\nCe l'avevamo fatta! Erostrato era rinchiuso nelle segrete, sorvegliato dal custode. I suoi seguaci non sarebbero riusciti a liberarlo.\n\n<usericon:2,7>\n\nRiporta i tuoi eroi all'ingresso! "
+  }
+}

@@ -7,12 +7,13 @@ import { homeBuildings } from '../../ai-shared/home-roster.js';
 import { anchorNodeOf } from '../../ai-shared/node-geometry.js';
 import type { SystemContext } from '../../context.js';
 import { dynamicBlockOverlay } from '../../footprint/index.js';
-import { TEMPLE_AURA_RANGE } from '../../lifecycle/temple-aura.js';
+import { TEMPLE_AURA_RANGE } from '../../lifecycle/temple/index.js';
 import { isFinishedPrayerSite } from '../../readviews/index.js';
 
 // Owner ruling: a seat that owns a temple stations its waiting army inside the temple's aura, where the
-// blessing lifts its soldiers' hitpoints past their max. A seat keeping a rally flag stands its army there
-// instead (`rally-stand.ts`), in the aura only where its tower line's stand reaches it.
+// blessing lifts its soldiers' hitpoints past their max. A seat keeping a rally flag plants it inside the
+// aura too (`rally-stand.ts`); only the stand awaiting a scripted attack stays under its towers when the
+// aura lies out of their reach (`tower-stand.ts`).
 
 /** How far inside the aura's rim the station lies, in hex nodes (authored): a band at the army cap of 150
  *  spreads over one standing place per visual cell to about 17 nodes round its rally, so the whole band

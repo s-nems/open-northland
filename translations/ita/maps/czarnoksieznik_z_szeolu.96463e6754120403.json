@@ -1,0 +1,51 @@
+{
+  "version": 1,
+  "map": "czarnoksieznik_z_szeolu",
+  "basis": {
+    "lang": "eng",
+    "digest": "86b70b9e8a1e491040d5f2ad530a3a48e81a146d27a28d4c2c91e7cb9313e7c8"
+  },
+  "strings": {
+    "0": "LO STREGONE DELLO SHEOL",
+    "1": "Un potente Stregone è giunto da oltre i mondi per riprendersi le sue terre perdute. Cooperativa per 5 giocatori.",
+    "30": "@Sconfiggi lo Stregone dello Sheol",
+    "31": "Difendi il castello dei Franchi dalla piaga dei mostri",
+    "32": "Libera i druidi dalla fortezza di montagna",
+    "33": "Distruggi tutti i portali con l'aiuto dei druidi",
+    "34": "Sconfiggi tutti i mostri nella fortezza dello Stregone",
+    "50": "Vichinghi 1",
+    "51": "Vichinghi 2",
+    "52": "Vichinghi 3",
+    "53": "Vichinghi 4",
+    "54": "Vichinghi 5",
+    "55": "Castello dei Franchi",
+    "56": "Stregone dello Sheol",
+    "57": "Mostri",
+    "58": "Druido",
+    "59": "Attacchi dei mostri",
+    "60": "Vic1",
+    "61": "Vic2",
+    "62": "Vic3",
+    "63": "Vic4",
+    "64": "Vic5",
+    "65": "Castello",
+    "66": "Stregone",
+    "67": "Mostri",
+    "68": "Druido",
+    "69": "Attacchi",
+    "70": "Guardiani dei portali",
+    "80": "Conquista il magazzino",
+    "90": "Guardia",
+    "100": "Stregone dello Sheol",
+    "101": "Re Antonidas",
+    "102": "Abate"
+  },
+  "briefings": {
+    "500": "<font:$local$\\fonts\\fonthead16bld.fnt>\nLO STREGONE DELLO SHEOL\n<font:$local$\\fonts\\font12.fnt>\n\nNel cuore del Bosco Dimenticato, tra alberi antichi e fitti cespugli, sorgeva il castello di Re Antonidas.\n\n<picture:$local$\\graphics\\zamek.pcx>\n\nPer molti anni il popolo dei Franchi visse in armonia con la natura e con la foresta che lo circondava.\n\nNessuno ricordava più gli antichi scritti secondo cui il castello era stato eretto sulle rovine di un antico cimitero celtico.\n\nNessuno si aspettava che i morti sarebbero tornati a riprendersi ciò che era loro...\n\n<picture:$local$\\graphics\\hell.pcx>\n\nUna notte di primavera, vicino alle porte del castello, si spalancarono le porte dell'inferno.\n\nDagli abissi dello Sheol strisciò fuori il più crudele abominio che il mondo avesse mai visto.\n\nOrde di morti avanzarono verso il castello.\n\nQuella notte caddero molti valorosi uomini dei Franchi...\n\nGrazie al loro sacrificio, il castello di Re Antonidas superò quella lunga notte.\n\nEppure ogni giorno che seguì divenne un'attesa terribile di ciò che sarebbe uscito la volta dopo dalle porte dell'inferno.\n\nRe Antonidas sapeva che, se non avesse fatto qualcosa, la sua gente sarebbe diventata cibo per le affamate bestie infernali.\n\n<picture:$local$\\graphics\\scroll.pcx>\n\nMandò quindi a chiedere aiuto a tutti i suoi amici.\n\nSolo uno rispose alla sua chiamata...\n\nEra il Vichingo Ragnar Barbablù.\n\nRagnar partì verso il castello con una coorte di Vichinghi assetati di battaglia.\n\nMa non appena entrò nel Bosco Dimenticato, sentì che qualcosa non andava affatto.\n\n<picture:$local$\\graphics\\las.pcx>\n\nDa dietro gli alberi sbucarono orde di apparizioni spettrali che sbarrarono la via del ritorno.\n\nAvvolti nell'oscurità più totale, i Vichinghi furono fatti a brandelli dagli spettri. Ben presto Ragnar stesso condivise la sorte dei suoi compagni.\n\nDi qualche centinaio di uomini ne sopravvisse solo una manciata, che fuggì in preda al panico verso il castello di Antonidas.\n\nGiunti a destinazione, portarono al re notizie terribili.\n\nBenché la situazione sembrasse disperata... i Vichinghi sapevano di non poter deporre le armi.\n\nDa questo bosco non c'è scampo. L'unica via d'uscita è annientare la fonte di tutto questo inferno.\n\n<picture:$local$\\graphics\\czarny.pcx>\n\nI Vichinghi sopravvissuti rivelarono al re chi era responsabile dell'evocazione di tutte quelle bestie.\n\nLontano a nord, dagli abissi più profondi dell'inferno, era emerso lo Stregone celtico.\n\nIl suo scopo è radere completamente al suolo il castello dei Franchi, riportando così la pace nella terra del cimitero dove fu sepolto centinaia di anni fa.\n\nQuesto Stregone possiede un potere infernale, con cui apre una breccia tra lo Sheol e il mondo dei vivi.\n\nAttraverso questa breccia entrano nella nostra dimensione creature infernali di ogni genere, che tentano senza sosta di espugnare le possenti mura del castello.\n\n<picture:$local$\\graphics\\hell2.pcx>\n\nUn gruppo di Vichinghi sopravvissuti giurò vendetta.\n\nPer difendere le 5 porte del castello, si divisero in 5 piccole squadre.\n\nTu comandi una di queste squadre.\n\nIl tuo compito è costruire un villaggio, addestrare soldati e difendere la porta del castello che ti è stata assegnata. A ogni giocatore è assegnata una porta da difendere. Orde di mostri cercheranno di conquistarla nelle prossime ore.\n\n<usericon:1,154,239>\n\nQuando finalmente i poteri dello Stregone si indeboliranno, sarà il momento perfetto per attaccare.\n\nMa fino ad allora, fa' di tutto per difendere il castello.\n\nCombatti fino all'ultima goccia di sangue vichingo.\n\nE ricorda:\n\nlo Stregone non esiterà a scatenare tutta la forza dei suoi poteri per spezzare la tua difesa.\n\nPiù a lungo resisti, più lo fai infuriare.\n\n<picture:$local$\\graphics\\czarny.pcx>\n\nBuona fortuna.\n\n~~ Ares & Jozenkow ~~\n\n-----------------------------------------------------\n\nSuggerimenti:\n\n1. Nel tuo magazzino ci sono alcune scarpe e attrezzi di ferro. Usali con giudizio per espandere in fretta il tuo insediamento.\n\n2. Controlla le offerte commerciali del Castello dei Franchi. Forse qualcuna ti interesserà.\n\n3. Al centro del castello i giocatori hanno a disposizione un \"magazzino comune\". Ogni giocatore umano può prenderne il controllo in qualsiasi momento (tramite tributo). Se vuoi passare una risorsa a un alleato, caricala nel magazzino. Il tuo alleato potrà poi prenderne il controllo e ritirare tutte le risorse che contiene. Prova questa opzione nella finestra dei tributi.\n\n4. Il nemico attacca solo le porte del castello difese da giocatori. Se vuoi giocare in solitaria, ti consiglio di avviare la mappa in multiplayer e disattivare i giocatori che non partecipano. Altrimenti il nemico attaccherà tutte e 5 le posizioni, e la mappa diventerà incredibilmente difficile.\n\n5. Attiva il salvataggio automatico ogni 5 minuti. Ti tornerà utile.\n",
+    "501": "<font:$local$\\fonts\\font12.fnt>\nSiamo riusciti a difendere il castello dei Franchi e a resistere all'attacco più potente dello Stregone.\n\n<picture:$local$\\graphics\\zamek.pcx>\n\nSembra che i suoi poteri si siano indeboliti per un po'. È il momento perfetto per un contrattacco.\n\n<usericon:1,371,367>\n\nGli esploratori del re riferiscono di aver trovato i druidi della nostra tribù tra le rovine della fortezza di montagna.\n\nEravamo certi che non fossero sopravvissuti alla battaglia nel Bosco Dimenticato. A quanto pare lo Stregone non è riuscito a vincere i loro poteri.\n\nÈ una buona notizia, perché i druidi ci aiuteranno ad aprire le porte della fortezza dello Stregone.\n\n<picture:$local$\\graphics\\ruiny.pcx>\n\nCorriamo subito alle rovine a sud-est per liberare i druidi. Probabilmente lì incontreremo parecchi mostri, quindi meglio prepararsi bene.\n\n<usericon:1,366,339>\n\nMa non dimenticare di difendere sempre il castello. Anche se i poteri dello Stregone si sono indeboliti... di sicuro non ha ancora detto l'ultima parola.\n",
+    "502": "<font:$local$\\fonts\\font12.fnt>\nQuesta bestia è più potente di quanto pensassimo.\n\nI druidi non sono riusciti a chiudere del tutto i portali. I mostri continuano a passare nel nostro mondo.\n\nPerò gli obelischi che siamo riusciti a distruggere erano la chiave per aprire la porta.\n\n<usericon:1,234,153>\n\nÈ giunta l'ora dell'ultima crociata nel cuore della fortezza dello Stregone. Indossiamo le armature, prendiamo buone scorte di idromele e andiamo a stanare quel figlio di un cane.\n\n<picture:$local$\\graphics\\dungeon.pcx>\n\nSconfiggi tutti i mostri nella fortezza per aprire l'ultima porta!\n\n(Non dimenticare di difendere sempre il castello)\n",
+    "503": "<font:$local$\\fonts\\fonthead16bld.fnt>\nVITTORIA\n<font:$local$\\fonts\\font12.fnt>\n\n<picture:$local$\\graphics\\czarny_small.pcx>\n\n\"Questa battaglia la vinci tu, mortale. Ma un giorno la morte verrà anche per te e porterà la tua anima nel luogo da cui provengo. Là mi prenderò la mia vendetta.\n\nIl destino della forma umana è inevitabile: presto di te resteranno un cadavere in putrefazione, poi un pugno di polvere e infine il vuoto assoluto.\n\n5 anni... 50 anni...\n\nNel fuoco eterno dello Sheol non fa molta differenza.\"\n\nDopo queste parole lo spirito dello Stregone precipitò nel vicino abisso e scomparve nelle sue profondità...\n\n<picture:$local$\\graphics\\gandalf.pcx>\n\n~~ Fine ~~\n\nSe il nostro lavoro ti è piaciuto, lascia una recensione su culturesnation.\n\n• Ares & Jozenkow •\n• 2024 •\n",
+    "504": "<font:$local$\\fonts\\font12.fnt>\n\"Giusto in tempo, amici. Ancora qualche istante e i nostri poteri si sarebbero esauriti. Queste bestie non aspettavano altro che prenderci la vita.\"\n\n<usericon:1,371,367>\n\nOra che abbiamo liberato i druidi, con il loro aiuto possiamo aprire le porte della fortezza dello Stregone.\n\n<usericon:1,234,155>\n\nPer aprirle dobbiamo mandare almeno un druido a ciascuno dei 5 portali infernali. Si trovano tutt'intorno al castello dei Franchi. Una volta distrutti tutti i portali, saremo pronti per l'attacco finale.\n\n<usericon:1,278,169>\n\nBada all'incolumità dei druidi: solo loro possono distruggere i portali. Nessun altro Vichingo ne è in grado.\n",
+    "505": "<font:$local$\\fonts\\fonthead16bld.fnt>\nSCONFITTA\n<font:$local$\\fonts\\font12.fnt>\n\nI mostri hanno distrutto il castello o ucciso tutti i suoi abitanti.\n\nRiprova.\n\n<picture:$local$\\graphics\\czarny.pcx>\n"
+  }
+}

@@ -59,7 +59,7 @@ export const EXPERIENCE: ArticleGroup = {
             '[[job:carrier|搬運工]]累積「搬運」。它不會加快工作，但運送{{exp.carrierTrader}}次解鎖[[job:trader|商人]]。',
             '商人每卸1份累積「貿易」，但貿易沒有任何效果。',
             '[[job:scout|偵察兵]]、[[job:woman|婦女]]和兒童不累積經驗。',
-            '種植、澆水、[[building:school|學校]]和[[building:barracks|兵營]]都不給經驗。',
+            '種植、澆水、[[building:school|學校]]和[[building:barracks|兵營]]的訓練都不給經驗。用金幣操練會給戰鬥經驗：[[article:exp-combat|戰鬥經驗]]。',
           ],
         },
       ],
@@ -68,40 +68,62 @@ export const EXPERIENCE: ArticleGroup = {
     {
       id: 'exp-combat',
       name: '戰鬥經驗',
-      lead: '同一類武器命中{{combat.fightCapHits}}次，近戰傷害翻倍。',
+      lead: '每個人只有一份戰鬥經驗，從 0 到 {{combat.fightCapPoints}} 點，所有武器通用。',
       blocks: [
         {
-          h: '近戰傷害',
+          h: '經驗的作用',
+        },
+        {
+          p: '達到 {{combat.fightCapPoints}} 點時，近戰攻擊的傷害提高 {{combat.fightDealtPct}}%，而擊中這名戰士的每次攻擊和每支箭傷害降低 {{combat.fightTakenPct}}%。兩者都隨每一點均勻增長。',
         },
         {
           table: {
-            head: ['命中次數', '倍率', '{{combat.sampleBlow}}傷害變為'],
+            head: ['點數', '近戰造成', '{{combat.sampleBlow}} 的一擊變為', '受到'],
             rows: [
-              [0, '×1', '{{combat.sampleBlow}}'],
-              [10, '×{{fight.factor.10}}', '{{fight.blow.10}}'],
-              [25, '×{{fight.factor.25}}', '{{fight.blow.25}}'],
-              [50, '×{{fight.factor.50}}', '{{fight.blow.50}}'],
-              [75, '×{{fight.factor.75}}', '{{fight.blow.75}}'],
-              ['{{combat.fightCapHits}}', '×{{combat.fightCapFactor}}', '{{combat.fightCapBlow}}'],
+              [0, '×1', '{{combat.sampleBlow}}', '×1'],
+              [10, '×{{fight.factor.10}}', '{{fight.blow.10}}', '×{{fight.taken.10}}'],
+              [25, '×{{fight.factor.25}}', '{{fight.blow.25}}', '×{{fight.taken.25}}'],
+              [50, '×{{fight.factor.50}}', '{{fight.blow.50}}', '×{{fight.taken.50}}'],
+              [75, '×{{fight.factor.75}}', '{{fight.blow.75}}', '×{{fight.taken.75}}'],
+              [
+                '{{combat.fightCapPoints}}',
+                '×{{combat.fightCapFactor}}',
+                '{{combat.fightCapBlow}}',
+                '×{{combat.fightTakenFactor}}',
+              ],
             ],
-            num: [0, 1, 2],
-            foot: '超過{{combat.fightCapHits}}次後倍率不再增長。',
+            num: [0, 1, 2, 3],
+            foot: '超過 {{combat.fightCapPoints}} 點後不再增長。',
           },
         },
         {
-          p: '倍率適用於近戰攻擊人、動物和建築。對[[article:walls|木柵欄]]、[[article:vehicles|載具]]無效，射擊和[[article:catapult|投石機]]也無效。',
+          p: '造成傷害的加成適用於對人、動物和建築的近戰攻擊。對[[article:walls|木柵欄]]和[[article:vehicles|載具]]無效，對箭矢和[[article:catapult|投石機]]也無效。弓手的經驗帶來準頭和更少的受到傷害，而不是更強的箭。',
         },
         {
-          p: '沒有經驗時，弓和投石機有{{aim.basePct}}%的射擊能命中，命中{{aim.noSpreadHits}}次起每發都落在目標上。詳見[[article:aim|命中與射擊]]。',
+          h: '搭配護符',
         },
         {
-          h: '什麼算命中',
+          p: '[[good:amulet_strength|力量護符]]的加成與經驗加成相加：經驗滿時近戰攻擊為 ×{{combat.fightStrengthFactor}}。[[good:amulet_defense|防禦護符]]與經驗相乘：經驗滿時戰士受到 ×{{combat.fightDefenseFactor}} 的傷害。護符：[[article:draughts|飲品與護符]]。',
         },
         {
-          p: '命中是指造成傷害的一擊或一箭。每類武器分開算：徒手、矛、劍、弓、投石機。[[job:hunter|獵人]]的射擊也計入弓。',
+          p: '沒有經驗的弓手有 {{aim.basePct}}% 的射擊命中，{{aim.noSpreadPoints}} 點起每一箭都落在目標上。[[article:catapult|投石機]]單獨累計自己的命中。詳情：[[article:aim|命中與射擊]]。',
         },
         {
-          p: '在居民面板裡，這些是「戰鬥 - 劍」「戰鬥 - 弓」等行。劍的命中對矛兵沒有幫助，換職業也不會丟失。戰鬥不會提高英雄的傷害，除非任務開啟了這一點。',
+          h: '怎樣獲得',
+        },
+        {
+          list: [
+            '戰鬥：造成傷害的近戰攻擊按揮擊的時長每秒得 {{combat.fightMeleePerSecond}} 點，射擊按拉弓的時長每秒得 {{combat.fightShotPerSecond}} 點。慢武器和快武器漲得一樣快，弓每秒得點較少。',
+            '打在建築、[[article:walls|柵欄]]和[[article:vehicles|載具]]上的攻擊和射擊只得其中的 {{combat.fightStructurePct}}%。',
+            '受到攻擊：被任何對手打傷的人，無論對手是人、野獸、塔樓還是投石機，都按對手一擊的時間每秒得 {{combat.fightTakenPerSecond}} 點。',
+            '金幣操練：士兵，無論有沒有武器，花一枚[[good:coin|金幣]]在你的[[building:barracks|兵營]]裡操練 {{coinDrill.termSeconds}} 秒，練完得 {{coinDrill.points}} 點。選中士兵後右鍵點擊自己的兵營。',
+          ],
+        },
+        {
+          p: '拳頭和任何武器都一樣，[[job:hunter|獵人]]的射擊也算。更換武器或職業後經驗保留。達到 {{coinDrill.limit}} 點及以上的人不再操練，其餘的要在戰鬥中獲得。戰鬥或新命令打斷操練時，金幣退回，不得點數。兵營有幾枚空閒金幣就去幾名士兵，離得最近的先去；其餘的留在原地。',
+        },
+        {
+          p: '在居民面板中這是「戰鬥」一行：顯示計數佔滿值的百分比，提示中列出加成：用近戰武器或徒手時造成更多傷害，用弓時的命中率，以及受到的傷害減少多少。戰鬥不會提高英雄的經驗，除非任務開啟。',
         },
         {
           p: '更好的武器靠製造解鎖，不靠戰鬥。要求寫在武器卡片上，例如[[good:sword_long|長劍]]。誰拿什麼武器：[[article:equip|士兵裝備]]。',
@@ -123,7 +145,7 @@ export const EXPERIENCE: ArticleGroup = {
       lead: '發現的職業歸整個聚落，就算發現它的居民死了也不會失去。',
       blocks: [
         {
-          p: '大廳選項「職業發展：一開始全部解鎖」取消平民職業和產品的條件。士兵職業的條件和地圖禁令不受影響。',
+          p: '大廳選項「職業發展：一開始全部解鎖」取消平民職業和產品的條件。地圖禁令不受影響。無論哪種設定，平民只能透過[[building:barracks|兵營]]成為士兵；士兵或曾經當過士兵的村民可以不受條件限制地選擇任何士兵職業。',
         },
         {
           h: '解鎖職業',

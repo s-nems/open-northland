@@ -1,5 +1,6 @@
 export * from './assistant.js';
 export * from './chests.js';
+export * from './coin-drill.js';
 export * from './combat.js';
 export * from './defence.js';
 export * from './diplomacy.js';

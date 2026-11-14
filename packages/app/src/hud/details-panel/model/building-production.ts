@@ -1,4 +1,5 @@
 import {
+  entityById,
   nodeOfPosition,
   ONE,
   positionedWithin,
@@ -7,7 +8,7 @@ import {
   type WorldSnapshot,
 } from '@open-northland/sim';
 import { entitiesUnder, idsGroupedBy } from '../../../game/snapshot/id-index.js';
-import { num, positionOf, type SnapshotEntity } from '../../../game/snapshot/index.js';
+import { num, positionOf, type SnapshotEntity, staffOf, workAreaOf } from '../../../game/snapshot/index.js';
 import { goodName } from '../../../i18n/index.js';
 import { pctRatio } from './bars.js';
 import { liveAmounts } from './building-materials.js';
@@ -100,6 +101,22 @@ const CROPS_BY_FARM = idsGroupedBy(
  *  row stagger shifts it by up to half a tile more. */
 const NODE_REACH_TILES = 1;
 
+type Position = NonNullable<ReturnType<typeof positionOf>>;
+
+/** Where a farm's plots lie: the farm itself, and the flag of each of its workers who holds one. */
+function workCentresOf(snapshot: WorldSnapshot, farm: SnapshotEntity): Position[] {
+  const centres: Position[] = [];
+  const own = positionOf(farm);
+  if (own !== undefined) centres.push(own);
+  for (const worker of staffOf(snapshot, farm.id)) {
+    const area = workAreaOf(worker);
+    const flag = area === undefined ? undefined : entityById(snapshot, area.flag);
+    const at = flag === undefined ? undefined : positionOf(flag);
+    if (at !== undefined) centres.push(at);
+  }
+  return centres;
+}
+
 export function productionModel(
   ctx: UnitPanelModelContext,
   snapshot: WorldSnapshot,
@@ -118,27 +135,32 @@ export function productionModel(
       if (isRipe(crop)) ripe++;
       else growing++;
     }
-    const pos = positionOf(ent);
-    if (pos !== undefined && fieldGood.farming !== undefined) {
-      const anchor = nodeOfPosition(pos.x, pos.y);
-      const radius = fieldGood.farming.fieldRadius;
-      // Every position whose node lies within the radius on either axis; the exact test follows.
-      const low = positionOfNode(anchor.hx - radius, anchor.hy - radius);
-      const high = positionOfNode(anchor.hx + radius, anchor.hy + radius);
-      const box: TileBox = {
-        minX: low.x / ONE - NODE_REACH_TILES,
-        minY: low.y / ONE - NODE_REACH_TILES,
-        maxX: high.x / ONE + NODE_REACH_TILES,
-        maxY: high.y / ONE + NODE_REACH_TILES,
-      };
-      for (const field of positionedWithin(snapshot, box, [])) {
-        const crop = cropOf(field);
-        const at = positionOf(field);
-        if (crop?.farm !== null || at === undefined || num(crop.goodType) !== fieldGood.typeId) continue;
-        const node = nodeOfPosition(at.x, at.y);
-        if (Math.abs(node.hx - anchor.hx) + Math.abs(node.hy - anchor.hy) > radius) continue;
-        if (isRipe(crop)) ripe++;
-        else growing++;
+    // Wild map fields count within the radius of a work centre: the farm, or a sower's flag.
+    const radius = fieldGood.farming?.fieldRadius;
+    const counted = new Set<number>();
+    if (radius !== undefined) {
+      for (const centre of workCentresOf(snapshot, ent)) {
+        const anchor = nodeOfPosition(centre.x, centre.y);
+        // Every position whose node lies within the radius on either axis; the exact test follows.
+        const low = positionOfNode(anchor.hx - radius, anchor.hy - radius);
+        const high = positionOfNode(anchor.hx + radius, anchor.hy + radius);
+        const box: TileBox = {
+          minX: low.x / ONE - NODE_REACH_TILES,
+          minY: low.y / ONE - NODE_REACH_TILES,
+          maxX: high.x / ONE + NODE_REACH_TILES,
+          maxY: high.y / ONE + NODE_REACH_TILES,
+        };
+        for (const field of positionedWithin(snapshot, box, [])) {
+          const crop = cropOf(field);
+          const at = positionOf(field);
+          if (crop?.farm !== null || at === undefined || num(crop.goodType) !== fieldGood.typeId) continue;
+          if (counted.has(field.id)) continue;
+          const node = nodeOfPosition(at.x, at.y);
+          if (Math.abs(node.hx - anchor.hx) + Math.abs(node.hy - anchor.hy) > radius) continue;
+          counted.add(field.id);
+          if (isRipe(crop)) ripe++;
+          else growing++;
+        }
       }
     }
     return {

@@ -3,8 +3,12 @@ import { describe, expect, it } from 'vitest';
 import { Building, GroundDrop, Position, Stockpile } from '../../../src/components/index.js';
 import type { Entity } from '../../../src/ecs/world.js';
 import { cellAnchorNode, Simulation } from '../../../src/index.js';
+import { nodeOfPosition } from '../../../src/nav/halfcell.js';
+import { dynamicBlockOverlay } from '../../../src/systems/footprint/index.js';
 import { MAX_GROUND_STACK } from '../../../src/systems/stores/index.js';
 import { TEST_MANIFEST } from '../../fixtures/content.js';
+import { ctxOf } from '../../fixtures/context.js';
+import { grassNodeMap } from '../../fixtures/terrain.js';
 
 /**
  * `dropGood` - the "place this good on the ground" order. It drops a loose good pile as a bare
@@ -12,12 +16,16 @@ import { TEST_MANIFEST } from '../../fixtures/content.js';
  * a per-fill heap that GROWS with its contents and rests in place (not a felled-trunk pickup source). A
  * repeat drop of the same good on the same tile STACKS onto the existing pile, capped at
  * {@link MAX_GROUND_STACK}, so one-unit clicks pile up rather than littering an entity per click. Bad input
- * (an unknown good, a non-positive amount) is an id-neutral skip, still logged for faithful replay.
+ * (an unknown good, a non-positive amount) is an id-neutral skip, still logged for faithful replay. A drop
+ * aimed at a building body lands beside it.
  */
 
 const WOOD = 5;
 const STONE = 3;
 const UNKNOWN_GOOD = 99;
+const HALL = 7;
+/** The hall's anchor, a node of its walk-blocked body. */
+const HALL_NODE = { x: 12, y: 4 } as const;
 const PIXELS_PER_TILE = 65536; // ONE - the fixed-point tile unit a Position uses.
 
 function dropContent(): ContentSet {
@@ -114,5 +122,35 @@ describe('dropGood', () => {
     expect(() => sim.step()).not.toThrow();
     expect(sim.world.entityCount).toBe(0);
     expect(sim.commands.log).toHaveLength(1);
+  });
+
+  it('lands a drop aimed at a building body on open ground beside it', () => {
+    const base = dropContent();
+    const content = parseContentSet({
+      ...base,
+      landscape: [{ typeId: 0, id: 'grass', walkable: true, buildable: true }],
+      buildings: [
+        {
+          typeId: HALL,
+          id: 'hall',
+          kind: 'workplace',
+          footprint: { blocked: [-1, 0, 1].map((dx) => ({ dx, dy: 0 })), door: { dx: 2, dy: 0 } },
+        },
+      ],
+    });
+    const sim = new Simulation({ seed: 1, content, map: grassNodeMap(24, 8) });
+    sim.enqueueSetup({ kind: 'placeBuilding', buildingType: HALL, x: HALL_NODE.x, y: HALL_NODE.y, tribe: 1 });
+    sim.enqueueSetup({ kind: 'dropGood', good: WOOD, x: HALL_NODE.x, y: HALL_NODE.y, amount: 1 });
+    sim.step();
+
+    const pile = onlyPile(sim);
+    const terrain = sim.terrain;
+    if (terrain === undefined) throw new Error('setup: terrain missing');
+    const pos = sim.world.get(pile, Position);
+    const node = nodeOfPosition(pos.x, pos.y);
+    expect(dynamicBlockOverlay(sim.world, ctxOf(sim), terrain).has(terrain.nodeAt(node.hx, node.hy))).toBe(
+      false,
+    );
+    expect(sim.world.get(pile, Stockpile).amounts.get(WOOD)).toBe(1);
   });
 });

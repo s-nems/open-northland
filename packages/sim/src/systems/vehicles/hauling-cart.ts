@@ -28,6 +28,7 @@ import { sendUnit } from '../orders/movement.js';
 import { isCarrierJobRow, isTrader } from '../readviews/jobs.js';
 import { addCarry, shrinkCarry } from '../settlers/atomics/effects/goods/carry.js';
 import { pickupFromStore, pileupIntoStore } from '../settlers/atomics/effects/goods/transfer.js';
+import { carriedGoodForm } from '../settlers/drives/economy/delivery-targets.js';
 import { abandonCargoRun } from './cargo.js';
 import {
   attachToVehicle,
@@ -38,7 +39,7 @@ import {
 } from './crew.js';
 import { cartLiftTicks, cartSpeedLossPercent, isCartType } from './drag.js';
 import { endDrive, isOpenLand } from './movement.js';
-import { tradeVehicleStock, vehicleLineCap } from './stock.js';
+import { tradeVehicleStock, vehicleLineCap, vehicleStockGood } from './stock.js';
 
 // A hauling cart (`HaulingCart` in `components/vehicle.ts`), the work tool of a posted carrier or a
 // trader: the take, the lifts beside the standing cart, the park for a break, the room it lends and the
@@ -160,24 +161,97 @@ export function takeHaulingCart(world: World, content: ContentSet, settler: Enti
   else liftOutOfHold(world, content, settler, held.vehicle, Number.POSITIVE_INFINITY);
 }
 
-/** Up to `units` of the hold's first good the hands can take, out of the hold into the hands. */
+/** Up to `units` of `only`, or of the hold's first good, that the hands can take, out of the hold into
+ *  the hands. */
 function liftOutOfHold(
   world: World,
   content: ContentSet,
   settler: Entity,
   vehicle: Entity,
   units: number,
+  only?: number,
 ): number {
   const stock = world.tryGet(vehicle, VehicleStock);
   if (stock === undefined) return 0;
   const inHand = world.tryGet(settler, Carrying)?.goodType;
   for (const [goodType, line] of vehicleStockEntries(stock)) {
+    if (only !== undefined && only !== goodType) continue;
     if (line.current <= 0 || (inHand !== undefined && inHand !== goodType)) continue;
     const moved = -tradeVehicleStock(world, vehicle, content, goodType, -Math.min(units, line.current));
     if (moved > 0) addCarry(world, settler, goodType, moved);
     return moved;
   }
   return 0;
+}
+
+/**
+ * The goods the carrier's hauling cart carries, ascending: the hold's lines, which hold the whole load
+ * while the cart stands, and the good in its hands. Empty without a cart.
+ */
+export function haulingCartGoods(world: World, settler: Entity): number[] {
+  const held = world.tryGet(settler, HaulingCart);
+  if (held === undefined) return [];
+  const goods = new Set<number>();
+  const stock = world.tryGet(held.vehicle, VehicleStock);
+  if (stock !== undefined) {
+    for (const [goodType, line] of vehicleStockEntries(stock)) if (line.current > 0) goods.add(goodType);
+  }
+  const load = world.tryGet(settler, Carrying);
+  if (load !== undefined && load.amount > 0) goods.add(load.goodType);
+  return [...goods].sort((a, b) => a - b);
+}
+
+/** Whether the carrier's hauling cart has a hold line for `goodType`; any other good rides in the hands,
+ *  which hold one good, so a load of it is never mixed with another. */
+export function haulingCartTakes(
+  world: World,
+  content: ContentSet,
+  settler: Entity,
+  goodType: number,
+): boolean {
+  const type = haulingCartType(world, content, settler);
+  return type !== undefined && vehicleStockGood(content, type, goodType) !== null;
+}
+
+/** The good the carrier's hauling cart books `goodType` under, itself for a good its hold has no line
+ *  for. */
+export function haulingCartHoldGood(
+  world: World,
+  content: ContentSet,
+  settler: Entity,
+  goodType: number,
+): number {
+  const type = haulingCartType(world, content, settler);
+  return (type === undefined ? null : vehicleStockGood(content, type, goodType)) ?? goodType;
+}
+
+/** The units of `goodType` the carrier's hauling cart carries, in the hold and in its hands. */
+export function haulingCartUnits(world: World, settler: Entity, goodType: number): number {
+  const held = world.tryGet(settler, HaulingCart);
+  if (held === undefined) return 0;
+  const aboard = world.tryGet(held.vehicle, VehicleStock)?.lines.get(goodType)?.current ?? 0;
+  const load = world.tryGet(settler, Carrying);
+  return aboard + (load !== undefined && load.goodType === goodType ? load.amount : 0);
+}
+
+/**
+ * With the cart in hand, change the good the carrier holds to `goodType` from the hold: the hands hold
+ * one good, the one the delivery rung routes, and the rest of a mixed load rides aboard. False, the
+ * hands as they were, when the hold will not take what they hold or has none of `goodType`.
+ */
+export function handHaulingCartGood(
+  world: World,
+  content: ContentSet,
+  settler: Entity,
+  goodType: number,
+): boolean {
+  const held = world.tryGet(settler, HaulingCart);
+  if (held === undefined || !held.taken) return false;
+  if ((world.tryGet(held.vehicle, VehicleStock)?.lines.get(goodType)?.current ?? 0) <= 0) return false;
+  stowHands(world, content, settler, held.vehicle);
+  const left = world.tryGet(settler, Carrying);
+  if (left !== undefined && left.amount > 0 && left.goodType !== goodType) return false;
+  return liftOutOfHold(world, content, settler, held.vehicle, Number.POSITIVE_INFINITY, goodType) > 0;
 }
 
 /** What the carrier holds in its hands into the hold; a unit the hold refuses stays in hand. */
@@ -251,7 +325,7 @@ export function endCartLift(world: World, settler: Entity): void {
 /**
  * Whether the lift beside the standing cart has another unit to move: a load while units remain to lift,
  * the source will part with one of the good (now, or on its next refill) and the cart has room, an unload
- * while the hold has a unit and the store is there. The planner asks before each clip; the effects below
+ * while the hold has a unit of its good and the store is there. The planner asks before each clip; the effects below
  * move the unit afterwards.
  */
 export function cartLiftContinues(
@@ -268,15 +342,15 @@ export function cartLiftContinues(
     if (haulingCartRoom(world, ctx.content, settler) <= 0) return false;
     return sourceSupplies(lift.from, lift.goodType);
   }
-  if (!world.isAlive(lift.store)) return false;
-  const stock = world.tryGet(held.vehicle, VehicleStock);
-  return stock !== undefined && vehicleLoad(stock) > 0;
+  if (lift.refused || !world.isAlive(lift.store)) return false;
+  return (world.tryGet(held.vehicle, VehicleStock)?.lines.get(lift.goodType)?.current ?? 0) > 0;
 }
 
 /**
  * Resolve one completed `haulLoad`: one unit of `goodType` off `from` through the carrier's hands into
  * the standing cart's hold, the same move a pick-up makes ({@link pickupFromStore}: the claim ends, a dish
- * lands as its edible, the storage minimum holds). A unit the hold refuses stays in hand.
+ * lands as its edible, the storage minimum holds). A unit the hold refuses stays in hand, and hands still
+ * holding another good the hold refused end the lift with nothing taken.
  */
 export function loadHaulingCart(
   world: World,
@@ -287,7 +361,12 @@ export function loadHaulingCart(
 ): void {
   const held = world.tryGet(settler, HaulingCart);
   if (held === undefined || held.taken) return;
-  const inHand = world.tryGet(settler, Carrying)?.amount ?? 0;
+  const kept = world.tryGet(settler, Carrying);
+  if (kept !== undefined && kept.goodType !== carriedGoodForm(world, ctx, settler, goodType)) {
+    endCartLift(world, settler);
+    return;
+  }
+  const inHand = kept?.amount ?? 0;
   pickupFromStore(world, ctx, settler, from, goodType, 1);
   const lift = held.lift;
   if (lift?.kind === 'load' && (world.tryGet(settler, Carrying)?.amount ?? 0) > inHand) {
@@ -297,21 +376,27 @@ export function loadHaulingCart(
 }
 
 /**
- * Resolve one completed `haulUnload`: one unit out of the standing cart's hold through the carrier's hands
- * onto `store`'s shelf, the same deposit a pile-up makes ({@link pileupIntoStore}). A unit the store
- * refuses goes back aboard and ends the lift, so the carrier takes the cart up and finds another store
- * for the rest. True when the unit landed.
+ * Resolve one completed `haulUnload`: one unit of `goodType` out of the standing cart's hold through the
+ * carrier's hands onto `store`'s shelf, the same deposit a pile-up makes ({@link pileupIntoStore}). A unit
+ * the store refuses goes back aboard and marks the lift refused, so the planner ends it and the carrier
+ * finds another store for the rest of that good. True when the unit landed.
  */
-export function unloadHaulingCart(world: World, ctx: SystemContext, settler: Entity, store: Entity): boolean {
+export function unloadHaulingCart(
+  world: World,
+  ctx: SystemContext,
+  settler: Entity,
+  store: Entity,
+  goodType: number,
+): boolean {
   const held = world.tryGet(settler, HaulingCart);
   if (held === undefined || held.taken) return false;
-  if (liftOutOfHold(world, ctx.content, settler, held.vehicle, 1) <= 0) {
+  if (liftOutOfHold(world, ctx.content, settler, held.vehicle, 1, goodType) <= 0) {
     endCartLift(world, settler);
     return false;
   }
   if (pileupIntoStore(world, ctx, settler, store) > 0) return true;
   stowHands(world, ctx.content, settler, held.vehicle);
-  endCartLift(world, settler);
+  if (held.lift?.kind === 'unload') world.mut(settler, HaulingCart).lift = { ...held.lift, refused: true };
   return false;
 }
 

@@ -48,7 +48,7 @@ export function historyDir(roots: SourceRoots, lang: string): Promise<string | u
 /**
  * Renders each language's history book into `content/gui/history/<lang>.json`. A language without the
  * folder, or whose folder lacks the start page, emits nothing. An overlay language with a history
- * overlay renders the pages of the overlay's basis language, else of the first language that has the
+ * overlay and no shipped book renders the pages of the overlay's basis language, else of the first language that has the
  * book, with each included block taken from the overlay when it has the file and label.
  */
 export async function convertGuiHistory(
@@ -69,6 +69,10 @@ export async function convertGuiHistory(
       console.warn(
         `[pipeline] gui: refused ${lang} history overlay: source-language text belongs in corrections`,
       );
+      continue;
+    }
+    if (done.some((result) => result.lang === lang)) {
+      console.warn(`[pipeline] gui: skipped ${lang} history overlay: the pack ships the book in ${lang}`);
       continue;
     }
     const pages = await basisBook(roots, overlay.basis.lang);
@@ -111,7 +115,7 @@ interface HistoryPages {
   readonly dir: string;
 }
 
-/** The history folder of `preferred`, else of the first source language that has one. */
+/** The history folder of `preferred`, else of the first GUI language that has one. */
 async function basisBook(roots: SourceRoots, preferred: Language): Promise<HistoryPages | undefined> {
   for (const lang of [preferred, ...GUI_LANGS]) {
     const dir = await historyDir(roots, lang);

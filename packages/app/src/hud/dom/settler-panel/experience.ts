@@ -2,6 +2,7 @@ import { formatMessage, messages } from '../../../i18n/index.js';
 import {
   type ExperienceRowModel,
   experienceShown,
+  type FightRowModel,
   type SettlerPanelModel,
   type UnlockProgressRowModel,
 } from '../../details-panel/model/index.js';
@@ -11,9 +12,27 @@ import { createLedger, type Ledger, type LedgerModel } from '../parts/ledger.js'
 import { meterFill } from '../parts/meter-row.js';
 import { createSection } from '../parts/section.js';
 
-function trainedRow(row: ExperienceRowModel): LedgerModel {
+/** The fight row's tooltip: its share, then each bonus it buys, one to a line. */
+function fightTooltip(fight: FightRowModel): string {
+  const copy = messages().hud.settlerPanel;
+  const lines = [formatMessage(copy.fightShare, { pct: fight.sharePct })];
+  if (fight.dealtPct !== null) lines.push(formatMessage(copy.fightDealt, { pct: fight.dealtPct }));
+  if (fight.accuracyPct !== null) lines.push(formatMessage(copy.fightAccuracy, { pct: fight.accuracyPct }));
+  if (fight.takenCutPct !== null) lines.push(formatMessage(copy.fightTaken, { pct: fight.takenCutPct }));
+  return lines.join('\n');
+}
+
+export function trainedRow(row: ExperienceRowModel): LedgerModel {
   const copy = messages().hud.settlerPanel;
   const repeats = String(row.repeats);
+  // The fight counter is capped: it reads as a share of its full, its bonuses in the tooltip.
+  if (row.fight !== null) {
+    return {
+      label: row.label,
+      tooltip: fightTooltip(row.fight),
+      value: [{ text: `${row.fight.sharePct}%` }],
+    };
+  }
   return {
     label: row.label,
     tooltip:

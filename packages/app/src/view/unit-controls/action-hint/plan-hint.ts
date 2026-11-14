@@ -45,6 +45,7 @@ export type HintAction =
   | 'removeFromRoute'
   | 'learn'
   | 'train'
+  | 'coinDrill'
   | 'work'
   | 'live'
   | 'build'
@@ -230,6 +231,8 @@ function settlerParts(ctx: HintContext, group: SettlerGroup): Part[] {
       return [{ count, hint: action('putOn', { kind: 'pile', ref: intent.pile }) }];
     case 'gather':
       return [{ count, hint: action('gather') }];
+    case 'moveWorkFlag':
+      return [{ count, hint: action('workArea') }];
     case 'tradeHouse':
       return [{ count, hint: tradeHouseHint(ctx, intent.house, intent.detach, intent.ask) }];
     case 'walk':
@@ -321,6 +324,7 @@ function buildingParts(ctx: HintContext, intent: BuildingIntent, count: number):
     case 'building':
       add(intent.crew.length, action(crewVerb(intent.building)));
       add(intent.trainees.length, action('train'));
+      add(intent.drillers.length, action('coinDrill'));
       add(intent.household.length, householdHint(ctx, intent.building, intent.household));
       add(intent.workers.length, workersHint(ctx, intent.building, intent.workers));
       break;
@@ -334,8 +338,11 @@ function buildingParts(ctx: HintContext, intent: BuildingIntent, count: number):
       add(intent.walkers.length, action('walk'));
       break;
   }
-  // A building none of the selection takes gets no order at all.
-  return parts.length > 0 ? parts : [{ count, hint: refusal('cannotWorkHere') }];
+  // A building none of the selection takes gets no order at all; a barracks refuses in its own words.
+  if (parts.length > 0) return parts;
+  const def = buildingDefOf(ctx, intent.kind === 'site' ? intent.site : intent.building);
+  const barracks = def !== undefined && systems.isBarracksType(def);
+  return [{ count, hint: refusal(barracks ? 'cannotTrainHere' : 'cannotWorkHere') }];
 }
 
 /** A home with no family slot free refuses every family not already living there. */
@@ -349,7 +356,8 @@ function householdHint(
     const self = entityById(ctx.snapshot, unit.ref);
     return self === undefined || residenceHomeOf(self) !== house;
   });
-  const full = def !== undefined && moving.length > 0 && !homeHasFamilyRoom(ctx.snapshot, house, def);
+  const full =
+    def !== undefined && moving.length > 0 && !homeHasFamilyRoom(ctx.snapshot, house, def, ctx.content.goods);
   return full ? refusal('noFreePlaces') : action('live');
 }
 

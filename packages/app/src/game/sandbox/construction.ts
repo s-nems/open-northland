@@ -13,6 +13,7 @@ import {
   BUILDING_JOINERY_02,
   BUILDING_MASON_HUT,
   BUILDING_POTTERY,
+  BUILDING_POTTERY_01,
   BUILDING_SMITHY,
   BUILDING_TAILOR,
   BUILDING_WAREHOUSE_00,
@@ -74,8 +75,7 @@ export function buildingHitpoints(kind: string): number {
 /**
  * The upgrade target is always the next typeId, because every chained record's `LogicType` table is
  * consecutive. Source basis: the extracted `[GfxHouse]` `upgrade === 1` rows name exactly these
- * typeIds. A hand table rather than a name-suffix derivation, because `work_pottery_02` is really the
- * defence wall and would otherwise chain the pottery into a wall.
+ * typeIds.
  */
 const UPGRADABLE_TYPES: ReadonlySet<number> = new Set([
   BUILDING_HOME_00,
@@ -87,6 +87,7 @@ const UPGRADABLE_TYPES: ReadonlySet<number> = new Set([
   BUILDING_BAKERY,
   BUILDING_TAILOR,
   BUILDING_POTTERY,
+  BUILDING_POTTERY_01,
   BUILDING_JOINERY,
   BUILDING_JOINERY_01,
   BUILDING_JOINERY_02,

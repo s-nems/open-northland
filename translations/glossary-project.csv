@@ -1,654 +1,1120 @@
-ger,eng,pol,chs,cht,type,description,references
-,Abul,Abul,阿布勒,阿布勒,人名,750年前丘伊诺的怪人，精通山羊语，「山羊之仆」兼翻译；暗中把山羊王冠交给埃及人挑拨战争，后被押走；原文另作：Abula、Abulem,saracen_2_sub_1
-Adam und Eva,Adam and Eve,Adam i Ewa,亚当和夏娃,亞當和夏娃,人名,圣经人物；幽冥打算创造新的亚当和夏娃；原文另作：Adamem i Ewą,mroczny_swiat_sub4
-,Adamwkładam / Adam,Adamwkładam,亚当,亞當,人名,"CN 用户（真实网名 Adamwkładam，「Adam, wkładam」带下流双关，中文无法保留），对白多称 Adam；以「建设性批评」著称的喷子，后向加托告密。席位/单位名可作「亚当」；原文另作：Adamawkładama、Adamwkładama、Adam、Adama",cn_0; cn_1; cn_2_dni; cn_2_dni_sub; cn_4; demo_mainmenu_10
-,Al-Epaqa / Mohammad Al-Epaqa,Al-Epaqa,阿尔埃帕卡,阿爾埃帕卡,人名,塔克西尔的阿拉伯人，全名 Mohammad Al-Epaqa「穆罕默德·阿尔埃帕卡」；瓦尔马尔死后其力量落到他身上。一种结局中他引爆腰带里的炸药炸塌灯塔（自杀袭击梗，按原文平实处理，不添油加醋）,wybrzeze_czarow; wybrzeze_czarow_sc1; wybrzeze_czarow_sc2; wybrzeze_czarow_sub2
-,Albert,Albert,阿尔伯特,阿爾伯特,人名,科斯洛福德八巫师之一，住在索斯福克，制作护符，缺油；原文另作：Albertowi、Alberta,wybrzeze_czarow; wybrzeze_czarow_sc1; wybrzeze_czarow_sc2
-,Alexander Apfel,Alexander Apfel,亚历山大·阿普费尔,亞歷山大·阿普費爾,人名,纽斯通派来求助的信使（字符串46，对应信使头像）,wybrzeze_czarow
-,Alliser Thorne,Alliser Thorne,艾里沙·索恩,艾里沙·索恩,人名,守夜人军官（单位名）,wichry_zimy
-,Andrew,Andrew,Andrew,Andrew,人名,脚本协助者,wielka_kolonizacja_iii_1_0
-,Andrzej,Andrzej,安杰伊,安傑伊,人名,量尺哥在段子中的自称,boso_przez_swiat
-,Apex,Apex,阿佩克斯,阿佩克斯,人名,CN 老用户（真实网名）。cn_4 中是地牢囚犯「阿佩克斯帮」老大；boso_przez_swiat 中仅被提及（当年守城的指挥官，Dowódca Apex「阿佩克斯指挥官」）；原文另作：Dowódca Apex、Apexa、Apexem,boso_przez_swiat; cn_1; cn_4; demo_mainmenu_10
-,Arek,Arek,阿雷克,阿雷克,人名,CN 用户（真实网名，Arkadiusz 的昵称），格斗「宗师」，cn_5 中在八角笼与普罗沙克单挑；口头禅「Siema kto gra?」（嘿，谁来玩？）；原文另作：Arka、Arkiem、Arku、Arkowi,cn_0; cn_1; cn_2_dni; cn_2_dni_sub; cn_5; demo_mainmenu_10
-,Ares,Ares,阿瑞斯,阿瑞斯,人名,CN 用户兼地图作者（真实网名，取希腊战神名，沿用通行译名）。boso_przez_swiat 中是东村首领；cn 系列中与尼普顿同住奥林匹斯山；cn_2 是与他的 1v1；gringo 的哈里发「阿瑞萨比卜」即拿他开玩笑。作为作者（burza_piaskowa、wielka_inwazja、upadek_krola 等多图）署名保留 Ares；原文另作：Aresa、Aresem、Aresowi、Ares 2k24（署名）、Ares&Jozenkow,boso_przez_swiat; burza_piaskowa; cn_0; cn_1; cn_2; cn_2_dni; cn_2_dni_sub; czarnoksieznik_z_szeolu; demo_mainmenu_10; krol_przeleczy; mroczny_swiat_sub2; oasis_o_plenty; przekleta_kraina; smocza_kraina; starozytny_trakt; upadek_krola; wichry_zimy; wielka_inwazja; wyspa_lupiezcow
-,Aresabib,Aresabib,阿瑞萨比卜,阿瑞薩比卜,人名,哈里发，佐汉的盟友，号称阿拉伯最可怕的狠角色，其实很和气；谐音作者网名 Ares＋habib，译名保留「阿瑞」以呼应阿瑞斯；原文另作：Aresabiba、Aresabibem、Ares.（短标签）,gringo
-,Azim,Azim,阿齐姆,阿齊姆,人名,哈奇的撒拉逊挚友，爱用弯刀、信安拉的勇士；在saracen_3_sub_3引爆缝在身上的炸药牺牲以夺得第三枚戒指；原文另作：Azima、Azimem、Azimowi,saracen_1; saracen_1_sub_2; saracen_2; saracen_2_sub_1; saracen_3; saracen_3_sub_1; saracen_3_sub_2; saracen_3_sub_3; saracen_4
-,Baba Wanga,Baba Wanga,巴巴·万加,巴巴·萬加,人名,林中半盲半聋的老预言婆，收钱算命并标出护符位置；原文另作：Babie Wandze、Babą Wangą、Bab（短标签）,straznicypolnocy
-,Babiares,Babiares,巴比阿瑞斯,巴比阿瑞斯,人名,阿瑞萨比卜之父，始建其要塞（Aresabib 音节倒置的玩笑）,gringo
-,Bain,Bain,贝恩,貝恩,人名,祭司，凯恩的兄弟，被贩奴的塞尔柱人掳走；原文另作：Baina,mroczny_swiat; mroczny_swiat_sub2; mroczny_swiat_sub4
-,Balthazar,Baltazar,巴尔塔扎尔,巴爾塔扎爾,人名,四处行商的商人，哈奇的「老朋友」；实为盗走时空卷轴、杀害二流子的叛徒，在saracen_4_sub_3被哈奇杀死；原文另作：Baltazara、Baltazarem、Baltazarowi、Balt.、Kupiec Baltazar,saracen_1; saracen_2; saracen_3; saracen_4; saracen_4_sub_3; saracen_4_sub_4
-,Barin,Barin,Barin,Barin,人名,测试者,piramida_skarbow
-Bear Grylls,Bear Grylls,Bear Grylls,贝尔·格里尔斯,貝爾·格里爾斯,人名,真实的英国荒野求生节目主持人，在沙漠中被塞尔柱人绑架、待营救；原文另作：Beara Gryllsa,lowcypustyni2
-,Benjen Stark,Benjen Stark,班扬·史塔克,班揚·史塔克,人名,守夜人首席游骑兵（单位名）,wichry_zimy
-,Bjorn the Long-sworded,Bjorn Długomieczny,长剑比约恩,長劍比約恩,人名,六勇士之一，「长剑族」首领,oasis_o_plenty
-,Bjorni,Bjorni,比约尼,比約尼,人名,黑暗世界序章里的席位名，正文未解释,mroczny_swiat_sub1
-,Boldir,Boldir,Boldir,Boldir,人名,CN论坛用户（仅作单位名出现）,cn_2_dni; cn_2_dni_sub
-,Godswrath,Bożygniew,博日格涅夫,博日格涅夫,人名,法兰克村庄首领，科任桑与凯介的挚友，曾被撒拉逊人关押（古波兰式人名，字面「上帝之怒」，英文意译 Godswrath）。佐汉辱称他 Bożydebil（debil＝白痴），可译「博日白痴」；原文另作：Bożygniewa、Bożygniewem、Bożydebil,gringo; gringo_sub
-,Brainy,Brainy,布雷尼,布雷尼,人名,社区地图作者（真实网名），作者署名（kraina_starych_bohaterow、niezwykla_wyprawa、przekleta_dolina、oczy_weza、wilczy_lad、wielkie_sprzatanie、ciezka_wspolpraca 等）保留 Brainy；cn_0 中作为角色出现时作「布雷尼」（被迫看着自己的地图《大扫除》被烧）；原文另作：Brainego,ciezka_wspolpraca; cn_0; cn_1; cn_2_dni; cn_2_dni_sub; demo_mainmenu_10; kraina_starych_bohaterow; niezwykla_wyprawa; oczy_weza; przekleta_dolina; wielkie_sprzatanie; wilczy_lad
-,Brandon the Builder,Brandon Budowniczy,筑城者布兰登,築城者布蘭登,人名,传说中修建长城的人；原文另作：Brandona Budowniczego,wichry_zimy
-,Bruno,Bruno,布鲁诺,布魯諾,人名,科斯洛福德八巫师之一，住在纽斯通的德意志人（开口「Guten Tag」），协助建造；原文另作：Brunona、Brunon,wybrzeze_czarow; wybrzeze_czarow_sc1; wybrzeze_czarow_sc2
-,Brutus / Frank Brutus,Brutus,布鲁图斯,布魯圖斯,人名,法兰克商人兼驯狼人，用 5 桶水换一头驯化的狼；原文另作：Brutusa,wilczy_lad
-,Warlock from Sheol / Sorcerer of Sheol,Czarnoksiężnik z Szeolu,冥府巫师,冥府巫師,人名,从冥府（Szeol）归来的凯尔特巫师，czarnoksieznik_z_szeolu 的主要反派与标题（仿《绿野仙踪》波兰译名 Czarnoksiężnik z Krainy Oz）；piramida_skarbow 中是占据金字塔、造出蛇群的敌对席位；原文另作：Czarnoksiężnik、Czarnoks.、Szeol（席位简称）,czarnoksieznik_z_szeolu; piramida_skarbow
-,Red Priestess,Czerwona Kapłanka,红袍女祭司,紅袍女祭司,人名,红袍女祭司（单位名，即梅丽珊卓）,wichry_zimy
-,Merchant Diego,Diego,迭戈,迭戈,人名,群岛上的商人NPC（席位名）；原文另作：Kupiec Diego,arabskie_wyspy_wolna_gra_mieszana
-,Donan,Donan,多南,多南,人名,巴拉巴熊在人类世界的「内线」，其日记讲述熊的来历；原文另作：Donana,boso_przez_swiat
-,Dzejkaczi / Dzejkaci,Dzejkaczi,杰卡奇,傑卡奇,人名,CN 用户（真实网名，Dzejk＝波兰拼写的 Jake）。boso_przez_swiat 中是岛上法兰克人首领（席位「杰卡奇的法兰克人」）；cn 系列中是贪吃的壮汉战士，说话全小写、不加标点、句句带 chłopie「老兄」。简称 Dzejk 也作「杰卡奇」；w_oku_niepewnosci 作者署名保留 Dzejkaci；原文另作：Dzejkaci、Dżejkaci、Dzejk,boso_przez_swiat; cn_0; cn_1; cn_2_dni; cn_2_dni_sub; demo_mainmenu_10; w_oku_niepewnosci
-,Eddison Tollett,Eddison Tollett,艾迪森·托勒特,艾迪森·托勒特,人名,守夜人（单位名）,wichry_zimy
-Elija,Elijah,Eliasz,以利亚,以利亞,人名,传说葬于水下洞穴的先知，据说其墓中泉水可让人预见未来；原文另作：Eliasza、prorok Eliasz,boso_przez_swiat; boso_przez_swiat_sub4
-,Elizabet / Elizabeth,Elizabet,伊丽莎白,伊麗莎白,人名,公主臆想中花园永远比她漂亮的对手（实际不存在）；原文另作：Elizabeth（英文）,saracen_3_sub_3
-,Emilando / Emiland,Emilando,埃米兰多,埃米蘭多,人名,CN 用户（真实网名）。boso_przez_swiat 中是西村首领；cn 系列中住在波德拉谢沼泽、怀念共产主义，口头禅「荣耀归于沙皇普罗沙克！」，爱用《魔兽争霸III》苦工台词。简称 Emil 也作「埃米兰多」，以免与头衔 Emir「埃米尔」相混；作者署名保留原文；原文另作：Emilanda、Emilandem、Emil、Emila、Emilowi、Emilandu、Emilando - Knut,arabskie_wyspy_wolna_gra_mieszana; boso_przez_swiat; cn_0; cn_1; cn_2_dni; cn_2_dni_sub; demo_mainmenu_10; plytkie_brody_1_1
-,Eric the Cow-stealer,Eryk Krowokradny,偷牛埃里克,偷牛埃里克,人名,六勇士之一，「偷牛族」首领,oasis_o_plenty
-,Evil Zohan,Evil Zohan,邪恶佐汉,邪惡佐漢,人名,佐汉的「邪恶」双胞胎兄弟；笑点在于他反而热情接待新人,cn_2_dni; cn_2_dni_sub
-,Evo,Evo,埃沃,埃沃,人名,CN 老用户（真实网名），阿佩克斯的狱友，收「保护费」（Haracz dla Evo＝给埃沃的保护费）；原文另作：Eva,cn_1; cn_4; demo_mainmenu_10
-,Ewelina / Proszak's Sister,Ewelina,埃韦利娜,埃韋利娜,人名,普罗沙克的妹妹（单位名 Siostra Proszaka＝普罗沙克的妹妹），被关在 CN 地牢，由齐奥穆斯救出；原文另作：Eweliny、Ewelinę、Eweliną、Siostra Proszaka、siostra proszaka、SIOSTRA PROSZAKA,cn_0; cn_4
-,Fandral,Fandral,范达尔,范達爾,人名,北方维京人首领，想南逃避开冰巨人，最终结盟；名字取自漫威《雷神》三勇士之一（中文作范达尔）；原文另作：Fandrał（笔误）,straznicypolnocy
-Fiona,Fiona,Fiona,菲奥娜,菲奧娜,人名,史莱克的妻子菲奥娜；原文另作：Fiono,cn_2_dni; cn_2_dni_sub
-Gandalf,Gandalf,Gandalf,甘道夫,甘道夫,人名,米库卢斯的装扮；「你不能过去！」,cn_0; cn_4
-,GaTo,GaTo,加托,加托,人名,前 CN 管理员（真实网名，西语 gato＝猫）。cn 系列反派：被放逐后与皮夫科率机器人大军篡夺 CN；boso_przez_swiat 中仅被提及（五年前率撒拉逊人入侵）；原文另作：Gato、GATO、G.A.T.O,boso_przez_swiat; cn_0; cn_1; cn_2; cn_2_dni; cn_2_dni_sub; cn_3; cn_4; cn_6; demo_mainmenu_10
-,Gavert,Gavert,Gavert,Gavert,人名,CN论坛用户（仅作单位名出现）,cn_2_dni; cn_2_dni_sub
-,General Basil,Generał Basil,巴西尔将军,巴西爾將軍,人名,拜占庭驻军将军，负责关押被押送的强盗鲁弗斯；原文另作：Gen. Basil、gen. Basila,niezwykla_wyprawa
-,General Olivier / Gen Olivier,Generał Olivier,奥利维耶将军,奧利維耶將軍,人名,拜占庭将军，哈奇的老友，委派寻找戒指的任务，自 saracen_3 起亲自同行；短标签 Gen.Ol. 作「奥将军」；原文另作：Olivier、Gen. Olivier、Gen.Ol.,saracen_1; saracen_2; saracen_3; saracen_3_sub_1; saracen_3_sub_2; saracen_3_sub_3; saracen_4; saracen_4_sub_3
-,Gen. Steiner,Generał Steiner,施泰纳将军,施泰納將軍,人名,「施泰纳将军」，在营地里贩卖孩子；影射电影《帝国的毁灭》中的施泰纳梗（内容需编辑审阅）；原文另作：Steiner、GEN. STEINER,cn_2_dni; cn_2_dni_sub
-,Gimil,Gimil,吉米尔,吉米爾,人名,CN 老用户（真实网名），北采石场拄拐的老囚犯；原文另作：Gimila,cn_1; cn_2_dni; cn_2_dni_sub; cn_4; demo_mainmenu_10
-,Gorki,Gorki,Gorki,Gorki,人名,与赖托一同被加托放逐的 CN 老用户（真实网名，仅被提及，保留拉丁字母）；原文另作：Gorkim,cn_1; demo_mainmenu_10
-,Gregory II the Claylander,Gregory II Gliniarz,泥条子格雷戈里二世,泥條子格雷戈里二世,人名,泥民部落王公，玩家角色之一；Gliniarz 源自 glina「黏土」，又是俚语「条子（警察）」，「泥条子」兼顾两义；原文另作：Gregoremu II Gliniarzowi、Gregory,polski_mlyn_1_1
-,Grenn,Grenn,葛蓝,葛藍,人名,守夜人新兵（单位名）,wichry_zimy
-,Gryzasz,Gryzasz,咬喉者,咬喉者,人名,莲花号幸存船员之一；咬断哈基姆苏丹动脉夺取萨兰德苏丹国，后被狮群当作同类收养,boso_przez_swiat
-,Habibi,Habibi,哈比比,哈比比,人名,凯介的好友，借出船只救博日格涅夫；原文另作：Habibiego、habibi（作普通词）,gringo
-,Hakim,Hakim,哈基姆,哈基姆,人名,咬喉者咬死的苏丹；原文另作：sułtan Hakim,boso_przez_swiat
-,Hamid,Hamid,哈米德,哈米德,人名,传说中丘伊诺的伟大统治者，向山羊像祈祷后埃斯梅拉达降临,saracen_2
-Hammurabi,King Hammurabi,Hammurabi,汉穆拉比,漢穆拉比,人名,卡利姆多国王，哈奇的老朋友；原文另作：Hammurabiego、K.Hammurabi,upadek_krola
-,handsomeZAK,handsomeZAK,handsomeZAK,handsomeZAK,人名,CN论坛用户（仅作单位名出现）,cn_2_dni; cn_2_dni_sub
-,Harald,Harald,哈拉尔,哈拉爾,人名,科斯洛福德八巫师之一，船坏后困在布拉比，可召唤龙；原文另作：Haralda,wybrzeze_czarow; wybrzeze_czarow_sc1; wybrzeze_czarow_sc2
-,Harald the Plate-armed,Harald Płytozbrojny,板甲哈拉尔,板甲哈拉爾,人名,六勇士之一，「板甲族」首领,oasis_o_plenty
-,Hasim,Hasim,哈希姆,哈希姆,人名,过去渔村的渔夫，会吹笛驯蛇；原文另作：Hasima,saracen_2_sub_1
-,Hassan,Hassan,哈桑,哈桑,人名,巨型蛇战士首领，皮坚不可破，被英雄用坍塌的巨石困在石墓中；原文另作：Hassana,zdradziecka_mielizna_sub2
-,Hektor,Hektor,赫克托,赫克托,人名,mroczny_swiat 单位名，剧情中没有出场,mroczny_swiat
-,Hemp,Hemp,Hemp,Hemp,人名,CN论坛用户（仅作单位名出现）,cn_2_dni; cn_2_dni_sub
-,HenBlejdd,HenBlejdd,HenBlejdd,HenBlejdd,人名,CN论坛用户（仅作单位名出现）,cn_0
-,Hjorvard,Hjorvard,约尔瓦德,約爾瓦德,人名,mroczny_swiat 中隐居小岛的老维京战士，亲手训练八个儿子，借给比雅尼一行船和投石机（冰岛语名 Hjörvarðr，Hj 读作「约」）；原文另作：Hjorvarda、Hjorvardzie、Hjorv.（短标签）,mroczny_swiat
-,Hring,Hring,赫林,赫林,人名,比约恩的维京同伴，乐天、爱说笑；原文另作：Hringiem、Hringa,wybrzeze_czarow; wybrzeze_czarow_sc1; wybrzeze_czarow_sc2; wybrzeze_czarow_sub1; wybrzeze_czarow_sub2; wybrzeze_czarow_sub3; wybrzeze_czarow_sub4
-Pargalı İbrahim Pascha,Ibrahim Pasha / Pargali Ibrahim Pasha,Ibrahim Pasza,易卜拉欣帕夏,易卜拉欣帕夏,人名,苏莱曼的将军，东征巴格达，可用金币买其精锐；原文另作：Pargali Ibrahim Pasza、Ibrahima Paszy、PASZA（短标签）,wielka_inwazja
-,Idris,Idris,伊德里斯,伊德里斯,人名,哈奇的撒拉逊挚友，沉默寡言的士兵，父亲是商人，对山羊传说颇熟；结局远赴印度；原文另作：Idrisa、Idrisem、Idrisowi、Idirs（笔误）,saracen_1; saracen_1_sub_2; saracen_2; saracen_2_sub_1; saracen_3; saracen_3_sub_1; saracen_3_sub_2; saracen_3_sub_3; saracen_4; saracen_4_sub_1; saracen_4_sub_2; saracen_4_sub_3; saracen_4_sub_4
-,Ingvar,Ingvar,英格瓦尔,英格瓦爾,人名,CN 用户（真实网名，北欧人名）。boso_przez_swiat 中是三名指挥官之一，同死于伏击；cn 系列中与毛雷齐合开酿酒坊，兜售加密货币「Cultures币」；原文另作：Ingvara、Ingvarem、Ingvarowi,boso_przez_swiat; cn_0; cn_1; cn_2_dni; cn_2_dni_sub; cn_3; demo_mainmenu_10
-,Inrajb,Inrajb,尼雅比,尼雅比,人名,比雅尼的「另一个自我」，从蓝色雾团中现身的分身，代表他较少示人的一面，自称「哥哥」；原文另作：Inrajb'ie、Inrajb'em,kraina_starych_bohaterow; kraina_starych_bohaterow_sub2
-,Ivar,Ivar,伊瓦尔,伊瓦爾,人名,比约恩的维京同伴，谨慎多疑、说话尖刻；原文另作：Ivarem、Ivara,wybrzeze_czarow; wybrzeze_czarow_sc1; wybrzeze_czarow_sc2; wybrzeze_czarow_sub1; wybrzeze_czarow_sub2; wybrzeze_czarow_sub3; wybrzeze_czarow_sub4
-,Groat,Jaglak,雅格拉克,雅格拉克,人名,saracen_3_sub_3 中的一个席位名，剧情未提及；来历不明（英文作 Groat）,saracen_3_sub_3
-,Jakester,Jakester,Jakester,Jakester,人名,CN论坛用户（仅作单位名出现）,cn_2_dni; cn_2_dni_sub
-,Jamal,Jamal,贾迈勒,賈邁勒,人名,哈奇最好的朋友，与他同行营救卡利姆多；原文另作：Jamala、Jamalem、Jamalowi,upadek_krola; upadek_krola_sub
-,Janos Slynt,Janos Slynt,杰诺斯·史林特,傑諾斯·史林特,人名,守夜人军官（单位名）,wichry_zimy
-,Jaremy Rykker,Jaremy Rykker,杰瑞米·莱克,傑瑞米·萊克,人名,守夜人骑士（单位名）,wichry_zimy
-,Jaymer,Jaymer,Jaymer,Jaymer,人名,社区地图作者,battle_for_the_four_hills_multiplayer; the_lake_of_the_mists
-,Jeor Mormont,Jeor Mormont,杰奥·莫尔蒙,傑奧·莫爾蒙,人名,守夜人总司令，阵亡即任务失败；原文另作：Jeora Mormonta,wichry_zimy
-,Johny Roasted,Johny Pieczony,烤强尼,烤強尼,人名,莲花号幸存船员之一，晚年成为安拉的大祭司，看守「摩西圣布鞋」；原文另作：Johny,boso_przez_swiat
-,Jon Snow,Jon Snow,琼恩·雪诺,瓊恩·雪諾,人名,玩家英雄之一，守夜人新兵,wichry_zimy
-,Jozenkow / Jozenkov,Jozenkow,约曾科夫,約曾科夫,人名,社区地图作者（真实网名，签名常作 Joz），三十多张图署名「By Jozenkow」，署名处保留拉丁字母。作为角色：boso_przez_swiat 中是埃米尔、佐汉诺瓦蒂的同谋；cn 系列中因「JD」事件出走；gringo 中拼作 Dżozenkow，是传说中唯一能打败佐汉的「弥赛亚」（作者自嘲），同样作「约曾科夫」；原文另作：Dżozenkow、Joz,boso_przez_swiat; boso_przez_swiat_sub4; burza_piaskowa; cn_0; cn_1; cn_2_dni; cn_2_dni_sub; czarnoksieznik_z_szeolu; demo_mainmenu_10; diamentowa_dolina; gringo; lowcypustyni2; magiczny_las; mroczny_las; mroczny_swiat; mroczny_swiat_sub1; mroczny_swiat_sub2; nowa_nadzieja_byz; nowa_nadzieja_egy; nowa_nadzieja_fra; nowa_nadzieja_sar; nowa_nadzieja_vik; oasis_o_plenty; polski_mlyn_1_1; przekleta_kraina; saracen_1; saracen_2; saracen_3; saracen_4; smocza_kraina; starozytny_trakt; straznicypolnocy; tutorial_009; walhalla; wichry_zimy; wyspy_polnocy
-,Kai-Suke,Kai-Suke,凯介,凱介,人名,科任桑的弟弟，法兰克村庄的共同首领（假日本名）。佐汉辱称他 Kai-Suka（suka＝婊子），可译「凯贱」之类；原文另作：Kai-Suka（佐汉的辱称）,gringo; gringo_sub
-,Kain,Kain,凯恩,凱恩,人名,光明圣所的祭司，贝恩的兄弟；后被揭示为幽冥编造的幻影；原文另作：Kaina,mroczny_swiat; mroczny_swiat_sub2; mroczny_swiat_sub4
-,Kakus,Kakus,卡库斯,卡庫斯,人名,喝醉的德鲁伊，长着《我的世界》苦力怕的脑袋，「嘶嘶」后爆炸；原文另作：Kakusa、Kakusie,cn_2_dni; cn_2_dni_sub
-,Kameleon,Kameleon,Kameleon,Kameleon,人名,CN论坛用户（仅作单位名出现）,cn_2_dni; cn_2_dni_sub
-,Karl,Karl,卡尔,卡爾,人名,两个不同角色同名：wybrzeze_czarow 系列中比约恩一行唯一的法兰克人，始终不信任佐里安；cn 系列中只是论坛用户单位名；原文另作：Karlem、Karla,cn_0; cn_1; cn_2_dni; cn_2_dni_sub; demo_mainmenu_10; wybrzeze_czarow; wybrzeze_czarow_sc1; wybrzeze_czarow_sc2; wybrzeze_czarow_sub2; wybrzeze_czarow_sub3; wybrzeze_czarow_sub4
-,Karl the Short-bowman,Karl Krótkołuczny,短弓卡尔,短弓卡爾,人名,六勇士之一，「短弓族」首领,oasis_o_plenty
-,Klajszter,Klajszter,克莱什特,克萊什特,人名,多南日记中两名变态「研究员」之一,boso_przez_swiat
-Konstantin XI.,Constantine XI,Konstantyn XI,君士坦丁十一世,君士坦丁十一世,人名,末代拜占庭皇帝，战死于君士坦丁堡城墙,wielka_inwazja
-,Cornelius,Korneliusz,科尔内利乌斯,科爾內利烏斯,人名,奥特兰克被篡位的老国王，被关在奥特兰克监狱，获救后率逃兵反攻；原文另作：Korneliusza、K.Korneliusz,upadek_krola; upadek_krola_sub
-,Korsyn,Korsyn,Korsyn,Korsyn,人名,CN论坛用户（仅作单位名出现）,cn_2_dni; cn_2_dni_sub
-,Korzen-San,Korzen-San,科任桑,科任桑,人名,《外乡佬》主角，来自「樱花之国」的武士，凯介之兄、博日格涅夫的老友（Korzeń＝树根，加日式敬称 -San 的假日本名）。佐汉辱称他 Korzen-Sran（sran≈拉屎），可译「科任屎桑」之类；原文另作：Korzen、Korzen-Sran（佐汉的辱称）,gringo; gringo_sub
-,Krailotus / Krarilotus,Krailotus,克赖洛图斯,克賴洛圖斯,人名,德国玩家（真实网名），上届 CN 锦标赛冠军，收钱后倒戈德国人；说德语夹生波兰语。mroczny_swiat_sub2 谜题席位拼作 Krarilotus（笔误，同一人；谜题席位名保留拉丁字母）,cn_2_dni; cn_2_dni_sub; mroczny_swiat_sub2
-,King Antonidas,Król Antonidas,安东尼达斯国王,安東尼達斯國王,人名,被遗忘之森中法兰克城堡的国王，向朋友们求援；原文另作：Antonidas、Antonidasa,czarnoksieznik_z_szeolu
-,Krysia,Krysia,克丽霞,克麗霞,人名,山羊城长舌妇之一的女伴，一笔带过,saracen_2
-,kubaw208,kubaw208,kubaw208,kubaw208,人名,社区玩家昵称，谜题答案选项（席位名 s902）,mroczny_swiat_sub2
-,Kubawb,Kubawb,Kubawb,Kubawb,人名,CN论坛用户（仅作单位名出现）,cn_2_dni; cn_2_dni_sub
-,Lejba,Lejba,莱巴,萊巴,人名,科斯洛福德八巫师之一，借钱给学院修墙后又想多讹一笔，付钱后才肯去学院；提供车辆类魔法服务；原文另作：Lejbo、Lejby、Lejbie,wybrzeze_czarow; wybrzeze_czarow_sc1; wybrzeze_czarow_sc2
-,Forest Grandpa,Leśny dziadek,林中老翁,林中老翁,人名,中立NPC席位，林中隐居老人；原文另作：Dz.,nowa_nadzieja; nowa_nadzieja_byz; nowa_nadzieja_egy; nowa_nadzieja_fra; nowa_nadzieja_sar; nowa_nadzieja_vik
-,Leugim,Leugim,尔格米,爾格米,人名,与米格尔并列的商人席位，名字是 Miguel 倒写；原文另作：Leu,przekleta_kraina
-,Ruler Guy / Ruler,Linijkarz,量尺哥,量尺哥,人名,莲花号幸存船员之一，讲一段关于「量脚尺」的下流搭讪故事；原文另作：Linijkarza,boso_przez_swiat
-,Lord of Bones,Lord Kości,骸骨王,骸骨王,人名,野人头目（单位名）,wichry_zimy
-,lordMIREK,lordMIREK,lordMIREK,lordMIREK,人名,CN论坛用户（仅作单位名出现）,cn_0
-,Lucius,Lucius,卢修斯,盧修斯,人名,科斯洛福德八巫师之一，在南方山口独居；靴子坏了不肯赤脚穿林，提供军事帮助（随机盔甲）；原文另作：Luciusa、Luciusowi,wybrzeze_czarow; wybrzeze_czarow_sc1; wybrzeze_czarow_sc2
-Mohammed,Muhammad,Mahomet,穆罕默德,穆罕默德,人名,伊斯兰先知（撒拉逊卫兵台词）,boso_przez_swiat; gringo
-,Malekhit,Malekhit,玛勒基特,瑪勒基特,人名,守卫世界树的千岁精灵，傲慢，安排伊科尔与劳菲的灵体会面；影射《雷神2》黑暗精灵玛勒基斯,straznicypolnocy
-,Mance Rayder,Mance Rayder,曼斯·雷德,曼斯·雷德,人名,野人之王，任务要求俘获并处以火刑；原文另作：Mance'a、Mancea Raydera、Manceowi,wichry_zimy
-Marduk,Marduk,Marduk,马尔杜克,馬爾杜克,人名,卡扎尔人首领、泽尔扎尔的部下，盘踞马尔杜克巢穴；在saracen_3_sub_2被击杀；原文另作：Marduka、Mardukiem,saracen_3; saracen_3_sub_1; saracen_3_sub_2; saracen_3_sub_3
-,Mateo22,Mateo22,Mateo22,Mateo22,人名,CN论坛用户（仅作单位名出现）,cn_1; demo_mainmenu_10
-,Mati,Mati,Mati,Mati,人名,CN论坛用户（仅作单位名出现）,cn_0
-,Matrix,Matrix,Matrix,Matrix,人名,脚本协助者,wielka_kolonizacja_iii_1_0
-,Matusz,Matusz,Matusz,Matusz,人名,CN论坛用户（仅作单位名出现）,cn_2_dni; cn_2_dni_sub
-,Maurycy,Maurycy,毛雷齐,毛雷齊,人名,CN 用户（真实网名，波兰人名）。boso_przez_swiat 中是普罗沙克派出的三名指挥官之一，在杰卡奇岛遇伏身亡；cn 系列中是酒鬼，与英格瓦尔合开酿酒坊；原文另作：Maurycego、Maurycym、Maurycemu,boso_przez_swiat; cn_0; cn_1; cn_2_dni; cn_2_dni_sub; cn_3; demo_mainmenu_10
-,Menelix / Druid Menelix,Menelix,梅内利克斯,梅內利克斯,人名,德鲁伊（menel「醉汉流浪汉」＋《阿斯泰利克斯》式 -ix 词尾）。straznicypolnocy 中在南方山里收集护符；przekleta_kraina 中收 300 份油后解除蛇灾诅咒；原文另作：Druid Menelix,przekleta_kraina; straznicypolnocy
-,Merxes,Merxes,梅尔克塞斯,梅爾克塞斯,人名,前罗马帝国侦察兵，收钱和靴子替苏丹侦察敌城；原文另作：Merxesowi,wielka_inwazja
-,Michał,Michał,米哈乌,米哈烏,人名,CN 用户（真实网名，波兰人名），三联城西区之主；满嘴「你老爸……中风」之类的骂人梗；原文另作：Michała、Michałem、Michale、Mich..,cn_0; cn_1; demo_mainmenu_10
-,michben7,michben7,michben7,michben7,人名,CN论坛用户（仅作单位名出现）,cn_2_dni; cn_2_dni_sub
-Mickiewicz,Mickiewicz,Mickiewicz,密茨凯维奇,密茨凱維奇,人名,波兰民族诗人亚当·密茨凯维奇，作者自嘲押韵差时提及；原文另作：Mickiewiczowi,starozytny_trakt
-Mieszko,Mieszko,Mieszko,梅什科,梅什科,人名,波兰尼部落王公，欲统一斯拉夫诸部（影射梅什科一世）；原文另作：Mieszka,polski_mlyn_1_1
-,Mikulus,Mikulus,米库卢斯,米庫盧斯,人名,CN 用户、作者兼测试者（真实网名，作者署名「Mikulus（Mikołaj Walc）」保留原文）。boso_przez_swiat_sub4 中是水下洞穴的隐士（「大隐士」）；cn 系列中扮成甘道夫，「你不能过去！」后牺牲；oasis_o_plenty、trybuty_dwoch_swiatow 作者；原文另作：Mikulusa、Mikulusowi、Mikulusie、pustelnik Mikulus、Mikulus（Mikołaj Walc）,boso_przez_swiat; boso_przez_swiat_sub4; cn_0; cn_2_dni; cn_2_dni_sub; cn_4; gringo; oasis_o_plenty; piramida_skarbow; trybuty_dwoch_swiatow; wielka_kolonizacja_iii_1_0; wybrzeze_czarow
-Moses,Moses,Mojżesz,摩西,摩西,人名,圣经人物，见「摩西圣布鞋」；原文另作：Mojżesza,boso_przez_swiat; saracen_4_sub_3
-,Darkness,Mrok,幽冥,幽冥,人名,《黑暗世界》系列反派：曾是凡人，承接死神之力后自封为神，控制人心、把世界变成永夜（mrok＝昏暗，作人名并变格 Mroka）；也是席位名；原文另作：Mroka、Mrokiem,mroczny_swiat; mroczny_swiat_sub1; mroczny_swiat_sub2; mroczny_swiat_sub4
-,Myrman,Myrman,米尔曼,米爾曼,人名,多南日记中被熊袭击的伐木班长；原文另作：Myrmana,boso_przez_swiat
-,Neptune,Neptun,尼普顿,尼普頓,人名,CN 用户（真实网名，取罗马海神名），与阿瑞斯同住奥林匹斯山，召唤水元素战士；原文另作：Neptuna、Neptunem、Neptunowi,cn_0; cn_1; cn_2_dni; cn_2_dni_sub; demo_mainmenu_10
-,Neriv,Neriv,Neriv,Neriv,人名,CN论坛用户（仅作单位名出现）,cn_0; cn_2_dni; cn_2_dni_sub
-,Rogue,Nicpoń,二流子,二流子,人名,山羊国的怪人，自称曾为奴隶；策划「新埃斯梅拉达」骗局帮哈奇凑齐百只山羊，后随队同行，在saracen_4被巴尔塔扎尔灭口；原文另作：Nicponia、Nicponiem、Nicponiowi,saracen_2; saracen_3; saracen_4
-,Bear Barabbas,Niedźwiedź Barabasz,巴拉巴熊,巴拉巴熊,人名,扮成老人的熊，莲花号幸存船员之一（Barabasz 即圣经人名巴拉巴），在东部山中自建村庄（疑即「老人村」）；原文另作：Barabasz、Barabasza、BARABASZ,boso_przez_swiat
-,Niellegalny,Niellegalny,Niellegalny,Niellegalny,人名,被加托放逐的 CN 老用户（真实网名，仅被提及，保留拉丁字母；意为拼错的「非法」）；原文另作：Niellegalnego,cn_1; demo_mainmenu_10
-Nostradamus,Nostradamus,Nostradamus,诺查丹玛斯,諾查丹瑪斯,人名,驱使龙群的暴君，率领拜占庭人；原文另作：Nostradamusa,smocza_kraina
-,Father Pijo,Ojciec Pijo,皮约神父,皮約神父,人名,cn_1 中一句台词的署名（实为兹比雷克所说），疑戏仿毕奥神父（Ojciec Pio）＋ pije「喝酒」,cn_1; demo_mainmenu_10
-,Olaf the Mead-drinker,Olaf Miodopitny,蜂蜜酒奥拉夫,蜂蜜酒奧拉夫,人名,丰饶绿洲六勇士之一，「蜂蜜酒族」首领，须在开局决斗；六人的诨号都取自游戏物品名，须与 HUD 物品名一致（蜂蜜酒）,oasis_o_plenty
-,Pierres,Pierres,皮埃尔,皮埃爾,人名,科斯洛福德八巫师之一，来自法兰克的隐居者，能施放消灭蛇怪的地震,wybrzeze_czarow; wybrzeze_czarow_sc1; wybrzeze_czarow_sc2
-,Piwko,Piwko,皮夫科,皮夫科,人名,加托的盟友、同为被放逐的前管理员（真实网名，piwko＝小啤酒）；结局与加托一同被处决。席位「GaTo i Piwko」＝加托和皮夫科；原文另作：Piwka、Piwkiem,cn_0; cn_1; cn_6; demo_mainmenu_10
-,Portunio,Portunio,Portunio,Portunio,人名,CN论坛用户（仅作单位名出现）,cn_2_dni; cn_2_dni_sub
-,Prajdo,Prajdo,Prajdo,Prajdo,人名,社区地图作者 Brainy 的另一网名（真实网名），署名「Made by Prajdo aka Brainy」保留拉丁字母,wielkie_sprzatanie_2_0
-,Proszak,Proszak,普罗沙克,普羅沙克,人名,CulturesNation 论坛首席管理员（真实网名）。boso_przez_swiat 中是穆卡拉赫城统治者，比雅尼的旧友，最终被揭露为杀害兹比雷克的「恶人」并遭私刑；cn 系列主角，被加托囚禁十年后越狱收复 CN；saracen_2 中有其「普罗禁卫军」。名字谐音 prosiak「小猪」，故被敌人骂作「猪猡」。作者署名处保留 Proszak；原文另作：Proszaka、Proszakowi、Proszakiem、Proszaku,boso_przez_swiat; boso_przez_swiat_sub2; boso_przez_swiat_sub4; boso_przez_swiat_sub5; burza_przybzezna_1_2; cn_0; cn_1; cn_2; cn_2_dni; cn_2_dni_sub; cn_3; cn_4; cn_5; cn_6; demo_mainmenu_10; kraina_tysisca_jezior_1_1; krwawa_rzeka; mroczny_swiat_sub2; piracka_utopia_1_0; samotna_gora; saracen_2; wielka_kolonizacja; wielka_kolonizacja_ii_1_1; wielka_kolonizacja_iii_1_0
-,Qhorin Halfhand,Qhorin Półręki,断掌科林,斷掌科林,人名,长城外营地的游骑兵首领（亦为席位名）；原文另作：Qhorina Półrękiego,wichry_zimy
-,Quekuss,Quekuss,奎库斯,奎庫斯,人名,CN 老用户（真实网名），南采石场囚犯，台词全是《魔兽争霸III》兽人苦工语音（用中文版苦工台词）；原文另作：Quekussa,cn_1; cn_4; demo_mainmenu_10
-,Ragnar Bluebeard,Ragnar Błękitnobrody,蓝须拉格纳尔,藍鬚拉格納爾,人名,唯一回应求援的维京首领，在被遗忘之森中战死；原文另作：Ragnar,czarnoksieznik_z_szeolu
-,RajTo / Caliph RajTo,RajTo,赖托,賴托,人名,CN 老用户（真实网名，raj＝天堂）。boso_przez_swiat 中是大维齐尔、率努斯拉阵线围城，后被佐汉诺瓦蒂刺杀；cn 系列中是三联城北区之主、「最大的搞事王」，口头禅 Wypierdalaj、Dymy；w_oku_niepewnosci 席位「Kalif RajTo」＝哈里发赖托。测试者署名处保留 RajTo；原文另作：Rajta、Rajt、Kalif RajTo,boso_przez_swiat; cn_0; cn_1; cn_2_dni; cn_2_dni_sub; demo_mainmenu_10; saracen_4; w_oku_niepewnosci
-,Remik,Remik,雷米克,雷米克,人名,CN 用户兼地图作者（真实网名，现实中做了 frankmod、Remik's editor、CST 等工具）。boso_przez_swiat 中是三名指挥官之一；cn 系列中是「最勤劳的工匠」。作为 zdradziecka_mielizna、krwawa_rzeka 作者署名保留 Remik；原文另作：Remika、Remikiem、Remikowi、Proszak & Remik,boso_przez_swiat; cn_0; cn_1; cn_2_dni; cn_2_dni_sub; demo_mainmenu_10; krwawa_rzeka; zdradziecka_mielizna
-Ricardo Milos,Ricardo Milos,Ricardo Milos,里卡多·米洛斯,里卡多·米洛斯,人名,莲花号幸存船员之一，荒岛上只跳舞不说话,boso_przez_swiat
-,Unscrewer,Rozkręcacz,拆螺丝狂,拆螺絲狂,人名,莲花号幸存船员之一，从小爱拧松螺丝，长大后制造连环交通事故的杀手；童年绰号「无轨电车」；原文另作：Rozkręcarz、Rozkręcacza、Trolejbus、Trolej、Trolley,boso_przez_swiat
-,Rufus,Rufus,鲁弗斯,魯弗斯,人名,被押送的强盗；得到幻象后偷走奥丁圣瓶，以阻止洛基复活；原文另作：Rufusa、Rufusie,niezwykla_wyprawa
-,Rumu,Rumu,鲁穆,魯穆,人名,CN 老用户（真实网名）。boso_przez_swiat 中被判终身监禁，在地牢化名「X」（保留拉丁字母）领导暴动；cn 系列中是枕套村村长，说话故意错字连篇、爱押韵（译文用谐音错别字和押韵再现）。gringo 中仅作肖像/地形制作者署名,boso_przez_swiat; boso_przez_swiat_sub2; cn_0; cn_1; cn_2_dni; cn_2_dni_sub; demo_mainmenu_10; gringo; nowa_nadzieja_byz; nowa_nadzieja_egy; nowa_nadzieja_fra; nowa_nadzieja_sar; nowa_nadzieja_vik
-Saladin,Saladin,Saladyn,萨拉丁,薩拉丁,人名,Walhalla 中的埃及英雄,walhalla
-,Samuel,Samuel,塞缪尔,塞繆爾,人名,Jozenkow 笔下会扭曲时空的人物：saracen_4 系列中是暗影群岛上以灵魂为食的「收割者」（Żniwiarz），替泽尔扎尔保管第四枚戒指；mroczny_swiat 中是眼神不好的老隐士 pustelnik Samuel「隐士塞缪尔」，能开传送门（同一作者，疑为同一角色）；原文另作：Samuela、Żniwiarz（原文笔误 Żniwiaż）,mroczny_swiat; saracen_4; saracen_4_sub_1; saracen_4_sub_3
-,Samwell Tarly,Samwell Tarly,山姆威尔·塔利,山姆威爾·塔利,人名,玩家英雄之一，守夜人新兵,wichry_zimy
-,SanTiago,SanTiago,圣地亚哥,聖地亞哥,人名,CN 用户兼地图作者（真实网名，原文写作 SanTiago），造船、与亚当对骂押韵；自称地图《Decision Time》在美国畅销；原文另作：SanTiaga、SanTiagowi,cn_0; cn_1; cn_2_dni; cn_2_dni_sub; demo_mainmenu_10
-,Santor,Santor,桑托尔,桑托爾,人名,CN 用户（真实网名），三联城东区之主，沉迷《英雄联盟》，念叨德莱厄斯、斯维因、厄加特、俄洛伊（用游戏官方中文名）；原文另作：Santora、Santorem、Santorze,cn_0; cn_1; cn_2_dni; cn_2_dni_sub; demo_mainmenu_10
-Shrek,Shrek,Shrek,史莱克,史萊克,人名,与埃米兰多同住沼泽的怪物史莱克,cn_2_dni; cn_2_dni_sub
-,Sierra,Sierra,谢拉,謝拉,人名,拜占庭远征队女首领，为寻找远古之蛇深入蛇窟后失踪，被英雄救出；原文另作：Sierry、Sierrą、Sierrę,zdradziecka_mielizna; zdradziecka_mielizna_sub2
-,Sergeant Dairy,Sierżant Nabiał,乳品中士,乳品中士,人名,莲花号船长，来自3459年、靠吃乳制品获得超能力的「超级英雄」；原文另作：Nabiała、NABIAŁ,boso_przez_swiat
-,Silverdragon / SilverDragon,Silverdragon,银龙,銀龍,人名,CN 用户（真实网名，字面「银龙」，cn 系列把他写成一条银龙，故意译），「CN 警长」，率龙群清剿机器人；saracen_4 测试者署名保留 SilverDragon；原文另作：SilverDragon、Silvedragon、Silver,cn_0; cn_1; cn_2_dni; cn_2_dni_sub; cn_3; demo_mainmenu_10; saracen_4
-,Greybeard / Grey,Siwobrody,灰须,灰鬚,人名,山谷维京人首领，伊科尔的老师兼父辈之交，特拉因之父，病逝；原文另作：Siwobrodego、Siwobrodym、Siwy、Siwego（简称）,straznicypolnocy
-,Slawek,Slawek,Slawek,Slawek,人名,CN论坛用户（仅作单位名出现）,cn_0
-,Space,Space,Space,Space,人名,地图创意提供者,bogata_kotlina
-,StachuMMV,StachuMMV,StachuMMV,StachuMMV,人名,社区地图作者兼测试者（wybrzeze_czarow 系列、bogata_kotlina、flagomania、oasis_o_plenty、piramida_skarbow），署名保留拉丁字母；原文另作：Stachu,bogata_kotlina; flagomania_1_0_01; oasis_o_plenty; piramida_skarbow; wielka_kolonizacja_iii_1_0; wybrzeze_czarow
-,Stanislaw III the Stonelander,Stanisław III Skamieniały,石化斯坦尼斯瓦夫三世,石化斯坦尼斯瓦夫三世,人名,石民部落王公，玩家角色之一；Skamieniały＝石化的，中文「石化」也有「惊呆」之意；原文另作：Stanisławowi III Skamieniałemu、Stanisław,polski_mlyn_1_1
-,Stannis Baratheon / Stannis,Stannis Baratheon,史坦尼斯·拜拉席恩,史坦尼斯·拜拉席恩,人名,援军席位/单位名；原文另作：Stannis,wichry_zimy
-,Struś,Struś,斯特鲁希,斯特魯希,人名,CN 用户（真实网名，struś＝鸵鸟，却被叫作驼鹿），拉人「做比育碧更大的游戏」却压低报酬,cn_2_dni; cn_2_dni_sub
-,Styr,Styr,斯蒂尔,斯蒂爾,人名,北方另一维京氏族首领，被劳菲冻成冰雕，靠龙焰解冻；原文另作：Styra、Styrem、Sty（短标签）,straznicypolnocy; straznicypolnocy_sub1
-Süleyman,Suleiman,Sulejman,苏莱曼,蘇萊曼,人名,奥斯曼苏丹，玩家角色，意图征服欧洲；原文另作：Sulejmana、Sulejmanowi、Sulejmanie,wielka_inwazja
-,Thartler,Thartler,塔特勒,塔特勒,人名,CN 用户（真实网名），建起「Discord」村收留流浪维京人（影射他创建了 CN 的 Discord 服务器）。原文多处拼错；原文另作：Tharler、Thatler,cn_0; cn_1; cn_2_dni; cn_2_dni_sub; demo_mainmenu_10
-,Thrain,Thrain,特拉因,特拉因,人名,灰须之子，被北方维京人扣为人质，后继任山谷维京人首领并求和；原文另作：Thraina、Thrainem,straznicypolnocy
-,Tommy,Tommy,汤米,湯米,人名,德国城市「维京人汤米」的首领（单位名）,cn_2_dni; cn_2_dni_sub
-,Torvald the Cake-eater,Torwald Ciastkożerny,蛋糕托瓦尔德,蛋糕托瓦爾德,人名,六勇士之一，「蛋糕族」首领,oasis_o_plenty
-,Trundle,Trundle,特朗德尔,特朗德爾,人名,saracen_3 字符串中的英雄名，剧情未出场；疑取自《英雄联盟》巨魔之王特朗德尔,saracen_3
-,Tutengamon,Tutengamoń,图坦呆蒙,圖坦呆蒙,人名,传说中半人半神的古埃及法老，能召唤蛇战士大军；原文另作：Tutengamonia,gringo
-,Tyrannica,Tyrannica,Tyrannica,Tyrannica,人名,CN论坛用户（仅作单位名出现）,cn_2_dni; cn_2_dni_sub
-,Vendos,Vendos,Vendos,Vendos,人名,CN论坛用户（仅作单位名出现）,cn_1; demo_mainmenu_10
-,Vieti,Vieti,Vieti,Vieti,人名,CN论坛用户（仅作单位名出现）,cn_2_dni; cn_2_dni_sub
-,Wallmar,Wallmar,瓦尔马尔,瓦爾馬爾,人名,科斯洛福德学院的前学生、「反巫师」，心术不正，几乎控制欧洲一条重要商路并在各地设营；在系列前作中死去，其力量转移到阿尔埃帕卡身上；原文另作：Wallmara,wybrzeze_czarow; wybrzeze_czarow_sc1; wybrzeze_czarow_sc2; wybrzeze_czarow_sub2
-,Caliph Warden,Warden,Warden,Warden,人名,席位名，社区成员网名；原文另作：Kalif Warden,w_oku_niepewnosci
-,Forkbeard,Widłobrody,叉胡子,叉鬍子,人名,科斯洛福德八巫师之一，自称「永恒吗哪与健康饮品之主」（widły＝草叉，broda＝胡子）；与既有词表的岔胡子福克比尔德（Gabelbart）不是同一人，故用「叉胡子」区分；原文另作：Widłobrodego,wybrzeze_czarow; wybrzeze_czarow_sc1; wybrzeze_czarow_sc2
-,Wilczuś,Wilczuś,Wilczuś,Wilczuś,人名,CN论坛用户（仅作单位名出现）,cn_1; demo_mainmenu_10
-,Jarl Wojak555,Wojak555,Wojak555,Wojak555,人名,席位名，社区成员网名；原文另作：Jarl Wojak555,w_oku_niepewnosci
-Wojciech Cejrowski,Wojciech Cejrowski,Wojciech Cejrowski,沃伊切赫·采罗夫斯基,沃伊切赫·采羅夫斯基,人名,莲花号行动的组织者、著名旅行家，总是赤脚；后揭晓为佐汉诺瓦蒂的伪装；原文另作：Cejrowski、Cejrowskiego、Cejrowskim、CEJROWSKI,boso_przez_swiat; boso_przez_swiat_sub4
-,Wojciech I the Woodlander,Wojciech I Drewniak,木头沃伊切赫一世,木頭沃伊切赫一世,人名,木民部落王公，玩家角色之一；Drewniak 源自 drewno「木头」，中文「木头」兼指呆子，呼应结尾「我们总被一群笨蛋统治」的自嘲。昵称 Wojtek 仍作沃伊切赫；原文另作：Wojciechowi I Drewniakowi、Wojciech、Wojtek,polski_mlyn_1_1
-,Zalazar,Zalazar,扎拉扎尔,扎拉扎爾,人名,惯常为造船匠运来欧洲橡木的商人，「另有要事」缺席,saracen_3_sub_3
-,Zbirek,Zbirek,兹比雷克,茲比雷克,人名,CN 创始人、前首席管理员（真实网名，zbir＝恶棍）。boso_przez_swiat 中是已故前任统治者，被尊为「万物之父」，实为普罗沙克所杀；cn 系列中主持序章的用户大会、为「大变革」募捐；原文另作：ZbiRek,boso_przez_swiat; boso_przez_swiat_sub5; cn_0; cn_1; cn_2_dni; cn_2_dni_sub; cn_4; demo_mainmenu_10
-,Zelzar,Zelzar,泽尔扎尔,澤爾扎爾,人名,本系列反派：生于利雅得的矮小暴君，用时空卷轴从过去召来卡扎尔战士建立帝国；终在狮身人面像内被杀；原文另作：Zelzara、Zelzarem、Zelzarowi、Wielki Zelzar、Zelzarek（指小）、Zelzarowcy（其党羽）,saracen_1; saracen_2; saracen_2_sub_1; saracen_3; saracen_3_sub_1; saracen_3_sub_3; saracen_4; saracen_4_sub_1; saracen_4_sub_3; saracen_4_sub_4
-,Ziomus,Ziomus,齐奥穆斯,齊奧穆斯,人名,CN 用户（真实网名，俚语 ziomuś＝哥们）。boso_przez_swiat 中是普罗沙克的密探，被佐汉诺瓦蒂杀害；cn_4 主角，潜入地牢救出埃韦利娜。口头禅 Uszanowanko（宜统一作「致敬致敬」之类）；原文另作：Ziomusia、Ziomusiowi、Ziomusiem、ziomusia,boso_przez_swiat; cn_0; cn_1; cn_2_dni; cn_2_dni_sub; cn_4; demo_mainmenu_10
-,Zkajo,Zkajo,兹卡约,茲卡約,人名,CN 老前辈（真实网名），路边耳背的老人,cn_0; cn_2_dni; cn_2_dni_sub
-,Zohanowaty / Zohan,Zohanowaty,佐汉诺瓦蒂,佐漢諾瓦蒂,人名,Jozenkow 系列的头号反派（真实网名，取自电影《别惹佐汉》＋后缀 -owaty「…似的」）。boso_przez_swiat 中是蒙面刺客、基地组织首领，揭面后即「赤足之人」，最终称哈里发；gringo 系列中自称「圣座大人」，每次「扔烟雾弹」逃走；cn 系列中是 CN 城门守卫。简称 Zohan 统一作「佐汉」，昵称 Zohuś 作「小佐汉」；也是 lowcypustyni2、wody_nilu、ucieczka_z_gazy 的作者署名（保留拉丁字母）；原文另作：Zohan、Zohana、Zohanowatego、Zohanowatemu、Zohanowatym、Zohanowi、Zohanowty、Zohanem、Zohuś、Zohanowatum（假拉丁语）,boso_przez_swiat; boso_przez_swiat_sub2; boso_przez_swiat_sub4; boso_przez_swiat_sub5; cn_0; cn_1; cn_2_dni; cn_2_dni_sub; demo_mainmenu_10; gringo; gringo_sub; lowcypustyni2; ucieczka_z_gazy; wody_nilu
-,Zorian,Zorian,佐里安,佐里安,人名,自称来自海峡对岸的冒险者，骗得信任后盗抄科斯洛福德典籍的反派；自称「既非神也非人」，蛇怪不攻击他；也是席位名；原文另作：Zoriana、Zorianem、Zorianie、zoriana,wybrzeze_czarow; wybrzeze_czarow_sc1; wybrzeze_czarow_sc2; wybrzeze_czarow_sub2; wybrzeze_czarow_sub3; wybrzeze_czarow_sub4
-,Žyroslav,Żyrosław,日罗斯瓦夫,日羅斯瓦夫,人名,科斯洛福德八巫师之一，斯拉夫人，营地常被蛇怪骚扰；可复活阵亡战士、召唤战士之魂,wybrzeze_czarow; wybrzeze_czarow_sc1; wybrzeze_czarow_sc2; wybrzeze_czarow_sub1
-Alfheim,Álfheim,Álfheim,亚尔夫海姆,亞爾夫海姆,地名,精灵之国；原文另作：Álfheimu,straznicypolnocy
-,Whorehouse,Agencja towarzyska,伴游会所,伴遊會所,地名,阿尔拉巴巴尔城西南的妓院（agencja towarzyska 是委婉说法；直称 Burdel 时作「妓院」）；情节敏感,saracen_3_sub_3
-,Al-Mukallah,Al-Mukallah,穆卡拉赫,穆卡拉赫,地名,恶土的都城（以也门港口穆卡拉为原型），普罗沙克统治的要塞与大市场，boso_przez_swiat 系列主舞台；结尾被佐汉诺瓦蒂改名 Al-Mukalla，作「穆卡拉」以保留改名效果；gringo 中是佐汉治下的大城；原文另作：Al-Mukalla、Al-M（短标签）,boso_przez_swiat; boso_przez_swiat_sub2; boso_przez_swiat_sub5; gringo
-,Al-Rabarbar,Al-Rabarbar,阿尔拉巴巴尔,阿爾拉巴巴爾,地名,一千年前的卡扎尔城市，被河分成三块；原文另作：A-rabarbar,saracen_3_sub_3
-,Alterack,Alterack,奥特兰克,奧特蘭克,地名,卡利姆多的邻国（拜占庭人），新国王篡位后向卡利姆多开战（也是席位名）,upadek_krola; upadek_krola_sub
-Arabien,Arabia,Arabia,阿拉伯,阿拉伯,地名,阿拉伯地区：wybrzeze_czarow 系列、boso_przez_swiat、gringo 等多图提及；原文另作：Arabii,boso_przez_swiat; boso_przez_swiat_sub5; gringo; wybrzeze_czarow; wybrzeze_czarow_sub2
-,Arabian Archipelago / Arabian Islands,Arabski Archipelag,阿拉伯群岛,阿拉伯群島,地名,无人群岛，中央传有金山（地图名「阿拉伯群岛」）；原文另作：Arabskie Wyspy,arabskie_wyspy_wolna_gra_mieszana
-Athen,Athens,Ateny,雅典,雅典,地名,哈奇回忆中的航海目的地,saracen_3
-,Bad Land,Bad Land,恶土,惡土,地名,阿拉伯半岛南端的地区，本系列舞台；原文另作：Bad Landem、Bad Landzie、Bad Landu,boso_przez_swiat; boso_przez_swiat_sub4
-,Byzantine military outpost / Byz.outp.,Bizantyjska placówka wojskowa,拜占庭军事据点,拜占庭軍事據點,地名,南方开采矿石的拜占庭据点，可雇佣弓手、换取投石机（席位名）；原文另作：Biz.plac、placówka bizantyjczyków,blekiny_nurt
-,Byzantine Garrison,Bizantyjski Garnizon,拜占庭驻军,拜占庭駐軍,地名,拜占庭的驻军城：kraina_starych_bohaterow 中北方有发光湖与蓝色雾团的驻军城，后被洛基攻破；niezwykla_wyprawa 中是押送鲁弗斯的目的地，巴西尔将军驻守；原文另作：Bizantyjska twierdza,kraina_starych_bohaterow; niezwykla_wyprawa
-,Blaaby,Blaaby,布拉比,布拉比,地名,附近岛上敌视外人的维京殖民地，偷了纽斯通的金币和奖杯；也是席位名,wybrzeze_czarow
-Blauer Nil,Blue Nile,Błękitny Nil,青尼罗河,青尼羅河,地名,青尼罗河；原文另作：Błękitnego Nilu,blekiny_nurt
-,Blue Nile,Błękitny Nurt,蓝色激流,藍色激流,地名,地图标题：一群埃及人沿青尼罗河而上，建立自己的部族；原文另作：Błekitny Nurt,blekiny_nurt
-,Rich Valley,Bogata Kotlina,富饶谷地,富饒谷地,地名,四方争夺的山林盆地；地图名,bogata_kotlina
-Bombay,Bombay,Bombaj,孟买,孟買,地名,佐汉的军队正在围攻的城市；原文另作：Bombaju,gringo_sub
-,Ingvar and Maurycy's brewery,Browar Ingvara i Maurycego,英格瓦尔和毛雷齐的酿酒坊,英格瓦爾和毛雷齊的釀酒坊,地名,英格瓦尔与毛雷齐的蜂蜜酒酿酒坊，玩家在其周围建村；其仓库被毁则任务失败；原文另作：browar、browara、magazyn browara,cn_0
-,Stormy Mountain,Burzliwa Góra,风暴山,風暴山,地名,山民部落要塞所在的山，会让征服者手下忘记效忠对象；原文另作：Burzliwej Góry、Góra,polski_mlyn_1_1
-,Death Cell,Cela Śmierci,死亡囚室,死亡囚室,地名,东边几年前还用来处决囚犯的牢房，英雄们设计把洛基关在里面；原文另作：celi śmierci,kraina_starych_bohaterow_sub2
-,Byzantine Empire / BIZANTIUM,Cesarstwo Bizantyjskie,拜占庭帝国,拜占庭帝國,地名,希拉之父统治的帝国：kraina_starych_bohaterow 中是洛基的目标、也是席位名（作席位时作「拜占庭」）；wielkie_sprzatanie 中集齐四英雄后派来援军（Cesarstwo Bizancjum）；原文另作：Cesarstwo Bizancjum、cesarstwo、BIZ,kraina_starych_bohaterow; kraina_starych_bohaterow_sub2; wielkie_sprzatanie; wybrzeze_czarow
-Khartum,Khartoum,Chartum,喀土穆,喀土穆,地名,埃及移民的故乡城市,blekiny_nurt
-,Chujno,Chujno,丘伊诺,丘伊諾,地名,750年前山羊国的大城，埃斯梅拉达降临之地；原文另作：Chujna、Chujnie,saracen_2; saracen_2_sub_1
-,cultures.dbv,cultures.dbv,cultures.dbv,cultures.dbv,地名,旧的波兰《Cultures》粉丝站，在 cn 系列中拟人为一座「城市」，加托曾在那里；网址保留拉丁字母；原文另作：cultures dbv、cultures.dbv.pl,cn_1; demo_mainmenu_10
-,Castle Black,Czarny Zamek,黑城堡,黑城堡,地名,守夜人总部（亦为席位名）；原文另作：Czarnego Zamku,wichry_zimy
-,Four Hills / Battle for the Four Hills,Cztery Wzgórza,四丘,四丘,地名,被石峡隔开的四座山丘；地图名「四丘之战」；原文另作：Bitwa o Cztery Wzgórza,battle_for_the_four_hills_multiplayer
-,Diamond Valley,Diamentowa Dolina,钻石谷,鑽石谷,地名,中央有钻石矿的山谷；地图名,diamentowa_dolina
-,Discord,Discord,Discord,Discord,地名,塔特勒建的村子，影射 CN 的 Discord 服务器；应用名保留拉丁字母；原文另作：discordzie、Discorda、discorda、Dsc,cn_0; cn_2_dni
-,Nile Valley / Waters of the Nile,Dolina Nilu,尼罗河谷,尼羅河谷,地名,尼罗河谷；地图名「尼罗河之水」；原文另作：Wody Nilu,wody_nilu
-Eilat,Eilat,Ejlat,埃拉特,埃拉特,地名,哈奇回忆中的围城战（今以色列埃拉特）,saracen_3
-,Flatland / Faltland,Flatland,低地,低地,地名,多人地图中维京部族的故乡之一（对应既有词表「低地人」）；Faltland 为笔误；原文另作：Faltland（笔误）,arabskie_wyspy_wolna_gra_mieszana; krwawa_rzeka
-,Frankia,Frankia,法兰克,法蘭克,地名,法兰克，巫师皮埃尔的故乡；原文另作：Frankii,wybrzeze_czarow
-,Franconian Castle / the Castle,Frankoński Zamek,法兰克城堡,法蘭克城堡,地名,地图西部的法兰克城堡，付 5 金币可换受训骑士；原文另作：Zamek、Zamku、z Zamku,wielkie_sprzatanie
-Gaza,Gaza,Gaza,加沙,加沙,地名,非利士人的故城，已被焚毁（圣经时代背景）；原文另作：Gazy,ucieczka_z_gazy
-,Gloomland,Gloomland,幽地,幽地,地名,多人地图中维京部族的故乡之一（对应既有词表「幽地人」）；原文另作：Gloomlandu,krwawa_rzeka; piramida_skarbow
-,Glork,Glork,格洛克,格洛克,地名,哈奇与阿齐姆相识的战役所在,saracen_3
-,Marduk's Nest,Gniazdo Marduka,马尔杜克巢穴,馬爾杜克巢穴,地名,河心岛上由旧矿改建的卡扎尔大本营；原文另作：Gnieździe Marduka、Gniazdem Marduka,saracen_3; saracen_3_sub_1; saracen_3_sub_2; saracen_3_sub_3
-,Ascension Mountain,Góra Wyniesienia,升华之山,升華之山,地名,阳光聚焦时能让凡人「升华」的古庙山（英雄无效）；原文另作：Wyniesienie、Wynieść,saracen_4
-,Peace Mountain,Góra Zgody,和睦山,和睦山,地名,洞穴中三王会面的山,saracen_3_sub_1
-,Grassland / Inhabitants of Grassland,Grassland,草原,草原,地名,多人地图中维京部族的故乡之一（原版部族名中没有，按高地、低地、幽地的意译体系作「草原」）；居民 Grasslandczycy 作「草原人」，Wikingowie z Grasslandu 作「草原维京人」；原文另作：Grasslandczycy、Mieszkańcy Grasslandu、Grass.,arabskie_wyspy_wolna_gra_mieszana; flagomania_1_0_01; piramida_skarbow
-,Tomb of Immortal Chaos,Grobowiec Nieśmiertelnych Rządzy,不灭欲念之墓,不滅欲念之墓,地名,比雅尼为囚禁洛基的死亡囚室所取的新名,kraina_starych_bohaterow_sub2
-,Tomb of the Ancients,Grobowiec Starożytnych,远古者之墓,遠古者之墓,地名,封存五位远古天选者之力的地下陵墓与废城（支线1标题）；原文另作：Grobowiec Bohaterów、Grobowiec,kraina_starych_bohaterow; kraina_starych_bohaterow_sub1
-,tomb of Elijah,Grób Eliasza,以利亚之墓,以利亞之墓,地名,传说中先知以利亚之墓，墓中泉水据说可预见未来；实为谣言；原文另作：grób proroka Eliasza、groby Eliasza,boso_przez_swiat; boso_przez_swiat_sub4
-Helluland,Helluland,Helluland,赫鲁兰,赫魯蘭,地名,多人地图中维京部族的故乡之一；居民＝既有词表「赫鲁兰人」；原文另作：Hellulandu,arabskie_wyspy_wolna_gra_mieszana; flagomania_1_0_01; krwawa_rzeka; piramida_skarbow
-,Highland,Highland,高地,高地,地名,多人地图中维京部族的故乡之一（对应既有词表「高地人」）；不要与 polski_mlyn 的 Górzanie「山民」混用；原文另作：Highlandu,krwawa_rzeka
-,,Hogland,霍格兰,霍格蘭,地名,piramida_skarbow 中的维京部族故乡，无英文参考；居民 Hoglandczycy 作「霍格兰人」（短标签 Hog. 作「霍」）；原文另作：Hoglandczycy、Hog.,piramida_skarbow
-,Jarlvik,Jarlvik,雅尔维克,雅爾維克,地名,英格兰西部的维京城镇（席位「维京人」），布拉比人称其居民为「那些橙色的」；原文另作：Jarlviku,wybrzeze_czarow
-,Cave in the Waterfall,Jaskinia w wodospadzie,瀑布洞穴,瀑布洞穴,地名,瀑布旁的洞穴，第三个开关所在，住着法兰克三王；原文另作：jaskinia przy wodospadzie,saracen_3; saracen_3_sub_1
-,Werewolf Cave,Jaskinia Wilkołaków,狼人洞穴,狼人洞穴,地名,藏有第七块方尖碑的古老洞穴（支线地图）,wilczy_lad; wilczy_lad_sub
-Jerusalem,Jerusalem,Jeruzalem,耶路撒冷,耶路撒冷,地名,耶路撒冷，与安条克之间的商路经过塔克西尔所在山口,wybrzeze_czarow_sub2
-,Lake Auhazja,Jezioro Auhazja,奥哈齐亚湖,奧哈齊亞湖,地名,利雅得附近干涸大半、被视为闹鬼的湖；原文另作：jeziora Auhazja,saracen_3; saracen_4
-,The Lake of the Mists,Jezioro Mgieł,迷雾之湖,迷霧之湖,地名,雾中似有幻影的大湖；地图名,the_lake_of_the_mists
-Jötunheim,Jotunheim,Jotunheim,约顿海姆,約頓海姆,地名,冰巨人的世界；straznicypolnocy_sub2 的地图标题；原文另作：Jotunheimu、JOTUNHEIM（子图标题）,straznicypolnocy; straznicypolnocy_sub2
-,Calimdor,Kalimdor,卡利姆多,卡利姆多,地名,汉穆拉比治下的商贸王城，位于欧亚商路上，建在河畔（也是席位名）；原文另作：Kalimdoru、KALIMDORU,upadek_krola; upadek_krola_sub
-,Quarry,Kamieniołom,采石场,採石場,地名,东北山中的采石场村庄，佐汉诺瓦蒂在此设伏（席位名）；原文另作：Kam,boso_przez_swiat
-,Southern Quarry,Kamieniołom Południowy,南采石场,南採石場,地名,地牢里的南采石场（势力名，短标签「南」）；原文另作：Południowy kamieniołom、Południe,cn_4
-,Northern Quarry,Kamieniołom Północny,北采石场,北採石場,地名,地牢里的北采石场（势力名，短标签「北」）；原文另作：Północny kamieniołom、Północ,cn_4
-,stone tomb / crypt,Kamienny grobowiec,石墓,石墓,地名,CN 东南方的石墓及地下迷宫，机器人残部的巢穴；cn_3 标题 PODZIEMIA 作「地底」；原文另作：grobowiec、grobowca、kamiennych grobowców、krypta、krypcie、podziemny labirynt、PODZIEMIA,cn_0; cn_3
-Kanaan,Canaan,Kanaan,迦南,迦南,地名,迦南地,ucieczka_z_gazy
-Kloster Jasna Góra,Monastery on the Bright Mountain,Klasztor na Jasnej Górze,光明山修道院,光明山修道院,地名,西南山上的修道院，收金币出售重装骑士；原文另作：Klasztoru na Jasnej Górze、Klas.（短标签）,gringo
-,Viking colony,Kolonia Wikingów,维京殖民地,維京殖民地,地名,盗掘城堡宝物的年轻维京人在古墓以东新建的殖民地，索要70金币贡金；原文另作：nowa kolonia wikingów,kraina_starych_bohaterow
-,Zelzar Chamber,Komnata Zelzara,泽尔扎尔的寝宫,澤爾扎爾的寢宮,地名,利雅得城中泽尔扎尔的居室,saracen_4
-Konstantinopel,Constantinople,Konstantynopol,君士坦丁堡,君士坦丁堡,地名,1453 年陷落的拜占庭都城,wielka_inwazja
-,Kobold's Mine,Kopalnia Koboldów,狗头人矿井,狗頭人礦井,地名,狗头人的古矿，第一枚戒指藏处（saracen_1_sub_2 为三百年前的矿内）；原文另作：Opuszczona Kopalnia Koboldów、kopalni koboldów,saracen_1; saracen_1_sub_2; saracen_2_sub_1
-,Koslowford / Koslow.,Koslowford,科斯洛福德,科斯洛福德,地名,英格兰的巫师学院所在城市，道路铺石、建筑仿拜占庭；也是席位名；原文另作：Koslowfordu、Koslowfordzie、Koslow.,wybrzeze_czarow; wybrzeze_czarow_sc1; wybrzeze_czarow_sc2; wybrzeze_czarow_sub2; wybrzeze_czarow_sub3; wybrzeze_czarow_sub4
-,Goatland,Kozoland,山羊国,山羊國,地名,崇拜山羊的国度，saracen_2 及其子图的舞台；原文另作：Kozolandu、Kozolandzie,saracen_1; saracen_2; saracen_2_sub_1; saracen_3; saracen_4
-,Land of Old Heroes / Land of Ancient Heroes,Kraina Starych Bohaterów,古英雄之地,古英雄之地,地名,拜占庭帝国西部、比雅尼殖民地所在的地区；也是地图名；原文另作：Kraina Starożytnych Bohaterów、Krainy Starożytych Bohaterów（笔误）、Kraina Bohaterów,kraina_starych_bohaterow; kraina_starych_bohaterow_sub1; kraina_starych_bohaterow_sub2
-Land der tausend Seen,Land of a Thousand Lakes,Kraina Tysiąca Jezior,千湖之国,千湖之國,地名,斯堪的纳维亚东端（波兰语对芬兰的惯用别称）；地图名,kraina_tysisca_jezior_1_1
-,King's Landing,Królewska Przystań,君临,君臨,地名,《权力的游戏》中的君临城（约曾科夫的赎罪之行）,cn_0
-,Bloody River,Krwawa Rzeka,血河,血河,地名,两队隔河对峙；地图名,krwawa_rzeka
-,Hideout of Zohanowaty / Zohan's Hideout,Kryjówka Zohanowatego,佐汉诺瓦蒂的藏身处,佐漢諾瓦蒂的藏身處,地名,sub5 地图名：佐汉诺瓦蒂的山洞藏身处；原文另作：Kryjówka Zohana、kryjówka jaskinna,boso_przez_swiat; boso_przez_swiat_sub5
-,Culturesnation Headquarters,Kwatera Główna culturesnation,Culturesnation 大本营,Culturesnation 大本營,地名,CN 的大本营：cn_1 序章中召开用户大会之处；cn_0 结局时加托与皮夫科藏身于此；cn_6 标题 CULTURESNATION: KWATERA GŁÓWNA，两人在此被处决；原文另作：kwatera główna、kwaterze głównej、KWATERY GŁÓWNEJ、kwatery,cn_0; cn_1; cn_6; demo_mainmenu_10
-,Monsters' Lair,Legowisko Potworów,怪物巢穴,怪物巢穴,地名,子地图标题：龙穴深处的怪物巢穴,straznicypolnocy; straznicypolnocy_sub1
-,Snake Lair,Legowisko Węży,蛇巢,蛇巢,地名,日罗斯瓦夫营地南边古墓下的蛇怪巢穴（支线1标题）；原文另作：legowisko,wybrzeze_czarow_sub1; wybrzeze_czarow_sub3; wybrzeze_czarow_sub4
-Levante,Levant,Lewant,黎凡特,黎凡特,地名,地中海东岸地区，塔克西尔所在；原文另作：Lewantu,wybrzeze_czarow; wybrzeze_czarow_sc1; wybrzeze_czarow_sub2
-,Al-Mukallah Dungeons,Lochy Al-Mukallah,穆卡拉赫地牢,穆卡拉赫地牢,地名,sub2 地图名：城东的地下监狱，从无人活着出来；原文另作：lochy、loch Al-Mukallah、lochy culturesnation,boso_przez_swiat; boso_przez_swiat_sub2
-,Culturesnation dungeons,Lochy culturesnation,Culturesnation 地牢,Culturesnation 地牢,地名,加托关押 CN 用户的地牢，囚犯在采石场做苦工；cn_4 标题 CULTURESNATION: LOCHY；原文另作：lochach、lochów、lochy、LOCHY,boso_przez_swiat; cn_0; cn_4
-,Lowrak,Lowrak,洛夫拉克河,洛夫拉克河,地名,曾经宽深的河流，因沿岸各族修坝而变浅,zdradziecka_mielizna
-,Lawa,Ława,瓦瓦岛,瓦瓦島,地名,比约恩一行自称来自的岛屿（英格兰以东）；Ł 读作 w，Ława 读音同 Wawa（波兰人对华沙的俗称），按新华社波兰语译音恰为「瓦瓦」，保留了这个暗梗；原文另作：Ławy,wybrzeze_czarow
-,Magical Forest,Magiczny Las,魔法森林,魔法森林,地名,隔开两方、传说闹鬼的森林；地图名；原文另作：Magicznego Lasu,magiczny_las
-Mallorca,Majorca,Majorka,马略卡岛,馬略卡島,地名,鲁穆押韵台词：「我要跑去马略卡岛」；原文另作：majorke,cn_2_dni
-Markland,Markland,Markland,边地,邊地,地名,多人地图中维京部族的故乡之一；随既有词表 Marklandczyk＝边地人 意译；原文另作：Marklandu,arabskie_wyspy_wolna_gra_mieszana; flagomania_1_0_01; kraina_tysisca_jezior_1_1; krwawa_rzeka; piramida_skarbow
-Medina,Medina,Medyna,麦地那,麥地那,地名,巴尔塔扎尔声称要去的南方城市；原文另作：Medyny、Medynie,saracen_1; saracen_2
-Mekka,Mecca,Mekka,麦加,麥加,地名,哈奇途中停留献祭之地；原文另作：Mecce,boso_przez_swiat
-,Ancestral Fog,Mgła Przodków,先祖之雾,先祖之霧,地名,法兰克聚落中的魔法泉与法阵，投入10枚金币可召唤英雄之魂；原文另作：Mgłę Przodków、magiczne źródełko、magiczny krąg,niezwykla_wyprawa
-,City of the Goat Believers / Fanatics' City,Miasto Wyznawców Kóz,山羊信徒之城,山羊信徒之城,地名,山羊信徒之城；原文另作：miasto wyznawców Wielkiej Kozy、miasto Fanatyków,saracen_2; saracen_2_sub_1
-,Dark Forest,Mroczny Las,幽暗森林,幽暗森林,地名,蒙面人盘踞、驯服狼与蛇的大森林，地图 mroczny_las 的标题；saracen_4 制作名单提到作者先完成了这张图。避免用「黑暗森林」；原文另作：Mrocznego Lasu,mroczny_las; saracen_4
-,the Wall,Mur,长城,長城,地名,守夜人守卫的长城；原文另作：Muru、Murze、za Murem,wichry_zimy
-,Port city of Myros,Myros,米罗斯,米羅斯,地名,遗忘大陆上的港口城市，战乱瘟疫幸存者的文化熔炉（中立席位）；原文另作：Miasto portowe Myros,wielka_kolonizacja_iii_1_0
-,Newstone,Newstone,纽斯通,紐斯通,地名,友好的英格兰大城，可贸易、买雇佣兵；也是席位名；原文另作：Newstone'a、Newstone'u,wybrzeze_czarow
-,Nordhav,Nordhav,诺德哈夫,諾德哈夫,地名,比约恩一行的家乡与根据地；原文另作：Nordhavu,wybrzeze_czarow
-,Oasis O' Plenty,Oaza Obfitości,丰饶绿洲,豐饒綠洲,地名,神明以人血为祭、赐下无尽物资的古老绿洲；地图名,oasis_o_plenty
-,Byzantine Camp,Obóz Bizantyjczyków,拜占庭营地,拜占庭營地,地名,拜占庭远征队营地（席位名）；原文另作：Obóz Bizancjum,zdradziecka_mielizna
-,Franks / Franconian camp,Obóz Franków,法兰克营地,法蘭克營地,地名,奥利维耶召来的法兰克骑士营地；原文另作：Obóz frankońskich rycerzy,saracen_3
-,General Olivier camp,Obóz Generała Oliviera,奥利维耶将军营地,奧利維耶將軍營地,地名,奥利维耶将军的营地；原文另作：Gen.Ol.,saracen_4
-,Hatchie's Camp,Obóz Hatchiego,哈奇的营地,哈奇的營地,地名,mroczny_swiat 中哈奇的营地（席位名，短标签 Hat）；目标里的 placówka Hatchiego 作「哈奇的前哨」；原文另作：placówka Hatchiego、Hat（短标签）,mroczny_swiat
-,Mercenary camp,Obóz najemników,雇佣兵营地,僱傭兵營地,地名,出售埃及战士、拜占庭卫队和法兰克骑士的雇佣兵营地（席位名）；原文另作：Naj,boso_przez_swiat
-,Nomads' Camp,Obóz Nomadów,游牧民营地,遊牧民營地,地名,山间的游牧民营地,saracen_3
-,Octagon,Oktagon,八角笼,八角籠,地名,阿雷克的格斗擂台（综合格斗八角笼），cn_5的场景；原文另作：oktagonie,cn_0; cn_5
-Olymp,Olympus,Olimp,奥林匹斯山,奧林匹斯山,地名,阿瑞斯与尼普顿的居所，岩浆的源头；原文另作：Olimpie、Olimpowi、góra Olimp、górę Olimp,cn_0
-,Fishing village,Osada rybacka,渔村,漁村,地名,过去的渔村（哈希姆所在）；原文另作：Obóz Rybaków,saracen_2_sub_1
-,Shallow River,Płytkie Brody,浅水渡口,淺水渡口,地名,因远方修坝而水位下降、可以涉渡的河；地图 plytkie_brody_1_1 的标题（与「险恶浅滩」区分）,plytkie_brody_1_1
-Podlachien,Podlasie,Podlasie,波德拉谢,波德拉謝,地名,埃米兰多的村子和阿雷克的擂台所在的沼泽地区（现实中波兰东北部地区）；原文另作：podlasia、podlasiu、podlaskie bagna、podlaskich bagnach、socjalistyczne podlasie,cn_0
-,Underwater Cave,Podwodna jaskinia,水下洞穴,水下洞穴,地名,sub4 地图名：米库卢斯隐居、传说中以利亚之墓所在的水下洞穴,boso_przez_swiat; boso_przez_swiat_sub4
-,Frankish dungeons / Golden palaces,Podziemia Franków,法兰克地下城,法蘭克地下城,地名,法兰克要塞下的地下黄金之城，囚禁被掳的维京人，有第三个水坝开关；原文另作：podziemia warowni Franków、Złote pałace,zdradziecka_mielizna; zdradziecka_mielizna_sub3
-,Protectorate Undergrounds,Podziemia Protektoratu,保护国地下城,保護國地下城,地名,保护国之民的地下迷宫，三法师藏身处,saracen_4; saracen_4_sub_2
-,Underground Crypt of the Guardians,Podziemna krypta strażników,守护者地穴,守護者地穴,地名,光明圣所下的地穴（子地图标题）；原文另作：KRYPTA、MROCZNY ŚWIAT: KRYPTA,mroczny_swiat_sub2
-,Field of Glory,Pole Chwały,荣耀之地,榮耀之地,地名,wielkie_sprzatanie_2_0 中可供哈奇传送的地点，英雄须先到访过才能传送过去；原文作 POLE CHWAŁY,wielkie_sprzatanie_2_0
-,Byzantine outpost,Posterunek Bizantyjczyków,拜占庭哨所,拜占庭哨所,地名,奥利维耶派来的拜占庭哨所,saracen_3
-,Southern Fort,Posterunek Dolny,南哨所,南哨所,地名,泽尔扎尔的三座哨所之一（「下哨所」，英文作南）；原文另作：Post. Dol,saracen_1
-,Northern Fort,Posterunek Północny,北哨所,北哨所,地名,泽尔扎尔的三座哨所之一；原文另作：Post. Pół.,saracen_1
-,Central Fort,Posterunek Środkowy,中哨所,中哨所,地名,泽尔扎尔的三座哨所之一；原文另作：Post. Śro.,saracen_1
-,Pillowcase,Poszewka,枕套村,枕套村,地名,鲁穆当村长的村子（2 dni中的势力名）；原文另作：Poszewki,cn_2_dni; cn_2_dni_sub
-,Cursed Valley,Przeklęta Dolina,被诅咒的山谷,被詛咒的山谷,地名,地图标题：以糕点美酒闻名、被地精诅咒的法兰克山谷,przekleta_dolina
-,Cursed Land,Przeklęta Kraina,被诅咒之地,被詛咒之地,地名,蛇战士盘踞、受诅咒的山谷；地图名；原文另作：przeklętej krainie,przekleta_kraina
-,Public Penitentiary Facility No. 3,Publiczny Zakład Karny nr 3,第3号公共监狱,第3號公共監獄,地名,鲁弗斯被押往的拜占庭监狱；原文另作：Zakład Karny nr.3、Zakładzie Karnym,niezwykla_wyprawa
-,Mehat Desert,Pustynia Mehat,梅哈特沙漠,梅哈特沙漠,地名,利雅得以南的大沙漠，巴尔塔扎尔逃亡处,saracen_4_sub_3
-,Desert Village,Pustynna Wioska,沙漠村庄,沙漠村莊,地名,沙漠中的隐士村落，首领持有按钮地图（席位名）；原文另作：Pustynną Wioskę、WIOSKA,upadek_krola
-,Rado,Rado,拉多,拉多,地名,比约恩一行要回去的地方（nad Rado，似为河流或湖泊，可作「拉多河畔」），未能确认,wybrzeze_czarow
-Riad,Riyadh / Rijad,Rijad,利雅得,利雅得,地名,泽尔扎尔的出生地与帝国首都；原文另作：Rijadu、Rijadzie、Riyadh（英文）,saracen_1; saracen_3; saracen_4; saracen_4_sub_1; saracen_4_sub_2; saracen_4_sub_3; saracen_4_sub_4
-,Bjarni's Hometown Village,Rodzinna wioska Bjarniego,比雅尼的故乡,比雅尼的故鄉,地名,比雅尼的故乡村庄，被幽冥摧毁,mroczny_swiat_sub1
-,Miners' Ruins,Ruiny Górników,矿工村废墟,礦工村廢墟,地名,玩家席位名：被占领的矿工村废墟（关押凯介）；原文另作：Ruin（短标签）,gringo
-,Lonely Mountain,Samotna Góra,孤山,孤山,地名,斯堪的纳维亚森林中富含铁与金的孤峰；地图名,samotna_gora
-,Sanctuary of Light,Sanktuarium Światła,光明圣所,光明聖所,地名,凯恩所在的圣所，可解除黑暗附身；后被揭示为幽冥的幻象；原文另作：Wielkie Sanktuarium Światła、Sanktuarium,mroczny_swiat; mroczny_swiat_sub2; mroczny_swiat_sub4
-,download server,Serwer download,下载服务器,下載服務器,地名,CN网站的下载服务器，加托把上面的地图全烧了,cn_0
-,Sphinx / Inside the Sphinx,Sfinks,狮身人面像,獅身人面像,地名,saracen_4、saracen_4_sub_4 中泽尔扎尔最后的藏身处，凭门禁卡开启（子图标题 Wnętrze Sfinksa＝狮身人面像内部）；wielkie_sprzatanie 中沙漠里藏有机关的狮身人面像；原文另作：Wnętrze Sfinksa、sfinksa、Sfinksa,saracen_4; saracen_4_sub_4; wielkie_sprzatanie
-,dragon cave,Smocza jaskinia,龙穴,龍穴,地名,龙巢，即子地图《怪物巢穴》；原文另作：smoczą jaskinię,straznicypolnocy; straznicypolnocy_sub1
-,Dragon Land III,Smocza Kraina,龙之地,龍之地,地名,诺查丹玛斯以龙群统治的地区；地图 smocza_kraina 的标题作「龙之地 III」（既有词表另有同名多人地图 Kraina Smoków＝龙之地）；原文另作：Smocza Kraina III,smocza_kraina
-,Southfolk,Southfolk,索斯福克,索斯福克,地名,土地贫瘠的英格兰小村，请求修建三座农场；也是席位名；原文另作：Southfolku,wybrzeze_czarow
-,meadow,Spokojna Polana,宁静草地,寧靜草地,地名,洞穴中供中部之王休息的草地；原文另作：polana,saracen_3_sub_1
-,Old Yours,Stara Twoja,你老娘坡,你老娘坡,地名,科任桑与佐汉交战的「战场」bitwa pod Starą Twoją，纯属骂人谐音（「在你老娘那儿」），译「你老娘坡之战」之类,gringo
-,The Ancient Trail,Starożytny Trakt,古道,古道,地名,四神决战的古商道；地图名,starozytny_trakt
-,Sarranid sultanate,Sułtanat sarranidzki,萨兰德苏丹国,薩蘭德蘇丹國,地名,咬喉者曾篡夺的苏丹国；原文另作：sułtanatem sarranidzkim,boso_przez_swiat
-Scheol,Sheol,Szeol,冥府,冥府,地名,希伯来圣经中的冥界；巫师的来处；原文另作：Szeolu、Szeolem,czarnoksieznik_z_szeolu; piramida_skarbow
-Schottland,Scotland,Szkocja,苏格兰,蘇格蘭,地名,苏格兰，纽斯通在此赢得比赛奖杯；原文另作：Szkocji,wybrzeze_czarow
-,Koslowford school,Szkoła Koslowford,科斯洛福德学院,科斯洛福德學院,地名,科斯洛福德学院，培养巫师的学府，主楼是典型英式城堡；原文另作：szkoła w Koslowford,wybrzeze_czarow; wybrzeze_czarow_sc1; wybrzeze_czarow_sc2
-,Jozenkow's sewing workshop,Szwalnia Jozenkowa,约曾科夫的缝纫作坊,約曾科夫的縫紉作坊,地名,约曾科夫废弃的缝纫作坊，藏着皮甲和长弓；原文另作：szwalni、OPUSCZONA SZWALNIA JOZENKOWA,cn_0
-,World Trade Center,Światowe Centrum Handlu,世界贸易中心,世界貿易中心,地名,穆卡拉赫市场边的两座古塔，城市象征，被佐汉诺瓦蒂炸毁；原文另作：Wieże、Wieże targowiska、Światowym Centrum Handlu,boso_przez_swiat
-,holy / sacred mountain,Święta Góra,圣山,聖山,地名,山羊城中央的圣山，举行穿越仪式之处,saracen_2; saracen_2_sub_1
-,holy island,Święta Wyspa,圣岛,聖島,地名,山羊国南面的圣岛，方尖碑上刻有诗篇恶搞,saracen_2
-,Tagołababa / Thisnakedlady,Tagołababa,塔戈瓦巴巴,塔戈瓦巴巴,地名,亚丁湾中的火山（wulkan Tagołababa 塔戈瓦巴巴火山），前往以利亚之墓的航标；谐音 ta goła baba「这个光身子婆娘」，英文参考作 Thisnakedlady,boso_przez_swiat; boso_przez_swiat_sub3
-,secret passage,Tajemne przejście,秘密通道,秘密通道,地名,通往CN城后方/地牢深处的秘密通道（cn_0为山路，cn_4为魔法传送门）；原文另作：tajemnego przejścia、tajemnym przejściem、sekretnym przejściu,cn_0; cn_4
-,Taqsir,Taqsir,塔克西尔,塔克西爾,地名,黎凡特的阿拉伯商业城市，阿尔埃帕卡的住处；也是席位名；原文另作：Taqsiru、Taqsirze,wybrzeze_czarow; wybrzeze_czarow_sc1; wybrzeze_czarow_sc2; wybrzeze_czarow_sub2
-Dreistadt,Tri-City,Trójmiasto,三联城,三聯城,地名,赖托、桑托尔、米哈乌三人分治的三分之城（结盟），CN最大的聚落；原文另作：trójmiasta、trójmieście、3m,cn_0
-,Frankish Fortress,Twierdza Franków,法兰克要塞,法蘭克要塞,地名,nowa_nadzieja 系列中最终要攻破的法兰克要塞（席位名，短标签 Tw.）；五个民族版本相同；原文另作：Frankońska Twierdza、Tw.,nowa_nadzieja; nowa_nadzieja_byz; nowa_nadzieja_egy; nowa_nadzieja_fra; nowa_nadzieja_sar; nowa_nadzieja_vik
-,Ulvhus,Ulvhus,乌尔夫胡斯,烏爾夫胡斯,地名,比约恩一行已不复存在的旧家园（「老乌尔夫胡斯」）；原文另作：Ulvhusu,wybrzeze_czarow
-,Bjarni's Mind,Umysł Bjarniego,比雅尼的心灵,比雅尼的心靈,地名,幽冥向比雅尼展示一生记忆的心灵空间（子地图标题）,mroczny_swiat_sub4
-Vinland,Vinland / Winland,Vinland,文兰,文蘭,地名,多人地图中维京部族的故乡之一；居民＝既有词表「文兰人」。拼法 Vinland、Winland、Winnland 混用,arabskie_wyspy_wolna_gra_mieszana; flagomania_1_0_01; kraina_tysisca_jezior_1_1; krwawa_rzeka; piramida_skarbow
-,Cutthroat Fortress,Warownia Siepaczy,凶徒要塞,兇徒要塞,地名,法兰克人的要塞（席位名），地下藏着黄金之城,zdradziecka_mielizna
-,Snake Gate,Wężowa Brama,蛇门,蛇門,地名,地精消失后留下钥匙的门，可借贡品控制蛇战士；原文另作：Wężowej Bramy,przekleta_dolina
-,Alterack Prison,Więzienie Alterack,奥特兰克监狱,奧特蘭克監獄,地名,关押老国王科尔内利乌斯的地牢（子地图标题）；原文另作：WIĘŹIENIE ALTERACK（笔误）,upadek_krola; upadek_krola_sub
-,Wikinger Tommy.de,Wikinger Tommy,维京人汤米,維京人湯米,地名,德国人的城市，2 dni中要攻下的敌城；影射德国Cultures粉丝站wikinger-tommy.de（「他们做烂地图」）；原文另作：Wikinger Tommy .de,cn_2_dni; cn_2_dni_sub
-,Wolf Land,Wilczy Ląd,狼之地,狼之地,地名,狼患肆虐的岛；地图名，支线作「Wilczy Ląd - Zadanie Dodatkowe」；原文另作：Wilczy Lad,wilczy_lad; wilczy_lad_sub
-,Village of Franks / Frankish Village,Wioska Franków,法兰克村庄,法蘭克村莊,地名,kraina_starych_bohaterow 中南方以贸易为生的友好小村；mroczny_swiat_sub3 中被附身的比雅尼攻打的村庄（席位名）,kraina_starych_bohaterow; mroczny_swiat_sub3
-,Southern Village,Wioska Południowa,南村,南村,地名,哈奇旧邻居的村庄，提供援军；原文另作：Wios. Poł,saracen_1
-,Harbor village,Wioska portowa,港口村,港口村,地名,出售帆船的港口村（席位名）；原文另作：Port,boso_przez_swiat
-,Northern Village,Wioska Północna,北村,北村,地名,哈奇旧邻居的村庄，提供援军；原文另作：Wios. Pół,saracen_1
-,Farming Village / FARMERS,Wioska rolnicza,农庄,農莊,地名,务农经商的维京小村（席位名，标签「农民」）；原文另作：ROLNICY,zdradziecka_mielizna
-,Elder's village,Wioska starca,老人村,老人村,地名,席位名「老人的村庄」；文中巴拉巴熊扮成老人住在东部山中自建村庄，疑为同一处；原文另作：Wsk,boso_przez_swiat
-,Eastern village,Wioska wschodnia,东村,東村,地名,阿瑞斯治下、为城市供粮的东村（席位名）；原文另作：Ws1,boso_przez_swiat
-,Western village,Wioska zachodnia,西村,西村,地名,埃米兰多治下的西村，后被屠（席位名）；原文另作：Ws2,boso_przez_swiat
-,East Watch,Wschodnia Strażnica,东海望,東海望,地名,长城东段的第二座要塞（席位名）,wichry_zimy
-,Coast of Wonders / Shore of Spells,Wybrzeże czarów,魔法海岸,魔法海岸,地名,系列地图标题：比约恩一行赴英格兰的故事,wybrzeze_czarow; wybrzeze_czarow_sc1; wybrzeze_czarow_sc2; wybrzeze_czarow_sub1; wybrzeze_czarow_sub2; wybrzeze_czarow_sub3; wybrzeze_czarow_sub4
-,Island of the Miracle Obelisk,Wyspa Cudownego Obelisku,神奇方尖碑之岛,神奇方尖碑之島,地名,立有神奇方尖碑的西方小岛，献上 30 份仪式油的地点；原文另作：Wyspie Cudownego Obelisku,wilczy_lad; wilczy_lad_sub
-,Dzejka's island,Wyspa Dzejka,杰卡奇岛,傑卡奇島,地名,杰卡奇的法兰克人所在的东南岛屿，三名指挥官在此遇伏；原文另作：wyspie Dzejka、wyspa franków,boso_przez_swiat
-,Island of the Raiders,Wyspa Łupieżców,劫掠者之岛,劫掠者之島,地名,越狱犯争夺的小岛；地图名,wyspa_lupiezcow
-,Shadow Islands,Wyspy Cienia,暗影群岛,暗影群島,地名,奥哈齐亚湖中的岛群，塞缪尔与暗影所在；原文另作：Wysp Cienia,saracen_4; saracen_4_sub_1
-,Northern Islands,Wyspy Północy,北方群岛,北方群島,地名,寒冷北方的群岛；地图名,wyspy_polnocy
-,Frankish Castle / Castle,Zamek Franków,法兰克城堡,法蘭克城堡,地名,安东尼达斯的城堡，建在凯尔特古墓地上，有五座城门（席位名）；原文另作：Zamku Franków、zamek Króla Antonidasa、Zamek,czarnoksieznik_z_szeolu
-,Lord Brown's castle,Zamek Lorda Browna,布朗勋爵城堡,布朗勳爵城堡,地名,南方的城堡废墟，远古天选者在此与巨龙决战，亡魂从这里出现；原文另作：ruiny zamku,kraina_starych_bohaterow
-,Forgotten Forest,Zapomniany Las,遗忘之森,遺忘之森,地名,安东尼达斯城堡所在的森林，维京援军在此覆没；原文另作：Zapomnianego Lasu,czarnoksieznik_z_szeolu
-Golf von Aden,Gulf of Aden,Zatoka Adeńska,亚丁湾,亞丁灣,地名,sub3 地图名；莲花号沉没处，通往水下洞穴的海域,boso_przez_swiat; boso_przez_swiat_sub3
-,Treacherous Shoal,Zdradziecka Mielizna,险恶浅滩,險惡淺灘,地名,地图系列标题：比雅尼的船在洛夫拉克河的浅滩搁浅（Remik 作品）；子图标题后缀 -sub、-sub2、-sub3 作「支线1/2/3」；原文另作：ZDRADZIECKA MIELIZNA,zdradziecka_mielizna; zdradziecka_mielizna_sub1; zdradziecka_mielizna_sub2; zdradziecka_mielizna_sub3
-,Aaron / Aaron the Time Keeper,Aaron,亚伦,亞倫,神名,时空守护者，克洛诺斯之子，守护时空隧道；被泽尔扎尔以四枚戒指囚于魔笼，获释后追杀泽尔扎尔；原文另作：Aarona、Aaronem、Aaron - Strażnik Czasoprzestrzeni、Strażnik,saracen_1; saracen_2; saracen_2_sub_1; saracen_3; saracen_3_sub_3; saracen_4; saracen_4_sub_2
-,White God,Biały Bóg,白神,白神,神名,第二位导师，纯粹的光明，代表意识与未来；原文另作：Białego Boga、Białym bogu,mroczny_swiat_sub4
-Bragi,Bragi,Bragi,布拉基,布拉基,神名,诗歌之神，召来商人米格尔,walhalla
-,Black God,Czarny Bóg,黑神,黑神,神名,幽冥故事中的第一位导师，纯粹的黑暗，代表肉体与根源；原文另作：Czarnego Boga,mroczny_swiat_sub4
-,Great Goat Esmeralda / Esmerald,Esmeralda,埃斯梅拉达,埃斯梅拉達,神名,山羊国崇拜的「伟大山羊」（Wielka Koza Esmeralda 伟大山羊埃斯梅拉达），传说一声咩叫击溃围城大军；「新埃斯梅拉达」是哈奇一行打扮出的假货；原文另作：Wielka Koza、Święta Koza、Nowa Esmeralda,saracen_2; saracen_2_sub_1
-Freyr,Freyr,Frejr,弗雷,弗雷,神名,丰饶之神，召唤精灵,walhalla
-Hermes,Hermes,Hermes,赫尔墨斯,赫爾墨斯,神名,众神信使，阿瑞斯派他去宣告普罗沙克还活着,cn_0
-Hödur,Hodur,Hodur,霍德尔,霍德爾,神名,黑暗之神（Höðr）,walhalla
-Jahwe,Yahweh,Jahwe,耶和华,耶和華,神名,基督徒之神（法兰克席位）,starozytny_trakt
-Jesus,Jesus,Jezus,耶稣,耶穌,神名,约曾科夫自称被钉上十字架时把他救下来的耶稣,cn_0
-Laufey,Laufey,Laufey,劳菲,勞菲,神名,冰巨人之王（北欧神话中是洛基之母，漫威电影中是冰霜巨人之王），能把敌人冻成冰，企图让世界永冻；mroczny_swiat_sub4 中只作席位名；原文另作：Laufeya、Laufeyem、Laufeyu,mroczny_swiat_sub4; straznicypolnocy; straznicypolnocy_sub2
-,The Mill,Młynek,研磨神,研磨神,神名,巴尔塔扎尔信奉的神，每半年要求献祭；młynek＝小磨子，也是俚语里的大麻研磨器，呼应同关的「魔法草药」笑话；原文另作：Młynka,saracen_1
-Sif,Sif,Sif,希芙,希芙,神名,丰收女神,walhalla
-Skadi,Skadi,Skadi,斯卡蒂,斯卡蒂,神名,狩猎女神,walhalla
-,Death,Śmierć,死神,死神,神名,拟人化的死神，把全能之力交给幽冥,mroczny_swiat_sub4
-Tyr,Tyr,Tyr,提尔,提爾,神名,战神,walhalla
-Wendigo,Wendigo,Wendigo,温迪戈,溫迪戈,神名,洛基威胁要拿英雄去喂的食人怪物（北美传说）,kraina_starych_bohaterow_sub2
-Ymir,Ymir,Ymir,伊米尔,伊米爾,神名,原初冰巨人（Walhalla 中可选神祇）,walhalla
-Zeus,Zeus,Zeus,宙斯,宙斯,神名,「蓝眼睛的希腊人」信奉的神（拜占庭席位）,starozytny_trakt
-al-Qaida,Al-Qaeda,Al-Qaeda,基地组织,基地組織,族群,佐汉诺瓦蒂创立的「恐怖组织」，主要敌对势力（席位名）；原文另作：Al-Qaedy、Al-Qaedą、Al-Qaede、Qae,boso_przez_swiat
-,Ali Baba and the 40 Thieves,Ali Baba i 40 rozbójników,阿里巴巴与四十大盗,阿里巴巴與四十大盜,族群,diamentowa_dolina 中占据钻石矿的敌对席位；mroczny_swiat 中占据金矿岛、收铁器换开采权的席位（拼作 Alibaba）；原文另作：Alibaba i 40 rozbójników、Alibaba,diamentowa_dolina; mroczny_swiat
-,Alterian spearmen,Alterańscy Włócznicy,奥特兰克矛兵,奧特蘭克矛兵,族群,每5人付5枚金币即可雇佣的奥特兰克矛兵；原文另作：Alterańskich Włóczników、włóczników z Alterack,upadek_krola
-,Arthurian tribe,Arturowie,亚瑟族,亞瑟族,族群,曾袭击索斯福克庄稼的部族（仅被提及）；原文另作：plemię Arturów,wybrzeze_czarow
-,White Walkers,Biali Wędrowcy,异鬼,異鬼,族群,结尾提到的不死军团首领,wichry_zimy
-,Rich Franks,Bogaci Frankowie,富裕的法兰克人,富裕的法蘭克人,族群,湖对岸富裕的法兰克村，围绕唯一的金矿定居，觊觎宝藏而进攻维京村；原文另作：bogata wioska franków,kraina_starych_bohaterow
-,Bots,Boty,机器人,機器人,族群,加托与皮夫科的机器人大军（约200个，只有武器没有盔甲）；被「封禁」即被消灭；原文另作：botów、bota、botami,cn_0; cn_1; cn_3; cn_4; cn_6; demo_mainmenu_10
-,Rebels,Buntownicy,叛民,叛民,族群,沦为拦路强盗的叛乱农民（席位名）,zdradziecka_mielizna
-,Cake-eaters,Ciastkożerni,蛋糕族,蛋糕族,族群,丰饶绿洲席位；原文另作：Ciastko.,oasis_o_plenty
-,Culturesnation,Culturesnation,Culturesnation,Culturesnation,族群,真实的波兰《Cultures》玩家社区（论坛、网站、Discord、CN 模组），保留拉丁字母；在 cn 系列中拟人为一座城市/王国，boso_przez_swiat 中是穆卡拉赫的「国家」。miasto culturesnation＝Culturesnation 城；原文另作：CulturesNation、CULTURESNATION、Culturesantion（笔误）,boso_przez_swiat; boso_przez_swiat_sub5; cn_0; cn_1; cn_2; cn_2_dni; cn_2_dni_sub; cn_3; cn_4; cn_5; cn_6; demo_mainmenu_10; gringo; oasis_o_plenty; polski_mlyn_1_1; walhalla; zdradziecka_mielizna
-,Culturesnation - Tributes #1-#3,Culturesnation - Trybuty,Culturesnation - 贡品,Culturesnation - 貢品,族群,2 dni中提供贡品交易的CN用户势力（三个席位）；原文另作：Culturesnation - Trybuty #1、#2、#3、CN - trybuty 1、2、3,cn_2_dni; cn_2_dni_sub
-,Wizards / Wiz.,Czarodzieje,巫师,巫師,族群,科斯洛福德的八位巫师（席位名，短标签 Czaro.）；仿《哈利·波特》用「巫师」,wybrzeze_czarow
-,Deserters / DES,Dezerterzy,逃兵,逃兵,族群,奥特兰克逃兵（席位名），老国王回归后加入反攻；原文另作：DEZ,upadek_krola
-,Long-swordsmen,Długomieczni,长剑族,長劍族,族群,丰饶绿洲席位；原文另作：Długo.,oasis_o_plenty
-,Woodlanders,Drewnianie,木民,木民,族群,木材充足的斯拉夫部落（玩家席位）；原文另作：Drewnian、Drew.,polski_mlyn_1_1
-,Lumberjack,Drwal,伐木工,伐木工,族群,玩家席位名：用蜂蜜驯熊的伐木工；原文另作：drwala、Drw（短标签）,straznicypolnocy
-,ghosts of the heroes,Duchy bohaterów,英雄之魂,英雄之魂,族群,从先祖之雾中用金币召唤的英雄之魂（贡品名）；原文另作：duchy bohaterow,niezwykla_wyprawa
-,Spirits of the Magical Forest,Duchy Magicznego Lasu,魔法森林之灵,魔法森林之靈,族群,魔法森林中的幽灵（席位）；原文另作：Duchy,magiczny_las
-,Savages / Wildlings,Dzicy,野人,野人,族群,《冰与火之歌》Wildlings 的波兰译名：boso_przez_swiat 中普罗沙克对自由民的蔑称；wichry_zimy 中长城外的敌方席位；原文另作：Dzikich、Dzikimi,boso_przez_swiat; wichry_zimy
-Dschabhat an-Nusra,Jabhat al-Nusra / Jabhat an-Nusra,Dżabhat an-Nusra,努斯拉阵线,努斯拉陣線,族群,赖托召集的好战撒拉逊部族，赖托死后被佐汉诺瓦蒂接管（席位名）；原文另作：Dżabhat、Dżabhatu、Dżabhadu、Dżabhad-an Nusra、Dżabhat an Nusra、Dzab,boso_przez_swiat; boso_przez_swiat_sub5
-,jihadists,Dżihadżyści,狂信匪徒,狂信匪徒,族群,作者对沙漠劫匪的称呼；原文另作：dżihadżystą,upadek_krola
-,Egypt,Egipt,埃及,埃及,族群,玩家的埃及部族席位名,blekiny_nurt; piramida_skarbow
-,Goat fanatics,Fanatycy kóz,山羊狂信徒,山羊狂信徒,族群,山羊狂信徒；原文另作：Fanatycy religijni、Fanatycy,saracen_2
-Philister,Philistines / Philistine Child,Filistyni,非利士人,非利士人,族群,玩家所属的非利士部族；单位名「非利士孩童」「非利士孕妇」；原文另作：Filistyńczycy、Filistynów、FIL、Filistyńskie dziecko、Filistyńska kobieta w ciąży,ucieczka_z_gazy
-,Godswrath's Franks,Frankowie Bożygniewa,博日格涅夫的法兰克人,博日格涅夫的法蘭克人,族群,玩家席位名：博日格涅夫的法兰克人；原文另作：Fran.（短标签）,gringo
-,Dzejkaci's Franks,Frankowie Dzejkaciego,杰卡奇的法兰克人,傑卡奇的法蘭克人,族群,杰卡奇统领的岛上法兰克人（席位名）；原文另作：Frnk,boso_przez_swiat
-,Apex's Gang,Gang Apexa,阿佩克斯帮,阿佩克斯幫,族群,地牢里阿佩克斯与埃沃的囚犯帮派（势力名）,cn_4
-,Wild Boar Gang,Gang dzikich wieprzy,野猪帮,野豬幫,族群,地牢里与阿佩克斯帮作对的囚犯帮派（势力名，短标签「野猪」）；原文另作：Wieprze,cn_4
-,Claylanders,Glinianie,泥民,泥民,族群,黏土充足的斯拉夫部落（玩家席位）；原文另作：Glinian、Glin.,polski_mlyn_1_1
-,Gnomes / GNOME,Gnomy,地精,地精,族群,在森林里窃笑、给山谷下诅咒的地精（席位名）；原文另作：GNOM、gnomów、gnomom,przekleta_dolina
-,Miners,Górnicy,矿工部族,礦工部族,族群,被撒拉逊人攻陷村庄的矿工部族，挖通地下隧道；原文另作：Górników、Gór.（短标签）、plemię górników,gringo
-,Highlanders,Górzanie,山民,山民,族群,盘踞风暴山、雇佣法兰克骑士的敌对斯拉夫部落；原文另作：Górzan、Górz.,polski_mlyn_1_1
-Griechenland,Greece / Greek Empire,Grecja,希腊,希臘,族群,玩家席位名：希腊；原文另作：Grecji、Grecy、Imperium Greckie,boso_przez_swiat; wielka_inwazja
-,Byzantine guard,Gwardia Bizantyjczyków,拜占庭卫队,拜占庭衛隊,族群,雇佣兵营地可购买的拜占庭卫队（贡品条目 s932）；原文另作：bizantyjska gwardia,boso_przez_swiat
-Päpstliche Garde,Papal Guard,Gwardia Papieska,教皇卫队,教皇衛隊,族群,玩家席位名：保卫罗马的教皇卫队；原文另作：GWARDIA（短标签）,wielka_inwazja
-,Traders,Handlarze,商贩,商販,族群,玩家席位名：廉价出售货物的商贩部族；原文另作：Handlarzy、Han（短标签）,straznicypolnocy
-,Slave traders,Handlarze niewolników,奴隶贩子,奴隸販子,族群,过去山羊国南部的奴隶贩子,saracen_2_sub_1
-Hebräer,Hebrews,Hebrajczycy,希伯来人,希伯來人,族群,焚毁迦南、追击非利士人的军队（敌方席位）；原文另作：HEB,ucieczka_z_gazy
-,Goat breeders,Hodowcy kóz,养羊人,養羊人,族群,出售山羊的养羊人（含「首席养羊人」）；原文另作：główny hodowca,saracen_2
-Römisches Reich,Roman Empire / Rome,Imperium Rzymskie,罗马帝国,羅馬帝國,族群,玩家席位名：罗马帝国（教皇所在）；原文另作：Imperium Rzymskiego、RZYM（短标签）、Rzymianie,wielka_inwazja
-,,Islandczyk,冰岛人,冰島人,族群,维京部族席位；原文另作：Islandczycy、Is.,piramida_skarbow
-Jötunn,Jotuns,Jotunowie,约顿巨人,約頓巨人,族群,冰巨人的别称；原文另作：Jotunami、Jotunów,straznicypolnocy
-,Caliphate of Aresabib,Kalifat Aresabiba,阿瑞萨比卜哈里发国,阿瑞薩比卜哈里發國,族群,玩家席位名：阿瑞萨比卜的哈里发国；原文另作：Ares.（短标签）,gringo
-,Caliphate of His Holiness,Kalifat Jego Świętobliwości,圣座大人的哈里发国,聖座大人的哈里發國,族群,玩家席位名：佐汉的哈里发国（沙漠要塞）；原文另作：Kalif（短标签）,gringo
-,Stonelanders,Kamienianie,石民,石民,族群,石料充足的斯拉夫部落（玩家席位）；原文另作：Kamienian、Kamien.,polski_mlyn_1_1
-,Kazars / The warrior Kazar tribe,Kazarowie,卡扎尔人,卡扎爾人,族群,泽尔扎尔从过去召来的远古半人战士部族：披兽皮、食人、头戴狮首或眼镜蛇首装束；原文另作：Kazarów、Kazarami、Kazar、Wojownicze plemię Kazarów,saracen_1; saracen_2; saracen_3; saracen_3_sub_2; saracen_3_sub_3; saracen_4_sub_4
-,Styr's Clan,Klan Styra,斯蒂尔氏族,斯蒂爾氏族,族群,玩家席位名：斯蒂尔氏族；原文另作：Sty（短标签）,straznicypolnocy
-,Kobolds,Koboldowie,狗头人,狗頭人,族群,古时住在矿井地下、敌视外人的部族；原文另作：Koboldów,saracen_1; saracen_1_sub_2
-,Cow-stealers,Krowokradni,偷牛族,偷牛族,族群,丰饶绿洲席位；原文另作：Krowo.,oasis_o_plenty
-,bunnies,Króliczki,小兔子,小兔子,族群,泽尔扎尔的「全国最强防线」：一群兔子,saracen_4_sub_4
-,Short-bowmen,Krótkołuczni,短弓族,短弓族,族群,丰饶绿洲席位；原文另作：Krótko.,oasis_o_plenty
-,People of the Protectorate,Lud Protektoratu,保护国之民,保護國之民,族群,利雅得以东的部族，三位法师所属，遭暗影围攻；单称 Protektorat 作「保护国」；原文另作：Protektorat、Protektorańczycy、Prot.,saracen_4; saracen_4_sub_2; saracen_4_sub_4
-,Monster Hunters,Łowcy Potworów,怪物猎人,怪物獵人,族群,龙穴中的维京猎人，加入伊科尔；原文另作：Łowcy（短标签）,straznicypolnocy_sub1
-,Raiders,Łupieżcy,劫掠者,劫掠者,族群,两方越狱犯（席位）；原文另作：ŁUPIEŻCY Z PÓŁNOCY、ŁUPIEŻCY Z POŁUDNIA,wyspa_lupiezcow
-,Valley Inhabitants / Val.Inh.,Mieszkańcy doliny,山谷居民,山谷居民,族群,先到山谷中央定居的埃及人村庄（席位名）；原文另作：Mieszk.Dol,blekiny_nurt
-,Forest Inhabitants,Mieszkańcy Lasu,森林居民,森林居民,族群,幽暗森林中驯服狼与蛇的蒙面人（敌方席位）,mroczny_las
-,People of Riyadh,Mieszkańcy Rijadu,利雅得居民,利雅得居民,族群,利雅得居民；原文另作：Msc.,saracen_4
-,Mead-drinkers,Miodopitni,蜂蜜酒族,蜂蜜酒族,族群,丰饶绿洲的六个维京席位之一（短标签 Miodo. 作「蜂蜜酒」）,oasis_o_plenty
-,Mormons,Mormoni,摩门人,摩門人,族群,被撒拉逊人进攻的拜占庭人村庄，科任桑的老朋友；原文另作：Mormonów、Mormonami、Mor.（短标签）,gringo
-,Dark Shadows,Mroczne Cienie,暗影,暗影,族群,原版《第八世界奇迹》剧情中散布瘟疫的暗影势力；boso_przez_swiat、mroczny_swiat_sub1 提及英雄昔日击退它们，saracen_4 中是暗影群岛上苏醒的亡灵。plaga Mrocznych Cieni＝暗影之灾；原文另作：Mrocznych Cieni、Cień、plaga Mrocznych Cieni,boso_przez_swiat; mroczny_swiat_sub1; saracen_4; saracen_4_sub_1
-,Invaders / Invad.,Najeźdźcy,入侵者,入侵者,族群,北方敌对的埃及部族（席位名）；原文另作：Najeźdzcy（笔误）、Najeźd.,blekiny_nurt
-,Germans / Germany,Niemcy,德国人,德國人,族群,2 dni的敌人：德国玩家/德国城市；cn_0中阿瑞斯「当心德国人！」的梗；原文另作：Niemców、Niemcom、niemców、Niemiec,cn_0; cn_2_dni; cn_2_dni_sub
-,Night's Watch,Nocna Straż,守夜人,守夜人,族群,玩家阵营（席位名）；原文另作：Nocnej Straży,wichry_zimy
-,Nomads / Lost Nomads,Nomadzi,游牧民,遊牧民,族群,saracen_3 的游牧民部族；洞穴中迷路的一支称「迷途的游牧民」；原文另作：Nomadów、Nomad、Zagubieni Nomadzi,saracen_3; saracen_3_sub_1
-,Bjarni's volunteer fire brigade,Ochotnicza straż bjarniego,比雅尼志愿消防队,比雅尼志願消防隊,族群,比雅尼的志愿消防队（波兰乡村志愿消防队OSP梗），也是他的「近卫军」；原文另作：straż pożarna、strażacy、straży、strażak,cn_0
-,Tribe of Wolf-Men / Werewolf Tribe,Plemię Ludzi-Wilków,狼人部族,狼人部族,族群,传说中能化身为狼、后遭诅咒的古部族；原文另作：Ludzi-Wilków、plemię Wilkołaków、Duchy Wilkołaków,wilczy_lad; wilczy_lad_sub
-,gossips,Plotkarki,长舌妇,長舌婦,族群,山羊城里嚼舌根的妇女,saracen_2
-,Plate-armed,Płytozbrojni,板甲族,板甲族,族群,丰饶绿洲席位；原文另作：Płyto.,oasis_o_plenty
-Polanen,Polan tribe,Polanie,波兰尼人,波蘭尼人,族群,梅什科所属的波兰尼部落；原文另作：Polan,polski_mlyn_1_1
-,His Holiness' Outposts,Posterunki Jego Świętobliwości,圣座大人的哨所,聖座大人的哨所,族群,玩家席位名：佐汉的前哨部队；原文另作：Post.,gringo
-,Monsters / Monster attacks,Potwory,怪物,怪物,族群,巫师从冥府召来的怪物（席位名）；原文另作：Potwory ataki,czarnoksieznik_z_szeolu; zdradziecka_mielizna; zdradziecka_mielizna_sub2
-,Northern Guard,Północna Straż,北方卫队,北方衛隊,族群,玩家席位名：北方卫队；原文另作：Str（短标签）,straznicypolnocy
-,Castaways,Rozbitkowie,落难者,落難者,族群,船难幸存者（玩家席位）,piracka_utopia_1_0
-,Frankish knights,Rycerze Franków,法兰克骑士,法蘭克騎士,族群,可雇佣或敌方的法兰克重甲骑士：boso_przez_swiat 雇佣兵营地的贡品条目；polski_mlyn 中山民雇来的敌方席位（Frankońscy Rycerze，短标签 Frank.）；原文另作：Frankońscy Rycerze、frankońscy rycerze,boso_przez_swiat; polski_mlyn_1_1
-Slawen,Slavs,Słowianie,斯拉夫人,斯拉夫人,族群,斯拉夫人；原文另作：słowiańskie plemiona、słowianami,polski_mlyn_1_1
-,Pigguard,Sproszna Gwardia,普罗禁卫军,普羅禁衛軍,族群,普罗沙克的精锐卫队，巡逻山羊国、护送山羊；双关 sprośna「下流」＋Proszak，英文误作 Pigguard；原文另作：Sprosznej Gwardii、Sprosznej Gwardi、Sproszna Gwardia Proszaka,saracen_2; saracen_2_sub_1
-,Ancient Snakes,Starożytne węże,远古之蛇,遠古之蛇,族群,蛇战士阵营的席位名,zdradziecka_mielizna; zdradziecka_mielizna_sub1; zdradziecka_mielizna_sub2
-,Ancients,Starożytni,远古者,遠古者,族群,支线1的席位名（古墓中的远古者）,kraina_starych_bohaterow_sub1
-,Portal Guardians,Strażnicy portali,传送门守卫,傳送門守衛,族群,守卫地狱传送门的怪物（席位名）,czarnoksieznik_z_szeolu
-,Sanctuary Guardians / Head Guard,Strażnicy Sanktuarium,圣所守卫,聖所守衛,族群,光明圣所的守卫（席位名），出谜题检验英雄是否被附身；原文另作：Główny Strażnik,mroczny_swiat; mroczny_swiat_sub2
-,Prison Guards,Strażnicy więzienni,狱卒,獄卒,族群,地牢狱卒，比雅尼指挥他们夺回据点（sub2 席位名）；原文另作：straż więzienna,boso_przez_swiat_sub2
-,Sons of Hjorvard,Synowie Hjorvarda,约尔瓦德诸子,約爾瓦德諸子,族群,约尔瓦德的八个儿子组成的席位，初次上阵的年轻战士；原文另作：Hjorv.（短标签）,mroczny_swiat
-Osmanisches Reich,Ottoman Turkey / Ottoman Empire,Turcja Osmańska,奥斯曼土耳其,奧斯曼土耳其,族群,玩家席位名：奥斯曼土耳其；原文另作：Imperium Osmańskie、Osmanowie,wielka_inwazja
-Seldschuken,Seljuk Turks / Seljuks,Turcy Seldżuccy,塞尔柱突厥人,塞爾柱突厥人,族群,贩奴的塞尔柱突厥人：mroczny_swiat_sub2 中掳走贝恩；lowcypustyni2 中是沙漠里的敌对部族，绑架了贝尔·格里尔斯。单称 Seldżucy 作「塞尔柱人」；原文另作：Seldżucy、Seldżuków、Seldż,lowcypustyni2; mroczny_swiat; mroczny_swiat_sub2
-,Culturesnation Users / CN Users,Użytkownicy Culturesnation,Culturesnation 用户,Culturesnation 用戶,族群,玩家一方的势力名：CN的用户们；原文另作：Uzytkownicy Culturesnation、Użytkownicy CN、użytkownicy cn,cn_0; cn_1; cn_2_dni; cn_2_dni_sub; demo_mainmenu_10
-,Prisoners,Więźniowie,囚犯,囚犯,族群,多张图里的囚犯席位名：boso_przez_swiat_sub2、cn_4 的地牢囚犯；gringo 中被蛇战士关押的建筑工；upadek_krola_sub 中奥特兰克监狱的其他囚犯；原文另作：Więzień、Więz.（短标签）,boso_przez_swiat_sub2; cn_4; gringo; upadek_krola_sub
-,Valley Vikings / ValVik,Wikingowie z Doliny,山谷维京人,山谷維京人,族群,straznicypolnocy 中灰须领导的维京氏族，据守山口要塞；blekiny_nurt 中只作席位名（短标签 WikD 作「谷维」）；原文另作：Wikingów z Doliny、WikD（短标签）,blekiny_nurt; straznicypolnocy
-,Vikings of the North,Wikingowie z Północy,北方维京人,北方維京人,族群,范达尔领导的维京氏族，山谷维京人的世仇；原文另作：Wikingów z Północy、WikP（短标签）,straznicypolnocy
-,Lords of the Mine / LM,Władcy Kopalni,矿山之主,礦山之主,族群,席位名，推测指占据金矿的富裕法兰克村；原文另作：WK,kraina_starych_bohaterow
-,Egyptian warriors,Wojownicy Egipcjan,埃及战士,埃及戰士,族群,雇佣兵营地可购买的埃及战士（贡品条目 s931）,boso_przez_swiat
-,Warriors of Riyadh,Wojownicy z Rijadu,利雅得战士,利雅得戰士,族群,利雅得守军；原文另作：Woj.,saracen_4
-,elemental warriors,Wojownicy żywiołów,元素战士,元素戰士,族群,阿瑞斯与尼普顿用祭祀之油召唤的火与水元素战士；原文另作：wojowników żywiołów,cn_0
-,Warrior Tribe,Wojownicze Plemię,好战部族,好戰部族,族群,比雅尼的部族（势力名）；名字出自一位新手上传说明的病句；原文另作：wojowniczego plemienia、Wojowniczego Plemienia,cn_0
-,Free People / Free,Wolny Lud,自由民,自由民,族群,《冰与火之歌》Free Folk 的波兰译名（自称）。boso_przez_swiat 中是被普罗沙克诬为劫掠者的南岸部落（短标签 Lud）；wichry_zimy 中是野人的自称（Wolni Ludzie）；原文另作：Wolni Ludzie、Lud（短标签）,boso_przez_swiat; wichry_zimy
-,the chosen ones,Wybrańcy,天选者,天選者,族群,远古时期守护世界秩序的五位「非凡之人」，曾在城堡击败巨龙；如今职责落到英雄们身上；原文另作：piątka wybrańców、starożytni wybrańcy,kraina_starych_bohaterow; kraina_starych_bohaterow_sub1
-,Outcasts,Wyrzutki,流放者,流放者,族群,被阿尔拉巴巴尔驱逐的工人，成为玩家居民,saracen_3_sub_3
-,Magyar Order / Magyar Empire,Zakon Madziarski,马扎尔骑士团,馬扎爾騎士團,族群,玩家席位名：马扎尔骑士团（匈牙利）；原文另作：Zakonu Madziarskiego、Imperium Madziarskie、WĘGRY（短标签）、Węgrzy,wielka_inwazja
-,Order of the Sun,Zakon Słońca,太阳教团,太陽教團,族群,隐居岩岛修道院的狂热正统派，大陆衰落的罪魁之一（敌方席位）；原文另作：Zakon、Zakonowi Słońca,wielka_kolonizacja_iii_1_0
-,Rebellious Prisoners,Zbuntowani więźniowie,暴动囚犯,暴動囚犯,族群,由「X」（鲁穆）率领的暴动囚犯（sub2 席位名）；原文另作：buntownicy,boso_przez_swiat_sub2
-,Odin's Ampulla / Lokie Ampulla,Ampulla Odyna,奥丁圣瓶,奧丁聖瓶,物品,能吸收邪恶能量的圣瓶，维京人赠给拜占庭法师的传家宝，被鲁弗斯偷走；原文另作：Ampulla、Ampulli、Ampullą、Ampullę、Ampulla Lokiego（笔误）,niezwykla_wyprawa
-,sandals of Moses / sacred slippers of Moses,Cichobiegi Mojżesza,摩西圣布鞋,摩西聖布鞋,物品,号称摩西穿过的「圣物」，其实是一双破旧软底布鞋（cichobiegi）；boso_przez_swiat 中供奉在朝圣地，saracen_4_sub_3 中巴尔塔扎尔穿着它逃跑。两处统一；原文另作：święte cichobiegi Mojżesza、Sandały Mojżesza,boso_przez_swiat; saracen_4_sub_3
-,Miracle Obelisk / Miraculous Obelisk,Cudowny Obelisk,神奇方尖碑,神奇方尖碑,物品,刻有狼人诅咒秘密的巨大方尖碑；原文另作：Cudownego Obelisku,wilczy_lad; wilczy_lad_sub
-,CulturesCoin,CulturesCoin,Cultures币,Cultures幣,物品,英格瓦尔兜售的加密货币（戏仿比特币）；原文另作：CulturesCoina、CulturesCoiny,cn_2_dni; cn_2_dni_sub
-,Black Stone,Czarny Kamień,黑石,黑石,物品,麦加天房的黑石（约曾科夫在它前面跪了24小时）,cn_0
-,Diamond,Diament,钻石,鑽石,物品,钻石矿每 5 分钟产出的计分物（脚本计数，非 HUD 货物）；原文另作：diamenty、diamentów,diamentowa_dolina
-,flute,Flet,驯蛇笛,馴蛇笛,物品,驯服蛇战士的笛子,saracen_2_sub_1
-,stones of Power / Energy Stone,Kamienie Mocy,力量之石,力量之石,物品,七块方尖碑状的力量之石，可将洛基之魂召回人间；原文另作：Kamień Energii、kamienie energii、kamieniom Mocy、7 pieczęci Lokiego、obeliski,niezwykla_wyprawa
-,Access card,Karta Dostępu,门禁卡,門禁卡,物品,巴尔塔扎尔身上的塑料门禁卡，用来开启狮身人面像；原文另作：Kartę dostępu,saracen_4; saracen_4_sub_3; saracen_4_sub_4
-,Aaron's cage,Klatka Aarona,亚伦之笼,亞倫之籠,物品,囚禁亚伦的无形魔笼，位于利雅得南边沼泽，四周燃着圣火；原文另作：klatki Aarona,saracen_1; saracen_1_sub_2; saracen_2; saracen_2_sub_1; saracen_3; saracen_3_sub_3; saracen_4; saracen_4_sub_2
-,Colossus / Statue of Helios,Kolos,赫利俄斯巨像,赫利俄斯巨像,物品,米罗斯港口待重建的太阳神巨像；原文另作：statua Heliosa、posąg,wielka_kolonizacja_iii_1_0
-,crown of the Great Goat,Korona Wielkiej Kozy,伟大山羊王冠,偉大山羊王冠,物品,被埃及人藏起的山羊王冠；原文另作：korona Kozy Esmeraldy,saracen_2_sub_1
-,Herbs for smoking,Magiczne zioło,魔法草药,魔法草藥,物品,药贩子卖的「魔法草药」，抽了会嗨；原文另作：Zioła do zapalenia,saracen_1; saracen_1_sub_1
-,Magic Circle,Magiczny Krąg,魔法阵,魔法陣,物品,盟友大本营之间传送单位与车辆的魔法阵（付贡品触发）；原文另作：okrąg、krąg,diamentowa_dolina
-,,Mikstura wybuchowa,爆破药剂,爆破藥劑,物品,德鲁伊调制、用来炸毁法兰克城墙的爆炸药剂；原文另作：Wybuchowa mieszanka、mikstura uderzająca,zdradziecka_mielizna
-,Frost Flame,Mroźny ogień,霜焰,霜焰,物品,冰巨人力量之源的神器，藏于约顿海姆中心；原文另作：mroźny płomień,straznicypolnocy; straznicypolnocy_sub2
-,MS Lotus / the Greek tanker Lotus,MS Lotus,莲花号,蓮花號,物品,多年前失踪的希腊油轮，船员曾劫船去以利亚之墓，在亚丁湾被不明之物击沉；幸存者立誓保密；原文另作：Lotus、tankowiec Lotus、grecki tankowiec Lotus、Zaginiony Grecki Tankowiec Lotus、Lotusa,boso_przez_swiat; boso_przez_swiat_sub4
-,blue casket,Niebieska szkatułka,蓝色宝匣,藍色寶匣,物品,每枚戒指都藏在里面的蓝色小匣；原文另作：szkatułka、skrzynka,saracen_1_sub_2; saracen_2_sub_1; saracen_3_sub_3; saracen_4_sub_1
-,Ritual Oils,Olejki Rytualne,仪式油,儀式油,物品,献给方尖碑的仪式用油（实为游戏货物「油」）；原文另作：Olejków Rytualnych、oleje,wilczy_lad; wilczy_lad_sub
-,Altar of the Ancient Heroes / Miraculous Altar,Ołtarz Starożytnych Bohaterów,远古英雄祭坛,遠古英雄祭壇,物品,古墓深处的祭坛，由一位神秘修士守护，赐予英雄超凡能力；原文另作：Cudowny Ołtarz、ołtarz bohaterów,kraina_starych_bohaterow; kraina_starych_bohaterow_sub1
-,rings / keys to Aaron's cage,Pierścienie,戒指,戒指,物品,开启亚伦之笼的四枚戒指（红、蓝、黄、紫），每关穿越到过去取得一枚；又称 klucze do klatki Aarona「亚伦之笼的钥匙」；原文另作：pierścień、pierścionek、klucz do klatki Aarona、cztery klucze、cztery pierścienie,saracen_1; saracen_1_sub_2; saracen_2; saracen_2_sub_1; saracen_3; saracen_3_sub_3; saracen_4; saracen_4_sub_1
-,Koslowford texts,Pisma z Koslowford,科斯洛福德典籍,科斯洛福德典籍,物品,被佐里安盗走并抄录的学院秘典；原文另作：teksty z Koslowford、kopie tekstów,wybrzeze_czarow; wybrzeze_czarow_sc2; wybrzeze_czarow_sub3; wybrzeze_czarow_sub4
-,dragon amulet,Smoczy amulet,龙之护符,龍之護符,物品,佩戴后能驯服龙的护符；原文另作：smoczego amuletu,straznicypolnocy; straznicypolnocy_sub1
-,Esmeralda's goat-like costume,Strój na wzór kozy Esmeraldy,埃斯梅拉达同款山羊装,埃斯梅拉達同款山羊裝,物品,金匠打造的仿埃斯梅拉达山羊装,saracen_2
-,Eternal Flame / Eternal Fire,Wieczny Płomień,永恒之火,永恆之火,物品,沼泽中的永恒之火，可解除冰怒咒；原文另作：Wieczny Ogień、Wiecznym Płomieniem,niezwykla_wyprawa
-,2 Days,2 dni,两天,兩天,事件,cn_2_dni 标题与核心设定：佐汉诺瓦蒂给新人的「两天考验」（próba 2 dni），两天内打败德国人才能进 CN；原文另作：próba 2 dni、2 DNI MINĘŁY,cn_2_dni; cn_2_dni_sub
-,Battle of the Cultures Gallery,Bitwa pod Galerią Cultures,Cultures画廊之战,Cultures畫廊之戰,事件,银龙的成名之战，影射CN网站画廊版块的反垃圾机器人清理；原文另作：Galerią Cultures、galerię,cn_0
-,Barefoot Through the World,Boso przez świat,赤足走天涯,赤足走天涯,事件,系列标题，取自波兰旅行家采罗夫斯基的赤脚旅行电视节目；与结尾「赤足之人」呼应。cn_2_dni 中被约曾科夫列为三佳地图之一,boso_przez_swiat; cn_2_dni
-,Sandstorm,Burza Piaskowa,沙暴,沙暴,事件,六名维京玩家围攻撒拉逊要塞；地图名,burza_piaskowa
-,Coast Storm / Coastal Storm,Burza przybrzeżna,海岸风暴,海岸風暴,事件,地图 burza_przybzezna_1_2 的标题，cn_2 中阿瑞斯与普罗沙克的 1v1 也用这张图；原文拼错为 przybzeżna；原文另作：Burza przybzeżna、BURZA PRZYBZEZNA,burza_przybzezna_1_2; cn_2
-,Difficult Cooperation,Ciężka Współpraca,艰难合作,艱難合作,事件,四兄弟争夺父亲遗位的 2v2；地图名；原文另作：CIEZKA WSPOLPRACA,ciezka_wspolpraca
-,Decision Time,Decision Time,Decision Time,Decision Time,事件,圣地亚哥自称在美国畅销的地图，原文即英文，保留并可加注「决断时刻」,cn_2_dni
-,Potato Day,Dzień Ziemniaka,土豆节,土豆節,事件,比雅尼急着赶回去参加的「土豆节」，是该系列的笑点；原文另作：dnia ziemniaka、dniu ziemniaka,zdradziecka_mielizna; zdradziecka_mielizna_sub2
-,Flag Mania,Flagomania,旗帜狂潮,旗幟狂潮,事件,四部族夺旗战；地图名；原文另作：CTF: FLAGOMANIA,flagomania_1_0_01
-,Gringo,Gringo,外乡佬,外鄉佬,事件,标题 GRINGO WŚRÓD DZIKICH PLEMION 戏仿采罗夫斯基的游记《野蛮部落中的外乡佬》（Gringo wśród dzikich plemion）；佐汉自比「野蛮部落中的外乡佬」；原文另作：GRINGO WŚRÓD DZIKICH PLEMION（标题）,gringo_sub
-,High Hatchie,Hatchie na fazie,嗨翻的哈奇,嗨翻的哈奇,事件,saracen_1_sub_1 标题：哈奇抽了草药后的幻觉关,saracen_1_sub_1
-,gnome curse,Klątwa gnomów,地精诅咒,地精詛咒,事件,国王打开箱子后降临山谷的地精诅咒；原文另作：klątwa、klątwę,przekleta_dolina
-Kreuzzug,crusade,Krucjata,十字军东征,十字軍東征,事件,教皇针对奥斯曼发起的十字军东征（脚本事件）；原文另作：krucjaty,wielka_inwazja
-,Desert Hunters,Łowcy Pustyni,沙漠猎人,沙漠獵人,事件,沙漠求生合作地图；地图名；原文另作：ŁOWCY PUSTYNI 2,lowcypustyni2
-,Dark World,Mroczny Świat,黑暗世界,黑暗世界,事件,约曾科夫的《黑暗世界》系列：主图 mroczny_swiat（比雅尼一行在群岛上对抗幽冥，结尾揭示一切是梦）与子图（PROLOG「序章」、KRYPTA「地穴」、UMYSŁ BJARNIEGO「比雅尼的心灵」）；原文另作：Mroczny świat,mroczny_swiat; mroczny_swiat_sub1; mroczny_swiat_sub2; mroczny_swiat_sub3; mroczny_swiat_sub4
-,Unexpected Journey,Niezwykła Wyprawa,非凡远征,非凡遠征,事件,地图标题：希拉押送鲁弗斯、寻找失踪的比雅尼,niezwykla_wyprawa
-,A New Hope,Nowa Nadzieja,新希望,新希望,事件,选民族、从两名移民开始建国的地图；地图名,nowa_nadzieja
-,Eyes of the Serpent,Oczy Węża,蛇之眼,蛇之眼,事件,两人对战、第三人扮演洛基的地图；地图名；原文另作：OCZY WEZA,oczy_weza
-,Pirate Utopia,Piracka Utopia,海盗乌托邦,海盜烏托邦,事件,火山群岛上的落难者对抗海盗；地图名,piracka_utopia_1_0
-,Treasure Pyramid,Piramida Skarbów,宝藏金字塔,寶藏金字塔,事件,八部族争挖金字塔宝藏；地图名,piramida_skarbow
-,Plague of bunnies,Plaga króliczków,兔子之灾,兔子之災,事件,洛基可降下的兔子灾（贡品选项）；原文另作：plaga kroliczkow,oczy_weza
-,Defeat the Immortal,Pokonać Nieśmiertelnego,击败不死者,擊敗不死者,事件,《古英雄之地》第二支线标题：在洛基抵达拜占庭前拦住他,kraina_starych_bohaterow_sub2
-,Polish Madness,Polski Młyn,波兰大乱斗,波蘭大亂鬥,事件,三个斯拉夫部落定时交换村庄的混战；地图名,polski_mlyn_1_1
-,Back to the Past / PDP,Powrót do przeszłości,回到过去,回到過去,事件,撒拉逊系列（作者 Jozenkow）的总标题，各关名前缀 PDP；戏仿《回到未来》的波兰片名 Powrót do przyszłości,saracen_1; saracen_1_sub_1; saracen_1_sub_2; saracen_2; saracen_2_sub_1; saracen_3; saracen_3_sub_1; saracen_3_sub_2; saracen_3_sub_3; saracen_4; saracen_4_sub_1; saracen_4_sub_2; saracen_4_sub_3; saracen_4_sub_4
-,Return of GaTo,Powrót GaTo,加托归来,加托歸來,事件,cn_0 标题 CULTURESNATION: POWRÓT GATO（Culturesnation：加托归来）；2 dni 中称其为「前传」；原文另作：CULTURESNATION: POWRÓT GATO、CN: Powrót Gato、Culturesnation: Powrót Gato,cn_0; cn_2_dni
-,Bjarni's trial,Próba Bjarniego,比雅尼的试炼,比雅尼的試煉,事件,德鲁伊让比雅尼在梦中经历的试炼（子地图1）；原文另作：Przejdź próbę!,zdradziecka_mielizna; zdradziecka_mielizna_sub1
-,trial of light,Próba światła,光明试炼,光明試煉,事件,圣所守卫用谜题检验英雄是否被幽冥附身；原文另作：próbie światła,mroczny_swiat_sub2
-,Guardians of the North,Strażnicy Północy,北方守护者,北方守護者,事件,约曾科夫的地图 straznicypolnocy 的标题；cn_2_dni 中被他列为三佳地图之一,cn_2_dni; straznicypolnocy
-,Two Worlds' Tributes,Trybuty Dwóch Światów,两界贡品,兩界貢品,事件,南北玩家互送贡品发展科技；地图名,trybuty_dwoch_swiatow
-,CulturesNation 2020 Tournament,Turniej CulturesNation 2020,CulturesNation 2020 锦标赛,CulturesNation 2020 錦標賽,事件,谜题提到的真实社区比赛；答案通过向对应昵称的席位进贡来选择；原文另作：TURNIEJU CULTURESNATION 2020,mroczny_swiat_sub2
-,Escape from Gaza,Ucieczka z Gazy,逃离加沙,逃離加沙,事件,非利士孩童逃离焚城的竞速地图；地图名,ucieczka_z_gazy
-,King's Demise,Upadek Króla,国王的陨落,國王的隕落,事件,地图标题：哈奇与贾迈勒推翻奥特兰克的篡位新王,upadek_krola
-,The Fall of Riyadh,Upadek Rijadu,利雅得陷落,利雅得陷落,事件,第4关标题（saracen_4 及其子图）,saracen_4; saracen_4_sub_1; saracen_4_sub_2; saracen_4_sub_3; saracen_4_sub_4
-,In the Eye of Uncertainty,W Oku Niepewności,未知之眼,未知之眼,事件,四族自由开局；地图名,w_oku_niepewnosci
-,Heart of the Tempest,W sercu nawałnicy,风暴之心,風暴之心,事件,第3关标题（saracen_3 及其子图）,saracen_3; saracen_3_sub_2; saracen_3_sub_3
-,Winds of Winter,Wichry Zimy,凛冬的寒风,凜冬的寒風,事件,《冰与火之歌》题材的合作地图；地图名,wichry_zimy
-,The Great Colonization,Wielka Kolonizacja,大殖民,大殖民,事件,Proszak 的自由殖民三部曲；地图名；原文另作：WIELKA KOLONIZACJA II、III,wielka_kolonizacja; wielka_kolonizacja_ii_1_1; wielka_kolonizacja_iii_1_0
-,The Great Sweep,Wielkie Sprzątanie,大扫除,大掃除,事件,布雷尼的地图 wielkie_sprzatanie 的标题（法兰克人开春清剿入侵者，「大扫除」同样双关）；cn_0 中这张图被加托烧掉；原文另作：Wielkie Sprzatanie（无变音符）,cn_0; wielkie_sprzatanie
-,Great Changes,Wielkie Zmiany,大变革,大變革,事件,兹比雷克为网站「大变革」募捐（凑满110金币才公布改动清单），讽刺迟迟不兑现的改版承诺；原文另作：Wielkich Zmian,cn_2_dni; cn_2_dni_sub
-,The Enemy on Our Land,Wróg na naszej ziemi,敌临故土,敵臨故土,事件,第1关标题（saracen_1）,saracen_1; saracen_3_sub_1
-,admin,Admin,管理员,管理員,称号,论坛管理员：普罗沙克的头衔；加托想当「唯一的首席管理员」；原文另作：admina、adminem、administrator、główny administrator、główny admin,cn_0; cn_1; cn_2_dni; cn_2_dni_sub; demo_mainmenu_10
-,anti-wizard,Antyczarodziej,反巫师,反巫師,称号,瓦尔马尔的称号；原文另作：antyczarodzieja,wybrzeze_czarow
-,Archaeologist,Archeolog,考古学家,考古學家,称号,发掘古战场、用蜂蜜酒和工具换武器的NPC；原文另作：Archeologa,wielka_kolonizacja_iii_1_0
-,priest,Arcykapłan Świętej Kozy,圣山羊大祭司,聖山羊大祭司,称号,圣山上的圣山羊大祭司；原文另作：kapłan,saracen_2
-,Ruins Explorer,Badacz,遗迹探险家,遺跡探險家,称号,提议重建金字塔的遗迹探险家NPC,wielka_kolonizacja_iii_1_0
-,Richard,Bogacz,富翁,富翁,称号,想给自己立像的富翁；原文另作：bogaty mieszczanin,saracen_3_sub_3
-,Tsar Proszak,Car Proszak,沙皇普罗沙克,沙皇普羅沙克,称号,埃米兰多的口头禅「荣耀归于沙皇普罗沙克！」；原文另作：carowi Proszakowi、Carowi Proszakowi,cn_0
-,Emperor of Byzantium,Cesarz Bizancjum,拜占庭皇帝,拜占庭皇帝,称号,拜占庭皇帝，希拉的父亲；原文另作：Cesarza、cesarza bizancjum,niezwykla_wyprawa
-,Man Without Shoes,Człowiek Bez Butów,赤足之人,赤足之人,称号,米库卢斯口中的「好人」弟子；比雅尼以为是采罗夫斯基，实为佐汉诺瓦蒂；原文另作：Człowieka Bez Butów、Człowiekiem Bez Butów,boso_przez_swiat; boso_przez_swiat_sub4
-,Dealer,Diler,药贩子,藥販子,称号,兜售「魔法草药」的可疑贩子；原文另作：Dealer（标签）,saracen_1
-,Camp commander,Dowódca obozu,营地指挥官,營地指揮官,称号,普罗禁卫军营地指挥官；原文另作：dowódca sprosznej gwardii,saracen_2; saracen_2_sub_1
-,Defense Commander,Dowódca obrony,守军指挥官,守軍指揮官,称号,山口要塞的守军将领；原文另作：generał,straznicypolnocy
-,old man,Dziadek,老爷爷,老爺爺,称号,各关提供情报的老人NPC：saracen_1 废墟旁的老人、saracen_3 游牧民营地长老、saracen_3_sub_2 营地老人、saracen_3_sub_3 最终被揭露为拐童犯的老人（彼此不是同一人）；原文另作：Dziadka、dziadziuś、staruszek、starzec、dziad,saracen_1; saracen_3; saracen_3_sub_2; saracen_3_sub_3
-Emir,Emir,Emir,埃米尔,埃米爾,称号,约曾科夫的头衔,boso_przez_swiat
-,grandmaster,Grandmaster,宗师,宗師,称号,阿雷克的称号：CN格斗宗师；原文另作：grandmastera,cn_0
-,Mushroom guy,Grzybiarz,蘑菇佬,蘑菇佬,称号,种不出蘑菇的怪人,saracen_3_sub_3
-Jarl,Jarl,Jarl,雅尔,雅爾,称号,维京首领头衔（席位前缀）,w_oku_niepewnosci
-,His Holiness / Your Holiness,Jego Świętobliwość,圣座大人,聖座大人,称号,佐汉诺瓦蒂的自封头衔，挪用教皇尊号（讽刺）；Wasza Świętobliwość＝圣座大人您；原文另作：Jego Świętobliwości、Wasza Świętobliwość,gringo
-,wild woman,Kobieta z dziczy,野女人,野女人,称号,洛基对希拉的蔑称（她能操控动物）,kraina_starych_bohaterow_sub2
-,king of the Andals and the First Men,Król Andalów i Pierwszych Ludzi,安达尔人和先民的国王,安達爾人和先民的國王,称号,普罗沙克的戏仿头衔；原文另作：pierwszy tego imienia、świking pierwszy niebrodaty,boso_przez_swiat
-,King of the Centre / C. King,Król Centrum,中部之王,中部之王,称号,瀑布洞穴中三位法兰克「国王」之一，只求清静；原文另作：Król Środkowy、K. Śro.,saracen_3_sub_1
-,King of the South / S.King,Król Południa,南部之王,南部之王,称号,嗜战的洞穴南部之王；原文另作：K. Płd.,saracen_3_sub_1
-,King of the North / N.King,Król Północy,北部之王,北部之王,称号,想扩张领地的洞穴北部之王；原文另作：K. Płn.,saracen_3_sub_1
-,King of the Mountain Pass,Król Przełęczy,隘口之王,隘口之王,称号,争夺隘口胜者的称号；地图名；原文另作：Króla Przełęczy,krol_przeleczy
-,King-Beyond-the-Wall,Król za Murem,塞外之王,塞外之王,称号,曼斯·雷德的称号；原文另作：Królem za Murem,wichry_zimy
-,Screamer,Krzykacz,大嗓门,大嗓門,称号,山羊狂信徒城中负责宣扬的大嗓门；原文另作：Krzykacza、Krzykaczowi,saracen_2
-,Lord Commander,Lord Dowódca,总司令,總司令,称号,守夜人总司令（杰奥·莫尔蒙）；原文另作：Lorda Dowódcy、Lordem Dowódcą,wichry_zimy
-,,Łowczyni Cyra,女猎手希拉,女獵手希拉,称号,希拉的绰号,niezwykla_wyprawa
-,Painter,Malarz,画匠,畫匠,称号,把普通木料刷成橡木色的画匠,saracen_3_sub_3
-,Sage / old man,Mędrzec,智者,智者,称号,熟知本地历史的老者，告诫英雄时机未到不要进古墓；原文另作：starzec、dziadziuś、staruszek,kraina_starych_bohaterow
-,Multiman,Multiman,分身侠,分身俠,称号,洛基对比雅尼的蔑称（他有分身）,kraina_starych_bohaterow_sub2
-,teacher / Teacher,Nauczyciel,导师,導師,称号,wybrzeze_czarow 中科斯洛福德学院最年长的导师；saracen_3_sub_2 营地里出售士兵的人宜作「教官」；原文另作：nauczyciela、nauczycielowi、waść nauczycielu,saracen_3_sub_2; wybrzeze_czarow; wybrzeze_czarow_sc1; wybrzeze_czarow_sc2
-,The wretch,Nieszczęsnik,倒霉蛋,倒楣蛋,称号,城里永远愁眉苦脸的倒霉蛋，后被送进妓院「治愈」；原文另作：Nieszczęśnik,saracen_3_sub_3
-,the Immortal,Nieśmiertelny,不死者,不死者,称号,洛基获得力量后的称号；原文另作：Nieśmiertelnego、nieśmiertelny Loke,kraina_starych_bohaterow_sub2
-,Runboy,Runboy,飞毛腿小子,飛毛腿小子,称号,洛基对西格德的蔑称（他跑得快）,kraina_starych_bohaterow_sub2
-,Skipman,Skipman,闪现侠,閃現俠,称号,洛基对哈奇的蔑称（他会传送）,kraina_starych_bohaterow_sub2
-,Servant of the Goat,Sługa Kozy,山羊之仆,山羊之僕,称号,阿布勒的身份：山羊之仆兼翻译,saracen_2_sub_1
-,port guard,Strażnik portu,港口守卫,港口守衛,称号,索要一百只山羊才放船的港口主人；原文另作：dowódca portu,saracen_2
-,Warden,Strażnik Więzienia,典狱长,典獄長,称号,阿尔拉巴巴尔的监狱看守，掌管金库钥匙；最后携宝匣企图逃走；原文另作：Strażnik、Strażnika,saracen_3_sub_3
-Sultan,Sultan,Sułtan,苏丹,蘇丹,称号,saracen_3 中哈奇与阿齐姆早年效力的苏丹；wielka_inwazja 中苏莱曼的称号；原文另作：Sułtana、Sułtanie,saracen_3; wielka_inwazja
-,Shaytan,Szaytan,撒旦,撒旦,称号,佐汉诺瓦蒂对杰卡奇的蔑称（恶魔）,boso_przez_swiat
-,Spy,Szpieg,间谍,間諜,称号,奥利维耶安排的暴躁间谍，痛恨太阳；原文另作：Szp.,saracen_4
-,first beardless shviking,Świking Pierwszy Niebrodaty,首位无须猪京人,首位無鬚豬京人,称号,普罗沙克的自封头衔：świnia「猪」＋wiking「维京人」的生造词；整串头衔戏仿《权力的游戏》丹妮莉丝的称号，沿用中文版说法；原文另作：świking z rodu niebrodatych,cn_0; cn_6
-,Pig / Swine,Świnia,猪猡,豬玀,称号,佐汉诺瓦蒂与阿瑞斯对普罗沙克的蔑称；原文另作：Świni、Świnię、Świniak、Świniaka,boso_przez_swiat
-,three Teachers,Trzej Nauczyciele,三位导师,三位導師,称号,死神让幽冥去拜访的三位导师：黑神、白神和「自我」；原文另作：Nauczyciel、Nauczycielami、trzeci Nauczyciel,mroczny_swiat_sub4
-,High Priest / Mullah,Wielki Kapłan,大祭司,大祭司,称号,烤强尼担任的安拉大祭司；他的师父是城中的毛拉（Mułła）；原文另作：kapłan、Mułła,boso_przez_swiat
-,Grand Maester,Wielki Maester,大学士,大學士,称号,单位名,wichry_zimy
-,Great Hermit,Wielki Pustelnik,大隐士,大隱士,称号,米库卢斯的称号；佐汉诺瓦蒂自称其弟子；原文另作：pustelnik,boso_przez_swiat; boso_przez_swiat_sub4
-Großwesir,Grand Vizier / Vizier,Wielki Wezyr,大维齐尔,大維齊爾,称号,boso_przez_swiat 中赖托的头衔（结尾佐汉诺瓦蒂接过「大维齐尔的权杖」）；cn_0 中佐汉诺瓦蒂昔日的头衔「帝国大维齐尔」。单称 Wezyr 作「维齐尔」；原文另作：Wezyr、wezyr、Wielkim Wezyrem、Wielkiego Wezyra、wielki wezyr imperium,boso_przez_swiat; cn_0
-,The owner,Właściciel Plantacji,种植园主,種植園主,称号,种「草药」的种植园主；原文另作：Wł. Plant.,saracen_1
-,Saunas owner,Właściciel Saun,桑拿老板,桑拿老闆,称号,经营疗伤蒸汽桑拿的老板；原文另作：W.Sa.,saracen_4
-,Village Leader,Wódz Wioski,村长,村長,称号,沙漠村庄的首领，曾在宫廷为官，持有标着三个按钮的地图（说话人名）；原文另作：wódz,upadek_krola
-Allvater,Allfather,Wszechojciec,众神之父,眾神之父,称号,奥丁的尊号；原文另作：Wszechojca、wszechojcem,straznicypolnocy
-,The All-knowing,Wszechwiedzący,全知者,全知者,称号,阿尔拉巴巴尔城中号称无所不知的先知；原文另作：Wszechwiedzącego,saracen_3_sub_3
-,Goldsmith,Złotnik,金匠,金匠,称号,为山羊打造王冠饰物的金匠；原文另作：Złotnika、Złotnikowi,saracen_2
-,Evil Man / bad man,Zły Człowiek,恶人,惡人,称号,米库卢斯口中渴望权力的「恶人」；佐汉诺瓦蒂揭示其为普罗沙克；原文另作：Złego Człowieka、Złym Człowiekiem,boso_przez_swiat; boso_przez_swiat_sub4; boso_przez_swiat_sub5
-,2137,2137,2137,2137,术语,波兰网络梗：教皇约翰·保罗二世逝世时刻 21:37，配教皇图片 pop.pcx,przekleta_kraina; smocza_kraina; wielka_kolonizacja_iii_1_0
-,Abracadabra,"Abrakadabra, czary mary",阿布拉卡达布拉，天灵灵地灵灵,阿布拉卡達布拉，天靈靈地靈靈,术语,每次穿越时空时念的咒语；原文另作：Abrakadabra、czarmy mary、Abrabaabre? Czurry murry?、Hokus pokus、Alohomora,saracen_1; saracen_1_sub_2; saracen_2_sub_1; saracen_3_sub_3; saracen_4; saracen_4_sub_1; saracen_4_sub_3
-,Assistant,Asystent,助手,助手,术语,HUD 的助手窗口（按 E 打开），沿用界面目录 chs-game.ts 的「助手」；窗口里的计数器 Synowie 作「儿子」，Córki 作「女儿」；原文另作：asystenta,tutorial_009
-,blue mist,Błękitna mgiełka,蓝色雾团,藍色霧團,术语,蓝色雾团；传说久待其中能看见自己灵魂的碎片，比雅尼进入后召唤出分身尼雅比；原文另作：błękitna chmurka、błękitna mgła、chmurka mgły、magiczna mgiełka,kraina_starych_bohaterow; kraina_starych_bohaterow_sub2; wybrzeze_czarow_sub4
-,Divine Gift,Boski Dar,神赐,神賜,术语,提尔的神恩：召唤投石机,walhalla
-,CN,CN,CN,CN,术语,Culturesnation 的缩写，保留拉丁字母；也是玩家势力短标签,cn_0; cn_1; cn_2; cn_2_dni; cn_2_dni_sub; cn_3; cn_4; cn_5; cn_6; demo_mainmenu_10
-,CN Mod 1.0,CN Mod,CN模组,CN模組,术语,Culturesnation模组（约曾科夫说那版投石机射程远得能直接轰到德国人）；原文另作：CN Moda 1.0,cn_2_dni
-,CTF,CTF,夺旗,奪旗,术语,夺旗模式（Capture the Flag）缩写,flagomania_1_0_01
-,Time is money,Czas to pieniądz,时间就是金钱,時間就是金錢,术语,哈奇的口头禅，几乎每关结尾都喊；原文另作：Czas to pieniądz!,saracen_1; saracen_2; saracen_3; saracen_4
-,Gift of Light,Dar Światła,光明之礼,光明之禮,术语,巴德尔的神恩：魔法场与无敌,walhalla
-,drama / flame war,Dymy,撕起来,撕起來,术语,CN 黑话：吵架、闹事（字面「烟」）；zadymiarz＝搞事王。cn_0 中消防员比雅尼把「南边冒烟」当成火警，译文需另造「起火/火药味」类双关；原文另作：dymów、zadyma、zadymiarz,cn_0
-,Hallucinations,Halucynacje,幻觉,幻覺,术语,洛基的神恩：传送门、致盲,walhalla
-,Hatchie Skip,Hatchie Skip,哈奇瞬移,哈奇瞬移,术语,外交面板「哈奇」页签上用于传送的选项,kraina_starych_bohaterow_sub2
-,Some whore,Jakaś kurwa,某个婊子,某個婊子,术语,cn_2_dni 单位名（粗口，照原文语气）,cn_2_dni; cn_2_dni_sub
-,Some guy you don't know,jakiś typ którego nie znasz,某个你不认识的家伙,某個你不認識的傢伙,术语,单位名：「某个你不认识的家伙」,cn_2_dni; cn_2_dni_sub
-,JD,JD,JD,JD,术语,Jestem Debilem「我是白痴」的缩写；赖托把玩家的 Jest dobrze「挺好」曲解成 JD。译文可保留 JD，另选拼音首字母相同的一对说法重建双关；原文另作：Jestem Debilem、Jest dobrze,cn_0; cn_2_dni
-,goat language,Język kóz,山羊语,山羊語,术语,山羊语及其字母对照表（谜题）；原文另作：Tablica języka kóz,saracen_2_sub_1
-,snitching,Konfa,告密,告密,术语,黑话：向加托告密（konfident=线人）；原文另作：konfę、konfił、skonfić,cn_0
-,bloodthirsty bunnies,Krwiożercze króliczki,嗜血小兔,嗜血小兔,术语,地图上会咬人的兔子，希拉获得能力后它们不再攻击她,kraina_starych_bohaterow
-,healing aura,Lecząca aura,治愈光环,治癒光環,术语,可回血的蒸汽/桑拿区,saracen_3_sub_2; saracen_4
-,Ice Wrath,Lodowy Gniew,冰怒咒,冰怒咒,术语,北方维京人的德鲁伊施在比雅尼身上的冰冻咒语；原文另作：Lodowego Gniewu,niezwykla_wyprawa
-,Mana from Heaven / Manna from Heaven,Manna z Nieba,天降吗哪,天降嗎哪,术语,圣经典故「吗哪」（英文参考误作 Mana）：walhalla 中希芙的神恩；wybrzeze_czarow 中叉胡子的法术服务（wieczna manna＝永恒吗哪）；oczy_weza 中洛基降下的恩赐,oczy_weza; walhalla; wybrzeze_czarow
-,Wallmar's power / ninth power,Moc Wallmara,瓦尔马尔之力,瓦爾馬爾之力,术语,瓦尔马尔死后转移的「凭意念造人」的力量，即学院的第九种力量；原文另作：dziewiąta moc,wybrzeze_czarow; wybrzeze_czarow_sc1; wybrzeze_czarow_sc2
-,Sea on Fire,Morze w Ogniu,燃烧之海,燃燒之海,术语,尼奥尔德的神恩：运粮船,walhalla
-,Slaves from Valhalla,Niewolnicy z Walhalli,瓦尔哈拉的奴仆,瓦爾哈拉的奴僕,术语,弗蕾亚的神恩：资源与超级建筑工,walhalla
-,Observer,Obserwator,观战者,觀戰者,术语,观战席位,flagomania_1_0_01; piramida_skarbow; wody_nilu
-,teleportation bonfire,Ognisko teleportacji,传送火圈,傳送火圈,术语,蓝色火焰圈，哈奇可借此瞬间传送；原文另作：krąg błękitnego płomienia、okręgi z błękitnego płomienia,kraina_starych_bohaterow; kraina_starych_bohaterow_sub2
-,Salmon,OKOŃ,鲈鱼,鱸魚,术语,进入保护国地下城、见三位法师的暗号（okoń＝河鲈，英文参考改作 Salmon；换成别的鱼也行，前后两处一致即可）,saracen_4_sub_2
-,pcx,pcx,pcx图片,pcx圖片,术语,游戏图片文件格式；「偷pcx」指盗用别人地图里的图片素材（鲁穆与埃米兰多互相指控）；原文另作：pcxów、pcxa、pcxy、pcxuw,cn_0
-,Jozenkow's dog,pies Jozenkowa,约曾科夫的狗,約曾科夫的狗,术语,单位名：约曾科夫的狗,cn_2_dni; cn_2_dni_sub
-,Thunderous Acceleration,Piorunujące Przyspieszenie,雷霆疾行,雷霆疾行,术语,托尔的神恩：单位加速,walhalla
-,Just a Moose,Po Prostu Łoś,就是一头驼鹿,就是一頭駝鹿,术语,地图中一个物件/单位的玩笑式名字（字符串81）,wybrzeze_czarow
-,building permits / letters,Pozwolenie na budowę,建造许可,建造許可,术语,可放置建筑的许可文书（地图开局赠送）；原文另作：listy、papiery、dokumentacja na magazyny、pozwolenia na budowę,arabskie_wyspy_wolna_gra_mieszana; diamentowa_dolina; mroczny_las; oczy_weza; piramida_skarbow
-,Guardian's Gift,Prezent Opiekunki,守护女神之礼,守護女神之禮,术语,弗丽嘉的神恩：信件宝箱,walhalla
-,SANDBOX,SANDBOX,沙盒模式,沙盒模式,术语,开局 60 秒内可开启的测试模式（全图可见、可试所有神和英雄）；原文另作：tryb SANDBOX,walhalla
-,assassin,skryptobójca,脚本刺客,腳本刺客,术语,双关：skrytobójca（刺客）+ skrypt（地图脚本），指佐汉诺瓦蒂；原文另作：skryptobójcą,boso_przez_swiat
-,Chests of Uncertainty,Skrzynie Niepewności,未知宝箱,未知寶箱,术语,布拉基的神恩：随机宝箱,walhalla
-,SNAKE BONUS,SNAKE BONUS,蛇战士奖励,蛇戰士獎勵,术语,源文本本身即为英文的贡品/目标标签：通过蛇门付贡品获得蛇战士,przekleta_dolina
-,super-civilian,Super-cywil,超级平民,超級平民,术语,无需求、移动快两倍的平民（比雅尼的进贡奖励）；原文另作：super-cywili,walhalla
-,Blizzard,Śnieżyca,暴风雪,暴風雪,术语,伊米尔的神恩：暴风雪减速敌人,walhalla
-,Holy War,Święta Wojna,圣战,聖戰,术语,霍德尔的神恩：所有对手互相宣战,walhalla
-,tribute,Trybut,贡品,貢品,术语,外交窗口里付出的贡品，大量多人地图靠它触发脚本（买兵、选民族、传送等）；原文另作：trybuty、trybucie、trybutu、Trib.、datek,diamentowa_dolina; nowa_nadzieja; nowa_nadzieja_byz; nowa_nadzieja_egy; nowa_nadzieja_fra; nowa_nadzieja_sar; nowa_nadzieja_vik; oczy_weza; przekleta_kraina; starozytny_trakt; trybuty_dwoch_swiatow; wielka_kolonizacja_iii_1_0; wielkie_sprzatanie; wilczy_lad
-,space-time tunnel,Tunel czasoprzestrzenny,时空隧道,時空隧道,术语,穿越时间的通道，由亚伦守护；原文另作：czasoprzestrzeń,saracen_1; saracen_3; saracen_4
-,Asgard Fortress,Twierdza Asgardu,阿斯加德堡垒,阿斯加德堡壘,术语,奥丁的神恩：不可摧毁的城墙,walhalla
-,You,Ty,你,你,术语,玩家席位名：cn_2_dni 中玩家扮演的流浪维京首领（立绘 cn_2_ty_*.pcx 按表情区分）；wybrzeze_czarow 系列的玩家席位；原文另作：Ciebie、Tobie,cn_2_dni; cn_2_dni_sub; wybrzeze_czarow; wybrzeze_czarow_sc1; wybrzeze_czarow_sc2; wybrzeze_czarow_sub1; wybrzeze_czarow_sub3; wybrzeze_czarow_sub4
-,Warriors from the Land of the Dead,Wojownicy z Krainy Umarłych,亡者之国的战士,亡者之國的戰士,术语,海尔的神恩：召唤亡灵战士,walhalla
-,bonus tip,Wskazówka bonusowa,奖励提示,獎勵提示,术语,本系列机制：完成后下一关可得奖励的提示；原文另作：zadanie bonusowe、zadanie dodatkowe,saracen_1; saracen_2; saracen_2_sub_1; saracen_3
-,common warehouse / Capture the warehouse,Wspólny magazyn,公共仓库,公共倉庫,术语,城堡中央供合作玩家共享物资的仓库，通过贡品接管；原文另作：Przejmij magazyn,czarnoksieznik_z_szeolu
-,Nation Selection,Wybór nacji,选择民族,選擇民族,术语,通过付贡品选择民族的席位/窗口,nowa_nadzieja; nowa_nadzieja_byz; nowa_nadzieja_egy; nowa_nadzieja_fra; nowa_nadzieja_sar; nowa_nadzieja_vik
-,Judgment of Bifrost,Wyrok Bifrostu,比弗罗斯特的裁决,比弗羅斯特的裁決,术语,海姆达尔的神恩：开图与传送敌军,walhalla
-,ban,Zbanować,封禁,封禁,术语,论坛黑话「封禁」；地图里意为消灭机器人，「banicja」是被放逐；原文另作：zbanuj、zbanował、Zbanowałem、zbanujemy、ZBANOWANE、banicja、banita,cn_0; cn_1; cn_3
-,Sign of Peace,Znak Pokoju,和平之印,和平之印,术语,弗雷的神恩：强制停战,walhalla
+ger,eng,pol,chs,cht,ita,type,description,references
+,Abul,Abul,阿布勒,阿布勒,,人名,750年前丘伊诺的怪人，精通山羊语，「山羊之仆」兼翻译；暗中把山羊王冠交给埃及人挑拨战争，后被押走；原文另作：Abula、Abulem,saracen_2_sub_1
+Adam und Eva,Adam and Eve,Adam i Ewa,亚当和夏娃,亞當和夏娃,,人名,圣经人物；幽冥打算创造新的亚当和夏娃；原文另作：Adamem i Ewą,mroczny_swiat_sub4
+,Adamwkładam / Adam,Adamwkładam,亚当,亞當,,人名,"CN 用户（真实网名 Adamwkładam，「Adam, wkładam」带下流双关，中文无法保留），对白多称 Adam；以「建设性批评」著称的喷子，后向加托告密。席位/单位名可作「亚当」；原文另作：Adamawkładama、Adamwkładama、Adam、Adama",cn_0; cn_1; cn_2_dni; cn_2_dni_sub; cn_4; demo_mainmenu_10
+,Al-Epaqa / Mohammad Al-Epaqa,Al-Epaqa,阿尔埃帕卡,阿爾埃帕卡,,人名,塔克西尔的阿拉伯人，全名 Mohammad Al-Epaqa「穆罕默德·阿尔埃帕卡」；瓦尔马尔死后其力量落到他身上。一种结局中他引爆腰带里的炸药炸塌灯塔（自杀袭击梗，按原文平实处理，不添油加醋）,wybrzeze_czarow; wybrzeze_czarow_sc1; wybrzeze_czarow_sc2; wybrzeze_czarow_sub2
+,Albert,Albert,阿尔伯特,阿爾伯特,,人名,科斯洛福德八巫师之一，住在索斯福克，制作护符，缺油；原文另作：Albertowi、Alberta,wybrzeze_czarow; wybrzeze_czarow_sc1; wybrzeze_czarow_sc2
+,Alexander Apfel,Alexander Apfel,亚历山大·阿普费尔,亞歷山大·阿普費爾,,人名,纽斯通派来求助的信使（字符串46，对应信使头像）,wybrzeze_czarow
+,Alliser Thorne,Alliser Thorne,艾里沙·索恩,艾里沙·索恩,,人名,守夜人军官（单位名）,wichry_zimy
+,Andrew,Andrew,Andrew,Andrew,,人名,脚本协助者,wielka_kolonizacja_iii_1_0
+,Andrzej,Andrzej,安杰伊,安傑伊,,人名,量尺哥在段子中的自称,boso_przez_swiat
+,Apex,Apex,阿佩克斯,阿佩克斯,,人名,CN 老用户（真实网名）。cn_4 中是地牢囚犯「阿佩克斯帮」老大；boso_przez_swiat 中仅被提及（当年守城的指挥官，Dowódca Apex「阿佩克斯指挥官」）；原文另作：Dowódca Apex、Apexa、Apexem,boso_przez_swiat; cn_1; cn_4; demo_mainmenu_10
+,Arek,Arek,阿雷克,阿雷克,,人名,CN 用户（真实网名，Arkadiusz 的昵称），格斗「宗师」，cn_5 中在八角笼与普罗沙克单挑；口头禅「Siema kto gra?」（嘿，谁来玩？）；原文另作：Arka、Arkiem、Arku、Arkowi,cn_0; cn_1; cn_2_dni; cn_2_dni_sub; cn_5; demo_mainmenu_10
+,Ares,Ares,阿瑞斯,阿瑞斯,,人名,CN 用户兼地图作者（真实网名，取希腊战神名，沿用通行译名）。boso_przez_swiat 中是东村首领；cn 系列中与尼普顿同住奥林匹斯山；cn_2 是与他的 1v1；gringo 的哈里发「阿瑞萨比卜」即拿他开玩笑。作为作者（burza_piaskowa、wielka_inwazja、upadek_krola 等多图）署名保留 Ares；原文另作：Aresa、Aresem、Aresowi、Ares 2k24（署名）、Ares&Jozenkow,boso_przez_swiat; burza_piaskowa; cn_0; cn_1; cn_2; cn_2_dni; cn_2_dni_sub; czarnoksieznik_z_szeolu; demo_mainmenu_10; krol_przeleczy; mroczny_swiat_sub2; oasis_o_plenty; przekleta_kraina; smocza_kraina; starozytny_trakt; upadek_krola; wichry_zimy; wielka_inwazja; wyspa_lupiezcow
+,Aresabib,Aresabib,阿瑞萨比卜,阿瑞薩比卜,,人名,哈里发，佐汉的盟友，号称阿拉伯最可怕的狠角色，其实很和气；谐音作者网名 Ares＋habib，译名保留「阿瑞」以呼应阿瑞斯；原文另作：Aresabiba、Aresabibem、Ares.（短标签）,gringo
+,Azim,Azim,阿齐姆,阿齊姆,,人名,哈奇的撒拉逊挚友，爱用弯刀、信安拉的勇士；在saracen_3_sub_3引爆缝在身上的炸药牺牲以夺得第三枚戒指；原文另作：Azima、Azimem、Azimowi,saracen_1; saracen_1_sub_2; saracen_2; saracen_2_sub_1; saracen_3; saracen_3_sub_1; saracen_3_sub_2; saracen_3_sub_3; saracen_4
+,Baba Wanga,Baba Wanga,巴巴·万加,巴巴·萬加,,人名,林中半盲半聋的老预言婆，收钱算命并标出护符位置；原文另作：Babie Wandze、Babą Wangą、Bab（短标签）,straznicypolnocy
+,Babiares,Babiares,巴比阿瑞斯,巴比阿瑞斯,,人名,阿瑞萨比卜之父，始建其要塞（Aresabib 音节倒置的玩笑）,gringo
+,Bain,Bain,贝恩,貝恩,,人名,祭司，凯恩的兄弟，被贩奴的塞尔柱人掳走；原文另作：Baina,mroczny_swiat; mroczny_swiat_sub2; mroczny_swiat_sub4
+,Balthazar,Baltazar,巴尔塔扎尔,巴爾塔扎爾,,人名,四处行商的商人，哈奇的「老朋友」；实为盗走时空卷轴、杀害二流子的叛徒，在saracen_4_sub_3被哈奇杀死；原文另作：Baltazara、Baltazarem、Baltazarowi、Balt.、Kupiec Baltazar,saracen_1; saracen_2; saracen_3; saracen_4; saracen_4_sub_3; saracen_4_sub_4
+,Barin,Barin,Barin,Barin,,人名,测试者,piramida_skarbow
+Bear Grylls,Bear Grylls,Bear Grylls,贝尔·格里尔斯,貝爾·格里爾斯,,人名,真实的英国荒野求生节目主持人，在沙漠中被塞尔柱人绑架、待营救；原文另作：Beara Gryllsa,lowcypustyni2
+,Benjen Stark,Benjen Stark,班扬·史塔克,班揚·史塔克,,人名,守夜人首席游骑兵（单位名）,wichry_zimy
+,Bjorn the Long-sworded,Bjorn Długomieczny,长剑比约恩,長劍比約恩,,人名,六勇士之一，「长剑族」首领,oasis_o_plenty
+,Bjorni,Bjorni,比约尼,比約尼,,人名,黑暗世界序章里的席位名，正文未解释,mroczny_swiat_sub1
+,Boldir,Boldir,Boldir,Boldir,,人名,CN论坛用户（仅作单位名出现）,cn_2_dni; cn_2_dni_sub
+,Godswrath,Bożygniew,博日格涅夫,博日格涅夫,,人名,法兰克村庄首领，科任桑与凯介的挚友，曾被撒拉逊人关押（古波兰式人名，字面「上帝之怒」，英文意译 Godswrath）。佐汉辱称他 Bożydebil（debil＝白痴），可译「博日白痴」；原文另作：Bożygniewa、Bożygniewem、Bożydebil,gringo; gringo_sub
+,Brainy,Brainy,布雷尼,布雷尼,,人名,社区地图作者（真实网名），作者署名（kraina_starych_bohaterow、niezwykla_wyprawa、przekleta_dolina、oczy_weza、wilczy_lad、wielkie_sprzatanie、ciezka_wspolpraca 等）保留 Brainy；cn_0 中作为角色出现时作「布雷尼」（被迫看着自己的地图《大扫除》被烧）；原文另作：Brainego,ciezka_wspolpraca; cn_0; cn_1; cn_2_dni; cn_2_dni_sub; demo_mainmenu_10; kraina_starych_bohaterow; niezwykla_wyprawa; oczy_weza; przekleta_dolina; wielkie_sprzatanie; wilczy_lad
+,Brandon the Builder,Brandon Budowniczy,筑城者布兰登,築城者布蘭登,,人名,传说中修建长城的人；原文另作：Brandona Budowniczego,wichry_zimy
+,Bruno,Bruno,布鲁诺,布魯諾,,人名,科斯洛福德八巫师之一，住在纽斯通的德意志人（开口「Guten Tag」），协助建造；原文另作：Brunona、Brunon,wybrzeze_czarow; wybrzeze_czarow_sc1; wybrzeze_czarow_sc2
+,Brutus / Frank Brutus,Brutus,布鲁图斯,布魯圖斯,,人名,法兰克商人兼驯狼人，用 5 桶水换一头驯化的狼；原文另作：Brutusa,wilczy_lad
+,Warlock from Sheol / Sorcerer of Sheol,Czarnoksiężnik z Szeolu,冥府巫师,冥府巫師,,人名,从冥府（Szeol）归来的凯尔特巫师，czarnoksieznik_z_szeolu 的主要反派与标题（仿《绿野仙踪》波兰译名 Czarnoksiężnik z Krainy Oz）；piramida_skarbow 中是占据金字塔、造出蛇群的敌对席位；原文另作：Czarnoksiężnik、Czarnoks.、Szeol（席位简称）,czarnoksieznik_z_szeolu; piramida_skarbow
+,Red Priestess,Czerwona Kapłanka,红袍女祭司,紅袍女祭司,,人名,红袍女祭司（单位名，即梅丽珊卓）,wichry_zimy
+,Merchant Diego,Diego,迭戈,迭戈,,人名,群岛上的商人NPC（席位名）；原文另作：Kupiec Diego,arabskie_wyspy_wolna_gra_mieszana
+,Donan,Donan,多南,多南,,人名,巴拉巴熊在人类世界的「内线」，其日记讲述熊的来历；原文另作：Donana,boso_przez_swiat
+,Dzejkaczi / Dzejkaci,Dzejkaczi,杰卡奇,傑卡奇,,人名,CN 用户（真实网名，Dzejk＝波兰拼写的 Jake）。boso_przez_swiat 中是岛上法兰克人首领（席位「杰卡奇的法兰克人」）；cn 系列中是贪吃的壮汉战士，说话全小写、不加标点、句句带 chłopie「老兄」。简称 Dzejk 也作「杰卡奇」；w_oku_niepewnosci 作者署名保留 Dzejkaci；原文另作：Dzejkaci、Dżejkaci、Dzejk,boso_przez_swiat; cn_0; cn_1; cn_2_dni; cn_2_dni_sub; demo_mainmenu_10; w_oku_niepewnosci
+,Eddison Tollett,Eddison Tollett,艾迪森·托勒特,艾迪森·托勒特,,人名,守夜人（单位名）,wichry_zimy
+Elija,Elijah,Eliasz,以利亚,以利亞,,人名,传说葬于水下洞穴的先知，据说其墓中泉水可让人预见未来；原文另作：Eliasza、prorok Eliasz,boso_przez_swiat; boso_przez_swiat_sub4
+,Elizabet / Elizabeth,Elizabet,伊丽莎白,伊麗莎白,,人名,公主臆想中花园永远比她漂亮的对手（实际不存在）；原文另作：Elizabeth（英文）,saracen_3_sub_3
+,Emilando / Emiland,Emilando,埃米兰多,埃米蘭多,,人名,CN 用户（真实网名）。boso_przez_swiat 中是西村首领；cn 系列中住在波德拉谢沼泽、怀念共产主义，口头禅「荣耀归于沙皇普罗沙克！」，爱用《魔兽争霸III》苦工台词。简称 Emil 也作「埃米兰多」，以免与头衔 Emir「埃米尔」相混；作者署名保留原文；原文另作：Emilanda、Emilandem、Emil、Emila、Emilowi、Emilandu、Emilando - Knut,arabskie_wyspy_wolna_gra_mieszana; boso_przez_swiat; cn_0; cn_1; cn_2_dni; cn_2_dni_sub; demo_mainmenu_10; plytkie_brody_1_1
+,Eric the Cow-stealer,Eryk Krowokradny,偷牛埃里克,偷牛埃里克,,人名,六勇士之一，「偷牛族」首领,oasis_o_plenty
+,Evil Zohan,Evil Zohan,邪恶佐汉,邪惡佐漢,,人名,佐汉的「邪恶」双胞胎兄弟；笑点在于他反而热情接待新人,cn_2_dni; cn_2_dni_sub
+,Evo,Evo,埃沃,埃沃,,人名,CN 老用户（真实网名），阿佩克斯的狱友，收「保护费」（Haracz dla Evo＝给埃沃的保护费）；原文另作：Eva,cn_1; cn_4; demo_mainmenu_10
+,Ewelina / Proszak's Sister,Ewelina,埃韦利娜,埃韋利娜,,人名,普罗沙克的妹妹（单位名 Siostra Proszaka＝普罗沙克的妹妹），被关在 CN 地牢，由齐奥穆斯救出；原文另作：Eweliny、Ewelinę、Eweliną、Siostra Proszaka、siostra proszaka、SIOSTRA PROSZAKA,cn_0; cn_4
+,Fandral,Fandral,范达尔,范達爾,,人名,北方维京人首领，想南逃避开冰巨人，最终结盟；名字取自漫威《雷神》三勇士之一（中文作范达尔）；原文另作：Fandrał（笔误）,straznicypolnocy
+Fiona,Fiona,Fiona,菲奥娜,菲奧娜,,人名,史莱克的妻子菲奥娜；原文另作：Fiono,cn_2_dni; cn_2_dni_sub
+Gandalf,Gandalf,Gandalf,甘道夫,甘道夫,,人名,米库卢斯的装扮；「你不能过去！」,cn_0; cn_4
+,GaTo,GaTo,加托,加托,,人名,前 CN 管理员（真实网名，西语 gato＝猫）。cn 系列反派：被放逐后与皮夫科率机器人大军篡夺 CN；boso_przez_swiat 中仅被提及（五年前率撒拉逊人入侵）；原文另作：Gato、GATO、G.A.T.O,boso_przez_swiat; cn_0; cn_1; cn_2; cn_2_dni; cn_2_dni_sub; cn_3; cn_4; cn_6; demo_mainmenu_10
+,Gavert,Gavert,Gavert,Gavert,,人名,CN论坛用户（仅作单位名出现）,cn_2_dni; cn_2_dni_sub
+,General Basil,Generał Basil,巴西尔将军,巴西爾將軍,,人名,拜占庭驻军将军，负责关押被押送的强盗鲁弗斯；原文另作：Gen. Basil、gen. Basila,niezwykla_wyprawa
+,General Olivier / Gen Olivier,Generał Olivier,奥利维耶将军,奧利維耶將軍,,人名,拜占庭将军，哈奇的老友，委派寻找戒指的任务，自 saracen_3 起亲自同行；短标签 Gen.Ol. 作「奥将军」；原文另作：Olivier、Gen. Olivier、Gen.Ol.,saracen_1; saracen_2; saracen_3; saracen_3_sub_1; saracen_3_sub_2; saracen_3_sub_3; saracen_4; saracen_4_sub_3
+,Gen. Steiner,Generał Steiner,施泰纳将军,施泰納將軍,,人名,「施泰纳将军」，在营地里贩卖孩子；影射电影《帝国的毁灭》中的施泰纳梗（内容需编辑审阅）；原文另作：Steiner、GEN. STEINER,cn_2_dni; cn_2_dni_sub
+,Gimil,Gimil,吉米尔,吉米爾,,人名,CN 老用户（真实网名），北采石场拄拐的老囚犯；原文另作：Gimila,cn_1; cn_2_dni; cn_2_dni_sub; cn_4; demo_mainmenu_10
+,Gorki,Gorki,Gorki,Gorki,,人名,与赖托一同被加托放逐的 CN 老用户（真实网名，仅被提及，保留拉丁字母）；原文另作：Gorkim,cn_1; demo_mainmenu_10
+,Gregory II the Claylander,Gregory II Gliniarz,泥条子格雷戈里二世,泥條子格雷戈里二世,,人名,泥民部落王公，玩家角色之一；Gliniarz 源自 glina「黏土」，又是俚语「条子（警察）」，「泥条子」兼顾两义；原文另作：Gregoremu II Gliniarzowi、Gregory,polski_mlyn_1_1
+,Grenn,Grenn,葛蓝,葛藍,,人名,守夜人新兵（单位名）,wichry_zimy
+,Gryzasz,Gryzasz,咬喉者,咬喉者,,人名,莲花号幸存船员之一；咬断哈基姆苏丹动脉夺取萨兰德苏丹国，后被狮群当作同类收养,boso_przez_swiat
+,Habibi,Habibi,哈比比,哈比比,,人名,凯介的好友，借出船只救博日格涅夫；原文另作：Habibiego、habibi（作普通词）,gringo
+,Hakim,Hakim,哈基姆,哈基姆,,人名,咬喉者咬死的苏丹；原文另作：sułtan Hakim,boso_przez_swiat
+,Hamid,Hamid,哈米德,哈米德,,人名,传说中丘伊诺的伟大统治者，向山羊像祈祷后埃斯梅拉达降临,saracen_2
+Hammurabi,King Hammurabi,Hammurabi,汉穆拉比,漢穆拉比,,人名,卡利姆多国王，哈奇的老朋友；原文另作：Hammurabiego、K.Hammurabi,upadek_krola
+,handsomeZAK,handsomeZAK,handsomeZAK,handsomeZAK,,人名,CN论坛用户（仅作单位名出现）,cn_2_dni; cn_2_dni_sub
+,Harald,Harald,哈拉尔,哈拉爾,,人名,科斯洛福德八巫师之一，船坏后困在布拉比，可召唤龙；原文另作：Haralda,wybrzeze_czarow; wybrzeze_czarow_sc1; wybrzeze_czarow_sc2
+,Harald the Plate-armed,Harald Płytozbrojny,板甲哈拉尔,板甲哈拉爾,,人名,六勇士之一，「板甲族」首领,oasis_o_plenty
+,Hasim,Hasim,哈希姆,哈希姆,,人名,过去渔村的渔夫，会吹笛驯蛇；原文另作：Hasima,saracen_2_sub_1
+,Hassan,Hassan,哈桑,哈桑,,人名,巨型蛇战士首领，皮坚不可破，被英雄用坍塌的巨石困在石墓中；原文另作：Hassana,zdradziecka_mielizna_sub2
+,Hektor,Hektor,赫克托,赫克托,,人名,mroczny_swiat 单位名，剧情中没有出场,mroczny_swiat
+,Hemp,Hemp,Hemp,Hemp,,人名,CN论坛用户（仅作单位名出现）,cn_2_dni; cn_2_dni_sub
+,HenBlejdd,HenBlejdd,HenBlejdd,HenBlejdd,,人名,CN论坛用户（仅作单位名出现）,cn_0
+,Hjorvard,Hjorvard,约尔瓦德,約爾瓦德,,人名,mroczny_swiat 中隐居小岛的老维京战士，亲手训练八个儿子，借给比雅尼一行船和投石机（冰岛语名 Hjörvarðr，Hj 读作「约」）；原文另作：Hjorvarda、Hjorvardzie、Hjorv.（短标签）,mroczny_swiat
+,Hring,Hring,赫林,赫林,,人名,比约恩的维京同伴，乐天、爱说笑；原文另作：Hringiem、Hringa,wybrzeze_czarow; wybrzeze_czarow_sc1; wybrzeze_czarow_sc2; wybrzeze_czarow_sub1; wybrzeze_czarow_sub2; wybrzeze_czarow_sub3; wybrzeze_czarow_sub4
+Pargalı İbrahim Pascha,Ibrahim Pasha / Pargali Ibrahim Pasha,Ibrahim Pasza,易卜拉欣帕夏,易卜拉欣帕夏,,人名,苏莱曼的将军，东征巴格达，可用金币买其精锐；原文另作：Pargali Ibrahim Pasza、Ibrahima Paszy、PASZA（短标签）,wielka_inwazja
+,Idris,Idris,伊德里斯,伊德里斯,,人名,哈奇的撒拉逊挚友，沉默寡言的士兵，父亲是商人，对山羊传说颇熟；结局远赴印度；原文另作：Idrisa、Idrisem、Idrisowi、Idirs（笔误）,saracen_1; saracen_1_sub_2; saracen_2; saracen_2_sub_1; saracen_3; saracen_3_sub_1; saracen_3_sub_2; saracen_3_sub_3; saracen_4; saracen_4_sub_1; saracen_4_sub_2; saracen_4_sub_3; saracen_4_sub_4
+,Ingvar,Ingvar,英格瓦尔,英格瓦爾,,人名,CN 用户（真实网名，北欧人名）。boso_przez_swiat 中是三名指挥官之一，同死于伏击；cn 系列中与毛雷齐合开酿酒坊，兜售加密货币「Cultures币」；原文另作：Ingvara、Ingvarem、Ingvarowi,boso_przez_swiat; cn_0; cn_1; cn_2_dni; cn_2_dni_sub; cn_3; demo_mainmenu_10
+,Inrajb,Inrajb,尼雅比,尼雅比,,人名,比雅尼的「另一个自我」，从蓝色雾团中现身的分身，代表他较少示人的一面，自称「哥哥」；原文另作：Inrajb'ie、Inrajb'em,kraina_starych_bohaterow; kraina_starych_bohaterow_sub2
+,Ivar,Ivar,伊瓦尔,伊瓦爾,,人名,比约恩的维京同伴，谨慎多疑、说话尖刻；原文另作：Ivarem、Ivara,wybrzeze_czarow; wybrzeze_czarow_sc1; wybrzeze_czarow_sc2; wybrzeze_czarow_sub1; wybrzeze_czarow_sub2; wybrzeze_czarow_sub3; wybrzeze_czarow_sub4
+,Groat,Jaglak,雅格拉克,雅格拉克,,人名,saracen_3_sub_3 中的一个席位名，剧情未提及；来历不明（英文作 Groat）,saracen_3_sub_3
+,Jakester,Jakester,Jakester,Jakester,,人名,CN论坛用户（仅作单位名出现）,cn_2_dni; cn_2_dni_sub
+,Jamal,Jamal,贾迈勒,賈邁勒,,人名,哈奇最好的朋友，与他同行营救卡利姆多；原文另作：Jamala、Jamalem、Jamalowi,upadek_krola; upadek_krola_sub
+,Janos Slynt,Janos Slynt,杰诺斯·史林特,傑諾斯·史林特,,人名,守夜人军官（单位名）,wichry_zimy
+,Jaremy Rykker,Jaremy Rykker,杰瑞米·莱克,傑瑞米·萊克,,人名,守夜人骑士（单位名）,wichry_zimy
+,Jaymer,Jaymer,Jaymer,Jaymer,,人名,社区地图作者,battle_for_the_four_hills_multiplayer; the_lake_of_the_mists
+,Jeor Mormont,Jeor Mormont,杰奥·莫尔蒙,傑奧·莫爾蒙,,人名,守夜人总司令，阵亡即任务失败；原文另作：Jeora Mormonta,wichry_zimy
+,Johny Roasted,Johny Pieczony,烤强尼,烤強尼,,人名,莲花号幸存船员之一，晚年成为安拉的大祭司，看守「摩西圣布鞋」；原文另作：Johny,boso_przez_swiat
+,Jon Snow,Jon Snow,琼恩·雪诺,瓊恩·雪諾,,人名,玩家英雄之一，守夜人新兵,wichry_zimy
+,Jozenkow / Jozenkov,Jozenkow,约曾科夫,約曾科夫,,人名,社区地图作者（真实网名，签名常作 Joz），三十多张图署名「By Jozenkow」，署名处保留拉丁字母。作为角色：boso_przez_swiat 中是埃米尔、佐汉诺瓦蒂的同谋；cn 系列中因「JD」事件出走；gringo 中拼作 Dżozenkow，是传说中唯一能打败佐汉的「弥赛亚」（作者自嘲），同样作「约曾科夫」；原文另作：Dżozenkow、Joz,boso_przez_swiat; boso_przez_swiat_sub4; burza_piaskowa; cn_0; cn_1; cn_2_dni; cn_2_dni_sub; czarnoksieznik_z_szeolu; demo_mainmenu_10; diamentowa_dolina; gringo; lowcypustyni2; magiczny_las; mroczny_las; mroczny_swiat; mroczny_swiat_sub1; mroczny_swiat_sub2; nowa_nadzieja_byz; nowa_nadzieja_egy; nowa_nadzieja_fra; nowa_nadzieja_sar; nowa_nadzieja_vik; oasis_o_plenty; polski_mlyn_1_1; przekleta_kraina; saracen_1; saracen_2; saracen_3; saracen_4; smocza_kraina; starozytny_trakt; straznicypolnocy; tutorial_009; walhalla; wichry_zimy; wyspy_polnocy
+,Kai-Suke,Kai-Suke,凯介,凱介,,人名,科任桑的弟弟，法兰克村庄的共同首领（假日本名）。佐汉辱称他 Kai-Suka（suka＝婊子），可译「凯贱」之类；原文另作：Kai-Suka（佐汉的辱称）,gringo; gringo_sub
+,Kain,Kain,凯恩,凱恩,,人名,光明圣所的祭司，贝恩的兄弟；后被揭示为幽冥编造的幻影；原文另作：Kaina,mroczny_swiat; mroczny_swiat_sub2; mroczny_swiat_sub4
+,Kakus,Kakus,卡库斯,卡庫斯,,人名,喝醉的德鲁伊，长着《我的世界》苦力怕的脑袋，「嘶嘶」后爆炸；原文另作：Kakusa、Kakusie,cn_2_dni; cn_2_dni_sub
+,Kameleon,Kameleon,Kameleon,Kameleon,,人名,CN论坛用户（仅作单位名出现）,cn_2_dni; cn_2_dni_sub
+,Karl,Karl,卡尔,卡爾,,人名,两个不同角色同名：wybrzeze_czarow 系列中比约恩一行唯一的法兰克人，始终不信任佐里安；cn 系列中只是论坛用户单位名；原文另作：Karlem、Karla,cn_0; cn_1; cn_2_dni; cn_2_dni_sub; demo_mainmenu_10; wybrzeze_czarow; wybrzeze_czarow_sc1; wybrzeze_czarow_sc2; wybrzeze_czarow_sub2; wybrzeze_czarow_sub3; wybrzeze_czarow_sub4
+,Karl the Short-bowman,Karl Krótkołuczny,短弓卡尔,短弓卡爾,,人名,六勇士之一，「短弓族」首领,oasis_o_plenty
+,Klajszter,Klajszter,克莱什特,克萊什特,,人名,多南日记中两名变态「研究员」之一,boso_przez_swiat
+Konstantin XI.,Constantine XI,Konstantyn XI,君士坦丁十一世,君士坦丁十一世,,人名,末代拜占庭皇帝，战死于君士坦丁堡城墙,wielka_inwazja
+,Cornelius,Korneliusz,科尔内利乌斯,科爾內利烏斯,,人名,奥特兰克被篡位的老国王，被关在奥特兰克监狱，获救后率逃兵反攻；原文另作：Korneliusza、K.Korneliusz,upadek_krola; upadek_krola_sub
+,Korsyn,Korsyn,Korsyn,Korsyn,,人名,CN论坛用户（仅作单位名出现）,cn_2_dni; cn_2_dni_sub
+,Korzen-San,Korzen-San,科任桑,科任桑,,人名,《外乡佬》主角，来自「樱花之国」的武士，凯介之兄、博日格涅夫的老友（Korzeń＝树根，加日式敬称 -San 的假日本名）。佐汉辱称他 Korzen-Sran（sran≈拉屎），可译「科任屎桑」之类；原文另作：Korzen、Korzen-Sran（佐汉的辱称）,gringo; gringo_sub
+,Krailotus / Krarilotus,Krailotus,克赖洛图斯,克賴洛圖斯,,人名,德国玩家（真实网名），上届 CN 锦标赛冠军，收钱后倒戈德国人；说德语夹生波兰语。mroczny_swiat_sub2 谜题席位拼作 Krarilotus（笔误，同一人；谜题席位名保留拉丁字母）,cn_2_dni; cn_2_dni_sub; mroczny_swiat_sub2
+,King Antonidas,Król Antonidas,安东尼达斯国王,安東尼達斯國王,,人名,被遗忘之森中法兰克城堡的国王，向朋友们求援；原文另作：Antonidas、Antonidasa,czarnoksieznik_z_szeolu
+,Krysia,Krysia,克丽霞,克麗霞,,人名,山羊城长舌妇之一的女伴，一笔带过,saracen_2
+,kubaw208,kubaw208,kubaw208,kubaw208,,人名,社区玩家昵称，谜题答案选项（席位名 s902）,mroczny_swiat_sub2
+,Kubawb,Kubawb,Kubawb,Kubawb,,人名,CN论坛用户（仅作单位名出现）,cn_2_dni; cn_2_dni_sub
+,Lejba,Lejba,莱巴,萊巴,,人名,科斯洛福德八巫师之一，借钱给学院修墙后又想多讹一笔，付钱后才肯去学院；提供车辆类魔法服务；原文另作：Lejbo、Lejby、Lejbie,wybrzeze_czarow; wybrzeze_czarow_sc1; wybrzeze_czarow_sc2
+,Forest Grandpa,Leśny dziadek,林中老翁,林中老翁,,人名,中立NPC席位，林中隐居老人；原文另作：Dz.,nowa_nadzieja; nowa_nadzieja_byz; nowa_nadzieja_egy; nowa_nadzieja_fra; nowa_nadzieja_sar; nowa_nadzieja_vik
+,Leugim,Leugim,尔格米,爾格米,,人名,与米格尔并列的商人席位，名字是 Miguel 倒写；原文另作：Leu,przekleta_kraina
+,Ruler Guy / Ruler,Linijkarz,量尺哥,量尺哥,,人名,莲花号幸存船员之一，讲一段关于「量脚尺」的下流搭讪故事；原文另作：Linijkarza,boso_przez_swiat
+,Lord of Bones,Lord Kości,骸骨王,骸骨王,,人名,野人头目（单位名）,wichry_zimy
+,lordMIREK,lordMIREK,lordMIREK,lordMIREK,,人名,CN论坛用户（仅作单位名出现）,cn_0
+,Lucius,Lucius,卢修斯,盧修斯,,人名,科斯洛福德八巫师之一，在南方山口独居；靴子坏了不肯赤脚穿林，提供军事帮助（随机盔甲）；原文另作：Luciusa、Luciusowi,wybrzeze_czarow; wybrzeze_czarow_sc1; wybrzeze_czarow_sc2
+Mohammed,Muhammad,Mahomet,穆罕默德,穆罕默德,,人名,伊斯兰先知（撒拉逊卫兵台词）,boso_przez_swiat; gringo
+,Malekhit,Malekhit,玛勒基特,瑪勒基特,,人名,守卫世界树的千岁精灵，傲慢，安排伊科尔与劳菲的灵体会面；影射《雷神2》黑暗精灵玛勒基斯,straznicypolnocy
+,Mance Rayder,Mance Rayder,曼斯·雷德,曼斯·雷德,,人名,野人之王，任务要求俘获并处以火刑；原文另作：Mance'a、Mancea Raydera、Manceowi,wichry_zimy
+Marduk,Marduk,Marduk,马尔杜克,馬爾杜克,,人名,卡扎尔人首领、泽尔扎尔的部下，盘踞马尔杜克巢穴；在saracen_3_sub_2被击杀；原文另作：Marduka、Mardukiem,saracen_3; saracen_3_sub_1; saracen_3_sub_2; saracen_3_sub_3
+,Mateo22,Mateo22,Mateo22,Mateo22,,人名,CN论坛用户（仅作单位名出现）,cn_1; demo_mainmenu_10
+,Mati,Mati,Mati,Mati,,人名,CN论坛用户（仅作单位名出现）,cn_0
+,Matrix,Matrix,Matrix,Matrix,,人名,脚本协助者,wielka_kolonizacja_iii_1_0
+,Matusz,Matusz,Matusz,Matusz,,人名,CN论坛用户（仅作单位名出现）,cn_2_dni; cn_2_dni_sub
+,Maurycy,Maurycy,毛雷齐,毛雷齊,,人名,CN 用户（真实网名，波兰人名）。boso_przez_swiat 中是普罗沙克派出的三名指挥官之一，在杰卡奇岛遇伏身亡；cn 系列中是酒鬼，与英格瓦尔合开酿酒坊；原文另作：Maurycego、Maurycym、Maurycemu,boso_przez_swiat; cn_0; cn_1; cn_2_dni; cn_2_dni_sub; cn_3; demo_mainmenu_10
+,Menelix / Druid Menelix,Menelix,梅内利克斯,梅內利克斯,,人名,德鲁伊（menel「醉汉流浪汉」＋《阿斯泰利克斯》式 -ix 词尾）。straznicypolnocy 中在南方山里收集护符；przekleta_kraina 中收 300 份油后解除蛇灾诅咒；原文另作：Druid Menelix,przekleta_kraina; straznicypolnocy
+,Merxes,Merxes,梅尔克塞斯,梅爾克塞斯,,人名,前罗马帝国侦察兵，收钱和靴子替苏丹侦察敌城；原文另作：Merxesowi,wielka_inwazja
+,Michał,Michał,米哈乌,米哈烏,,人名,CN 用户（真实网名，波兰人名），三联城西区之主；满嘴「你老爸……中风」之类的骂人梗；原文另作：Michała、Michałem、Michale、Mich..,cn_0; cn_1; demo_mainmenu_10
+,michben7,michben7,michben7,michben7,,人名,CN论坛用户（仅作单位名出现）,cn_2_dni; cn_2_dni_sub
+Mickiewicz,Mickiewicz,Mickiewicz,密茨凯维奇,密茨凱維奇,,人名,波兰民族诗人亚当·密茨凯维奇，作者自嘲押韵差时提及；原文另作：Mickiewiczowi,starozytny_trakt
+Mieszko,Mieszko,Mieszko,梅什科,梅什科,,人名,波兰尼部落王公，欲统一斯拉夫诸部（影射梅什科一世）；原文另作：Mieszka,polski_mlyn_1_1
+,Mikulus,Mikulus,米库卢斯,米庫盧斯,,人名,CN 用户、作者兼测试者（真实网名，作者署名「Mikulus（Mikołaj Walc）」保留原文）。boso_przez_swiat_sub4 中是水下洞穴的隐士（「大隐士」）；cn 系列中扮成甘道夫，「你不能过去！」后牺牲；oasis_o_plenty、trybuty_dwoch_swiatow 作者；原文另作：Mikulusa、Mikulusowi、Mikulusie、pustelnik Mikulus、Mikulus（Mikołaj Walc）,boso_przez_swiat; boso_przez_swiat_sub4; cn_0; cn_2_dni; cn_2_dni_sub; cn_4; gringo; oasis_o_plenty; piramida_skarbow; trybuty_dwoch_swiatow; wielka_kolonizacja_iii_1_0; wybrzeze_czarow
+Moses,Moses,Mojżesz,摩西,摩西,,人名,圣经人物，见「摩西圣布鞋」；原文另作：Mojżesza,boso_przez_swiat; saracen_4_sub_3
+,Darkness,Mrok,幽冥,幽冥,,人名,《黑暗世界》系列反派：曾是凡人，承接死神之力后自封为神，控制人心、把世界变成永夜（mrok＝昏暗，作人名并变格 Mroka）；也是席位名；原文另作：Mroka、Mrokiem,mroczny_swiat; mroczny_swiat_sub1; mroczny_swiat_sub2; mroczny_swiat_sub4
+,Myrman,Myrman,米尔曼,米爾曼,,人名,多南日记中被熊袭击的伐木班长；原文另作：Myrmana,boso_przez_swiat
+,Neptune,Neptun,尼普顿,尼普頓,,人名,CN 用户（真实网名，取罗马海神名），与阿瑞斯同住奥林匹斯山，召唤水元素战士；原文另作：Neptuna、Neptunem、Neptunowi,cn_0; cn_1; cn_2_dni; cn_2_dni_sub; demo_mainmenu_10
+,Neriv,Neriv,Neriv,Neriv,,人名,CN论坛用户（仅作单位名出现）,cn_0; cn_2_dni; cn_2_dni_sub
+,Rogue,Nicpoń,二流子,二流子,,人名,山羊国的怪人，自称曾为奴隶；策划「新埃斯梅拉达」骗局帮哈奇凑齐百只山羊，后随队同行，在saracen_4被巴尔塔扎尔灭口；原文另作：Nicponia、Nicponiem、Nicponiowi,saracen_2; saracen_3; saracen_4
+,Bear Barabbas,Niedźwiedź Barabasz,巴拉巴熊,巴拉巴熊,,人名,扮成老人的熊，莲花号幸存船员之一（Barabasz 即圣经人名巴拉巴），在东部山中自建村庄（疑即「老人村」）；原文另作：Barabasz、Barabasza、BARABASZ,boso_przez_swiat
+,Niellegalny,Niellegalny,Niellegalny,Niellegalny,,人名,被加托放逐的 CN 老用户（真实网名，仅被提及，保留拉丁字母；意为拼错的「非法」）；原文另作：Niellegalnego,cn_1; demo_mainmenu_10
+Nostradamus,Nostradamus,Nostradamus,诺查丹玛斯,諾查丹瑪斯,,人名,驱使龙群的暴君，率领拜占庭人；原文另作：Nostradamusa,smocza_kraina
+,Father Pijo,Ojciec Pijo,皮约神父,皮約神父,,人名,cn_1 中一句台词的署名（实为兹比雷克所说），疑戏仿毕奥神父（Ojciec Pio）＋ pije「喝酒」,cn_1; demo_mainmenu_10
+,Olaf the Mead-drinker,Olaf Miodopitny,蜂蜜酒奥拉夫,蜂蜜酒奧拉夫,,人名,丰饶绿洲六勇士之一，「蜂蜜酒族」首领，须在开局决斗；六人的诨号都取自游戏物品名，须与 HUD 物品名一致（蜂蜜酒）,oasis_o_plenty
+,Pierres,Pierres,皮埃尔,皮埃爾,,人名,科斯洛福德八巫师之一，来自法兰克的隐居者，能施放消灭蛇怪的地震,wybrzeze_czarow; wybrzeze_czarow_sc1; wybrzeze_czarow_sc2
+,Piwko,Piwko,皮夫科,皮夫科,,人名,加托的盟友、同为被放逐的前管理员（真实网名，piwko＝小啤酒）；结局与加托一同被处决。席位「GaTo i Piwko」＝加托和皮夫科；原文另作：Piwka、Piwkiem,cn_0; cn_1; cn_6; demo_mainmenu_10
+,Portunio,Portunio,Portunio,Portunio,,人名,CN论坛用户（仅作单位名出现）,cn_2_dni; cn_2_dni_sub
+,Prajdo,Prajdo,Prajdo,Prajdo,,人名,社区地图作者 Brainy 的另一网名（真实网名），署名「Made by Prajdo aka Brainy」保留拉丁字母,wielkie_sprzatanie_2_0
+,Proszak,Proszak,普罗沙克,普羅沙克,,人名,CulturesNation 论坛首席管理员（真实网名）。boso_przez_swiat 中是穆卡拉赫城统治者，比雅尼的旧友，最终被揭露为杀害兹比雷克的「恶人」并遭私刑；cn 系列主角，被加托囚禁十年后越狱收复 CN；saracen_2 中有其「普罗禁卫军」。名字谐音 prosiak「小猪」，故被敌人骂作「猪猡」。作者署名处保留 Proszak；原文另作：Proszaka、Proszakowi、Proszakiem、Proszaku,boso_przez_swiat; boso_przez_swiat_sub2; boso_przez_swiat_sub4; boso_przez_swiat_sub5; burza_przybzezna_1_2; cn_0; cn_1; cn_2; cn_2_dni; cn_2_dni_sub; cn_3; cn_4; cn_5; cn_6; demo_mainmenu_10; kraina_tysisca_jezior_1_1; krwawa_rzeka; mroczny_swiat_sub2; piracka_utopia_1_0; samotna_gora; saracen_2; wielka_kolonizacja; wielka_kolonizacja_ii_1_1; wielka_kolonizacja_iii_1_0
+,Qhorin Halfhand,Qhorin Półręki,断掌科林,斷掌科林,,人名,长城外营地的游骑兵首领（亦为席位名）；原文另作：Qhorina Półrękiego,wichry_zimy
+,Quekuss,Quekuss,奎库斯,奎庫斯,,人名,CN 老用户（真实网名），南采石场囚犯，台词全是《魔兽争霸III》兽人苦工语音（用中文版苦工台词）；原文另作：Quekussa,cn_1; cn_4; demo_mainmenu_10
+,Ragnar Bluebeard,Ragnar Błękitnobrody,蓝须拉格纳尔,藍鬚拉格納爾,,人名,唯一回应求援的维京首领，在被遗忘之森中战死；原文另作：Ragnar,czarnoksieznik_z_szeolu
+,RajTo / Caliph RajTo,RajTo,赖托,賴托,,人名,CN 老用户（真实网名，raj＝天堂）。boso_przez_swiat 中是大维齐尔、率努斯拉阵线围城，后被佐汉诺瓦蒂刺杀；cn 系列中是三联城北区之主、「最大的搞事王」，口头禅 Wypierdalaj、Dymy；w_oku_niepewnosci 席位「Kalif RajTo」＝哈里发赖托。测试者署名处保留 RajTo；原文另作：Rajta、Rajt、Kalif RajTo,boso_przez_swiat; cn_0; cn_1; cn_2_dni; cn_2_dni_sub; demo_mainmenu_10; saracen_4; w_oku_niepewnosci
+,Remik,Remik,雷米克,雷米克,,人名,CN 用户兼地图作者（真实网名，现实中做了 frankmod、Remik's editor、CST 等工具）。boso_przez_swiat 中是三名指挥官之一；cn 系列中是「最勤劳的工匠」。作为 zdradziecka_mielizna、krwawa_rzeka 作者署名保留 Remik；原文另作：Remika、Remikiem、Remikowi、Proszak & Remik,boso_przez_swiat; cn_0; cn_1; cn_2_dni; cn_2_dni_sub; demo_mainmenu_10; krwawa_rzeka; zdradziecka_mielizna
+Ricardo Milos,Ricardo Milos,Ricardo Milos,里卡多·米洛斯,里卡多·米洛斯,,人名,莲花号幸存船员之一，荒岛上只跳舞不说话,boso_przez_swiat
+,Unscrewer,Rozkręcacz,拆螺丝狂,拆螺絲狂,,人名,莲花号幸存船员之一，从小爱拧松螺丝，长大后制造连环交通事故的杀手；童年绰号「无轨电车」；原文另作：Rozkręcarz、Rozkręcacza、Trolejbus、Trolej、Trolley,boso_przez_swiat
+,Rufus,Rufus,鲁弗斯,魯弗斯,,人名,被押送的强盗；得到幻象后偷走奥丁圣瓶，以阻止洛基复活；原文另作：Rufusa、Rufusie,niezwykla_wyprawa
+,Rumu,Rumu,鲁穆,魯穆,,人名,CN 老用户（真实网名）。boso_przez_swiat 中被判终身监禁，在地牢化名「X」（保留拉丁字母）领导暴动；cn 系列中是枕套村村长，说话故意错字连篇、爱押韵（译文用谐音错别字和押韵再现）。gringo 中仅作肖像/地形制作者署名,boso_przez_swiat; boso_przez_swiat_sub2; cn_0; cn_1; cn_2_dni; cn_2_dni_sub; demo_mainmenu_10; gringo; nowa_nadzieja_byz; nowa_nadzieja_egy; nowa_nadzieja_fra; nowa_nadzieja_sar; nowa_nadzieja_vik
+Saladin,Saladin,Saladyn,萨拉丁,薩拉丁,,人名,Walhalla 中的埃及英雄,walhalla
+,Samuel,Samuel,塞缪尔,塞繆爾,,人名,Jozenkow 笔下会扭曲时空的人物：saracen_4 系列中是暗影群岛上以灵魂为食的「收割者」（Żniwiarz），替泽尔扎尔保管第四枚戒指；mroczny_swiat 中是眼神不好的老隐士 pustelnik Samuel「隐士塞缪尔」，能开传送门（同一作者，疑为同一角色）；原文另作：Samuela、Żniwiarz（原文笔误 Żniwiaż）,mroczny_swiat; saracen_4; saracen_4_sub_1; saracen_4_sub_3
+,Samwell Tarly,Samwell Tarly,山姆威尔·塔利,山姆威爾·塔利,,人名,玩家英雄之一，守夜人新兵,wichry_zimy
+,SanTiago,SanTiago,圣地亚哥,聖地亞哥,,人名,CN 用户兼地图作者（真实网名，原文写作 SanTiago），造船、与亚当对骂押韵；自称地图《Decision Time》在美国畅销；原文另作：SanTiaga、SanTiagowi,cn_0; cn_1; cn_2_dni; cn_2_dni_sub; demo_mainmenu_10
+,Santor,Santor,桑托尔,桑托爾,,人名,CN 用户（真实网名），三联城东区之主，沉迷《英雄联盟》，念叨德莱厄斯、斯维因、厄加特、俄洛伊（用游戏官方中文名）；原文另作：Santora、Santorem、Santorze,cn_0; cn_1; cn_2_dni; cn_2_dni_sub; demo_mainmenu_10
+Shrek,Shrek,Shrek,史莱克,史萊克,,人名,与埃米兰多同住沼泽的怪物史莱克,cn_2_dni; cn_2_dni_sub
+,Sierra,Sierra,谢拉,謝拉,,人名,拜占庭远征队女首领，为寻找远古之蛇深入蛇窟后失踪，被英雄救出；原文另作：Sierry、Sierrą、Sierrę,zdradziecka_mielizna; zdradziecka_mielizna_sub2
+,Sergeant Dairy,Sierżant Nabiał,乳品中士,乳品中士,,人名,莲花号船长，来自3459年、靠吃乳制品获得超能力的「超级英雄」；原文另作：Nabiała、NABIAŁ,boso_przez_swiat
+,Silverdragon / SilverDragon,Silverdragon,银龙,銀龍,,人名,CN 用户（真实网名，字面「银龙」，cn 系列把他写成一条银龙，故意译），「CN 警长」，率龙群清剿机器人；saracen_4 测试者署名保留 SilverDragon；原文另作：SilverDragon、Silvedragon、Silver,cn_0; cn_1; cn_2_dni; cn_2_dni_sub; cn_3; demo_mainmenu_10; saracen_4
+,Greybeard / Grey,Siwobrody,灰须,灰鬚,,人名,山谷维京人首领，伊科尔的老师兼父辈之交，特拉因之父，病逝；原文另作：Siwobrodego、Siwobrodym、Siwy、Siwego（简称）,straznicypolnocy
+,Slawek,Slawek,Slawek,Slawek,,人名,CN论坛用户（仅作单位名出现）,cn_0
+,Space,Space,Space,Space,,人名,地图创意提供者,bogata_kotlina
+,StachuMMV,StachuMMV,StachuMMV,StachuMMV,,人名,社区地图作者兼测试者（wybrzeze_czarow 系列、bogata_kotlina、flagomania、oasis_o_plenty、piramida_skarbow），署名保留拉丁字母；原文另作：Stachu,bogata_kotlina; flagomania_1_0_01; oasis_o_plenty; piramida_skarbow; wielka_kolonizacja_iii_1_0; wybrzeze_czarow
+,Stanislaw III the Stonelander,Stanisław III Skamieniały,石化斯坦尼斯瓦夫三世,石化斯坦尼斯瓦夫三世,,人名,石民部落王公，玩家角色之一；Skamieniały＝石化的，中文「石化」也有「惊呆」之意；原文另作：Stanisławowi III Skamieniałemu、Stanisław,polski_mlyn_1_1
+,Stannis Baratheon / Stannis,Stannis Baratheon,史坦尼斯·拜拉席恩,史坦尼斯·拜拉席恩,,人名,援军席位/单位名；原文另作：Stannis,wichry_zimy
+,Struś,Struś,斯特鲁希,斯特魯希,,人名,CN 用户（真实网名，struś＝鸵鸟，却被叫作驼鹿），拉人「做比育碧更大的游戏」却压低报酬,cn_2_dni; cn_2_dni_sub
+,Styr,Styr,斯蒂尔,斯蒂爾,,人名,北方另一维京氏族首领，被劳菲冻成冰雕，靠龙焰解冻；原文另作：Styra、Styrem、Sty（短标签）,straznicypolnocy; straznicypolnocy_sub1
+Süleyman,Suleiman,Sulejman,苏莱曼,蘇萊曼,,人名,奥斯曼苏丹，玩家角色，意图征服欧洲；原文另作：Sulejmana、Sulejmanowi、Sulejmanie,wielka_inwazja
+,Thartler,Thartler,塔特勒,塔特勒,,人名,CN 用户（真实网名），建起「Discord」村收留流浪维京人（影射他创建了 CN 的 Discord 服务器）。原文多处拼错；原文另作：Tharler、Thatler,cn_0; cn_1; cn_2_dni; cn_2_dni_sub; demo_mainmenu_10
+,Thrain,Thrain,特拉因,特拉因,,人名,灰须之子，被北方维京人扣为人质，后继任山谷维京人首领并求和；原文另作：Thraina、Thrainem,straznicypolnocy
+,Tommy,Tommy,汤米,湯米,,人名,德国城市「维京人汤米」的首领（单位名）,cn_2_dni; cn_2_dni_sub
+,Torvald the Cake-eater,Torwald Ciastkożerny,蛋糕托瓦尔德,蛋糕托瓦爾德,,人名,六勇士之一，「蛋糕族」首领,oasis_o_plenty
+,Trundle,Trundle,特朗德尔,特朗德爾,,人名,saracen_3 字符串中的英雄名，剧情未出场；疑取自《英雄联盟》巨魔之王特朗德尔,saracen_3
+,Tutengamon,Tutengamoń,图坦呆蒙,圖坦呆蒙,,人名,传说中半人半神的古埃及法老，能召唤蛇战士大军；原文另作：Tutengamonia,gringo
+,Tyrannica,Tyrannica,Tyrannica,Tyrannica,,人名,CN论坛用户（仅作单位名出现）,cn_2_dni; cn_2_dni_sub
+,Vendos,Vendos,Vendos,Vendos,,人名,CN论坛用户（仅作单位名出现）,cn_1; demo_mainmenu_10
+,Vieti,Vieti,Vieti,Vieti,,人名,CN论坛用户（仅作单位名出现）,cn_2_dni; cn_2_dni_sub
+,Wallmar,Wallmar,瓦尔马尔,瓦爾馬爾,,人名,科斯洛福德学院的前学生、「反巫师」，心术不正，几乎控制欧洲一条重要商路并在各地设营；在系列前作中死去，其力量转移到阿尔埃帕卡身上；原文另作：Wallmara,wybrzeze_czarow; wybrzeze_czarow_sc1; wybrzeze_czarow_sc2; wybrzeze_czarow_sub2
+,Caliph Warden,Warden,Warden,Warden,,人名,席位名，社区成员网名；原文另作：Kalif Warden,w_oku_niepewnosci
+,Forkbeard,Widłobrody,叉胡子,叉鬍子,,人名,科斯洛福德八巫师之一，自称「永恒吗哪与健康饮品之主」（widły＝草叉，broda＝胡子）；与既有词表的岔胡子福克比尔德（Gabelbart）不是同一人，故用「叉胡子」区分；原文另作：Widłobrodego,wybrzeze_czarow; wybrzeze_czarow_sc1; wybrzeze_czarow_sc2
+,Wilczuś,Wilczuś,Wilczuś,Wilczuś,,人名,CN论坛用户（仅作单位名出现）,cn_1; demo_mainmenu_10
+,Jarl Wojak555,Wojak555,Wojak555,Wojak555,,人名,席位名，社区成员网名；原文另作：Jarl Wojak555,w_oku_niepewnosci
+Wojciech Cejrowski,Wojciech Cejrowski,Wojciech Cejrowski,沃伊切赫·采罗夫斯基,沃伊切赫·采羅夫斯基,,人名,莲花号行动的组织者、著名旅行家，总是赤脚；后揭晓为佐汉诺瓦蒂的伪装；原文另作：Cejrowski、Cejrowskiego、Cejrowskim、CEJROWSKI,boso_przez_swiat; boso_przez_swiat_sub4
+,Wojciech I the Woodlander,Wojciech I Drewniak,木头沃伊切赫一世,木頭沃伊切赫一世,,人名,木民部落王公，玩家角色之一；Drewniak 源自 drewno「木头」，中文「木头」兼指呆子，呼应结尾「我们总被一群笨蛋统治」的自嘲。昵称 Wojtek 仍作沃伊切赫；原文另作：Wojciechowi I Drewniakowi、Wojciech、Wojtek,polski_mlyn_1_1
+,Zalazar,Zalazar,扎拉扎尔,扎拉扎爾,,人名,惯常为造船匠运来欧洲橡木的商人，「另有要事」缺席,saracen_3_sub_3
+,Zbirek,Zbirek,兹比雷克,茲比雷克,,人名,CN 创始人、前首席管理员（真实网名，zbir＝恶棍）。boso_przez_swiat 中是已故前任统治者，被尊为「万物之父」，实为普罗沙克所杀；cn 系列中主持序章的用户大会、为「大变革」募捐；原文另作：ZbiRek,boso_przez_swiat; boso_przez_swiat_sub5; cn_0; cn_1; cn_2_dni; cn_2_dni_sub; cn_4; demo_mainmenu_10
+,Zelzar,Zelzar,泽尔扎尔,澤爾扎爾,,人名,本系列反派：生于利雅得的矮小暴君，用时空卷轴从过去召来卡扎尔战士建立帝国；终在狮身人面像内被杀；原文另作：Zelzara、Zelzarem、Zelzarowi、Wielki Zelzar、Zelzarek（指小）、Zelzarowcy（其党羽）,saracen_1; saracen_2; saracen_2_sub_1; saracen_3; saracen_3_sub_1; saracen_3_sub_3; saracen_4; saracen_4_sub_1; saracen_4_sub_3; saracen_4_sub_4
+,Ziomus,Ziomus,齐奥穆斯,齊奧穆斯,,人名,CN 用户（真实网名，俚语 ziomuś＝哥们）。boso_przez_swiat 中是普罗沙克的密探，被佐汉诺瓦蒂杀害；cn_4 主角，潜入地牢救出埃韦利娜。口头禅 Uszanowanko（宜统一作「致敬致敬」之类）；原文另作：Ziomusia、Ziomusiowi、Ziomusiem、ziomusia,boso_przez_swiat; cn_0; cn_1; cn_2_dni; cn_2_dni_sub; cn_4; demo_mainmenu_10
+,Zkajo,Zkajo,兹卡约,茲卡約,,人名,CN 老前辈（真实网名），路边耳背的老人,cn_0; cn_2_dni; cn_2_dni_sub
+,Zohanowaty / Zohan,Zohanowaty,佐汉诺瓦蒂,佐漢諾瓦蒂,,人名,Jozenkow 系列的头号反派（真实网名，取自电影《别惹佐汉》＋后缀 -owaty「…似的」）。boso_przez_swiat 中是蒙面刺客、基地组织首领，揭面后即「赤足之人」，最终称哈里发；gringo 系列中自称「圣座大人」，每次「扔烟雾弹」逃走；cn 系列中是 CN 城门守卫。简称 Zohan 统一作「佐汉」，昵称 Zohuś 作「小佐汉」；也是 lowcypustyni2、wody_nilu、ucieczka_z_gazy 的作者署名（保留拉丁字母）；原文另作：Zohan、Zohana、Zohanowatego、Zohanowatemu、Zohanowatym、Zohanowi、Zohanowty、Zohanem、Zohuś、Zohanowatum（假拉丁语）,boso_przez_swiat; boso_przez_swiat_sub2; boso_przez_swiat_sub4; boso_przez_swiat_sub5; cn_0; cn_1; cn_2_dni; cn_2_dni_sub; demo_mainmenu_10; gringo; gringo_sub; lowcypustyni2; ucieczka_z_gazy; wody_nilu
+,Zorian,Zorian,佐里安,佐里安,,人名,自称来自海峡对岸的冒险者，骗得信任后盗抄科斯洛福德典籍的反派；自称「既非神也非人」，蛇怪不攻击他；也是席位名；原文另作：Zoriana、Zorianem、Zorianie、zoriana,wybrzeze_czarow; wybrzeze_czarow_sc1; wybrzeze_czarow_sc2; wybrzeze_czarow_sub2; wybrzeze_czarow_sub3; wybrzeze_czarow_sub4
+,Žyroslav,Żyrosław,日罗斯瓦夫,日羅斯瓦夫,,人名,科斯洛福德八巫师之一，斯拉夫人，营地常被蛇怪骚扰；可复活阵亡战士、召唤战士之魂,wybrzeze_czarow; wybrzeze_czarow_sc1; wybrzeze_czarow_sc2; wybrzeze_czarow_sub1
+Alfheim,Álfheim,Álfheim,亚尔夫海姆,亞爾夫海姆,,地名,精灵之国；原文另作：Álfheimu,straznicypolnocy
+,Whorehouse,Agencja towarzyska,伴游会所,伴遊會所,,地名,阿尔拉巴巴尔城西南的妓院（agencja towarzyska 是委婉说法；直称 Burdel 时作「妓院」）；情节敏感,saracen_3_sub_3
+,Al-Mukallah,Al-Mukallah,穆卡拉赫,穆卡拉赫,,地名,恶土的都城（以也门港口穆卡拉为原型），普罗沙克统治的要塞与大市场，boso_przez_swiat 系列主舞台；结尾被佐汉诺瓦蒂改名 Al-Mukalla，作「穆卡拉」以保留改名效果；gringo 中是佐汉治下的大城；原文另作：Al-Mukalla、Al-M（短标签）,boso_przez_swiat; boso_przez_swiat_sub2; boso_przez_swiat_sub5; gringo
+,Al-Rabarbar,Al-Rabarbar,阿尔拉巴巴尔,阿爾拉巴巴爾,,地名,一千年前的卡扎尔城市，被河分成三块；原文另作：A-rabarbar,saracen_3_sub_3
+,Alterack,Alterack,奥特兰克,奧特蘭克,,地名,卡利姆多的邻国（拜占庭人），新国王篡位后向卡利姆多开战（也是席位名）,upadek_krola; upadek_krola_sub
+Arabien,Arabia,Arabia,阿拉伯,阿拉伯,Arabia,地名,阿拉伯地区：wybrzeze_czarow 系列、boso_przez_swiat、gringo 等多图提及；原文另作：Arabii,boso_przez_swiat; boso_przez_swiat_sub5; gringo; wybrzeze_czarow; wybrzeze_czarow_sub2
+,Arabian Archipelago / Arabian Islands,Arabski Archipelag,阿拉伯群岛,阿拉伯群島,,地名,无人群岛，中央传有金山（地图名「阿拉伯群岛」）；原文另作：Arabskie Wyspy,arabskie_wyspy_wolna_gra_mieszana
+Athen,Athens,Ateny,雅典,雅典,,地名,哈奇回忆中的航海目的地,saracen_3
+,Bad Land,Bad Land,恶土,惡土,,地名,阿拉伯半岛南端的地区，本系列舞台；原文另作：Bad Landem、Bad Landzie、Bad Landu,boso_przez_swiat; boso_przez_swiat_sub4
+,Byzantine military outpost / Byz.outp.,Bizantyjska placówka wojskowa,拜占庭军事据点,拜占庭軍事據點,,地名,南方开采矿石的拜占庭据点，可雇佣弓手、换取投石机（席位名）；原文另作：Biz.plac、placówka bizantyjczyków,blekiny_nurt
+,Byzantine Garrison,Bizantyjski Garnizon,拜占庭驻军,拜占庭駐軍,,地名,拜占庭的驻军城：kraina_starych_bohaterow 中北方有发光湖与蓝色雾团的驻军城，后被洛基攻破；niezwykla_wyprawa 中是押送鲁弗斯的目的地，巴西尔将军驻守；原文另作：Bizantyjska twierdza,kraina_starych_bohaterow; niezwykla_wyprawa
+,Blaaby,Blaaby,布拉比,布拉比,,地名,附近岛上敌视外人的维京殖民地，偷了纽斯通的金币和奖杯；也是席位名,wybrzeze_czarow
+Blauer Nil,Blue Nile,Błękitny Nil,青尼罗河,青尼羅河,,地名,青尼罗河；原文另作：Błękitnego Nilu,blekiny_nurt
+,Blue Nile,Błękitny Nurt,蓝色激流,藍色激流,,地名,地图标题：一群埃及人沿青尼罗河而上，建立自己的部族；原文另作：Błekitny Nurt,blekiny_nurt
+,Rich Valley,Bogata Kotlina,富饶谷地,富饒谷地,,地名,四方争夺的山林盆地；地图名,bogata_kotlina
+Bombay,Bombay,Bombaj,孟买,孟買,,地名,佐汉的军队正在围攻的城市；原文另作：Bombaju,gringo_sub
+,Ingvar and Maurycy's brewery,Browar Ingvara i Maurycego,英格瓦尔和毛雷齐的酿酒坊,英格瓦爾和毛雷齊的釀酒坊,,地名,英格瓦尔与毛雷齐的蜂蜜酒酿酒坊，玩家在其周围建村；其仓库被毁则任务失败；原文另作：browar、browara、magazyn browara,cn_0
+,Stormy Mountain,Burzliwa Góra,风暴山,風暴山,,地名,山民部落要塞所在的山，会让征服者手下忘记效忠对象；原文另作：Burzliwej Góry、Góra,polski_mlyn_1_1
+,Death Cell,Cela Śmierci,死亡囚室,死亡囚室,,地名,东边几年前还用来处决囚犯的牢房，英雄们设计把洛基关在里面；原文另作：celi śmierci,kraina_starych_bohaterow_sub2
+,Byzantine Empire / BIZANTIUM,Cesarstwo Bizantyjskie,拜占庭帝国,拜占庭帝國,,地名,希拉之父统治的帝国：kraina_starych_bohaterow 中是洛基的目标、也是席位名（作席位时作「拜占庭」）；wielkie_sprzatanie 中集齐四英雄后派来援军（Cesarstwo Bizancjum）；原文另作：Cesarstwo Bizancjum、cesarstwo、BIZ,kraina_starych_bohaterow; kraina_starych_bohaterow_sub2; wielkie_sprzatanie; wybrzeze_czarow
+Khartum,Khartoum,Chartum,喀土穆,喀土穆,,地名,埃及移民的故乡城市,blekiny_nurt
+,Chujno,Chujno,丘伊诺,丘伊諾,,地名,750年前山羊国的大城，埃斯梅拉达降临之地；原文另作：Chujna、Chujnie,saracen_2; saracen_2_sub_1
+,cultures.dbv,cultures.dbv,cultures.dbv,cultures.dbv,,地名,旧的波兰《Cultures》粉丝站，在 cn 系列中拟人为一座「城市」，加托曾在那里；网址保留拉丁字母；原文另作：cultures dbv、cultures.dbv.pl,cn_1; demo_mainmenu_10
+,Castle Black,Czarny Zamek,黑城堡,黑城堡,,地名,守夜人总部（亦为席位名）；原文另作：Czarnego Zamku,wichry_zimy
+,Four Hills / Battle for the Four Hills,Cztery Wzgórza,四丘,四丘,,地名,被石峡隔开的四座山丘；地图名「四丘之战」；原文另作：Bitwa o Cztery Wzgórza,battle_for_the_four_hills_multiplayer
+,Diamond Valley,Diamentowa Dolina,钻石谷,鑽石谷,,地名,中央有钻石矿的山谷；地图名,diamentowa_dolina
+,Discord,Discord,Discord,Discord,,地名,塔特勒建的村子，影射 CN 的 Discord 服务器；应用名保留拉丁字母；原文另作：discordzie、Discorda、discorda、Dsc,cn_0; cn_2_dni
+,Nile Valley / Waters of the Nile,Dolina Nilu,尼罗河谷,尼羅河谷,,地名,尼罗河谷；地图名「尼罗河之水」；原文另作：Wody Nilu,wody_nilu
+Eilat,Eilat,Ejlat,埃拉特,埃拉特,,地名,哈奇回忆中的围城战（今以色列埃拉特）,saracen_3
+,Flatland / Faltland,Flatland,低地,低地,,地名,多人地图中维京部族的故乡之一（对应既有词表「低地人」）；Faltland 为笔误；原文另作：Faltland（笔误）,arabskie_wyspy_wolna_gra_mieszana; krwawa_rzeka
+,Frankia,Frankia,法兰克,法蘭克,,地名,法兰克，巫师皮埃尔的故乡；原文另作：Frankii,wybrzeze_czarow
+,Franconian Castle / the Castle,Frankoński Zamek,法兰克城堡,法蘭克城堡,,地名,地图西部的法兰克城堡，付 5 金币可换受训骑士；原文另作：Zamek、Zamku、z Zamku,wielkie_sprzatanie
+Gaza,Gaza,Gaza,加沙,加沙,,地名,非利士人的故城，已被焚毁（圣经时代背景）；原文另作：Gazy,ucieczka_z_gazy
+,Gloomland,Gloomland,幽地,幽地,,地名,多人地图中维京部族的故乡之一（对应既有词表「幽地人」）；原文另作：Gloomlandu,krwawa_rzeka; piramida_skarbow
+,Glork,Glork,格洛克,格洛克,,地名,哈奇与阿齐姆相识的战役所在,saracen_3
+,Marduk's Nest,Gniazdo Marduka,马尔杜克巢穴,馬爾杜克巢穴,,地名,河心岛上由旧矿改建的卡扎尔大本营；原文另作：Gnieździe Marduka、Gniazdem Marduka,saracen_3; saracen_3_sub_1; saracen_3_sub_2; saracen_3_sub_3
+,Ascension Mountain,Góra Wyniesienia,升华之山,升華之山,,地名,阳光聚焦时能让凡人「升华」的古庙山（英雄无效）；原文另作：Wyniesienie、Wynieść,saracen_4
+,Peace Mountain,Góra Zgody,和睦山,和睦山,,地名,洞穴中三王会面的山,saracen_3_sub_1
+,Grassland / Inhabitants of Grassland,Grassland,草原,草原,,地名,多人地图中维京部族的故乡之一（原版部族名中没有，按高地、低地、幽地的意译体系作「草原」）；居民 Grasslandczycy 作「草原人」，Wikingowie z Grasslandu 作「草原维京人」；原文另作：Grasslandczycy、Mieszkańcy Grasslandu、Grass.,arabskie_wyspy_wolna_gra_mieszana; flagomania_1_0_01; piramida_skarbow
+,Tomb of Immortal Chaos,Grobowiec Nieśmiertelnych Rządzy,不灭欲念之墓,不滅欲念之墓,,地名,比雅尼为囚禁洛基的死亡囚室所取的新名,kraina_starych_bohaterow_sub2
+,Tomb of the Ancients,Grobowiec Starożytnych,远古者之墓,遠古者之墓,,地名,封存五位远古天选者之力的地下陵墓与废城（支线1标题）；原文另作：Grobowiec Bohaterów、Grobowiec,kraina_starych_bohaterow; kraina_starych_bohaterow_sub1
+,tomb of Elijah,Grób Eliasza,以利亚之墓,以利亞之墓,,地名,传说中先知以利亚之墓，墓中泉水据说可预见未来；实为谣言；原文另作：grób proroka Eliasza、groby Eliasza,boso_przez_swiat; boso_przez_swiat_sub4
+Helluland,Helluland,Helluland,赫鲁兰,赫魯蘭,Helluland,地名,多人地图中维京部族的故乡之一；居民＝既有词表「赫鲁兰人」；原文另作：Hellulandu,arabskie_wyspy_wolna_gra_mieszana; flagomania_1_0_01; krwawa_rzeka; piramida_skarbow
+,Highland,Highland,高地,高地,,地名,多人地图中维京部族的故乡之一（对应既有词表「高地人」）；不要与 polski_mlyn 的 Górzanie「山民」混用；原文另作：Highlandu,krwawa_rzeka
+,,Hogland,霍格兰,霍格蘭,,地名,piramida_skarbow 中的维京部族故乡，无英文参考；居民 Hoglandczycy 作「霍格兰人」（短标签 Hog. 作「霍」）；原文另作：Hoglandczycy、Hog.,piramida_skarbow
+,Jarlvik,Jarlvik,雅尔维克,雅爾維克,,地名,英格兰西部的维京城镇（席位「维京人」），布拉比人称其居民为「那些橙色的」；原文另作：Jarlviku,wybrzeze_czarow
+,Cave in the Waterfall,Jaskinia w wodospadzie,瀑布洞穴,瀑布洞穴,,地名,瀑布旁的洞穴，第三个开关所在，住着法兰克三王；原文另作：jaskinia przy wodospadzie,saracen_3; saracen_3_sub_1
+,Werewolf Cave,Jaskinia Wilkołaków,狼人洞穴,狼人洞穴,,地名,藏有第七块方尖碑的古老洞穴（支线地图）,wilczy_lad; wilczy_lad_sub
+Jerusalem,Jerusalem,Jeruzalem,耶路撒冷,耶路撒冷,,地名,耶路撒冷，与安条克之间的商路经过塔克西尔所在山口,wybrzeze_czarow_sub2
+,Lake Auhazja,Jezioro Auhazja,奥哈齐亚湖,奧哈齊亞湖,,地名,利雅得附近干涸大半、被视为闹鬼的湖；原文另作：jeziora Auhazja,saracen_3; saracen_4
+,The Lake of the Mists,Jezioro Mgieł,迷雾之湖,迷霧之湖,,地名,雾中似有幻影的大湖；地图名,the_lake_of_the_mists
+Jötunheim,Jotunheim,Jotunheim,约顿海姆,約頓海姆,,地名,冰巨人的世界；straznicypolnocy_sub2 的地图标题；原文另作：Jotunheimu、JOTUNHEIM（子图标题）,straznicypolnocy; straznicypolnocy_sub2
+,Calimdor,Kalimdor,卡利姆多,卡利姆多,,地名,汉穆拉比治下的商贸王城，位于欧亚商路上，建在河畔（也是席位名）；原文另作：Kalimdoru、KALIMDORU,upadek_krola; upadek_krola_sub
+,Quarry,Kamieniołom,采石场,採石場,,地名,东北山中的采石场村庄，佐汉诺瓦蒂在此设伏（席位名）；原文另作：Kam,boso_przez_swiat
+,Southern Quarry,Kamieniołom Południowy,南采石场,南採石場,,地名,地牢里的南采石场（势力名，短标签「南」）；原文另作：Południowy kamieniołom、Południe,cn_4
+,Northern Quarry,Kamieniołom Północny,北采石场,北採石場,,地名,地牢里的北采石场（势力名，短标签「北」）；原文另作：Północny kamieniołom、Północ,cn_4
+,stone tomb / crypt,Kamienny grobowiec,石墓,石墓,,地名,CN 东南方的石墓及地下迷宫，机器人残部的巢穴；cn_3 标题 PODZIEMIA 作「地底」；原文另作：grobowiec、grobowca、kamiennych grobowców、krypta、krypcie、podziemny labirynt、PODZIEMIA,cn_0; cn_3
+Kanaan,Canaan,Kanaan,迦南,迦南,,地名,迦南地,ucieczka_z_gazy
+Kloster Jasna Góra,Monastery on the Bright Mountain,Klasztor na Jasnej Górze,光明山修道院,光明山修道院,,地名,西南山上的修道院，收金币出售重装骑士；原文另作：Klasztoru na Jasnej Górze、Klas.（短标签）,gringo
+,Viking colony,Kolonia Wikingów,维京殖民地,維京殖民地,,地名,盗掘城堡宝物的年轻维京人在古墓以东新建的殖民地，索要70金币贡金；原文另作：nowa kolonia wikingów,kraina_starych_bohaterow
+,Zelzar Chamber,Komnata Zelzara,泽尔扎尔的寝宫,澤爾扎爾的寢宮,,地名,利雅得城中泽尔扎尔的居室,saracen_4
+Konstantinopel,Constantinople,Konstantynopol,君士坦丁堡,君士坦丁堡,,地名,1453 年陷落的拜占庭都城,wielka_inwazja
+,Kobold's Mine,Kopalnia Koboldów,狗头人矿井,狗頭人礦井,,地名,狗头人的古矿，第一枚戒指藏处（saracen_1_sub_2 为三百年前的矿内）；原文另作：Opuszczona Kopalnia Koboldów、kopalni koboldów,saracen_1; saracen_1_sub_2; saracen_2_sub_1
+,Koslowford / Koslow.,Koslowford,科斯洛福德,科斯洛福德,,地名,英格兰的巫师学院所在城市，道路铺石、建筑仿拜占庭；也是席位名；原文另作：Koslowfordu、Koslowfordzie、Koslow.,wybrzeze_czarow; wybrzeze_czarow_sc1; wybrzeze_czarow_sc2; wybrzeze_czarow_sub2; wybrzeze_czarow_sub3; wybrzeze_czarow_sub4
+,Goatland,Kozoland,山羊国,山羊國,,地名,崇拜山羊的国度，saracen_2 及其子图的舞台；原文另作：Kozolandu、Kozolandzie,saracen_1; saracen_2; saracen_2_sub_1; saracen_3; saracen_4
+,Land of Old Heroes / Land of Ancient Heroes,Kraina Starych Bohaterów,古英雄之地,古英雄之地,,地名,拜占庭帝国西部、比雅尼殖民地所在的地区；也是地图名；原文另作：Kraina Starożytnych Bohaterów、Krainy Starożytych Bohaterów（笔误）、Kraina Bohaterów,kraina_starych_bohaterow; kraina_starych_bohaterow_sub1; kraina_starych_bohaterow_sub2
+Land der tausend Seen,Land of a Thousand Lakes,Kraina Tysiąca Jezior,千湖之国,千湖之國,,地名,斯堪的纳维亚东端（波兰语对芬兰的惯用别称）；地图名,kraina_tysisca_jezior_1_1
+,King's Landing,Królewska Przystań,君临,君臨,,地名,《权力的游戏》中的君临城（约曾科夫的赎罪之行）,cn_0
+,Bloody River,Krwawa Rzeka,血河,血河,,地名,两队隔河对峙；地图名,krwawa_rzeka
+,Hideout of Zohanowaty / Zohan's Hideout,Kryjówka Zohanowatego,佐汉诺瓦蒂的藏身处,佐漢諾瓦蒂的藏身處,,地名,sub5 地图名：佐汉诺瓦蒂的山洞藏身处；原文另作：Kryjówka Zohana、kryjówka jaskinna,boso_przez_swiat; boso_przez_swiat_sub5
+,Culturesnation Headquarters,Kwatera Główna culturesnation,Culturesnation 大本营,Culturesnation 大本營,,地名,CN 的大本营：cn_1 序章中召开用户大会之处；cn_0 结局时加托与皮夫科藏身于此；cn_6 标题 CULTURESNATION: KWATERA GŁÓWNA，两人在此被处决；原文另作：kwatera główna、kwaterze głównej、KWATERY GŁÓWNEJ、kwatery,cn_0; cn_1; cn_6; demo_mainmenu_10
+,Monsters' Lair,Legowisko Potworów,怪物巢穴,怪物巢穴,,地名,子地图标题：龙穴深处的怪物巢穴,straznicypolnocy; straznicypolnocy_sub1
+,Snake Lair,Legowisko Węży,蛇巢,蛇巢,,地名,日罗斯瓦夫营地南边古墓下的蛇怪巢穴（支线1标题）；原文另作：legowisko,wybrzeze_czarow_sub1; wybrzeze_czarow_sub3; wybrzeze_czarow_sub4
+Levante,Levant,Lewant,黎凡特,黎凡特,,地名,地中海东岸地区，塔克西尔所在；原文另作：Lewantu,wybrzeze_czarow; wybrzeze_czarow_sc1; wybrzeze_czarow_sub2
+,Al-Mukallah Dungeons,Lochy Al-Mukallah,穆卡拉赫地牢,穆卡拉赫地牢,,地名,sub2 地图名：城东的地下监狱，从无人活着出来；原文另作：lochy、loch Al-Mukallah、lochy culturesnation,boso_przez_swiat; boso_przez_swiat_sub2
+,Culturesnation dungeons,Lochy culturesnation,Culturesnation 地牢,Culturesnation 地牢,,地名,加托关押 CN 用户的地牢，囚犯在采石场做苦工；cn_4 标题 CULTURESNATION: LOCHY；原文另作：lochach、lochów、lochy、LOCHY,boso_przez_swiat; cn_0; cn_4
+,Lowrak,Lowrak,洛夫拉克河,洛夫拉克河,,地名,曾经宽深的河流，因沿岸各族修坝而变浅,zdradziecka_mielizna
+,Lawa,Ława,瓦瓦岛,瓦瓦島,,地名,比约恩一行自称来自的岛屿（英格兰以东）；Ł 读作 w，Ława 读音同 Wawa（波兰人对华沙的俗称），按新华社波兰语译音恰为「瓦瓦」，保留了这个暗梗；原文另作：Ławy,wybrzeze_czarow
+,Magical Forest,Magiczny Las,魔法森林,魔法森林,,地名,隔开两方、传说闹鬼的森林；地图名；原文另作：Magicznego Lasu,magiczny_las
+Mallorca,Majorca,Majorka,马略卡岛,馬略卡島,,地名,鲁穆押韵台词：「我要跑去马略卡岛」；原文另作：majorke,cn_2_dni
+Markland,Markland,Markland,边地,邊地,Markland,地名,多人地图中维京部族的故乡之一；随既有词表 Marklandczyk＝边地人 意译；原文另作：Marklandu,arabskie_wyspy_wolna_gra_mieszana; flagomania_1_0_01; kraina_tysisca_jezior_1_1; krwawa_rzeka; piramida_skarbow
+Medina,Medina,Medyna,麦地那,麥地那,,地名,巴尔塔扎尔声称要去的南方城市；原文另作：Medyny、Medynie,saracen_1; saracen_2
+Mekka,Mecca,Mekka,麦加,麥加,,地名,哈奇途中停留献祭之地；原文另作：Mecce,boso_przez_swiat
+,Ancestral Fog,Mgła Przodków,先祖之雾,先祖之霧,,地名,法兰克聚落中的魔法泉与法阵，投入10枚金币可召唤英雄之魂；原文另作：Mgłę Przodków、magiczne źródełko、magiczny krąg,niezwykla_wyprawa
+,City of the Goat Believers / Fanatics' City,Miasto Wyznawców Kóz,山羊信徒之城,山羊信徒之城,,地名,山羊信徒之城；原文另作：miasto wyznawców Wielkiej Kozy、miasto Fanatyków,saracen_2; saracen_2_sub_1
+,Dark Forest,Mroczny Las,幽暗森林,幽暗森林,,地名,蒙面人盘踞、驯服狼与蛇的大森林，地图 mroczny_las 的标题；saracen_4 制作名单提到作者先完成了这张图。避免用「黑暗森林」；原文另作：Mrocznego Lasu,mroczny_las; saracen_4
+,the Wall,Mur,长城,長城,,地名,守夜人守卫的长城；原文另作：Muru、Murze、za Murem,wichry_zimy
+,Port city of Myros,Myros,米罗斯,米羅斯,,地名,遗忘大陆上的港口城市，战乱瘟疫幸存者的文化熔炉（中立席位）；原文另作：Miasto portowe Myros,wielka_kolonizacja_iii_1_0
+,Newstone,Newstone,纽斯通,紐斯通,,地名,友好的英格兰大城，可贸易、买雇佣兵；也是席位名；原文另作：Newstone'a、Newstone'u,wybrzeze_czarow
+,Nordhav,Nordhav,诺德哈夫,諾德哈夫,,地名,比约恩一行的家乡与根据地；原文另作：Nordhavu,wybrzeze_czarow
+,Oasis O' Plenty,Oaza Obfitości,丰饶绿洲,豐饒綠洲,,地名,神明以人血为祭、赐下无尽物资的古老绿洲；地图名,oasis_o_plenty
+,Byzantine Camp,Obóz Bizantyjczyków,拜占庭营地,拜占庭營地,,地名,拜占庭远征队营地（席位名）；原文另作：Obóz Bizancjum,zdradziecka_mielizna
+,Franks / Franconian camp,Obóz Franków,法兰克营地,法蘭克營地,,地名,奥利维耶召来的法兰克骑士营地；原文另作：Obóz frankońskich rycerzy,saracen_3
+,General Olivier camp,Obóz Generała Oliviera,奥利维耶将军营地,奧利維耶將軍營地,,地名,奥利维耶将军的营地；原文另作：Gen.Ol.,saracen_4
+,Hatchie's Camp,Obóz Hatchiego,哈奇的营地,哈奇的營地,,地名,mroczny_swiat 中哈奇的营地（席位名，短标签 Hat）；目标里的 placówka Hatchiego 作「哈奇的前哨」；原文另作：placówka Hatchiego、Hat（短标签）,mroczny_swiat
+,Mercenary camp,Obóz najemników,雇佣兵营地,僱傭兵營地,,地名,出售埃及战士、拜占庭卫队和法兰克骑士的雇佣兵营地（席位名）；原文另作：Naj,boso_przez_swiat
+,Nomads' Camp,Obóz Nomadów,游牧民营地,遊牧民營地,,地名,山间的游牧民营地,saracen_3
+,Octagon,Oktagon,八角笼,八角籠,,地名,阿雷克的格斗擂台（综合格斗八角笼），cn_5的场景；原文另作：oktagonie,cn_0; cn_5
+Olymp,Olympus,Olimp,奥林匹斯山,奧林匹斯山,,地名,阿瑞斯与尼普顿的居所，岩浆的源头；原文另作：Olimpie、Olimpowi、góra Olimp、górę Olimp,cn_0
+,Fishing village,Osada rybacka,渔村,漁村,,地名,过去的渔村（哈希姆所在）；原文另作：Obóz Rybaków,saracen_2_sub_1
+,Shallow River,Płytkie Brody,浅水渡口,淺水渡口,,地名,因远方修坝而水位下降、可以涉渡的河；地图 plytkie_brody_1_1 的标题（与「险恶浅滩」区分）,plytkie_brody_1_1
+Podlachien,Podlasie,Podlasie,波德拉谢,波德拉謝,,地名,埃米兰多的村子和阿雷克的擂台所在的沼泽地区（现实中波兰东北部地区）；原文另作：podlasia、podlasiu、podlaskie bagna、podlaskich bagnach、socjalistyczne podlasie,cn_0
+,Underwater Cave,Podwodna jaskinia,水下洞穴,水下洞穴,,地名,sub4 地图名：米库卢斯隐居、传说中以利亚之墓所在的水下洞穴,boso_przez_swiat; boso_przez_swiat_sub4
+,Frankish dungeons / Golden palaces,Podziemia Franków,法兰克地下城,法蘭克地下城,,地名,法兰克要塞下的地下黄金之城，囚禁被掳的维京人，有第三个水坝开关；原文另作：podziemia warowni Franków、Złote pałace,zdradziecka_mielizna; zdradziecka_mielizna_sub3
+,Protectorate Undergrounds,Podziemia Protektoratu,保护国地下城,保護國地下城,,地名,保护国之民的地下迷宫，三法师藏身处,saracen_4; saracen_4_sub_2
+,Underground Crypt of the Guardians,Podziemna krypta strażników,守护者地穴,守護者地穴,,地名,光明圣所下的地穴（子地图标题）；原文另作：KRYPTA、MROCZNY ŚWIAT: KRYPTA,mroczny_swiat_sub2
+,Field of Glory,Pole Chwały,荣耀之地,榮耀之地,,地名,wielkie_sprzatanie_2_0 中可供哈奇传送的地点，英雄须先到访过才能传送过去；原文作 POLE CHWAŁY,wielkie_sprzatanie_2_0
+,Byzantine outpost,Posterunek Bizantyjczyków,拜占庭哨所,拜占庭哨所,,地名,奥利维耶派来的拜占庭哨所,saracen_3
+,Southern Fort,Posterunek Dolny,南哨所,南哨所,,地名,泽尔扎尔的三座哨所之一（「下哨所」，英文作南）；原文另作：Post. Dol,saracen_1
+,Northern Fort,Posterunek Północny,北哨所,北哨所,,地名,泽尔扎尔的三座哨所之一；原文另作：Post. Pół.,saracen_1
+,Central Fort,Posterunek Środkowy,中哨所,中哨所,,地名,泽尔扎尔的三座哨所之一；原文另作：Post. Śro.,saracen_1
+,Pillowcase,Poszewka,枕套村,枕套村,,地名,鲁穆当村长的村子（2 dni中的势力名）；原文另作：Poszewki,cn_2_dni; cn_2_dni_sub
+,Cursed Valley,Przeklęta Dolina,被诅咒的山谷,被詛咒的山谷,,地名,地图标题：以糕点美酒闻名、被地精诅咒的法兰克山谷,przekleta_dolina
+,Cursed Land,Przeklęta Kraina,被诅咒之地,被詛咒之地,,地名,蛇战士盘踞、受诅咒的山谷；地图名；原文另作：przeklętej krainie,przekleta_kraina
+,Public Penitentiary Facility No. 3,Publiczny Zakład Karny nr 3,第3号公共监狱,第3號公共監獄,,地名,鲁弗斯被押往的拜占庭监狱；原文另作：Zakład Karny nr.3、Zakładzie Karnym,niezwykla_wyprawa
+,Mehat Desert,Pustynia Mehat,梅哈特沙漠,梅哈特沙漠,,地名,利雅得以南的大沙漠，巴尔塔扎尔逃亡处,saracen_4_sub_3
+,Desert Village,Pustynna Wioska,沙漠村庄,沙漠村莊,,地名,沙漠中的隐士村落，首领持有按钮地图（席位名）；原文另作：Pustynną Wioskę、WIOSKA,upadek_krola
+,Rado,Rado,拉多,拉多,,地名,比约恩一行要回去的地方（nad Rado，似为河流或湖泊，可作「拉多河畔」），未能确认,wybrzeze_czarow
+Riad,Riyadh / Rijad,Rijad,利雅得,利雅得,,地名,泽尔扎尔的出生地与帝国首都；原文另作：Rijadu、Rijadzie、Riyadh（英文）,saracen_1; saracen_3; saracen_4; saracen_4_sub_1; saracen_4_sub_2; saracen_4_sub_3; saracen_4_sub_4
+,Bjarni's Hometown Village,Rodzinna wioska Bjarniego,比雅尼的故乡,比雅尼的故鄉,,地名,比雅尼的故乡村庄，被幽冥摧毁,mroczny_swiat_sub1
+,Miners' Ruins,Ruiny Górników,矿工村废墟,礦工村廢墟,,地名,玩家席位名：被占领的矿工村废墟（关押凯介）；原文另作：Ruin（短标签）,gringo
+,Lonely Mountain,Samotna Góra,孤山,孤山,,地名,斯堪的纳维亚森林中富含铁与金的孤峰；地图名,samotna_gora
+,Sanctuary of Light,Sanktuarium Światła,光明圣所,光明聖所,,地名,凯恩所在的圣所，可解除黑暗附身；后被揭示为幽冥的幻象；原文另作：Wielkie Sanktuarium Światła、Sanktuarium,mroczny_swiat; mroczny_swiat_sub2; mroczny_swiat_sub4
+,download server,Serwer download,下载服务器,下載服務器,,地名,CN网站的下载服务器，加托把上面的地图全烧了,cn_0
+,Sphinx / Inside the Sphinx,Sfinks,狮身人面像,獅身人面像,,地名,saracen_4、saracen_4_sub_4 中泽尔扎尔最后的藏身处，凭门禁卡开启（子图标题 Wnętrze Sfinksa＝狮身人面像内部）；wielkie_sprzatanie 中沙漠里藏有机关的狮身人面像；原文另作：Wnętrze Sfinksa、sfinksa、Sfinksa,saracen_4; saracen_4_sub_4; wielkie_sprzatanie
+,dragon cave,Smocza jaskinia,龙穴,龍穴,,地名,龙巢，即子地图《怪物巢穴》；原文另作：smoczą jaskinię,straznicypolnocy; straznicypolnocy_sub1
+,Dragon Land III,Smocza Kraina,龙之地,龍之地,,地名,诺查丹玛斯以龙群统治的地区；地图 smocza_kraina 的标题作「龙之地 III」（既有词表另有同名多人地图 Kraina Smoków＝龙之地）；原文另作：Smocza Kraina III,smocza_kraina
+,Southfolk,Southfolk,索斯福克,索斯福克,,地名,土地贫瘠的英格兰小村，请求修建三座农场；也是席位名；原文另作：Southfolku,wybrzeze_czarow
+,meadow,Spokojna Polana,宁静草地,寧靜草地,,地名,洞穴中供中部之王休息的草地；原文另作：polana,saracen_3_sub_1
+,Old Yours,Stara Twoja,你老娘坡,你老娘坡,,地名,科任桑与佐汉交战的「战场」bitwa pod Starą Twoją，纯属骂人谐音（「在你老娘那儿」），译「你老娘坡之战」之类,gringo
+,The Ancient Trail,Starożytny Trakt,古道,古道,,地名,四神决战的古商道；地图名,starozytny_trakt
+,Sarranid sultanate,Sułtanat sarranidzki,萨兰德苏丹国,薩蘭德蘇丹國,,地名,咬喉者曾篡夺的苏丹国；原文另作：sułtanatem sarranidzkim,boso_przez_swiat
+Scheol,Sheol,Szeol,冥府,冥府,,地名,希伯来圣经中的冥界；巫师的来处；原文另作：Szeolu、Szeolem,czarnoksieznik_z_szeolu; piramida_skarbow
+Schottland,Scotland,Szkocja,苏格兰,蘇格蘭,,地名,苏格兰，纽斯通在此赢得比赛奖杯；原文另作：Szkocji,wybrzeze_czarow
+,Koslowford school,Szkoła Koslowford,科斯洛福德学院,科斯洛福德學院,,地名,科斯洛福德学院，培养巫师的学府，主楼是典型英式城堡；原文另作：szkoła w Koslowford,wybrzeze_czarow; wybrzeze_czarow_sc1; wybrzeze_czarow_sc2
+,Jozenkow's sewing workshop,Szwalnia Jozenkowa,约曾科夫的缝纫作坊,約曾科夫的縫紉作坊,,地名,约曾科夫废弃的缝纫作坊，藏着皮甲和长弓；原文另作：szwalni、OPUSCZONA SZWALNIA JOZENKOWA,cn_0
+,World Trade Center,Światowe Centrum Handlu,世界贸易中心,世界貿易中心,,地名,穆卡拉赫市场边的两座古塔，城市象征，被佐汉诺瓦蒂炸毁；原文另作：Wieże、Wieże targowiska、Światowym Centrum Handlu,boso_przez_swiat
+,holy / sacred mountain,Święta Góra,圣山,聖山,,地名,山羊城中央的圣山，举行穿越仪式之处,saracen_2; saracen_2_sub_1
+,holy island,Święta Wyspa,圣岛,聖島,,地名,山羊国南面的圣岛，方尖碑上刻有诗篇恶搞,saracen_2
+,Tagołababa / Thisnakedlady,Tagołababa,塔戈瓦巴巴,塔戈瓦巴巴,,地名,亚丁湾中的火山（wulkan Tagołababa 塔戈瓦巴巴火山），前往以利亚之墓的航标；谐音 ta goła baba「这个光身子婆娘」，英文参考作 Thisnakedlady,boso_przez_swiat; boso_przez_swiat_sub3
+,secret passage,Tajemne przejście,秘密通道,秘密通道,,地名,通往CN城后方/地牢深处的秘密通道（cn_0为山路，cn_4为魔法传送门）；原文另作：tajemnego przejścia、tajemnym przejściem、sekretnym przejściu,cn_0; cn_4
+,Taqsir,Taqsir,塔克西尔,塔克西爾,,地名,黎凡特的阿拉伯商业城市，阿尔埃帕卡的住处；也是席位名；原文另作：Taqsiru、Taqsirze,wybrzeze_czarow; wybrzeze_czarow_sc1; wybrzeze_czarow_sc2; wybrzeze_czarow_sub2
+Dreistadt,Tri-City,Trójmiasto,三联城,三聯城,,地名,赖托、桑托尔、米哈乌三人分治的三分之城（结盟），CN最大的聚落；原文另作：trójmiasta、trójmieście、3m,cn_0
+,Frankish Fortress,Twierdza Franków,法兰克要塞,法蘭克要塞,,地名,nowa_nadzieja 系列中最终要攻破的法兰克要塞（席位名，短标签 Tw.）；五个民族版本相同；原文另作：Frankońska Twierdza、Tw.,nowa_nadzieja; nowa_nadzieja_byz; nowa_nadzieja_egy; nowa_nadzieja_fra; nowa_nadzieja_sar; nowa_nadzieja_vik
+,Ulvhus,Ulvhus,乌尔夫胡斯,烏爾夫胡斯,,地名,比约恩一行已不复存在的旧家园（「老乌尔夫胡斯」）；原文另作：Ulvhusu,wybrzeze_czarow
+,Bjarni's Mind,Umysł Bjarniego,比雅尼的心灵,比雅尼的心靈,,地名,幽冥向比雅尼展示一生记忆的心灵空间（子地图标题）,mroczny_swiat_sub4
+Vinland,Vinland / Winland,Vinland,文兰,文蘭,,地名,多人地图中维京部族的故乡之一；居民＝既有词表「文兰人」。拼法 Vinland、Winland、Winnland 混用,arabskie_wyspy_wolna_gra_mieszana; flagomania_1_0_01; kraina_tysisca_jezior_1_1; krwawa_rzeka; piramida_skarbow
+,Cutthroat Fortress,Warownia Siepaczy,凶徒要塞,兇徒要塞,,地名,法兰克人的要塞（席位名），地下藏着黄金之城,zdradziecka_mielizna
+,Snake Gate,Wężowa Brama,蛇门,蛇門,,地名,地精消失后留下钥匙的门，可借贡品控制蛇战士；原文另作：Wężowej Bramy,przekleta_dolina
+,Alterack Prison,Więzienie Alterack,奥特兰克监狱,奧特蘭克監獄,,地名,关押老国王科尔内利乌斯的地牢（子地图标题）；原文另作：WIĘŹIENIE ALTERACK（笔误）,upadek_krola; upadek_krola_sub
+,Wikinger Tommy.de,Wikinger Tommy,维京人汤米,維京人湯米,,地名,德国人的城市，2 dni中要攻下的敌城；影射德国Cultures粉丝站wikinger-tommy.de（「他们做烂地图」）；原文另作：Wikinger Tommy .de,cn_2_dni; cn_2_dni_sub
+,Wolf Land,Wilczy Ląd,狼之地,狼之地,,地名,狼患肆虐的岛；地图名，支线作「Wilczy Ląd - Zadanie Dodatkowe」；原文另作：Wilczy Lad,wilczy_lad; wilczy_lad_sub
+,Village of Franks / Frankish Village,Wioska Franków,法兰克村庄,法蘭克村莊,,地名,kraina_starych_bohaterow 中南方以贸易为生的友好小村；mroczny_swiat_sub3 中被附身的比雅尼攻打的村庄（席位名）,kraina_starych_bohaterow; mroczny_swiat_sub3
+,Southern Village,Wioska Południowa,南村,南村,,地名,哈奇旧邻居的村庄，提供援军；原文另作：Wios. Poł,saracen_1
+,Harbor village,Wioska portowa,港口村,港口村,,地名,出售帆船的港口村（席位名）；原文另作：Port,boso_przez_swiat
+,Northern Village,Wioska Północna,北村,北村,,地名,哈奇旧邻居的村庄，提供援军；原文另作：Wios. Pół,saracen_1
+,Farming Village / FARMERS,Wioska rolnicza,农庄,農莊,,地名,务农经商的维京小村（席位名，标签「农民」）；原文另作：ROLNICY,zdradziecka_mielizna
+,Elder's village,Wioska starca,老人村,老人村,,地名,席位名「老人的村庄」；文中巴拉巴熊扮成老人住在东部山中自建村庄，疑为同一处；原文另作：Wsk,boso_przez_swiat
+,Eastern village,Wioska wschodnia,东村,東村,,地名,阿瑞斯治下、为城市供粮的东村（席位名）；原文另作：Ws1,boso_przez_swiat
+,Western village,Wioska zachodnia,西村,西村,,地名,埃米兰多治下的西村，后被屠（席位名）；原文另作：Ws2,boso_przez_swiat
+,East Watch,Wschodnia Strażnica,东海望,東海望,,地名,长城东段的第二座要塞（席位名）,wichry_zimy
+,Coast of Wonders / Shore of Spells,Wybrzeże czarów,魔法海岸,魔法海岸,,地名,系列地图标题：比约恩一行赴英格兰的故事,wybrzeze_czarow; wybrzeze_czarow_sc1; wybrzeze_czarow_sc2; wybrzeze_czarow_sub1; wybrzeze_czarow_sub2; wybrzeze_czarow_sub3; wybrzeze_czarow_sub4
+,Island of the Miracle Obelisk,Wyspa Cudownego Obelisku,神奇方尖碑之岛,神奇方尖碑之島,,地名,立有神奇方尖碑的西方小岛，献上 30 份仪式油的地点；原文另作：Wyspie Cudownego Obelisku,wilczy_lad; wilczy_lad_sub
+,Dzejka's island,Wyspa Dzejka,杰卡奇岛,傑卡奇島,,地名,杰卡奇的法兰克人所在的东南岛屿，三名指挥官在此遇伏；原文另作：wyspie Dzejka、wyspa franków,boso_przez_swiat
+,Island of the Raiders,Wyspa Łupieżców,劫掠者之岛,劫掠者之島,,地名,越狱犯争夺的小岛；地图名,wyspa_lupiezcow
+,Shadow Islands,Wyspy Cienia,暗影群岛,暗影群島,,地名,奥哈齐亚湖中的岛群，塞缪尔与暗影所在；原文另作：Wysp Cienia,saracen_4; saracen_4_sub_1
+,Northern Islands,Wyspy Północy,北方群岛,北方群島,,地名,寒冷北方的群岛；地图名,wyspy_polnocy
+,Frankish Castle / Castle,Zamek Franków,法兰克城堡,法蘭克城堡,,地名,安东尼达斯的城堡，建在凯尔特古墓地上，有五座城门（席位名）；原文另作：Zamku Franków、zamek Króla Antonidasa、Zamek,czarnoksieznik_z_szeolu
+,Lord Brown's castle,Zamek Lorda Browna,布朗勋爵城堡,布朗勳爵城堡,,地名,南方的城堡废墟，远古天选者在此与巨龙决战，亡魂从这里出现；原文另作：ruiny zamku,kraina_starych_bohaterow
+,Forgotten Forest,Zapomniany Las,遗忘之森,遺忘之森,,地名,安东尼达斯城堡所在的森林，维京援军在此覆没；原文另作：Zapomnianego Lasu,czarnoksieznik_z_szeolu
+Golf von Aden,Gulf of Aden,Zatoka Adeńska,亚丁湾,亞丁灣,,地名,sub3 地图名；莲花号沉没处，通往水下洞穴的海域,boso_przez_swiat; boso_przez_swiat_sub3
+,Treacherous Shoal,Zdradziecka Mielizna,险恶浅滩,險惡淺灘,,地名,地图系列标题：比雅尼的船在洛夫拉克河的浅滩搁浅（Remik 作品）；子图标题后缀 -sub、-sub2、-sub3 作「支线1/2/3」；原文另作：ZDRADZIECKA MIELIZNA,zdradziecka_mielizna; zdradziecka_mielizna_sub1; zdradziecka_mielizna_sub2; zdradziecka_mielizna_sub3
+,Aaron / Aaron the Time Keeper,Aaron,亚伦,亞倫,,神名,时空守护者，克洛诺斯之子，守护时空隧道；被泽尔扎尔以四枚戒指囚于魔笼，获释后追杀泽尔扎尔；原文另作：Aarona、Aaronem、Aaron - Strażnik Czasoprzestrzeni、Strażnik,saracen_1; saracen_2; saracen_2_sub_1; saracen_3; saracen_3_sub_3; saracen_4; saracen_4_sub_2
+,White God,Biały Bóg,白神,白神,,神名,第二位导师，纯粹的光明，代表意识与未来；原文另作：Białego Boga、Białym bogu,mroczny_swiat_sub4
+Bragi,Bragi,Bragi,布拉基,布拉基,,神名,诗歌之神，召来商人米格尔,walhalla
+,Black God,Czarny Bóg,黑神,黑神,,神名,幽冥故事中的第一位导师，纯粹的黑暗，代表肉体与根源；原文另作：Czarnego Boga,mroczny_swiat_sub4
+,Great Goat Esmeralda / Esmerald,Esmeralda,埃斯梅拉达,埃斯梅拉達,,神名,山羊国崇拜的「伟大山羊」（Wielka Koza Esmeralda 伟大山羊埃斯梅拉达），传说一声咩叫击溃围城大军；「新埃斯梅拉达」是哈奇一行打扮出的假货；原文另作：Wielka Koza、Święta Koza、Nowa Esmeralda,saracen_2; saracen_2_sub_1
+Freyr,Freyr,Frejr,弗雷,弗雷,,神名,丰饶之神，召唤精灵,walhalla
+Hermes,Hermes,Hermes,赫尔墨斯,赫爾墨斯,,神名,众神信使，阿瑞斯派他去宣告普罗沙克还活着,cn_0
+Hödur,Hodur,Hodur,霍德尔,霍德爾,,神名,黑暗之神（Höðr）,walhalla
+Jahwe,Yahweh,Jahwe,耶和华,耶和華,,神名,基督徒之神（法兰克席位）,starozytny_trakt
+Jesus,Jesus,Jezus,耶稣,耶穌,,神名,约曾科夫自称被钉上十字架时把他救下来的耶稣,cn_0
+Laufey,Laufey,Laufey,劳菲,勞菲,,神名,冰巨人之王（北欧神话中是洛基之母，漫威电影中是冰霜巨人之王），能把敌人冻成冰，企图让世界永冻；mroczny_swiat_sub4 中只作席位名；原文另作：Laufeya、Laufeyem、Laufeyu,mroczny_swiat_sub4; straznicypolnocy; straznicypolnocy_sub2
+,The Mill,Młynek,研磨神,研磨神,,神名,巴尔塔扎尔信奉的神，每半年要求献祭；młynek＝小磨子，也是俚语里的大麻研磨器，呼应同关的「魔法草药」笑话；原文另作：Młynka,saracen_1
+Sif,Sif,Sif,希芙,希芙,,神名,丰收女神,walhalla
+Skadi,Skadi,Skadi,斯卡蒂,斯卡蒂,,神名,狩猎女神,walhalla
+,Death,Śmierć,死神,死神,,神名,拟人化的死神，把全能之力交给幽冥,mroczny_swiat_sub4
+Tyr,Tyr,Tyr,提尔,提爾,Tyr,神名,战神,walhalla
+Wendigo,Wendigo,Wendigo,温迪戈,溫迪戈,,神名,洛基威胁要拿英雄去喂的食人怪物（北美传说）,kraina_starych_bohaterow_sub2
+Ymir,Ymir,Ymir,伊米尔,伊米爾,,神名,原初冰巨人（Walhalla 中可选神祇）,walhalla
+Zeus,Zeus,Zeus,宙斯,宙斯,,神名,「蓝眼睛的希腊人」信奉的神（拜占庭席位）,starozytny_trakt
+al-Qaida,Al-Qaeda,Al-Qaeda,基地组织,基地組織,,族群,佐汉诺瓦蒂创立的「恐怖组织」，主要敌对势力（席位名）；原文另作：Al-Qaedy、Al-Qaedą、Al-Qaede、Qae,boso_przez_swiat
+,Ali Baba and the 40 Thieves,Ali Baba i 40 rozbójników,阿里巴巴与四十大盗,阿里巴巴與四十大盜,,族群,diamentowa_dolina 中占据钻石矿的敌对席位；mroczny_swiat 中占据金矿岛、收铁器换开采权的席位（拼作 Alibaba）；原文另作：Alibaba i 40 rozbójników、Alibaba,diamentowa_dolina; mroczny_swiat
+,Alterian spearmen,Alterańscy Włócznicy,奥特兰克矛兵,奧特蘭克矛兵,,族群,每5人付5枚金币即可雇佣的奥特兰克矛兵；原文另作：Alterańskich Włóczników、włóczników z Alterack,upadek_krola
+,Arthurian tribe,Arturowie,亚瑟族,亞瑟族,,族群,曾袭击索斯福克庄稼的部族（仅被提及）；原文另作：plemię Arturów,wybrzeze_czarow
+,White Walkers,Biali Wędrowcy,异鬼,異鬼,,族群,结尾提到的不死军团首领,wichry_zimy
+,Rich Franks,Bogaci Frankowie,富裕的法兰克人,富裕的法蘭克人,,族群,湖对岸富裕的法兰克村，围绕唯一的金矿定居，觊觎宝藏而进攻维京村；原文另作：bogata wioska franków,kraina_starych_bohaterow
+,Bots,Boty,机器人,機器人,,族群,加托与皮夫科的机器人大军（约200个，只有武器没有盔甲）；被「封禁」即被消灭；原文另作：botów、bota、botami,cn_0; cn_1; cn_3; cn_4; cn_6; demo_mainmenu_10
+,Rebels,Buntownicy,叛民,叛民,,族群,沦为拦路强盗的叛乱农民（席位名）,zdradziecka_mielizna
+,Cake-eaters,Ciastkożerni,蛋糕族,蛋糕族,,族群,丰饶绿洲席位；原文另作：Ciastko.,oasis_o_plenty
+,Culturesnation,Culturesnation,Culturesnation,Culturesnation,,族群,真实的波兰《Cultures》玩家社区（论坛、网站、Discord、CN 模组），保留拉丁字母；在 cn 系列中拟人为一座城市/王国，boso_przez_swiat 中是穆卡拉赫的「国家」。miasto culturesnation＝Culturesnation 城；原文另作：CulturesNation、CULTURESNATION、Culturesantion（笔误）,boso_przez_swiat; boso_przez_swiat_sub5; cn_0; cn_1; cn_2; cn_2_dni; cn_2_dni_sub; cn_3; cn_4; cn_5; cn_6; demo_mainmenu_10; gringo; oasis_o_plenty; polski_mlyn_1_1; walhalla; zdradziecka_mielizna
+,Culturesnation - Tributes #1-#3,Culturesnation - Trybuty,Culturesnation - 贡品,Culturesnation - 貢品,,族群,2 dni中提供贡品交易的CN用户势力（三个席位）；原文另作：Culturesnation - Trybuty #1、#2、#3、CN - trybuty 1、2、3,cn_2_dni; cn_2_dni_sub
+,Wizards / Wiz.,Czarodzieje,巫师,巫師,,族群,科斯洛福德的八位巫师（席位名，短标签 Czaro.）；仿《哈利·波特》用「巫师」,wybrzeze_czarow
+,Deserters / DES,Dezerterzy,逃兵,逃兵,,族群,奥特兰克逃兵（席位名），老国王回归后加入反攻；原文另作：DEZ,upadek_krola
+,Long-swordsmen,Długomieczni,长剑族,長劍族,,族群,丰饶绿洲席位；原文另作：Długo.,oasis_o_plenty
+,Woodlanders,Drewnianie,木民,木民,,族群,木材充足的斯拉夫部落（玩家席位）；原文另作：Drewnian、Drew.,polski_mlyn_1_1
+,Lumberjack,Drwal,伐木工,伐木工,,族群,玩家席位名：用蜂蜜驯熊的伐木工；原文另作：drwala、Drw（短标签）,straznicypolnocy
+,ghosts of the heroes,Duchy bohaterów,英雄之魂,英雄之魂,,族群,从先祖之雾中用金币召唤的英雄之魂（贡品名）；原文另作：duchy bohaterow,niezwykla_wyprawa
+,Spirits of the Magical Forest,Duchy Magicznego Lasu,魔法森林之灵,魔法森林之靈,,族群,魔法森林中的幽灵（席位）；原文另作：Duchy,magiczny_las
+,Savages / Wildlings,Dzicy,野人,野人,,族群,《冰与火之歌》Wildlings 的波兰译名：boso_przez_swiat 中普罗沙克对自由民的蔑称；wichry_zimy 中长城外的敌方席位；原文另作：Dzikich、Dzikimi,boso_przez_swiat; wichry_zimy
+Dschabhat an-Nusra,Jabhat al-Nusra / Jabhat an-Nusra,Dżabhat an-Nusra,努斯拉阵线,努斯拉陣線,,族群,赖托召集的好战撒拉逊部族，赖托死后被佐汉诺瓦蒂接管（席位名）；原文另作：Dżabhat、Dżabhatu、Dżabhadu、Dżabhad-an Nusra、Dżabhat an Nusra、Dzab,boso_przez_swiat; boso_przez_swiat_sub5
+,jihadists,Dżihadżyści,狂信匪徒,狂信匪徒,,族群,作者对沙漠劫匪的称呼；原文另作：dżihadżystą,upadek_krola
+,Egypt,Egipt,埃及,埃及,Egitto,族群,玩家的埃及部族席位名,blekiny_nurt; piramida_skarbow
+,Goat fanatics,Fanatycy kóz,山羊狂信徒,山羊狂信徒,,族群,山羊狂信徒；原文另作：Fanatycy religijni、Fanatycy,saracen_2
+Philister,Philistines / Philistine Child,Filistyni,非利士人,非利士人,,族群,玩家所属的非利士部族；单位名「非利士孩童」「非利士孕妇」；原文另作：Filistyńczycy、Filistynów、FIL、Filistyńskie dziecko、Filistyńska kobieta w ciąży,ucieczka_z_gazy
+,Godswrath's Franks,Frankowie Bożygniewa,博日格涅夫的法兰克人,博日格涅夫的法蘭克人,,族群,玩家席位名：博日格涅夫的法兰克人；原文另作：Fran.（短标签）,gringo
+,Dzejkaci's Franks,Frankowie Dzejkaciego,杰卡奇的法兰克人,傑卡奇的法蘭克人,,族群,杰卡奇统领的岛上法兰克人（席位名）；原文另作：Frnk,boso_przez_swiat
+,Apex's Gang,Gang Apexa,阿佩克斯帮,阿佩克斯幫,,族群,地牢里阿佩克斯与埃沃的囚犯帮派（势力名）,cn_4
+,Wild Boar Gang,Gang dzikich wieprzy,野猪帮,野豬幫,,族群,地牢里与阿佩克斯帮作对的囚犯帮派（势力名，短标签「野猪」）；原文另作：Wieprze,cn_4
+,Claylanders,Glinianie,泥民,泥民,,族群,黏土充足的斯拉夫部落（玩家席位）；原文另作：Glinian、Glin.,polski_mlyn_1_1
+,Gnomes / GNOME,Gnomy,地精,地精,,族群,在森林里窃笑、给山谷下诅咒的地精（席位名）；原文另作：GNOM、gnomów、gnomom,przekleta_dolina
+,Miners,Górnicy,矿工部族,礦工部族,,族群,被撒拉逊人攻陷村庄的矿工部族，挖通地下隧道；原文另作：Górników、Gór.（短标签）、plemię górników,gringo
+,Highlanders,Górzanie,山民,山民,,族群,盘踞风暴山、雇佣法兰克骑士的敌对斯拉夫部落；原文另作：Górzan、Górz.,polski_mlyn_1_1
+Griechenland,Greece / Greek Empire,Grecja,希腊,希臘,,族群,玩家席位名：希腊；原文另作：Grecji、Grecy、Imperium Greckie,boso_przez_swiat; wielka_inwazja
+,Byzantine guard,Gwardia Bizantyjczyków,拜占庭卫队,拜占庭衛隊,,族群,雇佣兵营地可购买的拜占庭卫队（贡品条目 s932）；原文另作：bizantyjska gwardia,boso_przez_swiat
+Päpstliche Garde,Papal Guard,Gwardia Papieska,教皇卫队,教皇衛隊,,族群,玩家席位名：保卫罗马的教皇卫队；原文另作：GWARDIA（短标签）,wielka_inwazja
+,Traders,Handlarze,商贩,商販,,族群,玩家席位名：廉价出售货物的商贩部族；原文另作：Handlarzy、Han（短标签）,straznicypolnocy
+,Slave traders,Handlarze niewolników,奴隶贩子,奴隸販子,,族群,过去山羊国南部的奴隶贩子,saracen_2_sub_1
+Hebräer,Hebrews,Hebrajczycy,希伯来人,希伯來人,,族群,焚毁迦南、追击非利士人的军队（敌方席位）；原文另作：HEB,ucieczka_z_gazy
+,Goat breeders,Hodowcy kóz,养羊人,養羊人,,族群,出售山羊的养羊人（含「首席养羊人」）；原文另作：główny hodowca,saracen_2
+Römisches Reich,Roman Empire / Rome,Imperium Rzymskie,罗马帝国,羅馬帝國,,族群,玩家席位名：罗马帝国（教皇所在）；原文另作：Imperium Rzymskiego、RZYM（短标签）、Rzymianie,wielka_inwazja
+,,Islandczyk,冰岛人,冰島人,,族群,维京部族席位；原文另作：Islandczycy、Is.,piramida_skarbow
+Jötunn,Jotuns,Jotunowie,约顿巨人,約頓巨人,,族群,冰巨人的别称；原文另作：Jotunami、Jotunów,straznicypolnocy
+,Caliphate of Aresabib,Kalifat Aresabiba,阿瑞萨比卜哈里发国,阿瑞薩比卜哈里發國,,族群,玩家席位名：阿瑞萨比卜的哈里发国；原文另作：Ares.（短标签）,gringo
+,Caliphate of His Holiness,Kalifat Jego Świętobliwości,圣座大人的哈里发国,聖座大人的哈里發國,,族群,玩家席位名：佐汉的哈里发国（沙漠要塞）；原文另作：Kalif（短标签）,gringo
+,Stonelanders,Kamienianie,石民,石民,,族群,石料充足的斯拉夫部落（玩家席位）；原文另作：Kamienian、Kamien.,polski_mlyn_1_1
+,Kazars / The warrior Kazar tribe,Kazarowie,卡扎尔人,卡扎爾人,,族群,泽尔扎尔从过去召来的远古半人战士部族：披兽皮、食人、头戴狮首或眼镜蛇首装束；原文另作：Kazarów、Kazarami、Kazar、Wojownicze plemię Kazarów,saracen_1; saracen_2; saracen_3; saracen_3_sub_2; saracen_3_sub_3; saracen_4_sub_4
+,Styr's Clan,Klan Styra,斯蒂尔氏族,斯蒂爾氏族,,族群,玩家席位名：斯蒂尔氏族；原文另作：Sty（短标签）,straznicypolnocy
+,Kobolds,Koboldowie,狗头人,狗頭人,,族群,古时住在矿井地下、敌视外人的部族；原文另作：Koboldów,saracen_1; saracen_1_sub_2
+,Cow-stealers,Krowokradni,偷牛族,偷牛族,,族群,丰饶绿洲席位；原文另作：Krowo.,oasis_o_plenty
+,bunnies,Króliczki,小兔子,小兔子,,族群,泽尔扎尔的「全国最强防线」：一群兔子,saracen_4_sub_4
+,Short-bowmen,Krótkołuczni,短弓族,短弓族,,族群,丰饶绿洲席位；原文另作：Krótko.,oasis_o_plenty
+,People of the Protectorate,Lud Protektoratu,保护国之民,保護國之民,,族群,利雅得以东的部族，三位法师所属，遭暗影围攻；单称 Protektorat 作「保护国」；原文另作：Protektorat、Protektorańczycy、Prot.,saracen_4; saracen_4_sub_2; saracen_4_sub_4
+,Monster Hunters,Łowcy Potworów,怪物猎人,怪物獵人,,族群,龙穴中的维京猎人，加入伊科尔；原文另作：Łowcy（短标签）,straznicypolnocy_sub1
+,Raiders,Łupieżcy,劫掠者,劫掠者,,族群,两方越狱犯（席位）；原文另作：ŁUPIEŻCY Z PÓŁNOCY、ŁUPIEŻCY Z POŁUDNIA,wyspa_lupiezcow
+,Valley Inhabitants / Val.Inh.,Mieszkańcy doliny,山谷居民,山谷居民,,族群,先到山谷中央定居的埃及人村庄（席位名）；原文另作：Mieszk.Dol,blekiny_nurt
+,Forest Inhabitants,Mieszkańcy Lasu,森林居民,森林居民,,族群,幽暗森林中驯服狼与蛇的蒙面人（敌方席位）,mroczny_las
+,People of Riyadh,Mieszkańcy Rijadu,利雅得居民,利雅得居民,,族群,利雅得居民；原文另作：Msc.,saracen_4
+,Mead-drinkers,Miodopitni,蜂蜜酒族,蜂蜜酒族,,族群,丰饶绿洲的六个维京席位之一（短标签 Miodo. 作「蜂蜜酒」）,oasis_o_plenty
+,Mormons,Mormoni,摩门人,摩門人,,族群,被撒拉逊人进攻的拜占庭人村庄，科任桑的老朋友；原文另作：Mormonów、Mormonami、Mor.（短标签）,gringo
+,Dark Shadows,Mroczne Cienie,暗影,暗影,,族群,原版《第八世界奇迹》剧情中散布瘟疫的暗影势力；boso_przez_swiat、mroczny_swiat_sub1 提及英雄昔日击退它们，saracen_4 中是暗影群岛上苏醒的亡灵。plaga Mrocznych Cieni＝暗影之灾；原文另作：Mrocznych Cieni、Cień、plaga Mrocznych Cieni,boso_przez_swiat; mroczny_swiat_sub1; saracen_4; saracen_4_sub_1
+,Invaders / Invad.,Najeźdźcy,入侵者,入侵者,,族群,北方敌对的埃及部族（席位名）；原文另作：Najeźdzcy（笔误）、Najeźd.,blekiny_nurt
+,Germans / Germany,Niemcy,德国人,德國人,,族群,2 dni的敌人：德国玩家/德国城市；cn_0中阿瑞斯「当心德国人！」的梗；原文另作：Niemców、Niemcom、niemców、Niemiec,cn_0; cn_2_dni; cn_2_dni_sub
+,Night's Watch,Nocna Straż,守夜人,守夜人,,族群,玩家阵营（席位名）；原文另作：Nocnej Straży,wichry_zimy
+,Nomads / Lost Nomads,Nomadzi,游牧民,遊牧民,,族群,saracen_3 的游牧民部族；洞穴中迷路的一支称「迷途的游牧民」；原文另作：Nomadów、Nomad、Zagubieni Nomadzi,saracen_3; saracen_3_sub_1
+,Bjarni's volunteer fire brigade,Ochotnicza straż bjarniego,比雅尼志愿消防队,比雅尼志願消防隊,,族群,比雅尼的志愿消防队（波兰乡村志愿消防队OSP梗），也是他的「近卫军」；原文另作：straż pożarna、strażacy、straży、strażak,cn_0
+,Tribe of Wolf-Men / Werewolf Tribe,Plemię Ludzi-Wilków,狼人部族,狼人部族,,族群,传说中能化身为狼、后遭诅咒的古部族；原文另作：Ludzi-Wilków、plemię Wilkołaków、Duchy Wilkołaków,wilczy_lad; wilczy_lad_sub
+,gossips,Plotkarki,长舌妇,長舌婦,,族群,山羊城里嚼舌根的妇女,saracen_2
+,Plate-armed,Płytozbrojni,板甲族,板甲族,,族群,丰饶绿洲席位；原文另作：Płyto.,oasis_o_plenty
+Polanen,Polan tribe,Polanie,波兰尼人,波蘭尼人,,族群,梅什科所属的波兰尼部落；原文另作：Polan,polski_mlyn_1_1
+,His Holiness' Outposts,Posterunki Jego Świętobliwości,圣座大人的哨所,聖座大人的哨所,,族群,玩家席位名：佐汉的前哨部队；原文另作：Post.,gringo
+,Monsters / Monster attacks,Potwory,怪物,怪物,,族群,巫师从冥府召来的怪物（席位名）；原文另作：Potwory ataki,czarnoksieznik_z_szeolu; zdradziecka_mielizna; zdradziecka_mielizna_sub2
+,Northern Guard,Północna Straż,北方卫队,北方衛隊,,族群,玩家席位名：北方卫队；原文另作：Str（短标签）,straznicypolnocy
+,Castaways,Rozbitkowie,落难者,落難者,,族群,船难幸存者（玩家席位）,piracka_utopia_1_0
+,Frankish knights,Rycerze Franków,法兰克骑士,法蘭克騎士,,族群,可雇佣或敌方的法兰克重甲骑士：boso_przez_swiat 雇佣兵营地的贡品条目；polski_mlyn 中山民雇来的敌方席位（Frankońscy Rycerze，短标签 Frank.）；原文另作：Frankońscy Rycerze、frankońscy rycerze,boso_przez_swiat; polski_mlyn_1_1
+Slawen,Slavs,Słowianie,斯拉夫人,斯拉夫人,,族群,斯拉夫人；原文另作：słowiańskie plemiona、słowianami,polski_mlyn_1_1
+,Pigguard,Sproszna Gwardia,普罗禁卫军,普羅禁衛軍,,族群,普罗沙克的精锐卫队，巡逻山羊国、护送山羊；双关 sprośna「下流」＋Proszak，英文误作 Pigguard；原文另作：Sprosznej Gwardii、Sprosznej Gwardi、Sproszna Gwardia Proszaka,saracen_2; saracen_2_sub_1
+,Ancient Snakes,Starożytne węże,远古之蛇,遠古之蛇,,族群,蛇战士阵营的席位名,zdradziecka_mielizna; zdradziecka_mielizna_sub1; zdradziecka_mielizna_sub2
+,Ancients,Starożytni,远古者,遠古者,,族群,支线1的席位名（古墓中的远古者）,kraina_starych_bohaterow_sub1
+,Portal Guardians,Strażnicy portali,传送门守卫,傳送門守衛,,族群,守卫地狱传送门的怪物（席位名）,czarnoksieznik_z_szeolu
+,Sanctuary Guardians / Head Guard,Strażnicy Sanktuarium,圣所守卫,聖所守衛,,族群,光明圣所的守卫（席位名），出谜题检验英雄是否被附身；原文另作：Główny Strażnik,mroczny_swiat; mroczny_swiat_sub2
+,Prison Guards,Strażnicy więzienni,狱卒,獄卒,,族群,地牢狱卒，比雅尼指挥他们夺回据点（sub2 席位名）；原文另作：straż więzienna,boso_przez_swiat_sub2
+,Sons of Hjorvard,Synowie Hjorvarda,约尔瓦德诸子,約爾瓦德諸子,,族群,约尔瓦德的八个儿子组成的席位，初次上阵的年轻战士；原文另作：Hjorv.（短标签）,mroczny_swiat
+Osmanisches Reich,Ottoman Turkey / Ottoman Empire,Turcja Osmańska,奥斯曼土耳其,奧斯曼土耳其,,族群,玩家席位名：奥斯曼土耳其；原文另作：Imperium Osmańskie、Osmanowie,wielka_inwazja
+Seldschuken,Seljuk Turks / Seljuks,Turcy Seldżuccy,塞尔柱突厥人,塞爾柱突厥人,,族群,贩奴的塞尔柱突厥人：mroczny_swiat_sub2 中掳走贝恩；lowcypustyni2 中是沙漠里的敌对部族，绑架了贝尔·格里尔斯。单称 Seldżucy 作「塞尔柱人」；原文另作：Seldżucy、Seldżuków、Seldż,lowcypustyni2; mroczny_swiat; mroczny_swiat_sub2
+,Culturesnation Users / CN Users,Użytkownicy Culturesnation,Culturesnation 用户,Culturesnation 用戶,,族群,玩家一方的势力名：CN的用户们；原文另作：Uzytkownicy Culturesnation、Użytkownicy CN、użytkownicy cn,cn_0; cn_1; cn_2_dni; cn_2_dni_sub; demo_mainmenu_10
+,Prisoners,Więźniowie,囚犯,囚犯,,族群,多张图里的囚犯席位名：boso_przez_swiat_sub2、cn_4 的地牢囚犯；gringo 中被蛇战士关押的建筑工；upadek_krola_sub 中奥特兰克监狱的其他囚犯；原文另作：Więzień、Więz.（短标签）,boso_przez_swiat_sub2; cn_4; gringo; upadek_krola_sub
+,Valley Vikings / ValVik,Wikingowie z Doliny,山谷维京人,山谷維京人,,族群,straznicypolnocy 中灰须领导的维京氏族，据守山口要塞；blekiny_nurt 中只作席位名（短标签 WikD 作「谷维」）；原文另作：Wikingów z Doliny、WikD（短标签）,blekiny_nurt; straznicypolnocy
+,Vikings of the North,Wikingowie z Północy,北方维京人,北方維京人,,族群,范达尔领导的维京氏族，山谷维京人的世仇；原文另作：Wikingów z Północy、WikP（短标签）,straznicypolnocy
+,Lords of the Mine / LM,Władcy Kopalni,矿山之主,礦山之主,,族群,席位名，推测指占据金矿的富裕法兰克村；原文另作：WK,kraina_starych_bohaterow
+,Egyptian warriors,Wojownicy Egipcjan,埃及战士,埃及戰士,,族群,雇佣兵营地可购买的埃及战士（贡品条目 s931）,boso_przez_swiat
+,Warriors of Riyadh,Wojownicy z Rijadu,利雅得战士,利雅得戰士,,族群,利雅得守军；原文另作：Woj.,saracen_4
+,elemental warriors,Wojownicy żywiołów,元素战士,元素戰士,,族群,阿瑞斯与尼普顿用祭祀之油召唤的火与水元素战士；原文另作：wojowników żywiołów,cn_0
+,Warrior Tribe,Wojownicze Plemię,好战部族,好戰部族,,族群,比雅尼的部族（势力名）；名字出自一位新手上传说明的病句；原文另作：wojowniczego plemienia、Wojowniczego Plemienia,cn_0
+,Free People / Free,Wolny Lud,自由民,自由民,,族群,《冰与火之歌》Free Folk 的波兰译名（自称）。boso_przez_swiat 中是被普罗沙克诬为劫掠者的南岸部落（短标签 Lud）；wichry_zimy 中是野人的自称（Wolni Ludzie）；原文另作：Wolni Ludzie、Lud（短标签）,boso_przez_swiat; wichry_zimy
+,the chosen ones,Wybrańcy,天选者,天選者,,族群,远古时期守护世界秩序的五位「非凡之人」，曾在城堡击败巨龙；如今职责落到英雄们身上；原文另作：piątka wybrańców、starożytni wybrańcy,kraina_starych_bohaterow; kraina_starych_bohaterow_sub1
+,Outcasts,Wyrzutki,流放者,流放者,,族群,被阿尔拉巴巴尔驱逐的工人，成为玩家居民,saracen_3_sub_3
+,Magyar Order / Magyar Empire,Zakon Madziarski,马扎尔骑士团,馬扎爾騎士團,,族群,玩家席位名：马扎尔骑士团（匈牙利）；原文另作：Zakonu Madziarskiego、Imperium Madziarskie、WĘGRY（短标签）、Węgrzy,wielka_inwazja
+,Order of the Sun,Zakon Słońca,太阳教团,太陽教團,,族群,隐居岩岛修道院的狂热正统派，大陆衰落的罪魁之一（敌方席位）；原文另作：Zakon、Zakonowi Słońca,wielka_kolonizacja_iii_1_0
+,Rebellious Prisoners,Zbuntowani więźniowie,暴动囚犯,暴動囚犯,,族群,由「X」（鲁穆）率领的暴动囚犯（sub2 席位名）；原文另作：buntownicy,boso_przez_swiat_sub2
+,Odin's Ampulla / Lokie Ampulla,Ampulla Odyna,奥丁圣瓶,奧丁聖瓶,,物品,能吸收邪恶能量的圣瓶，维京人赠给拜占庭法师的传家宝，被鲁弗斯偷走；原文另作：Ampulla、Ampulli、Ampullą、Ampullę、Ampulla Lokiego（笔误）,niezwykla_wyprawa
+,sandals of Moses / sacred slippers of Moses,Cichobiegi Mojżesza,摩西圣布鞋,摩西聖布鞋,,物品,号称摩西穿过的「圣物」，其实是一双破旧软底布鞋（cichobiegi）；boso_przez_swiat 中供奉在朝圣地，saracen_4_sub_3 中巴尔塔扎尔穿着它逃跑。两处统一；原文另作：święte cichobiegi Mojżesza、Sandały Mojżesza,boso_przez_swiat; saracen_4_sub_3
+,Miracle Obelisk / Miraculous Obelisk,Cudowny Obelisk,神奇方尖碑,神奇方尖碑,,物品,刻有狼人诅咒秘密的巨大方尖碑；原文另作：Cudownego Obelisku,wilczy_lad; wilczy_lad_sub
+,CulturesCoin,CulturesCoin,Cultures币,Cultures幣,,物品,英格瓦尔兜售的加密货币（戏仿比特币）；原文另作：CulturesCoina、CulturesCoiny,cn_2_dni; cn_2_dni_sub
+,Black Stone,Czarny Kamień,黑石,黑石,,物品,麦加天房的黑石（约曾科夫在它前面跪了24小时）,cn_0
+,Diamond,Diament,钻石,鑽石,,物品,钻石矿每 5 分钟产出的计分物（脚本计数，非 HUD 货物）；原文另作：diamenty、diamentów,diamentowa_dolina
+,flute,Flet,驯蛇笛,馴蛇笛,,物品,驯服蛇战士的笛子,saracen_2_sub_1
+,stones of Power / Energy Stone,Kamienie Mocy,力量之石,力量之石,,物品,七块方尖碑状的力量之石，可将洛基之魂召回人间；原文另作：Kamień Energii、kamienie energii、kamieniom Mocy、7 pieczęci Lokiego、obeliski,niezwykla_wyprawa
+,Access card,Karta Dostępu,门禁卡,門禁卡,,物品,巴尔塔扎尔身上的塑料门禁卡，用来开启狮身人面像；原文另作：Kartę dostępu,saracen_4; saracen_4_sub_3; saracen_4_sub_4
+,Aaron's cage,Klatka Aarona,亚伦之笼,亞倫之籠,,物品,囚禁亚伦的无形魔笼，位于利雅得南边沼泽，四周燃着圣火；原文另作：klatki Aarona,saracen_1; saracen_1_sub_2; saracen_2; saracen_2_sub_1; saracen_3; saracen_3_sub_3; saracen_4; saracen_4_sub_2
+,Colossus / Statue of Helios,Kolos,赫利俄斯巨像,赫利俄斯巨像,Colosso,物品,米罗斯港口待重建的太阳神巨像；原文另作：statua Heliosa、posąg,wielka_kolonizacja_iii_1_0
+,crown of the Great Goat,Korona Wielkiej Kozy,伟大山羊王冠,偉大山羊王冠,,物品,被埃及人藏起的山羊王冠；原文另作：korona Kozy Esmeraldy,saracen_2_sub_1
+,Herbs for smoking,Magiczne zioło,魔法草药,魔法草藥,,物品,药贩子卖的「魔法草药」，抽了会嗨；原文另作：Zioła do zapalenia,saracen_1; saracen_1_sub_1
+,Magic Circle,Magiczny Krąg,魔法阵,魔法陣,,物品,盟友大本营之间传送单位与车辆的魔法阵（付贡品触发）；原文另作：okrąg、krąg,diamentowa_dolina
+,,Mikstura wybuchowa,爆破药剂,爆破藥劑,,物品,德鲁伊调制、用来炸毁法兰克城墙的爆炸药剂；原文另作：Wybuchowa mieszanka、mikstura uderzająca,zdradziecka_mielizna
+,Frost Flame,Mroźny ogień,霜焰,霜焰,,物品,冰巨人力量之源的神器，藏于约顿海姆中心；原文另作：mroźny płomień,straznicypolnocy; straznicypolnocy_sub2
+,MS Lotus / the Greek tanker Lotus,MS Lotus,莲花号,蓮花號,,物品,多年前失踪的希腊油轮，船员曾劫船去以利亚之墓，在亚丁湾被不明之物击沉；幸存者立誓保密；原文另作：Lotus、tankowiec Lotus、grecki tankowiec Lotus、Zaginiony Grecki Tankowiec Lotus、Lotusa,boso_przez_swiat; boso_przez_swiat_sub4
+,blue casket,Niebieska szkatułka,蓝色宝匣,藍色寶匣,,物品,每枚戒指都藏在里面的蓝色小匣；原文另作：szkatułka、skrzynka,saracen_1_sub_2; saracen_2_sub_1; saracen_3_sub_3; saracen_4_sub_1
+,Ritual Oils,Olejki Rytualne,仪式油,儀式油,,物品,献给方尖碑的仪式用油（实为游戏货物「油」）；原文另作：Olejków Rytualnych、oleje,wilczy_lad; wilczy_lad_sub
+,Altar of the Ancient Heroes / Miraculous Altar,Ołtarz Starożytnych Bohaterów,远古英雄祭坛,遠古英雄祭壇,,物品,古墓深处的祭坛，由一位神秘修士守护，赐予英雄超凡能力；原文另作：Cudowny Ołtarz、ołtarz bohaterów,kraina_starych_bohaterow; kraina_starych_bohaterow_sub1
+,rings / keys to Aaron's cage,Pierścienie,戒指,戒指,,物品,开启亚伦之笼的四枚戒指（红、蓝、黄、紫），每关穿越到过去取得一枚；又称 klucze do klatki Aarona「亚伦之笼的钥匙」；原文另作：pierścień、pierścionek、klucz do klatki Aarona、cztery klucze、cztery pierścienie,saracen_1; saracen_1_sub_2; saracen_2; saracen_2_sub_1; saracen_3; saracen_3_sub_3; saracen_4; saracen_4_sub_1
+,Koslowford texts,Pisma z Koslowford,科斯洛福德典籍,科斯洛福德典籍,,物品,被佐里安盗走并抄录的学院秘典；原文另作：teksty z Koslowford、kopie tekstów,wybrzeze_czarow; wybrzeze_czarow_sc2; wybrzeze_czarow_sub3; wybrzeze_czarow_sub4
+,dragon amulet,Smoczy amulet,龙之护符,龍之護符,,物品,佩戴后能驯服龙的护符；原文另作：smoczego amuletu,straznicypolnocy; straznicypolnocy_sub1
+,Esmeralda's goat-like costume,Strój na wzór kozy Esmeraldy,埃斯梅拉达同款山羊装,埃斯梅拉達同款山羊裝,,物品,金匠打造的仿埃斯梅拉达山羊装,saracen_2
+,Eternal Flame / Eternal Fire,Wieczny Płomień,永恒之火,永恆之火,,物品,沼泽中的永恒之火，可解除冰怒咒；原文另作：Wieczny Ogień、Wiecznym Płomieniem,niezwykla_wyprawa
+,2 Days,2 dni,两天,兩天,,事件,cn_2_dni 标题与核心设定：佐汉诺瓦蒂给新人的「两天考验」（próba 2 dni），两天内打败德国人才能进 CN；原文另作：próba 2 dni、2 DNI MINĘŁY,cn_2_dni; cn_2_dni_sub
+,Battle of the Cultures Gallery,Bitwa pod Galerią Cultures,Cultures画廊之战,Cultures畫廊之戰,,事件,银龙的成名之战，影射CN网站画廊版块的反垃圾机器人清理；原文另作：Galerią Cultures、galerię,cn_0
+,Barefoot Through the World,Boso przez świat,赤足走天涯,赤足走天涯,,事件,系列标题，取自波兰旅行家采罗夫斯基的赤脚旅行电视节目；与结尾「赤足之人」呼应。cn_2_dni 中被约曾科夫列为三佳地图之一,boso_przez_swiat; cn_2_dni
+,Sandstorm,Burza Piaskowa,沙暴,沙暴,,事件,六名维京玩家围攻撒拉逊要塞；地图名,burza_piaskowa
+,Coast Storm / Coastal Storm,Burza przybrzeżna,海岸风暴,海岸風暴,,事件,地图 burza_przybzezna_1_2 的标题，cn_2 中阿瑞斯与普罗沙克的 1v1 也用这张图；原文拼错为 przybzeżna；原文另作：Burza przybzeżna、BURZA PRZYBZEZNA,burza_przybzezna_1_2; cn_2
+,Difficult Cooperation,Ciężka Współpraca,艰难合作,艱難合作,,事件,四兄弟争夺父亲遗位的 2v2；地图名；原文另作：CIEZKA WSPOLPRACA,ciezka_wspolpraca
+,Decision Time,Decision Time,Decision Time,Decision Time,,事件,圣地亚哥自称在美国畅销的地图，原文即英文，保留并可加注「决断时刻」,cn_2_dni
+,Potato Day,Dzień Ziemniaka,土豆节,土豆節,,事件,比雅尼急着赶回去参加的「土豆节」，是该系列的笑点；原文另作：dnia ziemniaka、dniu ziemniaka,zdradziecka_mielizna; zdradziecka_mielizna_sub2
+,Flag Mania,Flagomania,旗帜狂潮,旗幟狂潮,,事件,四部族夺旗战；地图名；原文另作：CTF: FLAGOMANIA,flagomania_1_0_01
+,Gringo,Gringo,外乡佬,外鄉佬,,事件,标题 GRINGO WŚRÓD DZIKICH PLEMION 戏仿采罗夫斯基的游记《野蛮部落中的外乡佬》（Gringo wśród dzikich plemion）；佐汉自比「野蛮部落中的外乡佬」；原文另作：GRINGO WŚRÓD DZIKICH PLEMION（标题）,gringo_sub
+,High Hatchie,Hatchie na fazie,嗨翻的哈奇,嗨翻的哈奇,,事件,saracen_1_sub_1 标题：哈奇抽了草药后的幻觉关,saracen_1_sub_1
+,gnome curse,Klątwa gnomów,地精诅咒,地精詛咒,,事件,国王打开箱子后降临山谷的地精诅咒；原文另作：klątwa、klątwę,przekleta_dolina
+Kreuzzug,crusade,Krucjata,十字军东征,十字軍東征,,事件,教皇针对奥斯曼发起的十字军东征（脚本事件）；原文另作：krucjaty,wielka_inwazja
+,Desert Hunters,Łowcy Pustyni,沙漠猎人,沙漠獵人,,事件,沙漠求生合作地图；地图名；原文另作：ŁOWCY PUSTYNI 2,lowcypustyni2
+,Dark World,Mroczny Świat,黑暗世界,黑暗世界,,事件,约曾科夫的《黑暗世界》系列：主图 mroczny_swiat（比雅尼一行在群岛上对抗幽冥，结尾揭示一切是梦）与子图（PROLOG「序章」、KRYPTA「地穴」、UMYSŁ BJARNIEGO「比雅尼的心灵」）；原文另作：Mroczny świat,mroczny_swiat; mroczny_swiat_sub1; mroczny_swiat_sub2; mroczny_swiat_sub3; mroczny_swiat_sub4
+,Unexpected Journey,Niezwykła Wyprawa,非凡远征,非凡遠征,,事件,地图标题：希拉押送鲁弗斯、寻找失踪的比雅尼,niezwykla_wyprawa
+,A New Hope,Nowa Nadzieja,新希望,新希望,,事件,选民族、从两名移民开始建国的地图；地图名,nowa_nadzieja
+,Eyes of the Serpent,Oczy Węża,蛇之眼,蛇之眼,,事件,两人对战、第三人扮演洛基的地图；地图名；原文另作：OCZY WEZA,oczy_weza
+,Pirate Utopia,Piracka Utopia,海盗乌托邦,海盜烏托邦,,事件,火山群岛上的落难者对抗海盗；地图名,piracka_utopia_1_0
+,Treasure Pyramid,Piramida Skarbów,宝藏金字塔,寶藏金字塔,,事件,八部族争挖金字塔宝藏；地图名,piramida_skarbow
+,Plague of bunnies,Plaga króliczków,兔子之灾,兔子之災,,事件,洛基可降下的兔子灾（贡品选项）；原文另作：plaga kroliczkow,oczy_weza
+,Defeat the Immortal,Pokonać Nieśmiertelnego,击败不死者,擊敗不死者,,事件,《古英雄之地》第二支线标题：在洛基抵达拜占庭前拦住他,kraina_starych_bohaterow_sub2
+,Polish Madness,Polski Młyn,波兰大乱斗,波蘭大亂鬥,,事件,三个斯拉夫部落定时交换村庄的混战；地图名,polski_mlyn_1_1
+,Back to the Past / PDP,Powrót do przeszłości,回到过去,回到過去,,事件,撒拉逊系列（作者 Jozenkow）的总标题，各关名前缀 PDP；戏仿《回到未来》的波兰片名 Powrót do przyszłości,saracen_1; saracen_1_sub_1; saracen_1_sub_2; saracen_2; saracen_2_sub_1; saracen_3; saracen_3_sub_1; saracen_3_sub_2; saracen_3_sub_3; saracen_4; saracen_4_sub_1; saracen_4_sub_2; saracen_4_sub_3; saracen_4_sub_4
+,Return of GaTo,Powrót GaTo,加托归来,加托歸來,,事件,cn_0 标题 CULTURESNATION: POWRÓT GATO（Culturesnation：加托归来）；2 dni 中称其为「前传」；原文另作：CULTURESNATION: POWRÓT GATO、CN: Powrót Gato、Culturesnation: Powrót Gato,cn_0; cn_2_dni
+,Bjarni's trial,Próba Bjarniego,比雅尼的试炼,比雅尼的試煉,,事件,德鲁伊让比雅尼在梦中经历的试炼（子地图1）；原文另作：Przejdź próbę!,zdradziecka_mielizna; zdradziecka_mielizna_sub1
+,trial of light,Próba światła,光明试炼,光明試煉,,事件,圣所守卫用谜题检验英雄是否被幽冥附身；原文另作：próbie światła,mroczny_swiat_sub2
+,Guardians of the North,Strażnicy Północy,北方守护者,北方守護者,,事件,约曾科夫的地图 straznicypolnocy 的标题；cn_2_dni 中被他列为三佳地图之一,cn_2_dni; straznicypolnocy
+,Two Worlds' Tributes,Trybuty Dwóch Światów,两界贡品,兩界貢品,,事件,南北玩家互送贡品发展科技；地图名,trybuty_dwoch_swiatow
+,CulturesNation 2020 Tournament,Turniej CulturesNation 2020,CulturesNation 2020 锦标赛,CulturesNation 2020 錦標賽,,事件,谜题提到的真实社区比赛；答案通过向对应昵称的席位进贡来选择；原文另作：TURNIEJU CULTURESNATION 2020,mroczny_swiat_sub2
+,Escape from Gaza,Ucieczka z Gazy,逃离加沙,逃離加沙,,事件,非利士孩童逃离焚城的竞速地图；地图名,ucieczka_z_gazy
+,King's Demise,Upadek Króla,国王的陨落,國王的隕落,,事件,地图标题：哈奇与贾迈勒推翻奥特兰克的篡位新王,upadek_krola
+,The Fall of Riyadh,Upadek Rijadu,利雅得陷落,利雅得陷落,,事件,第4关标题（saracen_4 及其子图）,saracen_4; saracen_4_sub_1; saracen_4_sub_2; saracen_4_sub_3; saracen_4_sub_4
+,In the Eye of Uncertainty,W Oku Niepewności,未知之眼,未知之眼,,事件,四族自由开局；地图名,w_oku_niepewnosci
+,Heart of the Tempest,W sercu nawałnicy,风暴之心,風暴之心,,事件,第3关标题（saracen_3 及其子图）,saracen_3; saracen_3_sub_2; saracen_3_sub_3
+,Winds of Winter,Wichry Zimy,凛冬的寒风,凜冬的寒風,,事件,《冰与火之歌》题材的合作地图；地图名,wichry_zimy
+,The Great Colonization,Wielka Kolonizacja,大殖民,大殖民,,事件,Proszak 的自由殖民三部曲；地图名；原文另作：WIELKA KOLONIZACJA II、III,wielka_kolonizacja; wielka_kolonizacja_ii_1_1; wielka_kolonizacja_iii_1_0
+,The Great Sweep,Wielkie Sprzątanie,大扫除,大掃除,,事件,布雷尼的地图 wielkie_sprzatanie 的标题（法兰克人开春清剿入侵者，「大扫除」同样双关）；cn_0 中这张图被加托烧掉；原文另作：Wielkie Sprzatanie（无变音符）,cn_0; wielkie_sprzatanie
+,Great Changes,Wielkie Zmiany,大变革,大變革,,事件,兹比雷克为网站「大变革」募捐（凑满110金币才公布改动清单），讽刺迟迟不兑现的改版承诺；原文另作：Wielkich Zmian,cn_2_dni; cn_2_dni_sub
+,The Enemy on Our Land,Wróg na naszej ziemi,敌临故土,敵臨故土,,事件,第1关标题（saracen_1）,saracen_1; saracen_3_sub_1
+,admin,Admin,管理员,管理員,,称号,论坛管理员：普罗沙克的头衔；加托想当「唯一的首席管理员」；原文另作：admina、adminem、administrator、główny administrator、główny admin,cn_0; cn_1; cn_2_dni; cn_2_dni_sub; demo_mainmenu_10
+,anti-wizard,Antyczarodziej,反巫师,反巫師,,称号,瓦尔马尔的称号；原文另作：antyczarodzieja,wybrzeze_czarow
+,Archaeologist,Archeolog,考古学家,考古學家,,称号,发掘古战场、用蜂蜜酒和工具换武器的NPC；原文另作：Archeologa,wielka_kolonizacja_iii_1_0
+,priest,Arcykapłan Świętej Kozy,圣山羊大祭司,聖山羊大祭司,,称号,圣山上的圣山羊大祭司；原文另作：kapłan,saracen_2
+,Ruins Explorer,Badacz,遗迹探险家,遺跡探險家,,称号,提议重建金字塔的遗迹探险家NPC,wielka_kolonizacja_iii_1_0
+,Richard,Bogacz,富翁,富翁,,称号,想给自己立像的富翁；原文另作：bogaty mieszczanin,saracen_3_sub_3
+,Tsar Proszak,Car Proszak,沙皇普罗沙克,沙皇普羅沙克,,称号,埃米兰多的口头禅「荣耀归于沙皇普罗沙克！」；原文另作：carowi Proszakowi、Carowi Proszakowi,cn_0
+,Emperor of Byzantium,Cesarz Bizancjum,拜占庭皇帝,拜占庭皇帝,,称号,拜占庭皇帝，希拉的父亲；原文另作：Cesarza、cesarza bizancjum,niezwykla_wyprawa
+,Man Without Shoes,Człowiek Bez Butów,赤足之人,赤足之人,,称号,米库卢斯口中的「好人」弟子；比雅尼以为是采罗夫斯基，实为佐汉诺瓦蒂；原文另作：Człowieka Bez Butów、Człowiekiem Bez Butów,boso_przez_swiat; boso_przez_swiat_sub4
+,Dealer,Diler,药贩子,藥販子,,称号,兜售「魔法草药」的可疑贩子；原文另作：Dealer（标签）,saracen_1
+,Camp commander,Dowódca obozu,营地指挥官,營地指揮官,,称号,普罗禁卫军营地指挥官；原文另作：dowódca sprosznej gwardii,saracen_2; saracen_2_sub_1
+,Defense Commander,Dowódca obrony,守军指挥官,守軍指揮官,,称号,山口要塞的守军将领；原文另作：generał,straznicypolnocy
+,old man,Dziadek,老爷爷,老爺爺,,称号,各关提供情报的老人NPC：saracen_1 废墟旁的老人、saracen_3 游牧民营地长老、saracen_3_sub_2 营地老人、saracen_3_sub_3 最终被揭露为拐童犯的老人（彼此不是同一人）；原文另作：Dziadka、dziadziuś、staruszek、starzec、dziad,saracen_1; saracen_3; saracen_3_sub_2; saracen_3_sub_3
+Emir,Emir,Emir,埃米尔,埃米爾,,称号,约曾科夫的头衔,boso_przez_swiat
+,grandmaster,Grandmaster,宗师,宗師,,称号,阿雷克的称号：CN格斗宗师；原文另作：grandmastera,cn_0
+,Mushroom guy,Grzybiarz,蘑菇佬,蘑菇佬,,称号,种不出蘑菇的怪人,saracen_3_sub_3
+Jarl,Jarl,Jarl,雅尔,雅爾,,称号,维京首领头衔（席位前缀）,w_oku_niepewnosci
+,His Holiness / Your Holiness,Jego Świętobliwość,圣座大人,聖座大人,,称号,佐汉诺瓦蒂的自封头衔，挪用教皇尊号（讽刺）；Wasza Świętobliwość＝圣座大人您；原文另作：Jego Świętobliwości、Wasza Świętobliwość,gringo
+,wild woman,Kobieta z dziczy,野女人,野女人,,称号,洛基对希拉的蔑称（她能操控动物）,kraina_starych_bohaterow_sub2
+,king of the Andals and the First Men,Król Andalów i Pierwszych Ludzi,安达尔人和先民的国王,安達爾人和先民的國王,,称号,普罗沙克的戏仿头衔；原文另作：pierwszy tego imienia、świking pierwszy niebrodaty,boso_przez_swiat
+,King of the Centre / C. King,Król Centrum,中部之王,中部之王,,称号,瀑布洞穴中三位法兰克「国王」之一，只求清静；原文另作：Król Środkowy、K. Śro.,saracen_3_sub_1
+,King of the South / S.King,Król Południa,南部之王,南部之王,,称号,嗜战的洞穴南部之王；原文另作：K. Płd.,saracen_3_sub_1
+,King of the North / N.King,Król Północy,北部之王,北部之王,,称号,想扩张领地的洞穴北部之王；原文另作：K. Płn.,saracen_3_sub_1
+,King of the Mountain Pass,Król Przełęczy,隘口之王,隘口之王,,称号,争夺隘口胜者的称号；地图名；原文另作：Króla Przełęczy,krol_przeleczy
+,King-Beyond-the-Wall,Król za Murem,塞外之王,塞外之王,,称号,曼斯·雷德的称号；原文另作：Królem za Murem,wichry_zimy
+,Screamer,Krzykacz,大嗓门,大嗓門,,称号,山羊狂信徒城中负责宣扬的大嗓门；原文另作：Krzykacza、Krzykaczowi,saracen_2
+,Lord Commander,Lord Dowódca,总司令,總司令,,称号,守夜人总司令（杰奥·莫尔蒙）；原文另作：Lorda Dowódcy、Lordem Dowódcą,wichry_zimy
+,,Łowczyni Cyra,女猎手希拉,女獵手希拉,,称号,希拉的绰号,niezwykla_wyprawa
+,Painter,Malarz,画匠,畫匠,,称号,把普通木料刷成橡木色的画匠,saracen_3_sub_3
+,Sage / old man,Mędrzec,智者,智者,,称号,熟知本地历史的老者，告诫英雄时机未到不要进古墓；原文另作：starzec、dziadziuś、staruszek,kraina_starych_bohaterow
+,Multiman,Multiman,分身侠,分身俠,,称号,洛基对比雅尼的蔑称（他有分身）,kraina_starych_bohaterow_sub2
+,teacher / Teacher,Nauczyciel,导师,導師,,称号,wybrzeze_czarow 中科斯洛福德学院最年长的导师；saracen_3_sub_2 营地里出售士兵的人宜作「教官」；原文另作：nauczyciela、nauczycielowi、waść nauczycielu,saracen_3_sub_2; wybrzeze_czarow; wybrzeze_czarow_sc1; wybrzeze_czarow_sc2
+,The wretch,Nieszczęsnik,倒霉蛋,倒楣蛋,,称号,城里永远愁眉苦脸的倒霉蛋，后被送进妓院「治愈」；原文另作：Nieszczęśnik,saracen_3_sub_3
+,the Immortal,Nieśmiertelny,不死者,不死者,,称号,洛基获得力量后的称号；原文另作：Nieśmiertelnego、nieśmiertelny Loke,kraina_starych_bohaterow_sub2
+,Runboy,Runboy,飞毛腿小子,飛毛腿小子,,称号,洛基对西格德的蔑称（他跑得快）,kraina_starych_bohaterow_sub2
+,Skipman,Skipman,闪现侠,閃現俠,,称号,洛基对哈奇的蔑称（他会传送）,kraina_starych_bohaterow_sub2
+,Servant of the Goat,Sługa Kozy,山羊之仆,山羊之僕,,称号,阿布勒的身份：山羊之仆兼翻译,saracen_2_sub_1
+,port guard,Strażnik portu,港口守卫,港口守衛,,称号,索要一百只山羊才放船的港口主人；原文另作：dowódca portu,saracen_2
+,Warden,Strażnik Więzienia,典狱长,典獄長,,称号,阿尔拉巴巴尔的监狱看守，掌管金库钥匙；最后携宝匣企图逃走；原文另作：Strażnik、Strażnika,saracen_3_sub_3
+Sultan,Sultan,Sułtan,苏丹,蘇丹,,称号,saracen_3 中哈奇与阿齐姆早年效力的苏丹；wielka_inwazja 中苏莱曼的称号；原文另作：Sułtana、Sułtanie,saracen_3; wielka_inwazja
+,Shaytan,Szaytan,撒旦,撒旦,,称号,佐汉诺瓦蒂对杰卡奇的蔑称（恶魔）,boso_przez_swiat
+,Spy,Szpieg,间谍,間諜,,称号,奥利维耶安排的暴躁间谍，痛恨太阳；原文另作：Szp.,saracen_4
+,first beardless shviking,Świking Pierwszy Niebrodaty,首位无须猪京人,首位無鬚豬京人,,称号,普罗沙克的自封头衔：świnia「猪」＋wiking「维京人」的生造词；整串头衔戏仿《权力的游戏》丹妮莉丝的称号，沿用中文版说法；原文另作：świking z rodu niebrodatych,cn_0; cn_6
+,Pig / Swine,Świnia,猪猡,豬玀,,称号,佐汉诺瓦蒂与阿瑞斯对普罗沙克的蔑称；原文另作：Świni、Świnię、Świniak、Świniaka,boso_przez_swiat
+,three Teachers,Trzej Nauczyciele,三位导师,三位導師,,称号,死神让幽冥去拜访的三位导师：黑神、白神和「自我」；原文另作：Nauczyciel、Nauczycielami、trzeci Nauczyciel,mroczny_swiat_sub4
+,High Priest / Mullah,Wielki Kapłan,大祭司,大祭司,,称号,烤强尼担任的安拉大祭司；他的师父是城中的毛拉（Mułła）；原文另作：kapłan、Mułła,boso_przez_swiat
+,Grand Maester,Wielki Maester,大学士,大學士,,称号,单位名,wichry_zimy
+,Great Hermit,Wielki Pustelnik,大隐士,大隱士,,称号,米库卢斯的称号；佐汉诺瓦蒂自称其弟子；原文另作：pustelnik,boso_przez_swiat; boso_przez_swiat_sub4
+Großwesir,Grand Vizier / Vizier,Wielki Wezyr,大维齐尔,大維齊爾,,称号,boso_przez_swiat 中赖托的头衔（结尾佐汉诺瓦蒂接过「大维齐尔的权杖」）；cn_0 中佐汉诺瓦蒂昔日的头衔「帝国大维齐尔」。单称 Wezyr 作「维齐尔」；原文另作：Wezyr、wezyr、Wielkim Wezyrem、Wielkiego Wezyra、wielki wezyr imperium,boso_przez_swiat; cn_0
+,The owner,Właściciel Plantacji,种植园主,種植園主,,称号,种「草药」的种植园主；原文另作：Wł. Plant.,saracen_1
+,Saunas owner,Właściciel Saun,桑拿老板,桑拿老闆,,称号,经营疗伤蒸汽桑拿的老板；原文另作：W.Sa.,saracen_4
+,Village Leader,Wódz Wioski,村长,村長,,称号,沙漠村庄的首领，曾在宫廷为官，持有标着三个按钮的地图（说话人名）；原文另作：wódz,upadek_krola
+Allvater,Allfather,Wszechojciec,众神之父,眾神之父,,称号,奥丁的尊号；原文另作：Wszechojca、wszechojcem,straznicypolnocy
+,The All-knowing,Wszechwiedzący,全知者,全知者,,称号,阿尔拉巴巴尔城中号称无所不知的先知；原文另作：Wszechwiedzącego,saracen_3_sub_3
+,Goldsmith,Złotnik,金匠,金匠,,称号,为山羊打造王冠饰物的金匠；原文另作：Złotnika、Złotnikowi,saracen_2
+,Evil Man / bad man,Zły Człowiek,恶人,惡人,,称号,米库卢斯口中渴望权力的「恶人」；佐汉诺瓦蒂揭示其为普罗沙克；原文另作：Złego Człowieka、Złym Człowiekiem,boso_przez_swiat; boso_przez_swiat_sub4; boso_przez_swiat_sub5
+,2137,2137,2137,2137,,术语,波兰网络梗：教皇约翰·保罗二世逝世时刻 21:37，配教皇图片 pop.pcx,przekleta_kraina; smocza_kraina; wielka_kolonizacja_iii_1_0
+,Abracadabra,"Abrakadabra, czary mary",阿布拉卡达布拉，天灵灵地灵灵,阿布拉卡達布拉，天靈靈地靈靈,,术语,每次穿越时空时念的咒语；原文另作：Abrakadabra、czarmy mary、Abrabaabre? Czurry murry?、Hokus pokus、Alohomora,saracen_1; saracen_1_sub_2; saracen_2_sub_1; saracen_3_sub_3; saracen_4; saracen_4_sub_1; saracen_4_sub_3
+,Assistant,Asystent,助手,助手,assistente,术语,HUD 的助手窗口（按 E 打开），沿用界面目录 chs-game.ts 的「助手」；窗口里的计数器 Synowie 作「儿子」，Córki 作「女儿」；原文另作：asystenta,tutorial_009
+,blue mist,Błękitna mgiełka,蓝色雾团,藍色霧團,,术语,蓝色雾团；传说久待其中能看见自己灵魂的碎片，比雅尼进入后召唤出分身尼雅比；原文另作：błękitna chmurka、błękitna mgła、chmurka mgły、magiczna mgiełka,kraina_starych_bohaterow; kraina_starych_bohaterow_sub2; wybrzeze_czarow_sub4
+,Divine Gift,Boski Dar,神赐,神賜,,术语,提尔的神恩：召唤投石机,walhalla
+,CN,CN,CN,CN,,术语,Culturesnation 的缩写，保留拉丁字母；也是玩家势力短标签,cn_0; cn_1; cn_2; cn_2_dni; cn_2_dni_sub; cn_3; cn_4; cn_5; cn_6; demo_mainmenu_10
+,CN Mod 1.0,CN Mod,CN模组,CN模組,,术语,Culturesnation模组（约曾科夫说那版投石机射程远得能直接轰到德国人）；原文另作：CN Moda 1.0,cn_2_dni
+,CTF,CTF,夺旗,奪旗,,术语,夺旗模式（Capture the Flag）缩写,flagomania_1_0_01
+,Time is money,Czas to pieniądz,时间就是金钱,時間就是金錢,,术语,哈奇的口头禅，几乎每关结尾都喊；原文另作：Czas to pieniądz!,saracen_1; saracen_2; saracen_3; saracen_4
+,Gift of Light,Dar Światła,光明之礼,光明之禮,,术语,巴德尔的神恩：魔法场与无敌,walhalla
+,drama / flame war,Dymy,撕起来,撕起來,,术语,CN 黑话：吵架、闹事（字面「烟」）；zadymiarz＝搞事王。cn_0 中消防员比雅尼把「南边冒烟」当成火警，译文需另造「起火/火药味」类双关；原文另作：dymów、zadyma、zadymiarz,cn_0
+,Hallucinations,Halucynacje,幻觉,幻覺,,术语,洛基的神恩：传送门、致盲,walhalla
+,Hatchie Skip,Hatchie Skip,哈奇瞬移,哈奇瞬移,,术语,外交面板「哈奇」页签上用于传送的选项,kraina_starych_bohaterow_sub2
+,Some whore,Jakaś kurwa,某个婊子,某個婊子,,术语,cn_2_dni 单位名（粗口，照原文语气）,cn_2_dni; cn_2_dni_sub
+,Some guy you don't know,jakiś typ którego nie znasz,某个你不认识的家伙,某個你不認識的傢伙,,术语,单位名：「某个你不认识的家伙」,cn_2_dni; cn_2_dni_sub
+,JD,JD,JD,JD,,术语,Jestem Debilem「我是白痴」的缩写；赖托把玩家的 Jest dobrze「挺好」曲解成 JD。译文可保留 JD，另选拼音首字母相同的一对说法重建双关；原文另作：Jestem Debilem、Jest dobrze,cn_0; cn_2_dni
+,goat language,Język kóz,山羊语,山羊語,,术语,山羊语及其字母对照表（谜题）；原文另作：Tablica języka kóz,saracen_2_sub_1
+,snitching,Konfa,告密,告密,,术语,黑话：向加托告密（konfident=线人）；原文另作：konfę、konfił、skonfić,cn_0
+,bloodthirsty bunnies,Krwiożercze króliczki,嗜血小兔,嗜血小兔,,术语,地图上会咬人的兔子，希拉获得能力后它们不再攻击她,kraina_starych_bohaterow
+,healing aura,Lecząca aura,治愈光环,治癒光環,,术语,可回血的蒸汽/桑拿区,saracen_3_sub_2; saracen_4
+,Ice Wrath,Lodowy Gniew,冰怒咒,冰怒咒,,术语,北方维京人的德鲁伊施在比雅尼身上的冰冻咒语；原文另作：Lodowego Gniewu,niezwykla_wyprawa
+,Mana from Heaven / Manna from Heaven,Manna z Nieba,天降吗哪,天降嗎哪,,术语,圣经典故「吗哪」（英文参考误作 Mana）：walhalla 中希芙的神恩；wybrzeze_czarow 中叉胡子的法术服务（wieczna manna＝永恒吗哪）；oczy_weza 中洛基降下的恩赐,oczy_weza; walhalla; wybrzeze_czarow
+,Wallmar's power / ninth power,Moc Wallmara,瓦尔马尔之力,瓦爾馬爾之力,,术语,瓦尔马尔死后转移的「凭意念造人」的力量，即学院的第九种力量；原文另作：dziewiąta moc,wybrzeze_czarow; wybrzeze_czarow_sc1; wybrzeze_czarow_sc2
+,Sea on Fire,Morze w Ogniu,燃烧之海,燃燒之海,,术语,尼奥尔德的神恩：运粮船,walhalla
+,Slaves from Valhalla,Niewolnicy z Walhalli,瓦尔哈拉的奴仆,瓦爾哈拉的奴僕,,术语,弗蕾亚的神恩：资源与超级建筑工,walhalla
+,Observer,Obserwator,观战者,觀戰者,spettatore,术语,观战席位,flagomania_1_0_01; piramida_skarbow; wody_nilu
+,teleportation bonfire,Ognisko teleportacji,传送火圈,傳送火圈,,术语,蓝色火焰圈，哈奇可借此瞬间传送；原文另作：krąg błękitnego płomienia、okręgi z błękitnego płomienia,kraina_starych_bohaterow; kraina_starych_bohaterow_sub2
+,Salmon,OKOŃ,鲈鱼,鱸魚,,术语,进入保护国地下城、见三位法师的暗号（okoń＝河鲈，英文参考改作 Salmon；换成别的鱼也行，前后两处一致即可）,saracen_4_sub_2
+,pcx,pcx,pcx图片,pcx圖片,,术语,游戏图片文件格式；「偷pcx」指盗用别人地图里的图片素材（鲁穆与埃米兰多互相指控）；原文另作：pcxów、pcxa、pcxy、pcxuw,cn_0
+,Jozenkow's dog,pies Jozenkowa,约曾科夫的狗,約曾科夫的狗,,术语,单位名：约曾科夫的狗,cn_2_dni; cn_2_dni_sub
+,Thunderous Acceleration,Piorunujące Przyspieszenie,雷霆疾行,雷霆疾行,,术语,托尔的神恩：单位加速,walhalla
+,Just a Moose,Po Prostu Łoś,就是一头驼鹿,就是一頭駝鹿,,术语,地图中一个物件/单位的玩笑式名字（字符串81）,wybrzeze_czarow
+,building permits / letters,Pozwolenie na budowę,建造许可,建造許可,,术语,可放置建筑的许可文书（地图开局赠送）；原文另作：listy、papiery、dokumentacja na magazyny、pozwolenia na budowę,arabskie_wyspy_wolna_gra_mieszana; diamentowa_dolina; mroczny_las; oczy_weza; piramida_skarbow
+,Guardian's Gift,Prezent Opiekunki,守护女神之礼,守護女神之禮,,术语,弗丽嘉的神恩：信件宝箱,walhalla
+,SANDBOX,SANDBOX,沙盒模式,沙盒模式,,术语,开局 60 秒内可开启的测试模式（全图可见、可试所有神和英雄）；原文另作：tryb SANDBOX,walhalla
+,assassin,skryptobójca,脚本刺客,腳本刺客,,术语,双关：skrytobójca（刺客）+ skrypt（地图脚本），指佐汉诺瓦蒂；原文另作：skryptobójcą,boso_przez_swiat
+,Chests of Uncertainty,Skrzynie Niepewności,未知宝箱,未知寶箱,,术语,布拉基的神恩：随机宝箱,walhalla
+,SNAKE BONUS,SNAKE BONUS,蛇战士奖励,蛇戰士獎勵,,术语,源文本本身即为英文的贡品/目标标签：通过蛇门付贡品获得蛇战士,przekleta_dolina
+,super-civilian,Super-cywil,超级平民,超級平民,,术语,无需求、移动快两倍的平民（比雅尼的进贡奖励）；原文另作：super-cywili,walhalla
+,Blizzard,Śnieżyca,暴风雪,暴風雪,,术语,伊米尔的神恩：暴风雪减速敌人,walhalla
+,Holy War,Święta Wojna,圣战,聖戰,,术语,霍德尔的神恩：所有对手互相宣战,walhalla
+,tribute,Trybut,贡品,貢品,tributo,术语,外交窗口里付出的贡品，大量多人地图靠它触发脚本（买兵、选民族、传送等）；原文另作：trybuty、trybucie、trybutu、Trib.、datek,diamentowa_dolina; nowa_nadzieja; nowa_nadzieja_byz; nowa_nadzieja_egy; nowa_nadzieja_fra; nowa_nadzieja_sar; nowa_nadzieja_vik; oczy_weza; przekleta_kraina; starozytny_trakt; trybuty_dwoch_swiatow; wielka_kolonizacja_iii_1_0; wielkie_sprzatanie; wilczy_lad
+,space-time tunnel,Tunel czasoprzestrzenny,时空隧道,時空隧道,,术语,穿越时间的通道，由亚伦守护；原文另作：czasoprzestrzeń,saracen_1; saracen_3; saracen_4
+,Asgard Fortress,Twierdza Asgardu,阿斯加德堡垒,阿斯加德堡壘,,术语,奥丁的神恩：不可摧毁的城墙,walhalla
+,You,Ty,你,你,,术语,玩家席位名：cn_2_dni 中玩家扮演的流浪维京首领（立绘 cn_2_ty_*.pcx 按表情区分）；wybrzeze_czarow 系列的玩家席位；原文另作：Ciebie、Tobie,cn_2_dni; cn_2_dni_sub; wybrzeze_czarow; wybrzeze_czarow_sc1; wybrzeze_czarow_sc2; wybrzeze_czarow_sub1; wybrzeze_czarow_sub3; wybrzeze_czarow_sub4
+,Warriors from the Land of the Dead,Wojownicy z Krainy Umarłych,亡者之国的战士,亡者之國的戰士,,术语,海尔的神恩：召唤亡灵战士,walhalla
+,bonus tip,Wskazówka bonusowa,奖励提示,獎勵提示,,术语,本系列机制：完成后下一关可得奖励的提示；原文另作：zadanie bonusowe、zadanie dodatkowe,saracen_1; saracen_2; saracen_2_sub_1; saracen_3
+,common warehouse / Capture the warehouse,Wspólny magazyn,公共仓库,公共倉庫,,术语,城堡中央供合作玩家共享物资的仓库，通过贡品接管；原文另作：Przejmij magazyn,czarnoksieznik_z_szeolu
+,Nation Selection,Wybór nacji,选择民族,選擇民族,,术语,通过付贡品选择民族的席位/窗口,nowa_nadzieja; nowa_nadzieja_byz; nowa_nadzieja_egy; nowa_nadzieja_fra; nowa_nadzieja_sar; nowa_nadzieja_vik
+,Judgment of Bifrost,Wyrok Bifrostu,比弗罗斯特的裁决,比弗羅斯特的裁決,,术语,海姆达尔的神恩：开图与传送敌军,walhalla
+,ban,Zbanować,封禁,封禁,bannare,术语,论坛黑话「封禁」；地图里意为消灭机器人，「banicja」是被放逐；原文另作：zbanuj、zbanował、Zbanowałem、zbanujemy、ZBANOWANE、banicja、banita,cn_0; cn_1; cn_3
+,Sign of Peace,Znak Pokoju,和平之印,和平之印,,术语,弗雷的神恩：强制停战,walhalla
+Wasser,Water,Woda,,,Acqua,good,,
+Lehm,Clay,Glina,,,Argilla,good,,
+Bruchstein,Quarrystone,Kamień,,,Pietra grezza,good,,
+Weizen,Wheat,Pszenica,,,Grano,good,,
+Holz,Wood,Drewno,,,Legno,good,,
+Eisen,Iron,Żelazo,,,Ferro,good,,
+Gold,Gold,Złoto,,,Oro,good,,
+Münze,Coin,Moneta,,,Moneta,good,,
+Leder,Leather,Skóra,,,Cuoio,good,,
+Wolle,Wool,Wełna,,,Lana,good,,
+Mehl,Flour,Mąka,,,Farina,good,,
+Honig,Honey,Miód,,,Miele,good,,
+Kraut,Herb,Zioło,,,Erba,good,,
+Pilz,Mushroom,Grzyb,,,Fungo,good,,
+Öl,Oil,Oliwa,,,Olio,good,,
+Nahrung,Food,Żywność,,,Cibo,good,,
+Kuchen,Cake,Ciastko,,,Torta,good,,
+Frucht,Fruit,Owoc,,,Frutta,good,,
+Brot,Bread,Chleb,,,Pane,good,,
+Fleisch,Meat,Mięso,,,Carne,good,,
+Fisch,Fish,Ryba,,,Pesce,good,,
+Wurst,Sausage,Kiełbasa,,,Salsiccia,good,,
+Backstein,Brick,Cegła,,,Mattone,good,,
+Dachziegel,Tile,Dachówka,,,Tegola,good,,
+Steinblock,Stone,Kamienny blok,,,Pietra,good,,
+Marmor,Marble,Marmur,,,Marmo,good,,
+Geschirr,Crockery,Naczynia,,,Vasellame,good,,
+Möbel,Furniture,Meble,,,Mobilio,good,,
+Schuhe,Shoes,Buty,,,Scarpe,good,,
+Holzwerkzeug,Wooden Tool,Drewniane narzędzie,,,Attrezzo di legno,good,,
+Eisenwerkzeug,Iron Tool,Żelazne Narzędzie,,,Attrezzo di ferro,good,,
+Waffenrock,Tunic,Tunika,,,Tunica,good,,
+Lederrüstung,Leather Armour,Skórzana Zbroja,,,Armatura di cuoio,good,,
+Kettenhemd,Chain Mail,Kolczuga,,,Cotta di maglia,good,,
+Plattenrüstung,Plate Armour,Zbroja Płytowa,,,Armatura di piastre,good,,
+Kurzbogen,Short Bow,Krótki Łuk,,,Arco corto,good,,
+Langbogen,Longbow,Długi Łuk,,,Arco lungo,good,,
+Holzspeer,Wooden Spear,Drewniana Włócznia,,,Lancia di legno,good,,
+Eisenspeer,Iron Spear,Żelazna Włócznia,,,Lancia di ferro,good,,
+Kurzschwert,Shortsword,Krótki Miecz,,,Spada corta,good,,
+Langschwert,Longsword,Długi Miecz,,,Spada lunga,good,,
+Met,Mead,Miód Pitny,,,Idromele,good,,
+Kleiner Nahrungstrank,S Nourishing Potion,Mała Odżywcza Mikstura,,,Pozione nutriente piccola,good,,
+Großer Nahrungstrank,L Nourishing Potion,Duża Odżywcza Mikstura,,,Pozione nutriente grande,good,,
+Kleiner Wachtrank,S Stamina Potion,Mała Mikstura Wytrzymałości,,,Pozione di resistenza piccola,good,,
+Großer Wachtrank,L Stamina Potion,Duża Mikstura Wytrzymałości,,,Pozione di resistenza grande,good,,
+Kleiner Heiltrank,S Healing Potion,Mała Lecznicza Mikstura,,,Pozione di guarigione piccola,good,,
+Großer Heiltrank,L Healing Potion,Duża Lecznicza Mikstura,,,Pozione di guarigione grande,good,,
+Nahrungsamulett,Nourishing Amulet,Odżywczy Amulet,,,Amuleto del nutrimento,good,,
+Wachbleibamulett,Amulet of Stamina,Amulet Wytrzymałości,,,Amuleto della resistenza,good,,
+Stärkeamulett,Amulet of Strength,Amulet Siły,,,Amuleto della forza,good,,
+Verteidigungsamulett,Amulet of Defence,Amulet Obrony,,,Amuleto della difesa,good,,
+Trefferamulett,Amulet of Precision,Amulet Precyzji,,,Amuleto della precisione,good,,
+Windamulett,Wind Amulet,Amulet Wiatru,,,Amuleto del vento,good,,
+Beute,Prey,Zdobycz,,,Preda,good,,
+Schaf,Sheep,Owca,,,Pecora,good,,
+Ochse,Ox,Wół,,,Bue,good,,
+Handkarren,Handcart,Wózek Ręczny,,,Carretto a mano,good,,
+Ochsenkarren,Ox Cart,Zaprzęg,,,Carro di buoi,good,,
+Schiff,Ship,Statek,,,Nave,good,,
+Großes Schiff,Big Ship,Statek handlowy,,,Grande nave,good,,
+Katapult,Catapult,Katapulta,,,Catapulta,good,,
+Kiste,Chest,Skrzynia,,,Cassa,good,,
+Alles,All,Wszystko,,,Tutto,good,,
+Baumstamm,Log,Kłoda,,,Tronco,good,,
+Hauptquartier,Headquarters,Kwatera główna,,,Quartier generale,building,,
+Wohnhaus 1,Dwelling 1,Dom 1,,,Abitazione 1,building,,
+Wohnhaus 2,Dwelling 2,Dom 2,,,Abitazione 2,building,,
+Wohnhaus 3,Dwelling 3,Dom 3,,,Abitazione 3,building,,
+Wohnhaus 4,Dwelling 4,Dom 4,,,Abitazione 4,building,,
+Wohnhaus 5,Dwelling 5,Dom 5,,,Abitazione 5,building,,
+Lagerhaus 1,Warehouse 1,Magazyn 1,,,Magazzino 1,building,,
+Lagerhaus 2,Warehouse 2,Magazyn 2,,,Magazzino 2,building,,
+Lagerhaus 3,Warehouse 3,Magazyn 3,,,Magazzino 3,building,,
+Brunnen,Well,Studnia,,,Pozzo,building,,
+Bienenstock,Beehive,Ul,,,Alveare,building,,
+Farm,Farm,Farma,,,Fattoria,building,,
+Mühle,Mill,Młyn,,,Mulino,building,,
+Bäckerei 1,Bakery 1,Piekarnia 1,,,Bottega del fornaio 1,building,,
+Bäckerei 2,Bakery 2,Piekarnia 2,,,Bottega del fornaio 2,building,,
+Brauerei,Brewery,Browar,,,Distilleria,building,,
+Viehzüchterei,Cattle Farm,Ferma bydła,,,Allevamento,building,,
+Näherei 1,Tailor's Workshop 1,Zakład krawiecki 1,,,Bottega del sarto 1,building,,
+Näherei 2,Tailor's Workshop 2,Zakład krawiecki 2,,,Bottega del sarto 2,building,,
+Töpferei 1,Pottery 1,Warszt. garncarski 1,,,Bottega del vasaio 1,building,,
+Töpferei 2,Pottery 2,Warszt. garncarski 2,,,Bottega del vasaio 2,building,,
+Mauer,Defence wall,Mur obronny,,,Muro difensivo,building,,
+Schreinerei 1,Carpenter's Shop 1,Warszt. ciesielski 1,,,Bottega del carpentiere 1,building,,
+Schreinerei 2,Carpenter's Shop 2,Warszt. ciesielski 2,,,Bottega del carpentiere 2,building,,
+Schreinerei 3,Carpenter's Shop 3,Warszt. ciesielski 3,,,Bottega del carpentiere 3,building,,
+Schreinerei 4,Carpenter's Shop 4,Warszt. ciesielski 4,,,Bottega del carpentiere 4,building,,
+Waffenhütte 1,Armourer's Shop 1,Warszt. płatnerski 1,,,Armeria 1,building,,
+Waffenhütte 2,Armourer's Shop 2,Warszt. płatnerski 2,,,Armeria 2,building,,
+Steinmetzhütte 1,Mason's Shop 1,Warszt. kamieniarski 1,,,Bottega del muratore 1,building,,
+Steinmetzhütte 2,Mason's Shop 2,Warszt. kamieniarski 2,,,Bottega del muratore 2,building,,
+Schmiede 1,Smithy 1,Kuźnia 1,,,Fucina 1,building,,
+Schmiede 2,Smithy 2,Kuźnia 2,,,Fucina 2,building,,
+Münzpräge,Coin Mint,Mennica,,,Zecca,building,,
+Kräuterhütte,Herb Hut,Chatka zielarza,,,Capanna delle erbe,building,,
+Alchemistenhütte 1,Alchemist's Hut 1,Chatka alchemika 1,,,Capanna dell'alchimista 1,building,,
+Alchemistenhütte 2,Alchemist's Hut 2,Chatka alchemika 2,,,Capanna dell'alchimista 2,building,,
+Tempel,Temple,Świątynia,,,Tempio,building,,
+Schule,School,Szkoła,,,Scuola,building,,
+Kaserne,Barracks,Koszary,,,Caserma,building,,
+Wachturm 1,Defence Tower 1,Wieża obronna 1,,,Torre di difesa 1,building,,
+Wachturm 2,Defence Tower 2,Wieża obronna 2,,,Torre di difesa 2,building,,
+Leuchtturm,Lighthouse,Latarnia Morska,,,Faro,building,,
+Garten,Garden,Ogród,,,Giardini pensili,building,,
+Kolloss,Colossus,Kolos,,,Colosso,building,,
+Mausoleum,Mausoleum,Mauzoleum,,,Mausoleo,building,,
+Artemis Tempel,Artemis Temple,Świątynia Artemidy,,,Tempio di Artemide,building,,
+Zeus Statue,Zeus Statue,Statua Zeusa,,,Statua di Zeus,building,,
+Pyramide,Pyramid,Piramida,,,Piramide,building,,
+8te Wunder,8th Wonder,8-y Cud,,,Ottava meraviglia,building,,
+Baby,Baby,Niemowlę,,,Bambina,job,,
+Mädchen,Girl,Dziewczynka,,,Ragazzina,job,,
+Junge,Boy,Chłopiec,,,Ragazzino,job,,
+Frau,Woman,Kobieta,,,Donna,job,,
+Zivilist,Civilian,Cywil,,,Civile,job,,
+Bauarbeiter,Builder,Budowniczy,,,Costruttore,job,,
+Abbauer,Extractor,Zbieracz,,,Estrattore,job,,
+Schreiner,Carpenter,Cieśla,,,Carpentiere,job,,
+Waffenbauer,Armourer,Płatnerz,,,Armaiolo,job,,
+Töpfer,Potter,Garncarz,,,Vasaio,job,,
+Steinmetz,Stonemason,Kamieniarz,,,Muratore,job,,
+Schmied,Blacksmith,Kowal,,,Fabbro,job,,
+Münzmacher,Mint Worker,Mincerz,,,Coniatore,job,,
+Jäger,Hunter,Myśliwy,,,Cacciatore,job,,
+Viehzüchter,Stock Farmer,Hodowca Bydła,,,Allevatore,job,,
+Näher,Tailor,Krawiec,,,Sarto,job,,
+Farmer,Farmer,Farmer,,,Contadino,job,,
+Müller,Miller,Młynarz,,,Mugnaio,job,,
+Bäcker,Baker,Piekarz,,,Fornaio,job,,
+Braumeister,Brewer,Piwowar,,,Birraio,job,,
+Fischer,Fisherman,Rybak,,,Pescatore,job,,
+Seefischer,Sea Fisher,Morski Rybak,,,Pescatore di mare,job,,
+Träger,Carrier,Tragarz,,,Trasportatore,job,,
+Händler,Merchant,Kupiec,,,Mercante,job,,
+Seehändler,Sea Merchant,Morski Kupiec,,,Mercante di mare,job,,
+Kundschafter,Scout,Zwiadowca,,,Esploratore,job,,
+Gaukler,Jester,Błazen,,,Buffone,job,,
+Kräutergärtner,Herb Gatherer,Zbieracz Ziół,,,Raccoglitore di erbe,job,,
+Druide,Druid,Druid,,,Druido,job,,
+Soldat,Soldier,Żołnierz,,,Soldato,job,,
+Holzspeerträger,Wooden Spearman,Włócznik z drew. Włócznią,,,Lanciere con lancia di legno,job,,
+Eisenspeerträger,Iron Spearman,Włócznik z żel. włócznią,,,Lanciere con lancia di ferro,job,,
+Kurzschwertträger,Shortsword Fighter,Wojownik z krót. mieczem,,,Soldato con spada corta,job,,
+Langschwertträger,Longsword Fighter,Wojownik z dł. mieczem,,,Soldato con spada lunga,job,,
+Kurzsäbelträger,Shortsabre Fighter,Wojownik z krót. szablą,,,Soldato con sciabola corta,job,,
+Langsäbelträger,Longsabre Fighter,Wojownik z dł. szablą,,,Soldato con sciabola lunga,job,,
+Kleinaxtschwinger,Small Axe Fighter,Wojownik z krót. toporem,,,Soldato con ascia piccola,job,,
+Großaxtschwinger,Big Axe Fighter,Wojownik z dł. toporem,,,Soldato con ascia grande,job,,
+Kurzbogenschütze,Short Bow Archer,Łucznik z krót. łukiem,,,Arciere con arco corto,job,,
+Langbogenschütze,Longbow Archer,Łucznik z dł. łukiem,,,Arciere con arco lungo,job,,
+unbewaffneter Held,Unarmed Hero,Nieuzbrojony Bohater,,,Eroe disarmato,job,,
+Sigurd,Sigurd,Sigurd,,,Sigurd,job,,
+Bjarni,Bjarni,Bjarni,,,Bjarni,job,,
+Hatschi,Hatchie,Hatchie,,,Hatchie,job,,
+Axtheld,Axe Hero,Bohater Topornik,,,Eroe dell'ascia,job,,
+Cyra,Cyra,Cyra,,,Cyra,job,,
+Tierkind,Young Animal,Młode Zwierzę,,,Cucciolo,job,,
+Tier,Animal,Zwierzę,,,Animale,job,,
+Ochsenkarrengerüst,Ox Cart Framework,Wóz,,,Struttura del carro di buoi,job,,
+Kräutergärtner,Herbalist,Zielarz,,,Erborista,engine-profession,,
+Arbeiter,Worker,Pracownik,,,Lavoratore,engine-profession,,
+Speerträger,Spearman,Włócznik,,,Lanciere,engine-profession,,
+Hausbau,Building Construction,Budowanie Konstrukcji,,,Costruzione di edifici,experience,,
+Abbau,Extraction,Wydobywanie,,,Estrazione,experience,,
+Abbau - Holz,Extraction - Wood,Zbieranie - Drewno,,,Estrazione - Legno,experience,,
+Abbau - Lehm,Extraction - Clay,Wydobywanie - Glina,,,Estrazione - Argilla,experience,,
+Abbau - Stein,Extraction - Stone,Wydobywanie - Kamień,,,Estrazione - Pietra grezza,experience,,
+Abbau - Eisen,Extraction - Iron,Wydobywanie - Żelazo,,,Estrazione - Ferro,experience,,
+Abbau - Gold,Extraction - Gold,Wydobywanie - Złoto,,,Estrazione - Oro,experience,,
+Abbau - Pilze,Extraction - Mushrooms,Zbieranie - Grzyby,,,Raccolta - Funghi,experience,,
+Schreinern,Carpentry,Ciesielstwo,,,Falegnameria,experience,,
+Schreinern - Holzwerkzeug,Carpentry - Wooden Tools,Ciesielstwo - Drewniane Narzędzia,,,Falegnameria - Attrezzi di legno,experience,,
+Schreinern - Möbel,Carpentry - Furniture,Ciesielstwo - Meble,,,Falegnameria - Mobilio,experience,,
+Schreinern - Holzspeer,Carpentry - Wooden Spear,Ciesielstwo - Drewniane Włócznie,,,Falegnameria - Lancia di legno,experience,,
+Schreinern - Handkarre,Carpentry - Handcart,Ciesielstwo - Wózki Ręczne,,,Falegnameria - Carretto a mano,experience,,
+Schreinern - Ochsenkarre,Carpentry - Ox Cart,Ciesielstwo - Zaprzęgi,,,Falegnameria - Carro di buoi,experience,,
+Schreinern - Schiff,Carpentry - Ship,Ciesielstwo - Statek,,,Falegnameria - Nave,experience,,
+Waffenbau,Arms Production,Wyrób Broni,,,Produzione di armi,experience,,
+Waffenbau - Kurzbogen,Arms Production - Short Bow,Wyrób Broni - Krótki Łuk,,,Produzione di armi - Arco corto,experience,,
+Waffenbau - Langbogen,Arms Production - Longbow,Wyrób Broni - Długi Łuk,,,Produzione di armi - Arco lungo,experience,,
+Waffenbau - Katapult,Arms Production - Catapult,Wyrób Broni - Katapulta,,,Produzione di armi - Catapulta,experience,,
+Töpfern,Pottery,Garncarstwo,,,Terraglie,experience,,
+Töpfern - Geschirr,Pottery - Crockery,Garncarstwo - Naczynia,,,Terraglie - Vasellame,experience,,
+Töpfern - Backstein,Pottery - Bricks,Garncarstwo - Cegły,,,Terraglie - Mattoni,experience,,
+Töpfern - Dachziegel,Pottery - Tiles,Garncarstwo - Dachówki,,,Terraglie - Tegole,experience,,
+Steinbau,Masonry,Kamieniarstwo,,,Muratura,experience,,
+Steinbau - Steinblock,Masonry - Stone,Kamieniarstwo - Kamień,,,Muratura - Pietra,experience,,
+Steinbau - Marmor,Masonry - Marble,Kamieniarstwo - Marmur,,,Muratura - Marmo,experience,,
+Schmieden,Forging,Kowalstwo,,,Forgiare,experience,,
+Schmieden - Eisenwerkzeug,Forging - Iron Tools,Kowalstwo - Żelazne Narzędzia,,,Forgiare - Attrezzi di ferro,experience,,
+Schmieden - Eisenspeer,Forging - Iron Spear,Kowalstwo - Żelazne Włócznie,,,Forgiare - Lancia di ferro,experience,,
+Schmieden - Kurzschwert,Forging - Shortsword,Kowalstwo - Krótki Miecz,,,Forgiare - Spada corta,experience,,
+Schmieden - Langschwert,Forging - Longsword,Kowalstwo - Długi Miecz,,,Forgiare - Spada lunga,experience,,
+Schmieden - Kettenhemd,Forging - Chain Mail,Kowalstwo - Kolczuga,,,Forgiare - Cotta di maglia,experience,,
+Schmieden - Plattenrüstung,Forging - Plate Armour,Kowalstwo - Zbroja Płytowa,,,Forgiare - Armatura di piastre,experience,,
+Prägen,Minting,Bicie Monet,,,Coniare,experience,,
+Prägen - Münze,Minting - Coins,Bicie Monet - Monety,,,Coniare - Monete,experience,,
+Jagen,Hunting,Polowanie,,,Cacciare,experience,,
+Züchten,Breeding,Hodowla,,,Allevare,experience,,
+Züchten - Schaf,Breeding - Sheep,Hodowla - Owce,,,Allevare - Pecore,experience,,
+Züchten - Ochse,Breeding - Cattle,Hodowla - Bydło,,,Allevare - Bestiame,experience,,
+Nähen,Sewing,Szycie,,,Cucire,experience,,
+Nähen - Schuhe,Sewing - Shoes,Szycie - Buty,,,Cucire - Scarpe,experience,,
+Nähen - Waffenrock,Sewing - Tunic,Szycie - Tunika,,,Cucire - Tunica,experience,,
+Nähen - Lederrüstung,Sewing - Leather Armour,Szycie - Skórzana Zbroja,,,Cucire - Armatura di cuoio,experience,,
+Ackerbau,Agriculture,Rolnictwo,,,Agricoltura,experience,,
+Ackerbau - Weizen,Agriculture - Wheat,Rolnictwo - Pszenica,,,Agricoltura - Grano,experience,,
+Mahlen,Milling,Mielenie,,,Macinatura,experience,,
+Mahlen - Mehl,Milling - Flour,Mielenie - Mąka,,,Macinatura - Farina,experience,,
+Backen,Baking,Pieczenie,,,Cottura al forno,experience,,
+Backen - Brote,Baking - Bread,Pieczenie - Chleb,,,Cottura al forno - Pane,experience,,
+Backen - Kuchen,Baking - Cake,Pieczenie - Ciastko,,,Cottura al forno - Torta,experience,,
+Brauen,Brewing,Warzenie,,,Preparazione bevande,experience,,
+Brauen - Met,Brewing - Mead,Warzenie - Miód Pitny,,,Preparazione bevande - Idromele,experience,,
+Gärtnern,Gardening,Ogrodnictwo,,,Giardinaggio,experience,,
+Gärtnern - Pilze,Gardening - Mushrooms,Ogrodnictwo - Grzyby,,,Giardinaggio - Funghi,experience,,
+Gärtnern - Kräuter,Gardening - Herbs,Ogrodnictwo - Zioła,,,Giardinaggio - Erbe,experience,,
+Alchemie,Alchemy,Alchemia,,,Alchimia,experience,,
+Alchemie - Öl,Alchemy - Oil,Alchemia - Oliwa,,,Alchimia - Olio,experience,,
+Alchemie - Nahrungstrank,Alchemy - Nourishing Potion,Alchemia - Odżywcza Mikstura,,,Alchimia - Pozione nutriente,experience,,
+Alchemie - Wachtrank,Alchemy - Stamina Potion,Alchemia - Mikstura Wytrzymałości,,,Alchimia - Pozione di resistenza,experience,,
+Alchemie - Heiltrank,Alchemy - Healing Potion,Alchemia - Lecznicza Mikstura,,,Alchimia - Pozione di guarigione,experience,,
+Tragen,Carrying,Noszenie,,,Trasporto,experience,,
+Handeln,Trade,Handel,,,Commercio,experience,,
+Seehandeln,Sea Trade,Handel Morski,,,Commercio di mare,experience,,
+Fischen,Fishing,Rybołówstwo,,,Pesca,experience,,
+Seefischen,Sea Fishing,Rybołówstwo Morskie,,,Pesca di mare,experience,,
+Aufklären,Exploration,Eksploracja,,,Esplorazione,experience,,
+Belustigen,Amusement,Rozrywka,,,Divertimento,experience,,
+Kämpfen,Fighting,Walka,,,Combattimento,experience,,
+Kämpfen - Faust,Fighting - Fist,Walka - Pięść,,,Combattimento - Pugni,experience,,
+Kämpfen - Speer,Fighting - Spear,Walka - Włócznia,,,Combattimento - Lancia,experience,,
+Kämpfen - Schwert,Fighting - Sword,Walka - Miecz,,,Combattimento - Spada,experience,,
+Kämpfen - Axt,Fighting - Axe,Walka - Topór,,,Combattimento - Ascia,experience,,
+Kämpfen - Bogen,Fighting - Bow,Walka - Łuk,,,Combattimento - Arco,experience,,
+Kämpfen - Katapult,Fighting - Catapult,Walka - Katapulta,,,Combattimento - Catapulta,experience,,
+Trainieren,Training,Trening,,,Allenamento,experience,,
+Wikinger,Viking,Wiking,,,Vichingo,tribe,,
+Franken,Frank,Frank,,,Franco,tribe,,
+Byzantiner,Byzantine,Bizantyjczyk,,,Bizantino,tribe,,
+Sarazen,Saracen,Saracen,,,Saraceno,tribe,,
+Schlangenmensch,Weresnake,Wężołak,,,Serpente mannaro,tribe,,
+Werwolf,Werewolf,Wilkołak,,,Lupo mannaro,tribe,,
+Bär,Bear,Niedźwiedź,,,Orso,tribe,,
+Wildschwein,Wild Boar,Dzik,,,Cinghiale,tribe,,
+Ochse,Cow,Krowa,,,Mucca,tribe,,
+Hirsch,Stag,Jeleń,,,Cervo,tribe,,
+Reh,Deer,Łania,,,Capriolo,tribe,,
+Hund,Dog,Pies,,,Cane,tribe,,
+Ziege,Goat,Koza,,,Capra,tribe,,
+Hase,Rabbit,Królik,,,Coniglio,tribe,,
+Schneehase,Blue Hare,Zając,,,Lepre,tribe,,
+Eisbär,Polar Bear,Niedźwiedź Polarny,,,Orso polare,tribe,,
+Wolf,Wolf,Wilk,,,Lupo,tribe,,
+Kamel,Camel,Wielbłąd,,,Cammello,tribe,,
+Dromedar,Dromedary,Dromader,,,Dromedario,tribe,,
+Elefant,Elephant,Słoń,,,Elefante,tribe,,
+Pferd,Horse,Koń,,,Cavallo,tribe,,
+Löwe,Lion,Lew,,,Leone,tribe,,
+Spatz,Sparrow,Wróbel,,,Passero,tribe,,
+Rabe,Raven,Kruk,,,Corvo,tribe,,
+Papagei,Parrot,Papuga,,,Pappagallo,tribe,,
+Huhn,Chicken,Kurczak,,,Gallina,tribe,,
+Ente,Duck,Kaczka,,,Anatra,tribe,,
+Gans,Goose,Gęś,,,Oca,tribe,,
+Schwan,Swan,Łabędź,,,Cigno,tribe,,
+Biene,Bee,Pszczoła,,,Ape,tribe,,
+Schmetterling,Butterfly,Motyl,,,Farfalla,tribe,,
+Moskito,Mosquito,Komar,,,Zanzara,tribe,,
+Krabbe,Crab,Krab,,,Granchio,tribe,,
+Frosch,Frog,Żaba,,,Rana,tribe,,
+Skorpion,Scorpion,Skorpion,,,Scorpione,tribe,,
+Schlange,Serpent,Wąż,,,Serpente,tribe,,
+Drache,Dragon,Smok,,,Drago,tribe,,
+aggressiv,aggressive,agresywny,,,aggressivo,military-mode,,
+defensiv,defensive,defensywny,,,difensivo,military-mode,,
+ignorant,ignorant,ignorowanie,,,indifferente,military-mode,,
+fliehen,flee,ucieczka,,,in fuga,military-mode,,
+dockt an,is mooring,cumuje,,,sta attraccando,vehicle-task,,
+greift an,is attacking,atakuje,,,sta attaccando,vehicle-task,,
+wartet auf Passagier,awaiting human,czeka na człowieka,,,in attesa di una persona,vehicle-task,,
+wartet auf Tier,awaiting animal,czeka na zwierzę,,,in attesa di un animale,vehicle-task,,
+unterbrochen,interrupted,przerwany,,,interrotto,vehicle-task,,
+fährt ins Schiff,is embarking the ship,wsiada na statek,,,si sta imbarcando,vehicle-task,,
+Untertan,Subject,Poddany,,,cittadino,term,,
+Siedler,Settler,Osadnik,,,colono,term,,
+Einwohner,Inhabitant,Mieszkaniec,,,abitante,term,,
+Bewohner,Resident,Mieszkaniec,,,residente,term,,
+Leute,People,Ludzie,,,popolo,term,,
+Stamm,Tribe,Plemię,,,tribù,term,,
+Dorf,Village,Wioska,,,villaggio,term,,
+Siedlung,Settlement,Osada,,,insediamento,term,,
+Kolonie,Colony,Kolonia,,,colonia,term,,
+Lager,Warehouse / Store,Magazyn,,,magazzino,term,,
+Wohnhaus,Dwelling,Dom,,,abitazione,term,,
+Zuhause,Home,Dom,,,casa,term,,
+Gebäude,Building,Budynek,,,edificio,term,,
+Baustelle,Building site,Plac budowy,,,cantiere,term,,
+Arbeitsplatz,Workplace,Miejsce pracy,,,luogo di lavoro,term,,
+Arbeitsbereich,Work area,Obszar pracy,,,area di lavoro,term,,
+Arbeitsfahne,Work flag,Flaga robocza,,,bandierina di lavoro,term,,
+Flagge,Flag,Flaga,,,bandiera,term,,
+Lernplatz,Learning place,Miejsce nauki,,,luogo di addestramento,term,,
+Handelsposten,Trade post,Punkt handlowy,,,punto di commercio,term,,
+Wegweiser,Signpost,Drogowskaz,,,cartello indicatore,term,,
+Straße,Road,Droga,,,strada,term,,
+Palisade,Stockade,Palisada,,,palizzata,term,,
+Tor,Gate,Brama palisady,,,cancello,term,,
+Verteidigung,Defence mode,Alarm,,,modalità difensiva,term,,
+Garnison,Garrison,Załoga,,,guarnigione,term,,
+Held,Hero,Bohater,,,eroe,term,,
+Beruf,Profession,Zawód,,,professione,term,,
+Erfahrung,Experience,Doświadczenie,,,esperienza,term,,
+Erfahrungsbonus,Experience bonus,Premia doświadczenia,,,bonus esperienza,term,,
+Waren,Goods,Towary,,,beni / merci,term,,
+Rohstoffe,Resources,Surowce,,,risorse,term,,
+Rohstoffe,Raw materials,Surowce,,,materie prime,term,,
+Baumaterial,Building materials,Materiały budowlane,,,materiali da costruzione,term,,
+Bonusgegenstände,Bonus items,Przedmioty specjalne,,,oggetti bonus,term,,
+Ausrüstung,Equipment,Wyposażenie,,,equipaggiamento,term,,
+Werkzeuge,Tools,Narzędzia,,,attrezzi,term,,
+Waffe,Weapon,Broń,,,arma,term,,
+Rüstung,Armour,Zbroja,,,armatura,term,,
+Amulett,Amulet,Amulet,,,amuleto,term,,
+Trank,Potion,Mikstura,,,pozione,term,,
+Fahrzeug,Vehicle,Pojazd,,,veicolo,term,,
+Kommandant,Commander,Dowódca,,,comandante,term,,
+Passagier,Passenger,Pasażer,,,passeggero,term,,
+Besatzung,Crew,Załoga,,,equipaggio,term,,
+Anlegen,Moor,Przybij do brzegu,,,attraccare,term,,
+Aussteigen lassen,Disembark / unload people,Wysadź,,,sbarcare,term,,
+Entladen,Unload goods,Rozładuj,,,scaricare,term,,
+Flotte,Fleet,Flota,,,flotta,term,,
+Liegeplatz,Berth,Miejsce cumowania,,,ormeggio,term,,
+Route,Route,Trasa,,,rotta (sea) / percorso (land),term,,
+Diplomatie,Diplomacy,Dyplomacja,,,diplomazia,term,,
+freundlich,friendly,przyjazny,,,amichevole,term,,
+neutral,neutral,neutralny,,,neutrale,term,,
+feindlich,hostile,wrogi,,,ostile,term,,
+Verbündeter,Ally,Sojusznik,,,alleato,term,,
+Feind,Enemy,Wróg,,,nemico,term,,
+Spieler,Player,Gracz,,,giocatore,term,,
+Computerspieler,Computer player,Gracz komputerowy,,,giocatore del computer,term,,
+Mission,Mission,Misja,,,missione,term,,
+Ziel,Objective,Cel,,,obiettivo,term,,
+Aufgabe,Task,Zadanie,,,compito,term,,
+Kampagne,Campaign,Kampania,,,campagna,term,,
+Einführung,Tutorial,Samouczek,,,tutorial,term,,
+Missionsbesprechung,Briefing,Odprawa,,,briefing,term,,
+Freies Spiel,Free play,Wolna gra,,,partita libera,term,,
+Einzelspieler,Single player,Jednoosobowe,,,giocatore singolo,term,,
+Mehrspieler,Multiplayer,Wieloosobowe,,,multigiocatore,term,,
+Spiel / Partie,Game / match,Gra / rozgrywka,,,partita,term,,
+Speichern,Save,Zapisz,,,salva / salvataggio,term,,
+Laden,Load,Wczytaj,,,carica,term,,
+Schnellspeichern,Quick save,Szybki zapis,,,salvataggio rapido,term,,
+Autospeichern,Autosave,Autozapis,,,salvataggio automatico,term,,
+Spieltempo,Game speed,Tempo gry,,,velocità di gioco,term,,
+Pausieren,Pause,Pauza,,,pausa,term,,
+Einstellungen,Options / Settings,Ustawienia,,,opzioni / impostazioni,term,,
+Tooltip,Tooltip,Podpowiedź,,,suggerimento,term,,
+Statistik,Statistics,Statystyki,,,statistiche,term,,
+Technologiebaum,Technology tree,Drzewo technologii,,,albero tecnologico,term,,
+Beobachtungsfenster,Observation window,Okno obserwacji,,,finestra di osservazione,term,,
+Karte,Map,Mapa,,,mappa,term,,
+Minikarte,Minimap,Minimapa,,,minimappa,term,,
+Ablassbrief,Letter of Indulgence,Prolongata,,,lettera di indulgenza,term,,
+Briefe,Papers,Papiery,,,documenti,term,,
+Lobby,Lobby,Lobby,,,lobby,term,,
+Raum,Room,Pokój,,,stanza,term,,
+Platz / Spieler,Seat,Miejsce / Gracz,,,posto,term,,
+Relay,Relay,Serwer,,,server di inoltro,term,,
+Server,Server,Serwer,,,server,term,,
+Gastgeber,Host,Gospodarz,,,host,term,,
+Bereit,Ready,Gotowy,,,pronto,term,,
+Entfernen,Kick,Wyrzuć,,,espelli,term,,
+Passwort,Password,Hasło,,,password,term,,
+Chat,Chat,Czat,,,chat,term,,
+Ping,Ping,Ping,,,ping / segnalazione,term,,
+Desynchronisation,Desync,Desynchronizacja,,,desincronizzazione,term,,
+Latenz,Latency,Opóźnienie,,,latenza,term,,
+Zuschauer,Observer / Spectator,Obserwator,,,spettatore,term,,
+Zuschauen,Spectating,Obserwacja,,,in osservazione,term,,
+Kriegsnebel,Fog of war,Mgła wojny,,,nebbia di guerra,term,,
+Friedenszeit,Peace time,Czas pokoju,,,tregua iniziale,term,,
+Tastenkürzel,Hotkeys / key bindings,Skróty klawiszowe,,,tasti rapidi,term,,
+Steuerung,Controls,Sterowanie,,,comandi,term,,
+Vollbild,Fullscreen,Pełny ekran,,,schermo intero,term,,
+Scrollen am Bildschirmrand,Edge scrolling,Przewijanie przy krawędzi,,,scorrimento ai bordi,term,,
+Zoom,Zoom,Przybliżenie,,,zoom,term,,
+Meldungen,Notifications,Powiadomienia,,,notifiche,term,,
+Wissen,Knowledge,Wiedza,,,Sapere,term,,
+Lexikon,Encyclopedia,Encyklopedia,,,enciclopedia,term,,
+Daueraufträge,Standing orders,Stałe polecenia,,,ordini permanenti,term,,
+Missionsbuch,Mission book,Księga misji,,,libro delle missioni,term,,
+Chronik der Reise,Chronicle of the voyage,Kronika wyprawy,,,cronaca del viaggio,term,,
+Kartenkatalog,Map catalogue,Katalog map,,,catalogo mappe,term,,
+Fehler melden,Report a bug,Zgłoś błąd,,,segnala un bug,term,,
+Bildschirmfoto,Screenshot,Zrzut ekranu,,,screenshot,term,,
+Renderauflösung,Render scale,Skala renderowania,,,scala di rendering,term,,
+Farbblindfilter,Colour-blind filter,Filtr daltonizmu,,,filtro per daltonici,term,,
+Teamfarbe,Team colour,Kolor drużyny,,,colore della squadra,term,,
+Sieg,Victory,Zwycięstwo,,,vittoria,term,,
+Niederlage,Defeat,Przegrana,,,sconfitta,term,,
+Überfälle,Raids,Najazdy,,,incursioni,term,,
+Angriffsbewegung,Attack-move,Atak w marszu,,,attacco in movimento,term,,
+Gruppe,Control group,Grupa,,,gruppo,term,,
+Weltwunder,Wonder,Cud,,,meraviglia,term,,
+Tag-und-Nacht-Zyklus,Day and night cycle,Cykl dnia i nocy,,,ciclo giorno e notte,term,,
+Wohlbefinden,Wellbeing,Samopoczucie,,,benessere,term,,
+Gesundheit,Health,Zdrowie,,,salute,term,,
+Energie,Energy,Energia,,,energia,term,,
+Kondition,Stamina,Wytrzymałość,,,resistenza,term,,
+Soziale Motivation,Social Motivation,Towarzystwo,,,socialità,term,,
+Religion,Religion,Religia,,,religione,term,,
+Freude,Happiness / Joy,Szczęście,,,felicità,term,,
+Reise nach Nordland,Northland,Wyprawa na Północ,,,Northland,campaign,,
+Die Tore Asgards,The Gates of Asgard,Bramy Asgardu,,,Le porte di Asgard,campaign,,
+Das Achte Weltwunder,8th Wonder of the World,Ósmy Cud Świata,,,L'ottava meraviglia del mondo,campaign,,
+Miguel,Miguel,Miguel,,,Miguel,name,,
+Ykol,Ykol,Ykol,,,Ykol,name,,
+Johannes,John,John,,,John,name,,
+Dobur,Dobur,Dobur,,,Dobur,name,,
+Smilch,Smilch,Smilch,,,Smilch,name,,
+Leif,Leif,Leif,,,Leif,name,,
+Nanuk,Nanuk,Nanuk,,,Nanuk,name,,
+Gabelbart,Gabelbart,Gabelbart,,,Gabelbart,name,,
+Odin,Odin,Odyn,,,Odino,myth,,
+Thor,Thor,Thor,,,Thor,myth,,
+Loki,Loki,Loki,,,Loki,myth,,
+Heimdall,Heimdall,Heimdall,,,Heimdall,myth,,
+Frigg,Frigg,Frigg,,,Frigg,myth,,
+Baldur,Baldur,Baldur,,,Baldur,myth,,
+Freya,Freya,Freja,,,Freya,myth,,
+Hel,Hel,Hel,,,Hel,myth,,
+Fenriswolf,Fenrir / Fenris Wolf,Fenris,,,Fenrir / il Lupo Fenris,myth,,
+Midgardschlange,Jormungand / Midgard Serpent,Jörmungand,,,il Serpente di Midgard (Jormungand),myth,,
+Nornen,Norns,Norny,,,le Norne,myth,,
+Ragnarök,Ragnarok,Ragnarok,,,Ragnarök,myth,,
+Walhall,Valhalla,Walhalla,,,Valhalla,myth,,
+Asgard,Asgard,Asgard,,,Asgard,myth,,
+Midgard,Midgard,Midgard,,,Midgard,myth,,
+Utgard,Utgard,Utgard,,,Utgard,myth,,
+Niflheim,Niflheim,Niflheim,,,Niflheim,myth,,
+Yggdrasil,Yggdrasil,Yggdrasil,,,Yggdrasil,myth,,
+Bifröst,Bifrost,Bifrost,,,Bifrost,myth,,
+Mjölnir,Mjolnir,Mjölnir,,,Mjolnir,myth,,
+Grönland,Greenland,Grenlandia,,,Groenlandia,place,,
+Byzanz,Byzantium,Bizancjum,,,Bisanzio,place,,
+Vinland,Vinland,Winlandia,,,Vinland,place,,
+Shumsali,Shumsali,Shumsali,,,Shumsali,place,,
+Tesskopolis,Tesskopolis,Tesskopolis,,,Tesskopolis,place,,
+Montseraine,Montseraine,Montseraine,,,Montseraine,place,,
+Wigrid-Wall,Wigrid Wall,Wigrid,,,Muro di Wigrid,place,,
+Wiklingshausen,Vikingthorpe,Wikingthorpe,,,Vikingthorpe,place,,
+Schlangenkrieger,Serpent Warriors,Wężołaki,,,Guerrieri serpente,group,,
+Geisterkrieger,Ghost Warriors,Duchy wojowników,,,Guerrieri fantasma,group,,
+Werwolfkrieger,Werewolf Warriors,Wilkołaki,,,Guerrieri licantropi,group,,
+Eskimos,Eskimos,Eskimosi,,,Eschimesi,group,,
+Fremde,Aliens,Obcy,,,Forestieri,group,,
+Räuber,Robbers,Rabusie,,,Ladri,group,,
+Die Saga,The Saga,Saga,,,La saga,campaign,,

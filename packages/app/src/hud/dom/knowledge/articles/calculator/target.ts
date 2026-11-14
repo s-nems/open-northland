@@ -14,6 +14,7 @@ import type { KnowledgeContext } from '../../context.js';
 import {
   armourDropdown,
   checkbox,
+  experienceSlider,
   field,
   SELECT_SKIN,
   sideTitle,
@@ -83,7 +84,13 @@ export function targetPanel(
         armour,
         checkbox(copy.defenseAmulet, target.defense, (defense) => setTarget({ defense })).host,
       );
-      pickers.replaceChildren(pair);
+      const experience = experienceSlider(
+        target.points,
+        (points) => setTarget({ points }),
+        'taken',
+        copy.targetPointsLabel,
+      );
+      pickers.replaceChildren(pair, field(copy.targetPointsLabel, experience.host));
     } else if (target.kind === 'animal') {
       pickers.replaceChildren(
         list(

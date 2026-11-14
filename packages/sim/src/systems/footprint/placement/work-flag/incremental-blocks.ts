@@ -43,6 +43,8 @@ interface IncrementalBlocks extends BlockedRefcounts {
   flagMoves: number;
   /** Each placed flag's blocked node; a flag off the map holds none. */
   readonly flagNodes: Map<Entity, NodeId>;
+  /** Per node, how many of `counts` are flag markers. */
+  readonly markerCounts: Uint16Array;
   /** Full rebuilds paid, for the test seam below. */
   readonly rebuilds: number;
 }
@@ -69,6 +71,12 @@ function removeNode(refs: BlockedRefcounts, node: number): void {
   if (held === 1) refs.blocked.size--;
 }
 
+function removeMarker(state: IncrementalBlocks, node: NodeId): void {
+  removeNode(state, node);
+  const held = state.markerCounts[node] ?? 0;
+  if (held > 0) state.markerCounts[node] = held - 1;
+}
+
 /** Re-diff the marker layer against the DeliveryFlag store - flags are the one blocker that MOVES (an
  *  in-place Position write the journals cannot see), so any flag change re-reads every flag in O(flags),
  *  and only a flag whose node changed touches the refcounts. */
@@ -76,18 +84,19 @@ function refreshMarkerLayer(world: World, state: IncrementalBlocks): void {
   const { flagNodes } = state;
   flagNodes.forEach((node, e) => {
     if (world.has(e, DeliveryFlag) && world.has(e, Position)) return;
-    removeNode(state, node);
+    removeMarker(state, node);
     flagNodes.delete(e);
   });
   for (const e of world.query(DeliveryFlag, Position)) {
     const node = markerNode(world, state.terrain, e);
     const held = flagNodes.get(e);
     if (node === (held ?? null)) continue;
-    if (held !== undefined) removeNode(state, held);
+    if (held !== undefined) removeMarker(state, held);
     if (node === null) {
       flagNodes.delete(e);
     } else {
       addNode(state, node);
+      state.markerCounts[node] = (state.markerCounts[node] ?? 0) + 1;
       flagNodes.set(e, node);
     }
   }
@@ -115,6 +124,7 @@ function rebuildState(
     flagGen: world.componentGeneration(DeliveryFlag),
     flagMoves: workFlagMoveCount(world),
     flagNodes: new Map(),
+    markerCounts: new Uint16Array(terrain.nodeCount),
     rebuilds,
   };
   refreshMarkerLayer(world, state);
@@ -170,6 +180,23 @@ export function workFlagPlacementBlocks(
   return blocksWithout(state, held);
 }
 
+/** How many standing contributions deny a work flag each node, and how many of them are flag markers:
+ *  each resource anchored there and each flag standing there adds one, and so does every other blocker
+ *  cell covering it. A live view, like {@link workFlagPlacementBlocks}. */
+export interface WorkFlagBlockerCounts {
+  total(node: NodeId): number;
+  markers(node: NodeId): number;
+}
+
+export function workFlagBlockerCounts(
+  world: World,
+  content: ContentSet,
+  terrain: TerrainGraph,
+): WorkFlagBlockerCounts {
+  const { counts, markerCounts } = liveBlocks(world, content, terrain);
+  return { total: (node) => counts[node] ?? 0, markers: (node) => markerCounts[node] ?? 0 };
+}
+
 /** The blocked set minus one flag's own contribution: the node that flag covers stays blocked only
  *  while another blocker also contributes to it, withheld through the refcounts instead of materializing
  *  the difference. */
@@ -192,6 +219,14 @@ function verifyBlocksMemo(world: World, content: ContentSet, terrain: TerrainGra
   if (!isFresh(world, state)) return []; // a pending catch-up - the next read applies it
   const fresh = rederiveBlockedCells(world, content, terrain);
   // Matching counts and cells with the held size proves the hand-kept positive-node counter too.
+  const markers = new Uint16Array(terrain.nodeCount);
+  for (const e of world.query(DeliveryFlag, Position)) {
+    const node = markerNode(world, terrain, e);
+    if (node !== null) markers[node] = (markers[node] ?? 0) + 1;
+  }
+  if (!markers.every((n, node) => state.markerCounts[node] === n)) {
+    return ['workFlagPlacementBlocks marker counts disagree with the standing flags'];
+  }
   if (countsMatchCells(state.counts, fresh) && state.blocked.size === fresh.size) return [];
   return [
     `workFlagPlacementBlocks holds ${state.blocked.size} nodes but re-derived ${fresh.size} - an incremental delta missed a blocker change`,

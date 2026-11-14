@@ -32,8 +32,12 @@ export const ECONOMY: ArticleGroup = {
                 'Sie müssen außerhalb des Platzes für die höchste Stufe des Gebäudes stehen.',
               ],
               [
-                'Feindlicher Soldat',
-                'Im Umkreis von {{contest.radius}} Hexfeldern um ihn baust du nicht, schräg etwa {{contest.diagonal}}. Es zählen nur Soldaten, die du siehst, die Turmbesatzung nicht.',
+                'Feindlicher Soldat, Karren oder Schiff',
+                'Im Umkreis von {{contest.radius}} Hexfeldern darum baust du nicht, schräg etwa {{contest.diagonal}}. Es zählt nur, was du siehst, die Turmbesatzung nicht.',
+              ],
+              [
+                'Feindliches Katapult',
+                'Im Umkreis von {{contest.siegeRadius}} Hexfeldern darum baust du nicht, so weit sucht es nach Zielen, bemannt oder leer. Es zählen nur Katapulte, die du siehst.',
               ],
               [
                 'Gebäude eines Spielers, mit dem du Frieden hast',
@@ -120,7 +124,7 @@ export const ECONOMY: ArticleGroup = {
           h: 'Was ein Bauarbeiter zuerst tut',
         },
         {
-          p: 'Ein Bauarbeiter repariert zuerst, baut dann Gebäude und lässt Palisaden und Straßen für den Schluss. Weist du ihn einer Baustelle zu, bleibt er dort, auch wenn anderswo Arbeit wartet.',
+          p: 'Ein Bauarbeiter repariert zuerst, baut dann Gebäude und lässt Palisaden und Straßen für den Schluss. Weist du ihn einer Baustelle zu, bleibt er dort, auch wenn anderswo Arbeit wartet. Eine Baustelle, der du in ihrem Panel Priorität gibst, geht jeder Baustelle ohne Priorität vor und holt sogar deren letzten Bauarbeiter ab.',
         },
         {
           h: 'Ausbau',
@@ -138,7 +142,7 @@ export const ECONOMY: ArticleGroup = {
           h: 'Reparatur',
         },
         {
-          p: 'Ein Bauarbeiter gibt einem Gebäude {{repair.minPerSwing}}-{{repair.maxPerSwing}} Gesundheit je Arbeitsschlag zurück, an einem Gebäude reparieren höchstens {{repair.crew}} Bauarbeiter zugleich. Reparatur kostet kein Material. Palisade und Tor werden anders repariert, Erfahrung und Werkzeug ändern dort nichts: [[article:walls|Palisaden und Tore]].',
+          p: 'Ein Bauarbeiter gibt einem Gebäude {{repair.minPerSwing}}-{{repair.maxPerSwing}} Gesundheit je Arbeitsschlag zurück, an einem Gebäude reparieren höchstens {{repair.crew}} Bauarbeiter zugleich. Reparatur kostet kein Material. Palisade und Tor werden anders repariert, Erfahrung und Werkzeug ändern dort nichts: [[article:walls|Palisaden und Tore]]. Ebenso repariert er dein beschädigtes Schiff, solange es angedockt ist: [[article:vehicles|Fahrzeuge und Schiffe]].',
         },
         {
           p: 'Von selbst repariert ein Bauarbeiter {{repair.calmSeconds}} s lang nach dem letzten Treffer nicht, und auch nicht, solange im Umkreis von {{alert.standTo}} Hexfeldern gekämpft wird. Auf deinen Befehl geht er sofort.',
@@ -249,9 +253,12 @@ export const ECONOMY: ArticleGroup = {
               ['„Nur diese Ware“', 'Diese Ware ∞, Rest 0'],
               [
                 'Rechtsklick auf Vorkommen',
-                'Befehl „Sammeln“: diese Ware ∞, Rest 0. Die Arbeitsfahne bleibt, wo sie ist.',
+                'Befehl „Sammeln“: diese Ware ∞, Rest 0, und die Arbeitsfahne wandert zum Vorkommen. Ohne Fahne ändert sich nur die Ware.',
               ],
-              ['Ctrl und Rechtsklick auf Vorkommen', 'Dasselbe, aber die Fahne wandert auf das Vorkommen'],
+              [
+                'Ctrl und Rechtsklick',
+                'Die Fahne wandert an diese Stelle, auf einem Vorkommen wechselt auch die Ware wie oben',
+              ],
               ['Alle Zähler auf 0', 'Der Abbauer hat den Status „Alles auf 0 gestellt“ und baut nichts ab'],
               [
                 'Die Ware liegt schon am Boden',
@@ -380,11 +387,11 @@ export const ECONOMY: ArticleGroup = {
               ['[[building:work_herb_hut|Kräuterhütte]]', '{{field.max}}', '{{field.radius}} Hexfelder'],
             ],
             num: [1],
-            foot: 'Schräg beträgt der Radius etwa {{field.diagonal}} Hexfelder. Die Feldgrenze gilt fürs Gebäude, nicht für den Arbeiter, also ernten mehr Leute schneller, haben aber nicht mehr Felder. Besatzung und Vorrat stehen auf der Karte des Gebäudes.',
+            foot: 'Schräg beträgt der Radius etwa {{field.diagonal}} Hexfelder. Die Feldgrenze gilt für ein Feldstück, nicht für den Arbeiter, also ernten mehr Leute schneller, haben aber nicht mehr Felder. Ein Arbeiter mit Arbeitsfahne legt sein eigenes Feldstück um sie an. Besatzung und Vorrat stehen auf der Karte des Gebäudes.',
           },
         },
         {
-          p: 'Auf Sand und auf der Straße kannst du nicht säen. Wilde Felder der Karte im Radius des Gebäudes zählen zu seiner Grenze. Ein Feld, das {{field.reclaimSeconds}} s lang von der Tür seines Gebäudes aus nicht erreichbar ist, verschwindet und gibt seinen Platz in der Grenze frei.',
+          p: 'Auf Sand und auf der Straße kannst du nicht säen. Wilde Felder der Karte im Radius des Feldstücks zählen zu seiner Grenze. Ein Feld, das {{field.reclaimSeconds}} s lang von der Tür seines Gebäudes aus nicht erreichbar ist, verschwindet und gibt seinen Platz in der Grenze frei.',
         },
         {
           h: 'Was nachwächst',
@@ -416,7 +423,7 @@ export const ECONOMY: ArticleGroup = {
               ],
               [
                 'Pilz',
-                'Ein gesammelter Pilz wächst in {{regrow.inTen}} von 10 Fällen nach {{regrow.minMinutes}}-{{regrow.maxMinutes}} Min. in der Nähe nach, auf einem freien Platz mit mindestens {{regrow.forestTrees}} Bäumen ringsum',
+                'Ein gesammelter Pilz wächst in {{regrow.inTen}} von 10 Fällen nach {{regrow.mushroomMinMinutes}}-{{regrow.mushroomMaxMinutes}} Min. in der Nähe nach, auf einem freien Platz mit mindestens {{regrow.forestTrees}} Bäumen ringsum',
                 '1 Pilz je gesammeltem, nur im Wald',
               ],
               ['Fels, Lagerstätte', 'Wachsen nicht nach', '-'],
@@ -527,7 +534,7 @@ export const ECONOMY: ArticleGroup = {
           h: 'Vorrang',
         },
         {
-          p: 'Vorrang stellst du in einem Lagerhaus, Hauptquartier, einer Kaserne oder einem Turm ein. Die Träger dieses Gebäudes holen die Ware dann aus anderen Lagern, Werkstätten und Haufen, solange Platz für sie ist.',
+          p: 'Vorrang stellst du in einem Lagerhaus, Hauptquartier, einer Kaserne oder einem Turm ein. Die Träger dieses Gebäudes holen die Ware dann aus anderen Lagern, Werkstätten und Haufen, solange Platz für sie ist. Eine neu gebaute Kaserne hat von Anfang an Vorrang für [[good:coin|Münzen]]; nimmst du ihn in einer deiner Kasernen weg, starten später gebaute Kasernen bis zum Ende der Partie ohne ihn.',
         },
         {
           h: 'Minimum',
@@ -548,7 +555,8 @@ export const ECONOMY: ArticleGroup = {
           list: [
             'Einen Karren nehmen nur ein Träger mit Arbeitsplatz und der [[job:trader|Händler]].',
             'Der Karren muss dir gehören, frei sein und auf derselben Landmasse stehen.',
-            'Ist auf dem Karren noch Platz, nimmt ein Lagerträger dieselbe Ware von Haufen und aus Werkstätten im Umkreis von {{haul.cartTopUp}} Hexfeldern mit, bevor er zurückfährt.',
+            'Ist auf dem Karren noch Platz, sammelt ein Lagerträger weiter, auch andere Waren: die Haufen in seinem Sammelgebiet, den nächsten zuerst, dann Haufen und Werkstätten im Umkreis von {{haul.cartTopUp}} Hexfeldern. Er nimmt nur mit, wofür sein Lager Platz hat.',
+            'Ein Werkstattträger mit Karren bringt in einer Rundfahrt die fertigen Waren weg und die fehlenden Rohstoffe zurück, mehrere Sorten auf einmal. Hat eine Quelle zu wenig, fährt er zur nächsten weiter. Steht die Werkstatt still und wartet auf die Ladung, liefert er sie zuerst ab.',
           ],
         },
         {
@@ -588,7 +596,7 @@ export const ECONOMY: ArticleGroup = {
               [
                 'Wer',
                 '[[job:collector|Abbauer]], [[job:fisher|Fischer]], [[job:hunter|Jäger]]',
-                'Dieselben, dazu [[job:carrier|Träger]] von Lagerhaus, Hauptquartier oder Werkstatt',
+                'Dieselben, dazu [[job:carrier|Träger]] von Lagerhaus, Hauptquartier oder Werkstatt sowie [[job:farmer|Farmer]] und [[job:herb_mush_guy|Kräutergärtner]]',
               ],
               [
                 'Woher die Fahne kommt',
@@ -612,6 +620,7 @@ export const ECONOMY: ArticleGroup = {
               ['Abbauer', 'Ganze Wegweiser-Reichweite'],
               ['Lagerträger', 'Haufen bis {{flag.radius}} Hexfelder ums Gebäude'],
               ['Jäger', 'Rund um den Arbeitsplatz'],
+              ['Farmer, Kräutergärtner', 'Rund um den Arbeitsplatz'],
               ['Fischer', 'Fischt von seinem Standort aus'],
             ],
           },
@@ -629,7 +638,7 @@ export const ECONOMY: ArticleGroup = {
               ['[[job:fisher|Fischer]]', 'Arbeitsfahne', '{{flag.fisher}}', 'etwa {{flag.fisherDiagonal}}'],
               [
                 '[[job:farmer|Farmer]], [[job:herb_mush_guy|Kräutergärtner]]',
-                'Gebäude',
+                'Arbeitsfahne oder Gebäude',
                 '{{field.radius}}',
                 'etwa {{field.diagonal}}',
               ],
@@ -692,6 +701,7 @@ export const ECONOMY: ArticleGroup = {
             'Dein neuer Wegweiser muss mindestens {{reach.spacing}} Hexfelder vom nächsten entfernt stehen.',
             'Ware sucht ein Siedler näher als {{reach.goods}} Hexfelder von sich oder von Wegweisern in dieser Reichweite.',
             'Ein Gebäude auf einem Wegweiser rückt ihn bis zu {{reach.displace}} Hexfelder beiseite, und geht das nicht, ist der Wegweiser weg.',
+            'Ein neuer Wegweiser schiebt eine Arbeitsfahne beiseite und räumt Pilze, Lehm, Getreide, Kräuter, Büsche, Baumstümpfe und geöffnete Kisten von seinem Platz.',
           ],
         },
         {

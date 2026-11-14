@@ -64,7 +64,7 @@ export const EXPERIENCE: ArticleGroup = {
             'Der [[job:carrier|Träger]] sammelt Tragen. Das macht seine Arbeit nicht schneller, aber {{exp.carrierTrader}} Lieferungen schalten den [[job:trader|Händler]] frei.',
             'Der Händler sammelt Handeln für jedes entladene Stück, aber Handeln ändert nichts.',
             '[[job:scout|Kundschafter]], [[job:woman|Frauen]] und Kinder sammeln keine Erfahrung.',
-            'Säen, Gießen, [[building:school|Schule]] und [[building:barracks|Kaserne]] bringen keine Erfahrung.',
+            'Säen, Gießen, [[building:school|Schule]] und die Ausbildung in der [[building:barracks|Kaserne]] bringen keine Erfahrung. Das Exerzieren für Münzen bringt Kampferfahrung: [[article:exp-combat|Kampferfahrung]].',
           ],
         },
       ],
@@ -73,40 +73,67 @@ export const EXPERIENCE: ArticleGroup = {
     {
       id: 'exp-combat',
       name: 'Kampferfahrung',
-      lead: '{{combat.fightCapHits}} Treffer mit einer Waffenart verdoppeln den Nahkampfschaden.',
+      lead: 'Jeder Mensch hat eine Kampferfahrung von 0 bis {{combat.fightCapPoints}} Punkten, gemeinsam für jede Waffe.',
       blocks: [
         {
-          h: 'Nahkampfschaden',
+          h: 'Was Erfahrung bringt',
+        },
+        {
+          p: 'Bei {{combat.fightCapPoints}} Punkten verursacht ein Nahkampfschlag {{combat.fightDealtPct}}% mehr Schaden, und jeder Schlag oder Pfeil, der den Kämpfer trifft, {{combat.fightTakenPct}}% weniger. Beides steigt mit jedem Punkt gleichmäßig.',
         },
         {
           table: {
-            head: ['Treffer', 'Faktor', 'Aus Schlag {{combat.sampleBlow}} wird'],
-            rows: [
-              [0, '×1', '{{combat.sampleBlow}}'],
-              [10, '×{{fight.factor.10}}', '{{fight.blow.10}}'],
-              [25, '×{{fight.factor.25}}', '{{fight.blow.25}}'],
-              [50, '×{{fight.factor.50}}', '{{fight.blow.50}}'],
-              [75, '×{{fight.factor.75}}', '{{fight.blow.75}}'],
-              ['{{combat.fightCapHits}}', '×{{combat.fightCapFactor}}', '{{combat.fightCapBlow}}'],
+            head: [
+              'Punkte',
+              'Nahkampf verursacht',
+              'Aus einem Schlag {{combat.sampleBlow}} wird',
+              'Erlitten',
             ],
-            num: [0, 1, 2],
-            foot: 'Über {{combat.fightCapHits}} Treffern steigt der Faktor nicht weiter.',
+            rows: [
+              [0, '×1', '{{combat.sampleBlow}}', '×1'],
+              [10, '×{{fight.factor.10}}', '{{fight.blow.10}}', '×{{fight.taken.10}}'],
+              [25, '×{{fight.factor.25}}', '{{fight.blow.25}}', '×{{fight.taken.25}}'],
+              [50, '×{{fight.factor.50}}', '{{fight.blow.50}}', '×{{fight.taken.50}}'],
+              [75, '×{{fight.factor.75}}', '{{fight.blow.75}}', '×{{fight.taken.75}}'],
+              [
+                '{{combat.fightCapPoints}}',
+                '×{{combat.fightCapFactor}}',
+                '{{combat.fightCapBlow}}',
+                '×{{combat.fightTakenFactor}}',
+              ],
+            ],
+            num: [0, 1, 2, 3],
+            foot: 'Über {{combat.fightCapPoints}} Punkte steigt nichts mehr.',
           },
         },
         {
-          p: 'Der Faktor wirkt bei Nahkampfschlägen gegen Menschen, Tiere und Gebäude. Gegen [[article:walls|Palisaden]] und [[article:vehicles|Fahrzeuge]] wirkt er nicht, auch nicht bei Pfeilen und beim [[article:catapult|Katapult]].',
+          p: 'Der Bonus auf verursachten Schaden gilt für Nahkampfschläge gegen Menschen, Tiere und Gebäude. Er gilt nicht gegen [[article:walls|Palisaden]] und [[article:vehicles|Fahrzeuge]] und nicht für Pfeile und das [[article:catapult|Katapult]]. Einem Bogenschützen bringt Erfahrung Genauigkeit und weniger erlittenen Schaden, keine stärkeren Pfeile.',
         },
         {
-          p: 'Ohne Erfahrung treffen Bogen und Katapult mit {{aim.basePct}}% der Schüsse, ab {{aim.noSpreadHits}} Treffern landet jeder Schuss im Ziel. Mehr dazu: [[article:aim|Treffen und Schießen]].',
+          h: 'Mit Amuletten',
         },
         {
-          h: 'Was als Treffer zählt',
+          p: 'Das [[good:amulet_strength|Stärkeamulett]] addiert seinen Bonus zum Erfahrungsbonus: Mit voller Erfahrung kommt ein Nahkampfschlag auf ×{{combat.fightStrengthFactor}}. Das [[good:amulet_defense|Verteidigungsamulett]] multipliziert sich mit der Erfahrung: Mit voller Erfahrung erleidet der Kämpfer ×{{combat.fightDefenseFactor}} Schaden. Amulette: [[article:draughts|Getränke und Amulette]].',
         },
         {
-          p: 'Ein Treffer ist ein Schlag oder Schuss, der Schaden gemacht hat. Er zählt getrennt für jede Waffenart: Faust, Speer, Schwert, Bogen, Katapult. Auch die Schüsse des [[job:hunter|Jägers]] zählen für Bogen.',
+          p: 'Ohne Erfahrung trifft ein Bogenschütze {{aim.basePct}}% seiner Schüsse, ab {{aim.noSpreadPoints}} Punkten landet jeder Schuss im Ziel. Das [[article:catapult|Katapult]] zählt eigene Treffer. Details: [[article:aim|Treffen und Schießen]].',
         },
         {
-          p: 'Im Siedlerpanel sind das die Zeilen Kämpfen - Schwert, Kämpfen - Bogen und so weiter. Schwerttreffer helfen dem Speerträger nicht und bleiben beim Berufswechsel erhalten. Einem Helden bringt der Kampf keinen Schaden dazu, außer die Mission schaltet es ein.',
+          h: 'Wie man sie bekommt',
+        },
+        {
+          list: [
+            'Kampf: Ein Nahkampfschlag, der Schaden verursacht, bringt {{combat.fightMeleePerSecond}} Punkte je Sekunde seines Ausholens, ein Schuss {{combat.fightShotPerSecond}} Punkte je Sekunde des Spannens. Eine langsame Waffe lernt so schnell wie eine flinke, und ein Bogen bringt pro Sekunde weniger.',
+            'Schläge und Schüsse auf Gebäude, [[article:walls|Palisaden]] und [[article:vehicles|Fahrzeuge]] bringen {{combat.fightStructurePct}}% davon.',
+            'Erlittene Schläge: Wer verwundet wird, ob von einem Menschen, einem Tier, einem Turm oder einem Katapult, bekommt {{combat.fightTakenPerSecond}} Punkte je Sekunde des gegnerischen Schlags.',
+            'Exerzieren: Ein Soldat, bewaffnet oder nicht, zahlt eine [[good:coin|Münze]] für {{coinDrill.termSeconds}} s in deiner [[building:barracks|Kaserne]] und bekommt am Ende {{coinDrill.points}} Punkte. Wähle die Soldaten und klicke mit rechts auf deine eigene Kaserne.',
+          ],
+        },
+        {
+          p: 'Faust und jede Waffe zählen gleich, die Schüsse des [[job:hunter|Jägers]] auch. Die Erfahrung bleibt nach einem Waffen- oder Berufswechsel. Wer {{coinDrill.limit}} Punkte oder mehr hat, exerziert nicht mehr und holt sich den Rest im Kampf. Unterbrechen ein Kampf oder ein neuer Befehl das Exerzieren, kommt die Münze zurück, Punkte gibt es keine. Es gehen nur so viele Soldaten, wie die Kaserne freie Münzen hat, die nächsten zuerst; die übrigen bleiben stehen.',
+        },
+        {
+          p: 'Im Siedlerfenster ist das die Zeile Kämpfen: ihr Anteil am vollen Zähler in Prozent und im Tooltip die Boni: mehr verursachter Schaden mit einer Nahkampfwaffe oder bloßen Händen, die Treffsicherheit mit einem Bogen und wie viel weniger Schaden er erleidet. Einem Helden steigt die Erfahrung durch Kämpfen nicht, außer die Mission schaltet es ein.',
         },
         {
           p: 'Bessere Waffen schaltet die Herstellung frei, nicht der Kampf. Die Bedingung steht auf der Karte der Waffe, z. B. [[good:sword_long|Langschwert]]. Wer welche Waffe trägt: [[article:equip|Soldaten ausrüsten]].',
@@ -128,7 +155,7 @@ export const EXPERIENCE: ArticleGroup = {
       lead: 'Ein entdeckter Beruf bleibt dem ganzen Dorf, auch wenn der Siedler stirbt, der ihn entdeckt hat.',
       blocks: [
         {
-          p: 'Die Lobby-Einstellung „Berufsentwicklung: Alles von Anfang an freigeschaltet“ hebt die Voraussetzungen ziviler Berufe und Produkte auf. Voraussetzungen der Soldatenberufe und Kartenverbote bleiben.',
+          p: 'Die Lobby-Einstellung „Berufsentwicklung: Alles von Anfang an freigeschaltet“ hebt die Voraussetzungen ziviler Berufe und Produkte auf. Kartenverbote bleiben. Zum Soldaten wird ein Zivilist nur in der [[building:barracks|Kaserne]], bei jeder Einstellung; ein Soldat oder ein Siedler, der einmal einer war, ergreift jeden Soldatenberuf ohne Voraussetzungen.',
         },
         {
           h: 'Was einen Beruf freischaltet',

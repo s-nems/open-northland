@@ -1,8 +1,9 @@
-import { entityById, systems, type WorldSnapshot } from '@open-northland/sim';
+import { entityById, homeFamilyCapacityView, systems, type WorldSnapshot } from '@open-northland/sim';
 import { settlerName } from '../../../game/character-names/index.js';
 import { workerRoleOf } from '../../../game/sandbox/index.js';
 import { entitiesUnder, idsGroupedBy } from '../../../game/snapshot/id-index.js';
 import {
+  holdsSeat,
   homeFamiliesOf,
   isAdult,
   isFemale,
@@ -10,14 +11,14 @@ import {
   num,
   ownerPlayerOf,
   routeCallersAt,
+  SEAT_ORDERS,
   type SnapshotEntity,
+  seatHouseOf,
   settlerJobType,
   shelterersOf,
   siteCrewOf,
   staffOf,
   supplyRunsTo,
-  trainingHouseOf,
-  trainingSeated,
 } from '../../../game/snapshot/index.js';
 import { messages } from '../../../i18n/index.js';
 import { type BuildingDef, jobDisplayName, type UnitPanelModelContext } from './context.js';
@@ -46,8 +47,8 @@ export interface StaffGroup {
 
 /**
  * Who belongs to the building: a workplace's posted staff per trade (with the crowd sheltering under
- * an alarm and the recruits drilling there), a home's families, or the crew raising a site. The count
- * on the section's rule is the filled and the declared seats (the families for a home).
+ * an alarm and the recruits and coin-drillers there), a home's families, or the crew raising a site.
+ * The count on the section's rule is the filled and the declared seats (the families for a home).
  */
 export interface BuildingStaffModel {
   readonly kind: 'workers' | 'residents' | 'crew';
@@ -58,8 +59,9 @@ export interface BuildingStaffModel {
   readonly garrison: readonly number[] | null;
 }
 
-const TRAINEES = idsGroupedBy((e) => (isSettler(e) ? trainingHouseOf(e) : undefined), 'trainees', {
-  values: ['TrainingOrder'],
+/** Recruits, pupils and coin-drillers by the house whose seats they share, seated or queued. */
+const TRAINEES = idsGroupedBy((e) => (isSettler(e) ? seatHouseOf(e) : undefined), 'trainees', {
+  values: SEAT_ORDERS,
   presence: ['Settler'],
 });
 
@@ -199,7 +201,8 @@ export function siteCrew(
 }
 
 /** Who belongs to the house, standing or still a site: a home's families, else its workers with the
- *  traders whose route stops there, the crowd sheltering there and the recruits drilling there. */
+ *  traders whose route stops there, the crowd sheltering there and the recruits and coin-drillers drilling
+ *  there. */
 export function buildingStaff(
   ctx: UnitPanelModelContext,
   snapshot: WorldSnapshot,
@@ -228,7 +231,7 @@ export function buildingStaff(
     return {
       kind: 'residents',
       groups,
-      count: { filled: families.length, capacity: def.homeSize },
+      count: { filled: families.length, capacity: homeFamilyCapacityView(snapshot, ent.id, def, ctx.goods) },
       garrison: null,
     };
   }
@@ -255,8 +258,8 @@ export function buildingStaff(
     });
   }
   const trainees = entitiesUnder(snapshot, TRAINEES, ent.id);
-  const seated = trainees.filter(trainingSeated);
-  const queued = trainees.filter((e) => !trainingSeated(e));
+  const seated = trainees.filter(holdsSeat);
+  const queued = trainees.filter((e) => !holdsSeat(e));
   if (seated.length > 0)
     groups.push({
       key: 'trainees',

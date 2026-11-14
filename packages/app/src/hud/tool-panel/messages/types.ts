@@ -21,7 +21,8 @@ import type { MessageText } from './text.js';
  * anything in the world. `peaceEnding` and `peaceEnded` tell of the lobby peace, which the original lacks, and
  * `peaceRefused` of a walk, drive or placement it held back. `assistantSwitchOff` reminds the player of an
  * assistant switch that is off while it has something to do; the original's switches start off without a
- * word.
+ * word. `familyMovedOut` tells of a family that left a home whose furniture no longer houses it, a rule of
+ * this game's own.
  */
 export const USER_MESSAGE_TYPE = {
   lostWithoutSignposts: 0x03,
@@ -70,6 +71,7 @@ export const USER_MESSAGE_TYPE = {
   peaceEnded: 0x8a,
   peaceRefused: 0x8b,
   assistantSwitchOff: 0x8c,
+  familyMovedOut: 0x8d,
 } as const;
 
 export type UserMessageTypeName = keyof typeof USER_MESSAGE_TYPE;

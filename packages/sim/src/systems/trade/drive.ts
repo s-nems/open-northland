@@ -26,7 +26,7 @@ import { interactionNode, vehicleAnchor } from '../footprint/index.js';
 import { interactionNodeId } from '../footprint/interaction.js';
 import { countsAsOwnStock, roomFor, stockOf, typeStoresGood } from '../missions/stock.js';
 import { atomicDuration } from '../readviews/animations.js';
-import { edibleGoodFormOf, isFoodKeptAtHome } from '../readviews/food.js';
+import { edibleGoodFormOf } from '../readviews/food.js';
 import { isTraderJob } from '../readviews/jobs.js';
 import {
   atOrWalk,
@@ -42,7 +42,7 @@ import { interactionCell, unclaimedStockOf } from '../settlers/targets/index.js'
 import { LendableTally, storageLendable } from '../settlers/targets/stores/storage-reserve.js';
 import { isUnreachableGoal, unreachableGoals } from '../settlers/unreachable-goals.js';
 import { settlementReachAt } from '../signposts/settlement-reach.js';
-import { lowestStockedGood, mayFetchGoodFrom, type SupplyTally } from '../stores/index.js';
+import { keepsOwnStock, lowestStockedGood, mayFetchGoodFrom, type SupplyTally } from '../stores/index.js';
 import { haulingCartLiftTicks, parkHaulingCart } from '../vehicles/hauling-cart.js';
 import { activeAgreement } from './agreements.js';
 import { planCrossing, planShipOrder, seaLegOf, takeStopAtHand } from './ferry.js';
@@ -397,7 +397,7 @@ function decidePreparation(
     ((route.takeUpTo !== TRADE_LIMIT_NONE &&
       homeStockOf(scope, agreement.takeGood) + batchesAboard * agreement.takeAmount >= route.takeUpTo) ||
       unloadAtHome(scope, edibleGoodFormOf(ctx.content, agreement.takeGood)) === null);
-  if (fits && !filled && !isFoodKeptAtHome(world, ctx, stop.house, agreement.giveGood)) {
+  if (fits && !filled && !keepsOwnStock(world, ctx, stop.house, agreement.giveGood)) {
     const source = loadSourceOf(scope, agreement.giveGood, route.giveKeep);
     if (source !== undefined && hold.carries(source.good)) return { kind: 'load', ...source };
   }
@@ -774,7 +774,7 @@ function loadOrder(
   const ranked: LoadCandidate[] = [];
   for (const good of goods) {
     const mark = markOf(other, good);
-    if (mark === undefined || isFoodKeptAtHome(world, ctx, stop.house, good)) continue;
+    if (mark === undefined || keepsOwnStock(world, ctx, stop.house, good)) continue;
     const carried = edibleGoodFormOf(ctx.content, good);
     if (!hold.carries(carried)) continue;
     if (storableFormAt(world, ctx, other.house, carried) === undefined) continue;

@@ -17,7 +17,10 @@ import { CHANGE_FEED_LIMIT } from '../../../../src/ecs/change-feed.js';
 import type { Entity } from '../../../../src/ecs/world.js';
 import { fx, positionOfNode, Simulation, type TerrainMap } from '../../../../src/index.js';
 import { hexDistanceBetween } from '../../../../src/nav/halfcell.js';
-import { seatRaiders } from '../../../../src/systems/ai-shared/military/defence/index.js';
+import {
+  ALARM_EARLY_MARGIN_NODES,
+  seatRaiders,
+} from '../../../../src/systems/ai-shared/military/defence/index.js';
 import { AI_PROFILES } from '../../../../src/systems/computer-player/difficulty.js';
 import {
   type BuildOrderEntry,
@@ -35,7 +38,7 @@ import { buildingFootprintOf } from '../../../../src/systems/footprint/geometry.
 import { razeBuilding } from '../../../../src/systems/lifecycle/cleanup.js';
 import { entityNode } from '../../../../src/systems/spatial/nodes.js';
 import { aiContent } from '../../../fixtures/ai-content.js';
-import { waterColumnMap } from '../../../fixtures/terrain.js';
+import { grassNodeMap, waterColumnMap } from '../../../fixtures/terrain.js';
 import {
   aiSim,
   BAKERY_TOP_TYPE,
@@ -75,8 +78,10 @@ const ORDER: readonly BuildOrderEntry[] = [
   { kind: 'place', building: 'work_bakery_00', count: 1 },
   { kind: 'place', building: 'work_mill_00', count: 1 },
 ];
-/** A far corner of the 64x32 fixture map, outside every watch band of the seat's buildings. */
-const FAR_CORNER = { x: 2, y: 2 };
+/** The fixture map stretched south, so a man can stand past the HQ's watch band and its stand-down margin. */
+const DEEP_MAP = { width: 64, height: 96 };
+/** The far south-west corner of {@link DEEP_MAP}, outside every watch band of the seat's buildings. */
+const FAR_CORNER = { x: 2, y: 92 };
 /** A water column (cell 22, nodes 44 to 46) east of the mill, on the fixture map in cells. */
 const SEAM_MAP = { width: 32, height: 16, column: 22 };
 /** East of the seam, well inside the mill's watch band. */
@@ -175,14 +180,15 @@ function standAt(sim: Simulation, e: Entity, at: Spot): void {
   sim.world.add(e, Position, positionOfNode(at.x, at.y));
 }
 
-/** A node `distance` map points from the HQ, west first and then north: away from the mill. */
+/** A node `distance` map points from the HQ, west first and then south on {@link DEEP_MAP}: away from
+ *  the mill. */
 function offTheHq(sim: Simulation, distance: number): Spot {
   const hq = nodeOf(sim, entityOfBuilding(sim, HQ_TYPE));
   const x = hq.x - Math.min(distance, hq.x);
-  for (let y = hq.y; y >= 0; y--) {
+  for (let y = hq.y; y < DEEP_MAP.height; y++) {
     if (hexDistanceBetween(hq.x, hq.y, x, y) === distance) return { x, y };
   }
-  throw new Error(`setup: no node ${distance} map points west and north of the HQ`);
+  throw new Error(`setup: no node ${distance} map points west and south of the HQ`);
 }
 
 describe('build-order module - rebuilding under the enemy', () => {
@@ -190,10 +196,10 @@ describe('build-order module - rebuilding under the enemy', () => {
   const decide = (sim: Simulation): readonly Command[] => module.run(sim.world, ctxOf(sim), SEAT);
 
   it('holds the placement while an enemy fighter stands in a watch band, until he clears the margin', () => {
-    const sim = razedBakerySim();
+    const sim = razedBakerySim(grassNodeMap(DEEP_MAP.width, DEEP_MAP.height));
     const home = placementOf(decide(sim));
     expect(home?.buildingType).toBe(BAKERY_TOP_TYPE);
-    const watch = threatWatchNodes(ctxOf(sim), VIKING);
+    const watch = threatWatchNodes(ctxOf(sim), VIKING) + ALARM_EARLY_MARGIN_NODES;
 
     const raider = onlyOne(spawnAt(sim, offTheHq(sim, watch), SPEARMAN));
     standAt(sim, raider, offTheHq(sim, watch));
@@ -215,7 +221,7 @@ describe('build-order module - rebuilding under the enemy', () => {
   });
 
   it('does not hold for a far fighter carrying an attack order on one of its settlers', () => {
-    const sim = razedBakerySim();
+    const sim = razedBakerySim(grassNodeMap(DEEP_MAP.width, DEEP_MAP.height));
     const settler = onlyOne(spawnAt(sim, { x: FAR_CORNER.x + 2, y: FAR_CORNER.y }, CIVILIST, SEAT));
     const raider = onlyOne(spawnAt(sim, FAR_CORNER, SPEARMAN));
     sim.world.add(raider, AttackOrder, { target: settler });

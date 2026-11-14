@@ -1,0 +1,39 @@
+{
+  "version": 1,
+  "map": "piramida_skarbow",
+  "basis": {
+    "lang": "pol",
+    "digest": "5253e89b159ff629e8da6b839716e88b8e438e8d15b63969a778d3c44a907cba"
+  },
+  "strings": {
+    "0": "LA PIRAMIDE DEI TESORI",
+    "1": "La tua tribù vichinga è giunta su quest'isola per impadronirsi del tesoro della sua piramide. Per tua sfortuna, anche altre sette tribù sono partite con lo stesso scopo. Mappa da uno a otto giocatori. Per l'host: il giocatore 0 si trova all'estremo est dell'isola, gli altri vengono assegnati in senso orario.",
+    "30": "Avanzamento dello scavo verso la camera del tesoro: %d0 per cento",
+    "31": "Stai scavando verso la camera del tesoro",
+    "32": "Hai perso il controllo della piramide!",
+    "50": "Grasslanders",
+    "51": "Stregone dello Sheol",
+    "52": "Vinlanders",
+    "53": "Hellulanders",
+    "54": "Marklanders",
+    "55": "Islandesi",
+    "56": "Hoglanders",
+    "57": "Gloomlanders",
+    "58": "Greenlanders",
+    "59": "Piramide",
+    "60": "Grass.",
+    "61": "Sheol",
+    "62": "Vin.",
+    "63": "Hell.",
+    "64": "Mark.",
+    "65": "Isl.",
+    "66": "Hog.",
+    "67": "Gloom.",
+    "68": "Green.",
+    "69": "Spettatore",
+    "100": "@Prendi il controllo della piramide e raggiungi i suoi tesori prima di tutti!"
+  },
+  "briefings": {
+    "500": "<font:$local$\\fonts\\fonthead16bld.fnt>\nLA PIRAMIDE DEI TESORI\n<font:$local$\\fonts\\font12.fnt>\n\nAffascinata dalle leggende su una piramide sull'isola che conterrebbe migliaia di tonnellate di tesori, la tua tribù è salpata alla volta dell'Egitto per trovare e dissotterrare quelle ricchezze.\n\nPurtroppo non è l'unica ad aver sentito quelle leggende. Anche altre sette tribù vichinghe sono sbarcate su quest'isola con lo stesso scopo. Ciò significa che dovremo tenere la posizione mentre scaviamo verso i tesori e arrivarci prima degli altri.\n\nAl momento la zona della piramide è controllata dallo Stregone dello Sheol e dai serpenti da lui creati, quindi dovremo fare i conti anche con loro.\n\n<usericon:1,212,204>\n\nÈ ora di partire alla caccia del tesoro!\n\nInformazioni per il giocatore:\na) Ogni volta che tieni la zona vicino alla piramide per 5 minuti, lo scavo verso il tesoro avanza del 10%. Al 100% ottieni la vittoria e gli avversari perdono i loro edifici;\nb) Ogni giocatore ha un proprio contatore di scavo. Allontanarsi dalla piramide anche solo per un attimo interrompe il conteggio;\nc) Vicino al quartier generale hai una cassa che toglie ogni bisogno a tutte le tue unità per cinque minuti. Usala quando è necessario o conveniente;\nd) Hai tre permessi per costruire un edificio a tua scelta;\ne) Quando qualcuno fa progressi verso i tesori, gli altri giocatori ricevono rinforzi per aiutarli a prendere il centro;\nf) Il quartier generale e la torre iniziali sono indistruttibili.\n\nBuona fortuna!\n\n<font:$local$\\fonts\\font10.fnt>\nPer gli spettatori:\nSi può vedere la % di avanzamento dello scavo di ogni giocatore grazie agli amuleti. I giocatori nelle direzioni intermedie della rosa dei venti (x) hanno amuleti d'argento negli angoli corrispondenti, mentre quelli nelle direzioni principali (+) hanno amuleti d'oro negli angoli spostati in senso orario rispetto alla loro posizione (per esempio, il giocatore a est ha gli amuleti a sud-est).\n<font:$local$\\fonts\\font12.fnt>\n\nAutore: StachuMMV\nTest: Barin, Mikulus, StachuMMV\nper culturesnation.pl"
+  }
+}

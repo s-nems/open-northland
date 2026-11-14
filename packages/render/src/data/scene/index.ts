@@ -49,4 +49,5 @@ export {
   siegeShotsOf,
 } from './snapshot-index.js';
 export { depositVisualLevel, vehicleDrawTile } from './snapshot-readers/index.js';
+export type { HouseBodyOf } from './temple-glow.js';
 export { buildScene, type SceneGround, type SceneTerrain, terrainMapToScene } from './terrain-scene.js';

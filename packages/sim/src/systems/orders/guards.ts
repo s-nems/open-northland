@@ -23,6 +23,7 @@ import { isAdultSettler } from '../family/eligibility.js';
 import { atomicClipName, isInterruptibleAtomic } from '../readviews/animations.js';
 import { isHeroJob } from '../readviews/jobs.js';
 import { atomicHoldsSettler } from '../settlers/atomics/busy.js';
+import { callOffCoinDrill } from '../settlers/drives/coin-drill-coins.js';
 
 /** Whether `e` is a living, owned settler the player may issue a command to. A dead, non-settler, or
  *  unowned target is a recoverable no-op. Handlers that also need a Position or Health keep those extra
@@ -63,9 +64,10 @@ export function mayTakeHome(world: World, content: ContentSet, e: Entity): boole
 /**
  * Drop the earlier orders that would act on `e` later and cancel an order that takes it now: a parked
  * order replays the tick its atomic ends, a scout's sweep walks its next leg the tick the scout is free,
- * and the queued orders start once the current one ends.
+ * the queued orders start once the current one ends, and a coin drill would walk him back to the barracks.
  */
-export function supersedeStandingOrders(world: World, e: Entity): void {
+export function supersedeStandingOrders(world: World, ctx: SystemContext, e: Entity): void {
+  callOffCoinDrill(world, ctx, e);
   world.remove(e, AiOrder);
   dropOrderQueue(world, e);
   world.remove(e, DeferredOrder);

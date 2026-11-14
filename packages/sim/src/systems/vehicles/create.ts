@@ -14,7 +14,7 @@ import type { CreateVehicleCommand } from '../../core/commands/index.js';
 import { contentIndex } from '../../core/content-index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import { type HalfCellNode, hexagonRing, positionOfNode } from '../../nav/halfcell.js';
-import type { TerrainGraph } from '../../nav/terrain/index.js';
+import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
 import { hexDisc, vehicleBlockedCells } from '../footprint/index.js';
 import { vehicleClearance } from '../footprint/vehicle-clearance.js';
@@ -26,17 +26,22 @@ function emptySeats(count: number): (VehicleSeat | null)[] {
   return new Array<VehicleSeat | null>(count).fill(null);
 }
 
-/** The first walkable node on the hexagon rings round `anchor` out to `maxRing`, in ring order, with its ring. */
+const ANY_SHORE = (): boolean => true;
+const NO_LANDS: ReadonlySet<number> = new Set();
+
+/** The first walkable node on the hexagon rings round `anchor` out to `maxRing` that `admits`, in ring
+ *  order, with its ring. */
 function nearestShore(
   terrain: TerrainGraph,
   anchor: HalfCellNode,
   maxRing: number,
+  admits: (node: NodeId) => boolean = ANY_SHORE,
 ): { readonly point: HalfCellNode; readonly ring: number } | null {
   for (let ring = 1; ring <= maxRing; ring++) {
     for (const { point } of hexagonRing(anchor, ring)) {
-      if (terrain.inBounds(point.hx, point.hy) && terrain.isWalkable(terrain.nodeAt(point.hx, point.hy))) {
-        return { point, ring };
-      }
+      if (!terrain.inBounds(point.hx, point.hy)) continue;
+      const node = terrain.nodeAt(point.hx, point.hy);
+      if (terrain.isWalkable(node) && admits(node)) return { point, ring };
     }
   }
   return null;
@@ -44,12 +49,24 @@ function nearestShore(
 
 /**
  * The shore node a ship lying at `anchor` is moored to: the nearest walkable node out to the door
- * distance. Null when open water surrounds the ship. Approximation: the original searches the ring at
- * exactly the door distance for land (`docs/formats/VEHICLES.md`, "Ships and docking").
+ * distance, on one of `crewLands` when any lies there. Null when open water surrounds the ship.
+ * Approximation: the original searches the ring at exactly the door distance for land of any continent
+ * (`docs/formats/VEHICLES.md`, "Ships and docking"); the crew's land first is an owner ruling, so a hull
+ * nearer an islet than its crew's shore moors where that crew can board it.
  */
-function spawnMooring(terrain: TerrainGraph, type: VehicleType, anchor: HalfCellNode): HalfCellNode | null {
+function spawnMooring(
+  terrain: TerrainGraph,
+  type: VehicleType,
+  anchor: HalfCellNode,
+  crewLands: ReadonlySet<number>,
+): HalfCellNode | null {
   const vector = type.passengerVector;
-  return vector === undefined ? null : (nearestShore(terrain, anchor, vector.distance)?.point ?? null);
+  if (vector === undefined) return null;
+  const onCrewLand = (node: NodeId): boolean => crewLands.has(terrain.componentOf(node));
+  const shore =
+    (crewLands.size > 0 ? nearestShore(terrain, anchor, vector.distance, onCrewLand) : null) ??
+    nearestShore(terrain, anchor, vector.distance);
+  return shore?.point ?? null;
 }
 
 /** How far a berthed spawn looks for its berth, in door distances of the ship from the clicked node. */
@@ -90,12 +107,14 @@ function berthNode(
 /**
  * Put a vehicle on the map - see the command doc. Returns the entity, or null for a type the content
  * lacks or a berthed ship with no berth in reach. Authored scenes call it directly; the command path
- * goes through it.
+ * goes through it. A ship moors on one of `crewLands` (land components) first, as a launch passes its
+ * crew's.
  */
 export function createVehicle(
   world: World,
   ctx: SystemContext,
   spec: Omit<CreateVehicleCommand, 'kind'>,
+  crewLands: ReadonlySet<number> = NO_LANDS,
 ): Entity | null {
   const type = contentIndex(ctx.content).vehicles.get(spec.vehicleType);
   if (type === undefined) return null;
@@ -104,7 +123,7 @@ export function createVehicle(
   const anchor =
     spec.berth === true && terrain !== undefined ? berthNode(world, ctx, terrain, type, clicked) : clicked;
   if (anchor === null) return null;
-  const mooring = terrain !== undefined ? spawnMooring(terrain, type, anchor) : null;
+  const mooring = terrain !== undefined ? spawnMooring(terrain, type, anchor, crewLands) : null;
   const e = world.create();
   world.add(e, Position, positionOfNode(anchor.hx, anchor.hy));
   world.add(e, Vehicle, {

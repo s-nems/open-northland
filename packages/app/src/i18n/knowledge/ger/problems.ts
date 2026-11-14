@@ -69,7 +69,7 @@ export const PROBLEMS: ArticleGroup = {
             ],
             [
               'Das Feld wächst nicht',
-              'Ungegossen wächst es nur 1 Stufe alle {{field.stageSeconds}} s. Gießen tut ein [[job:farmer|Farmer]] auf der [[building:work_farm_00|Farm]] oder ein [[job:herb_mush_guy|Kräutergärtner]] in der [[building:work_herb_hut|Kräuterhütte]], wenn er dort seinen Arbeitsplatz hat. Er sät zuerst und gießt erst bei {{field.max}} Feldern oder wenn er nirgends mehr säen kann. Ein Feld reift nach {{field.waterings}} Mal Gießen, und einmal Gießen erfasst auch 6 Nachbarfelder. Auf Sand und auf Straßen sät er kein Feld, und er sät bis {{field.radius}} Hexfelder vom Gebäude.',
+              'Ungegossen wächst es nur 1 Stufe alle {{field.stageSeconds}} s. Gießen tut ein [[job:farmer|Farmer]] auf der [[building:work_farm_00|Farm]] oder ein [[job:herb_mush_guy|Kräutergärtner]] in der [[building:work_herb_hut|Kräuterhütte]], wenn er dort seinen Arbeitsplatz hat. Er sät zuerst und gießt erst bei {{field.max}} Feldern oder wenn er nirgends mehr säen kann. Ein Feld reift nach {{field.waterings}} Mal Gießen, und einmal Gießen erfasst auch 6 Nachbarfelder. Auf Sand und auf Straßen sät er kein Feld, und er sät bis {{field.radius}} Hexfelder vom Gebäude oder, wenn er eine hat, von seiner Arbeitsfahne.',
             ],
             [
               'Ändern Regen, Schnee oder Nacht etwas?',
@@ -390,7 +390,7 @@ export const PROBLEMS: ArticleGroup = {
                 '„Neustart nötig“',
                 'Wichtig',
                 'Die geänderte Einstellung wirkt erst nach einem Neustart',
-                '„Mission neu starten“ im Esc-Menü',
+                '„Karte neu starten“ im Esc-Menü',
               ],
               [
                 '„Produkt gesperrt“',

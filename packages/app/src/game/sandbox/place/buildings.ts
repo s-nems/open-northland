@@ -170,12 +170,14 @@ export function spawnWorkersAtDoor(
     readonly jobType?: number;
     readonly owner?: number;
     readonly equipment?: SettlerEquipment;
+    readonly tribe?: number;
   } = {},
 ): void {
   const buildingType = sim.world.get(building, components.Building).buildingType;
   const jobType = opts.jobType ?? primaryWorkerJob(sim, buildingType);
   bindCrewAtDoor(sim, building, jobType, count, opts.owner ?? HUMAN_PLAYER, {
     ...(opts.equipment !== undefined ? { equipment: opts.equipment } : {}),
+    ...(opts.tribe !== undefined ? { tribe: opts.tribe } : {}),
   });
 }
 
@@ -190,6 +192,7 @@ function bindCrewAtDoor(
   spec: {
     readonly equipment?: SettlerEquipment;
     readonly experience?: ReadonlyArray<readonly [number, number]>;
+    readonly tribe?: number;
   },
 ): void {
   const { Building, JobAssignment, Position } = components;
@@ -205,7 +208,7 @@ function bindCrewAtDoor(
         jobType,
         x: node.hx,
         y: node.hy,
-        tribe: PRIMARY_TRIBE,
+        tribe: spec.tribe ?? PRIMARY_TRIBE,
         owner,
         ...(spec.experience !== undefined ? { experience: spec.experience } : {}),
         ...(spec.equipment !== undefined ? { equipment: spec.equipment } : {}),

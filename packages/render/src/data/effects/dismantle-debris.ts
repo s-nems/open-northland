@@ -85,9 +85,13 @@ export const MAX_DISMANTLE_DUST = 14;
 
 /** Choose across the removal sequence, keeping the real material coordinates and birth ticks.
  * Irregular sampling avoids a second cloud at every chip and synchronised roof-wide emission. */
-export function dismantleDustOrigins(origins: readonly DismantleChip[], seed: number): DismantleChip[] {
+export function dismantleDustOrigins(
+  origins: readonly DismantleChip[],
+  seed: number,
+  most = MAX_DISMANTLE_DUST,
+): DismantleChip[] {
   const ordered = [...origins].sort((a, b) => a.birth - b.birth);
-  const count = Math.min(ordered.length, MAX_DISMANTLE_DUST - Math.floor(frac(seed, 91) * 5));
+  const count = Math.min(ordered.length, most, MAX_DISMANTLE_DUST - Math.floor(frac(seed, 91) * 5));
   const selected: DismantleChip[] = [];
   for (let i = 0; i < count; i++) {
     const start = Math.floor((i * ordered.length) / count);

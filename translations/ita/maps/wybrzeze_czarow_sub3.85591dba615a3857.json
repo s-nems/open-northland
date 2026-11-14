@@ -1,0 +1,32 @@
+{
+  "version": 1,
+  "map": "wybrzeze_czarow_sub3",
+  "basis": {
+    "lang": "eng",
+    "digest": "5f6e598c3ec397b0dbfe3a522c7d1f11f8c0034b9c875b41b73a7da9cf69165c"
+  },
+  "strings": {
+    "0": "COSTA DEGLI INCANTESIMI - CAVERNA",
+    "1": "acciuffa zorian (A)",
+    "30": "Björn",
+    "31": "Hring",
+    "32": "Ivar",
+    "33": "Karl",
+    "34": "Zorian",
+    "50": "Tu",
+    "51": "Zorian",
+    "52": "Serpenti mannari",
+    "100": "@Trova Zorian e fagli i conti.",
+    "101": "Riporta gli eroi all'uscita."
+  },
+  "briefings": {
+    "500": "<font:$local$\\fonts\\fonthead16bld.fnt>\nCAVERNA\n<font:$local$\\fonts\\font12.fnt>\n\nEntrammo con passo cauto nella caverna in cui era fuggito Zorian. Tutto era coperto da quella bava ormai familiare... ma alla fine raggiungemmo uno spazio aperto.\n\n<usericon:1,167,204>\n\n\"Chissà fin dove si è spinto Zorian...\" pensò Ivar.\n\n\"Bella domanda... magari è già riuscito a scappare?\" disse Hring.\n\n\"Ti sei rimbecillito?\" sbottai, irritato. \"Questa caverna ha un solo ingresso... non può essere uscito da un'altra parte. Al massimo se lo sono mangiato i serpenti.\"\n\n\"Björn ha ragione. Restiamo uniti e facciamo fuori una alla volta le canaglie che ci troviamo davanti, così sarà più facile sbarazzarcene.\"\n\nNon ci resta molto da fare. Dobbiamo trovare la strada che porta a Zorian e catturarlo!\n\nSCONFIGGI ZORIAN!",
+    "501": "<font:$local$\\fonts\\fonthead16bld.fnt>\nCATACOMBE\n<font:$local$\\fonts\\font12.fnt>\n\nIn fondo al tunnel ci aspettava una bella sorpresa... l'ingresso di una catacomba!\n\n<usericon:1,156,141>\n\n\"Qualcuno un tempo ci ha costruito parecchio, quaggiù\", pensò Hring.\n\n\"Forse magazzini, o una prigione... chi può dirlo? Ora a quanto pare ci sono solo serpenti mannari\", aggiunse Ivar.\n\n\"E Zorian. Deve nascondersi da qualche parte qui dentro\", dissi io.",
+    "502": "<font:$local$\\fonts\\fonthead16bld.fnt>\nCOVO\n<font:$local$\\fonts\\font12.fnt>\n\nAttraversando la caverna, ci imbattemmo in un altro covo di quei luridi serpenti!\n\n<usericon:1,181,61>\n\nSono davvero troppi, per sicurezza cerchiamo un'altra strada...",
+    "503": "Dopo aver premuto l'interruttore, sentimmo un forte stridore...\n\n... e poi uno schianto!\n\nDeve pur significare qualcosa...",
+    "504": "<font:$local$\\fonts\\fonthead16bld.fnt>\nPANICO\n<font:$local$\\fonts\\font12.fnt>\n\nPer qualche motivo i serpenti sono in preda al panico... e non badano più a noi!\n\nSfruttiamo al meglio questo momento per raggiungere i luoghi dove finora il loro numero ci sbarrava il passo. Presto, prima che si accorgano che siamo qui!",
+    "505": "<font:$local$\\fonts\\fonthead16bld.fnt>\nZORIAN\n<font:$local$\\fonts\\font12.fnt>\n\nIn fondo alle catacombe trovammo finalmente Zorian!\n\n<usericon:2,34>\n\n\"Bene, adesso facciamo due chiacchiere!\" dicemmo...\n\n\"Bene... vedremo chi vincerà, mortali...\"\n\nSCONFIGGI ZORIAN!",
+    "506": "<font:$local$\\fonts\\fonthead16bld.fnt>\nMISSIONE COMPIUTA\n<font:$local$\\fonts\\font12.fnt>\n\nZorian cadde a terra sotto le nostre armi. I testi di Koslowford erano stati recuperati!\n\n<picture:$local$\\graphics\\People_Dead_F.pcx>\n\n\"Voi... io non ho ancora perso. Ora muoio, ma tornerò in questo mondo e mi vendicherò di tutti...\"\n\n\"Non sei un dio per dire simili eresie\", disse Ivar.\n\n\"Un dio non sono, ma nemmeno un uomo... vedrete, la vendetta sarà dolce! Ci vediamo alla prima della rivincita!\" E con questo esalò l'ultimo respiro.\n\nCi parve strano che i serpenti non lo attaccassero mai... Forse aveva davvero qualche potere su di loro?\n\nOra possiamo tornare in superficie ad annunciare il successo. Facciamo solo attenzione ai serpenti.",
+    "507": "<font:$local$\\fonts\\fonthead16bld.fnt>\nMISSIONE FALLITA\n<font:$local$\\fonts\\font12.fnt>\n\nÈ morto uno dei protagonisti della missione, che senza di lui non può più essere compiuta...\n\n<picture:$local$\\graphics\\Hero_Dead_F.pcx>"
+  }
+}

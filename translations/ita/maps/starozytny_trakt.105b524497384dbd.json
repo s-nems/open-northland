@@ -1,0 +1,31 @@
+{
+  "version": 1,
+  "map": "starozytny_trakt",
+  "basis": {
+    "lang": "eng",
+    "digest": "ea328c4fcab043cb4ff74ae314eb38c0e2392dce1603e188880094cbeb4c97ee"
+  },
+  "strings": {
+    "0": "L'ANTICA VIA",
+    "1": "Quattro dèi hanno deciso di risolvere la loro contesa in una terra primordiale, un tempo attraversata da un'antica via commerciale. Battaglia rapida tutti contro tutti per 4 giocatori. Giocatori: Vichinghi, Bizantini, Saraceni, Franchi.",
+    "30": "L'obiettivo è semplice: sconfiggi gli avversari",
+    "50": "Odino",
+    "51": "Zeus",
+    "52": "Allah",
+    "53": "Jahvè",
+    "54": "Tributi",
+    "60": "Od",
+    "61": "Zs",
+    "62": "Ah",
+    "63": "Ja",
+    "64": "Trib.",
+    "90": "10 soldati con spada corta",
+    "91": "10 arcieri con arco corto",
+    "92": "10 arcieri con arco lungo",
+    "93": "Druido",
+    "94": "Terremoto"
+  },
+  "briefings": {
+    "500": "<font:$local$\\fonts\\fonthead16bld.fnt>\nL'ANTICA VIA\n<font:$local$\\fonts\\font12.fnt>\n\ndi Ares & Jozenkow\n\nQuattro dèi vivevano in eterno conflitto,\ncosì sull'antica via si diedero appuntamento, per spedire i rivali nel letargo più fitto.\n\nErano: Odino,\nin cui credevano i Vichinghi del settentrione\n\n<usericon:1,24,15>\n\nZeus,\na cui i Greci dagli occhi azzurri davano devozione.\n\n<usericon:1,299,28>\n\nAllah,\nche radunò attorno a sé i saraceni fanatici\n\n<usericon:1,301,301>\n\ne Jahvè,\nche benediceva i cristiani dogmatici.\n\n<usericon:1,29,308>\n\nQuando la tromba severa squillerà,\nguida il tuo dio dove la battaglia andrà.\nFa' che in questa guerra la vittoria sia tua,\nil premio sarà generoso, parola mia.\n\nRichiama in vita i tuoi fedeli con i tributi,\nmonete extra in magazzino otterrai, quando i reietti nemici avrai abbattuti.\n\nLo so, con le rime sono una frana, al massimo a Mickiewicz posso leccare la banana.\nVa be', basta ciance, la battaglia si comincia così, a pedate, alla villana.\n"
+  }
+}

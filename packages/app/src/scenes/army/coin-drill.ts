@@ -1,0 +1,115 @@
+import { components, type Entity, fx, type Simulation, systems } from '@open-northland/sim';
+import { grassTerrain } from '../../catalog/buildings.js';
+import { JOB_ARCHER, JOB_SOLDIER_SPEAR, JOB_SOLDIER_SWORD } from '../../catalog/jobs.js';
+import {
+  BUILDING_BARRACKS,
+  BUILDING_HEADQUARTERS,
+  placeBuiltSandboxBuilding,
+  placeSandboxBuilding,
+  spawnSettlerDirect,
+} from '../../game/sandbox/index.js';
+import { buildingStock, goodBySlug } from '../sandbox-queries.js';
+import type { SceneDefinition } from '../types.js';
+
+const { CoinDrillOrder, LostWay, Position, Settler, SettlerProgress, setStockAmount } = components;
+const FIGHT = systems.FIGHT_EXPERIENCE_TYPE.PERSONAL;
+const COIN = 'coin';
+
+const HEADQUARTERS = { x: 6, y: 12 } as const;
+const BARRACKS = { x: 14, y: 10 } as const;
+const ROW_Y = 6;
+const SWORD_X = 10;
+const SPEAR_X = 12;
+/** Clear of the barracks' extracted footprint, which reaches this row up to column 16. */
+const BOW_X = 18;
+/** The soldiers in spawn order, with the columns they start on. */
+const SOLDIERS = [
+  { job: JOB_SOLDIER_SWORD, x: SWORD_X },
+  { job: JOB_SOLDIER_SPEAR, x: SPEAR_X },
+  { job: JOB_ARCHER, x: BOW_X },
+] as const;
+/** The spearman starts part-way, so one coin takes him past the limit. */
+const SPEAR_START_POINTS = 30;
+/** The coins the three need to reach the limit (two, one, two), and one nobody may take. */
+const COINS = 6;
+const COINS_LEFT = 1;
+/** The most terms one soldier drills here: the swordsman's and the archer's two, side by side inside. */
+const MOST_TERMS = 2;
+/** A term's overrun: its last repetition of the drill clip plays out past the term. */
+const TERM_OVERRUN_TICKS = 28;
+/** The walks to the door and back, with slack. */
+const WALK_TICKS = 300;
+const RUN_TICKS = MOST_TERMS * (systems.COIN_DRILL_TERM_TICKS + TERM_OVERRUN_TICKS) + WALK_TICKS;
+
+function build(sim: Simulation): void {
+  placeSandboxBuilding(sim, BUILDING_HEADQUARTERS, HEADQUARTERS.x, HEADQUARTERS.y);
+  const barracks = placeBuiltSandboxBuilding(sim, BUILDING_BARRACKS, BARRACKS.x, BARRACKS.y);
+  setStockAmount(sim.world, barracks, goodBySlug(sim, COIN), COINS);
+  const soldiers = SOLDIERS.map(({ job, x }) => spawnSettlerDirect(sim, job, x, ROW_Y));
+  const [, spearman] = soldiers;
+  if (spearman !== undefined)
+    sim.world
+      .mut(spearman, SettlerProgress)
+      .experience.set(FIGHT, systems.fightUnitsOfPoints(SPEAR_START_POINTS));
+  for (const entity of soldiers) sim.enqueueSetup({ kind: 'orderCoinDrill', entity, house: barracks });
+}
+
+/** Query order is spawn order: the swordsman, the spearman, the archer. */
+function cast(sim: Simulation): readonly (Entity | undefined)[] {
+  return [...sim.world.query(Settler)];
+}
+
+function pointsOf(sim: Simulation, e: Entity | undefined): number {
+  return e === undefined ? 0 : systems.personalFightPoints(sim.world.get(e, SettlerProgress).experience);
+}
+
+const drilling = (sim: Simulation, e: Entity | undefined): boolean =>
+  e !== undefined && sim.world.has(e, CoinDrillOrder);
+
+function backWhereHeStarted(sim: Simulation, e: Entity | undefined, x: number): boolean {
+  if (e === undefined || sim.world.has(e, LostWay)) return false;
+  const p = sim.world.get(e, Position);
+  return p.x === fx.fromInt(x) && p.y === fx.fromInt(ROW_Y);
+}
+
+export const coinDrillScene: SceneDefinition = {
+  id: 'coin-drill',
+  seed: 31,
+  terrain: grassTerrain(24, 16),
+  build,
+  runTicks: RUN_TICKS,
+  checks: [
+    {
+      label: 'the swordsman drills two coins to the limit and stops there',
+      predicate: (sim) => {
+        const [sword] = cast(sim);
+        return pointsOf(sim, sword) === systems.COIN_DRILL_LIMIT && !drilling(sim, sword);
+      },
+    },
+    {
+      label: 'the spearman, part-way already, takes one coin past the limit',
+      predicate: (sim) => {
+        const [, spear] = cast(sim);
+        return pointsOf(sim, spear) > systems.COIN_DRILL_LIMIT && !drilling(sim, spear);
+      },
+    },
+    {
+      label: 'the archer drills to the limit too',
+      predicate: (sim) => {
+        const [, , bow] = cast(sim);
+        return pointsOf(sim, bow) === systems.COIN_DRILL_LIMIT && !drilling(sim, bow);
+      },
+    },
+    {
+      label: 'every soldier walks back to the node he started on, none lost on the way',
+      predicate: (sim) => {
+        const soldiers = cast(sim);
+        return SOLDIERS.every(({ x }, i) => backWhereHeStarted(sim, soldiers[i], x));
+      },
+    },
+    {
+      label: 'and the barracks keeps the coin nobody below the limit was left to take',
+      predicate: (sim) => buildingStock(sim, BUILDING_BARRACKS, COIN) === COINS_LEFT,
+    },
+  ],
+};

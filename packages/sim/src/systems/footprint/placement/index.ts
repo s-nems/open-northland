@@ -13,8 +13,10 @@ export {
 export { SITE_REACH_RADIUS_NODES, type SiteReach, siteReachFor } from './site-reach.js';
 export {
   findVehicleSite,
+  isShipHouse,
   reusableVehicleSite,
   SHIP_SITE_RINGS,
+  shipSiteWorkCells,
   VEHICLE_SITE_RINGS,
   type VehicleSiteVerdict,
   vehicleSiteRings,
@@ -24,6 +26,7 @@ export {
   canPlaceWorkFlag,
   nearestWorkFlagPlacement,
   noteWorkFlagMove,
+  workFlagBlockerCounts,
   workFlagBlockerVersion,
   workFlagPlacementBlocks,
   workFlagPlacementTest,

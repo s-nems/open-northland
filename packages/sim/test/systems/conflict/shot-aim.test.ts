@@ -21,8 +21,8 @@ const DRAWS = 400;
 const LONG_SHOT_NODES = 20;
 /** Under four nodes a quarter of the range rounds to nothing, so no shot can scatter. */
 const POINT_BLANK_NODES = 3;
-/** Hits past which a bowman never scatters: the roll tops out at 99, against hits plus 10. */
-const MARKSMAN_BOW_HITS = 90;
+/** Fight points past which a bowman never scatters: the roll tops out at 99, against points plus 10. */
+const MARKSMAN_POINTS = 90;
 const BOW_SPEED = 8;
 
 function sim(): Simulation {
@@ -41,7 +41,7 @@ describe('shot scatter', () => {
   it('a practised bowman and a point-blank shot land true', () => {
     const s = sim();
     for (let i = 0; i < DRAWS; i++) {
-      expect(marksmanSpread(ctxOf(s), LONG_SHOT_NODES, MARKSMAN_BOW_HITS)).toBe(0);
+      expect(marksmanSpread(ctxOf(s), LONG_SHOT_NODES, MARKSMAN_POINTS)).toBe(0);
       expect(marksmanSpread(ctxOf(s), POINT_BLANK_NODES, 0)).toBe(0);
     }
   });

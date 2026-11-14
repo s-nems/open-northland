@@ -1,0 +1,25 @@
+{
+  "version": 1,
+  "map": "asgard-campaign_01_04_sub",
+  "basis": {
+    "lang": "eng",
+    "digest": "222ee37eead743a8781490447079a8b30906e2354135c6002894b2efdd440c5a"
+  },
+  "strings": {
+    "0": "Uccidi il terribile mostro, ma guardati dai lupi!",
+    "99": "ITALIA - Sub",
+    "101": "Bjarni",
+    "102": "Sigurd"
+  },
+  "briefings": {
+    "header": "\nLA TANA DEL MOSTRO\n",
+    "frankenheld": "Mi ero appena calato nelle viscere della terra quando scoprii l'origine di quei suoni! Accanto all'ingresso stava rannicchiato un gigante pesantemente armato, con la paura scritta chiaramente in ogni tratto del volto. \n\nCon voce tremante mi avvertì: \"Nel profondo della grotta vive un mostro malvagio e terribile, la bestia più spaventosa che abbia mai visto in tutti i miei anni da ammazzadraghi! È così orrendo e ripugnante a vedersi che chiunque lo guardi resta impietrito dal terrore!\" \n\nAnche se batteva i denti dalla paura, insistette per accompagnarmi mentre proseguivo, inquieto...\n\n\nTrova il mostro nel labirinto e affrontalo!",
+    "monsterbesiegt": "<font:$local$\\fonts\\fonthead16bld.fnt>\nMISSIONE COMPIUTA!\n<font:$local$\\fonts\\font12.fnt>\nLa bestia che tanto aveva spaventato il Franco era stata sconfitta! \n\nGli abitanti della città poterono tornare a dormire sonni tranquilli. Ringraziai dell'aiuto il fiero Franco, che dopotutto si era dimostrato un vero eroe, e lo invitai al nostro villaggio. \n\nLa sera, davanti a qualche boccale di idromele, gli raccontai della nostra missione. L'ammazzadraghi insistette subito per accompagnarci! \n\nStrinsi gli occhi e lo osservai alla luce del fuoco: ERA LUI! Era uno degli eroi che avevo visto nella mia visione!",
+    "bjarnitot": "<font:$local$\\fonts\\fonthead16bld.fnt>\nMISSIONE FALLITA!\n<font:$local$\\fonts\\font12.fnt>\n<picture:$local$\\graphics\\Hero_Dead_F.pcx>\nEroismo o imprudenza? Alla morte di Bjarni gli dèi piansero... il loro destino era segnato, e con esso la fine del mondo degli uomini.",
+    "heldtot": "<font:$local$\\fonts\\fonthead16bld.fnt>\nMISSIONE FALLITA!\n<font:$local$\\fonts\\font12.fnt>\n<picture:$local$\\graphics\\Hero_Dead_F.pcx>\nBasta un attimo di distrazione per perdere la vita! Uno degli eroi della profezia è morto per la tua negligenza! Il mondo è perduto!",
+    "boniwaffe": "Avevamo trovato una delle armi magiche di cui parlavano le nostre saghe. Usata nel modo giusto, ci sarebbe stata di grande aiuto in battaglia.",
+    "bonitrank": "Ci era capitata tra le mani una strana fiaschetta piena di una pozione maleodorante. \n\nDoveva essere una pozione magica!",
+    "bonisonstig": "Avevamo trovato un amuleto dall'aspetto modesto, con un'iscrizione misteriosa, che emanava uno strano bagliore. \n\nDoveva possedere una grande magia!",
+    "hasenareal": "Doveva essere quello il mostro che tanto spaventava i cittadini della città dei Franchi!\n\n...\n\nUn CONIGLIO dagli occhi rosso fuoco, iniettati di sangue, ci stava fissando!!!"
+  }
+}

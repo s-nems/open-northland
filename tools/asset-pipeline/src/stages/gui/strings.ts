@@ -8,10 +8,10 @@ import {
 } from '@open-northland/data';
 import {
   cifBytesToSections,
-  decodeCifStringTable,
   decodeDisplayText,
   decodeIni,
   extractStringnNames,
+  extractStringTable,
   parseIniSections,
   type RuleSection,
 } from '@open-northland/formats/ini';
@@ -80,8 +80,12 @@ type StringTable = Record<number, string>;
 type DecodedTables = Record<string, StringTable>;
 
 async function readGuiTable(roots: SourceRoots, lang: string, table: string): Promise<DecodedTables> {
-  const rel = `Data/text/${lang}/strings/ingamegui/ingamegui${table}.cif`;
-  return { [table]: decodeCifStringTable(await readShippedSourceFile(roots, rel), textEncoding(lang)) };
+  const { sections, decode } = await readTextTable(
+    roots,
+    lang,
+    `Data/text/${lang}/strings/ingamegui/ingamegui${table}`,
+  );
+  return { [table]: decodedNames(extractStringTable(sections), decode) };
 }
 
 /** Some shipped names carry a trailing space or a doubled one, which no label wants. */
@@ -173,7 +177,8 @@ const TABLE_READS: readonly {
  * {@link PLURAL_TABLES}) into one
  * `content/gui/strings/<lang>.json` of `{ <table>: { <stringId>: <displayText> } }`, with the string
  * corrections applied. A missing table is absent from that language's JSON, and a language with no
- * tables at all emits nothing. An overlay language's object-table overlays become its own JSON.
+ * tables at all emits nothing. An overlay language's object-table overlays become its own JSON, or fill
+ * the ids its shipped tables lack.
  */
 export async function convertGuiStrings(
   roots: SourceRoots,
@@ -181,6 +186,7 @@ export async function convertGuiStrings(
   langs: readonly string[] = GUI_LANGS,
 ): Promise<GuiStringsResult[]> {
   const done: GuiStringsResult[] = [];
+  const shipped = new Map<string, DecodedTables>();
   for (const lang of langs) {
     const tables: Record<string, StringTable> = {};
     let tableCount = 0;
@@ -202,11 +208,15 @@ export async function convertGuiStrings(
     if (tableCount === 0) continue;
     const path = `${GUI_CONTENT_DIR}/strings/${lang}.json`;
     await writeJsonFile(outDir, path, tables);
+    shipped.set(lang, tables);
     done.push({ lang, path, tables: tableCount, strings: stringCount });
   }
   for (const [lang, overlays] of roots.overlays?.objects ?? []) {
-    const written = await writeObjectOverlays(roots, outDir, lang, overlays);
-    if (written !== undefined) done.push(written);
+    const written = await writeObjectOverlays(roots, outDir, lang, overlays, shipped.get(lang));
+    if (written === undefined) continue;
+    const replaced = done.findIndex((result) => result.path === written.path);
+    if (replaced === -1) done.push(written);
+    else done[replaced] = written;
   }
   for (const [lang, overlays] of roots.overlays?.names ?? []) {
     const written = await writePersonalNameOverlays(outDir, lang, overlays);
@@ -245,13 +255,28 @@ export async function withObjectEdit(
 export const isGameObjectTable = (name: string): name is GameObjectTable =>
   (GAME_OBJECT_TABLES as readonly string[]).includes(name);
 
+/** `shipped` with each overlay id it lacks filled in: a language's text in the pack wins over its overlay.
+ *  Warns of the overlay ids the pack already has, which the translations audit reports as redundant. */
+export function fillShippedTable<K extends string | number>(
+  what: string,
+  shipped: Readonly<Record<K, string>>,
+  overlay: Readonly<Record<K, string>>,
+): Record<K, string> {
+  const redundant = Object.keys(overlay).filter((id) => Object.hasOwn(shipped, id));
+  if (redundant.length > 0)
+    console.warn(`[pipeline] gui: ${what} overlay ids the pack ships, kept shipped: ${redundant.join(', ')}`);
+  return { ...overlay, ...shipped };
+}
+
 /** Writes an overlay language's `gui/strings/<lang>.json` from its object-table overlays, normalised like
- *  the source tables. A source language's object tables keep the corrections, so its overlay is refused. */
+ *  the source tables, over the tables the pack ships in that language. A source language's object tables
+ *  keep the corrections, so its overlay is refused. */
 async function writeObjectOverlays(
   roots: SourceRoots,
   outDir: string,
   lang: Language,
   overlays: ReadonlyMap<string, FiledObjectTableOverlay>,
+  shipped: Readonly<DecodedTables> | undefined,
 ): Promise<GuiStringsResult | undefined> {
   if (isSourceLanguage(lang)) {
     console.warn(
@@ -260,7 +285,6 @@ async function writeObjectOverlays(
     return undefined;
   }
   const tables: DecodedTables = {};
-  let stringCount = 0;
   for (const [table, filed] of overlays) {
     if (isObjectHelpTable(table)) continue;
     if (!isGameObjectTable(table)) {
@@ -270,16 +294,16 @@ async function writeObjectOverlays(
     const names = await withObjectEdit(lang, table, filed, (basis) =>
       readGameObjectNames({ data: roots.data }, basis, table),
     );
-    for (const [key, byId] of Object.entries(exportedNames(table, names))) {
-      tables[key] = byId;
-      stringCount += Object.keys(byId).length;
-    }
+    Object.assign(tables, exportedNames(table, names));
   }
-  const tableCount = Object.keys(tables).length;
-  if (tableCount === 0) return undefined;
+  if (Object.keys(tables).length === 0) return undefined;
+  const merged: DecodedTables = { ...shipped };
+  for (const [key, byId] of Object.entries(tables))
+    merged[key] = fillShippedTable(`${lang} ${key}`, shipped?.[key] ?? {}, byId);
   const path = `${GUI_CONTENT_DIR}/strings/${lang}.json`;
-  await writeJsonFile(outDir, path, tables);
-  return { lang, path, tables: tableCount, strings: stringCount };
+  await writeJsonFile(outDir, path, merged);
+  const strings = Object.values(merged).reduce((sum, byId) => sum + Object.keys(byId).length, 0);
+  return { lang, path, tables: Object.keys(merged).length, strings };
 }
 
 /**

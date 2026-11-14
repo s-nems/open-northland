@@ -111,9 +111,10 @@ export const Upgrading = defineComponent<{
 }>('Upgrading', 'economy');
 
 /**
- * A {@link Building} a blow or a script has taken hitpoints off, carried until its Health is whole again.
- * `lastHitTick` is the tick the latest damage landed, so the builder drive can wait out an attack before
- * sending a repair crew; null when the pool came up short without a blow, as after a script level change.
+ * A {@link Building}, wall or ship a blow or a script has taken hitpoints off, carried until its Health is
+ * whole again. `lastHitTick` is the tick the latest damage landed, so the builder drive can wait out an
+ * attack before sending a repair crew; null when the pool came up short without a blow, as after a script
+ * level change.
  */
 export const Damaged = defineComponent<{ lastHitTick: number | null }>('Damaged', 'economy');
 

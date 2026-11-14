@@ -1,8 +1,8 @@
 import { clamp01 } from '../../../data/math.js';
 import type { DrawItem } from '../../../data/scene/index.js';
 import {
-  resolveShipYardSiteDraw,
   resolveVehicleDraw,
+  resolveVehicleYardSiteDraw,
   type VehicleDraw,
 } from '../../../data/sprites/index.js';
 import type { WindSway } from '../../../data/weather/climate.js';
@@ -55,23 +55,29 @@ export function pushVehicleLayers(
   return true;
 }
 
+/** Opacity of the whole vehicle a yard shows behind the part already built. Tuned by eye. */
+const SITE_OUTLINE_ALPHA = 0.22;
+
 /**
- * Append a ship yard site's ship, rising from the bottom with its build progress like a stage without a
- * time sheet; false when `item` is no such site. Like the other construction stages it casts no shadow.
+ * Append a vehicle yard site's vehicle, rising from the bottom with its build progress like a stage
+ * without a time sheet; false when `item` is no such site. Like the other construction stages it casts
+ * no shadow. The whole vehicle also stands translucent behind its built part, so the site shows what is
+ * being built from its first tick (our choice).
  */
-export function pushShipYardSiteLayers(out: LayerBuffer, sheet: SpriteSheet, item: DrawItem): boolean {
-  const draw = shipYardSiteDraw(sheet, item);
+export function pushVehicleYardSiteLayers(out: LayerBuffer, sheet: SpriteSheet, item: DrawItem): boolean {
+  const draw = vehicleYardSiteDraw(sheet, item);
   if (draw === null) return false;
   const resolved = layeredLayerFor(sheet, 'vehicle', draw);
   if (resolved === null) return false;
+  out.push({ ...resolved, alpha: SITE_OUTLINE_ALPHA });
   out.push({ ...resolved, reveal: clamp01((item.builtPct ?? 0) / 100) });
   return true;
 }
 
-/** The ship `item` rises as when it is a ship yard site whose ship atlas loaded, which both its layers
+/** The vehicle `item` rises as when it is a vehicle yard site whose atlas loaded, which both its layers
  *  and its pool class go by. */
-export function shipYardSiteDraw(sheet: SpriteSheet | undefined, item: DrawItem): VehicleDraw | null {
+export function vehicleYardSiteDraw(sheet: SpriteSheet | undefined, item: DrawItem): VehicleDraw | null {
   if (sheet === undefined) return null;
-  const draw = resolveShipYardSiteDraw(sheet.bindings.vehicle, item);
+  const draw = resolveVehicleYardSiteDraw(sheet.bindings.vehicle, item);
   return draw !== null && hasLoadedFamily(sheet, draw) ? draw : null;
 }

@@ -1,0 +1,34 @@
+{
+  "version": 1,
+  "map": "saga-campaign_04_03_sub1",
+  "basis": {
+    "lang": "eng",
+    "digest": "22ea0305c54ec43f83bdf3cdcb2894c194b95e1c9f07d8cc13e5aeedb52804b0"
+  },
+  "strings": {
+    "0": "@RAGGIUNGI L'INTERRUTTORE DEI TELETRASPORTI!",
+    "1": "Parla con AQUAROM.",
+    "2": "Prendi una nave.",
+    "53": "Aquas, draghi d'acqua",
+    "63": "Aquas",
+    "71": "Bjarni",
+    "72": "Cyra",
+    "73": "Aquarom",
+    "99": "SOTTO IL MARE"
+  },
+  "briefings": {
+    "100": "<font:$local$\\fonts\\fonthead16bld.fnt>\nMISSIONE FALLITA!\n<font:$local$\\fonts\\font12.fnt>\n<picture:$local$\\graphics\\Hero_Dead_F.pcx>\nEroismo o imprudenza? Alla morte di BJARNI gli dèi piansero... senza questo eroe, l'esito di questa missione ti resterà ignoto!",
+    "200": "<font:$local$\\fonts\\fonthead16bld.fnt>\nMISSIONE FALLITA!\n<font:$local$\\fonts\\font12.fnt>\n<picture:$local$\\graphics\\Hero_Dead_F.pcx>\nBasta un attimo di distrazione per perdere la vita! La tua eroina CYRA è morta per la tua negligenza! Senza questa eroina, l'esito di questa missione ti resterà ignoto!",
+    "header": "SOTTO IL MARE",
+    "00_start": "All'improvviso ci ritrovammo in un luogo molto strano.",
+    "00_start1": "Non c'era alcun dubbio: eravamo dentro uno dei tanti templi d'acqua degli AQUAS!",
+    "50_endheader": "MISSIONE COMPIUTA!",
+    "50_end": "Una scossa e un boato attraversarono il piccolo regno dell'isola. E infatti l'interruttore aveva messo in funzione i teletrasporti in superficie!\n\n<usericon:1,36,37>\n\n... in uno si entra,\n\n<usericon:1,59,37>\n\n... e dall'altro si viene sputati fuori in un vortice!\n\nNota: il teletrasporto funziona in un solo senso! Se vuoi lasciare di nuovo l'isola della Scuola Waldorf del bosco, ti servirà una nave.",
+    "50_end1": "",
+    "01": "DRAGHI D'ACQUA\n\n\"Benvenuti nel nostro tempio d'acqua. Quaggiù non vediamo spesso gente di terraferma, ma fate come foste a casa vostra!\"\n\n<usericon:1,44,107>\n\nGli Aquas sapevano davvero come trattare gli ospiti!",
+    "02": "NAVI\n\n<usericon:1,55,108>\n\nProbabilmente ci sarebbe servita anche una nave per arrivare all'interruttore dei teletrasporti...",
+    "03": "AQUAROM E L'INTERRUTTORE\n\n\"Sono stanco di stare su questo interruttore, ma senza di lui non possiamo vivere quaggiù sotto il mare. Aziona la turbina che fa scorrere l'acqua.\"\n\n<usericon:2,3>\n\n\"Se prendete il mio posto per un po', vi presto la mia nave.\"",
+    "04": "AQUAROM E L'INTERRUTTORE\n\n\"D'accordo, la mia nave è vostra, purché uno di voi resti sull'interruttore.\"\n\n<usericon:2,3>",
+    "05": "AQUAROM\n\n\"Se nessuno resta sull'interruttore, la nave torna mia!\"\n\n<usericon:1,88,123>"
+  }
+}

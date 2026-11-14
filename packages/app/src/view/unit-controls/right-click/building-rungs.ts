@@ -12,6 +12,7 @@ import {
   settlerJobType,
 } from '../../../game/snapshot/index.js';
 import type { Tile } from '../../picking.js';
+import { coinDrillHouse, mayCoinDrillAtHouse, paidDrillers } from '../orders/coin-drill.js';
 import type { FormationUnit } from '../orders/formation.js';
 import { contentLookups, type RightClickContext } from './context.js';
 
@@ -34,17 +35,21 @@ export type BuildingIntent =
       readonly learners: readonly FormationUnit[];
     }
   /** Homes and workplaces have limited room, so each goes out as one group order and the sim seats the
-   *  homeless and the unemployed first. A settler none of them takes gets no order. */
+   *  homeless and the unemployed first. At a barracks that shows a coin a soldier who may coin-drill drills,
+   *  nearest first while its coins last; a civilian enlists. A settler none of them takes, a soldier who
+   *  may not drill among them, gets no order. */
   | {
       readonly kind: 'building';
       readonly building: number;
       readonly crew: readonly FormationUnit[];
       readonly trainees: readonly FormationUnit[];
+      readonly drillers: readonly FormationUnit[];
       readonly household: readonly FormationUnit[];
       readonly workers: readonly BuildingWorker[];
     }
   /** Shift: the crew and the barracks recruits line their order up behind their current one, and the
-   *  rest walk there queued, a post or a home being a standing setting. */
+   *  rest walk there queued, a post or a home being a standing setting; a soldier or hero at a barracks
+   *  gets no order. */
   | {
       readonly kind: 'queueAtBuilding';
       readonly building: number;
@@ -117,6 +122,12 @@ export function atBuilding(
   if (def !== undefined && systems.isSchoolType(def))
     return { kind: 'school', building, crew, learners: rest };
   const trainees: FormationUnit[] = [];
+  const drillers: FormationUnit[] = [];
+  const entity = entityById(snapshot, building);
+  const house =
+    entity === undefined
+      ? undefined
+      : coinDrillHouse(ctx.content, entity, contentLookups(ctx.content).buildings);
   const household: FormationUnit[] = [];
   const workers: BuildingWorker[] = [];
   for (const target of rest) {
@@ -125,14 +136,26 @@ export function atBuilding(
     // A home may be reserved before it stands; its household drives wait for completed construction.
     if (def?.kind === 'home') household.push(target);
     // A recruit sent to a foundation waits at its door until it stands.
-    else if (trainsRatherThanEmploys(def, currentJob)) trainees.push(target);
-    else {
+    else if (trainsRatherThanEmploys(def, currentJob)) {
+      // A soldier never enlists again: the barracks drills him for coins or leaves him be.
+      if (!systems.isFighterJob(ctx.content, currentJob ?? null)) trainees.push(target);
+      else if (self !== undefined && house !== undefined && mayCoinDrillAtHouse(ctx.content, self, house))
+        drillers.push(target);
+    } else {
       // The sim gates every candidate in the priority list, so an unoffered or full trade falls through.
       const jobPriority = assignmentPriorityFor(currentJob, def?.workers);
       if (jobPriority.length > 0) workers.push({ unit: target, jobPriority });
     }
   }
-  return { kind: 'building', building, crew, trainees, household, workers };
+  return {
+    kind: 'building',
+    building,
+    crew,
+    trainees,
+    drillers: house === undefined ? [] : paidDrillers(snapshot, house, drillers, (unit) => unit.ref),
+    household,
+    workers,
+  };
 }
 
 export function queueAtBuilding(
@@ -145,15 +168,19 @@ export function queueAtBuilding(
   const crew = crewAmong(ctx, units, building);
   const recruits: FormationUnit[] = [];
   const walkers: FormationUnit[] = [];
+  const barracks = def !== undefined && systems.isBarracksType(def);
   for (const target of units) {
     if (crew.includes(target)) continue;
     const self = entityById(ctx.snapshot, target.ref);
+    const job = self === undefined ? undefined : settlerJobType(self);
+    // A coin drill is never queued, and a soldier never enlists again: he stays where he is.
+    if (barracks && systems.isFighterJob(ctx.content, job ?? null)) continue;
     const recruit =
       def !== undefined &&
       !systems.isSchoolType(def) &&
       self !== undefined &&
       takesBuilding(ctx, self) &&
-      trainsRatherThanEmploys(def, settlerJobType(self));
+      trainsRatherThanEmploys(def, job);
     (recruit ? recruits : walkers).push(target);
   }
   return { kind: 'queueAtBuilding', building, crew, recruits, walkers, tile };

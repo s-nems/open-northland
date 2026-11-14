@@ -43,8 +43,8 @@ export type AtomicEffect =
   | { readonly kind: 'tradeShipFetch'; readonly vehicle: Entity; readonly goodType: number }
   /** A posted carrier lifts one unit of `goodType` off `from` into the hauling cart standing beside it. */
   | { readonly kind: 'haulLoad'; readonly from: Entity; readonly goodType: number }
-  /** A posted carrier sets one unit out of the hauling cart standing beside it into `store`. */
-  | { readonly kind: 'haulUnload'; readonly store: Entity }
+  /** A posted carrier sets one unit of `goodType` out of the hauling cart standing beside it into `store`. */
+  | { readonly kind: 'haulUnload'; readonly store: Entity; readonly goodType: number }
   /** A vehicle's carrier sets the unit on its back into `vehicle`'s hold at the door, the unit it booked
    *  there when it set out (`CargoRun`). A hold that stopped wanting it, or filled up, refuses the unit,
    *  which stays on the carrier's back with its booking dropped. */
@@ -60,6 +60,10 @@ export type AtomicEffect =
        *  consumes a unit it already carries. One unit of `goodType` is destroyed on completion. */
       readonly from: Entity | null;
     }
+  /** The settler drinks one sip of the draught of `goodType` in its misc `slot` on the eat clip, whose own
+   *  food events pay nothing: the draught's restore lands on completion, and a slot that no longer holds
+   *  it gives nothing. */
+  | { readonly kind: 'drink'; readonly slot: number; readonly goodType: number }
   /** The settler sleeps: its clip's `event <at> 1 <delta>` pulses take the rest off its `fatigue`. No
    *  goods are consumed. */
   | { readonly kind: 'sleep' }
@@ -69,14 +73,17 @@ export type AtomicEffect =
   /** The settler runs one drill repetition inside a barracks, charged against the errand's remaining
    *  drill time. Nothing else accrues: the TRAINING bucket grants no experience. */
   | { readonly kind: 'exercise' }
+  /** A soldier runs one coin-drill repetition inside barracks `house`, charged against his paid term: the
+   *  term's coin left `house`'s shelf as it started, and its points land as it is served
+   *  (`drives/coin-drill-coins.ts`). The clip's own coin and training events pay nothing. */
+  | { readonly kind: 'coinDrill'; readonly house: Entity }
   /** The settler swings at `target`, landing a blow that takes hitpoints off it, clamped at 0. A
    *  `target` with no `Health` is a no-op. */
   | {
       readonly kind: 'attack';
       readonly target: Entity;
-      /** A melee blow's base against `target`: the weapon's `damagevalue[targetMaterial]` column raised by
-       *  the striker's fight experience, before the hit's own modifiers. A ranged swing resolves its own
-       *  on contact. */
+      /** A melee blow's base against `target`: the weapon's `damagevalue[targetMaterial]` column, before
+       *  the hit's own modifiers and the striker's raises. A ranged swing resolves its own on contact. */
       readonly damage: number;
       /** Every attack-event frame; an event lands one blow. Empty means a bound clip with no hit event;
        *  omitted means no bound clip, which uses one completion-frame fallback blow. */
@@ -165,4 +172,6 @@ export type AtomicEffect =
       readonly slot: number;
       readonly sink: Entity | null;
     }
-  | { readonly kind: 'idle' };
+  | { readonly kind: 'idle' }
+  /** A critical hit's stun: occupancy like `idle`, told apart so a viewer can mark the stunned body. */
+  | { readonly kind: 'stunned' };

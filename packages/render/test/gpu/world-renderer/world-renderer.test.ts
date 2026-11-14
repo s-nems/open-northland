@@ -63,6 +63,7 @@ const SLOTS = [
   'footprints',
   'wakes',
   'weatherGround',
+  'templeGlow',
   'fog',
   'constructionPlots',
   'placementWash',

@@ -69,7 +69,7 @@ export const PROBLEMS: ArticleGroup = {
             ],
             [
               "A field isn't growing",
-              "Unwatered it grows only 1 stage every {{field.stageSeconds}} s. A [[job:farmer|Farmer]] at a [[building:work_farm_00|Farm]] or a [[job:herb_mush_guy|Herbalist]] at a [[building:work_herb_hut|Herb Hut]] waters it, if he has his workplace there. He sows first and waters only at {{field.max}} fields or when there is nowhere left to sow. A field ripens after {{field.waterings}} waterings, and one watering also covers 6 neighbouring fields. He won't sow a field on sand or on a road, and sows within {{field.radius}} hexes of the building.",
+              "Unwatered it grows only 1 stage every {{field.stageSeconds}} s. A [[job:farmer|Farmer]] at a [[building:work_farm_00|Farm]] or a [[job:herb_mush_guy|Herbalist]] at a [[building:work_herb_hut|Herb Hut]] waters it, if he has his workplace there. He sows first and waters only at {{field.max}} fields or when there is nowhere left to sow. A field ripens after {{field.waterings}} waterings, and one watering also covers 6 neighbouring fields. He won't sow a field on sand or on a road, and sows within {{field.radius}} hexes of the building, or of his work flag if he has one.",
             ],
             [
               'Do rain, snow or night change anything?',
@@ -380,7 +380,7 @@ export const PROBLEMS: ArticleGroup = {
                 '"Needs a restart"',
                 'Important',
                 'The changed setting takes effect only after a restart',
-                '"Restart mission" in the Esc menu',
+                '"Restart map" in the Esc menu',
               ],
               [
                 '"Product locked"',

@@ -1,0 +1,31 @@
+{
+  "version": 1,
+  "map": "asgard-campaign_01_02_sub",
+  "basis": {
+    "lang": "eng",
+    "digest": "e0bc6590420477263d6a9d189ed2545ddf982a56c9703d078a8145aff61b6795"
+  },
+  "strings": {
+    "0": "Scorta la principessa sana e salva fino all'abbazia in fondo alla valle!",
+    "50": "Tribù di Bjarni",
+    "51": "Predoni",
+    "52": "Truppa di Tankred",
+    "99": "NORMANDIA - Sub",
+    "100": "Bjarni",
+    "101": "Principessa",
+    "102": "Principe",
+    "103": "Sacerdote"
+  },
+  "briefings": {
+    "header": "\nST. PIERRE\n",
+    "start": "Dopo una breve marcia nell'oscurità, lo stretto passaggio si allargò in una vasta valle verde. In fondo sorgeva l'antica abbazia di St. Pierre, dove il principe e il sacerdote ci aspettavano.\n\nIn qualche modo l'avversario del re doveva aver saputo del nostro piano! Sentinelle dei Vichinghi predoni pattugliavano la valle, e con loro i soldati di Tankred, signore dei Franchi, decisi a non lasciarsi sfuggire l'occasione di catturarci.\nSembrava che aspettassero da anni questa occasione per nuocere al re dei Franchi!\n\n\nScorta la principessa sana e salva fino all'abbazia!",
+    "end": "<font:$local$\\fonts\\fonthead16bld.fnt>\nMISSIONE COMPIUTA!\n<font:$local$\\fonts\\font12.fnt>\nGli innamorati erano felicissimi di ritrovarsi, e il principe disse: \"Ti ringraziamo, nobile capo dei Vichinghi, per aver accompagnato la principessa fino a queste porte sana e salva. Il nostro amore getterà le basi di un'unione pacifica tra gli uomini del nord e i Franchi. Se mai la tua tribù avrà bisogno di aiuto, saremo al tuo fianco!\"\n\nLa cerimonia nuziale fu semplice, ma straordinariamente commovente. Ancora oggi mi piace ricordarla. Fummo testimoni della loro unione e porgemmo i nostri migliori auguri per il loro futuro. Poi lasciammo la coppia e tornammo al nostro villaggio.",
+    "prinzessintot": "<font:$local$\\fonts\\fonthead16bld.fnt>\nMISSIONE FALLITA!\n<font:$local$\\fonts\\font12.fnt>\n<picture:$local$\\graphics\\Hero_Dead_F.pcx>\nHai fallito! La principessa è morta! Contava su di te, e tu l'hai delusa! Sia i Franchi sia i Normanni ti ritengono responsabile della sua morte!",
+    "bjarnietot": "<font:$local$\\fonts\\fonthead16bld.fnt>\nMISSIONE FALLITA!\n<font:$local$\\fonts\\font12.fnt>\n<picture:$local$\\graphics\\Hero_Dead_F.pcx>\nEroismo o imprudenza? Alla morte di Bjarni gli dèi piansero... il loro destino era segnato, e con esso la fine del mondo degli uomini.",
+    "katapult": "Catturare la catapulta era stato un gioco da ragazzi. Forse ci sarebbe tornata utile.",
+    "prinztot": "<font:$local$\\fonts\\fonthead16bld.fnt>\nMISSIONE FALLITA!\n<font:$local$\\fonts\\font12.fnt>\n<picture:$local$\\graphics\\Hero_Dead_F.pcx>\nHai fallito! Il principe è morto! Contava su di te, e tu l'hai deluso. Sia i Franchi sia gli uomini del nord ti ritengono responsabile della sua morte!",
+    "priestertot": "<font:$local$\\fonts\\fonthead16bld.fnt>\nMISSIONE FALLITA!\n<font:$local$\\fonts\\font12.fnt>\n<picture:$local$\\graphics\\People_Dead_F.pcx>\nFuoco e morte: è tutto ciò che voi Vichinghi avete portato al sacerdote! Che tragedia! Uccidendo un innocente ti precludi la via dell'amicizia e della pace.",
+    "freunde": "A un bivio incontrammo una schiera di guerrieri normanni dall'aria selvaggia, che evidentemente ci stavano cercando!\n\n\"Ehi, voi! Sei tu quello che chiamano Bjarni?\" gridò il loro capo. \"Finalmente vi abbiamo trovati! Il nostro principe normanno ci ha mandati ad aiutarvi ad attraversare la valle senza danni.\"",
+    "neuesoldaten": "I cinque soldati mandati dal principe arrivarono appena in tempo, perché lungo la strada avevamo già subito gravi perdite..."
+  }
+}

@@ -3,13 +3,15 @@ import type { JoineryRole } from '../../joinery-role.js';
 
 /** Where a placement gravitates, on top of the always-on near-base rule; `../ground/affinity.ts` resolves
  *  each kind to a node. `resource` is the good's nearest live deposit, or the seat's store holding the
- *  most of the good once none stands. `shore` is the nearest
+ *  most of the good once none stands. `rallyFlag` is the rally flag the seat planted for its barracks, the
+ *  barracks itself while it has none. `shore` is the nearest
  *  water beside the seat's land a ship can sail, a body that also touches the enemy's continent first; unlike
  *  the others it is a hard rule, the spot landing close enough to that water for the workshop's ship yard. */
 export type PlacementAffinity =
   | { readonly kind: 'building'; readonly id: string }
   | { readonly kind: 'resource'; readonly good: string }
   | { readonly kind: 'mapCentre' }
+  | { readonly kind: 'rallyFlag' }
   | { readonly kind: 'shore' };
 
 /**

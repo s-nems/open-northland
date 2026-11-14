@@ -18,6 +18,7 @@ import {
   Resting,
   Sheltering,
   Stance,
+  Stockpile,
 } from '../../../src/components/index.js';
 import type { Entity } from '../../../src/ecs/world.js';
 import {
@@ -43,7 +44,7 @@ import {
 } from '../../../src/systems/settlers/planner/idle-replan.js';
 import { TEST_MANIFEST } from '../../fixtures/content.js';
 import { ctxOf } from '../../fixtures/context.js';
-import { needsOf, setNeeds } from '../../fixtures/settler.js';
+import { heldTrade, needsOf, setNeeds } from '../../fixtures/settler.js';
 
 // DEFENCE MODE - the alarm a player raises on a garrison building: its civilians run inside, the building
 // shoots the house bow at a rate their number sets, and they stay there until it drops. Source basis: the
@@ -321,6 +322,7 @@ describe('defence mode', () => {
     const sim = new Simulation({ seed: 1, content: defenceContent(), map: grass(10, 4) });
     const tower = buildingAt(sim, 5, 1, TOWER, P1);
     const civilians = [1, 2, 3].map((x) => settlerAt(sim, x, 1, P1, FARMER));
+    for (const e of civilians) heldTrade(sim.world, e, SOLDIER); // former soldiers, free to re-enlist
     sim.enqueueSetup({ kind: 'setDefenceMode', building: tower, enabled: true });
     stepUntil(sim, 400, () => civilians.filter((e) => insideOf(sim, e) === tower).length >= TOWER_CAPACITY);
     const [outside] = civilians.filter((e) => shelterOf(sim, e) === undefined);
@@ -692,6 +694,26 @@ describe('defence mode', () => {
     // the walk to a larder.
     stepUntil(sim, 200, () => needsOf(sim, farmer).hunger < ONE);
 
+    expect(needsOf(sim, farmer).hunger).toBeLessThan(ONE);
+    expect(insideOf(sim, farmer)).toBe(tower);
+  });
+});
+
+describe('shelter larder', () => {
+  it("feeds a sheltering settler from the shelter's own stock", () => {
+    const sim = new Simulation({ seed: 1, content: defenceContent(), map: grass(10, 4) });
+    const tower = buildingAt(sim, 5, 1, TOWER, P1);
+    sim.world.add(tower, Stockpile, { amounts: new Map([[RATION, 2]]) });
+    const farmer = settlerAt(sim, 1, 1, P1, FARMER);
+
+    sim.enqueueSetup({ kind: 'setDefenceMode', building: tower, enabled: true });
+    stepUntil(sim, 400, () => insideOf(sim, farmer) === tower);
+    setNeeds(sim, farmer, { hunger: ONE });
+
+    const shelf = (): number => sim.world.get(tower, Stockpile).amounts.get(RATION) ?? 0;
+    stepUntil(sim, 200, () => shelf() < 2);
+
+    expect(shelf()).toBe(1);
     expect(needsOf(sim, farmer).hunger).toBeLessThan(ONE);
     expect(insideOf(sim, farmer)).toBe(tower);
   });

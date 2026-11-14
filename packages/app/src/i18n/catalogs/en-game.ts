@@ -147,10 +147,7 @@ export const enGame = {
     workFlag: 'Work flag',
     specialization: 'Specialization {id}',
     weaponXp: {
-      fist: 'Fighting - Fist',
-      spear: 'Fighting - Spear',
-      sword: 'Fighting - Sword',
-      bow: 'Fighting - Bow',
+      fight: 'Fighting',
       catapult: 'Fighting - Catapult',
     },
     trackLabels: {
@@ -276,7 +273,7 @@ export const enGame = {
     tradeOffers: 'Trade offers',
     systemMenuDetails: {
       leaveGame: 'Leave game',
-      restartMission: 'Restart mission',
+      restartMap: 'Restart map',
       resume: 'Return to game',
       paused: 'Game paused',
       multiplayer: 'Multiplayer game continues',
@@ -303,6 +300,7 @@ export const enGame = {
     matchFinishedTitle: 'Match finished',
     matchFinishedDetail: 'The match has ended.',
     matchKicker: 'The fate of your tribe',
+    matchTribesKicker: 'The fate of the tribes',
     matchWatchHint: 'You can watch the map and the other players without issuing orders.',
     matchContinue: 'Keep playing',
     matchRankingTitle: 'Ranking',
@@ -318,6 +316,8 @@ export const enGame = {
     quitConfirmNo: 'Keep playing',
     playAgain: 'Play again',
     playAgainConfirm: 'Start this map again from the beginning? Unsaved progress will be lost.',
+    playAgainMainMapConfirm:
+      'Return to the main map and start it again from the beginning? Unsaved progress will be lost.',
     closeMenu: 'Close',
     saveGame: 'Save game',
     loadGame: 'Load game',
@@ -473,6 +473,7 @@ export const enGame = {
       placeSignpost: 'Place signpost',
       bombard: 'Bombard',
       rallyPoint: 'Set rally point',
+      coinDrill: 'Drill for coins',
       tooManyUnits: 'Too many units',
       noFreePlaces: 'No free places',
       noRoom: 'No room',
@@ -496,6 +497,7 @@ export const enGame = {
       fighting: 'Fighting',
       training: 'Training',
       eating: 'Eating',
+      drinking: 'Drinking',
       mealBreak: 'Hungry, going to eat',
       sleeping: 'Sleeping',
       praying: 'Praying',
@@ -704,6 +706,7 @@ export const enGame = {
         collector: 'within signpost reach',
         hunter: 'around the workplace',
         fisher: 'near the workplace',
+        farmer: 'around the workplace',
       },
       assignWorkArea: 'Plant a flag',
       assignWorkAreaHint: {
@@ -711,6 +714,7 @@ export const enGame = {
         collector: 'Pick the spot the extractor gathers around · Esc cancels',
         hunter: 'Pick the spot the hunter hunts around · Esc cancels',
         fisher: 'Pick the water the fisherman fishes at · Esc cancels',
+        farmer: 'Pick the spot the fields are sown around · Esc cancels',
       },
       clearWorkArea: 'Take the flag away',
       clearWorkAreaHint: {
@@ -718,6 +722,7 @@ export const enGame = {
         collector: 'The extractor gathers resources anywhere within signpost reach again',
         hunter: 'The hunter hunts around the workplace again',
         fisher: 'The fisherman fishes near the workplace again',
+        farmer: 'Fields are sown around the workplace again',
       },
       centreFlag: 'Show the flag',
       centreFlagHint: 'Centre the view on the flag',
@@ -806,6 +811,10 @@ export const enGame = {
       agreementUpToTooltip: 'Trade until {where} holds this many {good} · ∞: no ceiling',
       repeats: '{count} times',
       repeatsBonus: '{count} times, output +{bonus}%',
+      fightShare: 'Combat experience: {pct}%',
+      fightDealt: 'Damage dealt: +{pct}%',
+      fightTaken: 'Damage taken: -{pct}%',
+      fightAccuracy: 'Accuracy: {pct}%',
       unlockTooltip: 'Unlocks {unlocks} (experience: {track})',
       moreRows: '{count} more',
       fewerRows: 'fewer',
@@ -1106,6 +1115,11 @@ export const enGame = {
         sheltered: 'sheltered {sheltered} / {capacity}',
         working: 'Working',
         noWorkers: 'No workers',
+        blessing: 'Blessing',
+        oilLeft: 'oil for {minutes} min',
+        noOil: 'No oil',
+        blessingDamaged: 'Damaged, no blessing',
+        blessingDoused: 'Put out, no blessing',
         noGarrison: 'No garrison',
         manned: 'Manned',
         idle: 'Idle',
@@ -1138,6 +1152,13 @@ export const enGame = {
       productionUnfold: 'show all ({count})',
       productionFold: 'fewer',
       productionIdle: 'Nothing is being made now',
+      templeFire: 'Holy fire',
+      templeFireLeft: 'The burning unit of oil lasts {time} more, the whole store {minutes} min',
+      templeFireOut: 'The fire is out',
+      templeFireDoused: 'The fire is put out',
+      templeFireDouse: 'Put out',
+      templeFireLight: 'Light',
+      templeFireDouseTooltip: 'A fire put out burns no oil and blesses no one',
       needs: '{good}\nNeeds: {inputs}',
       need: '{good}: {have} here, {need} per cycle',
       fields: 'Fields {sown} · ripe {ripe}',
@@ -1153,6 +1174,16 @@ export const enGame = {
       uses: '{count} uses',
       holyFireOn: 'burning',
       holyFireOff: 'out',
+      furnitureLodges: {
+        one: '{pieces} pcs · +{count} family',
+        few: '{pieces} pcs · +{count} families',
+        many: '{pieces} pcs · +{count} families',
+      },
+      furnitureIdle: '{pieces} pcs · no extra family',
+      furnitureInUse: 'in use: {left}',
+      furniturePieceLeft: '{percent}%',
+      furnitureTip:
+        "One piece of Furniture is room for one extra family. Each such family wears its own piece and, when it is gone, takes the next from the dwelling's store. With none in store the family moves out.",
       allowed: '{good} · allowed in every dwelling · click: prohibit',
       forbidden: '{good} · prohibited in every dwelling · click: allow',
       policyForeign: 'The owner sets the rules',
@@ -1419,10 +1450,12 @@ export const enGame = {
       charmsTip: 'One of each kind per man. An amulet is never used up.',
       shortage: {
         lacking: 'Without one: {count}',
-        soldiers: {
-          one: '(including {count} soldier)',
-          few: '(including {count} soldiers)',
-          many: '(including {count} soldiers)',
+        split: '({parts})',
+        separator: ', ',
+        part: {
+          civilians: 'civilians {count}',
+          workers: 'workers {count}',
+          soldiers: 'soldiers {count}',
         },
         short: 'Not enough for everyone: the rest wait for more.',
         covered: 'Enough for everyone.',
@@ -1445,7 +1478,10 @@ export const enGame = {
         label: 'who receives it',
         civilians: 'Civilians',
         civiliansTip:
-          'Adult men who are not soldiers. On: each one without it fetches one from the store. Off: whoever carries one keeps it.',
+          'Adult men without a trade. On: each one without it fetches one from the store. Off: whoever carries one keeps it.',
+        workers: 'Workers',
+        workersTip:
+          'Adult men with a trade who are not soldiers. On: each one without it fetches one from the store. Off: whoever carries one keeps it.',
         soldiers: 'Soldiers',
         soldiersTip:
           'On: each soldier without it fetches one from the store. Off: whoever carries one keeps it.',
@@ -1462,15 +1498,15 @@ export const enGame = {
         },
         trainSword: {
           label: 'Sword fighters',
-          tip: 'Arms soldiers without weapons first, then trains new ones. Weapon and armour in the order below.',
+          tip: 'Arms soldiers without weapons first, then trains new ones when there is a weapon for them. Weapon and armour in the order below.',
         },
         trainSpear: {
           label: 'Spearmen',
-          tip: 'Arms soldiers without weapons first, then trains new ones. Weapon and armour in the order below.',
+          tip: 'Arms soldiers without weapons first, then trains new ones when there is a weapon for them. Weapon and armour in the order below.',
         },
         trainBow: {
           label: 'Archers',
-          tip: 'Arms soldiers without weapons first, then trains new ones. Weapon and armour in the order below.',
+          tip: 'Arms soldiers without weapons first, then trains new ones when there is a weapon for them. Weapon and armour in the order below.',
         },
       },
       switches: {
@@ -1507,7 +1543,7 @@ export const enGame = {
         },
         giveDefenseAmulet: {
           label: 'Amulet of Defence',
-          tip: 'Every man without one fetches one from the store. Its bearer takes half the damage.',
+          tip: 'Every man without one fetches one from the store. Its bearer takes less damage.',
         },
         giveCriticalHitAmulet: {
           label: 'Amulet of Precision',
@@ -1523,7 +1559,7 @@ export const enGame = {
         },
         postGraduates: {
           label: 'School graduates assigned to workshops automatically',
-          tip: 'A school graduate goes straight to the nearest free workplace in his profession.',
+          tip: 'A school graduate goes to a free workplace in his profession: a finished one before a building site, an unstaffed one before a staffed one, then the nearest.',
         },
         moveFlags: {
           label: 'Extractors move their flag automatically',
@@ -1531,7 +1567,7 @@ export const enGame = {
         },
         foundFamilies: {
           label: 'Found families',
-          tip: 'A homeless woman moves into the nearest home with a free place. A woman who already has a home marries once a man is free.',
+          tip: 'A homeless woman moves into the nearest home with a free place. A woman who already has a home marries once a man is free. A family that had to move out for lack of Furniture moves into such a home too.',
         },
       },
       notes: {
@@ -1970,6 +2006,7 @@ export const enGame = {
       willDie: 'Dying',
       grewUp: { he: 'Grown man', she: 'Grown woman' },
       noOneToMarry: 'No match',
+      familyMovedOut: 'Moved out',
       cannotEnterVehicle: 'Cannot board',
       cannotLeaveVehicle: 'Stuck aboard',
       settlementAttacked: 'Village attacked',
@@ -2059,6 +2096,8 @@ export const enGame = {
         he: '{name} found no one to marry. An unmarried woman must live within his reach.',
         she: '{name} found no one to marry. An unmarried man must live within her reach.',
       },
+      familyMovedOut:
+        '{name} and family moved out: the dwelling no longer has Furniture for them. Bring Furniture, or assign them another home.',
       cannotEnterVehicle:
         '{name} cannot board this vehicle: it has no free room or the ship is at sea. Bring the ship to a shore or pick another vehicle.',
       cannotLeaveVehicle: '{name} cannot leave the ship at sea. Bring the ship to a shore first.',

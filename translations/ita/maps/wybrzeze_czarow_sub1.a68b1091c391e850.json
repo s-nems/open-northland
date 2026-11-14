@@ -1,0 +1,24 @@
+{
+  "version": 1,
+  "map": "wybrzeze_czarow_sub1",
+  "basis": {
+    "lang": "eng",
+    "digest": "bdb8f8743adc440b32a2d232050a886d3cbd1a35a41faba50db3ce94c3048d29"
+  },
+  "strings": {
+    "0": "COSTA DEGLI INCANTESIMI - COVO DEI SERPENTI",
+    "1": "żyrosław",
+    "30": "Björn",
+    "31": "Hring",
+    "32": "Ivar",
+    "50": "Tu",
+    "51": "Serpenti mannari",
+    "100": "@Distruggi il covo dei serpenti.",
+    "101": "Riporta gli eroi all'uscita."
+  },
+  "briefings": {
+    "500": "<font:$local$\\fonts\\fonthead16bld.fnt>\nCOVO DEI SERPENTI\n<font:$local$\\fonts\\font12.fnt>\n\nEntrati nelle catacombe, dovemmo attraversare un tunnel lungo e piuttosto stretto. Ma quello che trovammo alla fine superò ogni nostra aspettativa!\n\n<usericon:1,197,56>\n\nInvece di una rete di gallerie, come ci aspettavamo, c'era un'enorme caverna in cui cresceva perfino un po' di vegetazione! Naturalmente tutto era coperto da una strana bava, il che confermò il nostro sospetto: i serpenti mannari si erano trovati proprio un bel posticino.\n\n\"Quanta bava... ce n'è dappertutto...\" disse Ivar.\n\n\"I serpenti devono avere qui il loro covo, non c'è altra spiegazione. Troppa bava, e lo spazio è insolitamente aperto\", osservò Hring.\n\nPian piano cominciammo a esplorare la caverna, cercando il punto debole di quel nascondiglio.",
+    "501": "<font:$local$\\fonts\\fonthead16bld.fnt>\nSERPENTI STERMINATI\n<font:$local$\\fonts\\font12.fnt>\n\nRipulimmo l'intero covo dai serpenti. Ora non dovrebbero più moltiplicarsi.\n\n\"Queste canaglie sono dannatamente forti...\" disse Hring.\n\n\"È finita, da questa caverna non uscirà più nessuna creatura\", rispose Ivar.\n\n\"Già... andiamo all'uscita il prima possibile, questa caverna mi deprime\", conclusi io.",
+    "502": "<font:$local$\\fonts\\fonthead16bld.fnt>\nMISSIONE FALLITA\n<font:$local$\\fonts\\font12.fnt>\n\nÈ morto uno dei protagonisti della missione, che senza di lui non può più essere compiuta...\n\n<picture:$local$\\graphics\\Hero_Dead_F.pcx>"
+  }
+}

@@ -76,6 +76,7 @@ export function buildingPanelActions(host: BuildingPanelHost): BuildingPanelActi
     setConstructionPriority: order((id, prioritized: boolean) =>
       send({ kind: 'setConstructionPriority', building: id as Entity, prioritized }),
     ),
+    setTempleFire: order((id, lit: boolean) => send({ kind: 'setTempleFire', building: id as Entity, lit })),
     setStorageMinimum: (player, goodType, amount) => {
       if (player !== host.viewer.seat()) {
         host.cue('fail');

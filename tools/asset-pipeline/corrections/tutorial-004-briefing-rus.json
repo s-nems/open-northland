@@ -1,5 +1,5 @@
 {
-  "reason": "U nas przycisk rozbudowy w panelu budynku nazywa się ROZBUDUJ (skrót R) i jest widoczny zawsze; nieaktywny, dopóki ludzie nie zdobędą potrzebnej wiedzy, a materiały na rozbudowę donoszą się dopiero po jej rozpoczęciu (plac budowy dla budowniczych), nie trzeba ich mieć wcześniej. Wyrób wybiera się przyciskiem towaru w sekcji PRODUKCJA panelu osadnika, nie w zakładce PRODUKT/PRACA. Poprawione są też błędy gramatyczne, literówki i nazwy wyrobów. Nazwy zawodów i warsztatów odpowiadają interfejsowi: Столяр, Портной, Скотный двор; polecenie rozbudowy ma formę rozkazującą, a okno budynku nie jest ekranem budowy. Naczynia powstają już w warsztacie garncarskim 2. Strona i cel uczą wyboru naczyń w sekcji PRODUKCJA i wyprodukowania przynajmniej jednej sztuki, zamiast niedostępnej kolejnej rozbudowy.",
+  "reason": "U nas przycisk rozbudowy w panelu budynku nazywa się ROZBUDUJ (skrót R) i jest widoczny zawsze; nieaktywny, dopóki ludzie nie zdobędą potrzebnej wiedzy, a materiały na rozbudowę donoszą się dopiero po jej rozpoczęciu (plac budowy dla budowniczych), nie trzeba ich mieć wcześniej. Wyrób wybiera się przyciskiem towaru w sekcji PRODUKCJA panelu osadnika, nie w zakładce PRODUKT/PRACA. Poprawione są też błędy gramatyczne, literówki i nazwy wyrobów. Nazwy zawodów i warsztatów odpowiadają interfejsowi: Столяр, Портной, Скотный двор; polecenie rozbudowy ma formę rozkazującą, a okno budynku nie jest ekranem budowy.",
   "file": "maps/community/tutorial_004/text/rus/briefings/briefings.txt",
   "sha256": "054d2e1989ca7ee72907adf3827dd99f48d6bed74a7a4dd7e0e5242da1e6ef38",
   "encoding": "windows-1251",
@@ -10,7 +10,7 @@
     },
     {
       "from": "Усовершенствование ГОНЧАРНИ 2! Для этого щелкните по гончарне, чтобы открыть ее экран строительства. Щелкните по кнопке \"НАЧАТЬ УЛУЧШЕНИЕ\". Эта кнопка появляется, только если доступны материалы, необходимые для улучшения.",
-      "to": "Если гончарня еще не достигла уровня 2, сначала завершите ее улучшение. Выберите гончара, работающего в ГОНЧАРНЕ 2, и щелкните по активной кнопке с посудой в разделе ПРОИЗВОДСТВО на его панели. Произведите хотя бы одну единицу посуды!"
+      "to": "Улучшите ГОНЧАРНЮ 2! Для этого щелкните по гончарне, чтобы открыть панель здания. Щелкните по кнопке \"УЛУЧШИТЬ\" (или нажмите R). Эта кнопка становится активной, только когда ваши люди получат нужные знания. Материалы для улучшения затем доставят на стройку, а улучшение выполнят ваши строители."
     },
     {
       "from": "Усовершенствование МАСТЕРСКОЙ КАМЕНОТЕСА! Для этого щелкните по каменотесной мастерской, чтобы открыть ее экран строительства. Щелкните по кнопке \"НАЧАТЬ УЛУЧШЕНИЕ\". Эта кнопка появляется, только если доступны материалы, необходимые для улучшения.",
@@ -155,14 +155,6 @@
     {
       "from": "Теперь вы можете строить животноводческую ферму - гончар изготовил необходимую черепицу!",
       "to": "Теперь вы можете строить скотный двор - гончар изготовил необходимую черепицу!"
-    },
-    {
-      "from": "УЛУЧШЕНИЕ ГОНЧАРНИ 2",
-      "to": "ПРОИЗВОДСТВО ПОСУДЫ"
-    },
-    {
-      "from": "Гончар приобрел достаточно опыта в изготовлении черепицы, теперь он может делать посуду. Нужно снова усовершенствовать гончарню. ",
-      "to": "У гончара уже достаточно опыта, чтобы делать посуду. Он производит ее в гончарне 2. "
     }
   ]
 }

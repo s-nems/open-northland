@@ -33,14 +33,15 @@ import {
   serializeSaveGame,
   type TerrainMap,
 } from '../../../src/index.js';
-import { hexagonRing, hexDistance } from '../../../src/nav/halfcell.js';
+import { hexDistance } from '../../../src/nav/halfcell.js';
 import { interactionNode, vehicleAnchor } from '../../../src/systems/footprint/index.js';
 import { removeSettlerSilently } from '../../../src/systems/lifecycle/death.js';
 import { noteUnreachableGoal } from '../../../src/systems/settlers/unreachable-goals.js';
 import { TRADE_DOCK_RETRY_TICKS } from '../../../src/systems/trade/index.js';
 import { mooringTargetOf } from '../../../src/systems/trade/ship.js';
 import { boardingNode } from '../../../src/systems/vehicles/crew.js';
-import { createVehicle, removeVehicle } from '../../../src/systems/vehicles/index.js';
+import { HULL_GAP_NODES } from '../../../src/systems/vehicles/dock.js';
+import { createVehicle, mooringSpotsOf, removeVehicle } from '../../../src/systems/vehicles/index.js';
 import {
   cargoHandHasWork,
   consumeVehicleGood,
@@ -97,6 +98,8 @@ const CATAPULT_JOB = 54;
 const OXCART_JOB = 51;
 /** Rows between two ships moored side by side. */
 const FLEET_ROWS = 10;
+/** The node column halfway across the strait. */
+const MID_STRAIT_X = STRAIT_FROM + STRAIT_TO;
 /** A strait node a moored ship spawns on, its door on the east shore. */
 const EAST_SHIP_X = 28;
 /** Open water for a player's goto. */
@@ -106,8 +109,6 @@ const SMALL_LOAD = 4;
 const FOOT_LOAD = 3;
 const SHIP_PLANKS = 7;
 const FOOD_ABOARD = 3;
-/** The ship's door distance. */
-const DOOR_DISTANCE = 4;
 /** Failed docks a test waits for. */
 const COOLDOWNS = 2;
 /** More wood than a handcart's fifteen, less than a small ship's fifty. */
@@ -312,7 +313,7 @@ function refusalsOf(sim: Simulation, vehicle?: Entity): string[] {
     );
 }
 
-/** A loaded route to the east island whose stop's mooring has a ship lying on all its dock nodes. */
+/** A loaded route to the east island whose shore has a neighbour's ship lying over every dock node. */
 function blockedVoyage() {
   const sim = newSim();
   const west = houseAt(sim, WEST_HOUSE_CELL, HUMAN, [[WOOD, SMALL_LOAD]]);
@@ -325,18 +326,19 @@ function blockedVoyage() {
   const ctx = ctxOf(sim);
   const terrain = ctx.terrain;
   if (terrain === undefined) throw new Error('mapless sim');
-  const door = interactionNode(sim.world, ctx, east);
-  if (door === null) throw new Error('house with no door');
-  const target = mooringTargetOf(sim.world, ctx, terrain, ship, terrain.nodeAt(door.x, door.y));
-  if (target === null) throw new Error('no mooring on the east shore');
-  const { x, y } = terrain.coordsOf(target);
-  const water = [...hexagonRing({ hx: x, hy: y }, DOOR_DISTANCE)]
-    .map(({ point }) => point)
-    .filter((p) => terrain.inBounds(p.hx, p.hy) && !terrain.isWalkable(terrain.nodeAt(p.hx, p.hy)));
-  const middle = water[Math.floor(water.length / 2)];
-  if (middle === undefined) throw new Error('no water on the ring');
-  const blocker = vehicleAt(sim, SHIP_SMALL, middle.hx, middle.hy, NEIGHBOUR);
-  return { sim, trader, ship, east, blocker };
+  const docks = mooringSpotsOf(sim.world, ctx, terrain, ship)?.docks;
+  const hull = ctx.content.vehicles.find((type) => type.typeId === SHIP_SMALL)?.logicSize;
+  if (docks === undefined || hull === undefined) throw new Error('no ship docks');
+  const blockers: Entity[] = [];
+  const anchors: HalfCellNode[] = [];
+  for (const node of [...docks].sort((a, b) => a - b)) {
+    const { x, y } = terrain.coordsOf(node);
+    const at = { hx: x, hy: y };
+    if (x < MID_STRAIT_X || anchors.some((other) => hexDistance(other, at) <= hull)) continue;
+    blockers.push(vehicleAt(sim, SHIP_SMALL, x, y, NEIGHBOUR));
+    anchors.push(at);
+  }
+  return { sim, trader, ship, east, blockers };
 }
 
 function mooringOf(sim: Simulation, ship: Entity): HalfCellNode {
@@ -976,7 +978,7 @@ describe("a player's order to a moored pinned ship with its trader ashore", () =
 
 describe('a voyage that cannot dock', () => {
   it('lands the trader, tries again only after the cooldown, and sails once the shore opens', () => {
-    const { sim, trader, east, blocker } = blockedVoyage();
+    const { sim, trader, east, blockers } = blockedVoyage();
     const failedAt: number[] = [];
     for (let elapsed = 0; elapsed < COOLDOWNS * TRADE_DOCK_RETRY_TICKS + VOYAGE_TICKS; elapsed++) {
       sim.step();
@@ -991,9 +993,55 @@ describe('a voyage that cannot dock', () => {
     expect(sim.world.has(trader, Position)).toBe(true);
     expectSound(sim);
 
-    removeVehicle(sim.world, ctxOf(sim), blocker, 'script');
+    for (const blocker of blockers) removeVehicle(sim.world, ctxOf(sim), blocker, 'script');
     runUntil(sim, COOLDOWNS * TRADE_DOCK_RETRY_TICKS + LONG_TICKS, () => stockOf(sim, east, WOOD) > 0);
     expect(stockOf(sim, east, WOOD)).toBeGreaterThan(0);
+  });
+});
+
+describe('two pinned ships on routes sharing a stop', () => {
+  it('lie at its shore side by side, each unloading there, rather than one waiting for the other', () => {
+    const sim = newSim();
+    const east = houseAt(sim, EAST_HOUSE_CELL, HUMAN);
+    const routes = [
+      { cell: WEST_HOUSE_CELL, row: HOUSE_ROW, shipRow: SHIP_ROW },
+      { cell: SOUTH_WEST_HOUSE_CELL, row: SOUTH_ROW, shipRow: SHIP_ROW - FLEET_ROWS },
+    ].map(({ cell, row, shipRow }) => {
+      const west = houseAt(sim, cell, HUMAN, [[WOOD, LOAD]], row);
+      const trader = traderAt(sim, cell, row + 2);
+      const ship = vehicleAt(sim, SHIP_SMALL, WEST_SHIP_X, shipRow);
+      const cart = vehicleAt(sim, HANDCART, 2 * cell, 2 * (row + 2));
+      order(sim, { kind: 'attachToVehicle', entity: trader, vehicle: cart });
+      pin(sim, trader, ship);
+      attach(sim, trader, west);
+      attach(sim, trader, east);
+      mark(sim, trader, east, WOOD);
+      return { trader, ship };
+    });
+    const terrain = ctxOf(sim).terrain;
+    if (terrain === undefined) throw new Error('mapless sim');
+    const eastIsland = (at: HalfCellNode): boolean =>
+      terrain.componentOf(terrain.nodeAt(at.hx, at.hy)) === continentOf(sim, east);
+    const eastShore = (ship: Entity): boolean =>
+      sim.world.get(ship, Vehicle).moored && eastIsland(mooringOf(sim, ship));
+    const refused: string[] = [];
+    let apart: number | undefined;
+
+    for (let elapsed = 0; elapsed < LONG_TICKS && stockOf(sim, east, WOOD) < 2 * LOAD; elapsed++) {
+      sim.step();
+      refused.push(...routes.flatMap(({ ship }) => refusalsOf(sim, ship)));
+      const [first, second] = routes.map(({ ship }) =>
+        eastShore(ship) ? vehicleAnchor(sim.world, ship) : null,
+      );
+      if (first != null && second != null) apart ??= hexDistance(first, second);
+    }
+
+    const hull = ctxOf(sim).content.vehicles.find((type) => type.typeId === SHIP_SMALL)?.logicSize;
+    if (hull === undefined) throw new Error('small ship not in the fixture');
+    expect(apart).toBeGreaterThan(2 * hull + HULL_GAP_NODES);
+    expect(stockOf(sim, east, WOOD)).toBe(2 * LOAD);
+    expect(refused).toEqual([]);
+    expectSound(sim);
   });
 });
 

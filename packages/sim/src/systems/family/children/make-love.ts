@@ -42,7 +42,7 @@ export function birth(
   home: Entity,
   sex: 'female' | 'male',
 ): void {
-  const baby = spawnNewborn(world, ctx.content, mother, home, sex, ctx.names);
+  const baby = spawnNewborn(world, ctx.content, mother, home, sex, ctx.names, ctx.tick);
   world.mut(mother, Marriage).child = baby;
   world.mut(father, Marriage).child = baby;
   // A counter-funded order pays its assistant counter the moment the child exists.

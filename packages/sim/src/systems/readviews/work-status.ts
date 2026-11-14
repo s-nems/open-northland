@@ -23,6 +23,7 @@ import {
   jobGatherGoods,
   jobGathersGood,
 } from '../economy/gather-goods.js';
+import { batchWorkedBy, productionAssignmentsInto } from '../economy/production/assignments.js';
 import { canStartCycle, outputRoomForCycles, waitingForRecipeInput } from '../economy/production/cycles.js';
 import { craftablePool } from '../economy/production/rotation.js';
 import { liveHaulFlag, liveWorkFlag } from '../economy/work-flag.js';
@@ -32,7 +33,6 @@ import { jobCanBuild } from '../settlers/atomics/start.js';
 import { strandedWorkplaceDoor } from '../settlers/drives/cut-off.js';
 import { carriedGoodForm } from '../settlers/drives/economy/delivery-targets.js';
 import { isBoundToStorageSink } from '../settlers/drives/economy/store-policy.js';
-import { FetchableStock } from '../settlers/targets/stores/fetchable-stock.js';
 import { StoreSinks } from '../settlers/targets/stores/sinks.js';
 import { navigationLimitFor } from '../signposts/index.js';
 import {
@@ -40,7 +40,9 @@ import {
   isWorkplaceOperator,
   isWorkplaceOutput,
   mayFetchGoodFrom,
+  presentOperatorsInto,
   recipesByProductOf,
+  type StaffedScratch,
   stockCapacity,
   workplaceStocksGood,
   workplaceStoredGoods,
@@ -50,15 +52,16 @@ import { gatherWorkStatus } from './gather-work-status.js';
 import { GoodSources } from './good-sources.js';
 import { type HerdHold, herdHoldOf } from './herd-hold.js';
 import { isScoutJob } from './jobs.js';
-import { type StoreReach, storeReach } from './store-reach.js';
+import { inputReach, type StoreReach, storeReach } from './store-reach.js';
 
 export interface MissingWorkInput {
   readonly goodType: number;
   readonly required: number;
   readonly available: number;
   readonly missing: number;
-  /** Where the worker's side keeps or brings in the input: a store holding a unit, a workplace turning
-   *  it out or a gatherer of it, as {@link inputSources} lists them. */
+  /** Where the worker's side keeps or brings in the input, as its fetch from the workplace door searches
+   *  ({@link inputReach}): a store lending a unit, or a workplace turning it out or a gatherer of it, as
+   *  {@link producedLandings} lists them. */
   readonly source: StoreReach;
   /** The kind of trade that gathers the input off the map when no building type makes it, so only a
    *  gatherer of that trade supplies it; null otherwise. */
@@ -160,7 +163,8 @@ export function workStatus(world: World, ctx: SystemContext, entity: Entity): Wo
       ? builderWorkStatus(world, ctx, entity)
       : { kind: 'unknown', reason: 'constructionSearch' };
   }
-  if (liveHaulFlag(world, entity) !== undefined) return { kind: 'nothingAtFlag' };
+  if (isCarrierJob(ctx, jobType) && liveHaulFlag(world, entity) !== undefined)
+    return { kind: 'nothingAtFlag' };
   // A store's carrier reaches the idle tail of its ladder only after the porter and haul rungs found
   // nothing in reach a store would take.
   if (
@@ -182,8 +186,8 @@ export function workStatus(world: World, ctx: SystemContext, entity: Entity): Wo
   const recipes = recipesByProductOf(world, ctx, workplace);
   if (recipes === undefined) return { kind: 'unknown', reason: 'unsupportedWorkplace' };
 
-  const newest = world.tryGet(workplace, Production)?.cycles.at(-1);
-  if (newest !== undefined) return { kind: 'crafting', goodType: newest.goodType };
+  const batch = crafterBatchOf(world, ctx, workplace, entity);
+  if (batch !== undefined) return { kind: 'crafting', goodType: batch.goodType };
 
   const pool = craftablePool(world, ctx, entity, recipes);
   if (pool.length === 0) {
@@ -234,11 +238,13 @@ export function workStatus(world: World, ctx: SystemContext, entity: Entity): Wo
               required: input.amount,
               available,
               missing: input.amount - available,
-              source: storeReach(
+              source: inputReach(
                 world,
                 ctx,
                 entity,
-                inputSources(world, ctx, entity, workplace, input.goodType),
+                workplace,
+                input.goodType,
+                producedLandings(world, ctx, entity, workplace, input.goodType),
               ),
               gatheredBy: gatheringTradeOf(ctx, input.goodType),
             },
@@ -307,18 +313,17 @@ function builderWorkStatus(world: World, ctx: SystemContext, builder: Entity): W
 }
 
 /**
- * Where an operator may get `goodType` for `workplace`: the stores lending a unit, as its fetch searches
- * them, then its side's sources of the good ({@link GoodSources}). A producer's next unit lands on its own
- * shelf, where the fetch finds it, so an empty farm next door still supplies the mill.
+ * Where the side's sources of `goodType` ({@link GoodSources}) land it for `workplace`'s operator. A
+ * producer's next unit lands on its own shelf, where the fetch finds it, so an empty farm next door still
+ * supplies the mill.
  */
-function* inputSources(
+function* producedLandings(
   world: World,
   ctx: SystemContext,
   operator: Entity,
   workplace: Entity,
   goodType: number,
 ): Generator<Entity> {
-  yield* FetchableStock.of(world, ctx).holders(goodType);
   for (const source of GoodSources.of(world, ctx).sources(goodType, ownerOf(world, operator))) {
     const found = world.has(source, Settler)
       ? landingOf(world, ctx, source, workplace, goodType)
@@ -374,6 +379,20 @@ interface PoolEntry {
   readonly good: number;
   readonly recipe: Recipe;
 }
+
+/** The batch production gives `entity` at `workplace`: its share among the operators on the door, or, away
+ *  from it, the one it works on its return while no colleague holds it. */
+function crafterBatchOf(world: World, ctx: SystemContext, workplace: Entity, entity: Entity) {
+  const staffing = presentOperatorsInto(world, ctx, workplace, crewScratch);
+  const seat = staffing.kind === 'staffed' ? staffing.operators.indexOf(entity) : -1;
+  if (staffing.kind !== 'staffed' || seat < 0) return batchWorkedBy(world, ctx, workplace, entity);
+  const batch = productionAssignmentsInto(world, ctx, workplace, staffing.operators, batchScratch)[seat];
+  return batch === undefined ? undefined : world.tryGet(workplace, Production)?.cycles[batch];
+}
+
+// The crew and assignment lists one status read uses and drops.
+const crewScratch: StaffedScratch = { kind: 'staffed', operators: [] };
+const batchScratch: number[] = [];
 
 /** The operator's pool in the order its rotation walks it, starting at the cursor. */
 function rotationOrder(

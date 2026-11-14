@@ -70,7 +70,7 @@ export function explore(
   // The walk it was on is superseded, so the first leg goes out this tick; a clip in flight plays to its
   // end, since the sweep below waits for the scout to be free anyway.
   world.remove(e, PlayerOrder);
-  supersedeStandingOrders(world, e);
+  supersedeStandingOrders(world, ctx, e);
   clearNavState(world, e);
   world.add(e, ExploreOrder, {
     origin: standingNode(world, ctx.terrain, e),

@@ -1,6 +1,7 @@
 import { mkdir, rm, symlink, writeFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { DATA_PACK_VERSION } from '../../../scripts/data-pack.mjs';
 import { assertOutStaysInCheckout, parseArgs, resolveArgs } from '../src/args.js';
 import { resolveDataPack } from '../src/roots.js';
 import { makeTempDir } from './support/game-tree.js';
@@ -58,7 +59,7 @@ describe('resolveDataPack', () => {
       join(base, 'manifest.json'),
       JSON.stringify({
         format: 'open-northland-data',
-        version: 4,
+        version: DATA_PACK_VERSION,
         base: 'base',
         components: [{ id: 'synthetic', kind: 'base', sha256: '0'.repeat(64) }],
         campaigns: [],

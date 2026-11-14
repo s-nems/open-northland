@@ -64,14 +64,18 @@ function trainingFacts(
   if (role === 'woman' || role === 'child') return [];
   const facts: HoverCardFact[] = [];
   const trainedRows = experienceRows(ctx, ent.components);
+  const copy = messages().hud.settlerPanel;
   for (const trained of trainedRows.slice(0, EXPERIENCE_FACTS_MAX)) {
     facts.push({
       label: trained.label,
-      // The bonus alone keeps the card narrow; a track that buys none (a carrier's) counts its repeats.
+      // The bonus alone keeps the card narrow; a track that buys none (a carrier's) counts its repeats,
+      // and the fight counter reads its share, as its panel row does.
       value:
-        trained.bonusPct === null
-          ? formatMessage(messages().hud.settlerPanel.repeats, { count: trained.repeats })
-          : `+${trained.bonusPct}%`,
+        trained.fight !== null
+          ? `${trained.fight.sharePct}%`
+          : trained.bonusPct === null
+            ? formatMessage(copy.repeats, { count: trained.repeats })
+            : `+${trained.bonusPct}%`,
     });
   }
   const hidden = trainedRows.length - EXPERIENCE_FACTS_MAX;

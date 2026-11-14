@@ -35,6 +35,7 @@ import {
   mannedTowers,
   raidOnTheSettlement,
   seatRaiders,
+  seatVehicleThreats,
   sortieOrders,
   towerPostOrders,
 } from './defence/index.js';
@@ -235,7 +236,7 @@ function deriveSettlementDefence(
     intruders: answered,
     commands: [
       ...enlistOrders(world, ctx, player),
-      ...alarmOrders(world, ctx, terrain, owned, raiders),
+      ...alarmOrders(world, ctx, terrain, owned, raiders, seatVehicleThreats(world, ctx, terrain, player)),
       ...posts.commands,
       ...sortie,
     ],

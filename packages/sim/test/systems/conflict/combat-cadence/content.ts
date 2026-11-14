@@ -29,9 +29,9 @@ export const SOLDIER_SILENT = 36;
 /** A short-bow soldier: a ranged weapon with a dead zone, `minimumrange 3`. */
 export const SOLDIER_BOW = 37;
 export const BOW_MIN_RANGE = 3;
-/** The hero axe's `mainType` in `weapons.ini`, a class no fight bucket reads. */
+/** The hero axe's `mainType` in `weapons.ini`. */
 export const HERO_AXE_MAIN_TYPE = 5;
-export const HERO = 42; // hero band - its swings feed the `hero general` track (70), not soldier's (69)
+export const HERO = 42; // hero band
 
 export const CHAIN_CLASS = 3; // armor typeId/material 3
 export const PLATE_CLASS = 4; // armor typeId/material 4
@@ -260,8 +260,7 @@ export function combatCadenceContent(): ContentSet {
       // The stagger animation: length 50, zero events (purely visual flinch), NOT interruptible.
       { id: 'woman_attacked', name: 'woman_attacked', length: 50, interruptible: false },
     ],
-    // The `soldier general` track (type 69) whose experienceFactor is the per-swing fight-XP rate,
-    // and the `hero general` sibling (70) the hero band accrues instead.
+    // The `soldier general` (69) and `hero general` (70) tracks; a landed hit accrues neither.
     jobExperience: [
       {
         typeId: 69,

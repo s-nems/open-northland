@@ -232,6 +232,17 @@ export const WORLD: ArticleGroup = {
           ],
         },
         {
+          h: 'Schiffe im Kampf',
+        },
+        {
+          list: [
+            'Vom Deck eines [[vehicle:ship_small|Schiffs]], des Schiffs, das ein Katapult trägt, schießen bis zu {{deck.archers}} Soldaten mit Bogen auf Feinde, die du siehst. Feindliche Schiffe kommen zuerst. Ein Großes Schiff hat keine Bogenschützen an Deck.',
+            'Vom Deck reicht ein Bogen {{deck.rangeLoss}} Hexfelder weniger weit als an Land, wartet zwischen den Schüssen {{deck.slowerPct}}% länger und streut breiter: [[article:aim|Treffen und Schießen]].',
+            'Ein Stein des Katapults nimmt einem Schiff {{ship.stoneFactor}}-mal so viel wie einem anderen Fahrzeug.',
+            'Unter {{ship.firePct}}% Gesundheit brennt ein Schiff und verliert {{ship.fireLoss}} Gesundheit pro Sekunde, bis es sinkt. Bauarbeiter reparieren ein angedocktes Schiff wie ein Gebäude, und das Feuer erlischt, sobald es wieder {{ship.firePct}}% hat.',
+          ],
+        },
+        {
           h: 'Verlust eines Fahrzeugs',
         },
         {
@@ -640,11 +651,18 @@ export const WORLD: ArticleGroup = {
               ['Gesundheit', '+{{aura.perSecond}} pro Sekunde, bis {{aura.ceiling}}'],
               ['Religion', '+{{aura.pietyPct}}% pro Sekunde, wenn der Balken bis {{need.satedPct}}% steht'],
               ['Für wen', 'Alle deine Leute, Kinder nur Gesundheit'],
-              ['Bedingung', 'Tempel fertig und unbeschädigt'],
+              ['Bedingung', 'Tempel fertig, unbeschädigt und mit brennendem [[good:holy_oil|Öl]]'],
+              [
+                'Öl',
+                '1 reicht für {{aura.oilBurnTime}}, der volle Vorrat von {{aura.oilUnits}} für {{aura.oilFullBurnTime}}',
+              ],
               ['Mehrere Tempel', 'Auren addieren sich nicht'],
             ],
             foot: 'Gesundheit über {{health.human}} bleibt, bis Wunden sie nehmen.',
           },
+        },
+        {
+          p: '[[job:druid|Druiden]] bringen das Öl selbst zu den Tempeln im Bereich ihrer [[article:roads|Wegweiser]]. Auch ein dem Tempel zugeteilter [[job:carrier|Träger]] oder ein [[job:trader|Händler]] kann es bringen. Ein neuer Tempel beginnt mit dem Öl aus seinen Baukosten. Ohne Öl oder beschädigt erlöschen sein Schein und sein Feuer. Du kannst das Feuer im Fenster des Tempels auch selbst löschen: er behält dann sein Öl und segnet niemanden, bis du es wieder entzündest.',
         },
       ],
       see: ['article:needs', 'article:health', 'building:work_temple', 'good:holy_oil'],

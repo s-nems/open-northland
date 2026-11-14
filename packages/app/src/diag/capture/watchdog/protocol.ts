@@ -11,4 +11,6 @@ export interface Thaw {
   readonly freezeMs: number;
   readonly frozenAt: number;
   readonly context: CaptureContext | null;
+  /** The freeze began just after the machine woke from sleep. */
+  readonly afterWake: boolean;
 }

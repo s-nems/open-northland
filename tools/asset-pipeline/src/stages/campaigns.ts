@@ -9,7 +9,7 @@ import {
   type LocalizedText,
   type MapTextLanguage,
   OVERLAY_LANGUAGES,
-  SOURCE_LANGUAGES,
+  PACK_LANGUAGES,
 } from '@open-northland/data';
 import {
   type ConvertedMap,
@@ -167,8 +167,8 @@ function stageTitle(map: ConvertedMap, languages: readonly MapTextLanguage[]): L
 
 /**
  * The campaign's text languages: the pack's, then each overlay language every one of its maps took an
- * overlay in. A language only some maps carry is left out with a warning, since a campaign plays in one
- * language throughout.
+ * overlay in; a shipped language's overlays are redundant, never applied. A language only some maps
+ * carry is left out with a warning, since a campaign plays in one language throughout.
  */
 function campaignLanguages(campaign: CampaignSource, maps: readonly ConvertedMap[]): MapTextLanguage[] {
   const languages: MapTextLanguage[] = [...campaign.languages];
@@ -186,7 +186,7 @@ function campaignLanguages(campaign: CampaignSource, maps: readonly ConvertedMap
   return languages;
 }
 
-/** The pack's title, with each overlay language's campaign overlay over it. */
+/** The pack's title, with each overlay language's campaign overlay where the pack has no title in it. */
 function campaignTitle(roots: SourceRoots, campaign: CampaignSource): LocalizedText {
   const title: LocalizedText = { ...campaign.title };
   for (const [lang, overlays] of roots.overlays?.campaigns ?? []) {
@@ -195,6 +195,12 @@ function campaignTitle(roots: SourceRoots, campaign: CampaignSource): LocalizedT
     if (isSourceLanguage(lang)) {
       console.warn(
         `[pipeline] campaign ${campaign.id}: refused ${lang} title overlay: source-language text belongs in corrections`,
+      );
+      continue;
+    }
+    if (title[lang] !== undefined) {
+      console.warn(
+        `[pipeline] campaign ${campaign.id}: skipped ${lang} title overlay: the pack ships the title`,
       );
       continue;
     }
@@ -257,7 +263,7 @@ async function convertCampaign(
   const logo: Partial<Record<MapTextLanguage, string>> = {};
   const movies: Campaign['movies'] = {};
   // The pack ships presentation and films only in the languages its maps carry.
-  for (const language of SOURCE_LANGUAGES) {
+  for (const language of PACK_LANGUAGES) {
     const file = campaign.logo?.[language];
     if (file !== undefined) logo[language] = await asset(file);
     const films = campaign.movies[language];

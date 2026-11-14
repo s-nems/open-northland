@@ -11,7 +11,8 @@ import type { EnemyFire } from '../../../ai-shared/military/defence/index.js';
 import { anchorNodeOf, firstRingNode } from '../../../ai-shared/node-geometry.js';
 import type { SystemContext } from '../../../context.js';
 import { shipYardProbe } from '../../../footprint/placement/vehicle-site.js';
-import { seatBaseLand } from '../../base.js';
+import { rallyNodeOf } from '../../../orders/rally-point.js';
+import { seatBarracksOf, seatBaseLand } from '../../base.js';
 import { SHIP_JOINERY_SHORE_RINGS, smallestShipHouse } from '../../joinery-role.js';
 import { knownResourceTest, nearestLiveResource } from '../../live-resources.js';
 import { coastsOf, seaRouteOf } from '../../sea-route.js';
@@ -63,6 +64,14 @@ function affinityNode(
     }
     case 'mapCentre':
       return mapCentreNode(terrain);
+    case 'rallyFlag': {
+      const barracks = seatBarracksOf(world, ctx, player);
+      if (barracks === null) return null;
+      const flag = rallyNodeOf(world, terrain, barracks);
+      if (flag === undefined) return anchorNodeOf(world, barracks);
+      const at = terrain.coordsOf(flag);
+      return { hx: at.x, hy: at.y };
+    }
   }
 }
 

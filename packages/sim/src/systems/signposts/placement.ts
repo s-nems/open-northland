@@ -12,13 +12,16 @@ import type { Entity, World } from '../../ecs/world.js';
 import { hexDistanceBetween, type NodeArea, nodeOfPosition, positionOfNode } from '../../nav/halfcell.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
+import { evictWorkFlagsFromCells } from '../economy/work-flag.js';
 import { buildingFlagBodyNodes, doorNodeOf, houseFootprintOf } from '../footprint/geometry.js';
 import {
   buildingDoorwayNodes,
-  canPlaceWorkFlag,
   nearestWorkFlagPlacement,
+  workFlagBlockerCounts,
   workFlagPlacementTest,
 } from '../footprint/index.js';
+import { clearLineGround, onlyLineGroundBlocksAt } from '../footprint/line-ground.js';
+import { landscapeBlocks } from '../landscape/view.js';
 import { peaceGroundFor, peaceGroundWithin } from '../match/peace.js';
 import { canonicalById, entityNode } from '../spatial/nodes.js';
 import { settleSignpostLinks, unlinkSignpost } from './links.js';
@@ -26,11 +29,38 @@ import { landComponentAt, sameLand, signpostNetwork } from './network.js';
 import { plannedSignposts, type SignpostSpot } from './planned.js';
 
 /**
- * Whether `player` may erect a signpost at `node`: open walkable ground under the work-flag rule, off any
+ * The signpost's ground test, resolved once for a decision that asks it per node: the work-flag rule,
+ * except that a work flag, or a mushroom, a crop, herbs or another resource a road clears, does not refuse
+ * it, while a tree or a stone does (`onlyLineGroundBlocksAt`). Erecting clears the resource and pushes the
+ * flag aside. Signposts do not block walking, so walkability is a ground-quality gate only. Live views, as
+ * in `workFlagPlacementTest`.
+ */
+function signpostGroundTest(
+  world: World,
+  content: ContentSet,
+  terrain: TerrainGraph,
+): (node: NodeId) => boolean {
+  const flagGround = workFlagPlacementTest(world, content, terrain);
+  const landscape = landscapeBlocks(world, terrain).walk;
+  const blockers = workFlagBlockerCounts(world, content, terrain);
+  return (node) =>
+    flagGround(node) ||
+    (terrain.isWalkable(node) &&
+      !landscape.has(node) &&
+      onlyLineGroundBlocksAt(
+        world,
+        content,
+        terrain.xOf(node),
+        terrain.yOf(node),
+        blockers.total(node) - blockers.markers(node),
+      ));
+}
+
+/**
+ * Whether `player` may erect a signpost at `node`: open ground under {@link signpostGroundTest}, off any
  * existing signpost's cell, not inside {@link SIGNPOST_SPACING_NODES} of a same-player signpost, and off the
  * ground a lobby peace keeps the seat off. The original spaces same-player posts; our own rule waives that
- * for a post on another land, which never links with it. Signposts do not block walking, so walkability is
- * a ground-quality gate only.
+ * for a post on another land, which never links with it.
  */
 export function canPlaceSignpost(
   world: World,
@@ -39,9 +69,7 @@ export function canPlaceSignpost(
   node: NodeId,
   player: number,
 ): boolean {
-  // canPlaceWorkFlag already covers ground quality, standing bodies, markers, and existing signpost
-  // cells; the spacing is the signpost-specific extra gate.
-  if (!canPlaceWorkFlag(world, ctx, terrain, node)) return false;
+  if (!signpostGroundTest(world, ctx.content, terrain)(node)) return false;
   const c = terrain.coordsOf(node);
   if (insideSpacing(terrain, signpostNetwork(world).get(player) ?? [], c.x, c.y)) return false;
   return !(peaceGroundFor(world, player)?.bars(c.x, c.y) ?? false);
@@ -93,7 +121,7 @@ export function signpostProbe(
   within?: NodeArea,
   { planned = false }: { readonly planned?: boolean } = {},
 ): SignpostProbe {
-  const placeable = workFlagPlacementTest(world, content, terrain);
+  const placeable = signpostGroundTest(world, content, terrain);
   const network = signpostNetwork(world).get(player) ?? [];
   const spots: readonly SignpostSpot[] = planned
     ? [...network, ...plannedSignposts(world, terrain, player)]
@@ -113,7 +141,9 @@ export function signpostProbe(
 /**
  * Erect a signpost owned by `player` at `node`, the build-guide atomic's completion effect. Re-validates
  * {@link canPlaceSignpost}, since the world may have changed during the hammer swing, and returns null
- * when the spot is no longer legal. Source basis: observed original, one hammer strike and no materials.
+ * when the spot is no longer legal; otherwise clears the node as a road does and pushes a work flag there
+ * to the nearest free field, as a building does. Source basis: observed original, one hammer strike and
+ * no materials.
  */
 export function erectSignpost(
   world: World,
@@ -123,7 +153,10 @@ export function erectSignpost(
   player: number,
 ): Entity | null {
   if (!canPlaceSignpost(world, ctx, terrain, node, player)) return null;
-  return createSignpost(world, terrain, node, player, ctx.content);
+  clearLineGround(world, ctx, [{ hx: terrain.xOf(node), hy: terrain.yOf(node) }]);
+  const post = createSignpost(world, terrain, node, player, ctx.content);
+  evictWorkFlagsFromCells(world, ctx, terrain, new Set([node]));
+  return post;
 }
 
 /** Stand `player`'s signpost on `node` with no legality check and link it into the network: the erect's

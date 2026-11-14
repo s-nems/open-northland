@@ -3,7 +3,7 @@ import type { Command } from '../../core/commands/index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import { hexDistance, nodeOfPosition } from '../../nav/halfcell.js';
 import type { SystemContext } from '../context.js';
-import { isAdultSettler, mayMarry } from '../family/index.js';
+import { isAdultSettler, mayMarry, settleIn } from '../family/index.js';
 import { settlersByNode, spawnLanding } from '../movement/evict.js';
 
 type MarryPlaced = Extract<Command, { kind: 'marryPlaced' }>;
@@ -27,7 +27,7 @@ export function marryPlaced(world: World, ctx: SystemContext, command: MarryPlac
   // A woman can only hold a child inside a marriage here, so she brings none to it.
   world.add(wife, Marriage, { spouse: husband, child: null });
   world.add(husband, Marriage, { spouse: wife, child: null });
-  houseCouple(world, wife, husband);
+  houseCouple(world, wife, husband, ctx.tick);
 }
 
 /**
@@ -49,11 +49,11 @@ export function parentPlacedChild(world: World, ctx: SystemContext, command: Par
   if (spouse !== undefined && world.isAlive(spouse)) {
     world.mut(mother, Marriage).child = placedChild;
     world.mut(spouse, Marriage).child = placedChild;
-    houseCouple(world, mother, spouse);
+    houseCouple(world, mother, spouse, ctx.tick);
     return;
   }
   const home = world.tryGet(mother, Residence)?.home;
-  if (home !== undefined) world.add(placedChild, Residence, { home });
+  if (home !== undefined) settleIn(world, placedChild, home, ctx.tick);
 }
 
 /**
@@ -62,7 +62,7 @@ export function parentPlacedChild(world: World, ctx: SystemContext, command: Par
  * home nearer to it, his own on a tie. Neither move checks the home's capacity, and her child follows
  * her.
  */
-function houseCouple(world: World, wife: Entity, husband: Entity): void {
+function houseCouple(world: World, wife: Entity, husband: Entity, tick: number): void {
   const wifeHome = world.tryGet(wife, Residence)?.home;
   if (wifeHome === undefined) return;
   const husbandHome = world.tryGet(husband, Residence)?.home;
@@ -72,9 +72,9 @@ function houseCouple(world: World, wife: Entity, husband: Entity): void {
     (workplace !== undefined &&
       distance(world, workplace, wifeHome) < distance(world, workplace, husbandHome));
   const home = husbandJoins ? wifeHome : husbandHome;
-  world.add(husbandJoins ? husband : wife, Residence, { home });
+  settleIn(world, husbandJoins ? husband : wife, home, tick);
   const child = world.get(wife, Marriage).child;
-  if (child !== null && world.isAlive(child)) world.add(child, Residence, { home });
+  if (child !== null && world.isAlive(child)) settleIn(world, child, home, tick);
 }
 
 /** The half-cell hex distance between two buildings' anchors. */

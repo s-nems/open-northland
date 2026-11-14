@@ -1,6 +1,7 @@
 import type { ContentSet } from '@open-northland/data';
 import type { World } from '../../ecs/world.js';
 import type { SpatialGate } from '../../nav/node-circle.js';
+import { intersectReach } from '../../nav/range-search.js';
 import { NO_COMPONENT, type NodeId, type TerrainGraph } from '../../nav/terrain/index.js';
 import { goodsSearchLimitAt } from './reach.js';
 
@@ -18,10 +19,21 @@ export function settlementReachAt(
   player: number,
   node: NodeId,
 ): SpatialGate {
-  return (
-    goodsSearchLimitAt(world, content, terrain, player, terrain.xOf(node), terrain.yOf(node)) ??
-    landReachAt(terrain, node)
-  );
+  return goodsSearchGate(world, content, terrain, player, node);
+}
+
+/** Where a fetch from `here` may find its source: `gate`, the fetcher's own bound, met with the goods search
+ *  there, else the land under `here`, so no source across water is ever picked. */
+export function goodsSearchGate(
+  world: World,
+  content: ContentSet,
+  terrain: TerrainGraph,
+  owner: number | undefined,
+  here: NodeId,
+  gate?: SpatialGate,
+): SpatialGate {
+  const goods = goodsSearchLimitAt(world, content, terrain, owner, terrain.xOf(here), terrain.yOf(here));
+  return intersectReach(gate, goods) ?? landReachAt(terrain, here);
 }
 
 /**

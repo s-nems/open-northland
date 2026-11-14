@@ -326,6 +326,55 @@ export class WalkFlood implements WalkDistances {
   }
 }
 
+/**
+ * Whether a walk from `seed` to `target` costs at most `cap`: an A* over {@link walkLowerBound} that stops
+ * once every open walk's bound passes the cap, so it settles a corridor about the cap's ellipse rather than
+ * a disc. False once it has settled `budget` nodes without an answer.
+ */
+export function walkWithinCap(
+  terrain: TerrainGraph,
+  blocked: BlockOverlay,
+  seed: NodeId,
+  target: NodeId,
+  cap: Fixed,
+  budget: number,
+): boolean {
+  const tx = terrain.xOf(target);
+  const ty = terrain.yOf(target);
+  const aim = (node: NodeId): Fixed => walkLowerBound(terrain.xOf(node), terrain.yOf(node), tx, ty);
+  const costs = new WalkCosts();
+  const frontier = new WalkFrontier();
+  const steps = new StepBuffer();
+  const level = passOverlay(blocked);
+  costs.page(seed)[seed & COST_PAGE_MASK] = ZERO;
+  frontier.push(aim(seed), seed);
+  while (frontier.size > 0 && costs.settledCount < budget) {
+    if ((frontier.peekCost() ?? cap) > cap) return false;
+    const next = frontier.pop();
+    const page = costs.page(next);
+    const at = next & COST_PAGE_MASK;
+    const slot = page[at] ?? UNREACHED_COST;
+    if (slot < 0) continue;
+    const cost = slot as Fixed;
+    if (next === target) return true;
+    page[at] = settledSlot(cost);
+    costs.settledCount++;
+    terrain.stepsInto(next, level, steps);
+    for (let i = 0; i < steps.length; i++) {
+      const stepNode = steps.nodeAt(i);
+      const candidate = costs.page(stepNode);
+      const offset = stepNode & COST_PAGE_MASK;
+      const held = candidate[offset] ?? UNREACHED_COST;
+      if (held < 0) continue;
+      const stepCost = fx.add(cost, steps.costAt(i));
+      if (held <= stepCost) continue;
+      candidate[offset] = stepCost;
+      frontier.push(fx.add(stepCost, aim(stepNode)), stepNode);
+    }
+  }
+  return false;
+}
+
 /** How far from a node the lattice's steps out of it read the overlay: one node either way. */
 const STEP_REACH_X = 1;
 const STEP_REACH_Y = 1;

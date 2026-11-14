@@ -1,4 +1,5 @@
 import { defineComponent, type Entity } from '../ecs/world.js';
+import type { NodeId } from '../nav/terrain/index.js';
 
 /**
  * A settler's live training order: the barracks drill or, with a `lesson`, the school course it was sent
@@ -6,8 +7,9 @@ import { defineComponent, type Entity } from '../ecs/world.js';
  * `drillTicksLeft` by less than one exercise clip. It survives a needs detour; a move order, a player
  * equip order, a profession change, or a script fixing the trade calls it off.
  *
- * A house trains at most its `schoolSize` settlers at once. A free seat goes to the earliest `enrolled`
- * tick, then the lowest id; the others wait in the yard. A seat is kept until the order ends.
+ * A house trains at most its `schoolSize` settlers at once, coin-drillers ({@link CoinDrillOrder}) among
+ * them. A free seat goes to the earliest `enrolled` tick, then the lowest id; the others wait in the yard.
+ * A seat is kept until the order ends.
  */
 export const TrainingOrder = defineComponent<{
   house: Entity;
@@ -27,10 +29,39 @@ export const GraduateWait = defineComponent<{ school: Entity }>('GraduateWait', 
 
 /**
  * The flag a barracks sends the soldiers it trains to: a {@link DeliveryFlag} marker the owner planted, the
- * same flag a gatherer's work area uses. A recruit that finishes its drill takes the flag's node as its
- * guard anchor, so it walks there from the door and holds it. Soldiers already trained keep their own
- * anchors. The flag is minted and moved by the owner's order and destroyed with the barracks; our own
- * rule, not the original's. Absent while the barracks keeps no rally point, and its recruits then stay
- * where they step out.
+ * same flag a gatherer's work area uses. Each soldier posted there takes his own place of the formation
+ * around the flag as his guard anchor, so he walks there and holds it; `posts` are the places handed out,
+ * each kept while its soldier lives and still holds it. Soldiers already trained keep their own anchors.
+ * The flag is minted and moved by the owner's order and destroyed with the barracks; our own rule, not the
+ * original's. Absent while the barracks keeps no rally point, and its recruits then stay where they step
+ * out.
  */
-export const RallyPoint = defineComponent<{ flag: Entity }>('RallyPoint', 'settlers');
+export const RallyPoint = defineComponent<{ flag: Entity; posts: RallyPost[] }>('RallyPoint', 'settlers', {
+  simOnlyFields: ['posts'],
+});
+
+export interface RallyPost {
+  readonly soldier: Entity;
+  readonly node: NodeId;
+  /** The flag's node when the place was handed out. */
+  readonly centre: NodeId;
+}
+
+/**
+ * A soldier's coin drill: paid fight practice in his own side's barracks, one term for each coin of its
+ * stock, apart from a recruit's {@link TrainingOrder} enlistment. `drill` walks to the door and drills
+ * while he may and a coin is there; `return` walks him back to `returnTo`, the node he stood on when the
+ * order was given, or the open node nearest it once a building covers it, and the order ends there.
+ * `termTicksLeft` is what the term he paid for still owes, drawn down per completed repetition; 0 while no
+ * paid term runs, so the coins still spoken for are the drilling orders at 0, and a term cut short gives
+ * its coin back. While `drill`, he holds a place on the barracks' seat list as a {@link TrainingOrder}
+ * does, `enrolled` and `seated` alike: one queue for both, a seat kept for all his terms. Our rule.
+ */
+export const CoinDrillOrder = defineComponent<{
+  house: Entity;
+  returnTo: NodeId;
+  stage: 'drill' | 'return';
+  termTicksLeft: number;
+  enrolled: number;
+  seated: boolean;
+}>('CoinDrillOrder', 'settlers');

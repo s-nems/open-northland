@@ -47,6 +47,12 @@ describe('EquipClass', () => {
     expect(() => EquipClass.parse({ category: 'misc', restorePct: { healthMax: 50 } })).toThrow(/wear down/);
   });
 
+  it('lets only a hunger or fatigue draught stop its bearer to drink', () => {
+    const bottle = { category: 'misc', wears: true, uses: 2, stopsToDrink: true } as const;
+    expect(EquipClass.parse({ ...bottle, restorePct: { hunger: 50, fatigue: 50 } }).stopsToDrink).toBe(true);
+    expect(() => EquipClass.parse({ ...bottle, restorePct: { healthMax: 30 } })).toThrow(/stops its bearer/);
+  });
+
   it('accepts the carried combat and walk effects and rejects out-of-range ones', () => {
     const amulet = { category: 'misc' } as const;
     expect(EquipClass.parse({ ...amulet, damageDealtPct: 150 }).damageDealtPct).toBe(150);

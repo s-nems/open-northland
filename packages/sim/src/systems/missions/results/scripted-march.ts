@@ -8,7 +8,7 @@ import {
   VehicleDrive,
 } from '../../../components/index.js';
 import type { Entity, World } from '../../../ecs/world.js';
-import { pairBySpace } from '../../../nav/formation.js';
+import { MILITARY_ROW_SPACING, pairBySpace } from '../../../nav/formation.js';
 import { type HalfCellNode, hexDistance, nodeOfPosition, nodeWorldX } from '../../../nav/halfcell.js';
 import { hasOpenSide, NEAREST_NODE_SEARCH_CAP } from '../../../nav/nearest.js';
 import { ringSearch } from '../../../nav/ring-search.js';
@@ -150,7 +150,7 @@ function formationPlaces(
     if (node !== null) places.set(one, { hx: terrain.xOf(node), hy: terrain.yOf(node) });
     return places;
   }
-  const rows = military ? 2 : 1;
+  const rows = military ? MILITARY_ROW_SPACING : 1;
   const occupancy = standingStrangers(ctx, held);
   // A band with fighters attack-moves, so it takes slots past a wall as a player's attack-move does.
   const order = military ? 'attackMove' : 'move';

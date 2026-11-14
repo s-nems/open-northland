@@ -106,6 +106,7 @@ export {
   type DrawItem,
   type HolyFireBinding,
   type HolyFireLookup,
+  type HouseBodyOf,
   type InHouseProgramLookup,
   indoorHouseOf,
   isIndoorSettler,
@@ -158,7 +159,6 @@ export {
   resolveSettlerBobId,
   resolveStockpileDraw,
   type SettlerStateBinding,
-  type ShipYardSites,
   type SpriteAtlas,
   type SpriteBindings,
   type SpriteFrameRef,
@@ -168,6 +168,7 @@ export {
   type VehicleBinding,
   type VehicleLook,
   type VehicleTribeLooks,
+  type VehicleYardSites,
   type WaveLoop,
   waveFrameAt,
 } from './data/sprites/index.js';

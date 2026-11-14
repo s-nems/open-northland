@@ -1,0 +1,47 @@
+{
+  "version": 1,
+  "map": "wilczy_lad",
+  "basis": {
+    "lang": "eng",
+    "digest": "b97cc90e25b8b3cbfdd4124efa05d3a3bae00144a74b0f8170bcbb7e7475b665"
+  },
+  "strings": {
+    "30": "Esplora la terra",
+    "31": "Lascia 5 secchi d'acqua nel recinto per ricevere un lupo addomesticato",
+    "32": "Scopri qualcosa sull'insolita aggressività dei lupi",
+    "33": "Trova i Franchi a nord-ovest",
+    "34": "Paga ai Franchi un tributo di 5 monete d'oro per avere guerrieri addestrati a combattere i lupi",
+    "35": "Trova l'isola dell'Obelisco Miracoloso",
+    "36": "Manda gli eroi nella Grotta dei Lupi Mannari",
+    "37": "Offri 30 unità di olio rituale sull'Isola dell'Obelisco Miracoloso",
+    "38": "ELIMINA I LUPI MANNARI",
+    "39": "Donazione per i guerrieri",
+    "98": "Durante uno dei loro viaggi, i Vichinghi si fermano su un'isola pittoresca. Capiscono presto che non è un posto qualunque...",
+    "99": "TERRA DEI LUPI",
+    "100": "Bjarni",
+    "101": "Cyra",
+    "102": "Sigurd",
+    "105": "Brutus",
+    "600": "Vichinghi",
+    "700": "V",
+    "800": "Brutus",
+    "900": "B",
+    "1000": "Franchi",
+    "1100": "F",
+    "1200": "LUPO MANNARO",
+    "1300": "Lupo"
+  },
+  "briefings": {
+    "500": "<font:$local$\\fonts\\fonthead16bld.fnt>\nTERRA DEI LUPI\n<font:$local$\\fonts\\font12.fnt>\nPer rifornirci di cibo ci fermammo su un'isola pittoresca. Mandammo degli esploratori a perlustrare i dintorni, ma nessuno di loro diede più segni di vita. Così sbarcai io stesso per indagare sulla loro scomparsa.\n\n<usericon:1,147,240>\n\nSulla spiaggia trovai un oggetto dall'aspetto misterioso. Doveva essere un antico obelisco. Dunque l'isola è abitata!\n\nI miei uomini non li trovai. Era troppo tardi. Ad appena qualche metro dalla riva, nella foresta, trovai i loro resti. Sembrava che gli esploratori fossero caduti vittime dei lupi.\n\nScopri di più su questo luogo misterioso e fai attenzione ai lupi che infestano la foresta.\n\n~~ Creata da Brainy ~~",
+    "501": "<font:$local$\\fonts\\fonthead16bld.fnt>\nIL FRANCO BRUTUS\n<font:$local$\\fonts\\font12.fnt>\nNella foresta a nord ci imbattemmo in Brutus, mercante e allevatore di lupi. Sosteneva di poterci aiutare a combattere i tantissimi lupi di queste terre grazie alla sua abilità nell'addomesticare queste bestie. Era disposto a darci un animale addestrato in cambio di 5 secchi d'acqua, perché il franco ha solo acqua salata e i lupi, dopotutto, devono pur bere qualcosa.\n\n<usericon:1,199,111>\n\nVersa 5 secchi d'acqua nel recinto e riceverai un lupo guerriero.",
+    "502": "<usericon:1,170,262>\n\nCome promesso da Brutus, in cambio di 5 secchi d'acqua ci fu consegnato il lupo.",
+    "503": "<font:$local$\\fonts\\fonthead16bld.fnt>\nSIGURD\n<font:$local$\\fonts\\font12.fnt>\nOltre la foresta c'era un passo di montagna, e appena ci incamminammo lungo il sentiero ci imbattemmo in una grotta antichissima.\n\n\"Non vi consiglio di esplorare quella grotta. È così vecchia che la volta crolla quasi a ogni passo, provocando terremoti. Sono riuscito a uscirne giusto in tempo.\"\n\n<usericon:1,153,86>\n\nQuella voce ci sembrava molto familiare.\nEra Sigurd, il nostro amico franco.\n\n\"Che cosa ti porta da queste parti, amico? E perché sei entrato in quella grotta sapendo in che stato è?\"\n\nVenne fuori che Sigurd, come al solito, non agiva per puro altruismo. Aveva sentito parlare della piaga dei lupi in questa regione e, eterno cacciatore di taglie qual era, aveva trovato tra la gente del posto un uomo che offriva una ricca ricompensa a chi avesse liberato la terra da quelle bestie inferocite. Gli avevano detto che nella grotta poteva trovare qualche indizio, e anche che i lupi ne avevano fatto la loro tana sicura.\n\nRaggiungi il villaggio dei Franchi a nord-ovest per raccogliere altre informazioni.",
+    "504": "<font:$local$\\fonts\\fonthead16bld.fnt>\nIL VILLAGGIO DEI FRANCHI\n<font:$local$\\fonts\\font12.fnt>\nDopo aver attraversato il canyon, raggiungemmo un villaggio che lotta ogni giorno contro la piaga dei lupi, senza alcun risultato.\n\nLì alcuni uomini coraggiosi ci proposero di aiutarci a combattere i lupi in cambio di un po' d'oro, perché ne avevano molta esperienza.\n\nDecidemmo di chiedere alla gente come stessero esattamente le cose e venimmo a sapere molte cose interessanti.\n\nInnanzitutto, circola la leggenda che un tempo queste terre appartenessero alla Tribù degli Uomini-Lupo. Vivevano in armonia con la natura e avevano acquisito il potere magico di trasformare il proprio corpo in quello di un lupo. Non sappiamo se sia vero, ma a giudicare dagli antichi obelischi sparsi per la terra possiamo supporre che ci sia un fondo di verità.\n\nChiedendo degli obelischi, scoprimmo che custodiscono la ricetta per cacciare i lupi aggressivi dalle foreste del posto, ma nessuno è ancora riuscito a decifrare l'enigma inciso su questi antichi oggetti.\nSi sa anche che a ovest c'è un'isola da cui, passando in nave, si scorge un obelisco insolitamente grande detto \"miracoloso\" e si sentono gli ululati furiosi di lupi affamatissimi. Nessuno finora ha avuto il coraggio di esplorare quella terra.\n\nSe vuoi svelare il mistero di queste terre, devi assolutamente esplorare l'Obelisco Miracoloso.",
+    "505": "<usericon:1,163,207>\n\nIn cambio dell'oro versato abbiamo ricevuto guerrieri addestrati a combattere i lupi.",
+    "506": "Quando raggiungemmo l'isola dell'Obelisco Miracoloso, fummo attaccati da un branco di lupi.\n\nDopo averli sconfitti, avemmo il tempo di studiare con calma le iscrizioni incise sull'oggetto.\nQuello che leggemmo era sconvolgente. L'iscrizione diceva che la Tribù degli Uomini-Lupo abitava davvero queste terre e che un giorno era stata maledetta. Gli effetti di quella maledizione si vedono ancora oggi nei lupi che infuriano nelle foreste.\nNon trovammo una parola su come spezzare la maledizione. Erano però segnati i luoghi di tutti gli altri obelischi.\n\nLa gente del posto non ha trovato su nessuno di essi informazioni importanti, ma secondo la mappa, oltre ai sei obelischi sparsi per la terra, ce n'è un altro, nei sotterranei della Grotta dei Lupi Mannari.\n\nIl nome forse non è invitante, e la grotta non è più di primo pelo e potrebbe essere pericolosa, ma è l'unica pista che abbiamo.\n\nPorta dunque i tuoi eroi nei sotterranei, attraverso l'ingresso nel passo di montagna.",
+    "507": "Usciti dalla grotta eravamo un po' nervosi, ma non ci restava che verificare se le parole incise sull'obelisco dicevano il vero e se, con un'offerta agli Spiriti dei Lupi Mannari, ci saremmo davvero liberati del pericolo che incombe su questa terra.\n\nPorta 30 unità di olio rituale sull'Isola dell'Obelisco Miracoloso.",
+    "508": "Immenso fu il nostro stupore quando, invece di scacciare i lupi, il nostro olio riportò in vita gli antichi lupi mannari.\n\n<usericon:1,31,291>\n\nOra dobbiamo rimediare al nostro errore al più presto!\n\nI lupi mannari sono sorti davanti a ogni obelisco, probabilmente tranne quello sotterraneo, che è stato distrutto. Dobbiamo sconfiggere le bestie che minacciano la gente prima che qualcuno si faccia male!",
+    "509": "<font:$local$\\fonts\\fonthead16bld.fnt>\nVITTORIA!\n<font:$local$\\fonts\\font12.fnt>\nDopo una lunga lotta contro le bestie, riuscimmo finalmente a eliminarle una volta per tutte. Insieme ai lupi mannari sparì anche il problema dei lupi comuni. Nella foresta il loro numero calò in fretta e d'un tratto divennero molto meno aggressivi.\n\nLa gente ci fu grata. Tutto fa pensare che, uccidendo i mostri, abbiamo spezzato anche la maledizione che gravava su di loro.\nOra tutti possono tornare a vivere spensierati, e Sigurd può prendersi la sua sospirata parte di ricompensa e tornare alla sua roccaforte.",
+    "510": "<font:$local$\\fonts\\fonthead16bld.fnt>\nSCONFITTA!\n<font:$local$\\fonts\\font12.fnt>\nLa morte di un eroe è una tragedia particolarmente dolorosa. Dopo questo triste evento non ha alcun senso continuare la missione.\n\n<picture:$local$\\graphics\\Hero_Dead_F.pcx>"
+  }
+}

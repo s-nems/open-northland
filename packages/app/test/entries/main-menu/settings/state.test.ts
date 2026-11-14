@@ -51,6 +51,7 @@ describe('parseStoredSettings', () => {
       weather: false,
       blood: false,
       bonesFade: false,
+      equipmentEffects: false,
       fpsLimit: 30,
       fpsCounter: true,
       cursorTheme: 'amber',

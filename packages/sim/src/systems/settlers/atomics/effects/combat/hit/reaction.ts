@@ -1,17 +1,25 @@
 import {
+  AtomicClock,
   addCurrentAtomic,
   CurrentAtomic,
   Engagement,
+  MealBreak,
   NeedOrder,
   PlayerOrder,
   removeCurrentAtomic,
   Settler,
   type SettlerIdentity,
+  Vehicle,
 } from '../../../../../../components/index.js';
+import { TICKS_PER_SECOND } from '../../../../../../core/loop.js';
 import type { Entity, World } from '../../../../../../ecs/world.js';
 import type { SystemContext } from '../../../../../context.js';
 import { clearNavState, isTravelling } from '../../../../../movement/nav-state.js';
-import { atomicDuration, boundAtomicAnimation } from '../../../../../readviews/animations.js';
+import {
+  atomicDuration,
+  boundAtomicAnimation,
+  eventTickWithin,
+} from '../../../../../readviews/animations.js';
 import { isInterruptibleAtomic, stanceFights, stanceMode } from '../../../../../readviews/index.js';
 
 /**
@@ -26,11 +34,13 @@ const ATTACKED_ATOMIC_ID = 82;
  * One deferred reaction of a struck survivor, applied only after the hit loop: the flinch clip its class
  * binds, or - for a class with no flinch of its own - the end of what the blow interrupted. A sleeper
  * wakes; a fighting unit walking an errand of its own drops the errand, so the next planner tick leaves it
- * standing where the CombatSystem can fight back with it.
+ * standing where the CombatSystem can fight back with it. A critical hit can break the victim's own swing
+ * and stun it.
  */
 export type PendingHitReaction =
   | { readonly kind: 'flinch'; readonly victim: Entity; readonly duration: number }
   | { readonly kind: 'wake'; readonly victim: Entity }
+  | { readonly kind: 'stun'; readonly victim: Entity }
   | { readonly kind: 'halt'; readonly victim: Entity };
 
 /**
@@ -49,10 +59,12 @@ export function applyPendingHitReactions(world: World, pending: readonly Pending
       clearNavState(world, reaction.victim);
       continue;
     }
+    // A stun takes the place of the swing it broke; a class with no flinch clip stands through it.
+    const stunned = reaction.kind === 'stun';
     addCurrentAtomic(world, reaction.victim, {
       atomicId: ATTACKED_ATOMIC_ID,
-      duration: reaction.duration,
-      effect: { kind: 'idle' },
+      duration: stunned ? CRITICAL_STUN_TICKS : reaction.duration,
+      effect: stunned ? { kind: 'stunned' } : { kind: 'idle' },
       targetEntity: null,
       targetTile: null,
     });
@@ -95,12 +107,59 @@ export function collectHitReaction(
   if (walksItsOwnErrand(world, ctx, target, victim)) pending.push({ kind: 'halt', victim: target });
 }
 
+const PERCENT = 100;
+/** How long a victim whose swing a critical hit broke stands stunned: three seconds (owner ruling). */
+export const CRITICAL_STUN_TICKS = 3 * TICKS_PER_SECOND;
+/** The stun's chance in percent before the blow's share of hitpoints is added. */
+export const CRITICAL_STUN_BASE_PCT = 30;
+
+/**
+ * A critical hit's chance to break the swing its surviving victim has in flight, which then never lands,
+ * and stun the victim for {@link CRITICAL_STUN_TICKS}. Our rule, not the original's: the chance in percent
+ * is {@link CRITICAL_STUN_BASE_PCT} plus the share of the victim's full hitpoints the blow took, rounded
+ * down, and it is drawn only for a victim whose swing still has a blow ahead, so a stunned victim is not
+ * stunned again. A swing landing this very tick still lands. A person or a beast can lose its swing, a
+ * vehicle never (owner ruling).
+ */
+export function collectCriticalSwingBreak(
+  world: World,
+  ctx: SystemContext,
+  target: Entity,
+  damage: number,
+  maxHealth: number,
+  pending: PendingHitReaction[],
+): void {
+  if (damage <= 0 || maxHealth <= 0 || world.has(target, Vehicle)) return;
+  if (!swingHasBlowAhead(world, ctx, target)) return;
+  const share = Math.floor((damage * PERCENT) / maxHealth);
+  if (ctx.rng.int(PERCENT) < CRITICAL_STUN_BASE_PCT + share) {
+    pending.push({ kind: 'stun', victim: target });
+  }
+}
+
+function swingHasBlowAhead(world: World, ctx: SystemContext, target: Entity): boolean {
+  const swing = world.tryGet(target, CurrentAtomic);
+  const clock = world.tryGet(target, AtomicClock);
+  if (swing === undefined || clock === undefined || swing.effect.kind !== 'attack') return false;
+  // A pending clock may or may not have met this tick's executor yet; counting the tick as run errs toward
+  // leaving the swing alone.
+  const elapsed = 'startedAt' in clock ? ctx.tick - clock.startedAt : clock.pendingElapsed + 1;
+  const duration = Math.max(1, swing.duration);
+  const frames = swing.effect.hitFrames;
+  if (frames === undefined) return elapsed < duration;
+  for (let i = 0; i < frames.length; i++) {
+    if (eventTickWithin(frames[i] as number, duration) > elapsed) return true;
+  }
+  return false;
+}
+
 /**
  * Whether the struck victim is walking an errand of its own that being attacked should end. A fleeing or
  * ignoring unit keeps going, which is what those stances mean; a chase belongs to the CombatSystem, which
- * re-aims it rather than shedding it; and a walk the player ordered - a march or a meal - is the player's
- * to end. What is left is the settler's own errand, and the CombatSystem leaves a walker alone, so without
- * this a soldier crossing a battle on its way to a bed takes blows the whole way without turning round.
+ * re-aims it rather than shedding it; a walk the player ordered - a march or a meal - is the player's to
+ * end; and a meal break walks out of a fight on purpose. What is left is the settler's own errand, and the
+ * CombatSystem leaves a walker alone, so without this a soldier crossing a battle on its way to a bed
+ * takes blows the whole way without turning round.
  *
  * A melee blow lands in the AtomicSystem, before the CombatSystem's pass, so the victim is already standing
  * when combat looks at it. An arrow lands after that pass, so an errand another drive re-issues the next
@@ -113,7 +172,9 @@ function walksItsOwnErrand(
   victim: SettlerIdentity,
 ): boolean {
   if (!isTravelling(world, target) || world.has(target, Engagement)) return false;
-  if (world.has(target, PlayerOrder) || world.has(target, NeedOrder)) return false;
+  if (world.has(target, PlayerOrder) || world.has(target, NeedOrder) || world.has(target, MealBreak)) {
+    return false;
+  }
   return stanceFights(stanceMode(world, ctx.content, target, victim.jobType));
 }
 

@@ -85,6 +85,7 @@ export const chsMapCatalogue = {
     eng: '英语',
     ger: '德语',
     rus: '俄语',
+    ita: '意大利语',
     chs: '简体中文',
     cht: '繁体中文',
   },

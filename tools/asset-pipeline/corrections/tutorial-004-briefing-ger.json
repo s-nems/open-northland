@@ -1,5 +1,5 @@
 {
-  "reason": "U nas przycisk rozbudowy w panelu budynku nazywa się ROZBUDUJ (skrót R) i jest widoczny zawsze; nieaktywny, dopóki ludzie nie zdobędą potrzebnej wiedzy, a materiały na rozbudowę donoszą się dopiero po jej rozpoczęciu (plac budowy dla budowniczych), nie trzeba ich mieć wcześniej. Wyrób wybiera się przyciskiem towaru w sekcji PRODUKCJA panelu osadnika, nie w zakładce PRODUKT/PRACA. Poprawione są też błędy gramatyczne, literówki i nazwy wyrobów. Naczynia powstają już w warsztacie garncarskim 2. Strona i cel uczą wyboru naczyń w sekcji PRODUKCJA i wyprodukowania przynajmniej jednej sztuki, zamiast niedostępnej kolejnej rozbudowy.",
+  "reason": "U nas przycisk rozbudowy w panelu budynku nazywa się ROZBUDUJ (skrót R) i jest widoczny zawsze; nieaktywny, dopóki ludzie nie zdobędą potrzebnej wiedzy, a materiały na rozbudowę donoszą się dopiero po jej rozpoczęciu (plac budowy dla budowniczych), nie trzeba ich mieć wcześniej. Wyrób wybiera się przyciskiem towaru w sekcji PRODUKCJA panelu osadnika, nie w zakładce PRODUKT/PRACA. Poprawione są też błędy gramatyczne, literówki i nazwy wyrobów.",
   "file": "maps/community/tutorial_004/text/ger/briefings/briefings.txt",
   "sha256": "cc61ca1b7ddf8bf9b5a7cfe2b61162e39485b0bd0f7e3b187746cec924c58c2f",
   "encoding": "windows-1250",
@@ -10,7 +10,7 @@
     },
     {
       "from": "Baue die TÖPFEREI 2 aus! Klicke dazu die Töpferei an, so dass das Gebäudefenster erscheint. Klicke dann den Button \"AUSBAU STARTEN\". Dieser Button erscheint nur, wenn alle für den Ausbau benötigten Waren auch vorhanden sind.",
-      "to": "Falls die Töpferei noch nicht Stufe 2 erreicht hat, schließe zuerst ihren Ausbau ab. Wähle den Töpfer in der TÖPFEREI 2 aus und klicke in seinem Fenster im Bereich PRODUKTION auf den aktiven Button mit dem Geschirr. Produziere mindestens eine Einheit Geschirr!"
+      "to": "Baue die TÖPFEREI 2 aus! Klicke dazu die Töpferei an, so dass das Gebäudefenster erscheint. Klicke dann den Button \"AUSBAUEN\" (oder drücke R). Dieser Button ist erst aktiv, wenn deine Leute das nötige Wissen besitzen. Die für den Ausbau benötigten Waren werden danach zur Baustelle gebracht, und deine Bauarbeiter führen den Ausbau aus."
     },
     {
       "from": "Baue die STEINMETZHÜTTE aus! Klicke dazu die Steinmetzhütte an, so dass das Gebäudefenster erscheint. Klicke dann den Button \"AUSBAU STARTEN\". Dieser Button erscheint nur, wenn alle für den Ausbau benötigten Waren auch vorhanden sind.",
@@ -53,10 +53,6 @@
       "to": "Um dem Näher zu sagen, dass er Lederrüstungen produzieren soll, wähle ihn aus und klicke in seinem Fenster im Bereich PRODUKTION den Button mit den Lederrüstungen und er wechselt die Produktion automatisch auf die neue Ware."
     },
     {
-      "from": "Der Töpfer hat nun genügend Erfahrung bei der Herstellung von Ziegel erlangt und könnte nun auch Geschirr herstellen. Dazu muss die Töpferei ein weiteres Mal ausgebaut werden. ",
-      "to": "Der Töpfer hat nun genügend Erfahrung, um Geschirr herzustellen. Er produziert es in der Töpferei 2. "
-    },
-    {
       "from": "Stelle die Produktion des Steinmetz auf Marmor um!",
       "to": "Stelle die Produktion des Steinmetzes auf Marmor um!"
     },
@@ -67,10 +63,6 @@
     {
       "from": "Du hast es geschafft, wirklich gut funktionierende Produktionsketten aufzubauen und damit wichtige Technologien für dein Volk erlernt!",
       "to": "Du hast wirklich gut funktionierende Produktionsketten aufgebaut und damit wichtige Technologien für dein Volk erlernt!"
-    },
-    {
-      "from": "AUSBAU DER TÖPFEREI 2",
-      "to": "GESCHIRR HERSTELLEN"
     }
   ]
 }

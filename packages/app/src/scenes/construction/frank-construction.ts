@@ -35,11 +35,10 @@ const BUILDERS = [
   { x: 17, y: 9 },
   { x: 12, y: 17 },
 ] as const;
-/** Pottery materials the headquarters' stock slots do not hold: clay for both levels, bricks and pillars
- *  for the upgrade. */
+/** Pottery materials the headquarters' stock slots do not hold: clay for the first level, a pillar for
+ *  the upgrade. */
 const POTTERY_GOODS = [
   ['mud', 10],
-  ['brick', 10],
   ['pillar', 10],
 ] as const;
 /** Slack past the slowest site, the fresh mason hut. */

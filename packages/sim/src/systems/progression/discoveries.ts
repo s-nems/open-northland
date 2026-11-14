@@ -373,7 +373,13 @@ export const technologySystem: System = (world, ctx) => {
     memo.inputs.set(entity, read.input);
     const { settler: s, progress, jobType, tribe } = read;
     const owner = read.input.owner;
-    const subject = { owner, tribe: s.tribe, experience: progress.experience, learned: progress.learned };
+    const subject = {
+      owner,
+      tribe: s.tribe,
+      jobType,
+      experience: progress.experience,
+      learned: progress.learned,
+    };
     if (settlerMeetsNeed(world, ctx, subject, 'job', jobType)) {
       discover(entity, owner, s.tribe, 'job', jobType);
     }

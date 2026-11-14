@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "map": "wyspa_egejska",
+  "basis": {
+    "lang": "pol",
+    "digest": "bbabdaecf40fb0f39e5b5bfa8b0ceca9befc0c2ed2503dfb487945787601225e"
+  },
+  "strings": {
+    "0": "L'ISOLA EGEA",
+    "1": "Due tribù vichinghe sono sbarcate su una piccola isola e non hanno intenzione di spartirsela. Mappa 1 contro 1 con un posto da spettatore.",
+    "50": "Nord",
+    "51": "Sud",
+    "52": "Spettatore",
+    "100": "@Sconfiggi l'avversario."
+  },
+  "briefings": {
+    "500": "<font:$local$\\fonts\\fonthead16bld.fnt>\nL'ISOLA EGEA\n<font:$local$\\fonts\\font12.fnt>\n\nPer caso, nello stesso momento, due tribù vichinghe approdarono su una piccola ma fertile isola del Mediterraneo. Qui ci sono tutte le risorse necessarie per svilupparsi.\n\nMa l'isola è troppo piccola per ospitare due città diverse. I Vichinghi non intendono tollerare i loro consanguinei dall'altra parte dell'isola e vogliono prendersi tutto per sé. Probabilmente anche l'altra parte ha la stessa idea.\n\nQuesto significa una cosa sola: guerra. Presto assisteremo alla nascita di catene alimentari e produttive e all'addestramento delle truppe, finché sull'isola non resterà un solo popolo.\n\nSconfiggi l'avversario!\n\nAutore: StachuMMV\nper culturesnation.pl"
+  }
+}

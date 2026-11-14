@@ -29,7 +29,7 @@ import { currentLocale, goodName, installNameOverlay, messages, tribeName } from
 const sandbox = sandboxContent();
 const HERO_JOB = 42;
 const COLLECTOR_GENERAL_TRACK = 2;
-const FIST_XP = systems.FIGHT_EXPERIENCE_TYPE.FIST;
+const FIGHT_XP = systems.FIGHT_EXPERIENCE_TYPE.PERSONAL;
 const VIKING = 1;
 const DUCKS = 31;
 /** A tribe the sandbox content has no row for. */
@@ -87,7 +87,7 @@ const strings: GuiStrings = {
     [JOB_WOMAN]: 'Fixture ladies',
     [SPEARMAN]: 'Fixture pikemen',
   },
-  experiences: { [COLLECTOR_GENERAL_TRACK]: 'Fixture gathering', [FIST_XP]: 'Fixture brawling' },
+  experiences: { [COLLECTOR_GENERAL_TRACK]: 'Fixture gathering', [FIGHT_XP]: 'Fixture brawling' },
   tribes: { [VIKING]: 'Fixture northman', [FRANK]: 'Fixture westman' },
 };
 
@@ -108,7 +108,7 @@ describe('originalNameOverlay', () => {
     expect(names.soldierClass).toEqual({ soldier_spear_wooden: 'Fixture pikeman' });
     expect(names.heroNames).toEqual({ hero_unarmed: 'Fixture bare-handed champion' });
     expect(names.trackLabels).toEqual({ collector_general: 'Fixture gathering' });
-    expect(names.weaponXp).toEqual({ fist: 'Fixture brawling' });
+    expect(names.weaponXp).toEqual({ fight: 'Fixture brawling' });
   });
 
   it("names the group panel's civilians and women by their jobs, as the settler panel does", () => {
@@ -186,7 +186,7 @@ describe('installed original names', () => {
     expect(experienceLabel(ctx, track.typeId, track)).toBe(jobDisplayName(ctx, JOB_COLLECTOR));
     installOriginalNames(currentLocale(), strings, content);
     expect(experienceLabel(ctx, track.typeId, track)).toBe('Fixture gathering');
-    expect(experienceLabel(ctx, FIST_XP, undefined)).toBe('Fixture brawling');
+    expect(experienceLabel(ctx, FIGHT_XP, undefined)).toBe('Fixture brawling');
   });
 });
 

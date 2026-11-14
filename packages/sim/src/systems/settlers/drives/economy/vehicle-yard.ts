@@ -29,6 +29,15 @@ import { interactionCell } from '../../targets/index.js';
 import { UNREACHABLE_GOAL_MEMO_TICKS } from '../../unreachable-goals.js';
 import { fetchNeededMaterial } from './site-supply.js';
 
+/** The yard bookkeeping a worker at `workplace` settles on every plan, before anything it works on: lapsed
+ *  refusals go, and a site it crewed that has finished ends its vehicle turn. */
+export function settleVehicleYard(plan: PlannerContext, workplace: Entity): void {
+  const recipes = recipesByProductOf(plan.world, plan.ctx, workplace);
+  if (recipes === undefined) return;
+  pruneYardRefusals(plan.world, plan.ctx.tick, workplace);
+  releaseFinishedSite(plan, workplace, recipes);
+}
+
 /**
  * VEHICLE YARD - a workshop operator whose rotation has reached a vehicle good builds it as a hidden
  * construction site of the good's `vehicleHouse` beside the workshop instead of running a cycle
@@ -41,7 +50,7 @@ import { fetchNeededMaterial } from './site-supply.js';
  * Returns whether the operator's turn was a vehicle's. A search that finds nowhere raises the refusal
  * once per refusal span of the workshop and skips the turn; while the refusal holds, every workmate skips
  * that house's turn unsearched. With `idle`, a machine seat's worker waiting at the work point waits for
- * its idle beat.
+ * its idle beat. Runs after {@link settleVehicleYard}.
  */
 export function planVehicleYard(
   plan: PlannerContext,
@@ -51,10 +60,7 @@ export function planVehicleYard(
 ): boolean {
   const { world, ctx, terrain, entity: e, here } = plan;
   const recipes = recipesByProductOf(world, ctx, workplace);
-  if (recipes === undefined) return false;
-  pruneYardRefusals(world, ctx.tick, workplace);
-  releaseFinishedSite(plan, workplace, recipes);
-  if (!makesVehicles(ctx.content, recipes)) return false;
+  if (recipes === undefined || !makesVehicles(ctx.content, recipes)) return false;
   const pick = nextRotationPick(world, ctx, workplace, e, recipes);
   const houseType = pick === null ? undefined : vehicleHouseOfGood(ctx.content, pick.good);
   if (pick === null || houseType === undefined) return false;
@@ -128,7 +134,7 @@ function releaseFinishedSite(
   world.remove(e, SiteAssignment);
   const pick = nextRotationPick(world, ctx, workplace, e, recipes);
   if (pick !== null && vehicleHouseOfGood(ctx.content, pick.good) !== undefined)
-    spendRotationPick(world, e, pick);
+    spendRotationPick(world, e, pick, ctx.tick);
 }
 
 /**

@@ -134,7 +134,9 @@ describe('livestock assignment - a herd keeps to its farm, loose stock to the ba
     const breeder = breederAt(sim, 20, 20, farm);
     sim.world.add(breeder, ProductionCounters, { counters: [[DEER_GOOD, 0]], cursor: 0 });
     const deer = cowAt(sim, 23, 20, { owner: P0, farm, tribe: DEER_TRIBE });
-    sim.world.add(farm, Production, { cycles: [{ elapsed: 0, duration: BREED_TICKS, goodType: DEER_GOOD }] });
+    sim.world.add(farm, Production, {
+      cycles: [{ elapsed: 0, duration: BREED_TICKS, goodType: DEER_GOOD, operator: null }],
+    });
 
     livestockAssignmentSystem(sim.world, ctxOf(sim));
 

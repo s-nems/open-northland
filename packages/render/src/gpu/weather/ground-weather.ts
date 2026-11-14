@@ -137,6 +137,10 @@ export class WeatherGround {
     );
   }
 
+  /** The wetness 0..1 the ground shows at a half-cell node; 0 while the weather is off. */
+  readonly wetnessAt = (hx: number, hy: number): number =>
+    this.enabled && this.terrain !== null ? this.cover.wetAt(hx, hy) : 0;
+
   destroy(): void {
     for (const target of this.targets) target.setWeatherCover(null, 0, 0);
     this.reactions.destroy();

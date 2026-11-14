@@ -176,6 +176,9 @@ export interface SoundBindings {
   readonly noticeVoices?: Readonly<Record<NoticeVoice, Partial<Record<VoiceClass, NoticeVoiceSound>>>>;
   /** Settlers whose blows and clip cues sound with their own files, by tribe and job. */
   readonly wielderSounds?: readonly WielderSounds[];
+  /** What a clip cue marked `sip` (a draught drunk on the eat clip) sounds with instead of the clip's
+   *  chewing, at the chewing's gain. Absent or empty keeps the chewing. */
+  readonly sipCue?: readonly string[];
 }
 
 /** What a settler of `job` in `tribe` sounds with instead of the bank's choice, each at the gain of the

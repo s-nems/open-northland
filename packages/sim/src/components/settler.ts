@@ -264,6 +264,11 @@ export function removeCurrentAtomic(world: World, settler: Entity): void {
   world.remove(settler, AtomicClock);
 }
 
+/** Whether a critical hit has `settler` stunned. No order ends a stun: it runs its ticks out. */
+export function isStunned(world: World, settler: Entity): boolean {
+  return world.tryGet(settler, CurrentAtomic)?.effect.kind === 'stunned';
+}
+
 /** Goods a settler is physically hauling; goods never teleport to a global bank. */
 export const Carrying = defineComponent<{ goodType: number; amount: number }>('Carrying', 'settlers');
 
@@ -289,9 +294,9 @@ export const SiteAssignment = defineComponent<{ site: Entity; pinned: boolean }>
 export const BuildMode = defineComponent<{ kind: 'roads' | 'walls' }>('BuildMode', 'settlers');
 
 /**
- * A settler's live construction or workshop supply errand, cleared and re-stamped at the top of its own
- * next planning pass. Settlers planned later subtract these from a site's outstanding need. The pickup
- * leg carries a {@link PickupClaim} beside it; the delivery leg carries this alone.
+ * A settler's live construction, workshop or temple-fuel supply errand, cleared and re-stamped at the top
+ * of its own next planning pass. Settlers planned later subtract these from a site's outstanding need. The
+ * pickup leg carries a {@link PickupClaim} beside it; the delivery leg carries this alone.
  */
 export const SupplyRun = defineComponent<{
   site: Entity;
@@ -404,13 +409,14 @@ export const OrderQueue = defineComponent<{ orders: QueuedUnitOrder[]; owner: nu
 );
 
 /**
- * Hunger took this settler off its player orders: the needs drive feeds it while its {@link OrderQueue},
- * headed by the interrupted order, waits. Named addition: the original checks no need while a player's
- * command runs.
+ * Hunger took this settler off its player orders or out of a fight: the needs drive feeds it while its
+ * {@link OrderQueue}, headed by the interrupted order, waits. Named addition: the original checks no need
+ * while a player's command runs.
  */
 export const MealBreak = defineComponent<{ readonly hungry: true }>('MealBreak', 'settlers');
 
-/** A meal break that found nothing to eat: hunger takes the settler off its orders again from `retryAt`. */
+/** A meal break or an ordered meal that found nothing to eat: hunger takes the settler off its orders or
+ *  its fight again from `retryAt`. */
 export const MealBreakRetry = defineComponent<{ readonly retryAt: number }>('MealBreakRetry', 'settlers', {
   simOnly: true,
 });

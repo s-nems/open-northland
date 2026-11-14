@@ -62,6 +62,8 @@ const MEAD = 13;
 /** Fixture goods neither the soldier outfit nor the settlement grants name. */
 const FUR_BOOTS = 10;
 const STAMINA_POTION = 15;
+/** A seat whose assistant withholds nothing from any group. */
+const NONE_WITHHELD = { civilians: [], workers: [], soldiers: [] };
 /** Ticks for every module of a seat to take one decision. */
 const DECISION_ROUND_TICKS = COMPUTER_DECISION_INTERVAL_TICKS + COMPUTER_MODULES.length;
 
@@ -194,7 +196,7 @@ describe('setAiControl - the AI seat flag', () => {
     ];
     expect(published).toEqual(
       outfit.flatMap((goodType) => [
-        { kind: 'setAssistantGrantAudience', player: AI_SEAT, goodType, audience: 'soldiers' },
+        { kind: 'setAssistantGrantAudience', player: AI_SEAT, goodType, groups: ['soldiers'] },
         { kind: 'setAssistantGrant', player: AI_SEAT, goodType, enabled: true },
       ]),
     );
@@ -203,16 +205,33 @@ describe('setAiControl - the AI seat flag', () => {
     sim.run(DECISION_ROUND_TICKS);
     expect(outfitGrantOrders(sim.world, ctxOf(sim), AI_SEAT)).toEqual([]); // standing: nothing to re-issue
     expect(sim.assistantGrants(AI_SEAT)).toEqual(standing);
-    expect(sim.assistantSoldierOnlyGrants(AI_SEAT)).toEqual(standing);
+    expect(sim.assistantWithheldGrants(AI_SEAT)).toEqual({
+      civilians: standing,
+      workers: standing,
+      soldiers: [],
+    });
+    // A hand that opens one outfit good to the workers is closed again on the next round.
+    sim.enqueueSetup({
+      kind: 'setAssistantGrantAudience',
+      player: AI_SEAT,
+      goodType: HEAL_BIG,
+      groups: ['workers', 'soldiers'],
+    });
+    sim.step();
+    expect(outfitGrantOrders(sim.world, ctxOf(sim), AI_SEAT)).toEqual([
+      { kind: 'setAssistantGrantAudience', player: AI_SEAT, goodType: HEAL_BIG, groups: ['soldiers'] },
+    ]);
+    sim.run(DECISION_ROUND_TICKS);
+    expect(sim.assistantWithheldGrants(AI_SEAT).workers).toEqual(standing);
 
     sim.enqueueSetup({ kind: 'setAiControl', player: AI_SEAT, enabled: true, modules: { military: false } });
     sim.step();
     expect(sim.assistantGrants(AI_SEAT)).toEqual([]);
-    expect(sim.assistantSoldierOnlyGrants(AI_SEAT)).toEqual([]);
+    expect(sim.assistantWithheldGrants(AI_SEAT)).toEqual(NONE_WITHHELD);
     // The home half the seat keeps running with the module off republishes nothing.
     sim.run(2 * DECISION_ROUND_TICKS);
     expect(sim.assistantGrants(AI_SEAT)).toEqual([]);
-    expect(sim.assistantSoldierOnlyGrants(AI_SEAT)).toEqual([]);
+    expect(sim.assistantWithheldGrants(AI_SEAT)).toEqual(NONE_WITHHELD);
 
     // A grant and a limit another hand set survive the withdrawal of the outfit.
     sim.enqueueSetup({ kind: 'setAiControl', player: AI_SEAT, enabled: true });
@@ -221,14 +240,18 @@ describe('setAiControl - the AI seat flag', () => {
       kind: 'setAssistantGrantAudience',
       player: AI_SEAT,
       goodType: STAMINA_POTION,
-      audience: 'soldiers',
+      groups: ['soldiers'],
     });
     for (const command of published) sim.enqueueSetup(command);
     sim.step();
     sim.enqueueSetup({ kind: 'setAiControl', player: AI_SEAT, enabled: false });
     sim.step();
     expect(sim.assistantGrants(AI_SEAT)).toEqual([FUR_BOOTS]);
-    expect(sim.assistantSoldierOnlyGrants(AI_SEAT)).toEqual([STAMINA_POTION]);
+    expect(sim.assistantWithheldGrants(AI_SEAT)).toEqual({
+      civilians: [STAMINA_POTION],
+      workers: [STAMINA_POTION],
+      soldiers: [],
+    });
   });
 
   it('grants mead, shoes and tools to every settler, and withdraws them with the workforce module or the seat', () => {
@@ -247,7 +270,27 @@ describe('setAiControl - the AI seat flag', () => {
     for (const command of published) sim.enqueueSetup(command);
     sim.step();
     expect(settlementGrantOrders(sim.world, ctxOf(sim), AI_SEAT)).toEqual([]);
-    expect(sim.assistantSoldierOnlyGrants(AI_SEAT)).toEqual([]);
+    expect(sim.assistantWithheldGrants(AI_SEAT)).toEqual(NONE_WITHHELD);
+    // Mead kept from the civilians, as a hand that played the seat may have left it, goes to them again.
+    sim.enqueueSetup({
+      kind: 'setAssistantGrantAudience',
+      player: AI_SEAT,
+      goodType: MEAD,
+      groups: ['workers', 'soldiers'],
+    });
+    sim.step();
+    const reopened = settlementGrantOrders(sim.world, ctxOf(sim), AI_SEAT);
+    expect(reopened).toEqual([
+      {
+        kind: 'setAssistantGrantAudience',
+        player: AI_SEAT,
+        goodType: MEAD,
+        groups: ['civilians', 'workers', 'soldiers'],
+      },
+    ]);
+    for (const command of reopened) sim.enqueueSetup(command);
+    sim.step();
+    expect(sim.assistantWithheldGrants(AI_SEAT)).toEqual(NONE_WITHHELD);
 
     sim.enqueueSetup({
       kind: 'setAiControl',

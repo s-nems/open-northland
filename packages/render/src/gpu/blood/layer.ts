@@ -37,10 +37,23 @@ export interface BloodFrame {
   readonly drawn?: DrawnGeometry;
 }
 
+const DEFAULT_JET_RISE = 20;
+/** The jet's life in sim ticks, within BLOOD_AIR_TICKS: it opens, holds a moment, then thins away. */
+const JET_SPREAD_TICKS = 3;
+const JET_HOLD_TICKS = 1.5;
+const JET_THIN_TICKS = 8;
+/** How much wider the jet gets while it thins, and how far of its height it sags. */
+const JET_THIN_GROWTH = 0.45;
+const JET_SAG = 0.25;
+/** Above 1 the opacity drops fast first and lingers faint. */
+const JET_FADE_POWER = 1.8;
+
 interface AirNode {
   readonly container: Container;
   readonly jet: Sprite;
   readonly strength: number;
+  /** Height of the wound over the ground, in pixels: where the jet bursts and how far it falls. */
+  readonly rise: number;
   readonly drops: readonly {
     readonly motion: BloodDrop;
     readonly sprite: Sprite;
@@ -298,7 +311,7 @@ export class BloodLayer {
     container.zIndex = screenDepth(place.x, place.baseY, 'settler') + 0.125;
     const jet = container.addChild(worldBatched(new Sprite(textures.stain(mark.seed + 3, mark.palette))));
     jet.anchor.set(0.1, 0.5);
-    jet.position.set(0, -(place.rise ?? 20));
+    jet.position.set(0, -(place.rise ?? DEFAULT_JET_RISE));
     jet.rotation = Math.atan2(Math.sin(mark.heading) * GROUND_SQUASH, Math.cos(mark.heading));
     const drops = motions.map((motion, i) => {
       const sprite = container.addChild(worldBatched(new Sprite(textures.droplet(mark.palette))));
@@ -310,6 +323,7 @@ export class BloodLayer {
       jet,
       drops,
       strength: (mark.profile === 'blunt' ? 0.5 : 0.85) * Math.sqrt(mark.amount * mark.volume),
+      rise: place.rise ?? DEFAULT_JET_RISE,
     };
   }
 
@@ -337,9 +351,17 @@ export class BloodLayer {
   }
 
   private animate(node: AirNode, age: number): void {
-    const spread = smoothUnit(age / 3);
-    node.jet.alpha = 1 - smoothUnit(age / 5);
-    node.jet.scale.set(node.strength * (0.25 + spread * 0.7), node.strength * (0.23 + spread * 0.2));
+    // The jet bursts open, then thins like mist: it keeps widening and sags a little while it fades,
+    // fast at first with a long faint tail, so it never stands still and dims.
+    const spread = smoothUnit(age / JET_SPREAD_TICKS);
+    const thin = Math.max(0, Math.min(1, (age - JET_HOLD_TICKS) / JET_THIN_TICKS));
+    const widened = 1 + JET_THIN_GROWTH * thin;
+    node.jet.alpha = (1 - thin) ** JET_FADE_POWER;
+    node.jet.position.y = -node.rise * (1 - JET_SAG * thin * thin);
+    node.jet.scale.set(
+      node.strength * (0.25 + spread * 0.7) * widened,
+      node.strength * (0.23 + spread * 0.2) * widened,
+    );
     for (const { motion, sprite, contact } of node.drops) {
       bloodDroplet(motion, age, this.pose);
       sprite.visible = this.pose.visible && !this.pose.landed && (contact === undefined || age < contact.age);

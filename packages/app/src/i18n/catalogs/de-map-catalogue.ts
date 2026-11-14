@@ -87,6 +87,7 @@ export const deMapCatalogue = {
     eng: 'Englisch',
     ger: 'Deutsch',
     rus: 'Russisch',
+    ita: 'Italienisch',
     chs: 'Chinesisch (vereinfacht)',
     cht: 'Chinesisch (traditionell)',
   },

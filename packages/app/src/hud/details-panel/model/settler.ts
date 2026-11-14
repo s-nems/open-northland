@@ -65,13 +65,25 @@ export function satisfactionBars(
 }
 
 /** One Experience row: a specialization's label, its completed-work repeats ("Wood 5" means five
- *  units gathered), its bonus percent (null when that experience buys no bonus), and whether it trains
- *  the settler's current trade. */
+ *  units gathered), its bonus percent (null when that experience buys no bonus, and on the fight row),
+ *  the fight counter's own reading (null on every other row), and whether it trains the settler's
+ *  current trade. */
 export interface ExperienceRowModel {
   readonly label: string;
   readonly repeats: number;
   readonly bonusPct: number | null;
+  readonly fight: FightRowModel | null;
   readonly own: boolean;
+}
+
+/** The personal fight counter as a share of its full, and what it buys with the weapon in hand, each
+ *  null when it buys that nothing: dealt for a melee weapon or bare hands, accuracy for a bow, and the
+ *  cut on blows taken for everyone the sim reads one for. */
+export interface FightRowModel {
+  readonly sharePct: number;
+  readonly dealtPct: number | null;
+  readonly takenCutPct: number | null;
+  readonly accuracyPct: number | null;
 }
 
 const PERCENT = 100;
@@ -96,42 +108,75 @@ export function experienceLabel(
 }
 
 /** A specialization row's percent is the effect that experience actually buys, not a raw curve read: a
- *  carrier track buys none. */
+ *  carrier track buys none. `raw` is the bucket's stored value; the fight counter's is in its fine units. */
 function experienceBonusPct(
   ctx: UnitPanelModelContext,
   spec: number,
   track: JobExperienceDef | undefined,
-  points: number,
+  raw: number,
 ): number | null {
-  if (track === undefined && WEAPON_XP_KEY_BY_TYPE.has(spec)) {
-    return systems.withFightExperience(PERCENT, points) - PERCENT;
-  }
+  if (spec === systems.FIGHT_EXPERIENCE_TYPE.PERSONAL) return null; // the fight row states its own
+  if (track === undefined && WEAPON_XP_KEY_BY_TYPE.has(spec)) return null; // the catapult's buys aim
   if (track !== undefined && isCarrierJob(ctx, track.jobType)) return null;
-  return systems.experiencePercent(systems.experiencePoints(points));
+  return systems.experiencePercent(systems.experiencePoints(raw));
+}
+
+/** The fight row's reading of `experience`, through the sim's seam when the context carries it. */
+function fightRow(
+  ctx: UnitPanelModelContext,
+  comps: Comp,
+  experience: ReadonlyMap<number, number>,
+): FightRowModel {
+  const sharePct = Math.trunc(
+    (systems.personalFightPoints(experience) * PERCENT) / systems.FIGHT_EXPERIENCE_FULL,
+  );
+  const settler = comps.Settler as { tribe?: unknown; jobType?: unknown; humanForm?: unknown } | undefined;
+  const tribe = num(settler?.tribe);
+  const effects =
+    ctx.fightEffects === undefined || tribe === undefined
+      ? undefined
+      : ctx.fightEffects(
+          { tribe, jobType: num(settler?.jobType) ?? null, humanForm: settler?.humanForm === true },
+          num((comps.Weapon as { weaponTypeId?: unknown } | undefined)?.weaponTypeId),
+          experience,
+        );
+  return {
+    sharePct,
+    dealtPct: effects?.dealtPct ?? null,
+    takenCutPct: effects?.takenCutPct ?? null,
+    accuracyPct: effects?.accuracyPct ?? null,
+  };
 }
 
 /**
  * The Experience rows: the current trade's tracks first, each group most-trained first, off the
  * settler's `SettlerProgress.experience` map (`humanjobexperiencetypes` id → raw points). Raw points are
  * shown as completed-work repeats, dividing the track's accrual rate back out; a track-less bucket
- * (fight) shows raw points and belongs to the fighter trades. A general track that only repeats one
- * good's track is left out.
+ * (fight) belongs to the fighter trades and shows its points, the personal counter's whole. A general
+ * track that only repeats one good's track is left out.
  */
 export function experienceRows(ctx: UnitPanelModelContext, comps: Comp): ExperienceRowModel[] {
   const jobType = num((comps.Settler as { jobType?: unknown } | undefined)?.jobType);
   const job = ctx.jobs.find((j) => j.typeId === jobType);
   const fights = job !== undefined && (systems.isFighterJobRow(job) || systems.isHeroJobRow(job));
   const rows: (ExperienceRowModel & { spec: number })[] = [];
-  for (const [spec, points] of settlerExperienceOf(comps)) {
+  const experience = settlerExperienceOf(comps);
+  for (const [spec, points] of experience) {
     if (points <= 0) continue;
     const track = ctx.jobExperience.find((t) => t.typeId === spec);
-    const repeats = track !== undefined ? systems.experienceRepeats(points, track) : points;
+    const personal = spec === systems.FIGHT_EXPERIENCE_TYPE.PERSONAL;
+    const repeats = personal
+      ? systems.personalFightPoints(experience)
+      : track !== undefined
+        ? systems.experienceRepeats(points, track)
+        : points;
     if (repeats <= 0) continue; // partial credit toward the first repeat - nothing to show yet
     const own = track !== undefined ? track.jobType === jobType : WEAPON_XP_KEY_BY_TYPE.has(spec) && fights;
     rows.push({
       label: experienceLabel(ctx, spec, track),
       repeats,
       bonusPct: experienceBonusPct(ctx, spec, track, points),
+      fight: personal ? fightRow(ctx, comps, experience) : null,
       own,
       spec,
     });
@@ -139,7 +184,13 @@ export function experienceRows(ctx: UnitPanelModelContext, comps: Comp): Experie
   rows.sort((a, b) => Number(b.own) - Number(a.own) || b.repeats - a.repeats || a.spec - b.spec);
   return rows
     .filter((row) => !copiesItsGood(ctx, row, rows))
-    .map(({ label, repeats, bonusPct, own }) => ({ label, repeats, bonusPct, own }));
+    .map(({ label, repeats, bonusPct, fight, own }) => ({
+      label,
+      repeats,
+      bonusPct,
+      fight,
+      own,
+    }));
 }
 
 /** A job's general track that one good-specific track of the same job fully accounts for: work on a
@@ -177,6 +228,7 @@ export type SettlerState =
   | 'fighting'
   | 'training'
   | 'eating'
+  | 'drinking'
   | 'mealBreak'
   | 'sleeping'
   | 'praying'
@@ -198,12 +250,16 @@ export type SettlerState =
 const ATOMIC_STATE: Readonly<Record<AtomicEffect['kind'], SettlerState>> = {
   move: 'walking',
   idle: 'idle',
+  // A stun only lands mid-fight.
+  stunned: 'fighting',
   eat: 'eating',
+  drink: 'drinking',
   sleep: 'sleeping',
   pray: 'praying',
   attack: 'fighting',
   slay: 'fighting',
   exercise: 'training',
+  coinDrill: 'training',
   construct: 'building',
   repair: 'repairing',
   harvest: 'working',
@@ -272,8 +328,8 @@ function liveSettlerState(
   if (awaitsItsWorkplace(snapshot, components)) return 'awaitingWorkplace';
   // Sent ahead to a barracks or school foundation, it waits beside the door until the house stands.
   if (awaitsItsTrainingHouse(snapshot, components)) return 'awaitingTraining';
-  // Sent to a full school or barracks, it waits in the yard for a seat to free.
-  if ((components.TrainingOrder as { seated?: unknown } | undefined)?.seated === false) return 'awaitingSeat';
+  // Sent to a full school or barracks, or to coin-drill at a full barracks, it waits in the yard for a seat.
+  if (awaitsSeat(components)) return 'awaitingSeat';
   // A trader aboard its pinned ship is on its route, however long the crossing.
   if (ridesPinnedShip(components)) return 'sailingRoute';
   // A unit holding its ground under the battle alert takes no work and no rest, which without its own
@@ -316,6 +372,14 @@ function awaitsItsTrainingHouse(snapshot: WorldSnapshot, components: Comp): bool
   const house = num((components.TrainingOrder as { house?: unknown } | undefined)?.house);
   if (house === undefined) return false;
   return entityById(snapshot, house)?.components.UnderConstruction !== undefined;
+}
+
+/** A training order, or a coin drill on its way to its barracks, still waiting for a seat there. */
+function awaitsSeat(components: Comp): boolean {
+  const training = components.TrainingOrder as { seated?: unknown } | undefined;
+  if (training !== undefined) return training.seated === false;
+  const drill = components.CoinDrillOrder as { stage?: unknown; seated?: unknown } | undefined;
+  return drill?.stage === 'drill' && drill.seated === false;
 }
 
 function awaitsItsWorkplace(snapshot: WorldSnapshot, components: Comp): boolean {

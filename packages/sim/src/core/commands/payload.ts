@@ -3,7 +3,7 @@ import { COMPUTER_DIFFICULTIES, COMPUTER_MODULE_IDS } from '../../components/ai/
 import {
   ASSISTANT_ARMING_INTENTS,
   ASSISTANT_COUNTER_KINDS,
-  ASSISTANT_GRANT_AUDIENCES,
+  ASSISTANT_GRANT_GROUPS,
 } from '../../components/assistant.js';
 import { HOUSE_RECORD_NAME_MAX_CHARS } from '../../components/economy/infrastructure.js';
 import { MISC_EQUIP_SLOTS } from '../../components/equipment.js';
@@ -171,6 +171,7 @@ const UNIT_SELECTION_ACTION_PAYLOAD: {
   setJob: { required: { jobType: 'integer' }, optional: JOB_GOODS },
   assignBuilder: { required: { site: 'integer' }, optional: QUEUED },
   trainSoldier: { required: { house: 'integer' }, optional: QUEUED },
+  orderCoinDrill: { required: { house: 'integer' } },
   learn: { required: { house: 'integer', target: { oneOf: ['job', 'good'] }, typeId: 'integer' } },
   setWorkFlag: { required: NODE },
   setGatherGood: { required: { goodType: { nullOr: 'integer' } } },
@@ -392,7 +393,11 @@ const COMMAND_PAYLOAD: { readonly [K in Command['kind']]: PayloadSpec<Extract<Co
   },
   setAssistantGrant: { required: { player: 'integer', goodType: 'integer', enabled: 'boolean' } },
   setAssistantGrantAudience: {
-    required: { player: 'integer', goodType: 'integer', audience: { oneOf: ASSISTANT_GRANT_AUDIENCES } },
+    required: {
+      player: 'integer',
+      goodType: 'integer',
+      groups: { arrayOf: { oneOf: ASSISTANT_GRANT_GROUPS }, maxLength: ASSISTANT_GRANT_GROUPS.length },
+    },
   },
   setAssistantWeaponVeto: { required: { player: 'integer', goodType: 'integer', vetoed: 'boolean' } },
   setAssistantWeaponOrder: {
@@ -437,6 +442,7 @@ const COMMAND_PAYLOAD: { readonly [K in Command['kind']]: PayloadSpec<Extract<Co
   setConstructionPriority: { required: { building: 'integer', prioritized: 'boolean' } },
   setRallyPoint: { required: { building: 'integer', ...NODE } },
   clearRallyPoint: { required: { building: 'integer' } },
+  setTempleFire: { required: { building: 'integer', lit: 'boolean' } },
   setJob: { required: { entity: 'integer', jobType: 'integer' }, optional: JOB_GOODS },
   continueMatch: { required: { player: 'integer' } },
   endMatchContinuation: { required: {} },
@@ -507,6 +513,7 @@ const COMMAND_PAYLOAD: { readonly [K in Command['kind']]: PayloadSpec<Extract<Co
   setVehicleWanted: { required: { vehicle: 'integer', goodType: 'integer', amount: 'integer' } },
   clearVehicleWanted: { required: { vehicle: 'integer' } },
   trainSoldier: { required: { entity: 'integer', house: 'integer' }, optional: QUEUED },
+  orderCoinDrill: { required: { entity: 'integer', house: 'integer' } },
   unassignHouse: { required: { entity: 'integer' } },
   unloadPeople: {
     required: { vehicle: 'integer' },

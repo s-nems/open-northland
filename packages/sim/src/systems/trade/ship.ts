@@ -154,17 +154,52 @@ export function shipLiesOn(
   );
 }
 
-/** A world's answers, by sea labelling and door. Derived: the same inputs give the same node, so a
+/** A world's answers, by sea labelling and door. Derived: the same inputs give the same spots, so a
  *  restored world or an evicted entry changes no result. Never hashed. */
-const targetMemo = new WeakMap<World, Map<string, NodeId | null>>();
+const spotsNearMemo = new WeakMap<World, Map<string, readonly NodeId[]>>();
 /** The answers a world keeps; a handful of doors over a handful of seas. */
-const TARGET_MEMO_ENTRIES = 64;
+const SPOTS_NEAR_MEMO_ENTRIES = 64;
 
 /**
- * Where `ship` moors to work `door`: the mooring spot on the door's continent nearest the door, ties by
- * node id; null when the ship's sea touches no such shore. The spot scan runs once per sea labelling and
- * door, never per plan.
+ * The mooring spots on `door`'s continent that `ship`'s sea touches, nearest the door first, ties by node
+ * id; empty when there are none. The spot scan and its order are found once per sea labelling and door,
+ * never per plan.
  */
+export function mooringSpotsNear(
+  world: World,
+  ctx: ContentContext,
+  terrain: TerrainGraph,
+  ship: Entity,
+  door: NodeId,
+): readonly NodeId[] {
+  const spots = mooringSpotsOf(world, ctx, terrain, ship);
+  if (spots === null) return [];
+  const key = `${spots.key}:${door}`;
+  let held = spotsNearMemo.get(world);
+  if (held === undefined) {
+    held = new Map();
+    spotsNearMemo.set(world, held);
+  }
+  const cached = held.get(key);
+  if (cached !== undefined) return cached;
+  const continent = terrain.componentOf(door);
+  const at = terrain.coordsOf(door);
+  const from = { hx: at.x, hy: at.y };
+  const near: { readonly spot: NodeId; readonly distance: number }[] = [];
+  for (const spot of spots.spots) {
+    if (terrain.componentOf(spot) !== continent) continue;
+    const { x, y } = terrain.coordsOf(spot);
+    near.push({ spot, distance: hexDistance(from, { hx: x, hy: y }) });
+  }
+  near.sort((a, b) => a.distance - b.distance || a.spot - b.spot);
+  const ordered = near.map(({ spot }) => spot);
+  if (held.size >= SPOTS_NEAR_MEMO_ENTRIES) held.clear();
+  held.set(key, ordered);
+  return ordered;
+}
+
+/** Where `ship` moors to work `door`: the first of {@link mooringSpotsNear}, or null when its sea touches
+ *  no shore of the door's continent. */
 export function mooringTargetOf(
   world: World,
   ctx: ContentContext,
@@ -172,33 +207,19 @@ export function mooringTargetOf(
   ship: Entity,
   door: NodeId,
 ): NodeId | null {
-  const spots = mooringSpotsOf(world, ctx, terrain, ship);
-  if (spots === null) return null;
-  const key = `${spots.key}:${door}`;
-  let held = targetMemo.get(world);
-  if (held === undefined) {
-    held = new Map();
-    targetMemo.set(world, held);
-  }
-  const cached = held.get(key);
-  if (cached !== undefined) return cached;
-  const continent = terrain.componentOf(door);
-  const at = terrain.coordsOf(door);
-  const from = { hx: at.x, hy: at.y };
-  let best: NodeId | null = null;
-  let bestDistance = Number.POSITIVE_INFINITY;
-  for (const spot of spots.spots) {
-    if (terrain.componentOf(spot) !== continent) continue;
-    const { x, y } = terrain.coordsOf(spot);
-    const distance = hexDistance(from, { hx: x, hy: y });
-    if (distance < bestDistance || (distance === bestDistance && best !== null && spot < best)) {
-      best = spot;
-      bestDistance = distance;
-    }
-  }
-  if (held.size >= TARGET_MEMO_ENTRIES) held.clear();
-  held.set(key, best);
-  return best;
+  return mooringSpotsNear(world, ctx, terrain, ship, door)[0] ?? null;
+}
+
+/** {@link mooringSpotsNear} for the route's stop, empty for a house with no door. */
+export function mooringSpotsNearStop(
+  world: World,
+  ctx: MapContext,
+  terrain: TerrainGraph,
+  ship: Entity,
+  stop: DeepReadonly<TradeStop>,
+): readonly NodeId[] {
+  const door = stopDoor(world, ctx, terrain, stop);
+  return door === null ? [] : mooringSpotsNear(world, ctx, terrain, ship, door);
 }
 
 /** {@link mooringTargetOf} for the route's stop, or null for a house with no door. */
@@ -209,6 +230,5 @@ export function mooringTargetOfStop(
   ship: Entity,
   stop: DeepReadonly<TradeStop>,
 ): NodeId | null {
-  const door = stopDoor(world, ctx, terrain, stop);
-  return door === null ? null : mooringTargetOf(world, ctx, terrain, ship, door);
+  return mooringSpotsNearStop(world, ctx, terrain, ship, stop)[0] ?? null;
 }

@@ -4,6 +4,7 @@ import type { System } from '../context.js';
 import { mayEngage } from './acting.js';
 import { BattleFront } from './battle-alert.js';
 import { CombatIndex, holdDormantTick, holdPassIndex } from './combat-index.js';
+import { fireFromDecks } from './deck-fire.js';
 import { combatPossible } from './dormancy.js';
 import { engageCandidates } from './engage-candidates.js';
 import { engageCombatant } from './engage-combatant.js';
@@ -16,12 +17,10 @@ import { fireFromShelters } from './shelter-fire.js';
 
 // Re-exported so the public surface keeps its single combat import site; the rest of the folder is internal.
 export { REPATH_CADENCE } from './chase.js';
-export {
-  VEHICLE_DEFENCE_LEASH_POINTS,
-  VEHICLE_SCAN_RADIUS_POINTS,
-} from './engage-vehicle.js';
+export { VEHICLE_DEFENCE_LEASH_POINTS } from './engage-vehicle.js';
 export { DEFEND_LEASH_NODES, DEFEND_RADIUS_NODES, IGNORE_LEASH_NODES } from './engagement.js';
 export { SIGHT_RADIUS_NODES } from './targeting.js';
+export { VEHICLE_SCAN_RADIUS_POINTS } from './vehicle-targets.js';
 export { vehicleWeapon } from './weapons.js';
 
 /**
@@ -74,5 +73,6 @@ export const combatSystem: System = (world, ctx) => {
   // settled positions and its aim never depends on where it sits in the vehicle store.
   const vehicles = world.canonicalQuery(Vehicle, Health, Position);
   for (let i = 0; i < vehicles.length; i++) engageVehicle(world, ctx, terrain, pass, vehicles[i] as Entity);
+  fireFromDecks(world, ctx, terrain, pass.index, vehicles);
   pass.slots.release();
 };

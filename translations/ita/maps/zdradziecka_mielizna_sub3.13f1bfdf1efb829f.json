@@ -1,0 +1,29 @@
+{
+  "version": 1,
+  "map": "zdradziecka_mielizna_sub3",
+  "basis": {
+    "lang": "eng",
+    "digest": "9d98aa45d1582635b9728596bd762046549ef20e5eaf1cc0665b52ee81732842"
+  },
+  "strings": {
+    "30": "Libera gli schiavi!",
+    "31": "Trova l'interruttore!",
+    "98": "Missione secondaria 3",
+    "99": "SECCA TRADITRICE-sub3",
+    "100": "Bjarni",
+    "601": "Franchi",
+    "602": "Vichinghi",
+    "701": "FRANCHI",
+    "702": "VICHINGHI"
+  },
+  "briefings": {
+    "500": "<font:$local$\\fonts\\fonthead16bld.fnt>\nI SOTTERRANEI DEI FRANCHI\n<font:$local$\\fonts\\font12.fnt>\nCi sono andato! Da solo. Farò vedere a quei mascalzoni qual è il loro posto... È una faccenda tra me e loro.\n\nL'interruttore dovrebbe essere da qualche parte qui intorno...\n\n<usericon:1,9,114>",
+    "501": "<font:$local$\\fonts\\fonthead16bld.fnt>\nI FRANCHI\n<font:$local$\\fonts\\font12.fnt>\nIn uno dei corridoi mi sono imbattuto in truppe dei Franchi. Si vede che si sono trincerati per bene in questi sotterranei... Non me l'aspettavo.",
+    "502": "<font:$local$\\fonts\\fonthead16bld.fnt>\nI VICHINGHI\n<font:$local$\\fonts\\font12.fnt>\nI Franchi costringevano al lavoro i Vichinghi catturati. Sgobbavano tutto il giorno per saziare la sete d'oro dei Franchi. Li trattavano come bestie... Gettavano il cibo per terra e guardavano la gente affamata azzuffarsi per prenderlo... Era terribile! Devo liberarli! Distruggerò questi Franchi una volta per tutte!",
+    "503": "<font:$local$\\fonts\\fonthead16bld.fnt>\nFRANCHI SCONFITTI!\n<font:$local$\\fonts\\font12.fnt>\nOra nessuno darà più fastidio a questa gente... Tutti possono lasciare questo luogo senza pericolo.",
+    "504": "<font:$local$\\fonts\\fonthead16bld.fnt>\nPALAZZI D'ORO\n<font:$local$\\fonts\\font12.fnt>\nSottoterra c'era un'intera città dei Franchi, e il lusso e la ricchezza di quel luogo superavano ogni immaginazione. L'oro era dappertutto! Persino i marciapiedi su cui camminava la gente erano d'oro! L'avidità porta sempre alla rovina...",
+    "505": "<font:$local$\\fonts\\fonthead16bld.fnt>\nTERZO INTERRUTTORE!\n<font:$local$\\fonts\\font12.fnt>\nHo trovato l'ultimo degli interruttori. Appena azionato, il meccanismo si è messo in moto di colpo. Uno dei superstiti ha gridato: \"Che cosa hai fatto?! Questo posto tra poco finirà sott'acqua!\" Ho capito cosa stava succedendo... Devo sbrigarmi ad aiutare i Vichinghi!",
+    "506": "<font:$local$\\fonts\\fonthead16bld.fnt>\nSCONFITTA!\n<font:$local$\\fonts\\font12.fnt>\n\nÈ morto uno degli eroi indispensabili per la missione. Senza di lui la spedizione non può più riuscire...\n\n<picture:$local$\\graphics\\Hero_Dead_F.pcx>\n",
+    "507": "<font:$local$\\fonts\\fonthead16bld.fnt>\nSCONFITTA!\n<font:$local$\\fonts\\font12.fnt>\n\nNon ce l'hai fatta a sfuggire all'acqua che saliva!\n\n<picture:$local$\\graphics\\Hero_Dead_F.pcx>\n"
+  }
+}

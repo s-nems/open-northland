@@ -50,12 +50,13 @@ import type { PlannerPass } from '../planner/pass.js';
 import { combatOwnsFeet, shelterHasRoom } from '../planner/replan.js';
 import { boundWorkplaceTarget } from '../targets/index.js';
 import { planHomeTopUp } from './at-home.js';
+import { planCoinDrill } from './coin-drill.js';
 import { cutOffCheckDue, reconcileCutOff, strandedPost } from './cut-off.js';
 import {
   builderWorkBeyondReach,
   planBuilder,
   planCarrierHaul,
-  planCartTopUp,
+  planCartRound,
   planDelivery,
   planFisher,
   planGatherer,
@@ -66,6 +67,7 @@ import {
   planVehicleCargo,
   planWaitAtFieldFlag,
   planWorkshopSupplier,
+  routableCartLoad,
 } from './economy/index.js';
 import { planEquipOrder } from './equip-order.js';
 import { planFarmer } from './farming/index.js';
@@ -118,8 +120,9 @@ export function planShelterRung(pass: PlannerPass, e: Entity, settler: SettlerVi
  *  home the sleep or pray rung just put it in, or a garrison that served its need on the spot and is
  *  still holding the tower. A hunter's chase is the only engagement that reaches a needs rung; dropping
  *  it and the prey hold keeps the CombatSystem off the errand, and the hunter picks its prey afresh once
- *  the need is met. */
+ *  the need is met. A drink pulls it nowhere: it keeps its house, its post and its hunt. */
 function leaveForNeed(world: World, e: Entity): void {
+  if (drinks(world, e)) return;
   if (!isServedAtHome(world, e) && !holdsPostThroughNeed(world, e)) stepOut(world, e);
   world.remove(e, Engagement);
   world.remove(e, HuntFocus);
@@ -146,13 +149,14 @@ export function planAdult(pass: PlannerPass, e: Entity, settler: SettlerView, jo
   if (planBreak(pass, plan, settler, load, hx, hy, alert)) {
     // Whatever took the carrier off its trade parks its hauling cart where it stands; the rung below
     // takes the cart up again once the trade is back on. A meal from its own hands is eaten on the spot
-    // with the cart in hand: parked, the food would be stowed out of the meal's reach.
-    if (!eatsFromHands(world, e)) parkHaulingCart(world, ctx, e);
+    // with the cart in hand: parked, the food would be stowed out of the meal's reach. A drink touches
+    // neither the hands nor the cart.
+    if (!eatsFromHands(world, e) && !drinks(world, e)) parkHaulingCart(world, ctx, e);
     return;
   }
   // A posted carrier handed a cart, or back from a break, fetches it before its hauls, once its hands are
   // free; a hold that no longer stands sets the cart down here, whatever the carrier does next.
-  if (planHaulingCart(plan, load !== undefined && load.amount > 0)) return;
+  if (planHaulingCart(plan, pass.seatClaims, load !== undefined && load.amount > 0)) return;
   planEconomy(plan, pass, settler, load, hx, hy, alert);
 }
 
@@ -169,6 +173,11 @@ function dropEmptyHandedShipRun(
   if (ship === undefined) return;
   const trader = pinnedTraderOf(world, ship);
   if (trader !== null && trader !== e) abandonCargoRun(world, e);
+}
+
+/** A settler drinking its mead, a break taken where it stands. */
+function drinks(world: World, e: Entity): boolean {
+  return world.tryGet(e, CurrentAtomic)?.effect.kind === 'drink';
 }
 
 /** A settler eating a unit it carries, the one break that spends what is in its hands. */
@@ -200,12 +209,11 @@ function planBreak(
     return true;
   }
 
-  // A pressing need on a fighting unit is answered from what it carries or what its post holds, never by
-  // walking to food, a bed or a temple and never by lying down. Under the alarm, which still outranks
-  // combat. Departure: the manual gives the need rule no combat exemption and carves a soldier out only for
-  // sleeping at home, so leaving an unprovisioned fighter to go without is a deliberate choice. A need the
-  // player ordered is the exception: the fight is broken off for it and the full ladder below runs, so
-  // ordering a meal is how a player feeds an army that would otherwise starve in the line.
+  // The planner meets a fighting unit only between two fights or on a chase, and answers a pressing need
+  // there from what it carries or what its post holds, never by walking to food, a bed or a temple and
+  // never by lying down. Under the alarm, which still outranks combat. Hunger that turns critical takes a
+  // unit allowed to regenerate out of the fight between blows (`conflict/hunger-break.ts`), and it comes
+  // here on a meal break. A need the player ordered breaks the fight off too, and the full ladder below runs.
   if (combatOwnsFeet(world, e)) {
     if (orderedNeed(world, e) === undefined) {
       answerNeedInPlace(world, ctx, e, settler);
@@ -214,8 +222,8 @@ function planBreak(
     // Breaking off here rather than in the CombatSystem, which runs later in the tick, so the rungs below
     // plan the errand into a unit the fight no longer holds. Only the engagement goes: the route is left
     // for whatever rung replaces it, and an attack order the player gave is the player's to cancel -
-    // `orderNeed` retires it when the order lands. A unit with nowhere to go for its meal is re-engaged
-    // by the CombatSystem this same tick, which beats standing in the line doing nothing.
+    // `orderNeed` retires it when the order lands. A unit with nowhere to go for its meal is noted by
+    // the hunger rung and re-engaged by the CombatSystem this same tick.
     world.remove(e, Engagement);
   }
 
@@ -238,9 +246,13 @@ function planBreak(
   if (seat?.boarding === true) {
     const loaded = load !== undefined && load.amount > 0;
     if (!loaded || pinnedTraderOf(world, seat.vehicle) === null) abandonCargoRun(world, e);
-    if (!loaded && planRider(world, ctx, terrain, e, pass.spacing, pass.idle)) {
-      stepOut(world, e);
-      return true;
+    if (!loaded) {
+      // A meal ashore ends with the call back, the retry keeping a rider still hungry aboard for it.
+      if (world.has(e, MealBreak)) endMealBreak(world, ctx, e);
+      if (planRider(world, ctx, terrain, e, pass.spacing, pass.idle)) {
+        stepOut(world, e);
+        return true;
+      }
     }
   }
 
@@ -310,6 +322,9 @@ function planBreak(
   // BARRACKS DRILL: a player errand outranking the settler's trade for as long as it lasts, and above the
   // equip errand below because the drill ends in a profession change.
   if (planTraining(plan, settler, pass.spacing, pass.idle, load)) return true;
+  // COIN DRILL: a soldier's paid practice, a player errand above the equip errand and the
+  // standing soldier rungs below, which take him back over once he has walked home.
+  if (planCoinDrill(plan, settler, pass.spacing, pass.idle)) return true;
   // EQUIP ERRAND: the player's or the assistant's, outranking the DEFEND hold below, socialising and every
   // economy rung, but under the needs drives and the ownership gate. A DEFEND guard walks the errand and
   // re-holds its unchanged anchor afterwards, since the combat walk-back pass defers to a live errand. A
@@ -348,12 +363,15 @@ function planBreak(
     return true;
   }
   // The housewife rung: a woman takes no trade - her work is stocking the family larder. Above the
-  // carry-delivery rung so food she lifted for the pantry goes home, not to the nearest store.
+  // carry-delivery rung so food she lifted for the pantry goes home, not to the nearest store. It is the
+  // work a lost mark of hers waits on, as a trade is an employed settler's.
   if (
     world.has(e, Female) &&
     planWomanHoard(world, ctx, terrain, e, pass.externalFood, pass.externalQuality, pass.supply, limit)
-  )
+  ) {
+    noteWorkTaken(world, e);
     return true;
+  }
   return false;
 }
 
@@ -422,10 +440,12 @@ function planEconomy(
   }
 
   // Deliver a carried load first: a settler must free its hands before any empty-handed work. A load with
-  // no sink in reach leaves it standing, which is no work taken. A porter with room in its cart fills it
-  // from the same good close by before the trip home.
+  // no sink in reach leaves it standing, which is no work taken. A carrier with room in its cart makes
+  // the next stop of its round before the trip home.
   if (load !== undefined && load.amount > 0) {
-    if (!planCartTopUp(plan, load)) planDelivery(plan, pass.spacing, load);
+    if (!planCartRound(plan, pass.seatClaims)) {
+      planDelivery(plan, pass.spacing, routableCartLoad(plan, load));
+    }
     if (world.has(e, MoveGoal) || world.has(e, CurrentAtomic)) noteWorkTaken(world, e);
     return;
   }

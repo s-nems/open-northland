@@ -9,11 +9,13 @@ import {
   scaledWallRules,
   WALL_LOGIC_ID,
 } from '../../../content/map/palisade-rows.js';
+import { coinDrillCoinsOf, coinDrillPointsOf, coinDrillServedTicksOf } from '../../../game/coin-drill.js';
 import { buildingHitpoints } from '../base.js';
 import {
-  CAP_HITS,
+  CAP_POINTS,
   type CombatTarget,
   combatTargets,
+  DEFENSE_TAKEN_PCT,
   HIT_DIRECTION,
   hitsToKill,
   landed,
@@ -40,15 +42,22 @@ import {
   whole,
 } from './reader.js';
 
-/** The hits the articles' sample rows stand on. */
-const FIGHT_SAMPLE_HITS = [10, 25, 50, 75] as const;
+/** The fight points the articles' sample rows stand on. */
+const FIGHT_SAMPLE_POINTS = [10, 25, 50, 75] as const;
 
-const AIM_SAMPLE_HITS = 50;
+const AIM_SAMPLE_POINTS = 50;
 
 const STONE_SAMPLE_HITS = [0, 25, 50] as const;
 
 /** The value the fight-experience table shows a blow of. */
 const SAMPLE_BLOW = 1000;
+
+/** Full fight experience in the counter's stored units, which the sim's raises read. */
+const CAP_UNITS = systems.fightUnitsOfPoints(CAP_POINTS);
+
+/** A blow-time rate as points per second of attack clip. */
+const pointsPerSecond = (rate: { readonly points: number; readonly seconds: number }): number =>
+  rate.points / rate.seconds;
 
 /** `read` times `pct` percent, rounded down as a blow's percent is. */
 const scaledDown =
@@ -133,11 +142,13 @@ const buildingHp = (base: KnowledgeBase, id: string, tribe: number = VIKING): Fa
 };
 
 export const FIGHT_FACTS: Readonly<Record<string, Fact>> = Object.fromEntries(
-  FIGHT_SAMPLE_HITS.flatMap((hits) => {
-    const blow = systems.withFightExperience(SAMPLE_BLOW, hits);
+  FIGHT_SAMPLE_POINTS.flatMap((points) => {
+    const units = systems.fightUnitsOfPoints(points);
+    const blow = systems.withFightExperience(SAMPLE_BLOW, units);
     return [
-      [`fight.factor.${hits}`, twoDecimals(blow / SAMPLE_BLOW)],
-      [`fight.blow.${hits}`, whole(blow)],
+      [`fight.factor.${points}`, twoDecimals(blow / SAMPLE_BLOW)],
+      [`fight.blow.${points}`, whole(blow)],
+      [`fight.taken.${points}`, twoDecimals(systems.withTakenBonuses(SAMPLE_BLOW, units) / SAMPLE_BLOW)],
     ];
   }),
 );
@@ -149,10 +160,10 @@ const shelterShots = (base: KnowledgeBase, id: string): FactValue => {
   return seats === undefined ? undefined : seats * shotsPerSeat;
 };
 
-/** The farthest a stray shot of `hits` strikes from its mark over `range` nodes: the highest roll's spread
- *  on both axes at once, in hexes. */
-function strayReach(range: number, hits: number): number {
-  const side = systems.widestScatterOffset(systems.widestMarksmanSpread(range, hits));
+/** The farthest a stray shot of a shooter of aim `skill` (a bowman's fight points, a catapult's landed hits)
+ *  strikes from its mark over `range` nodes: the highest roll's spread on both axes at once, in hexes. */
+function strayReach(range: number, skill: number): number {
+  const side = systems.widestScatterOffset(systems.widestMarksmanSpread(range, skill));
   return hexDistanceBetween(0, 0, side, side);
 }
 
@@ -161,10 +172,10 @@ const longestBowShot = (base: KnowledgeBase): FactValue => {
   return max === undefined ? undefined : max + systems.TOWER_RANGE_BONUS_NODES;
 };
 
-const strayFact = (range: FactReader, hits: number): Fact =>
+const strayFact = (range: FactReader, skill: number): Fact =>
   whole((base) => {
     const reach = range(base);
-    return reach === undefined ? undefined : strayReach(reach, hits);
+    return reach === undefined ? undefined : strayReach(reach, skill);
   });
 
 const weaponMax =
@@ -172,20 +183,20 @@ const weaponMax =
   (base) =>
     weaponRow(base, VIKING, id)?.maxRange;
 
-/** The fewest bow hits past which no shot strays, whatever a bow's range. */
-const steadyHits: FactReader = (base) => {
+/** The fewest fight points past which no shot strays, whatever a bow's range. */
+const steadyPoints: FactReader = (base) => {
   const range = longestBowShot(base);
   if (range === undefined) return undefined;
-  let hits = 0;
-  while (strayReach(range, hits) > 0) hits++;
-  return hits;
+  let points = 0;
+  while (strayReach(range, points) > 0) points++;
+  return points;
 };
 
 export const AIM_FACTS: Readonly<Record<string, Fact>> = {
   'aim.spreadShort': strayFact(weaponMax('short_bow'), 0),
   'aim.spreadLong': strayFact(weaponMax('long_bow'), 0),
   'aim.spreadTower': strayFact(longestBowShot, 0),
-  'aim.noSpreadHits': whole(steadyHits),
+  'aim.noSpreadPoints': whole(steadyPoints),
   ...Object.fromEntries(
     STONE_SAMPLE_HITS.map((hits) => [`stone.spread.${hits}`, strayFact(weaponMax('catapult'), hits)]),
   ),
@@ -269,14 +280,36 @@ export const COMBAT_FACTS: Readonly<Record<string, Fact>> = {
   'shortBow.standoff': standoff('short_bow'),
   'longBow.standoff': standoff('long_bow'),
   'heroBow.standoff': standoff('hero_bow'),
-  'combat.fightCapHits': whole(CAP_HITS),
-  'combat.fightCapFactor': whole(systems.withFightExperience(SAMPLE_BLOW, CAP_HITS) / SAMPLE_BLOW),
-  'combat.fightCapBlow': whole(systems.withFightExperience(SAMPLE_BLOW, CAP_HITS)),
+  'combat.fightCapPoints': whole(CAP_POINTS),
+  'combat.fightCapFactor': twoDecimals(systems.withFightExperience(SAMPLE_BLOW, CAP_UNITS) / SAMPLE_BLOW),
+  'combat.fightCapBlow': whole(systems.withFightExperience(SAMPLE_BLOW, CAP_UNITS)),
   'combat.sampleBlow': whole(SAMPLE_BLOW),
+  'combat.fightDealtPct': whole(systems.FIGHT_EXPERIENCE_DEALT_PCT_AT_FULL),
+  'combat.fightTakenPct': whole(systems.FIGHT_EXPERIENCE_TAKEN_PCT_AT_FULL),
+  'combat.fightTakenFactor': twoDecimals(systems.withTakenBonuses(SAMPLE_BLOW, CAP_UNITS) / SAMPLE_BLOW),
+  'combat.fightStrengthFactor': twoDecimals(
+    systems.withDealtBonuses(SAMPLE_BLOW, CAP_UNITS, STRENGTH_PCT) / SAMPLE_BLOW,
+  ),
+  'combat.fightDefenseFactor': twoDecimals(
+    systems.withTakenBonuses(SAMPLE_BLOW, CAP_UNITS, DEFENSE_TAKEN_PCT) / SAMPLE_BLOW,
+  ),
+  'combat.fightMeleePerSecond': twoDecimals(pointsPerSecond(systems.MELEE_BLOW_POINTS_RATE)),
+  'combat.fightShotPerSecond': twoDecimals(pointsPerSecond(systems.SHOT_POINTS_RATE)),
+  'combat.fightTakenPerSecond': twoDecimals(pointsPerSecond(systems.BLOW_TAKEN_POINTS_RATE)),
+  'combat.fightStructurePct': whole(
+    (PERCENT * systems.STRUCTURE_BLOW_SHARE.numerator) / systems.STRUCTURE_BLOW_SHARE.denominator,
+  ),
+  'coinDrill.points': whole((base) => coinDrillPointsOf(base.content)),
+  'coinDrill.limit': whole(systems.COIN_DRILL_LIMIT),
+  'coinDrill.coins': whole((base) => coinDrillCoinsOf(base.content)),
+  'coinDrill.termSeconds': oneDecimal((base) => {
+    const ticks = coinDrillServedTicksOf(base.content);
+    return ticks === undefined ? undefined : seconds(ticks);
+  }),
   'combat.backSideFactor': twoDecimals(HIT_DIRECTION.backSide / PERCENT),
   'combat.behindFactor': twoDecimals(HIT_DIRECTION.behind / PERCENT),
   'aim.basePct': whole(systems.trueShotPct(0)),
-  'aim.samplePct': whole(systems.trueShotPct(AIM_SAMPLE_HITS)),
+  'aim.samplePct': whole(systems.trueShotPct(AIM_SAMPLE_POINTS)),
   'stance.search': whole(systems.DEFEND_RADIUS_NODES),
   'stance.defendLeash': whole(systems.DEFEND_LEASH_NODES),
   'stance.ignoreLeash': whole(systems.IGNORE_LEASH_NODES),
@@ -287,6 +320,7 @@ export const COMBAT_FACTS: Readonly<Record<string, Fact>> = {
   'stance.fleeMax': whole(systems.FLEE_STEP_NODES * DIAGONAL_STEP_COST),
   'contest.radius': whole(systems.CONTESTED_GROUND_RADIUS_NODES),
   'contest.diagonal': whole(diagonal(systems.CONTESTED_GROUND_RADIUS_NODES)),
+  'contest.siegeRadius': whole(systems.CONTESTED_SIEGE_RADIUS_POINTS),
   'peace.keepOut': whole(systems.PEACE_KEEP_OUT_RADIUS_NODES),
   'peace.noticeFirstMinutes': whole(systems.PEACE_NOTICE_MINUTES[0]),
   'peace.noticeLastMinutes': whole(systems.PEACE_NOTICE_MINUTES[1]),
@@ -312,6 +346,10 @@ export const COMBAT_FACTS: Readonly<Record<string, Fact>> = {
   'dragon.hitpoints': whole(BYZANTINE_SPEAR_VARIANTS.find((row) => row.form === 'native')?.hitpoints ?? 0),
   'catapult.searchRadius': whole(systems.VEHICLE_SCAN_RADIUS_POINTS),
   'catapult.leash': whole(systems.VEHICLE_DEFENCE_LEASH_POINTS),
+  'catapult.priorityReach': whole((base) => {
+    const max = weaponRow(base, VIKING, 'catapult')?.maxRange;
+    return max === undefined ? undefined : max + systems.VEHICLE_PRIORITY_REACH_POINTS;
+  }),
   'catapult.bandMin': whole((base) => {
     const max = weaponRow(base, VIKING, 'catapult')?.maxRange;
     return max === undefined ? undefined : max - systems.APPROACH_BAND_DEPTH;

@@ -10,6 +10,7 @@ import { contentIndex } from '../../core/content-index.js';
 import { ONE } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { SystemContext } from '../context.js';
+import { settlerFightUnits, withDealtBonuses, withTakenBonuses } from '../progression/bonus.js';
 import { isCarrierJob } from '../stores/index.js';
 
 // The worn-equipment effect reads: what a worn good grants its bearer, resolved from the content equip
@@ -51,27 +52,35 @@ function carriedEffect<K extends CarriedEffect>(
   return undefined;
 }
 
-/**
- * A landed blow's damage after the striker's carried effects. Original behavior, for a blow on any
- * target: the strength amulet multiplies by 3/2, rounding down, then the critical-hit amulet doubles one
- * blow in five, drawn only while it is carried. A striker already dead carries none.
- */
-export function damageDealtBy(world: World, ctx: SystemContext, attacker: Entity, damage: number): number {
-  const health = world.tryGet(attacker, Health);
-  if (health !== undefined && health.hitpoints <= 0) return damage;
-  let dealt = damage;
-  const dealtPct = carriedEffect(world, ctx.content, attacker, 'damageDealtPct');
-  if (dealtPct !== undefined) dealt = scaledDealtDamage(dealt, dealtPct);
-  const critical = carriedEffect(world, ctx.content, attacker, 'criticalHit');
-  if (critical !== undefined && ctx.rng.int(PERCENT) < critical.chancePct) {
-    dealt = Math.floor((dealt * critical.damagePct) / PERCENT);
-  }
-  return dealt;
+/** A blow's damage after its striker's carried effects, and whether the critical hit came up for it. */
+export interface DealtBlow {
+  readonly damage: number;
+  readonly critical: boolean;
 }
 
-/** `damage` raised by a striker's `damageDealtPct`, rounding down. */
-export function scaledDealtDamage(damage: number, dealtPct: number): number {
-  return Math.floor((damage * dealtPct) / PERCENT);
+/**
+ * A landed blow's damage after the striker's own raises. Original behavior, for a blow on any target: the
+ * strength amulet scales it to its `damageDealtPct`, then the critical-hit amulet rolls, drawn only while
+ * it is carried. Our rule: the striker's `fightUnits` (a melee blow's fight counter in stored units, else
+ * 0) add their raise to the amulet's, and the sum applies once, truncating. A striker already dead carries
+ * none.
+ */
+export function damageDealtBy(
+  world: World,
+  ctx: SystemContext,
+  attacker: Entity,
+  damage: number,
+  fightUnits = 0,
+): DealtBlow {
+  const health = world.tryGet(attacker, Health);
+  if (health !== undefined && health.hitpoints <= 0) return { damage, critical: false };
+  const dealtPct = carriedEffect(world, ctx.content, attacker, 'damageDealtPct');
+  let dealt =
+    dealtPct === undefined && fightUnits === 0 ? damage : withDealtBonuses(damage, fightUnits, dealtPct);
+  const criticalHit = carriedEffect(world, ctx.content, attacker, 'criticalHit');
+  const critical = criticalHit !== undefined && ctx.rng.int(PERCENT) < criticalHit.chancePct;
+  if (critical) dealt = Math.floor((dealt * criticalHit.damagePct) / PERCENT);
+  return { damage: dealt, critical };
 }
 
 /** `damage` cut by a target's `damageTakenPct`, truncating. */
@@ -79,11 +88,15 @@ export function scaledTakenDamage(damage: number, takenPct: number): number {
   return Math.trunc((damage * takenPct) / PERCENT);
 }
 
-/** The share of a blow's damage its target takes. Original behavior: the defense amulet halves it,
- *  truncating, after the striker's effects. */
+/**
+ * The share of a blow's damage its target person takes, after the striker's effects. Original behavior:
+ * the defence amulet scales it to its `damageTakenPct`. Our rule: the person's own fight experience cuts
+ * it by up to 40%, multiplying with the amulet in one truncation, so full experience under a x0.6 amulet
+ * takes x0.36. Every blow on a person passes here once, whatever struck it.
+ */
 export function damageTakenBy(world: World, ctx: SystemContext, target: Entity, damage: number): number {
-  const takenPct = carriedEffect(world, ctx.content, target, 'damageTakenPct');
-  return takenPct === undefined ? damage : scaledTakenDamage(damage, takenPct);
+  const takenPct = carriedEffect(world, ctx.content, target, 'damageTakenPct') ?? PERCENT;
+  return withTakenBonuses(damage, settlerFightUnits(world, target), takenPct);
 }
 
 /** The fight effects `e`'s misc row carries, each as {@link damageDealtBy} and {@link damageTakenBy} read

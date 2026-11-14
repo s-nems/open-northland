@@ -68,7 +68,7 @@ export const SETTLERS: ArticleGroup = {
               ],
               [
                 '{{need.overfillPct}}%',
-                'Tyle najwyżej mieści pasek. Posiłek w domu i sen w domu z meblami odkładają zapas ponad 100%.',
+                'Tyle najwyżej mieści pasek. Posiłek albo sen w domu może odłożyć zapas ponad 100%.',
               ],
             ],
           },
@@ -78,38 +78,24 @@ export const SETTLERS: ArticleGroup = {
         },
         {
           table: {
-            head: ['Kto', 'Czas snu', 'Wytrzymałość za sen: poza domem', 'w domu', 'w domu z Meblami'],
+            head: ['Kto', 'Czas snu', 'Wytrzymałość za sen: poza domem', 'w domu'],
             rows: [
-              [
-                'Mężczyzna',
-                '{{sleep.manSeconds}} s',
-                '+{{sleep.manAwayPct}}%',
-                '+{{sleep.manHomePct}}%',
-                '+{{sleep.manFurnishedPct}}%',
-              ],
+              ['Mężczyzna', '{{sleep.manSeconds}} s', '+{{sleep.manAwayPct}}%', '+{{sleep.manHomePct}}%'],
               [
                 '[[job:woman|Kobieta]]',
                 '{{sleep.womanSeconds}} s',
                 '+{{sleep.womanAwayPct}}%',
                 '+{{sleep.womanHomePct}}%',
-                '+{{sleep.womanFurnishedPct}}%',
               ],
               [
                 'Kupiec, Zwiadowca (zawsze jak w domu)',
                 '{{sleep.manSeconds}} s',
                 '+{{sleep.manHomePct}}%',
                 '-',
-                '-',
               ],
-              [
-                'Żołnierz (gdziekolwiek śpi)',
-                '{{sleep.soldierSeconds}} s',
-                '+{{sleep.soldierPct}}%',
-                '-',
-                '-',
-              ],
+              ['Żołnierz (gdziekolwiek śpi)', '{{sleep.soldierSeconds}} s', '+{{sleep.soldierPct}}%', '-'],
             ],
-            num: [1, 2, 3, 4],
+            num: [1, 2, 3],
           },
         },
         {
@@ -124,7 +110,10 @@ export const SETTLERS: ArticleGroup = {
               ['Potwory, zwierzęta', 'Brak.'],
               ['Żołnierz', 'Bez Towarzystwa.'],
               ['Pasażer wozu', 'Paski nie spadają, zdrowie się nie zmienia.'],
-              ['Pasażer statku', 'Je z ładowni, śpi jak poza domem, rozmawia. Modli się dopiero na lądzie.'],
+              [
+                'Pasażer statku',
+                'Najpierw pije to, co ma przy sobie. Gdy statek stoi przy brzegu, schodzi na ląd zjeść, a na morzu je z ładowni. Śpi jak poza domem, rozmawia. Modli się dopiero na lądzie.',
+              ],
             ],
           },
         },
@@ -201,7 +190,7 @@ export const SETTLERS: ArticleGroup = {
         },
         {
           steps: [
-            '[[job:woman|Kobieta]] z gotowym domem szuka najbliższego jedzenia poza domami.',
+            '[[job:woman|Kobieta]] z gotowym domem bierze najpierw najbliższe [[good:meat|Mięso]], np. z [[building:work_animal_farm|Fermy bydła]], a dopiero potem najbliższe jedzenie poza domami.',
             'Niesie {{haul.carry}} sztukę do domu.',
             'Z [[good:crockery|Naczyniami]] w domu każda dostawa daje {{haul.crockeryDelivery}} sztuki w spiżarni.',
           ],
@@ -270,7 +259,7 @@ export const SETTLERS: ArticleGroup = {
         {
           list: [
             'Dom dostaje się tylko rozkazem "Przydziel dom". Nikt nie wprowadza się sam, a ślub przenosi tylko współmałżonka.',
-            'Dom mieści tyle rodzin, ile podaje kolumna Rodziny w tabeli poziomów. Do pełnego domu rozkaz nie działa.',
+            'Dom mieści tyle rodzin, ile podaje kolumna Rodziny w tabeli poziomów, a z [[good:furniture|Meblami]] więcej. Do pełnego domu rozkaz nie działa.',
             'Ponowny przydział przenosi całą rodzinę: osadnika, małżonka i rosnące dziecko.',
           ],
         },
@@ -280,7 +269,7 @@ export const SETTLERS: ArticleGroup = {
         {
           list: [
             'Ślub wymaga rozkazu "Zawrzyj małżeństwo".',
-            'Rozkaz łączy osadnika z najbliższą dorosłą osobą przeciwnej płci, z tego samego plemienia i od tego samego gracza.',
+            'Rozkaz łączy osadnika z najbliższą dorosłą osobą przeciwnej płci, z tego samego plemienia i od tego samego gracza. Kobieta bierze mężczyznę z zawodem przed Cywilem.',
             'Kandydat musi być w zasięgu [[article:roads|drogowskazów]] osadnika. Bez kandydata rozkaz przepada, a gra pokazuje "Brak pary".',
             'Ślubu nie biorą żołnierze, bohaterowie, Zwiadowcy ani osadnik wysłany do [[building:barracks|Koszar]] lub [[building:school|Szkoły]].',
             'Para mieszka w domu żony, a gdy żona go nie ma, w domu męża.',
@@ -336,9 +325,9 @@ export const SETTLERS: ArticleGroup = {
               [
                 '[[good:furniture|Meble]]',
                 'Dom 1',
-                'Sen ×{{home.factor}}',
-                '{{home.furnitureManSleeps}} snów mężczyzny, {{home.furnitureWomanSleeps}} snów kobiety',
-                '{{home.furnitureFetchBelow}}',
+                'Miejsce dla kolejnych rodzin',
+                '{{home.furnitureChildren}} dzieci, {{home.furnitureSleeps}} snów albo {{home.furnitureMeals}} posiłków',
+                'gdy brakuje sztuki zapasu',
               ],
               [
                 '[[good:holy_oil|Oliwa]]',
@@ -349,8 +338,14 @@ export const SETTLERS: ArticleGroup = {
               ],
             ],
             num: [4],
-            foot: 'Dom trzyma do {{home.wareUnits}} sztuk każdego z tych towarów. Oliwa pali się bez przerwy, także gdy nikt się nie modli.',
+            foot: 'Dom trzyma do {{home.wareUnits}} sztuk Naczyń i tyle samo Oliwy. Mebli trzyma na zapas tyle sztuk, ile dodatkowych rodzin mieści. Oliwa pali się bez przerwy, także gdy nikt się nie modli.',
           },
+        },
+        {
+          list: [
+            'Jedna sztuka Mebli to miejsce dla jednej dodatkowej rodziny, najwyżej tylu, ile podaje kolumna Z Meblami w tabeli poziomów. Dodatkowe są te rodziny, które wprowadziły się ostatnie. Miejsca są, dopóki gracz Mebli nie zabronił.',
+            'Każda dodatkowa rodzina zużywa własną sztukę: poczęciem dziecka, snem w domu i posiłkiem ze spiżarni. Pozostałe rodziny Mebli nie zużywają. Gdy sztuka się zużyje, rodzina bierze następną z zapasu domu.',
+          ],
         },
         {
           p: 'W panelu domu gracz wyłącza dla całej osady używanie Naczyń i Mebli oraz dostawy Oliwy. Oliwa już złożona pali się dalej.',
@@ -365,6 +360,10 @@ export const SETTLERS: ArticleGroup = {
               ['Wdowiec', 'Traci dom, gdy dziecko dorosło lub zmarło.'],
               ['Wdowa', 'Zostaje w domu.'],
               ['Dorosłe dziecko', 'Traci dom w chwili dorosłości.'],
+              [
+                'Rodzina ponad podstawową liczbę',
+                'Wyprowadza się, gdy jej Meble się zużyją, a dom nie ma zapasu, albo gdy gracz Mebli zabroni. Gra pokazuje wtedy "Wyprowadzka". Przy włączonym "Zakładaj rodziny" [[article:assistant|Asystent]] przenosi ją do domu z wolnym miejscem.',
+              ],
               [
                 'Kupiec, Zwiadowca, żołnierz',
                 'Dom zostaje przy rodzinie, ale on sam w nim nie je ani nie śpi.',
@@ -426,16 +425,16 @@ export const SETTLERS: ArticleGroup = {
                 'włączony',
                 'pracujący z Drewnianym Narzędziem, gdy Żelazne narzędzia są włączone',
               ],
-              ['[[good:mead|Miód pitny]]', 'wyłączony', 'Osadnicy, Żołnierze'],
+              ['[[good:mead|Miód pitny]]', 'wyłączony', 'Cywile, Pracownicy, Żołnierze'],
               [
                 'Odżywcze mikstury, Mikstury wytrzymałości, Lecznicze mikstury',
                 'wyłączone',
-                'Osadnicy, Żołnierze',
+                'Cywile, Pracownicy, Żołnierze',
               ],
               [
                 'Amulet: Odżywczy, Wytrzymałości, Siły, Obrony, Precyzji, Wiatru',
                 'wyłączone',
-                'Osadnicy, Żołnierze',
+                'Cywile, Pracownicy, Żołnierze',
               ],
               [
                 'Absolwenci szkół automatycznie przydzielani do warsztatów',
@@ -443,8 +442,9 @@ export const SETTLERS: ArticleGroup = {
                 'absolwent [[building:school|Szkoły]]',
               ],
               ['Zbieracze automatycznie przenoszą flagę', 'wyłączony', '[[job:collector|Zbieracz]] z flagą'],
+              ['Zakładaj rodziny', 'wyłączony', 'bezdomna kobieta, kobieta z domem, wyprowadzona rodzina'],
             ],
-            foot: 'Przy napojach i amuletach przyciski "Osadnicy" i "Żołnierze" wybierają odbiorców, na starcie oba włączone. Wyłączenie nie odbiera tego, co już wydano. Gdy towar wyłączonego przełącznika leży w magazynie i komuś go brakuje, przypomni o nim powiadomienie, a o fladze wtedy, gdy Zbieraczowi skończy się przy niej surowiec.',
+            foot: 'Przy napojach i amuletach przyciski "Cywile" (bez zawodu), "Pracownicy" i "Żołnierze" wybierają odbiorców; gdy wszystkie są wyłączone, wyłączony jest cały przełącznik. Wyłączenie nie odbiera tego, co już wydano. Gdy towar wyłączonego przełącznika leży w magazynie i komuś go brakuje, przypomni o nim powiadomienie, a o fladze wtedy, gdy Zbieraczowi skończy się przy niej surowiec.',
           },
         },
         {
@@ -457,12 +457,23 @@ export const SETTLERS: ArticleGroup = {
           ],
         },
         {
+          h: 'Rodziny',
+        },
+        {
+          list: [
+            'Przy włączonym "Zakładaj rodziny" bezdomna dorosła [[job:woman|Kobieta]] wprowadza się do najbliższego domu z wolnym miejscem, do którego dojdzie.',
+            'Kobieta z domem dostaje rozkaz "Zawrzyj małżeństwo", gdy jest wolny mężczyzna. Bezdomnej Kobiety Asystent nie wydaje za mąż.',
+            'Rodzina, która musiała się wyprowadzić z braku [[good:furniture|Mebli]], też wprowadza się na wolne miejsce, także umeblowane: [[article:family|Rodzina i dom]].',
+          ],
+        },
+        {
           h: 'Pobór do Koszar',
         },
         {
           list: [
-            'Do Koszar idzie tylko dorosły Cywil bez pracy i bez zajęcia, najpierw kawalerowie. Asystent nikogo nie zabiera z pracy.',
-            'Licznik Miecznicy, Włócznicy lub Łucznicy najpierw uzbraja żołnierza bez broni, jeśli broń jest w jego zasięgu.',
+            'Do Koszar idzie tylko dorosły, nieżonaty Cywil bez pracy i bez zajęcia. Asystent nikogo nie zabiera z pracy.',
+            'Licznik Miecznicy, Włócznicy lub Łucznicy najpierw uzbraja żołnierza bez broni, jeśli broń jest w jego zasięgu. Potem żołnierz zbiera się przy najbliższych Koszarach.',
+            'Nowego rekruta taki licznik wysyła tylko wtedy, gdy magazyn w zasięgu Koszar ma dla niego broń tego rodzaju. Rekrut, dla którego broni zabrakło, przechodzi do innego licznika, którego broń może przynieść.',
           ],
         },
         {
@@ -475,6 +486,7 @@ export const SETTLERS: ArticleGroup = {
                 'Żołnierz bez broni czeka na broń tego rodzaju',
                 'Dostarcz broń. Do tego czasu zajmuje miejsce nowego rekruta.',
               ],
+              ['Brak broni tego rodzaju w magazynie w zasięgu Koszar', 'Zrób broń albo przenieś ją bliżej.'],
             ],
             foot: 'Rekrut w drodze do Koszar już liczy się do licznika.',
           },
@@ -495,7 +507,7 @@ export const SETTLERS: ArticleGroup = {
         },
         {
           list: [
-            'Absolwent idzie do najbliższego wolnego miejsca w swoim zawodzie, także do warsztatu w budowie. Warsztat robiący wyrób, którego się uczył, ma pierwszeństwo, nawet gdy jest dalej.',
+            'Absolwent idzie na wolne miejsce w swoim zawodzie, także do warsztatu w budowie. Gotowy warsztat ma pierwszeństwo przed placem budowy, warsztat bez nikogo z jego zawodu przed obsadzonym, potem ten, który robi wyrób, którego się uczył, a wśród równych najbliższy.',
             'Gdy wolnego miejsca nie ma, czeka przy Szkole. [[job:collector|Zbieracza]], [[job:hunter|Myśliwego]], [[job:fisher|Rybaka]] i żołnierzy Asystent nie przydziela.',
           ],
         },
@@ -518,7 +530,7 @@ export const SETTLERS: ArticleGroup = {
     {
       id: 'draughts',
       name: 'Napoje i amulety',
-      lead: 'Osadnik pije w miejscu i nie przerywa tego, co robi. Amulet się nie zużywa.',
+      lead: 'Mikstury osadnik pije w miejscu i nie przerywa tego, co robi. Na miód pitny zatrzymuje się w drodze, jak do jedzenia. Amulet się nie zużywa.',
       blocks: [
         {
           h: 'Napoje',
@@ -593,6 +605,7 @@ export const SETTLERS: ArticleGroup = {
           list: [
             'Drugi taki sam amulet nic nie daje.',
             'Różne amulety działają razem: Siła i Precyzja dają ×{{amulet.comboFactor}} przy udanym losowaniu.',
+            'Cios krytyczny może zerwać zamach trafionego wroga, zanim ten uderzy, i ogłuszyć go na {{amulet.stunSeconds}} s. Szansa to {{amulet.stunBasePct}}% plus procent życia, który cios zabrał. Pojazdów to nie dotyczy.',
             'Z Odżywczym Amuletem osadnik nie chodzi jeść, a z Amuletem Wytrzymałości nie chodzi spać.',
           ],
         },

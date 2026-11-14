@@ -1,5 +1,11 @@
 import type { Recipe } from '@open-northland/data';
-import { CARRY_CAPACITY, inPastimeChat, Owner, Resting } from '../../../../../components/index.js';
+import {
+  CARRY_CAPACITY,
+  inPastimeChat,
+  Owner,
+  Production,
+  Resting,
+} from '../../../../../components/index.js';
 import { mergeRecipes } from '../../../../../core/content-index/production.js';
 import type { Entity, World } from '../../../../../ecs/world.js';
 import {
@@ -35,9 +41,11 @@ import {
 import type { PlannerSpacing } from '../../../planner/spacing.js';
 import { interactionCell } from '../../../targets/index.js';
 import { loiterCell } from '../../spacing.js';
-import { deliverableGoodProbe } from '../delivery-targets.js';
+import { deliverableGoodProbe, sinkRoomFor } from '../delivery-targets.js';
 import { haulFlagArea, waitAtHaulFlag } from '../haul-flag-area.js';
-import { planVehicleYard } from '../vehicle-yard.js';
+import { planTempleFuelRun } from '../temple-fuel.js';
+import { planVehicleYard, settleVehicleYard } from '../vehicle-yard.js';
+import { carrierInputSource, loadsOutputBeforeFetch } from './cart-supply.js';
 import { startCraftAtomic } from './craft.js';
 import {
   type InputShortfall,
@@ -88,7 +96,9 @@ export class WorkSeatClaims {
 
   private readonly batches = new Map<Entity, Set<number>>();
 
-  claimRunning(world: World, ctx: PlannerContext['ctx'], workplace: Entity, operator: Entity): boolean {
+  /** Claim a running batch of `workplace` for `operator`: its index in the workplace's `Production`
+   *  cycles, or a negative number when none is left for him. */
+  claimBatch(world: World, ctx: PlannerContext['ctx'], workplace: Entity, operator: Entity): number {
     let claimed = this.batches.get(workplace);
     if (claimed === undefined) {
       claimed = new Set();
@@ -104,7 +114,7 @@ export class WorkSeatClaims {
       }
       this.batches.set(workplace, claimed);
     }
-    return claimProductionCycle(world, ctx, workplace, operator, claimed) >= 0;
+    return claimProductionCycle(world, ctx, workplace, operator, claimed);
   }
 
   recipesFor(world: World, ctx: PlannerContext['ctx'], workplace: Entity): readonly Recipe[] {
@@ -183,7 +193,8 @@ const LOITER_PLAN_PERIOD_TICKS = 1;
  * Run the self-service producer loop: advance running batches, supply open products, claim a new batch
  * seat, clear a full slot, haul an output out, then loiter by the door with nothing to do. Original
  * behavior: a producer fetches a missing input of its own recipe itself, whatever other settlers are
- * bringing, and never waits inside for them.
+ * bringing, and never waits inside for them. Before a batch has begun he feeds a temple short of the
+ * workshop's fuel ({@link planTempleFuelRun}, owner ruling).
  *
  * Source basis: a workshop stopping on a full product slot and resuming once a unit leaves is observed
  * original behavior, and every craft trade carries `jobtypes.ini` `baseatomics 6`, which grants the
@@ -201,15 +212,21 @@ export function planProducer(
   const recipe = mergedRecipeOf(world, ctx, workplace);
   if (recipe === undefined) return;
 
-  // A vehicle turn is worked outside on a yard site, so it comes before any seat is claimed.
-  if (planVehicleYard(plan, workplace, spacing, idle)) return;
-
-  const own = operatorRecipes(world, ctx, workplace, plan.entity);
+  settleVehicleYard(plan, workplace);
+  // A running batch is this operator's alone, so it is finished before the rotation's vehicle turn.
   const seats = seatClaims.seatsAt(workplace);
-  if (seatClaims.claimRunning(world, ctx, workplace, plan.entity)) {
+  const batch = seatClaims.claimBatch(world, ctx, workplace, plan.entity);
+  // A batch not yet begun waits for him: the workshop restarts one the moment the last ends, so a temple
+  // run waiting for a free hand would never come.
+  if (!batchBegun(world, workplace, batch) && planTempleFuelRun(plan, workplace)) return;
+  if (batch >= 0) {
     holdInsideWorkplace(plan, workplace, seats, idle);
     return;
   }
+  // A vehicle turn is worked outside on a yard site, so it comes before any new seat is claimed.
+  if (planVehicleYard(plan, workplace, spacing, idle)) return;
+
+  const own = operatorRecipes(world, ctx, workplace, plan.entity);
 
   // A startable cheap recipe must not consume every unit while another open recipe of the crew waits for
   // more of that input, so a worker with no batch to advance brings a missing unit first, unless a
@@ -273,6 +290,11 @@ interface RotationMerge {
 
 const rotationMerges = new WeakMap<Recipe, RotationMerge>();
 
+/** Whether `workplace`'s batch at index `batch` has advanced a tick; false for no batch. */
+function batchBegun(world: World, workplace: Entity, batch: number): boolean {
+  return batch >= 0 && (world.tryGet(workplace, Production)?.cycles[batch]?.elapsed ?? 0) > 0;
+}
+
 /** {@link mergeRecipes} of an operator's rotation, memoized by its content-owned recipes in order, so a
  *  producer's every plan does not rebuild the same union. */
 function mergedRotation(own: readonly Recipe[]): Recipe {
@@ -295,8 +317,9 @@ function mergedRotation(own: readonly Recipe[]): Recipe {
 /**
  * Ferry inputs and outputs for a carrier bound to a recipe workplace, or carry a self-filling house's
  * goods out. Input slots are topped up before output is removed so the operators do not starve
- * (original behavior). A carrier holding a pickup flag takes a missing input from the piles and stores
- * around it before those elsewhere (owner ruling) and waits at the flag when idle.
+ * (original behavior), except by a carrier with a cart that takes the output along on its way to the
+ * inputs ({@link loadsOutputBeforeFetch}). A carrier holding a pickup flag takes a missing input from the
+ * piles and stores around it before those elsewhere (owner ruling) and waits at the flag when idle.
  */
 export function planWorkshopSupplier(
   plan: PlannerContext,
@@ -311,10 +334,13 @@ export function planWorkshopSupplier(
   const supply = seatClaims.carrierRecipe(world, ctx, workplace);
   const area = haulFlagArea(plan);
   if (supply !== undefined) {
-    const source =
-      (area === null ? null : nearestMissingInputSource(plan, workplace, supply, CARRIER_SHORTFALL, area)) ??
-      nearestMissingInputSource(plan, workplace, supply, CARRIER_SHORTFALL);
+    const source = carrierInputSource(plan, workplace, supply, CARRIER_SHORTFALL);
     if (source !== null) {
+      if (
+        loadsOutputBeforeFetch(plan, workplace, seatClaims, supply, source) &&
+        haulWorkplaceOutput(plan, workplace)
+      )
+        return;
       routeToInputSource(plan, workplace, source, seatClaims);
       return;
     }
@@ -348,14 +374,26 @@ function routeToInputSource(
   source: MissingInputSource,
   seatClaims: WorkSeatClaims,
 ): void {
-  const { world, ctx, entity, supply } = plan;
+  const { world, ctx, entity } = plan;
   const amount = Math.max(
     CARRY_CAPACITY,
     Math.min(carryCapacityOf(world, ctx.content, entity), source.shortfall),
   );
-  supply.stampSupplyRun(entity, { site: workplace, goodType: source.goodType, amount });
-  seatClaims.noteErrand(entity, { workplace, goodType: source.goodType, amount });
+  stampInputErrand(plan, seatClaims, workplace, source.goodType, amount);
   walkFetchInput(plan, source.store, source.goodType, source.refills, amount);
+}
+
+/** Commit the settler to bringing `amount` of `goodType` to `workplace`, for the supply tally and for
+ *  the colleagues planned later in this pass. */
+export function stampInputErrand(
+  plan: PlannerContext,
+  seatClaims: WorkSeatClaims,
+  workplace: Entity,
+  goodType: number,
+  amount: number,
+): void {
+  plan.supply.stampSupplyRun(plan.entity, { site: workplace, goodType, amount });
+  seatClaims.noteErrand(plan.entity, { workplace, goodType, amount });
 }
 
 /**
@@ -434,7 +472,8 @@ function blockedOutputToHaul(plan: PlannerContext, workplace: Entity): number | 
   return deliverable[0] ?? null;
 }
 
-/** Lift one carry-load of an output out of the workplace, claimed; the delivery rung routes it to a store. */
+/** Lift one carry-load of an output out of the workplace, claimed and no more than its store has room
+ *  for; the delivery rung routes it there. */
 function haulWorkplaceOutput(plan: PlannerContext, workplace: Entity): boolean {
   const output = workplaceOutputToHaul(
     deliverableGoodProbe(plan),
@@ -444,6 +483,6 @@ function haulWorkplaceOutput(plan: PlannerContext, workplace: Entity): boolean {
     workplace,
   );
   if (output === null) return false;
-  walkPickupBatch(plan, workplace, output);
+  walkPickupBatch(plan, workplace, output, undefined, sinkRoomFor(plan, output));
   return true;
 }

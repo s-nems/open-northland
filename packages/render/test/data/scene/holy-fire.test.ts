@@ -7,7 +7,7 @@ const components = {
   Building: { buildingType: 4, tribe: 1, level: 2, built: ONE },
   Owner: { player: 0 },
   Position: { x: 10 * ONE, y: 10 * ONE },
-  HomeQuality: { cooking: 0, rest: 0, piety: 40 },
+  HomeQuality: { cooking: 0, lodging: 0, piety: 40 },
 };
 const TEMPLE = 37;
 const lookup: HolyFireLookup = (tribe, typeId, level) => {
@@ -20,11 +20,11 @@ const lookup: HolyFireLookup = (tribe, typeId, level) => {
 };
 
 /** Player 0 has switched holy oil on; the default leaves it off. */
-const OIL_ON = { cooking: true, rest: true, piety: true };
+const OIL_ON = { cooking: true, lodging: true, piety: true };
 
 const snapshot = (
   home: Readonly<Record<string, unknown>> = components,
-  policy: { cooking: boolean; rest: boolean; piety: boolean } | null = OIL_ON,
+  policy: { cooking: boolean; lodging: boolean; piety: boolean } | null = OIL_ON,
 ): WorldSnapshot => ({
   tick: 0,
   events: [],
@@ -41,7 +41,7 @@ describe('home holy fire projection', () => {
     ]);
     expect(
       holyFireOverlays(
-        snapshot(components, { cooking: true, rest: true, piety: false }),
+        snapshot(components, { cooking: true, lodging: true, piety: false }),
         HOME,
         components,
         lookup,
@@ -52,7 +52,7 @@ describe('home holy fire projection', () => {
     ]);
     const empty = {
       ...components,
-      HomeQuality: { cooking: 0, rest: 0, piety: 0 },
+      HomeQuality: { cooking: 0, lodging: 0, piety: 0 },
     };
     expect(holyFireOverlays(snapshot(empty), HOME, empty, lookup)).toEqual([]);
     const site = { ...components, UnderConstruction: { labor: 0 } };
@@ -60,13 +60,13 @@ describe('home holy fire projection', () => {
     expect(holyFireOverlays(snapshot(), HOME, components, () => undefined)).toEqual([]);
   });
 
-  it("keeps a prayer site's fire lit with no oil and whatever the oil policy, once it stands", () => {
+  it("keeps a prayer site's fire lit with no oil delivered and whatever the oil policy, once it stands", () => {
     const temple = {
       Building: { buildingType: TEMPLE, tribe: 1, level: 0, built: ONE },
       Owner: { player: 0 },
       Position: { x: 10 * ONE, y: 10 * ONE },
     };
-    const forbidden = { cooking: true, rest: true, piety: false };
+    const forbidden = { cooking: true, lodging: true, piety: false };
     expect(holyFireOverlays(snapshot(temple, forbidden), HOME, temple, lookup)).toEqual([
       { name: 'fx fire incense', dx: 5, dy: 20 },
     ]);
@@ -76,12 +76,31 @@ describe('home holy fire projection', () => {
     expect(holyFireOverlays(snapshot(unfinished), HOME, unfinished, lookup)).toEqual([]);
   });
 
+  it("puts a temple's fire out while it does not bless", () => {
+    const temple = (blessing: boolean) => ({
+      Building: { buildingType: TEMPLE, tribe: 1, level: 0, built: ONE },
+      Owner: { player: 0 },
+      Position: { x: 10 * ONE, y: 10 * ONE },
+      TempleFire: { burnedSeconds: 0, blessing },
+    });
+    expect(holyFireOverlays(snapshot(temple(true)), HOME, temple(true), lookup)).toEqual([
+      { name: 'fx fire incense', dx: 5, dy: 20 },
+    ]);
+    expect(holyFireOverlays(snapshot(temple(false)), HOME, temple(false), lookup)).toEqual([]);
+  });
+
   it('emits retained effect refs only while the home survives the existing viewport cull', () => {
     const visible = collectSpriteScene(snapshot(), { holyFire: lookup });
     const building = visible.items.find((item) => item.kind === 'building');
     const fire = visible.items.find((item) => item.kind === 'craftfx');
     if (building === undefined || fire === undefined) throw new Error('expected home and holy fire');
-    expect(fire).toMatchObject({ fxName: 'fx fire incense', x: building.x - 80, y: building.y + 24 });
+    // Drawn at its own point, sorted at the house's anchor, so a point behind the house still draws on it.
+    expect(fire).toMatchObject({
+      fxName: 'fx fire incense',
+      x: building.x - 80,
+      y: building.y + 24,
+      sortY: building.y,
+    });
     expect(fire === undefined ? false : visible.liveRefs.has(fire.ref)).toBe(true);
 
     const culled = collectSpriteScene(snapshot(), {

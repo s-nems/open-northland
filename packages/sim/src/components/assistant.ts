@@ -48,36 +48,46 @@ export const AssistantGrants = defineComponent<{
   goods: readonly number[];
 }>('AssistantGrants', 'players');
 
-/** Who a carried (`misc`) grant goes to: every man the pass dresses, the fighters alone, or the
- *  civilians alone. */
-export const ASSISTANT_GRANT_AUDIENCES = ['everyone', 'soldiers', 'civilians'] as const;
-export type AssistantGrantAudience = (typeof ASSISTANT_GRANT_AUDIENCES)[number];
+/** The groups of men a carried (`misc`) grant can go to, one switch each: the men without a trade, the
+ *  men with one, and the fighters. */
+export const ASSISTANT_GRANT_GROUPS = ['civilians', 'workers', 'soldiers'] as const;
+export type AssistantGrantGroup = (typeof ASSISTANT_GRANT_GROUPS)[number];
+
+type GoodListData = {
+  /** The player slot the list belongs to (`[0, MAX_PLAYERS)`). */
+  player: number;
+  /** Good type ids, ascending. */
+  goods: readonly number[];
+};
 
 /**
- * The per-player audience limits of {@link AssistantGrants}: the carried (`misc`) good types handed to
- * fighters only. Kept apart from the grant list, so a limit outlives a revoked grant and binds the next
- * one; the carrier lives while the list is non-empty, like {@link AssistantGrants}. A good is never on
- * this list and {@link AssistantCivilianOnlyGrants} at once.
+ * The per-player audience limits of {@link AssistantGrants}, one list per group: the carried good types
+ * the assistant withholds from that group's men. Kept apart from the grant list, so a limit outlives a
+ * revoked grant and binds the next one; each carrier lives while its list is non-empty.
  */
-export const AssistantSoldierOnlyGrants = defineComponent<{
-  /** The player slot the limits belong to (`[0, MAX_PLAYERS)`). */
-  player: number;
-  /** Limited good type ids, ascending. */
-  goods: readonly number[];
-}>('AssistantSoldierOnlyGrants', 'players');
-
-/** The mirror limit of {@link AssistantSoldierOnlyGrants}: the carried good types handed to civilians
- *  only. */
-export const AssistantCivilianOnlyGrants = defineComponent<{
-  /** The player slot the limits belong to (`[0, MAX_PLAYERS)`). */
-  player: number;
-  /** Limited good type ids, ascending. */
-  goods: readonly number[];
-}>('AssistantCivilianOnlyGrants', 'players');
+export const AssistantWithheldFromCivilians = defineComponent<GoodListData>(
+  'AssistantWithheldFromCivilians',
+  'players',
+);
+export const AssistantWithheldFromWorkers = defineComponent<GoodListData>(
+  'AssistantWithheldFromWorkers',
+  'players',
+);
+export const AssistantWithheldFromSoldiers = defineComponent<GoodListData>(
+  'AssistantWithheldFromSoldiers',
+  'players',
+);
 
 /** A per-player good list carrier: {@link AssistantGrants}, its audience limits and
  *  {@link AssistantWeaponVetoes}. */
-export type PlayerGoodList = Component<{ player: number; goods: readonly number[] }>;
+export type PlayerGoodList = Component<GoodListData>;
+
+/** Each group's withheld list. */
+export const ASSISTANT_WITHHELD_GRANTS: Readonly<Record<AssistantGrantGroup, PlayerGoodList>> = {
+  civilians: AssistantWithheldFromCivilians,
+  workers: AssistantWithheldFromWorkers,
+  soldiers: AssistantWithheldFromSoldiers,
+};
 
 /** `list`'s carrier for `player`, or null when the list is empty. The lowest-id carrier wins should more
  *  than one ever exist. */
@@ -103,14 +113,13 @@ export function assistantGrantedGoods(world: World, player: number): readonly nu
   return playerGoodList(world, AssistantGrants, player);
 }
 
-/** The good types `player`'s assistant hands to fighters alone, ascending; empty by default. */
-export function assistantSoldierOnlyGoods(world: World, player: number): readonly number[] {
-  return playerGoodList(world, AssistantSoldierOnlyGrants, player);
-}
-
-/** The good types `player`'s assistant hands to civilians alone, ascending; empty by default. */
-export function assistantCivilianOnlyGoods(world: World, player: number): readonly number[] {
-  return playerGoodList(world, AssistantCivilianOnlyGrants, player);
+/** The good types `player`'s assistant withholds from `group`, ascending; empty by default. */
+export function assistantWithheldGoods(
+  world: World,
+  player: number,
+  group: AssistantGrantGroup,
+): readonly number[] {
+  return playerGoodList(world, ASSISTANT_WITHHELD_GRANTS[group], player);
 }
 
 /**
@@ -369,8 +378,9 @@ export function assistantFoundsFamilies(world: World, player: number): boolean {
 /** Every per-player carrier the assistant views read: its lists, orders, counters and switches. */
 const ASSISTANT_SETTING_COMPONENTS: readonly Component<unknown>[] = [
   AssistantGrants,
-  AssistantSoldierOnlyGrants,
-  AssistantCivilianOnlyGrants,
+  AssistantWithheldFromCivilians,
+  AssistantWithheldFromWorkers,
+  AssistantWithheldFromSoldiers,
   AssistantWeaponVetoes,
   AssistantArmorOrders,
   AssistantWeaponOrders,

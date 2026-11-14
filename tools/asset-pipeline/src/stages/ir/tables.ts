@@ -41,6 +41,7 @@ import { readSourceFile, type SourceRoots } from '../../roots.js';
 import { loadBaseOnlyHouseRecords } from '../base-houses.js';
 import { withBigShipCartSlot } from './big-ship-cart-slot.js';
 import type { BuildingGraphicsOverlays } from './building-overlays.js';
+import { withShipHitpoints } from './ship-hitpoints.js';
 import type { IniSource } from './sources.js';
 
 /** Folds one source's overlay rows into the accumulated map: a later source wins per typeId. */
@@ -180,7 +181,7 @@ export async function extractIniTables(roots: SourceRoots, sources: readonly Ini
     weapons,
     armor,
     animals,
-    vehicles: vehicles.map(withBigShipCartSlot),
+    vehicles: vehicles.map((vehicle) => withShipHitpoints(withBigShipCartSlot(vehicle))),
     bobSequences,
     gfxAtomics,
     gfxWalkAtomics,

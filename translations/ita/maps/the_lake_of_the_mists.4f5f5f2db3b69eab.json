@@ -1,0 +1,22 @@
+{
+  "version": 1,
+  "map": "the_lake_of_the_mists",
+  "basis": {
+    "lang": "eng",
+    "digest": "8136d74f7974d35af8ed20d886c98e55e89bb9ef299e21ec855d7c7dbda7de9a"
+  },
+  "strings": {
+    "0": "IL LAGO DELLE NEBBIE",
+    "1": "Davanti ai tuoi occhi si stende un grande lago circondato da rigogliose foreste verdi, piene di selvaggina e di altre preziose risorse. A quanto pare, però, qualcun altro si è già stabilito in questa zona. Partita libera per 3 giocatori.",
+    "40": "Sconfiggi tutti i nemici e conquista queste terre!",
+    "50": "Tribù del nord",
+    "51": "Tribù del sud-ovest",
+    "52": "Tribù del sud-est"
+  },
+  "briefings": {
+    "500": "<font:$local$\\fonts\\fonthead16bld.fnt>\nIl lago delle nebbie\n<font:$local$\\fonts\\font12.fnt>\nDavanti ai tuoi occhi si stende un grande lago circondato da rigogliose foreste verdi, piene di selvaggina e di preziose risorse.\n\nScrutando l'orizzonte scorgi una strana nebbia e delle forme simili a fantasmi che danzano sull'acqua. Forse un mistero che la tua tribù potrà svelare?\n\nSembra però che qualcun altro voglia stabilirsi in questa terra.\n\nI tuoi esploratori hanno avvistato tracce di altri insediamenti sulle sponde opposte del lago.\n\nRiuscirai a conquistare queste terre?\n\n\n~~ Creata da Jaymer ~~\n\n",
+    "501": "<font:$local$\\fonts\\fonthead16bld.fnt>\nLa battaglia è finita!\n<font:$local$\\fonts\\font12.fnt>\nLa tribù del nord ha vinto!\n\nNessuno può più negare la sua forza e il suo dominio su questa terra.\n\n<picture:$local$\\graphics\\People_Dead_F.pcx>",
+    "502": "<font:$local$\\fonts\\fonthead16bld.fnt>\nLa battaglia è finita!\n<font:$local$\\fonts\\font12.fnt>\nLa tribù del sud-ovest ha vinto!\n\nNessuno può più negare la sua forza e il suo dominio su questa terra.\n\n<picture:$local$\\graphics\\People_Dead_F.pcx>",
+    "503": "<font:$local$\\fonts\\fonthead16bld.fnt>\nLa battaglia è finita!\n<font:$local$\\fonts\\font12.fnt>\nLa tribù del sud-est ha vinto!\n\nNessuno può più negare la sua forza e il suo dominio su questa terra.\n\n<picture:$local$\\graphics\\People_Dead_F.pcx>"
+  }
+}

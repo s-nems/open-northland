@@ -24,6 +24,13 @@ export function readAtomicDuration(components: Readonly<Record<string, unknown>>
   return readNumFieldOrNull(components, 'CurrentAtomic', 'duration');
 }
 
+/** Whether a critical hit has the unit stunned (the `stunned` atomic effect). */
+export function readsStun(components: Readonly<Record<string, unknown>>): boolean {
+  return (
+    (components.CurrentAtomic as { effect?: { kind?: unknown } } | undefined)?.effect?.kind === 'stunned'
+  );
+}
+
 /** Whether the running atomic lifts a unit into or out of a hold (`haulLoad`, `haulUnload`, `tradeLoad`,
  *  `tradeUnload`, `tradeShipStow`, `tradeShipFetch`), whose length a cart's kind sets; a trader on foot's lift lasts its clip. */
 export function readsCartLift(components: Readonly<Record<string, unknown>>): boolean {
@@ -158,6 +165,21 @@ export function readWearsLiveBoots(components: Readonly<Record<string, unknown>>
   return typeof degree === 'number' && degree < ONE;
 }
 
+/** Whether a settler carries a live unit of one of `goods` in its misc row: a slot whose wear has not
+ *  reached ONE, the sim's rule for a carried effect. */
+export function readCarriesLiveGood(
+  components: Readonly<Record<string, unknown>>,
+  goods: ReadonlySet<number>,
+): boolean {
+  const misc = readEquipmentMisc(components);
+  if (misc === undefined) return false;
+  for (const slot of misc) {
+    if (typeof slot?.goodType !== 'number' || !goods.has(slot.goodType)) continue;
+    if (typeof slot.degreeOfUse === 'number' && slot.degreeOfUse < ONE) return true;
+  }
+  return false;
+}
+
 /** {@link readEquipmentWeaponGood}'s twin for the `Equipment.armor` slot, same tri-state. */
 export function readEquipmentArmorGood(
   components: Readonly<Record<string, unknown>>,
@@ -176,6 +198,15 @@ function readEquipSlotGood(
   if (eq === undefined) return undefined;
   const goodType = eq[slot]?.goodType;
   return typeof goodType === 'number' ? goodType : null;
+}
+
+/** A settler's `Equipment.misc` slots (drinks and amulets), empty ones `null`, or undefined when it
+ *  carries no equipment. */
+export function readEquipmentMisc(
+  components: Readonly<Record<string, unknown>>,
+): readonly ({ readonly goodType?: unknown; readonly degreeOfUse?: unknown } | null)[] | undefined {
+  const misc = (components.Equipment as { misc?: unknown } | undefined)?.misc;
+  return Array.isArray(misc) ? misc : undefined;
 }
 
 /** Whether a human's mission behaviour mask asks for the hero glow. */

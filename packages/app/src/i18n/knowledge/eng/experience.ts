@@ -69,7 +69,7 @@ export const EXPERIENCE: ArticleGroup = {
             "[[job:carrier|Carriers]] build up Carrying. It doesn't speed up their work, but {{exp.carrierTrader}} deliveries open the [[job:trader|Merchant]].",
             'Merchants build up Trade for each piece unloaded, but Trade changes nothing.',
             '[[job:scout|Scouts]], [[job:woman|Women]] and children gain no experience.',
-            'Planting, watering, the [[building:school|School]] and the [[building:barracks|Barracks]] give no experience.',
+            'Planting, watering, the [[building:school|School]] and training in the [[building:barracks|Barracks]] give no experience. The coin drill gives combat experience: [[article:exp-combat|Combat Experience]].',
           ],
         },
       ],
@@ -78,40 +78,62 @@ export const EXPERIENCE: ArticleGroup = {
     {
       id: 'exp-combat',
       name: 'Combat Experience',
-      lead: '{{combat.fightCapHits}} hits with one kind of weapon double your melee damage.',
+      lead: 'Every person has one combat experience, from 0 to {{combat.fightCapPoints}} points, shared by every weapon.',
       blocks: [
         {
-          h: 'Melee damage',
+          h: 'What experience gives you',
+        },
+        {
+          p: 'At {{combat.fightCapPoints}} points a melee blow deals {{combat.fightDealtPct}}% more damage, and every blow or arrow that hits the fighter deals {{combat.fightTakenPct}}% less. Both grow evenly with each point.',
         },
         {
           table: {
-            head: ['Hits', 'Multiplier', 'A {{combat.sampleBlow}} blow becomes'],
+            head: ['Points', 'Melee dealt', 'A {{combat.sampleBlow}} blow becomes', 'Taken'],
             rows: [
-              [0, '×1', '{{combat.sampleBlow}}'],
-              [10, '×{{fight.factor.10}}', '{{fight.blow.10}}'],
-              [25, '×{{fight.factor.25}}', '{{fight.blow.25}}'],
-              [50, '×{{fight.factor.50}}', '{{fight.blow.50}}'],
-              [75, '×{{fight.factor.75}}', '{{fight.blow.75}}'],
-              ['{{combat.fightCapHits}}', '×{{combat.fightCapFactor}}', '{{combat.fightCapBlow}}'],
+              [0, '×1', '{{combat.sampleBlow}}', '×1'],
+              [10, '×{{fight.factor.10}}', '{{fight.blow.10}}', '×{{fight.taken.10}}'],
+              [25, '×{{fight.factor.25}}', '{{fight.blow.25}}', '×{{fight.taken.25}}'],
+              [50, '×{{fight.factor.50}}', '{{fight.blow.50}}', '×{{fight.taken.50}}'],
+              [75, '×{{fight.factor.75}}', '{{fight.blow.75}}', '×{{fight.taken.75}}'],
+              [
+                '{{combat.fightCapPoints}}',
+                '×{{combat.fightCapFactor}}',
+                '{{combat.fightCapBlow}}',
+                '×{{combat.fightTakenFactor}}',
+              ],
             ],
-            num: [0, 1, 2],
-            foot: 'The multiplier stops growing past {{combat.fightCapHits}} hits.',
+            num: [0, 1, 2, 3],
+            foot: 'Nothing grows past {{combat.fightCapPoints}} points.',
           },
         },
         {
-          p: 'The multiplier applies to melee blows against people, animals and buildings. It does not apply to [[article:walls|stockades]] and [[article:vehicles|vehicles]], or to arrows and the [[article:catapult|catapult]].',
+          p: 'The bonus to damage dealt applies to melee blows against people, animals and buildings. It does not apply to [[article:walls|stockades]] and [[article:vehicles|vehicles]], or to arrows and the [[article:catapult|catapult]]. For an archer experience buys accuracy and less damage taken, not stronger arrows.',
         },
         {
-          p: 'Without experience, bows and catapults hit with {{aim.basePct}}% of shots, and from {{aim.noSpreadHits}} hits every shot lands on target. Details: [[article:aim|Hitting and Shooting]].',
+          h: 'With amulets',
         },
         {
-          h: 'What counts as a hit',
+          p: 'The [[good:amulet_strength|Amulet of Strength]] adds its bonus to the experience bonus: with full experience a melee blow comes out at ×{{combat.fightStrengthFactor}}. The [[good:amulet_defense|Amulet of Defence]] multiplies with experience: with full experience the fighter takes ×{{combat.fightDefenseFactor}} damage. Amulets: [[article:draughts|Potions and Amulets]].',
         },
         {
-          p: "A hit is a blow or shot that dealt damage. It counts separately for each kind of weapon: Fist, Spear, Sword, Bow, Catapult. [[job:hunter|Hunter's]] shots count toward Bow too.",
+          p: 'Without experience an archer hits with {{aim.basePct}}% of shots, and from {{aim.noSpreadPoints}} points every shot lands on target. The [[article:catapult|Catapult]] counts its own hits. Details: [[article:aim|Hitting and Shooting]].',
         },
         {
-          p: "In the settler panel these are the rows Fighting - Sword, Fighting - Bow and so on. Sword hits don't help a spearman, and they stay after a change of profession. Fighting doesn't raise a hero's damage, unless the mission turns it on.",
+          h: 'How to gain it',
+        },
+        {
+          list: [
+            'Fighting: a melee blow that deals damage gives {{combat.fightMeleePerSecond}} point for every second of its swing, a shot {{combat.fightShotPerSecond}} point for every second of the draw. A slow weapon earns as fast as a quick one, and a bow earns less per second.',
+            'Blows and shots on buildings, [[article:walls|stockades]] and [[article:vehicles|vehicles]] give {{combat.fightStructurePct}}% of that.',
+            "Taking blows: whoever wounds a person, a man, a beast, a tower or a catapult, he gets {{combat.fightTakenPerSecond}} point for every second of that attacker's blow.",
+            'Coin drill: a soldier, armed or not, pays one [[good:coin|Coin]] for {{coinDrill.termSeconds}} s in your [[building:barracks|Barracks]] and gets {{coinDrill.points}} points when the term ends. Select the soldiers and right-click your own Barracks.',
+          ],
+        },
+        {
+          p: "Fists and every weapon count alike, and [[job:hunter|Hunter's]] shots count too. Experience stays after a change of weapon or profession. A soldier with {{coinDrill.limit}} points or more no longer drills and earns the rest in battle. A drill cut short by a fight or a new order gives the coin back and no points. Only as many soldiers go as the Barracks has free coins, the nearest first; the rest stay where they are.",
+        },
+        {
+          p: "In the settler panel this is the Fighting row: its share of the full counter as a percent, and in its tooltip the bonuses: more damage dealt with a melee weapon or bare hands, the accuracy with a bow, and how much less damage he takes. Fighting doesn't raise a hero's experience, unless the mission turns it on.",
         },
         {
           p: 'Better weapons are unlocked by making them, not by fighting. The weapon card gives the requirement, e.g. [[good:sword_long|Longsword]]. Who carries which weapon: [[article:equip|Equipping Soldiers]].',
@@ -133,7 +155,7 @@ export const EXPERIENCE: ArticleGroup = {
       lead: 'A discovered profession stays with the whole settlement, even if the settler who discovered it dies.',
       blocks: [
         {
-          p: 'The lobby setting "Profession development: All unlocked from start" removes the requirements for civilian professions and products. Soldier profession requirements and map bans stay.',
+          p: 'The lobby setting "Profession development: All unlocked from start" removes the requirements for civilian professions and products. Map bans stay. Only the [[building:barracks|Barracks]] turns a Civilian into a soldier, under either setting; a soldier, or a settler who once was one, takes any soldier profession without requirements.',
         },
         {
           h: 'What opens a profession',

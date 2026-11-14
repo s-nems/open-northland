@@ -21,8 +21,7 @@ const indexes = new WeakMap<
   { assignments: EntityReferences<Assignment>; supplies: EntityReferences<Supply> }
 >();
 
-/** Call before changing the site's footprint: its old perimeter identifies the approach being retired. */
-export function retireCompletedSiteErrands(world: World, ctx: SystemContext, site: Entity): void {
+function siteIndexes(world: World) {
   let index = indexes.get(world);
   if (index === undefined) {
     const assignments = new EntityReferences(world, SiteAssignment, (value) => value.site);
@@ -32,6 +31,17 @@ export function retireCompletedSiteErrands(world: World, ctx: SystemContext, sit
     world.registerCacheVerifier('siteSupplyRuns', () => supplies.verify());
     indexes.set(world, index);
   }
+  return index;
+}
+
+/** The settlers crewing `site` through a {@link SiteAssignment}, ascending by id. */
+export function siteCrew(world: World, site: Entity): readonly Entity[] {
+  return siteIndexes(world).assignments.at(site);
+}
+
+/** Call before changing the site's footprint: its old perimeter identifies the approach being retired. */
+export function retireCompletedSiteErrands(world: World, ctx: SystemContext, site: Entity): void {
+  const index = siteIndexes(world);
   const workers = canonicalById(new Set([...index.assignments.at(site), ...index.supplies.at(site)]));
   if (workers.length === 0) return;
   const terrain = ctx.terrain;

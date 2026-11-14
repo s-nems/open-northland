@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "map": "saga-campaign_04_02_sub1",
+  "basis": {
+    "lang": "eng",
+    "digest": "9d621ffcbca9af5913020c70a02c7e325dd4a71f71d3843ed3c0795071ce68c5"
+  },
+  "strings": {
+    "71": "Bjarni",
+    "72": "Cyra",
+    "73": "Pyro",
+    "99": "BUIO PESTO"
+  },
+  "briefings": {
+    "header": "LA GROTTA OSCURA",
+    "00_start": "Quaggiù nella grotta c'era buio pesto. Senza torce potevamo fare ben poco, anche se in lontananza scorgevamo un debole bagliore.",
+    "00_start1": "Dovevamo chiedere a un drago di fuoco di aiutarci a esplorare la grotta!"
+  }
+}

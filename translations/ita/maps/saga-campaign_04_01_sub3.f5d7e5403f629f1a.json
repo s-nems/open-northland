@@ -1,0 +1,44 @@
+{
+  "version": 1,
+  "map": "saga-campaign_04_01_sub3",
+  "basis": {
+    "lang": "eng",
+    "digest": "e5719455071c9e0b4c3dfc087a8583313e4fb37c7a42f2388769b68a302cdd23"
+  },
+  "strings": {
+    "0": "@SCOPRI DA GREYHOLM DA DOVE VIENE NORBERT!",
+    "1": "Trova Rossilde e Calzablu e portali da Greyholm.",
+    "50": "Tribù di Bjarni",
+    "51": "Draghi di pietra",
+    "52": "Draghi di fuoco",
+    "53": "Draghi d'acqua",
+    "61": "Gerols",
+    "62": "Lumis",
+    "63": "Aquas",
+    "71": "GREYHOLM",
+    "72": "Rossilde",
+    "73": "Calzablu",
+    "75": "Norbert",
+    "76": "Mani",
+    "99": "LA SALA SACRA DEI DRAGHI DI PIETRA"
+  },
+  "briefings": {
+    "500": "<font:$local$\\fonts\\fonthead16bld.fnt>\nMISSIONE FALLITA!\n<font:$local$\\fonts\\font12.fnt>\n<picture:$local$\\graphics\\Hero_Dead_F.pcx>\nBasta un attimo di distrazione per perdere la vita! Il tuo amico ed eroe NORBERT, il drago, è morto per la tua negligenza! Senza questo eroe, l'esito di questa missione ti resterà ignoto!",
+    "600": "<font:$local$\\fonts\\fonthead16bld.fnt>\nMISSIONE FALLITA!\n<font:$local$\\fonts\\font12.fnt>\n<picture:$local$\\graphics\\Hero_Dead_F.pcx>\nBasta un attimo di distrazione per perdere la vita! MANI, figlio di Bjarni e Cyra, è morto per la tua negligenza! Senza di lui, l'esito di questa missione ti resterà ignoto!",
+    "header": "LA SALA SACRA DEI DRAGHI DI PIETRA",
+    "00_start": "Norbert e Mani erano arrivati fin lì.\nDavanti a loro si apriva la sala sacra dei draghi di pietra.\n",
+    "00_start1": "Il saggio Greyholm avrebbe saputo da dove veniva Norbert?\nPresto l'avrebbero scoperto...",
+    "50_endheader": "MISSIONE COMPIUTA!",
+    "50_end": "GREYHOLM\n\n\"Così avete riavvicinato anche questi due. Per ringraziarvi, vi dirò ciò che so delle tue origini.\n\"Norbert, mio giovane amico, tu sei un drago della terra!\n\"I draghi della terra erano un popolo pacifico che non fece mai del male a nessuna creatura.\n\n<usericon:1,121,29>\n\n\"Purtroppo altri approfittarono spesso della loro bontà, e ai TORUMANI non c'era niente che piacesse di più che dar loro la caccia. Solo pochi sopravvissero, nascosti dal resto del mondo.\n\"Se esistono ancora draghi della terra, li troverai nella giungla.\n\n\"Perciò andate a sud!\"",
+    "50_end1": "",
+    "01": "I DRAGHI GUARDIANI DI GREYHOLM\n\n<usericon:2,9>\n\n\"GREYHOLM vi aspetta! Seguiteci!\"",
+    "02": "GREYHOLM\n\n\"Avete davvero composto la contesa tra i popoli!\n\n<usericon:2,1>\n\n\"Resta una sola lite, anche se dubito che questi due litighino per intolleranza, paura o invidia...\n\"Rossilde e Calzablu, una dragonessa di fuoco e un drago d'acqua, qui si rendono davvero la vita difficile a vicenda...\n\n\"Rossilde si trova nelle sale a ovest, e Calzablu in quelle a est. Trovateli e portateli da me, e vi dirò da dove viene Norbert!\"",
+    "03": "FIORI!\n\nPer mettere pace tra quei due, Mani e Norbert avrebbero avuto bisogno di un'astuzia...\nI draghi erano testardissimi. Poi ai due amici venne un'idea!\n\n<usericon:1,10,116>\n\nForse sarebbero bastati qualche fiore e qualche bugia a fin di bene?\nCosì Mani e Norbert raccolsero dei fiori blu e andarono da Rossilde...",
+    "04": "ROSSILDE\n\n\"Non vengo con voi a incontrare quel drago d'acqua pieno di sé! ... Hmpf!\"\ndisse Rossilde, e ci voltò le spalle.\n\n<usericon:2,2>",
+    "05": "ROSSILDE\n\n\"Fiori blu! Oh, che belli!\n\"Come? Questi fiori sono da parte di Calzablu?\n\n<usericon:2,2>\n\n\"Be', per essere un drago d'acqua ha proprio buon gusto. Forse mi sbagliavo su di lui?\n\n\"Va bene, vengo con voi.\"",
+    "06": "CALZABLU\n\n\"Quella Rossilde si crede chissà chi! No, non vengo con voi. Potrebbe esserci anche lei\",\ndisse Calzablu, e ci voltò le spalle.\n\n<usericon:2,3>",
+    "07": "CALZABLU\n\n\"Come, io le piaccio? È proprio vero? Be', allora vengo con voi, certo. Detto tra noi, l'ho sempre trovata piuttosto carina.\"\n\n<usericon:2,3>",
+    "08": "ROSSILDE E CALZABLU\n\nOra che i due draghi testardi si guardavano con occhi nuovi, tutto andò a posto. Lei era fuoco e lui acqua, ma si erano trovati.\n\n<usericon:2,2>",
+    "09": ""
+  }
+}

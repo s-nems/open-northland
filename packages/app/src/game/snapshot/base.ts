@@ -261,23 +261,24 @@ export function actorsOf(snapshot: WorldSnapshot): readonly SnapshotEntity[] {
   return entitiesOfIds(snapshot.entities, actorIdsOf(snapshot));
 }
 
-const TRAINING_OCCUPANCY = countedBy(
-  (e) => (trainingSeated(e) ? trainingHouseOf(e) : undefined),
-  'training occupancy',
-  { values: ['TrainingOrder'] },
-);
-const TRAINING_QUEUE = countedBy(
-  (e) => (trainingSeated(e) ? undefined : trainingHouseOf(e)),
-  'training queue',
-  { values: ['TrainingOrder'] },
-);
+/** The orders that hold a place on a house's seat list, which the sim shares between them. */
+export const SEAT_ORDERS = ['TrainingOrder', 'CoinDrillOrder'] as const;
 
-/** The seats taken at a school or barracks, learners still walking to it included. */
+const TRAINING_OCCUPANCY = countedBy(
+  (e) => (holdsSeat(e) ? seatHouseOf(e) : undefined),
+  'training occupancy',
+  { values: SEAT_ORDERS },
+);
+const TRAINING_QUEUE = countedBy((e) => (holdsSeat(e) ? undefined : seatHouseOf(e)), 'training queue', {
+  values: SEAT_ORDERS,
+});
+
+/** The seats taken at a school or barracks, learners and coin-drillers still walking to it included. */
 export function trainingOccupancyOf(snapshot: WorldSnapshot, house: number): number {
   return indexesOf(snapshot).get(TRAINING_OCCUPANCY).get(house) ?? 0;
 }
 
-/** The learners sent to a school or barracks that wait for a free seat. */
+/** The learners and coin-drillers sent to a school or barracks that wait for a free seat. */
 export function trainingQueueOf(snapshot: WorldSnapshot, house: number): number {
   return indexesOf(snapshot).get(TRAINING_QUEUE).get(house) ?? 0;
 }
@@ -425,12 +426,17 @@ export function workplaceOf(e: SnapshotEntity): number | undefined {
   return num(a?.workplace);
 }
 
+/** The building type of the settler's workplace. */
+function workplaceTypeOf(snapshot: WorldSnapshot, e: SnapshotEntity): number | undefined {
+  const workplace = workplaceOf(e);
+  const building = workplace === undefined ? undefined : entityById(snapshot, workplace);
+  return building === undefined ? undefined : buildingTypeOf(building);
+}
+
 /** Whether the settler holds a post that takes a flag of its own (the sim's `postTakesHaulFlag`). */
 export function holdsHaulFlagPost(content: ContentSet, snapshot: WorldSnapshot, e: SnapshotEntity): boolean {
   const jobType = settlerJobType(e);
-  const workplace = workplaceOf(e);
-  const building = workplace === undefined ? undefined : entityById(snapshot, workplace);
-  const buildingType = building === undefined ? undefined : buildingTypeOf(building);
+  const buildingType = workplaceTypeOf(snapshot, e);
   return (
     jobType !== undefined &&
     buildingType !== undefined &&
@@ -439,8 +445,8 @@ export function holdsHaulFlagPost(content: ContentSet, snapshot: WorldSnapshot, 
 }
 
 /** The trades whose post takes a flag: a carrier collects around it, a collector, hunter or fisher works
- *  there. */
-export type PostFlagTrade = 'carrier' | 'collector' | 'hunter' | 'fisher';
+ *  there, a farmer sows his fields around it. */
+export type PostFlagTrade = 'carrier' | 'collector' | 'hunter' | 'fisher' | 'farmer';
 
 /** The trade of a settler whose post takes a flag, or null when its post takes none. */
 export function postFlagTradeOf(
@@ -450,6 +456,14 @@ export function postFlagTradeOf(
 ): PostFlagTrade | null {
   if (!holdsHaulFlagPost(content, snapshot, e)) return null;
   const jobType = settlerJobType(e) ?? null;
+  const buildingType = workplaceTypeOf(snapshot, e);
+  if (
+    jobType !== null &&
+    buildingType !== undefined &&
+    systems.sowsFieldsAt(content, jobType, buildingType)
+  ) {
+    return 'farmer';
+  }
   if (systems.isHunterJob(content, jobType)) return 'hunter';
   if (systems.isFisherJob(content, jobType)) return 'fisher';
   return systems.worksFieldFromPost(content, jobType) ? 'collector' : 'carrier';
@@ -531,15 +545,35 @@ export function isJobLocked(e: SnapshotEntity): boolean {
   return hasMissionBehaviour(e, components.MISSION_BEHAVIOUR.JOB_LOCKED);
 }
 
+/** A script bars the settler from getting better: the sim refuses him a coin drill he would gain nothing
+ *  from. */
+export function isBarredFromExperience(e: SnapshotEntity): boolean {
+  return hasMissionBehaviour(e, components.MISSION_BEHAVIOUR.NO_JOB_EXPERIENCE);
+}
+
+/** The barracks a soldier's coin drill runs at, while he walks there or drills; undefined on his way back. */
+export function coinDrillHouseOf(e: SnapshotEntity): number | undefined {
+  const order = e.components.CoinDrillOrder as { house?: unknown; stage?: unknown } | undefined;
+  return order?.stage === 'drill' ? num(order.house) : undefined;
+}
+
 /** The training house a settler walks to or drills at. */
 export function trainingHouseOf(e: SnapshotEntity): number | undefined {
   const order = e.components.TrainingOrder as { house?: unknown } | undefined;
   return num(order?.house);
 }
 
-/** Whether a settler sent to train holds a seat there; false while it waits in the house's queue. */
-export function trainingSeated(e: SnapshotEntity): boolean {
-  return (e.components.TrainingOrder as { seated?: unknown } | undefined)?.seated === true;
+/** The house whose seat a settler holds or waits for: its training house, or its coin drill's barracks. */
+export function seatHouseOf(e: SnapshotEntity): number | undefined {
+  return trainingHouseOf(e) ?? coinDrillHouseOf(e);
+}
+
+/** Whether a settler sent to train or coin-drill holds a seat there; false while it waits in the queue. */
+export function holdsSeat(e: SnapshotEntity): boolean {
+  const order = (e.components.TrainingOrder ?? e.components.CoinDrillOrder) as
+    | { seated?: unknown }
+    | undefined;
+  return order?.seated === true;
 }
 
 /** The barracks the assistant booked a recruit's drill at; undefined for a settler it did not send. */

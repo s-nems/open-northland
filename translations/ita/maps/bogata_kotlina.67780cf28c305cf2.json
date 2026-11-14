@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "map": "bogata_kotlina",
+  "basis": {
+    "lang": "eng",
+    "digest": "5b8fc6dcc5f469d55f69a3fe09c4e784bad5731185f51850d129b93e9d1b3c42"
+  },
+  "strings": {
+    "0": "LA CONCA RICCA",
+    "1": "Davanti a te si apre una conca vasta e fertile, ma può avere un solo padrone. Mappa per quattro giocatori, tutti contro tutti. Per l'host: il giocatore 0 è a est, gli altri seguono in senso orario.",
+    "50": "Est",
+    "51": "Sud",
+    "52": "Ovest",
+    "53": "Nord",
+    "100": "Sconfiggi gli avversari e conquista la regione."
+  },
+  "briefings": {
+    "500": "<font:$local$\\fonts\\fonthead16bld.fnt>\nLA CONCA RICCA\n<font:$local$\\fonts\\font12.fnt>\n\nLa tua tribù ha trovato una grande valle in mezzo a foreste e montagne, dove si può fondare un nuovo insediamento. Ha quindi mandato la sua gente a colonizzarla e a prenderne le ricchezze.\n\nPurtroppo anche altre tre tribù hanno scoperto questa terra e hanno mandato i loro uomini a prendersela. Probabilmente nessuna di loro avrà voglia di collaborare con noi, e del resto, perché mai dovremmo spartire la nostra scoperta?\n\nPresto vedremo sorgere qui quattro insediamenti, ma alla fine resterà una sola città. Sarà la guerra a decidere chi è il più forte.\n\nSconfiggi gli avversari!\n\nIdeatore: Space\nAutore: StachuMMV\n\nMappa realizzata con il buono mappa, premio del torneo estivo 2026.\nper culturesnation.pl\n"
+  }
+}

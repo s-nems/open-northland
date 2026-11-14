@@ -293,17 +293,19 @@ describe('unit orders against a selection that moves under them', () => {
     ]);
   });
 
-  it('switches a collector to the good of a right-clicked resource without moving its flag', () => {
+  /** A right click on a resource the collector (`SCOUT`, made one) gathers, with or without a work flag. */
+  function collectorOnResource(workFlag: boolean) {
     const [goodType] = systems.jobGatherGoods({ content: CONTENT }, JOB_COLLECTOR);
     if (goodType === undefined) throw new Error('setup: the collector gathers nothing');
     const resource = { id: 50, at: OPEN_GROUND };
     const p = halfCellToScreen(resource.at.hx, resource.at.hy);
+    const flag = workFlag ? { WorkFlag: { flag: 51 } } : {};
     const snapshot = snapshotOf([
       ...UNITS.map((unit) =>
         unit === SCOUT
           ? {
               ...standing(unit),
-              components: { ...standing(unit).components, Settler: { jobType: JOB_COLLECTOR } },
+              components: { ...standing(unit).components, Settler: { jobType: JOB_COLLECTOR }, ...flag },
             }
           : standing(unit),
       ),
@@ -314,10 +316,37 @@ describe('unit orders against a selection that moves under them', () => {
       { resources: () => [{ ref: resource.id, x: p.x, y: p.y, kind: 'resource', goodType }] },
       snapshot,
     );
+    return { rightClick, issued, goodType, resource };
+  }
+
+  it('moves a flag holder’s work flag onto a right-clicked resource and holds it to that good', () => {
+    const { rightClick, issued, goodType, resource } = collectorOnResource(true);
 
     expect(rightClick(clickOn(resource.at))).toBe(true);
 
-    // The collector keeps its flag; the settler who gathers nothing walks there as before.
+    expect(issued).toEqual([
+      {
+        kind: 'unitOrdersGroup',
+        members: [
+          {
+            entity: SCOUT.id,
+            actions: [
+              { kind: 'setWorkFlag', x: resource.at.hx, y: resource.at.hy },
+              { kind: 'setGatherGood', goodType },
+            ],
+          },
+        ],
+      },
+      { kind: 'moveUnit', entity: GUARD.id, x: resource.at.hx, y: resource.at.hy },
+    ]);
+  });
+
+  it('switches a flagless collector to the good of a right-clicked resource', () => {
+    const { rightClick, issued, goodType, resource } = collectorOnResource(false);
+
+    expect(rightClick(clickOn(resource.at))).toBe(true);
+
+    // The settler who gathers nothing walks there as before.
     expect(issued).toEqual([
       { kind: 'setGatherGood', entity: SCOUT.id, goodType },
       { kind: 'moveUnit', entity: GUARD.id, x: resource.at.hx, y: resource.at.hy },

@@ -12,6 +12,7 @@ import type { SoundBank, SoundQuality } from '@open-northland/data';
 import { timedAudioContext } from '../../diag/audio-context.js';
 import type { ContentIr } from '../ir/rows.js';
 import { contentUrl } from '../url.js';
+import { heroFigures } from './hero-figures.js';
 import { WIELDER_SOUNDS } from './wielder-sounds.js';
 
 /**
@@ -49,12 +50,17 @@ export function soundIndexOf(ir: ContentIr, sounds: SoundBank): SoundIndex {
     ir.jobs ?? [],
     ir.tribes ?? [],
     ir.landscapeGfx ?? [],
+    heroFigures(ir),
   );
 }
 
-/** The event bindings of the game: the bank's own plus the app's {@link WIELDER_SOUNDS}. */
+/** A swallow for a draught drunk on the eat clip, which the data sounds only as chewing. CC0 (notice in
+ *  public/licenses), levelled to the chewing's loudness. */
+const SIP_CUE = ['/audio/mead-sip.ogg'];
+
+/** The event bindings of the game: the bank's own plus the app's {@link WIELDER_SOUNDS} and sip. */
 export function gameSoundBindings(): SoundBindings {
-  return { ...defaultBindings(), wielderSounds: WIELDER_SOUNDS };
+  return { ...defaultBindings(), wielderSounds: WIELDER_SOUNDS, sipCue: SIP_CUE };
 }
 
 /**

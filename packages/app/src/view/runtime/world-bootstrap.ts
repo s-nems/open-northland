@@ -70,6 +70,7 @@ export async function createWorldRenderer(
     enhancements: enhancementsOf(stored),
     bloodEnabled: stored.blood,
     bonesFade: stored.bonesFade,
+    equipmentEffects: stored.equipmentEffects,
     sheet,
     viewSmoothing: true,
     spriteSmoothing: stored.spriteSmoothing,

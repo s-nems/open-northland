@@ -7,7 +7,8 @@ import { createSystemConfirm, type SystemConfirmCopy } from './system/confirm.js
 import { createHudWindow } from './window.js';
 
 export interface MatchResultDeps {
-  readonly localPlayer: number;
+  /** The seat this client plays, whose row the ranking marks; null for an observer, who plays none. */
+  readonly localPlayer: number | null;
   readonly sharedClock?: boolean;
   /** Defer victory until `finish`, after the script's unlocks have persisted. */
   readonly scriptedEnding?: boolean;
@@ -15,6 +16,8 @@ export interface MatchResultDeps {
   readonly ranking?: () => readonly MatchRank[];
   /** The roster's authored seat name; absent, the list numbers the seat. */
   readonly seatNameOf?: ((player: number) => string | undefined) | undefined;
+  /** The nick of the person who played the seat in a shared game, preferred over the seat's name. */
+  readonly playerNickOf?: ((player: number) => string | undefined) | undefined;
   readonly hud: Pick<HudPlane, 'element' | 'currentScale'>;
   readonly pause: () => void;
   readonly resume: () => void;
@@ -24,8 +27,20 @@ export interface MatchResultDeps {
   readonly onContinue: () => void;
   /** Opens the load page from a defeat; `back` shows the result again when it closes without loading. */
   readonly onLoad?: (back: () => void) => void;
-  /** Starts the map over from a defeat, as a new match. */
-  readonly onPlayAgain?: () => void;
+  /** Starts over from a defeat, as a new match. */
+  readonly playAgain?: ReplayOffer;
+}
+
+/** A fresh start, as a new match: of the map being played, or from a sub-mission of its main map. */
+export interface ReplayOffer {
+  readonly scope: 'thisMap' | 'mainMap';
+  readonly start: () => void;
+}
+
+/** The question that stands before `offer` starts. */
+export function replayQuestion(offer: ReplayOffer): string {
+  const copy = messages().hud;
+  return offer.scope === 'mainMap' ? copy.playAgainMainMapConfirm : copy.playAgainConfirm;
 }
 
 /** What may hold the result window back: a lost link owns the page until it returns, and the
@@ -35,6 +50,9 @@ export type MatchResultSuspender = 'linkLost' | 'missionBook';
 export interface MatchResultOverlay {
   onEvents(events: readonly SimEvent[]): void;
   announce(outcome: MatchOutcome): void;
+  /** Every seat a person plays has its verdict while the match goes on, shown once: `outcome` is the
+   *  viewer's own, `undecided` for a watcher. */
+  playersDecided(outcome: MatchOutcome): void;
   finish(outcome: MatchOutcome): void;
   isOpen(): boolean;
   /** Retain the result without showing it while any suspender holds it. */
@@ -56,11 +74,17 @@ export function keepsPlayingAfterResult(
 
 function matchResultState() {
   let shown = false;
+  let playersShown = false;
   let finished = false;
   return {
     announce(outcome: MatchOutcome): boolean {
       if (shown || finished || outcome === 'undecided') return false;
       shown = true;
+      return true;
+    },
+    playersDecided(): boolean {
+      if (playersShown || finished) return false;
+      playersShown = true;
       return true;
     },
     finish(): boolean {
@@ -138,7 +162,8 @@ export function createMatchResultOverlay(deps: MatchResultDeps): MatchResultOver
     rule.setAttribute('aria-hidden', 'true');
     frame.body.append(
       crest,
-      line('p', 'on-result__kicker', copy.matchKicker),
+      // A window without the viewer's own verdict tells everyone's.
+      line('p', 'on-result__kicker', verdict === 'undecided' ? copy.matchTribesKicker : copy.matchKicker),
       line('h2', 'on-result__title', title),
       rule,
     );
@@ -154,7 +179,9 @@ export function createMatchResultOverlay(deps: MatchResultDeps): MatchResultOver
         if (rank.player === deps.localPlayer) row.dataset.local = 'true';
         row.dataset.outcome = rank.outcome;
         const name =
-          deps.seatNameOf?.(rank.player) ?? formatMessage(copy.matchRankSeat, { n: rank.player + 1 });
+          deps.playerNickOf?.(rank.player) ??
+          deps.seatNameOf?.(rank.player) ??
+          formatMessage(copy.matchRankSeat, { n: rank.player + 1 });
         row.append(
           line('span', 'on-result__rank-no', `${index + 1}.`),
           line('span', 'on-result__rank-name', name),
@@ -205,13 +232,13 @@ export function createMatchResultOverlay(deps: MatchResultDeps): MatchResultOver
     );
     const row = line('div', 'on-result__actions', '');
     row.append(resume);
-    const onPlayAgain = deps.onPlayAgain;
-    if (onPlayAgain !== undefined && verdict === 'defeat') {
+    const playAgain = deps.playAgain;
+    if (playAgain !== undefined && verdict === 'defeat') {
       row.append(
         button(copy.playAgain, GLYPH.replay, () =>
           leave(
-            { title: copy.playAgain, message: copy.playAgainConfirm, confirm: copy.playAgain },
-            onPlayAgain,
+            { title: copy.playAgain, message: replayQuestion(playAgain), confirm: copy.playAgain },
+            playAgain.start,
           ),
         ),
       );
@@ -306,6 +333,9 @@ export function createMatchResultOverlay(deps: MatchResultDeps): MatchResultOver
       }
     },
     announce,
+    playersDecided(outcome): void {
+      if (state.playersDecided()) show(outcome);
+    },
     finish(outcome): void {
       if (state.finish()) show(outcome, true);
     },

@@ -100,8 +100,14 @@ export function emitAtomicSoundCues(
   const scaled = scalesClip(atomic.effect?.kind) && atomic.duration > 0;
   const now = scaled ? Math.floor((elapsed * anim.length) / atomic.duration) : elapsed;
   const before = scaled ? Math.floor(((elapsed - 1) * anim.length) / atomic.duration) : elapsed - 1;
+  const sip = atomic.effect?.kind === 'drink';
   for (const cue of clipEventFactsOf(anim).soundCues) {
     if (cue.tick > before && cue.tick <= now)
-      ctx.events.emit({ kind: 'atomicSound', entity: settler, soundType: cue.soundType });
+      ctx.events.emit({
+        kind: 'atomicSound',
+        entity: settler,
+        soundType: cue.soundType,
+        ...(sip ? { sip: true as const } : {}),
+      });
   }
 }

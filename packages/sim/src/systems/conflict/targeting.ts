@@ -39,10 +39,10 @@ import {
   ranksWithTowers,
 } from '../readviews/index.js';
 import { hexNodeDistance } from '../spatial/metric.js';
+import { isArmedVehicle } from './deck-archers.js';
 import { EpochMarks } from './epoch-marks.js';
 import type { MannedPosts } from './manned-posts.js';
 import { holdsPost, standsAtPost } from './tower-post.js';
-import { vehicleWeapon } from './weapons.js';
 
 // The combat targeting relations: who may fight whom, how far a combatant spots an enemy, and what a wild
 // animal takes up. A leaf of conflict/ - nothing here reaches back into the drives that consult it.
@@ -191,8 +191,7 @@ export function isPriorityCombatTarget(
   firing: () => ReadonlySet<Entity>,
 ): boolean {
   if (isFighterTarget(world, ctx, t)) return true;
-  const vehicle = world.tryGet(t, Vehicle);
-  if (vehicle !== undefined) return vehicleWeapon(ctx, vehicle) !== null;
+  if (world.has(t, Vehicle)) return isArmedVehicle(world, ctx, t);
   const building = world.tryGet(t, Building);
   return building !== undefined && (ranksWithTowers(ctx, building.buildingType) || firing().has(t));
 }
@@ -406,8 +405,7 @@ export function isFleeThreat(
 ): boolean {
   const building = world.has(t, Building);
   if (building && !firing.has(t)) return false;
-  const vehicle = world.tryGet(t, Vehicle);
-  if (vehicle !== undefined && vehicleWeapon(ctx, vehicle) === null) return false;
+  if (world.has(t, Vehicle) && !isArmedVehicle(world, ctx, t)) return false;
   if (isValidTarget(world, ctx, self, fleer, t)) return true;
   const selfOwner = world.tryGet(self, Owner);
   const tOwner = world.tryGet(t, Owner);

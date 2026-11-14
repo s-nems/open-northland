@@ -306,8 +306,8 @@ describe('palisades', () => {
     sim.enqueueSetup({ kind: 'placePalisade', gfxIndex: WALL.typeId, x: 4, y: 4, tribe: 0, owner: 0 });
     sim.step();
     const wall = onlyPalisade(sim);
-    expect(damageVsTarget(sim.world, wall, 450)).toBe(4);
-    expect(damageVsTarget(sim.world, wall, 99)).toBe(0);
+    expect(damageVsTarget(sim.world, ctxOf(sim), wall, 450, false)).toBe(4);
+    expect(damageVsTarget(sim.world, ctxOf(sim), wall, 99, false)).toBe(0);
 
     strike(sim, wall, 10);
     expect(sim.world.get(wall, Damaged).lastHitTick).toBe(ctxOf(sim).tick);

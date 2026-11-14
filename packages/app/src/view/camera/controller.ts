@@ -113,6 +113,13 @@ function windowCoversDisplay(): boolean {
   );
 }
 
+/** Whether a wheel notch zooms in, or null without a direction. Held Shift turns a mouse wheel into
+ *  horizontal scroll on macOS (`deltaY` 0, the notch in `deltaX`), so that delta stands in for it. */
+function wheelZoomsIn(e: WheelEvent): boolean | null {
+  const delta = e.deltaY !== 0 ? e.deltaY : e.deltaX;
+  return delta === 0 ? null : delta < 0;
+}
+
 /** `resolution` reads the owning renderer's live device px per screen px, needed to map mouse deltas on
  *  a HiDPI canvas; a captured value would go stale when a DPR change re-sizes the renderer. */
 export function createCameraController(
@@ -240,18 +247,20 @@ export function createCameraController(
   const wheelZoom = (e: WheelEvent): void => {
     if (suspended) return;
     e.preventDefault(); // don't scroll the page
+    const zoomIn = wheelZoomsIn(e);
+    if (zoomIn === null) return;
     const { x, y } = clientToScreen(canvas, resolution(), e.clientX, e.clientY);
     if (activeInputSettings.integerScaling) {
       if (e.timeStamp - lastLevelStepMs < LEVEL_STEP_COOLDOWN_MS) return;
       lastLevelStepMs = e.timeStamp;
       const scale = cam.scale ?? 1;
-      const level = stepZoomLevel(zoomLevels(), scale, e.deltaY < 0 ? 1 : -1);
+      const level = stepZoomLevel(zoomLevels(), scale, zoomIn ? 1 : -1);
       cam = clampCam(zoomCameraAt(cam, level / scale, x, y, minZoom));
       targetScale = cam.scale ?? 1;
       return;
     }
     // Retarget the glide rather than zoom outright, so stacked notches read as one magnification.
-    const factor = e.deltaY < 0 ? WHEEL_ZOOM_STEP : 1 / WHEEL_ZOOM_STEP;
+    const factor = zoomIn ? WHEEL_ZOOM_STEP : 1 / WHEEL_ZOOM_STEP;
     targetScale = Math.min(MAX_ZOOM, Math.max(minZoom, targetScale * factor));
     zoomAnchorX = x;
     zoomAnchorY = y;

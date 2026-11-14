@@ -1,0 +1,32 @@
+{
+  "version": 1,
+  "map": "zdradziecka_mielizna_sub2",
+  "basis": {
+    "lang": "eng",
+    "digest": "0eeaef5c6a18b5c84782330e838beb29f59141d538dda488b931937ad2308d45"
+  },
+  "strings": {
+    "30": "Sconfiggi i serpenti!",
+    "31": "Trova un modo per sconfiggere Hassan!",
+    "98": "Missione secondaria 2",
+    "99": "SECCA TRADITRICE-sub2",
+    "100": "Bjarni",
+    "101": "Hassan",
+    "102": "Sierra",
+    "103": "Cyra",
+    "104": "Hatchi",
+    "105": "Sigurd",
+    "601": "Serpenti antichi",
+    "602": "Sierra",
+    "701": "SERPENTI MANNARI",
+    "702": "Sierra"
+  },
+  "briefings": {
+    "500": "<font:$local$\\fonts\\fonthead16bld.fnt>\nLA GROTTA TETRA\n<font:$local$\\fonts\\font12.fnt>\nNella grotta c'era odore di muffa, e tutto intorno aleggiava uno strano fumo. Ovunque si sentivano sibili e lamenti. Vorrei essere qui con i miei amici, pensai tra me e me...\n\"Ciao, Bjarni,\" sentii alle mie spalle, \"non volevi mica prenderti tutto il merito da solo?\"\nPensai che fosse di nuovo la mia immaginazione, ma erano proprio loro! Erano lì davanti a me! Sigurd, Hatchi e Cyra. Chiesi subito:\n\"Che ci fate qui? Da dove sbucate?!\"\n\"Abbiamo cominciato a preoccuparci per te! Dovevi esserci alla festa della patata... Dopo una settimana siamo partiti a cercarti,\" disse Cyra, preoccupata.\n\"Lo so, lo so. Scusate il ritardo. Festeggeremo insieme, ma prima dobbiamo sistemare queste bestie!\"\nTutti insieme ci addentrammo nella grotta.",
+    "501": "<font:$local$\\fonts\\fonthead16bld.fnt>\nHASSAN\n<font:$local$\\fonts\\font12.fnt>\nIn una grande sala stava un serpente mannaro eccezionalmente grosso e possente. Quando ci vide, sibilò: \"Io sono Hassan, pagherete con la vita per avermi disturbato!\"\n\nIn tanti ci avevano già minacciati così. Feci un lieve cenno a Cyra, che sapeva già cosa fare. Scoccò una freccia contro il mostro. Purtroppo non gli fece nulla! La bestia ha una pelle durissima. Nessuna arma riuscirà a trapassarla!\n\nDobbiamo trovare un altro modo per sconfiggere questa bestia!",
+    "502": "<font:$local$\\fonts\\fonthead16bld.fnt>\nSIERRA\n<font:$local$\\fonts\\font12.fnt>\nIn un angolo della grotta trovammo una donna sporca e malconcia, ma armata... Ci teneva sotto tiro con l'arco.\n\nEra Sierra, la condottiera del reparto bizantino. Ci raccontò la sua disavventura, quando i serpenti mannari le avevano tagliato la via di fuga... Tutto il suo reparto era morto. Solo lei era sopravvissuta.\n\nCi ringraziò di cuore per averla salvata. Ma non era finita. Dovevamo sconfiggere la bestia!\n\nLei però aveva già un piano. Restando qui così a lungo, aveva escogitato un modo per intrappolare il mostro. Nella grotta ci sono quattro pietre che sorreggono dei massi nella grande sala... Se riuscissimo a danneggiarle tutte nello stesso momento, chiuderemmo Hassan in una tomba di pietra!\n\nNon avevo scelta. Ascoltai Sierra e dissi:\n\"Sigurd, va' alla pietra a nord della grande sala.\nHatchi, va' alla pietra all'ingresso della grotta.\nCyra, resta qui con Sierra.\nQuando grido 'Odino', colpite le pietre!\"",
+    "503": "<font:$local$\\fonts\\fonthead16bld.fnt>\nSCONFITTA!\n<font:$local$\\fonts\\font12.fnt>\n\nÈ morto uno degli eroi indispensabili per la missione. Senza di lui la spedizione non può più riuscire...\n\n<picture:$local$\\graphics\\Hero_Dead_F.pcx>\n",
+    "504": "<font:$local$\\fonts\\fonthead16bld.fnt>\nODINO!\n<font:$local$\\fonts\\font12.fnt>",
+    "505": "<font:$local$\\fonts\\fonthead16bld.fnt>\nCE L'ABBIAMO FATTA!\n<font:$local$\\fonts\\font12.fnt>\nLe pietre hanno intrappolato il mostro!\n\n<usericon:1,46,87>\n\nOra possiamo tornare in superficie senza pericolo."
+  }
+}

@@ -32,8 +32,8 @@ Seven records, ids 1..6 (0 is "none"). `logicdefines.inc` names them `CART_HAND 
 | `logictransformvehicleType` | Type the vehicle becomes when the animal arrives (6 -> 2). |
 
 Hit points (table indexed by type): ship small 5000, ship big 5000, catapult 3000, everything
-else 1000; the pipeline stamps the table onto `VehicleType.hitpoints`. Vision: 15 default, ship
-small 20, ship big 25, catapult 20 (Open Northland gives both ships 25 by owner ruling).
+else 1000 (Open Northland gives both ships 10000 by owner ruling). Vision: 15 default, ship small
+20, ship big 25, catapult 20 (Open Northland gives both ships 25 by owner ruling).
 Vehicles have no armour.
 
 ## Construction
@@ -80,7 +80,9 @@ then through the ordinary site-supply rungs, and builders and haulers
 never serve a vehicle site. Approximations: which product a worker "currently" makes is the rotation
 cursor (the original's scheduling is not decoded); a land site is worked from its door, a ship site
 from its first work-area cell on the worker's continent that no walk block covers (the original reads
-a per-cell flag there, approximated by the walk block); a ship site needs the water side of the shared
+a per-cell flag there, approximated by the walk block); a ship site's material lands on its perimeter,
+and on its work-area cells on each shore the perimeter does not reach, so a hull off its crew's shore
+still takes its bill (where the original sets it down is not confirmed); a ship site needs the water side of the shared
 free-size field to admit `logicsize` at every body node, all on one water body; a parked vehicle
 counts as reason 9 only when its disc overlaps the vehicle-site body;
 regular houses instead push vehicles off their body and out of newly sealed nooks, leaving vehicles in
@@ -131,10 +133,16 @@ Open Northland: `Rider` (`packages/sim/src/components/vehicle.ts`) marks an atta
 seat's `inside` says whether it is aboard; a rider aboard has no `Position`, which is what keeps it
 out of every map query. Inside a cart its needs and hitpoints stand still (approximation: the
 original's hitpoint step aboard is not read); inside a ship they run on, and `shipboardNeedsSystem`
-(`systems/vehicles/shipboard-needs.ts`) serves them aboard: a hungry passenger eats a unit of food out
-of the hold, a tired one sleeps, a lonely one chats with a fellow passenger, each worth what the clip
-it would play on land pays in, rest at the open-air half, at most once per clip length. Piety waits for
-land (owner's choice; whether the original serves a rider aboard is unconfirmed). `attachToVehicle` walks the rider to the door through the
+(`systems/vehicles/shipboard-needs.ts`) serves them aboard: a hungry or tired passenger first drinks a
+draught it carries, as on land; a hungry one eats a unit of food out of the hold, a tired one sleeps, a
+lonely one chats with a fellow passenger, each worth what the clip it would play on land pays in, rest
+at the open-air half, at most once per clip length. Piety waits for land (owner's choice; whether the
+original serves a rider aboard is unconfirmed). Where the ship lies moored under no order, a hungry
+passenger allowed to look for food steps out on a meal break instead, eats ashore until sated and boards
+again, so a crew at the shore does not eat the hold faster than a hand restocks it. It falls back on the
+hold for the meal-break retry with nothing to eat ashore, under the battle alert at its landing, and
+after the ship called it back; a pinned trade ship's crew always eats aboard (named addition).
+`attachToVehicle` walks the rider to the door through the
 unconfined walk order and ends any chat it was in; the rider rung of the drive ladder
 (`systems/vehicles/boarding.ts`) steps a passenger in as soon as it reaches the door, while a carrier,
 the crew that works its vehicle from outside, waits by the door until the vehicle asks
@@ -249,7 +257,7 @@ Owner's choice, nothing in the original: a carrier posted at a store or workshop
 with the carrier trade), or a trader, that the attach order gives a free handcart or harnessed ox cart
 keeps its post or route and takes the cart as its *hauling cart* instead of crewing it (`HaulingCart` in
 `components/vehicle.ts`, `systems/vehicles/hauling-cart.ts`, the planner's `planHaulingCart` and
-`planCartTopUp` rungs). The gate is the attach gate's: own cart, trade in `logicpassenger`, nobody
+`planCartRound` rungs). The gate is the attach gate's: own cart, trade in `logicpassenger`, nobody
 pulling, commanding, riding or carrying it, door on the puller's continent; the "Assign Vehicle"
 pick lights such carts and the cart's `hauler` field refuses crew meanwhile. The puller walks to the
 door and takes the cart there: it leaves the map (no `Position`) and the puller draws as the cart's
@@ -263,8 +271,9 @@ The cart is a work tool, not a harness:
 - **Room.** Every lift the carrier makes for its post, a loose pile, a workshop output or a workshop
   input, fills the cart's room and nothing in hand on top (`carryCapacityOf`: 15 for the handcart,
   30 for the ox cart, less what is already aboard or in hand), and a workshop input fetch brings the
-  slot's whole shortfall up to that and no more (`HaulingLift.units`). In hand, the load rides as the
-  carrier's `Carrying`, one good at a time.
+  slot's whole shortfall up to that and no more (`HaulingLift.units`). In hand, one good of the load
+  rides as the carrier's `Carrying`, the good the delivery rung routes, and the rest of a mixed load
+  stays in the hold; a good the hold lists no line for rides in the hands alone and is never mixed.
 - **Lifts as the trader's.** At a heap, a shelf or a store's door the carrier stands the cart down on
   the nearest open land beside it (`beginCartLift`, `HaulingCart.lift`) and moves the units one lift
   each, the pick-up or pile-up clip of its trade stretched by cart kind (`cartLiftTicks`: 60% of the
@@ -281,12 +290,28 @@ The cart is a work tool, not a harness:
   (`haulingCartSpeedLossPercent`). The load is the cart's: a walk order moves the loaded cart along
   instead of setting the load down, and no hand gesture sheds it (`startDrop` refuses); only a lift
   or the cart's set-down parts the carrier from it.
-- **One yard a trip.** A store's porter whose cart has room after a lift fills it from the nearest
-  heap or finished output of the same good within `CART_TOP_UP_REACH` (12 nodes) of where it stands,
-  and only then goes home; nothing that close, or its own store no longer taking the good, means it
-  delivers what it has rather than crossing the village for a second heap (approximation: reach from
-  the porter, so a yard clears heap by heap). Like any porter it lifts only goods its own store takes,
-  never a load for another store.
+- **A round a trip.** A carrier whose cart has room after a lift makes the next stop of its round
+  before it delivers (`planCartRound`, `drives/economy/cart-round.ts`), any good its post moves. A
+  store's porter sweeps its own pickup area, the nearest heap first from where it stands, then takes
+  a heap or finished output within `CART_TOP_UP_REACH` (12 nodes) of it rather than cross the village
+  for one; it lifts only goods its own store takes, and no more of one than the shelf has room for.
+  A workshop's carrier fetching inputs goes on to the source of the input still shortest of its slot,
+  the units aboard counted, so a heap of one unit does not end the trip. It goes on while no product
+  waits on the cart, that is no recipe of the crew starts only once the load is on the shelf; with
+  one waiting it stops only at a source no farther off than its own door (`extendsFetchTo`). A
+  carrier whose load no store takes still loads the outputs a store does take. Beside one door the lifts follow each other with the cart
+  standing (`nextLiftBesideCart`): every finished output of the
+  workshop on the way out, every good of the hold bound for that store on the way in.
+- **Out with products, back with inputs.** A workshop's carrier with its cart in hand loads the
+  finished output before it fetches a short input (`loadsOutputBeforeFetch`), so one round trip
+  carries both; only while every input still funds a cycle, and only from no farther off the workshop
+  than the source.
+- **Mixed delivery.** Of a mixed load the delivery rung routes the good whose store lies nearest,
+  handed up from the hold (`routableCartLoad`), so a good no store takes never holds the rest back. An
+  unload moves one good a lift (`HaulingLift.goodType`); a refused unit goes back aboard and ends
+  that good's lift, the next good bound for the door following. Every lift for a shelf is capped at
+  the shelf's room (`sinkRoomFor`), and a workshop's carrier left with a product no store takes
+  still fetches inputs.
 - **Breaks park it.** Whatever takes the carrier off its trade (a meal, a bed, a prayer, a chat, the
   alarm, a flight from a threat, a marriage, an equipment errand) parks the cart on the nearest open
   land where the carrier stands, the load stowed in the hold (`parkHaulingCart`, `tradeVehicleStock`,
@@ -318,7 +343,7 @@ way signposts extend a settler's. Humans inside the footprint are shoved away on
 Per node the move period is `max(3, (g*2 + 4) << catapult)` ticks with `g` the 4-bit ground speed
 class stored beside the size class in the node record, which is the map's `lmpr` roughness, re-read at
 every node reached, plus a laden cart's drag (Open Northland addition, owner's feature, `drag.ts`):
-a handcart loses up to 60% of its speed and a cart an animal draws (the harnessed form of a type
+a handcart loses up to 40% of its speed and a cart an animal draws (the harnessed form of a type
 with `draggingAnimalTribe`) up to 15%, in proportion to how full the hold is (whole percent,
 the period lengthened by `loss / (100 - loss)` and rounded to whole ticks), whoever moves it,
 a commander or the carrier or trader pulling it; an empty cart, a ship and the catapult lose nothing; each tick adds `(period + 9999) / period`
@@ -405,7 +430,9 @@ Open Northland: a spawned ship's mooring point is the nearest walkable node in h
 within the door distance; the door direction adds the vector's offset to the vehicle's facing in the
 six map-point directions, a N facing read as NE and a S facing as SW, the way a human's walk facing
 reads as a map-point heading (approximation). The spawn search covers every ring out to the door
-distance, not the door ring alone (approximation). The admin spawn tool's `createVehicle` carries
+distance, not the door ring alone (approximation). A ship launched from a yard site moors first on a
+land its site's crew stands on, else as any spawn (owner ruling), so a hull lying nearer an islet than
+its crew's shore still moors where the crew can board it. The admin spawn tool's `createVehicle` carries
 `berth`: the ship stands instead on the nearest node, out to three door distances from the click, whose
 disc lies in open water clear of other vehicles with its nearest land on its door ring, and is not created when
 there is none. `dockVehicle` (`systems/vehicles/dock.ts`) holds the
@@ -458,6 +485,8 @@ The original's goto never scans while the vehicle drives. Open Northland adds an
 (`moveVehicle` with `attackMove`: the attack-move key with a catapult selected, or its commander's own
 attack-move). The march fights in the attack stance whatever the vehicle's stance, a find ends the
 drive on the node it crosses, and once nothing is left to fight the vehicle drives on to the goal.
+Ordered while the vehicle is shooting at a unit, house or vehicle, the march waits: the vehicle fights
+on under its own stance (a holding one where it stands) and starts the march once it holds no target.
 After a find no firing node reaches, the march drives on for 5 seconds without scanning
 (approximation). A goto, stop, ordered attack, loading into a ship, unloading the crew, losing the
 commander or a script teleport ends the march; with no route left it ends where it stands with the
@@ -477,7 +506,10 @@ scatter roll `r = rand % 100` against `accuracy = commanderSkill + 10`, where th
 commander's raw weapon-21 (main type 7) experience counter, capped at 10000. When `r > accuracy`
 the impact moves by `spread = (r - accuracy) * (dist / 4) / r`: two more draws give `dx = rand %
 (spread + 1) - spread / 2` and `dy` alike (integer arithmetic, so the offset is biased toward the
-positive side). Flight ticks `dist * 8 / speed` to the scattered point; the impact reveals radius 2
+positive side). Deviation (owner's rule): the landing never lies farther from the vehicle than the
+aim, so a stray stone cannot reach past its mark or its range. An offset that would overshoot is
+negated, and one still farther in the hex metric (sideways off a hexagon corner) steps toward the
+vehicle until it is at the aim's distance. Flight ticks `dist * 8 / speed` to the scattered point; the impact reveals radius 2
 for the owner. The delayed hit reads ONE node, the
 landing point: every human and animal standing on it, the vehicle or house whose body covers it,
 and the landscape there, the owner's own included (`hitself`). Humans, animals, houses and vehicles
@@ -496,16 +528,16 @@ landscape on 51 % of footprint nodes and drop all cargo within radius 10.
 A scripted removal draws no ruins, spills nothing and draws no random number; a player leaving the
 game removes his vehicles with ruins but without the cargo spill.
 
-Open Northland (`packages/sim/src/systems/conflict/engage-vehicle.ts`, `projectile.ts`): the
+Open Northland (`packages/sim/src/systems/conflict/engage-vehicle.ts`, `vehicle-targets.ts`,
+`projectile.ts`): the
 stance, guard position and attack ride on the `Vehicle` component; the guard position is set by
 the stance order and a goto's end. A chase, ordered or scanned, leaves it where it was, so a holding
 or defending vehicle that chased far scans around the old spot until a goto or stance order (original
 behavior). A chase that loses its target under way, which fell, left the map or ran the defence past
 its leash, stops on the node it is crossing and leaves the guard position too. Approximation: the original's goto writes its goal as the drive starts, and whether its
 stance order writes it is not read.
-Ranges are map points, the hexagon distance every other weapon band counts in. The four-step target
-preference is one nearest search (approximation). The stone is a `Projectile` with a ground-burst
-payload. Its flight time is `dist * 8 / speed` ticks, as an arrow's is: it covers its release chord
+Ranges are map points, the hexagon distance every other weapon band counts in. The stone is a
+`Projectile` with a ground-burst payload. Its flight time is `dist * 8 / speed` ticks, as an arrow's is: it covers its release chord
 in equal steps over two ticks fewer and strikes on the tick before the flight time runs out, where
 the original's delayed hit lands. It lands through the one pipeline every shot lands through: the men
 and beasts out in the open on the landing point and its six neighbours, then the vehicles and houses
@@ -517,8 +549,12 @@ segment whose body covers the node and takes `damage[7] / 100` off its hitpoints
 own rule, the one every other weapon's blow goes through. A stone strikes with the bare column: neither
 the commander's experience nor his amulets raise it. A stone that damages anything trains the
 commander once. A settler resting indoors is passed over, as every other shot passes over it, and an
-ordered stone may name a wall. A struck settler runs from an armed vehicle and never from a cart or ship
-(approximation). The note is raised for any striker (approximation). An auto target no firing node reaches is
+ordered stone may name a wall. A struck settler runs from an armed vehicle, a warship with a bowman
+on deck included, and never from a cart or an unarmed ship (approximation). Owner additions, not in the
+original: a stone strikes a ship for double damage; bow soldiers aboard a warship shoot from its deck,
+the first ten by seat, at the bow's reach less 2 points, one node wider in scatter and half again as
+slowly as ashore, enemy ships first, and the ship answers for them; a ship under 40% of its hit points
+burns 20 a second until it sinks; a computer seat takes cover from a warship with a bowman on deck. The note is raised for any striker (approximation). An auto target no firing node reaches is
 given up for the combat memo's 30 seconds (approximation: the original drops it and scans again on
 its next update). The row's `hitself 1` is extracted, so the burst strikes every side, the shooter's
 own included. A victim whose player is not at war with the shooter's
@@ -693,7 +729,7 @@ and Frank have a big-ship binding, and the Viking one is the 32-frame `ve_test_s
 still index the 98-frame `LS_vehicles` layout, so its loaded hull (bobs 66..94) has no frame,
 while the Frank one has hulls but no gait; the ox-less cart has records for Viking and Frank only; the handcart's drive reuses
 `vehicles_bullcart_walk`; Byzantine carts and the Saracen ox cart have a wait but no drive. The
-yards' `[GfxHouse]` records have two holes the `houses-graphics` correction fixes: the Egyptian and
+yards' `[GfxHouse]` records have two holes the `houses` correction fixes: the Egyptian and
 Byzantine catapult yards name bob 32 of `CR_Veh_Body_00.bmd`, an ox-cart frame, where the other
 tribes name bob 32 of `ls_vehicles.bmd`, the catapult; every ship yard names `ls_houses_viking_s.bmd`
 as its shadow, whose bob 4 is empty, where `ls_houses_vehicles_s.bmd` holds that bob's shadow. Every
@@ -711,8 +747,9 @@ these choices for the holes:
   empty hull (`ve_test_ship` holds bobs 0..31). A cart with a wait but no drive takes the base
   tribe's drives when both draw from the same atlas; the original looks a drive up by exact tribe,
   so its cart would slide on its wait. Every state falls back down `loaded → unloaded → wait`.
-- The catapult plays its 40-frame shot once over each 48-tick attack cadence while `task` is `attacks`;
-  where in the clip the shot releases is an approximation.
+- The catapult plays its 40-frame shot once over each attack clip (the `length` of the clip its tribe
+  binds to the attack, 48 ticks in the original) while `task` is `attacks`; where in the clip the shot
+  releases is an approximation.
 - The stone in flight, the puff it leaves every tick and the smoke a `createsmoke` weapon raises where
   it lands are the `[particel]` records `Rock` (by `munitiontype`), its `spawnparticelId` and
   `Smoke.org` (`particles` in the IR; `packages/render/src/gpu/overlays/shot-layer.ts`). The lob and

@@ -1,4 +1,10 @@
-import { cellAnchorNode, type Entity, hexDistanceBetween, playerCommand } from '@open-northland/sim';
+import {
+  cellAnchorNode,
+  type Entity,
+  HULL_GAP_NODES,
+  hexDistanceBetween,
+  playerCommand,
+} from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import { HUMAN_PLAYER } from '../../../../src/game/rules.js';
 import { createSceneSim } from '../../../../src/scenes/runtime.js';
@@ -13,8 +19,6 @@ import {
 const SHORE_ROW = 10;
 const SHIP_SIZE = 2;
 const DOOR = 4;
-/** The planner's free water between two footprint discs. */
-const BERTH_GAP = 4;
 const SHORE: MooringRule = {
   key: 'shore',
   moors: (_col, row) => row === SHORE_ROW,
@@ -43,7 +47,7 @@ describe('planBerths', () => {
       for (const b of berths) {
         if (a === b) continue;
         expect(hexDistanceBetween(a.dock.col, a.dock.row, b.dock.col, b.dock.row)).toBeGreaterThan(
-          2 * SHIP_SIZE + BERTH_GAP,
+          2 * SHIP_SIZE + HULL_GAP_NODES,
         );
       }
     }

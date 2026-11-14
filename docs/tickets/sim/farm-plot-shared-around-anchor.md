@@ -1,11 +1,12 @@
-# Work fields by reach from the workplace's anchor, shared between workplaces in reach
+# Work fields by reach from the work centre, shared between workplaces in reach
 
 **Area:** sim, app · **Focus:** drives/farming, catalog/farming · **Priority:** P3
 
 Sown fields carry `Crop.farm`, the drive counts and picks those fields only for that farm, and
 `FarmClaims.byFarm` reserves sow slots per farm. Map-placed fields have `farm: null` and are worked by
-farms in reach. Two farms whose radii overlap still keep disjoint plots for their own sown fields, and
-a demolished farm's fields stand untended within another farm's reach.
+farms in reach. Two farms whose radii overlap still keep disjoint plots for their own sown fields, a
+demolished farm's fields stand untended within another farm's reach, and a plot a sower leaves behind
+when his flag moves stays his farm's, untended until a centre of that farm reaches it again.
 
 The original has no owner on a field. Original behavior, in the task the farmer and
 the herb guy share: a worker searches 10 map points out
@@ -17,19 +18,17 @@ at 25, plants only while it counted fewer, else reaps a ripe one or waters the l
 ## Scope
 
 - Drop `Crop.farm`; index fields spatially and let each worker count, sow, reap and water the fields of
-  its good within reach of its workplace's anchor, whichever workplace sowed them, so workplaces in reach
-  share one pool and a demolished one leaves its fields to any worker in reach. Rework `FarmClaims.byFarm`
-  into an in-flight sow count per anchor, and keep `fieldReclaimSystem`'s stranded-field rule working
-  from the anchor instead of `Crop.farm`.
-- Non-goal: a player-movable plot anchor (the original's set-work-centre command accepts the farmer
-  but not the herb guy). That is a feature for the owner's roadmap; this ticket keeps the anchor at the
-  workplace's own position.
+  its good within reach of its work centre (the workplace, or the flag a sower holds), whichever
+  workplace sowed them, so centres in reach share one pool and a demolished workplace or a moved flag
+  leaves its fields to any worker in reach. Rework `FarmClaims.byFarm` into an in-flight sow count per
+  work centre, and keep `fieldReclaimSystem`'s stranded-field rule working without `Crop.farm`.
 
 ## Verify
 
 - Two farms whose reaches overlap: a ripe field between them is reaped by whichever farmer reaches it
   first, and each farmer stops sowing once the cap of growing fields stands within its reach, the other
   farm's fields counted.
+- A plot left behind by a moved flag is worked by any sower whose centre reaches it.
 - `packages/sim/test/systems/economy/farming.test.ts` (reclaim cases included),
   `packages/app/test/game/sandbox/farm-pacing.test.ts` with its plot bands re-derived, and a save round-trip without
   the dropped field.

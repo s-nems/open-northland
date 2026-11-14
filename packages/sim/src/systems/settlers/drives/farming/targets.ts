@@ -3,7 +3,7 @@ import type { Entity } from '../../../../ecs/world.js';
 import { nodeOfPosition } from '../../../../nav/halfcell.js';
 import type { NodeId } from '../../../../nav/terrain/index.js';
 import { type FarmingSpec, sowNodeOccupied } from '../../../economy/fields.js';
-import { dynamicBlockOverlay } from '../../../footprint/index.js';
+import { dynamicBlockOverlay, workFlagBlockerCounts } from '../../../footprint/index.js';
 import { manhattan, ringOffsetCount, ringOffsetDx, ringOffsetDy } from '../../../spatial/metric.js';
 import { lowestStockedGood } from '../../../stores/index.js';
 import type { PlannerContext } from '../../planner/context.js';
@@ -16,9 +16,9 @@ import {
 import type { FarmClaims } from './claims.js';
 
 /**
- * The nearest cut sheaf of the farmed good lying within the farm's field radius, or null. Ranked by
- * Manhattan distance from the farmer with an ascending-cell-id tie-break, while the radius is measured from
- * the farm's anchor, so a farmer never chases a sheaf across the map.
+ * The nearest cut sheaf of the farmed good lying within the field radius, or null. Ranked by Manhattan
+ * distance from the farmer with an ascending-cell-id tie-break, while the radius is measured from the
+ * farmer's work centre, so a farmer never chases a sheaf across the map.
  */
 export function nearestFarmSheaf(
   plan: PlannerContext,
@@ -65,13 +65,13 @@ const SOW_CANDIDATES = 5;
 
 /**
  * The node the farm should sow next: the spot this farmer already set out for while it stays sowable, else
- * one of the {@link SOW_CANDIDATES} free nodes nearest the farm's anchor, so fields pack outward from the
- * farm; null when the whole radius is taken. A sowable node is on the map, walkable (the farmer stands on
+ * one of the {@link SOW_CANDIDATES} free nodes nearest the work centre, so fields pack outward from it;
+ * null when the whole radius is taken. A sowable node is on the map, walkable (the farmer stands on
  * the field to work it), plantable ground (the original demands the `biocanplanton` flag on all six
  * triangles around the point, which `trianglepatterntypes.cif` gives to `land` alone; the cell-resolution
  * class carries it here), off any road, outside standing buildings' reserved zones even at passable
- * doorways, clear of the walk-block overlays, unoccupied (a road site's stockpile counts), and unclaimed
- * by another farmer's in-flight action.
+ * doorways, clear of the walk-block overlays, unoccupied (a road site's stockpile and a work flag count,
+ * the farmer's own at his centre included), and unclaimed by another farmer's in-flight action.
  */
 export function nextSowNode(
   plan: PlannerContext,
@@ -85,6 +85,7 @@ export function nextSowNode(
   const { world, ctx, terrain, here, entity, targets } = plan;
   const { anchor, spec, claims, gates } = opts;
   const blocked = dynamicBlockOverlay(world, ctx, terrain);
+  const flags = workFlagBlockerCounts(world, ctx.content, terrain);
   const radius = spec.farming.fieldRadius;
 
   const sowable = (node: NodeId, hx: number, hy: number): boolean =>
@@ -95,6 +96,7 @@ export function nextSowNode(
     !terrain.isRoad(node) && // original behavior: no plant grows on a road
     !claims.nodes.has(node) &&
     !sowNodeOccupied(world, hx, hy) &&
+    flags.markers(node) === 0 &&
     // The sow node is the walk goal, so without this the farmer re-picks the same unreachable spot every
     // replan and its whole plot goes untended behind it.
     !unreachableWorkCell(gates, here, node);

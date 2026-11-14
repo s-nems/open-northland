@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { createKnowledgeBase } from '../../../src/hud/knowledge/base.js';
 import {
   ANIMAL_TARGET,
-  CAP_HITS,
+  CAP_POINTS,
   type CombatTarget,
   clipSeconds,
   combatTargets,
@@ -26,6 +26,8 @@ const SPEAR = 2;
 const BOW = 6;
 const CATAPULT = 7;
 const BLOCKING = 5;
+const STRENGTH_DAMAGE_PCT = 140;
+const DEFENSE_TAKEN_PCT = 60;
 
 const weapon = (over: Partial<KnowledgeWeapon> = {}): KnowledgeWeapon => ({
   typeId: 1,
@@ -67,14 +69,14 @@ describe('landed', () => {
     expect(landed(weapon(), target('leather'), behind)).toBe(120 - BLOCKING);
   });
 
-  it('raises a soldier blow with fight experience, capped at double', () => {
-    expect(landed(weapon(), target('bare'), { ...NO_MODIFIERS, hits: CAP_HITS })).toBe(200);
-    expect(landed(weapon(), target('bare'), { ...NO_MODIFIERS, hits: CAP_HITS * 2 })).toBe(200);
+  it('raises a soldier blow with fight experience, capped at +40%', () => {
+    expect(landed(weapon(), target('bare'), { ...NO_MODIFIERS, points: CAP_POINTS })).toBe(140);
+    expect(landed(weapon(), target('bare'), { ...NO_MODIFIERS, points: CAP_POINTS * 2 })).toBe(140);
   });
 
-  it('gives a building the experience and the amulet, but no direction or block', () => {
-    const strong = { ...NO_MODIFIERS, hits: CAP_HITS, strength: true, direction: HIT_DIRECTION.behind };
-    expect(landed(weapon(), target('building'), strong)).toBe(90);
+  it('gives a building the experience and the amulet, added, but no direction or block', () => {
+    const strong = { ...NO_MODIFIERS, points: CAP_POINTS, strength: true, direction: HIT_DIRECTION.behind };
+    expect(landed(weapon(), target('building'), strong)).toBe(54); // 30 * (1 + 0.4 + 0.4)
   });
 
   it('gives an animal the leather column with no blocking', () => {
@@ -82,17 +84,17 @@ describe('landed', () => {
   });
 
   it('gives a vehicle the bare column of the weapon, no experience', () => {
-    expect(landed(weapon(), target('vehicle'), { ...NO_MODIFIERS, hits: CAP_HITS })).toBe(40);
+    expect(landed(weapon(), target('vehicle'), { ...NO_MODIFIERS, points: CAP_POINTS })).toBe(40);
   });
 
   it('gives a hero no fight experience', () => {
     const hero = weapon({ id: 'hero_spear' });
-    expect(landed(hero, target('bare'), { ...NO_MODIFIERS, hits: CAP_HITS })).toBe(100);
+    expect(landed(hero, target('bare'), { ...NO_MODIFIERS, points: CAP_POINTS })).toBe(100);
   });
 
   it('gives a ranged shot no fight experience', () => {
     const bow = weapon({ id: 'long_bow', mainType: BOW });
-    expect(landed(bow, target('bare'), { ...NO_MODIFIERS, hits: CAP_HITS })).toBe(100);
+    expect(landed(bow, target('bare'), { ...NO_MODIFIERS, points: CAP_POINTS })).toBe(100);
   });
 
   it('never lets an amulet raise a catapult or a building shot', () => {
@@ -103,13 +105,13 @@ describe('landed', () => {
 
   it('raises a blow with the strength amulet after the armour blocks', () => {
     expect(landed(weapon(), target('leather'), { ...NO_MODIFIERS, strength: true })).toBe(
-      Math.floor(((80 - BLOCKING) * 150) / 100),
+      Math.floor(((80 - BLOCKING) * STRENGTH_DAMAGE_PCT) / 100),
     );
   });
 
-  it("halves what a defense amulet's bearer takes, last of all", () => {
+  it("cuts what a defense amulet's bearer takes, last of all", () => {
     expect(landed(weapon(), target('leather'), { ...NO_MODIFIERS, defense: true })).toBe(
-      Math.trunc((80 - BLOCKING) / 2),
+      Math.trunc(((80 - BLOCKING) * DEFENSE_TAKEN_PCT) / 100),
     );
   });
 
@@ -126,8 +128,8 @@ describe('blow arithmetic', () => {
     expect(hitsToKill(0)).toBeNull();
   });
 
-  it('doubles a critical hit', () => {
-    expect(criticalDamage(75)).toBe(150);
+  it('raises a critical hit by the amulet factor', () => {
+    expect(criticalDamage(75)).toBe(112);
   });
 
   it('spreads a clip over its blows', () => {

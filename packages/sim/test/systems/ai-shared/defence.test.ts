@@ -36,6 +36,7 @@ import {
   type TerrainMap,
 } from '../../../src/index.js';
 import type { TerrainGraph } from '../../../src/nav/terrain/index.js';
+import { ALARM_EARLY_MARGIN_NODES } from '../../../src/systems/ai-shared/military/defence/index.js';
 import { mapDefenceLeashSystem } from '../../../src/systems/ai-shared/military/map-defence-leash.js';
 import {
   BIG_ATTACK_FIGHTERS,
@@ -194,9 +195,10 @@ function placeSite(
   return site;
 }
 
-/** The watch band every case measures against - the house bow's reach in the fixture content. */
+/** The watch band every case measures against - the house bow's reach in the fixture content, plus the
+ *  alarm's early margin. */
 function watchOf(sim: Simulation): number {
-  return threatWatchNodes(ctxOf(sim), VIKING);
+  return threatWatchNodes(ctxOf(sim), VIKING) + ALARM_EARLY_MARGIN_NODES;
 }
 
 /** A settler of `owner` standing `distance` nodes due east of `building`. */

@@ -72,6 +72,8 @@ export {
 
 /** Pixi hard-codes its default batcher per instruction set; a world sprite opts into this one by name. */
 const WORLD_BATCHER = 'world';
+/** The name Pixi gives every record it mints. */
+const DEFAULT_BATCHER = 'default';
 
 /** Sprites drawn through the world batcher. */
 const worldSprites = new WeakSet<object>();
@@ -91,7 +93,9 @@ export function isWorldBatched(sprite: object): boolean {
 /**
  * Pixi mints each sprite's batchable record lazily per renderer, always named `default`, and replaces it
  * on `unload()`; the renderer's batch pipe renames a world sprite's record when it next batches. Only a
- * record still named `default` pays the membership lookup. Idempotent per renderer.
+ * record still named `default` pays the membership lookup. A Graphics or mesh record is pooled across
+ * renderables and renderers and keeps its name through the pool, so a world-named one that is not a quad
+ * is checked again and renamed back for a renderable outside the world. Idempotent per renderer.
  */
 export function routeWorldBatches(renderer: Renderer): void {
   const pipe = renderer.renderPipes.batch;
@@ -102,6 +106,9 @@ export function routeWorldBatches(renderer: Renderer): void {
     if (element.batcherName !== WORLD_BATCHER) {
       const renderable = renderableOf(element);
       if (renderable !== null && worldSprites.has(renderable)) element.batcherName = WORLD_BATCHER;
+    } else if (!element.packAsQuad) {
+      const renderable = renderableOf(element);
+      if (renderable === null || !worldSprites.has(renderable)) element.batcherName = DEFAULT_BATCHER;
     }
     addToBatch(element, instructionSet);
   };

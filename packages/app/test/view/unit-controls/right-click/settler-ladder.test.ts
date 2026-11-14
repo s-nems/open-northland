@@ -46,6 +46,13 @@ const WORLD = snapshotOf([
   settler(TRADER, JOB_TRADER),
 ]);
 
+const FLAGGED_COLLECTOR = 5;
+const WORK_FLAG = 56;
+const flagged = (id: number): Ent => {
+  const base = settler(id, JOB_COLLECTOR);
+  return { ...base, components: { ...base.components, WorkFlag: { flag: WORK_FLAG } } };
+};
+
 const unit = (ref: number) => ({ ref, x: 0, y: 0 });
 
 const NOTHING: RightClickHit = {
@@ -124,6 +131,28 @@ describe('the settlers right-click ladder', () => {
     expect(groupsOf(resolve([SOLDIER, COLLECTOR], { resource }, { queued: true }))).toEqual([
       ['walk', [SOLDIER, COLLECTOR]],
     ]);
+  });
+
+  it('moves a flag holder’s flag onto the resource it gathers and holds it to that good', () => {
+    const resource = { ref: RESOURCE, goodType: GATHERED };
+    const plan = resolveSettlerRightClick(
+      { ...context(), snapshot: snapshotOf([...WORLD.entities, flagged(FLAGGED_COLLECTOR)]) },
+      [unit(FLAGGED_COLLECTOR), unit(COLLECTOR), unit(SOLDIER)],
+      { ...NOTHING, resource },
+      { queued: false, usesHeap: false },
+      null,
+    );
+    expect(plan).toMatchObject({
+      kind: 'orders',
+      groups: [
+        {
+          units: [unit(FLAGGED_COLLECTOR)],
+          intent: { kind: 'moveWorkFlag', tile: TILE, goodType: GATHERED },
+        },
+        { units: [unit(COLLECTOR)], intent: { kind: 'gather', goodType: GATHERED } },
+        { units: [unit(SOLDIER)], intent: { kind: 'walk' } },
+      ],
+    });
   });
 
   it('marks the orders that wait on a host answer', () => {

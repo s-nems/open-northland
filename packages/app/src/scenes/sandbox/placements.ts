@@ -10,8 +10,8 @@ import {
   GOOD_WOOD,
 } from '../../game/sandbox/index.js';
 
-/** The coordinates satisfy `canPlaceBuilding`'s walls-outside-zones rule on the real extracted
- *  footprints, so the authored placements would also be legal interactively. */
+/** One slot per catalog building, in rows by trade. A built placement skips `canPlaceBuilding`, so a
+ *  large building's reserved zone may reach into its neighbour's slot. */
 export const VILLAGE: ReadonlyArray<{ readonly id: string; readonly x: number; readonly y: number }> = [
   { id: 'home_level_00', x: 8, y: 7 },
   { id: 'home_level_01', x: 13, y: 7 },
@@ -26,6 +26,7 @@ export const VILLAGE: ReadonlyArray<{ readonly id: string; readonly x: number; r
   { id: 'stock_02', x: 22, y: 15 },
   { id: 'tower_00', x: 26, y: 15 },
   { id: 'tower_01', x: 29, y: 15 },
+  { id: 'defence_wall', x: 33, y: 15 },
   { id: 'work_joinery_00', x: 8, y: 23 },
   { id: 'work_joinery_01', x: 12, y: 23 },
   { id: 'work_joinery_02', x: 16, y: 23 },

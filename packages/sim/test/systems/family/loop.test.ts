@@ -46,13 +46,14 @@ import {
   NEED_DRAIN_UNITS_PER_TICK,
   needBar,
 } from '../../../src/systems/index.js';
+import { PRAY_ATOMIC_ID } from '../../../src/systems/settlers/atomics/start.js';
 import { IDLE_REPLAN_PERIOD_TICKS } from '../../../src/systems/settlers/planner/idle-replan.js';
 import { interactionCell } from '../../../src/systems/settlers/targets/index.js';
 import { noteUnreachableGoal } from '../../../src/systems/settlers/unreachable-goals.js';
 import { TEST_MANIFEST } from '../../fixtures/content.js';
 import { ctxOf } from '../../fixtures/context.js';
 import { stepToIdleReplan } from '../../fixtures/idle-replan.js';
-import { needsOf } from '../../fixtures/settler.js';
+import { needsOf, setNeeds } from '../../fixtures/settler.js';
 import { grassNodeMap as grassMap, waterColumnMap } from '../../fixtures/terrain.js';
 
 /**
@@ -76,6 +77,7 @@ const LARDER_SLOT = 5;
 const WOMAN = 5;
 const CIVILIST = 6;
 const WOODCUTTER = 7;
+const SMITH = 13;
 const SOLDIER = 31;
 const HOME = 2;
 const WAREHOUSE = 7;
@@ -113,6 +115,8 @@ function familyContent(): ContentSet {
       { typeId: WOMAN, id: 'woman' },
       { typeId: CIVILIST, id: 'civilist' },
       { typeId: WOODCUTTER, id: 'woodcutter' },
+      // A smith's trade prays and needs religion, so its piety bar presses with no temple to serve it.
+      { typeId: SMITH, id: 'smith', allowedAtomics: [PRAY_ATOMIC_ID], needsReligion: true },
       // Every real soldier trade carries `ignoresHomeHouseFlag 1`.
       { typeId: SOLDIER, id: 'soldier_unarmed', ignoresHomeHouse: true },
     ],
@@ -512,6 +516,21 @@ describe('e2e: marriage → household → child (full step schedule)', () => {
     expect(walked).toBe(true);
   });
 
+  it("fills a lonely husband's company as the child order brings him in", () => {
+    const { sim, woman, man, home } = familySim(3);
+    sim.world.add(woman(), Marriage, { spouse: man(), child: null });
+    sim.world.add(man(), Marriage, { spouse: woman(), child: null });
+    sim.enqueueSetup({ kind: 'assignHouse', entity: woman(), house: home() });
+    sim.enqueueSetup({ kind: 'makeChild', entity: woman(), child: 'female' });
+    sim.step();
+    sim.world.mut(home(), Stockpile).amounts.set(FOOD, CHILD_FOOD_UNITS);
+    setNeeds(sim, man(), { enjoyment: ONE });
+
+    runUntil(sim, () => sim.world.tryGet(man(), Resting)?.at === home(), 600, 'husband walks home');
+
+    expect(needsOf(sim, man()).enjoyment).toBe(0);
+  });
+
   it('waits for a husband aboard a vehicle, then calls him home once he steps off', () => {
     const { sim, woman, man, home } = familySim(3);
     sim.world.add(woman(), Marriage, { spouse: man(), child: null });
@@ -535,6 +554,28 @@ describe('e2e: marriage → household → child (full step schedule)', () => {
     runUntil(sim, () => sim.world.tryGet(man(), Resting)?.at === home(), 600, 'husband walks home');
   });
 
+  it('leaves at his trade a husband whose pressing need nothing serves, and calls him home once it passes', () => {
+    const { sim, woman, man, home } = familySim(3);
+    sim.world.add(woman(), Marriage, { spouse: man(), child: null });
+    sim.world.add(man(), Marriage, { spouse: woman(), child: null });
+    setSettlerJob(sim.world, man(), SMITH);
+    sim.enqueueSetup({ kind: 'assignHouse', entity: woman(), house: home() });
+    sim.enqueueSetup({ kind: 'makeChild', entity: woman(), child: 'female' });
+    sim.step();
+    sim.world.mut(home(), Stockpile).amounts.set(FOOD, CHILD_FOOD_UNITS);
+    runUntil(sim, () => sim.world.tryGet(woman(), Resting)?.at === home(), 600, 'wife waits inside');
+    // No temple, and his home serves no prayer: the bar presses with nothing to answer it.
+    sim.enqueueSetup({ kind: 'debugSetNeeds', target: man(), piety: 100 });
+    for (let i = 0; i < 600; i++) {
+      sim.step();
+      expect(sim.world.has(man(), FamilyDuty)).toBe(false);
+    }
+    expect(sim.world.get(woman(), Marriage).child).toBeNull();
+
+    sim.enqueueSetup({ kind: 'debugSetNeeds', target: man(), piety: 0 });
+    runUntil(sim, () => sim.world.get(woman(), Marriage).child !== null, 4000, 'child once the need passed');
+  });
+
   it('a hungry wife short of the child cost eats her home meal indoors, not popped out to haul', () => {
     const { sim, woman, man, home } = familySim(3);
     hungryWifeWithOrder(sim, woman(), man(), home());
@@ -556,8 +597,8 @@ describe('e2e: marriage → household → child (full step schedule)', () => {
     const man = spawn(CIVILIST, WEST_HOME_X + 2);
     sim.world.add(woman, Marriage, { spouse: man, child: null });
     sim.world.add(man, Marriage, { spouse: woman, child: null });
-    sim.world.add(woman, Residence, { home });
-    sim.world.add(man, Residence, { home });
+    sim.world.add(woman, Residence, { home, since: 0 });
+    sim.world.add(man, Residence, { home, since: 0 });
     sim.world.mut(home, Stockpile).amounts.set(FOOD, CHILD_FOOD_UNITS);
     sim.enqueueSetup({ kind: 'makeChild', entity: woman, child: 'female' });
 
@@ -574,8 +615,8 @@ describe('e2e: marriage → household → child (full step schedule)', () => {
     const man = spawn(CIVILIST, WEST_HOME_X + 2);
     sim.world.add(woman, Marriage, { spouse: man, child: null });
     sim.world.add(man, Marriage, { spouse: woman, child: null });
-    sim.world.add(woman, Residence, { home });
-    sim.world.add(man, Residence, { home });
+    sim.world.add(woman, Residence, { home, since: 0 });
+    sim.world.add(man, Residence, { home, since: 0 });
     sim.enqueueSetup({ kind: 'dropGood', good: FOOD, x: EAST_X, y: 0, amount: CHILD_FOOD_UNITS });
     sim.enqueueSetup({ kind: 'dropGood', good: FOOD, x: 0, y: 0, amount: CHILD_FOOD_UNITS });
     sim.enqueueSetup({ kind: 'makeChild', entity: woman, child: 'female' });
@@ -953,7 +994,7 @@ describe('e2e: marriage → household → child (full step schedule)', () => {
     sim.step();
     const soldier = [...sim.world.query(Settler)][0] as Entity;
     const home = homeOf(sim);
-    sim.world.add(soldier, Residence, { home });
+    sim.world.add(soldier, Residence, { home, since: 0 });
     sim.world.mut(home, Stockpile).amounts.set(FOOD, 2);
     sim.enqueueSetup({ kind: 'debugSetNeeds', target: soldier, hunger: 100 });
     for (let i = 0; i < 60; i++) sim.step();
@@ -1158,7 +1199,7 @@ describe('e2e: marriage → household → child (full step schedule)', () => {
       .sort((a, b) => a - b)
       .find((e) => e !== woman() && e !== man()) as Entity;
     sim.world.add(minor, Age, { ticks: 0, asOf: null }); // still growing up
-    sim.world.add(minor, Residence, { home: home() });
+    sim.world.add(minor, Residence, { home: home(), since: 0 });
     sim.enqueueSetup({ kind: 'unassignHouse', entity: minor });
     sim.step();
     expect(sim.world.get(minor, Residence).home).toBe(home()); // the adult gate held
@@ -1248,7 +1289,7 @@ describe('e2e: marriage → household → child (full step schedule)', () => {
   it('a housewife stocks the larder from her own island, past a nearer pile across the water', () => {
     const { sim, home, spawn } = islandsSim();
     const woman = spawn(WOMAN, WEST_SHORE_X);
-    sim.world.add(woman, Residence, { home });
+    sim.world.add(woman, Residence, { home, since: 0 });
     sim.enqueueSetup({ kind: 'dropGood', good: FOOD, x: EAST_X, y: 0, amount: CHILD_FOOD_UNITS });
     sim.enqueueSetup({ kind: 'dropGood', good: FOOD, x: 0, y: 0, amount: CHILD_FOOD_UNITS });
     sim.step();
@@ -1295,7 +1336,7 @@ describe('e2e: marriage → household → child (full step schedule)', () => {
     const { sim, woman, home } = familySim(24);
     if (sim.terrain === undefined) throw new Error('setup: terrain missing');
     const door = interactionCell(sim.world, ctxOf(sim), sim.terrain, home());
-    sim.world.add(woman(), Residence, { home: home() });
+    sim.world.add(woman(), Residence, { home: home(), since: 0 });
     sim.world.add(woman(), Position, positionOfNode(sim.terrain.xOf(door), sim.terrain.yOf(door)));
     sim.world.add(woman(), Carrying, { goodType: FOOD, amount: 1 });
     sim.world.mut(home(), Stockpile).amounts.set(FOOD, 5);
@@ -1384,7 +1425,7 @@ describe('marry matches the nearest partner', () => {
     const { sim, home, spawn } = islandsSim();
     const woman = spawn(WOMAN, EAST_X);
     const visitor = spawn(CIVILIST, EAST_BESIDE_X);
-    sim.world.add(visitor, Residence, { home });
+    sim.world.add(visitor, Residence, { home, since: 0 });
     const islander = spawn(CIVILIST, EAST_FAR_X);
 
     sim.enqueueSetup({ kind: 'marry', entity: woman });

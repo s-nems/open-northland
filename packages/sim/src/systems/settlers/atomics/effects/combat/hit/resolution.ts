@@ -14,33 +14,42 @@ import {
   recordPlayerAttack,
   Settler,
   type SettlerIdentity,
+  SettlerProgress,
 } from '../../../../../../components/index.js';
 import type { AtomicEffect } from '../../../../../../core/atomic-effect.js';
 import { eventAt } from '../../../../../../core/events.js';
 import type { Fixed } from '../../../../../../core/fixed.js';
 import type { Entity, World } from '../../../../../../ecs/world.js';
+import { deckShipOf } from '../../../../../conflict/deck-archers.js';
 import { raiseHitAlarm } from '../../../../../conflict/hit-alarm.js';
 import { noteOffence } from '../../../../../conflict/offenders.js';
 import { combatTargetNode } from '../../../../../conflict/target-node.js';
 import { isStructureTarget } from '../../../../../conflict/targeting.js';
+import { attackClipTiming } from '../../../../../conflict/weapons.js';
 import type { SystemContext } from '../../../../../context.js';
 import { markStructureDamaged } from '../../../../../economy/repair.js';
 import { woundBearer } from '../../../../../equipment/index.js';
 import { ownersAtPeace } from '../../../../../match/peace.js';
-import { grantFightExperience } from '../../../../../progression/index.js';
+import {
+  type BlowShare,
+  fightUnitsWith,
+  grantBlowTakenExperience,
+  grantFightExperience,
+  WHOLE_CLIP,
+} from '../../../../../progression/index.js';
 import { hexNodeDistance } from '../../../../../spatial/metric.js';
 import { entityNode } from '../../../../../spatial/nodes.js';
 import { atomicClipSounds, type SoundingAtomic } from '../../../sound-cue.js';
 import { spawnCarcasses } from './carcass.js';
 import { landedDamage } from './damage.js';
 import { launchProjectile } from './projectile-launch.js';
-import { collectHitReaction, type PendingHitReaction } from './reaction.js';
+import { collectCriticalSwingBreak, collectHitReaction, type PendingHitReaction } from './reaction.js';
 import { provokeHostility, reactToBlowOnAnimal, turnOnAttacker } from './reactions.js';
 
 /**
- * Resolve an `attack` swing at its ATTACK-event frame, the mid-animation hit. A ranged swing launches a
- * projectile that resolves on contact; a melee swing whiffs if the target stepped beyond `effect.maxRange`
- * since the swing started, else lands the blow.
+ * Resolve an `attack` swing at its ATTACK-event frame, the mid-animation hit; `share` says which of the
+ * clip's attack events it is. A ranged swing launches a projectile that resolves on contact; a melee swing
+ * whiffs if the target stepped beyond `effect.maxRange` since the swing started, else lands the blow.
  */
 export function resolveAttackHit(
   world: World,
@@ -49,9 +58,10 @@ export function resolveAttackHit(
   atomic: SoundingAtomic,
   effect: Extract<AtomicEffect, { kind: 'attack' }>,
   pendingReactions: PendingHitReaction[],
+  share: BlowShare,
 ): void {
   if (effect.projectile !== undefined) {
-    launchProjectile(world, ctx, attacker, effect);
+    launchProjectile(world, ctx, attacker, effect, share);
     return;
   }
   // Before the reach check, so a whiff is heard too; a clip that sounds its own swing is left to do so.
@@ -67,18 +77,21 @@ export function resolveAttackHit(
   ) {
     return;
   }
-  resolveCombatHit(world, ctx, attacker, effect.target, effect, pendingReactions, 'melee');
+  const blow = { ...effect, blowShare: share };
+  resolveCombatHit(world, ctx, attacker, effect.target, blow, pendingReactions, 'melee');
 }
 
-/** The blow a melee swing or a landing projectile delivers: the weapon's column for the victim (raised
- *  by the striker's experience on a melee blow), the striker's weapon class for the fight-experience
+/** The blow a melee swing or a landing projectile delivers: the weapon's column for the victim, the striker's weapon class for the fight-experience
  *  bucket, and the impact sound the weapon lists for the victim's material. `from` is where the blow
  *  comes from, which a person's hit direction reads: a shot's release point, or the striker's own
  *  position when absent. `vehicleShot` marks a vehicle's stone, which the commander's amulets do not
- *  raise. */
+ *  raise. `blowTicks` is a shot's attack cadence (`Projectile.blowTicks`); a melee blow reads its striker's
+ *  attack clip instead. `blowShare` is the blow's share of that clip, the whole clip when absent. */
 export interface LandingBlow {
   readonly damage: number;
   readonly vehicleShot?: boolean;
+  readonly blowTicks?: number;
+  readonly blowShare?: BlowShare;
   readonly weaponMainType?: number | null;
   readonly hitSoundType?: number | null;
   readonly from?: { readonly x: Fixed; readonly y: Fixed };
@@ -114,6 +127,8 @@ function meleeTargetOutOfReach(
 export interface HitDamage {
   readonly damage: number;
   readonly targetMaxHealth: number;
+  /** The striker's critical hit came up for this blow. */
+  readonly critical?: true;
   readonly targetIdentity?: SettlerIdentity;
 }
 
@@ -146,8 +161,21 @@ export function resolveCombatHit(
   const pool = world.tryGet(target, Health);
   if (pool === undefined || pool.hitpoints <= 0) return null;
   const from = blow.from ?? world.tryGet(attacker, Position);
-  const damage = landedDamage(world, ctx, attacker, target, blow.damage, from, blow.vehicleShot !== true);
   const weaponMainType = blow.weaponMainType ?? undefined;
+  // A melee blow draws on its striker's fight experience as it lands; a shot draws on none.
+  const experience = source === 'melee' ? world.tryGet(attacker, SettlerProgress)?.experience : undefined;
+  const fightUnits = experience === undefined ? 0 : fightUnitsWith(experience, weaponMainType);
+  const landed = landedDamage(
+    world,
+    ctx,
+    attacker,
+    target,
+    blow.damage,
+    from,
+    blow.vehicleShot !== true,
+    fightUnits,
+  );
+  const damage = landed.damage;
   // A blow counts as damaging by its damage value, so an overkill still earns fight experience. Original
   // behavior: a blow that does no damage is silent, earns nothing and is no attack on the victim's side.
   const dealtDamage = damage > 0;
@@ -156,6 +184,7 @@ export function resolveCombatHit(
   const wound: HitDamage = {
     damage: Math.min(pool.hitpoints, dealt),
     targetMaxHealth: pool.max,
+    ...(landed.critical ? { critical: true as const } : {}),
     ...(identity === undefined ? {} : { targetIdentity: { ...identity } }),
   };
   // Ranged hits do not emit this, because `projectileSystem` announces its own `projectileHit`.
@@ -182,11 +211,13 @@ export function resolveCombatHit(
     woundBearer(world, ctx, target, dealt);
     markStructureDamaged(world, ctx, target);
   }
-  // Original behavior: a struck beast turns angry and a struck person reacts whatever the damage.
-  reactToBlowOnAnimal(world, ctx, attacker, target);
+  // Original behavior: a struck beast turns angry and a struck person reacts whatever the damage. The
+  // struck side answers a deck bowman's shot at his ship, the only body of him on the map.
+  const striker = deckShipOf(world, ctx, attacker) ?? attacker;
+  reactToBlowOnAnimal(world, ctx, striker, target);
   if (dealtDamage && source !== 'collateral') provokeHostility(world, ctx, attacker, target);
-  turnOnAttacker(world, ctx, attacker, target);
-  raiseHitAlarm(world, ctx, attacker, target);
+  turnOnAttacker(world, ctx, striker, target);
+  raiseHitAlarm(world, ctx, striker, target);
   const struckSide = ownerOf(world, target);
   if (dealtDamage && source !== 'collateral' && struckSide !== undefined) {
     noteOffence(world, ctx, attacker, struckSide);
@@ -196,16 +227,39 @@ export function resolveCombatHit(
   if (dealtDamage && source !== 'collateral' && world.has(target, Person)) {
     recordPlayerAttack(world, ownerOf(world, target), ownerOf(world, attacker));
   }
-  // A shot grants its experience once for all it strikes (`projectileSystem`).
-  if (dealtDamage && source === 'melee') grantFightExperience(world, ctx, attacker, weaponMainType);
-  if (world.get(target, Health).hitpoints <= 0) {
+  // Fight experience is earned by blow time. A shot grants its striker's once for all it strikes
+  // (`projectileSystem`); a person who survives a blow that took hitpoints earns from it, whoever struck it,
+  // so a script-shielded one earns nothing from it.
+  const survives = world.get(target, Health).hitpoints > 0;
+  if (dealtDamage) {
+    const blowTicks = source === 'melee' ? meleeClipTicks(world, ctx, attacker) : (blow.blowTicks ?? 0);
+    const share = blow.blowShare ?? WHOLE_CLIP;
+    if (source === 'melee') {
+      const struck = isStructureTarget(world, target) ? 'structure' : 'living';
+      grantFightExperience(world, ctx, attacker, weaponMainType, 'melee', blowTicks, struck, share);
+    }
+    if (dealt > 0 && survives && world.has(target, Person)) {
+      grantBlowTakenExperience(world, ctx, target, blowTicks, share);
+    }
+  }
+  if (!survives) {
     spawnCarcasses(world, ctx, attacker, target);
     // Only humans are counted: a hunted animal and a razed house belong to no kill tally a goal reads.
     if (world.has(target, Person)) recordHumanKill(world, ownerOf(world, attacker));
   } else {
-    collectHitReaction(world, ctx, target, pendingReactions); // applied after the caller's loop
+    // Both are applied after the caller's loop.
+    if (landed.critical) {
+      collectCriticalSwingBreak(world, ctx, target, wound.damage, pool.max, pendingReactions);
+    }
+    collectHitReaction(world, ctx, target, pendingReactions);
   }
   return dealtDamage ? wound : null;
+}
+
+/** The length in ticks of a melee striker's attack clip, man or beast; 0 for a striker with no identity. */
+function meleeClipTicks(world: World, ctx: SystemContext, attacker: Entity): number {
+  const identity = world.tryGet(attacker, Settler);
+  return identity === undefined ? 0 : attackClipTiming(ctx.content, identity).length;
 }
 
 /** Whether a script or the map has made this target unharmable - a human's invulnerable bit, a house's

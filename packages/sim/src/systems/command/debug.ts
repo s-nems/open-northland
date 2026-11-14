@@ -83,7 +83,11 @@ export function debugErase(
   }
 }
 
-export function debugSetHealth(world: World, command: Extract<Command, { kind: 'debugSetHealth' }>): void {
+export function debugSetHealth(
+  world: World,
+  ctx: SystemContext,
+  command: Extract<Command, { kind: 'debugSetHealth' }>,
+): void {
   const { target, percent } = command;
   if (!Number.isInteger(percent) || percent < 1 || percent > 100) return;
   if (!world.has(target, Building) && !world.has(target, Settler) && !world.has(target, Vehicle)) return;
@@ -96,10 +100,9 @@ export function debugSetHealth(world: World, command: Extract<Command, { kind: '
       : health.max;
   const hitpoints = Math.max(1, Math.floor((ceiling * percent) / 100));
   if (health.hitpoints !== hitpoints) world.mut(target, Health).hitpoints = hitpoints;
-  if (building !== undefined) {
-    if (hitpoints < ceiling) markShortPool(world, target);
-    else clearRepairedDamage(world, target);
-  }
+  if (world.has(target, Settler)) return;
+  if (hitpoints < ceiling) markShortPool(world, ctx, target);
+  else clearRepairedDamage(world, target);
 }
 
 /** Set the needs the panel names to whole-percent levels (0 sated … 100 maxed). A non-settler target is a

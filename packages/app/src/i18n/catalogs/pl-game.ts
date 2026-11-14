@@ -140,10 +140,7 @@ export const plGame = {
     workFlag: 'Flaga robocza',
     specialization: 'Specjalizacja {id}',
     weaponXp: {
-      fist: 'Walka - Pięść',
-      spear: 'Walka - Włócznia',
-      sword: 'Walka - Miecz',
-      bow: 'Walka - Łuk',
+      fight: 'Walka',
       catapult: 'Walka - Katapulta',
     },
     trackLabels: {
@@ -269,7 +266,7 @@ export const plGame = {
     tradeOffers: 'Oferty handlowe',
     systemMenuDetails: {
       leaveGame: 'Opuść grę',
-      restartMission: 'Restart misji',
+      restartMap: 'Restart mapy',
       resume: 'Powrót do gry',
       paused: 'Gra wstrzymana',
       multiplayer: 'Rozgrywka sieciowa trwa dalej',
@@ -297,6 +294,7 @@ export const plGame = {
     matchFinishedTitle: 'Rozgrywka zakończona',
     matchFinishedDetail: 'Rozgrywka dobiegła końca.',
     matchKicker: 'Losy twojego plemienia',
+    matchTribesKicker: 'Losy plemion',
     matchWatchHint: 'Możesz obserwować mapę i pozostałych graczy bez wydawania rozkazów.',
     matchContinue: 'Graj dalej',
     matchRankingTitle: 'Ranking',
@@ -312,6 +310,7 @@ export const plGame = {
     quitConfirmNo: 'Graj dalej',
     playAgain: 'Zagraj ponownie',
     playAgainConfirm: 'Zacząć tę mapę od początku? Niezapisany postęp przepadnie.',
+    playAgainMainMapConfirm: 'Wrócić na mapę główną i zacząć ją od początku? Niezapisany postęp przepadnie.',
     closeMenu: 'Zamknij',
     saveGame: 'Zapisz grę',
     loadGame: 'Wczytaj grę',
@@ -465,6 +464,7 @@ export const plGame = {
       placeSignpost: 'Postaw drogowskaz',
       bombard: 'Ostrzelaj',
       rallyPoint: 'Ustaw punkt zbiórki',
+      coinDrill: 'Musztra',
       tooManyUnits: 'Za dużo jednostek',
       noFreePlaces: 'Brak wolnych miejsc',
       noRoom: 'Brak miejsca',
@@ -488,6 +488,7 @@ export const plGame = {
       fighting: 'Walczy',
       training: 'Ćwiczy',
       eating: 'Je',
+      drinking: 'Pije',
       mealBreak: 'Głodny, idzie coś zjeść',
       sleeping: 'Śpi',
       praying: 'Modli się',
@@ -687,6 +688,7 @@ export const plGame = {
         collector: 'w zasięgu drogowskazów',
         hunter: 'wokół miejsca pracy',
         fisher: 'przy miejscu pracy',
+        farmer: 'wokół miejsca pracy',
       },
       assignWorkArea: 'Wbij chorągiewkę',
       assignWorkAreaHint: {
@@ -694,6 +696,7 @@ export const plGame = {
         collector: 'Wskaż miejsce, wokół którego zbieracz zbiera surowce · Esc anuluje',
         hunter: 'Wskaż miejsce, wokół którego myśliwy poluje · Esc anuluje',
         fisher: 'Wskaż wodę, przy której rybak łowi · Esc anuluje',
+        farmer: 'Wskaż miejsce, wokół którego będą zasiewane pola · Esc anuluje',
       },
       clearWorkArea: 'Zabierz chorągiewkę',
       clearWorkAreaHint: {
@@ -701,6 +704,7 @@ export const plGame = {
         collector: 'Zbieracz znów zbiera surowce w całym zasięgu drogowskazów',
         hunter: 'Myśliwy znów poluje wokół miejsca pracy',
         fisher: 'Rybak znów łowi przy miejscu pracy',
+        farmer: 'Pola znów są zasiewane wokół miejsca pracy',
       },
       centreFlag: 'Pokaż chorągiewkę',
       centreFlagHint: 'Wyśrodkuj widok na chorągiewce',
@@ -790,6 +794,10 @@ export const plGame = {
       agreementUpToTooltip: 'Handluj, aż tyle sztuk ({good}) będzie w: {where} · ∞: bez pułapu',
       repeats: '{count} razy',
       repeatsBonus: '{count} razy, wydajność +{bonus}%',
+      fightShare: 'Doświadczenie w walce: {pct}%',
+      fightDealt: 'Zadawane obrażenia: +{pct}%',
+      fightTaken: 'Otrzymywane obrażenia: -{pct}%',
+      fightAccuracy: 'Celność: {pct}%',
       unlockTooltip: 'Odblokowuje: {unlocks} (doświadczenie: {track})',
       moreRows: 'jeszcze {count}',
       fewerRows: 'zwiń',
@@ -1085,6 +1093,11 @@ export const plGame = {
         sheltered: 'schowani {sheltered} / {capacity}',
         working: 'Pracuje',
         noWorkers: 'Brak pracowników',
+        blessing: 'Błogosławi',
+        oilLeft: 'oliwy na {minutes} min',
+        noOil: 'Brak oliwy',
+        blessingDamaged: 'Uszkodzona, nie błogosławi',
+        blessingDoused: 'Wygaszona, nie błogosławi',
         noGarrison: 'Brak załogi',
         manned: 'Obsadzony',
         idle: 'Bezczynny',
@@ -1117,6 +1130,13 @@ export const plGame = {
       productionUnfold: 'rozwiń ({count})',
       productionFold: 'zwiń',
       productionIdle: 'Nic teraz nie powstaje',
+      templeFire: 'Święty ogień',
+      templeFireLeft: 'Bieżąca jednostka oliwy płonie jeszcze {time}, cały zapas starczy na {minutes} min',
+      templeFireOut: 'Ogień nie płonie',
+      templeFireDoused: 'Ogień jest wygaszony',
+      templeFireDouse: 'Wygaś',
+      templeFireLight: 'Rozpal',
+      templeFireDouseTooltip: 'Wygaszony ogień nie pali oliwy i nie błogosławi',
       needs: '{good}\nWymaga: {inputs}',
       need: '{good}: jest {have}, na cykl {need}',
       fields: 'Pola {sown} · dojrzałe {ripe}',
@@ -1132,6 +1152,16 @@ export const plGame = {
       uses: '{count} użyć',
       holyFireOn: 'płonie',
       holyFireOff: 'wygasły',
+      furnitureLodges: {
+        one: '{pieces} szt. · +{count} rodzina',
+        few: '{pieces} szt. · +{count} rodziny',
+        many: '{pieces} szt. · +{count} rodzin',
+      },
+      furnitureIdle: '{pieces} szt. · bez dodatkowej rodziny',
+      furnitureInUse: 'w użyciu: {left}',
+      furniturePieceLeft: '{percent}%',
+      furnitureTip:
+        'Jedna sztuka Mebli to miejsce dla jednej dodatkowej rodziny. Każda taka rodzina zużywa swoją sztukę, a gdy ta się skończy, bierze następną z zapasu domu. Bez zapasu rodzina się wyprowadza.',
       allowed: '{good} · dozwolone we wszystkich domach · kliknij: zabroń',
       forbidden: '{good} · zabronione we wszystkich domach · kliknij: pozwól',
       policyForeign: 'Zasady ustala właściciel',
@@ -1394,10 +1424,12 @@ export const plGame = {
       charmsTip: 'Po jednym każdego rodzaju na osobę. Amulet się nie zużywa.',
       shortage: {
         lacking: 'Bez tego: {count}',
-        soldiers: {
-          one: '(w tym {count} żołnierz)',
-          few: '(w tym {count} żołnierzy)',
-          many: '(w tym {count} żołnierzy)',
+        split: '({parts})',
+        separator: ', ',
+        part: {
+          civilians: 'cywile {count}',
+          workers: 'pracownicy {count}',
+          soldiers: 'żołnierze {count}',
         },
         short: 'Nie starczy dla wszystkich: reszta poczeka na dostawę.',
         covered: 'Starczy dla wszystkich.',
@@ -1418,9 +1450,12 @@ export const plGame = {
       },
       audience: {
         label: 'kto dostaje',
-        civilians: 'Osadnicy',
+        civilians: 'Cywile',
         civiliansTip:
-          'Dorośli mężczyźni, którzy nie są żołnierzami. Włączone: każdy bez tego pójdzie po to do magazynu. Wyłączone: kto już ma, zachowuje.',
+          'Dorośli mężczyźni bez zawodu. Włączone: każdy bez tego pójdzie po to do magazynu. Wyłączone: kto już ma, zachowuje.',
+        workers: 'Pracownicy',
+        workersTip:
+          'Dorośli mężczyźni z zawodem, którzy nie są żołnierzami. Włączone: każdy bez tego pójdzie po to do magazynu. Wyłączone: kto już ma, zachowuje.',
         soldiers: 'Żołnierze',
         soldiersTip:
           'Włączone: każdy żołnierz bez tego pójdzie po to do magazynu. Wyłączone: kto już ma, zachowuje.',
@@ -1437,15 +1472,15 @@ export const plGame = {
         },
         trainSword: {
           label: 'Miecznicy',
-          tip: 'Najpierw uzbraja żołnierzy bez broni, potem szkoli nowych. Broń i zbroja według kolejności niżej.',
+          tip: 'Najpierw uzbraja żołnierzy bez broni, potem szkoli nowych, gdy jest dla nich broń. Broń i zbroja według kolejności niżej.',
         },
         trainSpear: {
           label: 'Włócznicy',
-          tip: 'Najpierw uzbraja żołnierzy bez broni, potem szkoli nowych. Broń i zbroja według kolejności niżej.',
+          tip: 'Najpierw uzbraja żołnierzy bez broni, potem szkoli nowych, gdy jest dla nich broń. Broń i zbroja według kolejności niżej.',
         },
         trainBow: {
           label: 'Łucznicy',
-          tip: 'Najpierw uzbraja żołnierzy bez broni, potem szkoli nowych. Broń i zbroja według kolejności niżej.',
+          tip: 'Najpierw uzbraja żołnierzy bez broni, potem szkoli nowych, gdy jest dla nich broń. Broń i zbroja według kolejności niżej.',
         },
       },
       switches: {
@@ -1488,7 +1523,7 @@ export const plGame = {
         },
         giveDefenseAmulet: {
           label: 'Amulet obrony',
-          tip: 'Każdy bez niego pójdzie po niego do magazynu. Noszący odbiera połowę obrażeń.',
+          tip: 'Każdy bez niego pójdzie po niego do magazynu. Noszący odbiera mniej obrażeń.',
         },
         giveCriticalHitAmulet: {
           label: 'Amulet precyzji',
@@ -1504,7 +1539,7 @@ export const plGame = {
         },
         postGraduates: {
           label: 'Absolwenci szkół automatycznie przydzielani do warsztatów',
-          tip: 'Absolwent szkoły idzie od razu do najbliższego wolnego miejsca pracy w swoim zawodzie.',
+          tip: 'Absolwent szkoły idzie do wolnego miejsca pracy w swoim zawodzie: gotowego przed placem budowy, nieobsadzonego przed obsadzonym, a potem najbliższego.',
         },
         moveFlags: {
           label: 'Zbieracze automatycznie przenoszą flagę',
@@ -1512,7 +1547,7 @@ export const plGame = {
         },
         foundFamilies: {
           label: 'Zakładaj rodziny',
-          tip: 'Bezdomna kobieta wprowadza się do najbliższego domu z wolnym miejscem. Kobieta, która ma już dom, wychodzi za mąż, gdy jest wolny mężczyzna.',
+          tip: 'Bezdomna kobieta wprowadza się do najbliższego domu z wolnym miejscem. Kobieta, która ma już dom, wychodzi za mąż, gdy jest wolny mężczyzna. Rodzina, która musiała się wyprowadzić z braku Mebli, też wprowadza się do takiego domu.',
         },
       },
       notes: {
@@ -1949,6 +1984,7 @@ export const plGame = {
       willDie: 'Umiera',
       grewUp: { he: 'Dorósł', she: 'Dorosła' },
       noOneToMarry: 'Brak pary',
+      familyMovedOut: 'Wyprowadzka',
       cannotEnterVehicle: 'Nie wsiądzie',
       cannotLeaveVehicle: 'Nie wysiądzie',
       settlementAttacked: 'Atak na osadę',
@@ -2040,6 +2076,8 @@ export const plGame = {
         he: '{name} nie znalazł nikogo do ożenku. W jego zasięgu musi mieszkać wolna dorosła kobieta.',
         she: '{name} nie znalazła nikogo do zamążpójścia. W jej zasięgu musi mieszkać wolny dorosły mężczyzna.',
       },
+      familyMovedOut:
+        '{name} z rodziną wyprowadza się: w domu nie ma już dla nich Mebli. Dostarcz Meble albo przydziel im inny dom.',
       cannotEnterVehicle:
         '{name} nie może wsiąść do tego wehikułu: brakuje miejsca albo statek stoi na morzu. Przybij statkiem do brzegu albo wybierz inny wehikuł.',
       cannotLeaveVehicle: '{name}: nie można zejść ze statku na morzu. Najpierw przybij do brzegu.',

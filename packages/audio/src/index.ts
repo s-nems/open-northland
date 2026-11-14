@@ -53,6 +53,7 @@ export {
   authoredVolumeGain,
   buildSoundIndex,
   DEFAULT_AUTHORED_VOLUME,
+  type HeroFigure,
   MURMUR_LEFT_OUT_WAVS,
   MURMUR_MIN_TALK_WAVS,
   type MurmurGroups,

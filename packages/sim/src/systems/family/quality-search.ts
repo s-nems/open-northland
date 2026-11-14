@@ -16,6 +16,7 @@ import { nodeHxOfPosition, nodeHyOfPosition } from '../../nav/halfcell.js';
 import type { SpatialGate } from '../../nav/node-circle.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
+import { templeFuelSlotOf } from '../readviews/index.js';
 import { interactionCell, unclaimedGoodsAt } from '../settlers/targets/index.js';
 import { NodeBuckets } from '../spatial/nodes.js';
 import { accessibleStockAmounts, type SupplyTally } from '../stores/index.js';
@@ -118,8 +119,8 @@ export class ExternalQualityIndex {
 }
 
 /** The lowest household-quality good `store` holds a unit of, among `demanded` when given and passing
- *  `accepts` when given. A min over `keys()` plus `get`: destructured entries would allocate a pair per
- *  stock line of every candidate. */
+ *  `accepts` when given; never a temple's fuel, which its fire keeps. A min over `keys()` plus `get`:
+ *  destructured entries would allocate a pair per stock line of every candidate. */
 function lowestQualityGood(
   world: World,
   content: ContentSet,
@@ -129,11 +130,13 @@ function lowestQualityGood(
 ): number | null {
   const amounts = accessibleStockAmounts(world, store);
   if (amounts === undefined) return null;
+  const type = world.tryGet(store, Building)?.buildingType;
+  const kept = type === undefined ? undefined : templeFuelSlotOf(content, type)?.goodType;
   let lowest: number | null = null;
   for (const goodType of amounts.keys()) {
     if ((amounts.get(goodType) ?? 0) <= 0 || (demanded !== undefined && !demanded.has(goodType))) continue;
     if (lowest !== null && goodType >= lowest) continue;
-    if (contentIndex(content).goods.get(goodType)?.homeQuality === undefined) continue;
+    if (goodType === kept || contentIndex(content).goods.get(goodType)?.homeQuality === undefined) continue;
     if (accepts === undefined || accepts(goodType)) lowest = goodType;
   }
   return lowest;

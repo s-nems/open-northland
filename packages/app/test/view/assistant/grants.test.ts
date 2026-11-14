@@ -1,10 +1,12 @@
-import type { Command } from '@open-northland/sim';
+import type { AssistantGrantGroup, Command } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import { assistantGrantsSeam, startAssistantSwitches } from '../../../src/view/assistant/grants.js';
 
 /** The seam translating the assistant window switches to `setAssistantGrant` and
  *  `setAssistantGrantAudience` commands and back - good ids resolved from the live content by slug, so the
  *  fixture uses arbitrary ids. */
+
+const NONE_WITHHELD = { civilians: [], workers: [], soldiers: [] };
 
 const CONTENT = {
   goods: [
@@ -18,26 +20,23 @@ const CONTENT = {
   ],
 };
 
-/** A sim face granting `granted`, posting graduates when `posts`, moving flags when
- *  `movesFlags`, keeping `soldiersOnly` for soldiers and `civiliansOnly` for civilians. */
+/** A sim face granting `granted`, posting graduates when `posts`, moving flags when `movesFlags`,
+ *  withholding `withheld` goods from each group. */
 const simGranting = (
   granted: readonly number[],
   posts = false,
   movesFlags = false,
-  soldiersOnly: readonly number[] = [],
-  civiliansOnly: readonly number[] = [],
+  withheld: Readonly<Record<AssistantGrantGroup, readonly number[]>> = NONE_WITHHELD,
 ): {
   assistantGrants: () => readonly number[];
-  assistantSoldierOnlyGrants: () => readonly number[];
-  assistantCivilianOnlyGrants: () => readonly number[];
+  assistantWithheldGrants: () => Readonly<Record<AssistantGrantGroup, readonly number[]>>;
   assistantPostsGraduates: () => boolean;
   assistantMovesFlags: () => boolean;
   assistantUpgradesTools: () => boolean;
   assistantFoundsFamilies: () => boolean;
 } => ({
   assistantGrants: () => granted,
-  assistantSoldierOnlyGrants: () => soldiersOnly,
-  assistantCivilianOnlyGrants: () => civiliansOnly,
+  assistantWithheldGrants: () => withheld,
   assistantPostsGraduates: () => posts,
   assistantMovesFlags: () => movesFlags,
   assistantUpgradesTools: () => false,
@@ -115,26 +114,30 @@ describe('assistantGrantsSeam', () => {
     ]);
   });
 
-  it("reads a switch as one group's when every good it grants is limited to it, and writes one audience per good", () => {
+  it('reads a group as receiving a switch while none of its goods is withheld from it, and writes the groups per good', () => {
     const sent: Command[] = [];
+    const withheld = { civilians: [DEFENSE_AMULET, HEAL_SMALL], workers: [DEFENSE_AMULET], soldiers: [MEAD] };
     const seam = assistantGrantsSeam(
-      simGranting([], false, false, [DEFENSE_AMULET, HEAL_BIG], [MEAD]),
+      simGranting([], false, false, withheld),
       CONTENT,
       () => 2,
       (c) => sent.push(c),
     );
     const audiences = seam.readAudiences();
-    expect(audiences.giveDefenseAmulet).toBe('soldiers');
-    expect(audiences.giveHealingPotions).toBe('everyone'); // the small bottle is open to everyone
-    expect(audiences.giveMead).toBe('civilians');
-    expect(seam.setAudience('giveHealingPotions', 'soldiers')).toBe(true);
-    expect(seam.setAudience('giveDefenseAmulet', 'civilians')).toBe(true);
-    expect(seam.setAudience('giveMead', 'everyone')).toBe(true);
+    expect(audiences.giveDefenseAmulet).toEqual(['soldiers']);
+    expect(audiences.giveHealingPotions).toEqual(['workers', 'soldiers']); // one bottle withheld is enough
+    expect(audiences.giveMead).toEqual(['civilians', 'workers']);
+    expect(seam.setAudience('giveHealingPotions', ['soldiers'])).toBe(true);
+    expect(seam.setAudience('giveMead', ['civilians', 'workers', 'soldiers'])).toBe(true);
     expect(sent).toEqual([
-      { kind: 'setAssistantGrantAudience', player: 2, goodType: HEAL_BIG, audience: 'soldiers' },
-      { kind: 'setAssistantGrantAudience', player: 2, goodType: HEAL_SMALL, audience: 'soldiers' },
-      { kind: 'setAssistantGrantAudience', player: 2, goodType: DEFENSE_AMULET, audience: 'civilians' },
-      { kind: 'setAssistantGrantAudience', player: 2, goodType: MEAD, audience: 'everyone' },
+      { kind: 'setAssistantGrantAudience', player: 2, goodType: HEAL_BIG, groups: ['soldiers'] },
+      { kind: 'setAssistantGrantAudience', player: 2, goodType: HEAL_SMALL, groups: ['soldiers'] },
+      {
+        kind: 'setAssistantGrantAudience',
+        player: 2,
+        goodType: MEAD,
+        groups: ['civilians', 'workers', 'soldiers'],
+      },
     ]);
   });
 
@@ -175,7 +178,7 @@ describe('assistantGrantsSeam', () => {
     );
     expect(seam.set('giveBoots', true)).toBe(false);
     expect(seam.set('moveFlags', true)).toBe(false);
-    expect(seam.setAudience('giveMead', 'soldiers')).toBe(false);
+    expect(seam.setAudience('giveMead', ['soldiers'])).toBe(false);
     expect(sent).toEqual([]);
   });
 });

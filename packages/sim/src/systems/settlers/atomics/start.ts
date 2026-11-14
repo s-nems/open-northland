@@ -75,6 +75,22 @@ export function startMeal(
 }
 
 /**
+ * Start a sip of the carried draught in misc `slot` on the plain eat slot's clip, for a good that
+ * `stopsToDrink`. Its sound cues carry `sip`, since the clip's own sound is chewing and the data has no
+ * drinking sound.
+ */
+export function startDrink(
+  world: World,
+  ctx: SystemContext,
+  e: Entity,
+  settler: SettlerIdentity,
+  draught: { readonly slot: number; readonly goodType: number },
+): void {
+  const effect = { kind: 'drink', slot: draught.slot, goodType: draught.goodType } as const;
+  startAtomic(world, e, EAT_ATOMIC_ID, effect, atomicDuration(ctx.content, settler, EAT_ATOMIC_ID), e);
+}
+
+/**
  * The sleep slot across every tribe's `setatomic <job> 8 "..._sleep"` bindings, which cover the age
  * classes and the civilist/soldier only (jobs 1-6 and 31); a working trade plays the civilist's.
  */
@@ -232,20 +248,22 @@ export function startCartLoad(
   );
 }
 
-/** The unload twin of {@link startCartLoad}: one unit out of the standing cart into `store` a lift. */
+/** The unload twin of {@link startCartLoad}: one unit of `goodType`, as the hold books it, out of the
+ *  standing cart into `store` a lift. */
 export function startCartUnload(
   world: World,
   ctx: SystemContext,
   e: Entity,
   settler: SettlerIdentity,
   store: Entity,
+  goodType: number,
 ): void {
-  beginCartLift(world, ctx, e, { kind: 'unload', store });
+  beginCartLift(world, ctx, e, { kind: 'unload', store, goodType, refused: false });
   startAtomic(
     world,
     e,
     PILEUP_ATOMIC_ID,
-    { kind: 'haulUnload', store },
+    { kind: 'haulUnload', store, goodType },
     haulingCartLiftTicks(world, ctx.content, e, atomicDuration(ctx.content, settler, PILEUP_ATOMIC_ID)),
     store,
   );

@@ -18,6 +18,7 @@ import {
   PLANT_ATOMIC,
   PRAY_ATOMIC,
   SLEEP_ATOMIC,
+  SOLDIER_TRAIN_ATOMIC,
   STORE_PICKUP_ATOMIC,
   STORE_PILEUP_ATOMIC,
   TALK_ATOMIC,
@@ -67,6 +68,7 @@ import {
   FARMER_SOW_ANIMATION,
   FARMER_WATER_ANIMATION,
   HIVE_DRAW_ANIMATION,
+  SOLDIER_TRAIN_ANIMATION,
   STORE_PICKUP_ANIMATION,
   STORE_PILEUP_ANIMATION,
   WELL_DRAW_ANIMATION,
@@ -90,26 +92,8 @@ export interface SandboxTribe {
   readonly atomicBindings?: unknown[];
 }
 
-/**
- * Extracted `needforjob 31 5 69` and `trainforjob 31 5 77` on the base soldier class. The armed classes
- * carry no rows on purpose: the weapon-class flip never consults these gates.
- */
-const SOLDIER_GATE: readonly JobRequirement[] = [
-  {
-    requirement: 'need',
-    target: 'job',
-    targetId: JOB_SOLDIER_UNARMED,
-    amount: 5,
-    experienceTypes: [systems.SOLDIER_GENERAL_EXPERIENCE_TYPE],
-  },
-  {
-    requirement: 'train',
-    target: 'job',
-    targetId: JOB_SOLDIER_UNARMED,
-    amount: 5,
-    experienceTypes: [systems.TRAINING_EXPERIENCE_TYPE],
-  },
-];
+/** The training bucket every extracted `trainfor*` row names; the school reads only the row's amount. */
+const SCHOOL_TRAINING_EXPERIENCE_TYPE = 77;
 
 export function buildSandboxTribes(
   jobTypes: readonly number[],
@@ -180,6 +164,8 @@ export function buildSandboxTribes(
       { jobType: JOB_CIVILIST, atomicId: WELL_DRAW_ATOMIC, animation: WELL_DRAW_ANIMATION },
       { jobType: JOB_CIVILIST, atomicId: HIVE_DRAW_ATOMIC, animation: HIVE_DRAW_ANIMATION },
       { jobType: JOB_SOLDIER_UNARMED, atomicId: ATTACK_ATOMIC, animation: 'viking_fist_attack' },
+      // The original's `setatomic 31 90` row; the armed classes reach it through their `baseJob`.
+      { jobType: JOB_SOLDIER_UNARMED, atomicId: SOLDIER_TRAIN_ATOMIC, animation: SOLDIER_TRAIN_ANIMATION },
       { jobType: JOB_BUILDER, atomicId: BUILD_HOUSE_ATOMIC, animation: BUILD_HOUSE_ANIMATION },
       { jobType: JOB_BUILDER, atomicId: BUILD_ROAD_ATOMIC, animation: BUILD_ROAD_ANIMATION },
       { jobType: JOB_BUILDER, atomicId: BUILD_WALL_ATOMIC, animation: BUILD_WALL_ANIMATION },
@@ -206,14 +192,13 @@ export function buildSandboxTribes(
     ],
     jobEnables: SANDBOX_JOB_ENABLES,
     jobRequirements: [
-      ...SOLDIER_GATE,
       // Owned CnMod tribetypes.ini: trainforjob 9 10 77.
       {
         requirement: 'train',
         target: 'job',
         targetId: JOB_JOINER,
         amount: 10,
-        experienceTypes: [systems.TRAINING_EXPERIENCE_TYPE],
+        experienceTypes: [SCHOOL_TRAINING_EXPERIENCE_TYPE],
       },
     ],
   });

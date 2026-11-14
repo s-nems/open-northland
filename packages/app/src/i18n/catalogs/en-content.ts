@@ -66,7 +66,7 @@ export const enContent = {
     work_sewery_01: "Tailor's Workshop 2",
     work_pottery_00: 'Pottery 1',
     work_pottery_01: 'Pottery 2',
-    work_pottery_02: 'Defence wall',
+    work_pottery_02: 'Pottery 3',
     work_joinery_00: "Carpenter's Shop 1",
     work_joinery_01: "Carpenter's Shop 2",
     work_joinery_02: "Carpenter's Shop 3",
@@ -101,6 +101,7 @@ export const enContent = {
     wonder_pyramid_of_gizeh: 'Pyramid',
     wonder_8th_wonder: '8th Wonder',
     work_murek: 'Defence wall',
+    defence_wall: 'Defence wall',
   },
   goods: {
     wood: 'Wood',
@@ -199,10 +200,15 @@ export const enContent = {
       summary:
         '1000 against 1000 on an expanded battlefield: scattered troops, five weapon classes and mixed armour.',
     },
+    'precision-battle': {
+      title: 'Precision amulet battle',
+      summary:
+        '60 plate-armoured warriors with the Amulet of Precision, ten of each weapon, against 78 without it, thirteen of each weapon. A small fight of five against seven stands to the east.',
+    },
     'overhead-icons': {
       title: 'Over-head icons',
       summary:
-        'Every sword soldier wears a star that grows a size per quarter of his landed hits; a script-marked soldier wears the marker over it. Select everyone to stack each life heart, and the master collector’s trade star, into the column.',
+        'Every sword soldier wears a star that grows a size every 25 points of fight experience; a script-marked soldier wears the marker over it. Select everyone to stack each life heart, and the master collector’s trade star, into the column.',
     },
     'bow-flight': {
       title: 'Bow flight',
@@ -414,6 +420,11 @@ export const enContent = {
       summary:
         'Each island has two warehouses in one signpost network, and both stops of the merchant\'s route stand for their whole settlement. The east island is kept at 20 bricks and 20 stone, taken out of both west warehouses, and its wood goes west until 30 are left over its two warehouses. Select the merchant to see the lit "settlement" chip on both stops.',
     },
+    'trade-sea-shared-stop': {
+      title: 'Two sea routes sharing a stop',
+      summary:
+        "Two merchants each have their own warehouse on the west island and a small ship pinned to their route, and both carry wood to the one warehouse on the east island. The ship that reaches the east shore second moors beside the first instead of waiting for it to leave. Watch the east shore: both ships lie there together while both merchants' carts ferry to the warehouse.",
+    },
     'trade-domestic': {
       title: 'Trade between own warehouses',
       summary:
@@ -448,6 +459,16 @@ export const enContent = {
       title: 'Cart drivers',
       summary:
         "A trader with a handcart and a carrier with an ox cart of each civilization drive east; every driver wears his own civilization's head.",
+    },
+    'vehicle-damage': {
+      title: 'Damaged and destroyed vehicles',
+      summary:
+        'Catapults and ships stand at falling health: the hulls scar and smoke, the ships catch fire near the end and burn down on their own in about two and a half minutes, the catapults only smoke a little. Across the strait enemy archers finish a ship and a catapult: the ship burns and goes under, the catapult falls apart in a little dust.',
+    },
+    'vehicle-ship-archers': {
+      title: 'Bowmen on deck',
+      summary:
+        "Twelve bowmen board a warship and three a merchant ship, and both sail out toward swordsmen on the far shore. The warship's first ten bowmen shoot from its deck, scattering wider than ashore; the other two and the merchant ship's crew hold fire.",
     },
     'vehicle-ships': {
       title: 'A ship across the strait',
@@ -514,6 +535,16 @@ export const enContent = {
       summary:
         'A moored ship asks for wood from the shore piles. Its carrier and a smith riding with him fetch it unit by unit; a soldier riding along boards and stays aboard.',
     },
+    'vehicle-ship-crew-meal': {
+      title: 'Ship crew meal',
+      summary:
+        'A starving crew of soldiers aboard a moored ship with an empty hold. Each drinks the mead it carries; those still hungry step ashore, eat at the warehouse and board again.',
+    },
+    'vehicle-ship-repair': {
+      title: 'Ship repair',
+      summary:
+        'A damaged ship burns where it lies moored at the shore, and another lies hurt out in the strait. Three builders walk down to the shore by the moored ship and hammer it whole, and its fire goes out; the ship at sea is out of their reach and stays hurt.',
+    },
     'hauling-cart': {
       title: 'Hauling cart',
       summary:
@@ -529,6 +560,11 @@ export const enContent = {
       summary:
         'Two crewed catapults are marched east with an attack-move. Neither enemy hut is in reach at the start; each comes into sight on the way, so the catapults stop, raze it and drive on to their goals. Select a catapult, press the attack-move key and click a spot to march it yourself.',
     },
+    'vehicle-attack-move-fight': {
+      title: 'Catapult attack-move mid-fight',
+      summary:
+        'A holding catapult batters an enemy hut inside its range, with an enemy tower just beyond it. Ordered to attack-move east past both while it fires, it keeps firing from where it stands until the hut falls; only then does it march, roll up to the tower, raze it and drive on to its goal. Select the catapult, press the attack-move key and click past the tower while it fires to order it yourself.',
+    },
     'vehicle-tight-gap': {
       title: 'Vehicle tight gaps',
       summary:
@@ -537,7 +573,22 @@ export const enContent = {
     'vehicle-catapult-spread': {
       title: 'Catapults spread before firing',
       summary:
-        'Four crewed catapults are set down as two pairs, each pair on one spot, with an enemy hut in range. A catapult never fires from inside another: each stacked one first drives out to a spot of its own, then the battery opens fire. Order several catapults onto one spot to watch them keep apart.',
+        'Four crewed catapults are set down as two pairs, each pair on one spot, with an enemy hut in range. Of two catapults that touch only one fires: one of each pair opens fire where it stands, and the other first drives out to a spot of its own. Order several catapults onto one spot to watch them keep apart.',
+    },
+    'vehicle-catapult-targets': {
+      title: 'What a catapult shoots first',
+      summary:
+        'A crewed catapult in its attack stance has an archer in reach and an enemy tower just past it, while two swordsmen run in and batter its hull. It shoots the archer in reach first, then rolls a few steps up to the tower and razes it. The swordsmen at its side are too close for a stone; with two of them there it does not try to drive away, and once nothing is left in reach it simply stands.',
+    },
+    'vehicle-catapult-archers': {
+      title: 'A catapult against archers',
+      summary:
+        'A crewed catapult holds its ground while three enemy longbowmen in chain mail march on it. It stones them as they come into its reach, and they shoot at its hull from theirs. Each archer takes three stones, and the hull lasts long enough to fell two of them before it breaks.',
+    },
+    'vehicle-catapult-assault': {
+      title: 'A battery storms a defended village',
+      summary:
+        'Three crewed catapults are sent on an attack-move behind the enemy palisade. Swordsmen stand in their reach on the flanks, archers stand farther back and a tower stands behind the wall. The catapults do not waste stones on the swordsmen: they roll up to the archers first and then to the tower, each firing from a spot of its own.',
     },
     'vehicle-catapult-wall': {
       title: 'A catapult shells a spot over the wall',
@@ -588,6 +639,11 @@ export const enContent = {
       title: 'The assistant founds families',
       summary:
         'Three homeless women and three men stand by a two-family home while the assistant founds families. Two women move in and marry, and their husbands move in with them. The third finds no free place, stays homeless and stays single.',
+    },
+    'furnished-home': {
+      title: 'Furniture houses extra families',
+      summary:
+        'Three dwellings for one family each. The west one holds two pieces of furniture and houses a second family. Two tired women walk home to the middle one, where the piece of the woman who moved in last lasts only until her next sleep: once she lies down it is gone, she moves out, and the assistant moves her into the empty dwelling in the east.',
     },
     'gatherer-flag-follow': {
       title: 'Flags follow the resources',
@@ -692,6 +748,11 @@ export const enContent = {
       summary:
         'A hungry scout with a queued run of signposts goes to the larder first, eats, then erects the rest. A soldier allowed to regenerate breaks off to eat too; the one without regeneration marches on hungry.',
     },
+    'mead-drink': {
+      title: 'Drinking mead',
+      summary:
+        'Three settlers walk east and turn hungry a few steps out. A civilian and a soldier stop on the road, drink their mead with the eating animation and walk on. A soldier whose regeneration is prohibited keeps his mead corked and drinks a nourishing potion on the spot instead.',
+    },
     'scout-claim': {
       title: 'A scout claims an animal',
       summary:
@@ -714,17 +775,22 @@ export const enContent = {
     alchemy: {
       title: "Alchemist's huts",
       summary:
-        'A druid brews oil from mushrooms in the small hut; two druids brew potions from water, mushroom, herb and coin in the large one.',
+        'A druid brews oil from mushrooms in the small hut; two druids brew potions from water, mushroom, herb and crockery in the large one.',
     },
     'temple-aura': {
       title: 'Temple blessing',
       summary:
-        'Select the temple to see its pale-blue blessing range. The nearby civilian regains religion; the distant one stays outside the aura.',
+        'A temple of each civilization stands in a row. Select one to see its pale-blue blessing range. The nearby civilian regains religion; the distant one stays outside the aura.',
+    },
+    'temple-oil': {
+      title: 'Temple oil',
+      summary:
+        "Every civilization's temple starts without oil, and each one's druid carries some from his hut; watch the viking fire light and the pale glow come up at every temple. The wounded temple stays dark on a full store.",
     },
     'household-goods': {
       title: 'Household goods',
       summary:
-        'Potters, carpenters and druids supply a mature dwelling with crockery, furniture and oil for better meals, rest and prayer.',
+        'Potters, carpenters and druids supply a mature dwelling with crockery, furniture and oil: more food per delivery, room for more families and prayer by the dwelling.',
     },
     'storage-minimum': {
       title: 'Storage minimum',
@@ -876,6 +942,11 @@ export const enContent = {
       summary:
         'Sheep and cattle gather at the nearer warehouse in the north. The southern herd has no storage and gathers beside the nearer dwelling.',
     },
+    'farm-larder': {
+      title: 'Housewives at the cattle farm',
+      summary:
+        "Three women live beside a headquarters full of food, the cattle farm stands further east with a full meat shelf. The women walk past the headquarters and fetch the farm's meat, so the stock farmer keeps slaughtering cattle instead of carrying meat out, and the leather piles up.",
+    },
     livestock: {
       title: 'Animal husbandry',
       summary:
@@ -941,6 +1012,11 @@ export const enContent = {
       summary:
         'Two extractors trek to a forest - the shod one visibly faster, its shoes wearing down on the road; an iron-tooled miller grinds 5 wheat with a production bonus, and settlers drink their mead and potions by themselves when hunger or fatigue presses.',
     },
+    'potion-sips': {
+      title: 'Potion sips',
+      summary:
+        "Settlers drink by themselves and it shows: four hungry extractors sip their food potions one after another, four tired ones their stamina potions, and a wounded swordsman holds against three rivals on healing potions. Each sip flushes the drinker in the potion's colour, sends a ring over the ground and a few sparks up.",
+    },
     amulets: {
       title: 'Amulets',
       summary:
@@ -949,17 +1025,32 @@ export const enContent = {
     barracks: {
       title: 'Barracks training',
       summary:
-        'A civilian sent to the barracks drills inside for 15 seconds and walks out an unarmed soldier; beside him a serving soldier who only drills, and a civilian for whom the soldier profession stays shut.',
+        'A civilian sent to the barracks drills inside for one term and walks out an unarmed soldier; beside him a civilian who never drilled, for whom the soldier profession stays shut.',
     },
     'barracks-armory': {
       title: 'Barracks armory',
       summary:
         'Two colonists drill for the sword counter in a barracks that stocks one long sword, one short sword and two chain armors. The first walks out a long-swordsman in chain armor. The second puts on the other armor at the door, leaves the weaker short sword in the barracks and walks to the armory by the headquarters for the long sword lying there.',
     },
+    'barracks-mixed-orders': {
+      title: 'Mixed barracks orders',
+      summary:
+        'The assistant has orders for two swordsmen and two archers, but the armory by the headquarters holds one long sword and two bows. Three of four colonists drill and walk out a long-swordsman and two archers. Nobody is drafted for the missing second sword: the fourth colonist stays home and no soldier stands without a weapon. Back from the armory, the armed spread out around the barracks door instead of crowding one spot.',
+    },
     'barracks-exit': {
       title: 'Barracks exit',
       summary:
         'Six civilians drill in one barracks at once and walk out unarmed soldiers. Each steps off the shared door node onto a free one beside it and holds that post, so the squad stands spread around the door instead of stacked on it.',
+    },
+    'barracks-rally': {
+      title: 'Barracks rally point',
+      summary:
+        "Five civilians drilled by hand and three the assistant arms with swords from the headquarters walk to the barracks' rally flag. Each takes his own place in ranks a cell apart around it and holds that post, instead of the whole squad crowding onto the flag.",
+    },
+    'coin-drill': {
+      title: 'Coin drill',
+      summary:
+        'A sword fighter, a spearman and an archer drill in a barracks holding six coins. Each coin buys one term of drill inside and, at its end, combat experience points. The sword fighter and the archer drill up to the limit, the spearman, who starts close to it, needs one coin. The sixth coin stays, as nobody below the limit is left to take it.',
     },
     armor: {
       title: 'Armour parade',

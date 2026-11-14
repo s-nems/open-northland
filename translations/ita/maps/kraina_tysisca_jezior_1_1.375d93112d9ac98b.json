@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "map": "kraina_tysisca_jezior_1_1",
+  "basis": {
+    "lang": "eng",
+    "digest": "2ee1d0a46d05e7c518f996ac1784b574e1af28c28a04140d18461bef22deb037"
+  },
+  "strings": {
+    "40": "Stabilisciti nella regione e gioca quanto vuoi, senza obiettivi né requisiti. Decidi tu se fare guerra ai tuoi vicini o vivere in pace con loro.",
+    "98": "Stabilisciti in questa terra pittoresca e cura i rapporti con i tuoi vicini. Partita libera per 3 giocatori.",
+    "99": "LA TERRA DEI MILLE LAGHI",
+    "601": "Marklanders",
+    "602": "Vinlanders",
+    "701": "Markland",
+    "702": "Vinland"
+  },
+  "briefings": {
+    "500": "<font:$local$\\fonts\\fonthead16bld.fnt>\nLA TERRA DEI MILLE LAGHI\n<font:$local$\\fonts\\font12.fnt>\nAutore: Proszak\n<font:$local$\\fonts\\font12.fnt>\n\nLa tua gente ha raggiunto gli estremi confini orientali della Scandinavia.\nQueste terre, finora disabitate, attiravano con le loro ricchezze naturali.\nHai deciso di stabilirti qui e fondare un nuovo regno.\nBen presto giunsero nella regione nuovi abitanti, decisi a restarci per sempre.\n\nSta a te decidere se vivere in pace con le altre tribù.\n\nFonda una nuova civiltà.\n\nGioca quanto vuoi.\n\n\n\nwww.culturesnation.pl\n"
+  }
+}

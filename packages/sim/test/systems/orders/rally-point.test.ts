@@ -1,28 +1,34 @@
 import { type ContentSet, parseContentSet } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
 import {
+  addPerson,
   Building,
   DeliveryFlag,
   Owner,
   Position,
   RallyPoint,
+  Stance,
   UnderConstruction,
 } from '../../../src/components/index.js';
 import type { Entity } from '../../../src/ecs/world.js';
 import { fx, halfCellMapFromCells, ONE, Simulation, type TerrainMap } from '../../../src/index.js';
+import type { NodeId } from '../../../src/nav/terrain/index.js';
 import { removeBuildingSilently } from '../../../src/systems/lifecycle/cleanup.js';
+import { takeRallyPost } from '../../../src/systems/orders/rally-point.js';
 import { WORK_FLAG_SNAP_MAX_RADIUS } from '../../../src/systems/orders/work/selection.js';
+import { MILITARY_MODE } from '../../../src/systems/readviews/index.js';
 import { entityNode } from '../../../src/systems/spatial/nodes.js';
 import { testContent } from '../../fixtures/content.js';
 import { ctxOf } from '../../fixtures/needs.js';
 
 // The `setRallyPoint` / `clearRallyPoint` orders: a finished barracks plants one flag on its own land,
-// moves that same flag, and loses it on a clear or with the building. The walk to it is the drill's
-// (`settlers/drives/barracks-training.test.ts`).
+// moves that same flag, and loses it on a clear or with the building. The places soldiers take around it
+// follow; the walk there is the drill's (`settlers/drives/barracks-training.test.ts`).
 
 const PLAYER = 0;
 const VIKING = 1;
 const CARRIER_JOB = 24;
+const SOLDIER_JOB = 31;
 const BARRACKS_TYPE = 91;
 const HEADQUARTERS_TYPE = 1;
 const GRASS = 0;
@@ -76,6 +82,23 @@ function setRally(sim: Simulation, building: Entity, node: { x: number; y: numbe
   sim.step();
 }
 
+/** A DEFEND soldier standing beside the barracks, anchored at his feet. */
+function soldierBesideBarracks(sim: Simulation): Entity {
+  const e = sim.world.create();
+  sim.world.add(e, Position, { x: fx.fromInt(BARRACKS.x - 2), y: fx.fromInt(BARRACKS.y) });
+  addPerson(sim.world, e, {
+    tribe: VIKING,
+    jobType: SOLDIER_JOB,
+    hunger: fx.fromInt(0),
+    fatigue: fx.fromInt(0),
+    piety: fx.fromInt(0),
+    enjoyment: fx.fromInt(0),
+  });
+  sim.world.add(e, Owner, { player: PLAYER });
+  sim.world.add(e, Stance, { mode: MILITARY_MODE.DEFEND, anchorCell: null });
+  return e;
+}
+
 describe('setRallyPoint', () => {
   it('plants one flag, moves that same flag on the next order, and a clear takes it away', () => {
     const { sim, house } = setup();
@@ -122,5 +145,61 @@ describe('setRallyPoint', () => {
     const flag = sim.world.get(house, RallyPoint).flag;
     removeBuildingSilently(sim.world, ctxOf(sim), house);
     expect(sim.world.isAlive(flag)).toBe(false);
+  });
+});
+
+describe('takeRallyPost', () => {
+  it('hands each soldier his own place, keeps it for him, and gives it out again once he lets it go', () => {
+    const { sim, house } = setup();
+    setRally(sim, house, NEAR);
+    const ctx = ctxOf(sim);
+    const terrain = ctx.terrain;
+    if (terrain === undefined) throw new Error('fixture map missing');
+    const post = (e: Entity): NodeId | undefined => takeRallyPost(sim.world, ctx, terrain, house, e);
+    const first = soldierBesideBarracks(sim);
+    const second = soldierBesideBarracks(sim);
+    const third = soldierBesideBarracks(sim);
+
+    const firstPost = post(first);
+    const secondPost = post(second);
+    expect(firstPost).toBe(entityNode(sim.world, terrain, sim.world.get(house, RallyPoint).flag));
+    expect(secondPost).not.toBe(firstPost);
+    expect(sim.world.get(second, Stance).anchorCell).toBe(secondPost);
+    expect(post(first)).toBe(firstPost); // posted again, as on a second arming outing
+
+    sim.world.destroy(first);
+    expect(post(third)).toBe(firstPost);
+
+    // A moved flag gives a soldier posted again a place around its new spot.
+    setRally(sim, house, { x: NEAR.x + 6, y: NEAR.y });
+    const moved = entityNode(sim.world, terrain, sim.world.get(house, RallyPoint).flag);
+    expect(post(second)).toBe(moved);
+  });
+
+  it('never hands out a place a fighter stands on, nor one a soldier still on his way holds', () => {
+    const { sim, house } = setup();
+    setRally(sim, house, NEAR);
+    const ctx = ctxOf(sim);
+    const terrain = ctx.terrain;
+    if (terrain === undefined) throw new Error('fixture map missing');
+    const post = (e: Entity): NodeId | undefined => takeRallyPost(sim.world, ctx, terrain, house, e);
+    const flag = sim.world.get(house, RallyPoint).flag;
+    const flagNode = entityNode(sim.world, terrain, flag);
+    // A guard with no post here stands on the flag itself.
+    const parked = soldierBesideBarracks(sim);
+    const flagAt = sim.world.get(flag, Position);
+    sim.world.mut(parked, Position).x = flagAt.x;
+    sim.world.mut(parked, Position).y = flagAt.y;
+
+    const walker = soldierBesideBarracks(sim);
+    const walkerPost = post(walker);
+    expect(walkerPost).not.toBe(flagNode);
+    if (walkerPost === undefined) throw new Error('post expected');
+
+    // The flag moves onto the place the walker, still beside the barracks, is bound for.
+    const { x, y } = terrain.coordsOf(walkerPost);
+    setRally(sim, house, { x, y });
+    expect(entityNode(sim.world, terrain, flag)).toBe(walkerPost);
+    expect(post(soldierBesideBarracks(sim))).not.toBe(walkerPost);
   });
 });

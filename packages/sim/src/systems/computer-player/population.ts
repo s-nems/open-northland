@@ -19,7 +19,7 @@ import { builderJobOf, civilianCount, isAllocatableMan } from '../ai-shared/work
 import type { SystemContext } from '../context.js';
 import { liveWorkFlag } from '../economy/work-flag.js';
 import { isAdultSettler } from '../family/eligibility.js';
-import { homeQualityUseFor, householdGoodAllowed } from '../family/home-quality.js';
+import { homeFamilyCapacity, homeQualityUseFor, householdGoodAllowed } from '../family/home-quality.js';
 import { assistantCounterCommand } from './assistant-counters.js';
 import { seatBaseOf } from './base.js';
 import { type ComputerProfile, computerProfileOf, shareOf } from './difficulty.js';
@@ -49,7 +49,7 @@ function runPopulation(world: World, ctx: SystemContext, player: number): readon
   for (const e of homeBuildings(world, ctx, player)) {
     if (!isBuilt(world, e)) continue;
     const type = index.buildings.get(world.get(e, Building).buildingType);
-    if (type?.kind === 'home') familySlotsTotal += type.homeSize;
+    if (type?.kind === 'home') familySlotsTotal += homeFamilyCapacity(world, ctx, e, type);
   }
 
   // Both breeding counters are absolute re-sets, issued only when the wanted state differs. An

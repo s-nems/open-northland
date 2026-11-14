@@ -1,3 +1,4 @@
+import { diag } from '../../diag/index.js';
 import { messages } from '../../i18n/index.js';
 import { type LaunchEntry, swapToEntry } from '../../launch.js';
 import { abandonNetworkHandover } from '../../net/handover.js';
@@ -14,7 +15,6 @@ import { initialCatalogueMemory } from './catalogue/view.js';
 import { creditsScreen } from './credits.js';
 import { mountFullscreenPrompt } from './fullscreen-prompt.js';
 import { knowledgeScreen } from './knowledge.js';
-import { loadSelectScreen } from './load-select.js';
 import { lobbyScreen } from './lobby/index.js';
 import type { RosterState } from './lobby/roster-state.js';
 import { initialMapSelectMemory, type MapSelectItem } from './map-select/model.js';
@@ -32,6 +32,7 @@ import {
 import { startMenuMusic } from './music.js';
 import { networkScreen } from './network/index.js';
 import { originalGameGateScreen } from './original-game/gate-screen.js';
+import { loadScreen } from './saves/load-screen.js';
 import { settingsScreen } from './settings/screen.js';
 import { adoptStoredSettings, menuSettings, onSettingsChange, updateSettings } from './settings/state.js';
 
@@ -184,7 +185,7 @@ export async function renderMainMenu(canvas: HTMLCanvasElement, params: URLSearc
       case 'multiplayer':
         return networkScreen(show, launch, params, sound);
       case 'load':
-        return { element: loadSelectScreen(show, launch) };
+        return loadScreen(show, launch);
       case 'lobby':
         // Only `openLobby` leads here, with its map already set.
         return lobbyMap === null ? screenFor('newGame') : lobbyScreen(lobbyMap, show, rosters, launch);
@@ -202,6 +203,12 @@ export async function renderMainMenu(canvas: HTMLCanvasElement, params: URLSearc
     disposeScreen = (): void => undefined;
     if (next === 'catalogue') catalogueBack = screen === 'newGame' ? 'newGame' : 'main';
     screen = next;
+    // The log of a freeze in the menu then says which screen was up, and since when.
+    diag.info(
+      'menu',
+      'screen',
+      next === 'lobby' && lobbyMap !== null ? { screen: next, map: lobbyMap.id } : { screen: next },
+    );
     root.classList.toggle('is-sub', next !== 'main');
     const mounted = screenFor(next);
     if (mounted.dispose !== undefined) disposeScreen = mounted.dispose;

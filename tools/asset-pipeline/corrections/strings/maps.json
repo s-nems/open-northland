@@ -560,38 +560,6 @@
     "reason": "Cel dotyczy załadowania mąki i wejścia kupca z wozem na pokład, nie przydzielenia kupca jako dowódcy statku."
   },
   {
-    "map": "tutorial_004",
-    "lang": "pol",
-    "id": 2,
-    "from": "Ulepsz WARSZTAT GARNCARSKI 2!",
-    "to": "Wyprodukuj co najmniej jedną sztukę NACZYŃ w WARSZTACIE GARNCARSKIM 2!",
-    "reason": "Warsztat garncarski 2 produkuje naczynia; celem jest rzeczywista produkcja przynajmniej jednej sztuki, nie niedostępna kolejna rozbudowa."
-  },
-  {
-    "map": "tutorial_004",
-    "lang": "eng",
-    "id": 2,
-    "from": "Upgrade the POTTERY 2!",
-    "to": "Produce at least one unit of CROCKERY in POTTERY 2!",
-    "reason": "Warsztat garncarski 2 produkuje naczynia; celem jest rzeczywista produkcja przynajmniej jednej sztuki, nie niedostępna kolejna rozbudowa."
-  },
-  {
-    "map": "tutorial_004",
-    "lang": "ger",
-    "id": 2,
-    "from": "Baue die TÖPFEREI 2 aus!",
-    "to": "Produziere mindestens eine Einheit GESCHIRR in der TÖPFEREI 2!",
-    "reason": "Warsztat garncarski 2 produkuje naczynia; celem jest rzeczywista produkcja przynajmniej jednej sztuki, nie niedostępna kolejna rozbudowa."
-  },
-  {
-    "map": "tutorial_004",
-    "lang": "rus",
-    "id": 2,
-    "from": "Улучшить ГОНЧАРНУЮ МАСТЕРСКУЮ 2!",
-    "to": "Произведите хотя бы одну единицу ПОСУДЫ в ГОНЧАРНЕ 2!",
-    "reason": "Warsztat garncarski 2 produkuje naczynia; celem jest rzeczywista produkcja przynajmniej jednej sztuki, nie niedostępna kolejna rozbudowa."
-  },
-  {
     "map": "tutorial_006",
     "lang": "pol",
     "id": 0,

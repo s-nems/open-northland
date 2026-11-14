@@ -1,7 +1,13 @@
 import type { Entity, Simulation } from '@open-northland/sim';
 import { cellAnchorNode, components, fx, systems } from '@open-northland/sim';
 import { grassTerrain } from '../../catalog/buildings.js';
-import { JOB_COLLECTOR, JOB_SOLDIER_SWORD } from '../../catalog/jobs.js';
+import {
+  JOB_COLLECTOR,
+  JOB_SOLDIER_BROADSWORD,
+  JOB_SOLDIER_SPEAR,
+  JOB_SOLDIER_SPEAR_WOODEN,
+  JOB_SOLDIER_SWORD,
+} from '../../catalog/jobs.js';
 import { ENEMY_PLAYER, HUMAN_PLAYER } from '../../game/rules.js';
 import { spawnSettlerDirect } from '../../game/sandbox/index.js';
 import { goodBySlug } from '../sandbox-queries.js';
@@ -9,7 +15,7 @@ import type { SceneDefinition } from '../types.js';
 
 const { SettlerNeeds, Equipment, Health, MISC_EQUIP_SLOTS, Position, Settler } = components;
 
-const MAP_W = 40;
+const MAP_W = 72;
 const MAP_H = 18;
 /** Two walkers race east on the same grass; the speed amulet saves two of a barefoot step's eight
  *  ticks, so it covers a third more ground. Neither reaches the line within the run. */
@@ -17,13 +23,43 @@ const RACE_START_X = 3;
 const RACE_FINISH_X = 37;
 const RACE_BARE_Y = 3;
 const RACE_AMULET_Y = 5;
-/** The amuleted swordsman faces an equal rival: blows at 3/2, one in five doubled, and half taken. */
+/** A swordsman with the strength, critical-hit and defense amulets faces an equal rival carrying none. */
 const DUEL_Y = 10;
 const DUEL_AMULET_X = 8;
 const DUEL_RIVAL_X = 10;
 /** Past the drive level at 8/10, so the food and stamina amulets fire on the first ticks. */
 const WEARER = { x: 20, y: 14 } as const;
+/** A troop of wooden-spear men and civilians with the speed amulet, between the parade and the company and out
+ *  of the duel's reach, for the viewer to march about: the wind a whole group trails. */
+const TROOP = { x: 40, y: 10, columns: 5, rows: 4 } as const;
 const PRESSING_NEED = fx.div(fx.fromInt(9), fx.fromInt(10));
+/** Idle collectors side by side, to compare the arcs round their feet: one kind, two, four, and one
+ *  kind carried three times, which shows a single arc. */
+const PARADE = { x: 26, y: 14, step: 2 } as const;
+const PARADE_AMULETS: readonly (readonly string[])[] = [
+  ['amulet_strength'],
+  ['amulet_defense'],
+  ['amulet_strength', 'amulet_defense'],
+  ['amulet_strength', 'amulet_defense', 'amulet_crithit', 'amulet_stamina'],
+  ['amulet_strength', 'amulet_strength', 'amulet_strength'],
+];
+/** A company far east of the duel, out of its sight, to judge the arcs in a crowd: ranks of spearmen and
+ *  broadswordsmen, each man carrying the next set of this cycle, some of them nothing. */
+const COMPANY = { x: 52, y: 4, files: 7, ranks: 5 } as const;
+const COMPANY_JOBS: readonly number[] = [JOB_SOLDIER_SPEAR, JOB_SOLDIER_BROADSWORD];
+const COMPANY_AMULETS: readonly (readonly string[])[] = [
+  ['amulet_strength'],
+  [],
+  ['amulet_defense'],
+  ['amulet_strength', 'amulet_defense'],
+  [],
+  ['amulet_crithit'],
+  ['amulet_strength', 'amulet_defense', 'amulet_crithit', 'amulet_stamina'],
+  ['amulet_defense', 'amulet_stamina'],
+  [],
+  ['amulet_strength', 'amulet_crithit', 'amulet_defense'],
+  ['amulet_stamina'],
+];
 const RUN_TICKS = 300;
 const INITIAL_ZOOM = 0.8;
 
@@ -50,11 +86,33 @@ function build(sim: Simulation): void {
   carrying(sim, champion, ['amulet_strength', 'amulet_crithit', 'amulet_defense']);
   spawnSettlerDirect(sim, JOB_SOLDIER_SWORD, DUEL_RIVAL_X, DUEL_Y, ENEMY_PLAYER);
 
+  for (let row = 0; row < TROOP.rows; row++) {
+    for (let column = 0; column < TROOP.columns; column++) {
+      const job = row % 2 === 0 ? JOB_SOLDIER_SPEAR_WOODEN : JOB_COLLECTOR;
+      const member = spawnSettlerDirect(sim, job, TROOP.x + column, TROOP.y + row, HUMAN_PLAYER);
+      carrying(sim, member, ['amulet_speed']);
+    }
+  }
+
   const wearer = spawnSettlerDirect(sim, JOB_COLLECTOR, WEARER.x, WEARER.y, HUMAN_PLAYER);
   carrying(sim, wearer, ['amulet_food', 'amulet_stamina']);
   const needs = systems.mutNeeds(sim.world, wearer, sim.tick);
   needs.hunger = PRESSING_NEED;
   needs.fatigue = PRESSING_NEED;
+
+  PARADE_AMULETS.forEach((slugs, place) => {
+    const x = PARADE.x + place * PARADE.step;
+    carrying(sim, spawnSettlerDirect(sim, JOB_COLLECTOR, x, PARADE.y, HUMAN_PLAYER), slugs);
+  });
+
+  for (let rank = 0; rank < COMPANY.ranks; rank++) {
+    for (let file = 0; file < COMPANY.files; file++) {
+      const place = rank * COMPANY.files + file;
+      const job = COMPANY_JOBS[rank % COMPANY_JOBS.length] ?? JOB_SOLDIER_SPEAR;
+      const soldier = spawnSettlerDirect(sim, job, COMPANY.x + file, COMPANY.y + rank, HUMAN_PLAYER);
+      carrying(sim, soldier, COMPANY_AMULETS[place % COMPANY_AMULETS.length] ?? []);
+    }
+  }
 }
 
 function carriers(sim: Simulation, slug: string): Entity[] {
@@ -102,6 +160,19 @@ export const amuletsScene: SceneDefinition = {
           (e) => sim.world.get(e, Settler).jobType === JOB_SOLDIER_SWORD && e !== champion,
         );
         return champion !== undefined && sim.world.get(champion, Health).hitpoints > 0 && rivals.length === 0;
+      },
+    },
+    {
+      label: 'the company stood whole east of the duel',
+      predicate: (sim) => {
+        const company = [...sim.world.query(Settler)].filter((e) => {
+          const job = sim.world.get(e, Settler).jobType;
+          return job !== null && COMPANY_JOBS.includes(job);
+        });
+        return (
+          company.length === COMPANY.files * COMPANY.ranks &&
+          company.every((e) => sim.world.get(e, Position).x >= fx.fromInt(COMPANY.x))
+        );
       },
     },
     {

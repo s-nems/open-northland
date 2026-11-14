@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "map": "boso_przez_swiat_sub5",
+  "basis": {
+    "lang": "eng",
+    "digest": "e000c5bd9080cdb3a86659ae96cf9790277ec77af3e4cd5fb58c51db43b382ec"
+  },
+  "strings": {
+    "0": "IL NASCONDIGLIO DI ZOHANOWATY",
+    "1": "Il nascondiglio di Zohan",
+    "30": "Trova Zohanowaty",
+    "50": "Bjarni",
+    "51": "Zohanowaty",
+    "100": "Bjarni",
+    "101": "Sigurd",
+    "102": "Hatchie",
+    "104": "Zohanowaty"
+  },
+  "briefings": {
+    "500": "<font:$local$\\fonts\\fonthead16bld.fnt>\nIL NASCONDIGLIO DI ZOHANOWATY\n<font:$local$\\fonts\\font12.fnt>\n\nNon avrò pace finché non avrò preso quel terrorista per i torti che mi ha fatto. Se non lo trovo qui, darò fuoco a questo formicaio.\n\nEntrati nella grotta, un corridoio ordinato ci condusse avanti.\n\n- \"Si è proprio sistemato per bene, qui,\" pensai.\n\nTroviamo Zohanowaty.\n",
+    "501": "<font:$local$\\fonts\\fonthead16bld.fnt>\nZOHANOWATY\n<font:$local$\\fonts\\font12.fnt>\n\nFinalmente lo trovammo. In fondo al corridoio c'era Zohanowaty, senza alcuna via di fuga. Ci dava le spalle e stava osservando qualcosa. Sentiva chiaramente i nostri passi, ma in lui non c'era paura.\n\n- \"Ho atteso questo momento a lungo,\" parlai per primo. \"Una volta hai detto che sei sempre un passo avanti a noi.\"\n\n- \"Non ho mai detto niente del genere,\" rispose Zohanowaty con calma, quasi con umiltà, e si voltò verso di noi.\n\n- \"I tuoi giochi e i tuoi piani sono finiti. Io, Bjarni, ti condanno per i tuoi crimini e per terrorismo alla prigionia eterna nel carcere di Al-Mukallah, nella cella più profonda e più buia.\"\n\n- \"Non mi ucciderai?\"\n\n- \"Sarebbe una punizione troppo mite. Marcirai in segrete buie. Non sarai mai più libero. Le persone che sono morte per te nella grande battaglia... non hai nemmeno combattuto al loro fianco. Sarebbe stato meglio per te morire in quella battaglia. Sei fuggito come un codardo, quindi ti meriti la punizione di un codardo.\"\n\n- \"Fin dall'inizio sapevo di avere poche possibilità in quella battaglia. Vincere sarebbe stata solo una piacevole sorpresa.\"\n\n- \"Quindi li hai mandati a morte certa?! Solo per far scorrere il sangue? Non hai mai pensato alla vittoria? A che cosa è servito tutto questo?\"\n\n- \"Conosco quelli come lui,\" disse Hatchie. \"In Arabia ce ne sono tanti. Voleva solo guardare la gente morire, guardare l'angelo della morte portarsi via un'anima dopo l'altra. Voleva solo vedere il caos. Non c'era alcun motivo per sterminare la tribù di Jabhat al-Nusra. Non c'era alcun motivo per far saltare in aria le torri della città o per uccidere la mia gente. Ad alcuni non serve un motivo. Alcuni vogliono solo guardare il mondo bruciare.\"\n\n- \"Non sono io il cattivo. Avvicinatevi e guardate ciò che ho visto io.\"\n\nNon volevamo dare ascolto a Zohanowaty, ma per catturarlo dovemmo per forza avvicinarci e vedere ciò che voleva mostrarci.\n\n<usericon:1,9,72>\n\n- \"Non riconoscete quest'uomo,\" continuò Zohanowaty. \"È perché non siete di qui. Questo è il corpo di Zbirek, il precedente sovrano di culturesnation, sotto il quale abbiamo vissuto la più grande prosperità della storia. Secondo la versione ufficiale era malato da tempo ed è morto nominando Proszak suo successore. Il funerale non si è mai tenuto.\"\n\n- \"Dove hai preso questo corpo?\"\n\n- \"Sai che sono il miglior ladro e scriptassassino della terra. Ma nemmeno uno come me poteva rubare questo corpo dalla piramide, sorvegliata da schiere di guardie. Dovevo quindi scatenare il caos, per tenerle impegnate a combattere. Durante la vostra battaglia mi occupavo proprio di questo.\"\n\n- \"Quell'enorme esercito della tribù ti serviva fin dall'inizio solo per questo?\"\n\n- \"Guarda questi resti. Ha la gola tagliata e una vecchia ferita al cuore, inferta da un pugnale. Cominci a intuire, Bjarni, chi poteva volere la morte di Zbirek per prendere il potere. Lo sapevi fin dall'inizio. E hai continuato a combattere per lui. E questa è solo la punta dell'iceberg dell'Uomo Malvagio.\"\n\n- \"Tu... tu manipoli e cerchi di prendere tempo. Ti portiamo nelle segrete. Ti giustificherai davanti a te stesso.\"\n\n...\n\nVolevo chiudere quel dialogo al più presto e concluderlo davanti alla cella. Volevo essere l'ultima persona che Zohan avrebbe visto. Eppure aveva ragione. Non volevo ammetterlo, ma in fondo sapevo di che cosa si trattava davvero.\n\nLasciammo il nascondiglio con Zohanowaty prigioniero.\n"
+  }
+}

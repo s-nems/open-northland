@@ -56,6 +56,7 @@ export const ARTICLE_MODULES: Readonly<Record<Locale, () => Promise<ArticleModul
   cht: () => import('../../i18n/knowledge/cht/index.js'),
   eng: () => import('../../i18n/knowledge/eng/index.js'),
   ger: () => import('../../i18n/knowledge/ger/index.js'),
+  ita: () => import('../../i18n/knowledge/ita/index.js'),
   pol: () => import('../../i18n/knowledge/pol/index.js'),
   rus: () => import('../../i18n/knowledge/rus/index.js'),
 };

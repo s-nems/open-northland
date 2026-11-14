@@ -1,0 +1,30 @@
+{
+  "version": 1,
+  "map": "saga-campaign_04_01_sub1",
+  "basis": {
+    "lang": "eng",
+    "digest": "65e02e31a76687cb5c8b41dea2cdcf9c28e9ece9bb7296a9a455726fb715cf8c"
+  },
+  "strings": {
+    "0": "@RAGGIUNGI AQUARIUS!",
+    "1": "Parla con il drago guardiano di Aquarius.",
+    "2": "Va' all'uscita e trova una soluzione in superficie.",
+    "53": "Aquas, draghi d'acqua",
+    "63": "Aquas",
+    "75": "Norbert",
+    "76": "Mani",
+    "77": "Aquarius",
+    "99": "SOTTO IL MARE"
+  },
+  "briefings": {
+    "500": "<font:$local$\\fonts\\fonthead16bld.fnt>\nMISSIONE FALLITA!\n<font:$local$\\fonts\\font12.fnt>\n<picture:$local$\\graphics\\Hero_Dead_F.pcx>\nBasta un attimo di distrazione per perdere la vita! Il tuo amico ed eroe NORBERT, il drago, è morto per la tua negligenza! Senza questo eroe, l'esito di questa missione ti resterà ignoto!",
+    "600": "<font:$local$\\fonts\\fonthead16bld.fnt>\nMISSIONE FALLITA!\n<font:$local$\\fonts\\font12.fnt>\n<picture:$local$\\graphics\\Hero_Dead_F.pcx>\nBasta un attimo di distrazione per perdere la vita! MANI, figlio di Bjarni e Cyra, è morto per la tua negligenza! Senza di lui, l'esito di questa missione ti resterà ignoto!",
+    "header": "SOTTO IL MARE",
+    "00_start": "Non appena Mani e Norbert varcarono l'ingresso del tempio dei draghi d'acqua, si ritrovarono in un luogo molto strano. Ogni loro movimento era lento, e tutto tremolava davanti ai loro occhi, come sott'acqua.\n\n<usericon:2,5>",
+    "00_start1": "Quel tempio si trovava davvero sotto il mare. Mani e Norbert erano dentro uno dei tre templi d'acqua degli AQUAS!",
+    "50_endheader": "MISSIONE COMPIUTA!",
+    "50_end": "\n\n<usericon:1,24,287>",
+    "50_end1": "",
+    "01": "IL GUARDIANO DI AQUARIUS\n\n\"C'è da sputare fuoco dalla rabbia! Peccato che noi draghi d'acqua non ne siamo capaci...\n\"Le nostre acque sono diventate gelide, e all'improvviso è comparsa lei, questa STATUA DI GHIACCIO.\n\n<usericon:1,44,69>\n\n\"Ora sbarra la strada verso AQUARIUS, a me e a ogni visitatore! Chi si avvicina troppo resta congelato, come questa povera\ncreatura qui...\n\n<usericon:1,76,22>\n\n\"Senza la saggezza di AQUARIUS il nostro popolo è perduto...\n\"Potete aiutarci?\n\n\"Andate insieme all'uscita e risalite a nuoto in superficie. Tornate quando potrete aiutarci. I draghi d'acqua saranno sempre vostri amici!\""
+  }
+}

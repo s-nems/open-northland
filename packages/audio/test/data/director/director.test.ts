@@ -255,6 +255,26 @@ describe('directAudio one-shots', () => {
     expect(done.oneShots).toHaveLength(0);
   });
 
+  it("sounds a sip's cue with the sip binding at the clip sound's gain, the clip sound without one", () => {
+    const sip = ['/audio/sip.ogg'];
+    const event: SimEvent = { kind: 'atomicSound', entity: entity(3), soundType: SOUND_AXE, sip: true };
+    const chewing = direct([{ kind: 'atomicSound', entity: entity(3), soundType: SOUND_AXE }]).oneShots[0];
+    const sipped = direct([event], { bindings: { ...bindings, sipCue: sip } }).oneShots;
+    expect(sipped.map((shot) => shot.files)).toEqual([sip]);
+    expect(sipped[0]?.gain).toBe(chewing?.gain);
+    expect(direct([event]).oneShots.map((shot) => shot.files)).toEqual([['static/axe01.wav']]);
+  });
+
+  it('sounds a cue of a rider who stands nowhere on the map where the body it rides lies', () => {
+    // A deck bowman has no position of his own; the building at (5,5) stands in for his ship.
+    const aboard = entity(40);
+    expect(direct([{ kind: 'atomicSound', entity: aboard, soundType: SOUND_AXE }]).oneShots).toEqual([]);
+    const frame = direct([{ kind: 'atomicSound', entity: aboard, soundType: SOUND_AXE, from: entity(7) }]);
+    expect(frame.oneShots).toHaveLength(1);
+    expect(frame.oneShots[0]?.files).toEqual(['static/axe01.wav']);
+    expect(frame.oneShots[0]?.key).toBe(`atomicSound:${SOUND_AXE}:40`);
+  });
+
   it("positions a map script's sound at its own point, resolved by the same logicSoundType id", () => {
     const frame = direct([{ kind: 'missionSound', soundType: SOUND_AXE, at: { hx: 11, hy: 10 } }]);
     expect(frame.oneShots).toHaveLength(1);

@@ -1,0 +1,178 @@
+{
+  "reason": "Dwa frankijskie budynki wskazują etapy budowy, których nie ma w ich plikach grafiki, więc budynek od razu stoi gotowy. Chata kamieniarza (oba poziomy) ma linie GfxBobConstructionLayer, drzwi i nakładkę skopiowane z młyna (boby 70-72 z ls_houses_viking.bmd), a jej test_house.bmd ma tylko boby 0-6. Podstawiamy jej własne boby: 4 (tylne ściany), 2 (rusztowanie), 0 (gotowy dom). Te boby mają same zerowe bajty czasu, więc każdy etap wyrasta od dołu jak etap bez maski czasu; progi 0, 35 i 100 dobrane na oko, nie z oryginału. Chata druida na poziomie 1 wskazuje bob 1, a f_druid.bmd ma tylko bob 0, którego używa poziom 0 i ciało obu poziomów. Garncarnia Franków wskazuje na obu poziomach bob 1 z f_potter.bmd (dom z dachówką i schodkowymi szczytami), a bob 0 (dom z drewnianym dachem) nie jest używany; poziom 0 dostaje bob 0, a cień etapu 65, którego f_potter_s.bmd nie ma, zamieniamy na cień o tym samym numerze co dom. Poziom 1 ma też trzy linie GfxBobConstructionLayer skopiowane z ratusza Franków (boby 36-39 z ls_houses_frank.bmd), których f_potter.bmd nie ma; usuwamy je. Plac budowy katapulty Egipcjan i Bizantyjczyków wskazuje bob 32 z CR_Veh_Body_00.bmd, czyli klatkę wozu z wołem, więc w budowie stoi wóz zamiast katapulty; wikingowie, Frankowie i Saraceni używają boba 32 z ls_vehicles.bmd, który jest katapultą, i ten plik podstawiamy. Place budowy statków wszystkich nacji biorą cień z ls_houses_viking_s.bmd, którego bob 4 jest pusty, więc nie mają cienia; cień tego boba leży w ls_houses_vehicles_s.bmd, którego używają już place wozów. Garncarnia wraca do trzech poziomów jak w oryginale (decyzja właściciela). CN mod usunął pierwszy poziom garncarni wikingów: poziom 1 stoi na dawnym obrazku 10, poziom 2 na obrazku 20, a poziom 3 to ten sam budynek za jeden kamień; pozostałym ludom dał dwa poziomy. Usuwamy modowy rekord garncarni wikingów, więc pipeline bierze rekord z bazowej tabeli gry: obrazki 0, 10 i 20 z ich etapami budowy, obrysami i punktami (mod przesunął poziomy, ale punkty dymu i ognia zostawił na starych); jego punkty życia ustawia korekta base-houses. Wszystkie garncarnie biorą koszt oryginalnej garncarni wikingów (pozostałe ludy miały w oryginale tylko jednopoziomowe zastępcze budynki z innymi kosztami): poziom 1 pszenica, 2 drewna i glina, ulepszenie do 2 pszenica, drewno, 2 kamienie i kamienny blok, do 3 2 cegły i kamienny blok. Frankowie, Egipcjanie, Saraceni i pałac bizantyjski (garncarnia Bizantyjczyków) dostają poziom 3 bez własnego obrazka, więc pipeline powtarza dla niego poziom 2: wygląd, obrys, punkty i punkty życia. Poziom 1 Franków stoi teraz na mniejszym budynku niż modowy poziom 1, więc dostaje 13/15 modowej wartości (proporcja oryginału między tymi dwoma budynkami), zaokrągloną do tysiąca: 26000 zamiast 30000. Mury (Mur h, Mur V) mod podpiął pod typ 22, czyli garncarnię 3; przenosimy je na nowy typ 56.",
+  "file": "rules/buildings/houses.ini",
+  "sha256": "d588b3700c304569aa3cdcd433a0c2350674b7e64a21e2133c92da8b5f6954e0",
+  "lines": [
+    {
+      "section": "EditName \"frank mason hut\"",
+      "from": "GfxBobConstructionLayer 0 0 72 75 9 81",
+      "to": "GfxBobConstructionLayer 0 0 4 -1 35 100"
+    },
+    {
+      "section": "EditName \"frank mason hut\"",
+      "from": "GfxBobConstructionLayer 0 0 71 -1 0 73",
+      "to": "GfxBobConstructionLayer 0 0 2 -1 0 100"
+    },
+    {
+      "section": "EditName \"frank mason hut\"",
+      "from": "GfxBobConstructionLayer 0 0 70 -1 26 100",
+      "to": "GfxBobConstructionLayer 0 0 0 -1 100 100"
+    },
+    {
+      "section": "EditName \"frank mason hut\"",
+      "from": "GfxBobConstructionLayer 1 0 72 75 9 81",
+      "to": "GfxBobConstructionLayer 1 0 4 -1 35 100"
+    },
+    {
+      "section": "EditName \"frank mason hut\"",
+      "from": "GfxBobConstructionLayer 1 0 71 -1 0 73",
+      "to": "GfxBobConstructionLayer 1 0 2 -1 0 100"
+    },
+    {
+      "section": "EditName \"frank mason hut\"",
+      "from": "GfxBobConstructionLayer 1 0 70 -1 26 100",
+      "to": "GfxBobConstructionLayer 1 0 0 -1 100 100"
+    },
+    {
+      "section": "EditName \"frank druid hut\"",
+      "from": "GfxBobConstructionLayer 1 0 1 65 0 100",
+      "to": "GfxBobConstructionLayer 1 0 0 65 0 100"
+    },
+    {
+      "section": "EditName \"frank pottery\"",
+      "from": "GfxBobId 0 1",
+      "to": "GfxBobId 0 0"
+    },
+    {
+      "section": "EditName \"frank pottery\"",
+      "from": "GfxBobConstructionLayer 0 0 1 65 0 100",
+      "to": "GfxBobConstructionLayer 0 0 0 0 0 100"
+    },
+    {
+      "section": "EditName \"frank pottery\"",
+      "from": "GfxBobConstructionLayer 1 0 1 65 0 100",
+      "to": "GfxBobConstructionLayer 1 0 1 1 0 100"
+    },
+    {
+      "section": "EditName \"frank pottery\"",
+      "from": "GfxBobConstructionLayer 1 0 38 -1 0 53",
+      "to": []
+    },
+    {
+      "section": "EditName \"frank pottery\"",
+      "from": "GfxBobConstructionLayer 1 0 39 -1 0 100",
+      "to": []
+    },
+    {
+      "section": "EditName \"frank pottery\"",
+      "from": "GfxBobConstructionLayer 1 0 36 37 35 100",
+      "to": []
+    },
+    {
+      "from": "GfxBobLibs \"Data\\Engine2D\\Bin\\Bobs\\CR_Veh_Body_00.bmd\" \"Data\\Engine2D\\Bin\\Bobs\\CR_Veh_Body_00_s.bmd\"",
+      "to": "GfxBobLibs \"data\\engine2d\\bin\\bobs\\ls_vehicles.bmd\" \"data\\engine2d\\bin\\bobs\\ls_vehicles_s.bmd\"",
+      "every": true
+    },
+    {
+      "from": "GfxBobLibs \"data\\engine2d\\bin\\bobs\\ls_houses_vehicles.bmd\" \"data\\engine2d\\bin\\bobs\\ls_houses_viking_s.bmd\"",
+      "to": "GfxBobLibs \"data\\engine2d\\bin\\bobs\\ls_houses_vehicles.bmd\" \"data\\engine2d\\bin\\bobs\\ls_houses_vehicles_s.bmd\"",
+      "every": true
+    },
+    {
+      "section": "EditName \"viking pottery\"",
+      "from": "EditName \"viking pottery\"",
+      "through": "GfxSmokePoint 2 137 14 0",
+      "to": []
+    },
+    {
+      "section": "EditName \"frank pottery\"",
+      "from": "LogicMaximumSize 2",
+      "to": "LogicMaximumSize 3"
+    },
+    {
+      "section": "EditName \"frank pottery\"",
+      "from": "LogicType 1 21",
+      "to": ["LogicType 1 21", "LogicType 2 22"]
+    },
+    {
+      "section": "EditName \"frank pottery\"",
+      "from": "logichitpoints 0 30000",
+      "to": "logichitpoints 0 26000"
+    },
+    {
+      "section": "EditName \"frank pottery\"",
+      "from": "LogicConstructionGoods 0 3 3 2 5",
+      "to": "LogicConstructionGoods 0 4 5 5 2"
+    },
+    {
+      "section": "EditName \"frank pottery\"",
+      "from": "LogicConstructionGoods 1 24 24 26 26 2 ",
+      "to": ["LogicConstructionGoods 1 4 5 3 3 26", "LogicConstructionGoods 2 24 24 26"]
+    },
+    {
+      "section": "EditName \"egypt pottery\"",
+      "from": "LogicMaximumSize 2",
+      "to": "LogicMaximumSize 3"
+    },
+    {
+      "section": "EditName \"egypt pottery\"",
+      "from": "LogicType 1 21",
+      "to": ["LogicType 1 21", "LogicType 2 22"]
+    },
+    {
+      "section": "EditName \"egypt pottery\"",
+      "from": "LogicConstructionGoods 0 3 3 2 5",
+      "to": "LogicConstructionGoods 0 4 5 5 2"
+    },
+    {
+      "section": "EditName \"egypt pottery\"",
+      "from": "LogicConstructionGoods 1 24 24 26 26 2 ",
+      "to": ["LogicConstructionGoods 1 4 5 3 3 26", "LogicConstructionGoods 2 24 24 26"]
+    },
+    {
+      "section": "EditName \"saracen pottery\"",
+      "from": "LogicMaximumSize 2",
+      "to": "LogicMaximumSize 3"
+    },
+    {
+      "section": "EditName \"saracen pottery\"",
+      "from": "LogicType 1 21",
+      "to": ["LogicType 1 21", "LogicType 2 22"]
+    },
+    {
+      "section": "EditName \"saracen pottery\"",
+      "from": "LogicConstructionGoods 0 3 3 2 5",
+      "to": "LogicConstructionGoods 0 4 5 5 2"
+    },
+    {
+      "section": "EditName \"saracen pottery\"",
+      "from": "LogicConstructionGoods 1 24 24 26 26 2 ",
+      "to": ["LogicConstructionGoods 1 4 5 3 3 26", "LogicConstructionGoods 2 24 24 26"]
+    },
+    {
+      "section": "EditName \"byzantine palace\"",
+      "from": "LogicMaximumSize 2",
+      "to": "LogicMaximumSize 3"
+    },
+    {
+      "section": "EditName \"byzantine palace\"",
+      "from": "LogicType 1 21",
+      "to": ["LogicType 1 21", "LogicType 2 22"]
+    },
+    {
+      "section": "EditName \"byzantine palace\"",
+      "from": "LogicConstructionGoods 0 3 3 2 5",
+      "to": "LogicConstructionGoods 0 4 5 5 2"
+    },
+    {
+      "section": "EditName \"byzantine palace\"",
+      "from": "LogicConstructionGoods 1 24 24 26 26 2",
+      "to": ["LogicConstructionGoods 1 4 5 3 3 26", "LogicConstructionGoods 2 24 24 26"]
+    },
+    {
+      "from": "LogicType 0 22",
+      "to": "LogicType 0 56",
+      "every": true
+    }
+  ]
+}

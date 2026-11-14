@@ -71,15 +71,16 @@ function fighterPanel(
     paint();
   });
   const armour = armourDropdown(context, copy.armourLabel, fighter().armour, (id) => set({ armour: id }));
-  const experience = experienceSlider(fighter().hits, (hits) => set({ hits }));
+  const experience = experienceSlider(fighter().points, (points) => set({ points }), 'both');
   const strength = checkbox(copy.strengthAmulet, fighter().strength, (on) => set({ strength: on }));
   const defense = checkbox(copy.defenseAmulet, fighter().defense, (on) => set({ defense: on }));
   const person = combatTargets(base)[0];
   function paint(): void {
     const row = weaponFor(base, fighter().tribe, fighter().weapon);
     if (row === undefined || person === undefined) return;
-    experience.input.disabled = !gainsFightExperience(row, person);
     strength.box.disabled = !takesStrengthAmulet(row);
+    // Every fighter's points cut the blows he takes; only a melee blow grows with them.
+    experience.setReadout(gainsFightExperience(row, person) ? 'both' : 'taken');
   }
   paint();
   const pair = element('div', 'kn-calc__pair');
@@ -91,7 +92,7 @@ function fighterPanel(
     sideTitle(formatMessage(copy.fighterTitle, { number: index + 1 })),
     pair,
     field(copy.armourLabel, armour.root),
-    field(copy.hitsLabel, experience.host),
+    field(copy.pointsLabel, experience.host),
     checks,
   );
   return host;

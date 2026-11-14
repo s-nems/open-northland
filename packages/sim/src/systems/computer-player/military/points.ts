@@ -1,12 +1,24 @@
 import type { ContentSet, WeaponType } from '@open-northland/data';
-import { Health, Person, Settler, Weapon } from '../../../components/index.js';
+import { Health, Person, Settler, SettlerProgress, Weapon } from '../../../components/index.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import { attackerWeapon, targetBlocking, targetMaterial } from '../../conflict/weapons.js';
 import type { SystemContext } from '../../context.js';
 import { carriedCombatEffects, healingReserveOf } from '../../equipment/effects.js';
 import { HUMAN_HITPOINTS } from '../../lifecycle/unit-health.js';
 import { ownedFightersOf } from '../../movement/collision/owned-fighters.js';
-import { ARMOR_MATERIAL, WEAPON_MAIN_TYPE, weaponDamageVsMaterial } from '../../readviews/index.js';
+import {
+  dealtDamageFactor,
+  FIGHT_EXPERIENCE_FACTOR_SCALE,
+  fightExperienceTakenFactor,
+  fightUnitsWith,
+  settlerFightUnits,
+} from '../../progression/bonus.js';
+import {
+  ARMOR_MATERIAL,
+  isRangedWeapon,
+  WEAPON_MAIN_TYPE,
+  weaponDamageVsMaterial,
+} from '../../readviews/index.js';
 
 // A fighter's combat value in points, derived from content (owner ruling: strength counts each visible
 // unit by its weapon and its armour; short sword, short bow and wooden spear rank low, the advanced
@@ -16,8 +28,8 @@ import { ARMOR_MATERIAL, WEAPON_MAIN_TYPE, weaponDamageVsMaterial } from '../../
 // sword's and stands in for its reach; within a class reach and damage rise together. Survival: his
 // hitpoints over the damage he takes per blow, averaged over every soldier's weapon, after his armour's
 // blocking. Points are attack times survival, the duel value a square law weighs. Approximation: blind
-// to the swing rate (the attack clip the trade binds, not the weapon record), experience and the hit
-// direction.
+// to the swing rate (the attack clip the trade binds, not the weapon record) and the hit direction. His
+// fight experience scales his dealt and taken shares as it scales his blows.
 
 /** The armour columns a weapon's attack is averaged over, equally: bare and the four base armours. */
 const REFERENCE_ARMOUR_MATERIALS: readonly number[] = [
@@ -171,10 +183,24 @@ export function fighterPoints(
   return Math.max(1, Math.floor((attack * buffs.dealtPct * buffs.hitpoints) / (taken * POINTS_DIVISOR)));
 }
 
-/** What `e` carries into a fight: his amulets, his hitpoints now and his healing potions. */
-function fighterBuffsOf(world: World, content: ContentSet, e: Entity): FighterBuffs {
+/** What `e` carries into a fight: his amulets, his fight experience, his hitpoints now and his healing
+ *  potions. Experience raises the blows of a melee `weapon` only, as it does in a swing. */
+function fighterBuffsOf(
+  world: World,
+  content: ContentSet,
+  e: Entity,
+  weapon: WeaponType | null,
+): FighterBuffs {
   const effects = carriedCombatEffects(world, content, e);
-  let dealtPct = effects.damageDealtPct ?? PERCENT;
+  const experience = world.tryGet(e, SettlerProgress)?.experience;
+  const dealtUnits =
+    experience === undefined || weapon === null || isRangedWeapon(weapon)
+      ? 0
+      : fightUnitsWith(experience, weapon.mainType);
+  // Our rule, as a blow lands: the experience and the amulet raises add.
+  let dealtPct = Math.trunc(
+    (PERCENT * dealtDamageFactor(dealtUnits, effects.damageDealtPct)) / FIGHT_EXPERIENCE_FACTOR_SCALE,
+  );
   const critical = effects.criticalHit;
   if (critical !== undefined) {
     dealtPct = Math.floor(
@@ -187,7 +213,11 @@ function fighterBuffsOf(world: World, content: ContentSet, e: Entity): FighterBu
     health === undefined
       ? HUMAN_HITPOINTS
       : health.hitpoints + healingReserveOf(world, content, e, health.max);
-  return { dealtPct, takenPct: effects.damageTakenPct ?? PERCENT, hitpoints };
+  const takenPct = Math.floor(
+    ((effects.damageTakenPct ?? PERCENT) * fightExperienceTakenFactor(settlerFightUnits(world, e))) /
+      FIGHT_EXPERIENCE_FACTOR_SCALE,
+  );
+  return { dealtPct, takenPct, hitpoints };
 }
 
 /** A live fighter's points as anyone who sees him can read them: weapon, armour, amulets, hitpoints. */
@@ -205,7 +235,7 @@ export function unitPoints(world: World, ctx: SystemContext, e: Entity): number 
     armed?.weapon ?? null,
     targetMaterial(world, ctx, e),
     targetBlocking(world, ctx, e),
-    fighterBuffsOf(world, ctx.content, e),
+    fighterBuffsOf(world, ctx.content, e, armed?.weapon ?? null),
   );
 }
 

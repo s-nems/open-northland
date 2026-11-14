@@ -21,6 +21,7 @@ export type GuiFrameRole =
   | 'bar' // a progress / hit / status bar frame
   | 'note' // a pinned parchment note / scroll
   | 'scroll_arrow'
+  | 'world_marker' // a marker the world cursor draws over the map
   | 'decoration' // a flag, ornament, or other chrome
   | 'unknown';
 
@@ -1342,46 +1343,46 @@ export const GUI_FRAMES = [
     note: 'orange directional arrow 25x23 (left/right)',
   },
   /* 186 0xba */ {
-    name: 'unknown_186',
-    role: 'scroll_arrow',
+    name: 'world_marker_0',
+    role: 'world_marker',
     palette: 'context',
-    source: 'montage',
-    note: 'directional arrow cluster (map-edge scroll / compass rose?)',
+    source: 'manual',
+    note: 'script marker arrows, frame 1 of 6; the world draws them through the player palette',
   },
   /* 187 0xbb */ {
-    name: 'unknown_187',
-    role: 'scroll_arrow',
+    name: 'world_marker_1',
+    role: 'world_marker',
     palette: 'context',
-    source: 'montage',
-    note: 'directional arrow cluster (map-edge scroll / compass rose?)',
+    source: 'manual',
+    note: 'script marker arrows, frame 2 of 6; the world draws them through the player palette',
   },
   /* 188 0xbc */ {
-    name: 'unknown_188',
-    role: 'scroll_arrow',
+    name: 'world_marker_2',
+    role: 'world_marker',
     palette: 'context',
-    source: 'montage',
-    note: 'directional arrow cluster (map-edge scroll / compass rose?)',
+    source: 'manual',
+    note: 'script marker arrows, frame 3 of 6; the world draws them through the player palette',
   },
   /* 189 0xbd */ {
-    name: 'unknown_189',
-    role: 'scroll_arrow',
+    name: 'world_marker_3',
+    role: 'world_marker',
     palette: 'context',
-    source: 'montage',
-    note: 'directional arrow cluster (map-edge scroll / compass rose?)',
+    source: 'manual',
+    note: 'script marker arrows, frame 4 of 6; the world draws them through the player palette',
   },
   /* 190 0xbe */ {
-    name: 'unknown_190',
-    role: 'scroll_arrow',
+    name: 'world_marker_4',
+    role: 'world_marker',
     palette: 'context',
-    source: 'montage',
-    note: 'directional arrow cluster (map-edge scroll / compass rose?)',
+    source: 'manual',
+    note: 'script marker arrows, frame 5 of 6; the world draws them through the player palette',
   },
   /* 191 0xbf */ {
-    name: 'unknown_191',
-    role: 'scroll_arrow',
+    name: 'world_marker_5',
+    role: 'world_marker',
     palette: 'context',
-    source: 'montage',
-    note: 'directional arrow cluster (map-edge scroll / compass rose?)',
+    source: 'manual',
+    note: 'script marker arrows, frame 6 of 6; the world draws them through the player palette',
   },
   /* 192 0xc0 */ {
     name: 'unknown_192',

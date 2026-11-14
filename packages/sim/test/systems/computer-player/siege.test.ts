@@ -18,7 +18,7 @@ import {
   takeCensus,
   WAVE_MIN_SOLDIERS,
 } from '../../../src/systems/computer-player/index.js';
-import { VEHICLE_SCAN_RADIUS_POINTS } from '../../../src/systems/conflict/engage-vehicle.js';
+import { VEHICLE_SCAN_RADIUS_POINTS } from '../../../src/systems/conflict/vehicle-targets.js';
 import { vehicleAnchor } from '../../../src/systems/footprint/index.js';
 import type { SystemContext } from '../../../src/systems/index.js';
 import { interactionCell } from '../../../src/systems/settlers/targets/index.js';

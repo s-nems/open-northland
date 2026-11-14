@@ -2,7 +2,9 @@ import { clamp01 } from '../../data/math.js';
 
 const HEALTH_ANCHORS = [1, 0.9, 0.75, 0.6, 0.45, 0.3, 0.2] as const;
 
-/** Continuous artistic damage, independent of repair and combat rules. */
+export const MAX_DAMAGE_LEVEL = 6;
+
+/** Continuous artistic damage in `0..MAX_DAMAGE_LEVEL`, independent of repair and combat rules. */
 export function damageLevel(hp: number): number {
   if (!Number.isFinite(hp) || hp >= 1) return 0;
   for (let i = 1; i < HEALTH_ANCHORS.length; i++) {
@@ -10,7 +12,7 @@ export function damageLevel(hp: number): number {
     const lower = HEALTH_ANCHORS[i] ?? 0;
     if (hp >= lower) return i - 1 + (upper - hp) / (upper - lower);
   }
-  return 6;
+  return MAX_DAMAGE_LEVEL;
 }
 
 export function noise(seed: number, salt: number): number {

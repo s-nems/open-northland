@@ -140,7 +140,7 @@ const SHRUNK_BY = 3;
  *  minutes, inside the garrison's memory of the band. */
 const SHIPS_BUSY_TICKS = minutesToTicks(6);
 /** The seat's building on its colony island, by its west shore. */
-const COLONY_STORE = { x: 96, y: 108 };
+const COLONY_STORE = { x: 96, y: 114 };
 /** Where an enemy ship lies off the colony island and its men stand ashore: in the strait by the colony,
  *  and in the channel at the island's far corner. */
 const NEAR_BERTH = { water: { x: 80, y: 104 }, landed: { x: 92, y: 100 } };

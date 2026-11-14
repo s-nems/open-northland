@@ -17,7 +17,14 @@ import { meterFill, meterTone } from '../parts/meter-row.js';
 import type { BuildingPanelDeps } from './actions.js';
 import { createUpgradeLevels } from './upgrade-levels.js';
 
-export type BuildingOrder = 'upgrade' | 'cancelUpgrade' | 'workers' | 'knowledge' | 'demolish' | 'prioritize';
+export type BuildingOrder =
+  | 'upgrade'
+  | 'cancelUpgrade'
+  | 'workers'
+  | 'knowledge'
+  | 'demolish'
+  | 'prioritize'
+  | 'templeFire';
 
 /** The tiles the two-column order grid holds beside the portrait without growing a third row. */
 export const MAX_ORDER_TILES = 4;
@@ -38,10 +45,11 @@ export interface BuildingOrderView {
  * The order tiles in their fixed places, {@link MAX_ORDER_TILES} at most so the grid keeps two rows:
  * Workers, Knowledge, Demolish, then Upgrade. A site trades Upgrade, which it would only refuse, for
  * Prioritize; a building being upgraded shows Cancel last and gives up Knowledge for it. A refused order
- * stays in its place, faded, its tooltip the reason. Another seat's building offers Knowledge alone.
+ * stays in its place, faded, its tooltip the reason. A temple that burns oil adds its fire's order after
+ * Demolish, as a barracks adds its rally tile there. Another seat's building offers Knowledge alone.
  */
 export function orderViews(
-  model: Pick<BuildingPanelModel, 'orders' | 'name' | 'construction'>,
+  model: Pick<BuildingPanelModel, 'orders' | 'name' | 'construction' | 'templeFire'>,
 ): BuildingOrderView[] {
   const copy = messages().hud.buildingPanel;
   const knowledge: BuildingOrderView = {
@@ -58,6 +66,7 @@ export function orderViews(
   const site = model.construction;
   const upgrading = site !== null && orders.cancelUpgrade;
   const tier = site === null || upgrading ? tierView(orders) : null;
+  const fire = site === null ? model.templeFire : null;
   return [
     {
       order: 'workers',
@@ -76,6 +85,18 @@ export function orderViews(
       enabled: true,
       danger: true,
     },
+    ...(fire === null
+      ? []
+      : [
+          {
+            order: 'templeFire' as const,
+            glyph: GLYPH.flame,
+            label: fire.doused ? copy.templeFireLight : copy.templeFireDouse,
+            tooltip: copy.templeFireDouseTooltip,
+            enabled: true,
+            danger: false,
+          },
+        ]),
     ...(site === null
       ? []
       : [
@@ -188,6 +209,12 @@ export function createPortraitSection(
         const site = shown.construction;
         if (site === null) return false;
         deps.building.setConstructionPriority(id, !site.prioritized);
+        return true;
+      }
+      case 'templeFire': {
+        const fire = shown.templeFire;
+        if (fire === null) return false;
+        deps.building.setTempleFire(id, fire.doused);
         return true;
       }
       default: {

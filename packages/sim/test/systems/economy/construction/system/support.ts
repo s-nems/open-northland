@@ -42,6 +42,9 @@ export const HEADQUARTERS = 1; // free - empty construction cost
 /** A workplace whose recipe turns wood into stone: its WOOD is a protected input reserve, its STONE the
  *  finished shelf a builder may still lift - both sides of the fetch reserve rule in one building. */
 export const WORKSHOP = 5;
+/** A temple that burns wood as its blessing's fuel, its bill taking a unit of it. */
+export const TEMPLE = 6;
+export const TEMPLE_FUEL_CAPACITY = 5;
 export const GRASS = 0;
 export const CARRIER = 36; // a job with no harvest atomics - it can only haul a load it already carries
 export const BUILDER = 7; // the builder trade (jobtypes.ini type 7); permitted to run the build-house atomic
@@ -107,6 +110,17 @@ export function constructionContent(): ContentSet {
         // slot is what posts a builder to a foundation of it.
         workers: [{ jobType: BUILDER, count: 1 }],
         construction: [{ goodType: STONE, amount: 2 }],
+      },
+      {
+        typeId: TEMPLE,
+        id: 'work_temple',
+        kind: 'workplace',
+        prayerSite: 'temple',
+        stock: [{ goodType: WOOD, capacity: TEMPLE_FUEL_CAPACITY }],
+        construction: [
+          { goodType: STONE, amount: 2 },
+          { goodType: WOOD, amount: 1 },
+        ],
       },
     ],
   });

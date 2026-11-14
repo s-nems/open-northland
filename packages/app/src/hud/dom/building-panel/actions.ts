@@ -31,6 +31,8 @@ export interface BuildingPanelActions {
   readonly setStorePriority: (building: number, goodType: number, priority: boolean) => void;
   /** Mark or unmark the construction site `building` for the builders to work first. */
   readonly setConstructionPriority: (building: number, prioritized: boolean) => void;
+  /** Light the temple `building`'s holy fire, or put it out. */
+  readonly setTempleFire: (building: number, lit: boolean) => void;
 }
 
 /** The central windows the panel opens. */

@@ -45,7 +45,7 @@ function setup(blocked = true, map: TerrainMap = grassNodeMap(24, 24)) {
   w.add(child, c.Owner, { player: 0 });
   w.add(child, c.Health, { hitpoints: 5000, max: 5000 });
   w.add(child, c.Age, { ticks: CHILD_AGE_TICKS, asOf: null });
-  w.add(child, c.Residence, { home });
+  w.add(child, c.Residence, { home, since: 0 });
   const wall = w.create();
   w.add(wall, c.Position, positionOfNode(0, 0));
   const walk = [];

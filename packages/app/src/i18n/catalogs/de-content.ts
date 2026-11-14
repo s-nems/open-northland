@@ -66,7 +66,7 @@ export const deContent = {
     work_sewery_01: 'Näherei (Stufe 2)',
     work_pottery_00: 'Töpferei (Stufe 1)',
     work_pottery_01: 'Töpferei (Stufe 2)',
-    work_pottery_02: 'Mauer',
+    work_pottery_02: 'Töpferei (Stufe 3)',
     work_joinery_00: 'Schreinerei (Stufe 1)',
     work_joinery_01: 'Schreinerei (Stufe 2)',
     work_joinery_02: 'Schreinerei (Stufe 3)',
@@ -100,6 +100,7 @@ export const deContent = {
     wonder_pyramid_of_gizeh: 'Pyramide',
     wonder_8th_wonder: '8. Wunder',
     work_murek: 'Mauer',
+    defence_wall: 'Mauer',
   },
   goods: {
     wood: 'Holz',
@@ -198,10 +199,15 @@ export const deContent = {
       summary:
         '1000 gegen 1000 auf einem größeren Schlachtfeld: verstreute Truppen, fünf Waffenklassen und gemischte Rüstungen.',
     },
+    'precision-battle': {
+      title: 'Schlacht des Trefferamuletts',
+      summary:
+        '60 Krieger in Plattenrüstung mit Trefferamulett, zehn je Waffe, gegen 78 ohne Amulett, dreizehn je Waffe. Im Osten ein kleiner Kampf: fünf gegen sieben.',
+    },
     'overhead-icons': {
       title: 'Symbole über dem Kopf',
       summary:
-        'Jeder Schwertkämpfer trägt einen Stern, der je Viertel seiner gelandeten Treffer wächst; ein vom Skript markierter Soldat trägt darüber die Markierung. Alle auswählen, um die Lebensherzen und den Berufsstern des Meistersammlers in die Säule zu stapeln.',
+        'Jeder Schwertkämpfer trägt einen Stern, der alle 25 Punkte Kampferfahrung um eine Größe wächst; ein vom Skript markierter Soldat trägt darüber die Markierung. Alle auswählen, um die Lebensherzen und den Berufsstern des Meistersammlers in die Säule zu stapeln.',
     },
     'bow-flight': {
       title: 'Pfeilflug',
@@ -416,6 +422,11 @@ export const deContent = {
       summary:
         'Auf jeder Insel stehen zwei Lager in einem Wegweisernetz, und beide Stationen der Route des Händlers stehen für ihre ganze Siedlung. Die Ostinsel wird auf 20 Ziegel und 20 Steine gehalten, geholt aus beiden Lagern im Westen, und ihr Holz geht nach Westen, bis in ihren zwei Lagern 30 bleiben. Wähle den Händler, um an beiden Stationen den aktiven Schalter „Siedlung“ zu sehen.',
     },
+    'trade-sea-shared-stop': {
+      title: 'Zwei Seerouten mit gemeinsamer Station',
+      summary:
+        'Zwei Händler haben je ein eigenes Lager auf der Westinsel und ein kleines Schiff auf ihrer Route, und beide bringen Holz in das eine Lager auf der Ostinsel. Das Schiff, das als zweites am Ostufer ankommt, legt neben dem ersten an, statt zu warten, bis es ablegt. Achte auf das Ostufer: Beide Schiffe liegen dort zusammen, während die Karren beider Händler zum Lager pendeln.',
+    },
     'trade-domestic': {
       title: 'Handel zwischen eigenen Lagerhäusern',
       summary:
@@ -450,6 +461,16 @@ export const deContent = {
       title: 'Karrenlenker',
       summary:
         'Ein Händler mit Handkarren und ein Träger mit Ochsenkarren jeder Zivilisation fahren nach Osten; jeder Lenker trägt den Kopf seiner eigenen Zivilisation.',
+    },
+    'vehicle-damage': {
+      title: 'Beschädigte und zerstörte Fahrzeuge',
+      summary:
+        'Katapulte und Schiffe stehen mit sinkender Gesundheit da: die Rümpfe sind zerschlagen und rauchen, die Schiffe fangen gegen Ende Feuer und brennen in etwa zweieinhalb Minuten von selbst nieder, die Katapulte rauchen nur leicht. Jenseits der Meerenge erledigen feindliche Bogenschützen ein Schiff und ein Katapult: das Schiff brennt und geht unter, das Katapult zerfällt in etwas Staub.',
+    },
+    'vehicle-ship-archers': {
+      title: 'Bogenschützen an Deck',
+      summary:
+        'Zwölf Bogenschützen gehen an Bord eines Kriegsschiffs und drei an Bord eines Handelsschiffs, und beide segeln auf Schwertkämpfer am anderen Ufer zu. Die ersten zehn Bogenschützen des Kriegsschiffs schießen von Deck und streuen stärker als an Land; die anderen beiden und die Besatzung des Handelsschiffs schießen nicht.',
     },
     'vehicle-ships': {
       title: 'Ein Schiff durch die Meerenge',
@@ -516,6 +537,16 @@ export const deContent = {
       summary:
         'Ein vertäutes Schiff fordert Holz von den Haufen am Ufer an. Sein Träger und ein mitfahrender Schmied holen es Stück für Stück; ein mitfahrender Soldat steigt ein und bleibt an Bord.',
     },
+    'vehicle-ship-crew-meal': {
+      title: 'Mahlzeit der Schiffsbesatzung',
+      summary:
+        'Eine hungernde Besatzung aus Soldaten an Bord eines vertäuten Schiffs mit leerem Laderaum. Jeder trinkt den Met, den er bei sich trägt; wer noch hungrig ist, geht an Land, isst im Lagerhaus und geht wieder an Bord.',
+    },
+    'vehicle-ship-repair': {
+      title: 'Schiffsreparatur',
+      summary:
+        'Ein beschädigtes Schiff brennt, wo es am Ufer vertäut liegt, ein zweites liegt beschädigt draußen in der Meerenge. Drei Bauarbeiter gehen zum Ufer beim vertäuten Schiff hinunter und reparieren es vollständig, und sein Feuer erlischt; das Schiff auf See ist außer ihrer Reichweite und bleibt beschädigt.',
+    },
     'hauling-cart': {
       title: 'Trägerkarren',
       summary:
@@ -531,6 +562,11 @@ export const deContent = {
       summary:
         'Zwei bemannte Katapulte erhalten eine Angriffsbewegung nach Osten. Anfangs ist keine der beiden feindlichen Hütten in Reichweite. Unterwegs wird jede sichtbar, woraufhin die Katapulte anhalten, sie zerstören und zu ihren Zielen weiterfahren. Wähle ein Katapult aus, drücke die Taste für die Angriffsbewegung und klicke auf einen Ort, um es selbst loszuschicken.',
     },
+    'vehicle-attack-move-fight': {
+      title: 'Angriffsbewegung mitten im Beschuss',
+      summary:
+        'Ein Katapult in Haltestellung beschießt eine feindliche Hütte in seiner Reichweite, knapp dahinter steht ein feindlicher Turm. Erhält es während des Beschusses eine Angriffsbewegung nach Osten an beiden vorbei, schießt es von seinem Platz weiter, bis die Hütte fällt; erst dann rückt es vor, fährt an den Turm heran, zerstört ihn und fährt weiter zu seinem Ziel. Wähle das Katapult aus, drücke die Taste für die Angriffsbewegung und klicke hinter den Turm, während es schießt, um den Befehl selbst zu geben.',
+    },
     'vehicle-tight-gap': {
       title: 'Fahrzeuge in engen Durchgängen',
       summary:
@@ -539,7 +575,22 @@ export const deContent = {
     'vehicle-catapult-spread': {
       title: 'Katapulte verteilen sich vor dem Schuss',
       summary:
-        'Vier bemannte Katapulte stehen paarweise, jedes Paar auf einem Feld, und eine feindliche Hütte ist in Reichweite. Ein Katapult schießt nie aus einem anderen heraus: Jedes übereinanderstehende fährt zuerst auf einen eigenen Platz, erst dann eröffnet die Batterie das Feuer. Schicke mehrere Katapulte auf einen Punkt, um zu sehen, wie sie Abstand halten.',
+        'Vier bemannte Katapulte stehen paarweise, jedes Paar auf einem Feld, und eine feindliche Hütte ist in Reichweite. Von zwei Katapulten, die sich berühren, schießt nur eines: Eines aus jedem Paar eröffnet das Feuer, wo es steht, und das andere fährt zuerst auf einen eigenen Platz. Schicke mehrere Katapulte auf einen Punkt, um zu sehen, wie sie Abstand halten.',
+    },
+    'vehicle-catapult-targets': {
+      title: 'Worauf ein Katapult zuerst schießt',
+      summary:
+        'Ein bemanntes Katapult in Angriffshaltung hat einen Bogenschützen in Reichweite und einen feindlichen Turm knapp dahinter, während zwei Schwertkämpfer heranlaufen und auf sein Gestell einschlagen. Zuerst schießt es auf den Bogenschützen in Reichweite, dann rollt es ein paar Schritte an den Turm heran und zerstört ihn. Die Schwertkämpfer an seiner Seite sind für einen Stein zu nah; vor zweien versucht es nicht wegzufahren, und ist nichts mehr in Reichweite, steht es einfach.',
+    },
+    'vehicle-catapult-archers': {
+      title: 'Ein Katapult gegen Bogenschützen',
+      summary:
+        'Ein bemanntes Katapult hält seine Stellung, während drei feindliche Langbogenschützen in Kettenhemden darauf zumarschieren. Es beschießt sie mit Steinen, sobald sie in seine Reichweite kommen, und sie schießen aus ihrer auf sein Gestell. Jeder Bogenschütze braucht drei Steine, und das Gestell hält lange genug, um zwei von ihnen zu fällen, bevor es bricht.',
+    },
+    'vehicle-catapult-assault': {
+      title: 'Eine Batterie stürmt ein verteidigtes Dorf',
+      summary:
+        'Drei bemannte Katapulte erhalten einen Angriffsmarsch hinter die feindliche Palisade. An den Flanken stehen Schwertkämpfer in ihrer Reichweite, weiter hinten Bogenschützen und hinter der Palisade ein Turm. Die Katapulte verschwenden keine Steine an die Schwertkämpfer: Sie fahren zuerst an die Bogenschützen und dann an den Turm heran, und jedes schießt von einem eigenen Platz.',
     },
     'vehicle-catapult-wall': {
       title: 'Ein Katapult beschießt einen Ort hinter dem Wall',
@@ -590,6 +641,11 @@ export const deContent = {
       title: 'Der Assistent gründet Familien',
       summary:
         'Drei obdachlose Frauen und drei Männer stehen an einem Haus für zwei Familien, und der Assistent gründet Familien. Zwei Frauen ziehen ein und heiraten, ihre Männer ziehen zu ihnen. Die dritte findet keinen freien Platz, bleibt obdachlos und ledig.',
+    },
+    'furnished-home': {
+      title: 'Möbel bieten Platz für weitere Familien',
+      summary:
+        'Drei Wohnhäuser für je eine Familie. Im westlichen stehen zwei Stück Möbel, darum wohnt dort eine zweite Familie. Zwei müde Frauen gehen heim ins mittlere, wo das Möbelstück der zuletzt eingezogenen Frau nur bis zu ihrem nächsten Schlaf reicht: Sobald sie sich hinlegt, ist es verbraucht, sie zieht aus, und der Assistent bringt sie ins leere Wohnhaus im Osten.',
     },
     'gatherer-flag-follow': {
       title: 'Fahnen folgen den Rohstoffen',
@@ -697,6 +753,11 @@ export const deContent = {
       summary:
         'Ein hungriger Kundschafter soll mehrere Wegweiser nacheinander errichten. Zuerst geht er jedoch zur Vorratskammer, isst und stellt dann die übrigen auf. Auch ein Soldat, dem Erholung erlaubt ist, macht eine Essenspause; der Soldat ohne Erholungserlaubnis marschiert hungrig weiter.',
     },
+    'mead-drink': {
+      title: 'Met trinken',
+      summary:
+        'Drei Siedler gehen nach Osten und werden nach ein paar Schritten hungrig. Ein Zivilist und ein Soldat halten auf dem Weg an, trinken ihren Met wie beim Essen und gehen weiter. Ein Soldat, dem Regeneration verboten ist, lässt seinen Met zu und trinkt im Gehen einen Nahrungstrank.',
+    },
     'scout-claim': {
       title: 'Ein Kundschafter fängt ein Tier',
       summary:
@@ -720,17 +781,22 @@ export const deContent = {
     alchemy: {
       title: 'Alchemistenhütten',
       summary:
-        'In der kleinen Hütte braut ein Druide Öl aus Pilzen. In der großen brauen zwei Druiden Tränke aus Wasser, Pilz, Kraut und Münze.',
+        'In der kleinen Hütte braut ein Druide Öl aus Pilzen. In der großen brauen zwei Druiden Tränke aus Wasser, Pilz, Kraut und Geschirr.',
     },
     'temple-aura': {
       title: 'Tempelsegen',
       summary:
-        'Wähle den Tempel, um die hellblaue Reichweite des Segens zu sehen. Der nahe Siedler gewinnt Religion zurück, der entfernte bleibt außerhalb der Aura.',
+        'In einer Reihe steht ein Tempel jeder Zivilisation. Wähle einen, um die hellblaue Reichweite des Segens zu sehen. Der nahe Siedler gewinnt Religion zurück, der entfernte bleibt außerhalb der Aura.',
+    },
+    'temple-oil': {
+      title: 'Tempelöl',
+      summary:
+        'Die Tempel aller Völker beginnen ohne Öl, und der Druide jedes Volkes bringt welches aus seiner Hütte: das Wikingerfeuer entzündet sich und an jedem Tempel erscheint der helle Schein. Der beschädigte Tempel bleibt trotz vollem Vorrat dunkel.',
     },
     'household-goods': {
       title: 'Haushaltswaren',
       summary:
-        'Töpfer, Schreiner und Druiden versorgen ein ausgebautes Wohnhaus mit Geschirr, Möbeln und Öl, um Mahlzeiten, Ruhe und Gebet zu verbessern.',
+        'Töpfer, Schreiner und Druiden versorgen ein ausgebautes Wohnhaus mit Geschirr, Möbeln und Öl: mehr Nahrung je Lieferung, Platz für weitere Familien und Gebet vor dem Haus.',
     },
     'storage-minimum': {
       title: 'Lagerminimum',
@@ -885,6 +951,11 @@ export const deContent = {
       summary:
         'Schafe und Rinder sammeln sich beim näheren Lagerhaus im Norden. Die südliche Herde hat kein Lager und sammelt sich beim näheren Wohnhaus.',
     },
+    'farm-larder': {
+      title: 'Hausfrauen an der Viehzüchterei',
+      summary:
+        'Drei Frauen wohnen neben einem Hauptquartier voller Nahrung, die Viehzüchterei steht weiter östlich mit vollem Fleischregal. Die Frauen gehen am Hauptquartier vorbei und holen das Fleisch der Viehzüchterei, so schlachtet der Viehzüchter weiter Rinder und das Leder wächst, statt dass er Fleisch hinausträgt.',
+    },
     livestock: {
       title: 'Viehzucht',
       summary:
@@ -950,6 +1021,11 @@ export const deContent = {
       summary:
         'Zwei Abbauer gehen zu einem Wald. Der mit Schuhen ist sichtbar schneller, doch seine Schuhe nutzen sich unterwegs ab. Ein Müller mit Eisenwerkzeug mahlt 5 Weizen mit einem Produktionsbonus, und Siedler trinken ihren Met und ihre Tränke selbstständig, wenn Hunger oder Müdigkeit drängen.',
     },
+    'potion-sips': {
+      title: 'Trankschlucke',
+      summary:
+        'Siedler trinken von selbst, und man sieht es: Vier hungrige Sammler nehmen nacheinander einen Schluck Nahrungstrank, vier müde einen Schluck Ausdauertrank, und ein verwundeter Schwertkämpfer hält sich mit Heiltränken gegen drei Gegner. Jeder Schluck lässt den Trinkenden in der Farbe des Tranks aufleuchten, schickt einen Ring über den Boden und ein paar Funken nach oben.',
+    },
     amulets: {
       title: 'Amulette',
       summary:
@@ -958,17 +1034,32 @@ export const deContent = {
     barracks: {
       title: 'Ausbildung in der Kaserne',
       summary:
-        'Ein Siedler wird in die Kaserne geschickt, übt dort 15 Sekunden und kommt als unbewaffneter Soldat heraus. Daneben stehen ein bereits dienender Soldat, der nur übt, und ein Siedler, dem der Soldatenberuf verwehrt bleibt.',
+        'Ein Siedler wird in die Kaserne geschickt, übt dort einen Durchgang lang und kommt als unbewaffneter Soldat heraus. Daneben steht ein Siedler, der nie geübt hat und dem der Soldatenberuf deshalb verschlossen bleibt.',
     },
     'barracks-armory': {
       title: 'Kasernenwaffenkammer',
       summary:
         'Zwei Siedler üben für den Schwertzähler in einer Kaserne, die ein Langschwert, ein Kurzschwert und zwei Kettenrüstungen lagert. Der erste kommt als Langschwertkämpfer in Kettenrüstung heraus. Der zweite legt an der Tür die andere Rüstung an, lässt das schwächere Kurzschwert in der Kaserne und holt das Langschwert, das beim Hauptquartier liegt.',
     },
+    'barracks-mixed-orders': {
+      title: 'Gemischte Kasernenaufträge',
+      summary:
+        'Der Assistent hat Aufträge für zwei Schwertkämpfer und zwei Bogenschützen, doch die Waffenkammer am Hauptquartier hält ein Langschwert und zwei Bögen. Drei von vier Siedlern üben und kommen als Langschwertkämpfer und zwei Bogenschützen heraus. Für das fehlende zweite Schwert wird niemand eingezogen: Der vierte Siedler bleibt daheim, und kein Soldat steht ohne Waffe da. Zurück aus der Waffenkammer verteilen sich die Bewaffneten um die Kasernentür, statt sich auf einem Feld zu drängen.',
+    },
     'barracks-exit': {
       title: 'Auszug aus der Kaserne',
       summary:
         'Sechs Siedler üben gleichzeitig in einer Kaserne und kommen als unbewaffnete Soldaten heraus. Jeder tritt vom gemeinsamen Feld vor der Tür auf ein freies daneben und hält dort seinen Posten, sodass der Trupp verteilt um die Tür steht statt übereinander gestapelt.',
+    },
+    'barracks-rally': {
+      title: 'Sammelpunkt der Kaserne',
+      summary:
+        'Fünf von Hand ausgebildete Siedler und drei, die der Assistent mit Schwertern aus dem Hauptquartier bewaffnet, gehen zur Sammelflagge der Kaserne. Jeder nimmt seinen eigenen Platz in Reihen im Abstand eines Feldes um sie herum ein und hält dort seinen Posten, statt dass sich der ganze Trupp auf der Flagge drängt.',
+    },
+    'coin-drill': {
+      title: 'Exerzieren für Münzen',
+      summary:
+        'Ein Schwertkämpfer, ein Speerträger und ein Bogenschütze exerzieren in einer Kaserne mit sechs Münzen. Jede Münze kauft einen Durchgang Exerzieren drinnen und an dessen Ende Kampferfahrung. Schwertkämpfer und Bogenschütze exerzieren bis zur Grenze, der Speerträger, der schon nah daran ist, braucht eine Münze. Die sechste Münze bleibt liegen, weil niemand unter der Grenze mehr übrig ist.',
     },
     armor: {
       title: 'Rüstungsparade',

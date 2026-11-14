@@ -2,6 +2,7 @@ import { mapLobbySlots } from '@open-northland/data';
 import {
   DEFAULT_DAY_NIGHT_MODE,
   DEFAULT_WEATHER_MODE,
+  humanSeatsOf,
   isSpectator,
   localPlayerOf,
   type SessionDriver,
@@ -24,7 +25,7 @@ import { mapStartFocus } from '../../game/map/start.js';
 import { mapStringLookup } from '../../game/map/strings.js';
 import { sessionMapVariant } from '../../game/map/variant.js';
 import { observerSeats } from '../../game/match/observer-seats.js';
-import { hasEliminationGoal } from '../../game/match/participants.js';
+import { hasEliminationGoal, playersDecidedBeforeEnd } from '../../game/match/participants.js';
 import { sessionSearch } from '../../game/match/session-url.js';
 import { harvestablePlacementOrdinals } from '../../game/sandbox/index.js';
 import { displayViewOf, startWorldZoomFor } from '../../hud/ui-scale.js';
@@ -59,6 +60,10 @@ export interface MapRuntime {
   readonly networkSave?: GameViewDeps['networkSave'];
   readonly onReturnToMenu?: () => void;
   readonly onWatchAfterResult?: () => void;
+  /** Present for a relayed session: the nick of the person who played a seat. */
+  readonly playerNickOf?: GameViewDeps['playerNickOf'];
+  /** Present for a relayed session: whether a person still holds the seat, not left or turned to watching. */
+  readonly seatHeld?: (player: number) => boolean;
   readonly introAtStart: boolean;
   /** Present for a relayed session: the connection readouts the overlays show. */
   readonly netReadout?: () => NetReadout | null;
@@ -113,6 +118,7 @@ export async function presentMapWorld(
   const { mapId, stagedSave } = world.plan;
   const { host } = hosted;
   const localPlayer = localPlayerOf(session);
+  const people = humanSeatsOf(session);
   const playerColourOf = seatColourOf(session);
   const staticObjects = world.staticObjects;
 
@@ -247,6 +253,18 @@ export async function presentMapWorld(
     ...(runtime.networkSave === undefined ? {} : { networkSave: runtime.networkSave }),
     ...(runtime.sharedClock !== undefined ? { sharedClock: runtime.sharedClock } : {}),
     ...(runtime.onWatchAfterResult === undefined ? {} : { onWatchAfterResult: runtime.onWatchAfterResult }),
+    ...(runtime.playerNickOf === undefined ? {} : { playerNickOf: runtime.playerNickOf }),
+    ...(runtime.sharedClock === true
+      ? {
+          playersDecided: () =>
+            playersDecidedBeforeEnd(
+              people,
+              hosted.matchRules.participants,
+              (seat) => host.matchOutcome(seat),
+              runtime.seatHeld ?? (() => true),
+            ),
+        }
+      : {}),
     ...(runtime.onReturnToMenu !== undefined ? { onReturnToMenu: runtime.onReturnToMenu } : {}),
     ...(runtime.netReadout !== undefined ? { netReadout: runtime.netReadout } : {}),
     ...(runtime.netPanel !== undefined ? { netPanel: runtime.netPanel } : {}),

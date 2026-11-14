@@ -1,17 +1,9 @@
 import type { ContentSet } from '@open-northland/data';
-import {
-  Age,
-  addPerson,
-  Female,
-  Health,
-  Owner,
-  Position,
-  Residence,
-  Settler,
-} from '../../components/index.js';
+import { Age, addPerson, Female, Health, Owner, Position, Settler } from '../../components/index.js';
 import { fx } from '../../core/fixed.js';
 import type { PersonalNames } from '../../core/personal-names.js';
 import type { Entity, World } from '../../ecs/world.js';
+import { settleIn } from '../family/households.js';
 import { BABY_FEMALE, BABY_MALE } from '../lifecycle/ageclass.js';
 import { stampDefaultStance } from '../orders/index.js';
 import { HUMAN_HITPOINTS } from './settlers.js';
@@ -29,6 +21,7 @@ export function spawnNewborn(
   home: Entity,
   sex: 'female' | 'male',
   names: PersonalNames,
+  tick: number,
 ): Entity {
   const p = world.get(mother, Position); // she stands at the door she entered by, so the baby appears there
   const baby = world.create();
@@ -50,6 +43,6 @@ export function spawnNewborn(
     world.add(baby, Owner, { player: owner });
     stampDefaultStance(world, content, baby, world.get(baby, Settler).jobType);
   }
-  world.add(baby, Residence, { home });
+  settleIn(world, baby, home, tick);
   return baby;
 }

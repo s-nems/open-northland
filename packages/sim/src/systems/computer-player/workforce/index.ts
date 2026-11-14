@@ -44,6 +44,7 @@ import {
   reachableResourceTest,
   workableResourceTest,
 } from '../live-resources.js';
+import { coinDrillPorters } from '../military/coin-drill.js';
 import {
   nextLivestockCatch,
   nextScoutChest,
@@ -132,6 +133,7 @@ export {
   ROAD_CREW,
   roadCrewTarget,
 } from './road-crew.js';
+
 export { BUILDERS_PER_OPEN_SITE, CORE_BUILDERS, STALLED_BUILDER_CAP } from './staffing.js';
 export { LATE_GAME_CIVILIANS, SUPPLY_CARRIER_GOODS_BY_BUILDING_ID } from './staffing-plan.js';
 export { STAFFING_BY_BUILDING_ID } from './staffing-rows.js';
@@ -244,6 +246,7 @@ function runWorkforce(
     profile,
     apprentices,
     breadChainOpen: breadChainUnfinished(world, ctx, owned),
+    drillPorters: coinDrillPorters(world, ctx, player),
   };
   const ground = collectorGround(world, ctx, player, seat.owned, baseNode);
   const fishing = fishingPlan(

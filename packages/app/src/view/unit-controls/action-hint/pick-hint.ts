@@ -55,6 +55,7 @@ export function pickHint(snapshot: WorldSnapshot, aim: PickAim | null): PlanHint
       const words = BUILDING_PICK_WORDS[aim.pick];
       if (!aim.fits) return refusal(words.refusal);
       if (aim.school) return action('learn');
+      if (aim.coinDrill) return action('coinDrill');
       if (aim.pick !== 'building-site') return action(words.action);
       // The builders' pick mends a damaged standing building and builds every other site.
       const components = entityById(snapshot, aim.building)?.components;

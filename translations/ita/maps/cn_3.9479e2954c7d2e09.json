@@ -1,0 +1,29 @@
+{
+  "version": 1,
+  "map": "cn_3",
+  "basis": {
+    "lang": "eng",
+    "digest": "c92693ae38674b0a0d1bf32679e6cec8fe8c9a1d5838017759a9576a4ac0c16c"
+  },
+  "strings": {
+    "0": "CULTURESNATION: SOTTERRANEI",
+    "1": "Sotterranei",
+    "30": "Banna tutti i bot",
+    "50": "Proszak",
+    "51": "Draghi",
+    "52": "Bot",
+    "60": "CN",
+    "61": "CN",
+    "62": "CN",
+    "100": "Proszak",
+    "101": "Ingvar",
+    "102": "Maurycy",
+    "103": "Silverdragon"
+  },
+  "briefings": {
+    "500": "<font:$local$\\fonts\\fonthead16bld.fnt>\nSOTTERRANEI\n<font:$local$\\fonts\\font12.fnt>\n\nScendemmo per una lunga scalinata. I corridoi erano buiissimi, e nell'aria aleggiavano il freddo e il silenzio, come dopo una battaglia.\n\nProszak: Silver, posso chiederti una cosa? Ma perché i bot si sono nascosti proprio qui sotto?\n\nSilverdragon: Un tempo GaTo faceva le purghe fra la gente di culturesnation. Mandò un esercito di bot a sfoltire la popolazione di questa terra, ma poi arrivammo noi, i draghi. Decimammo le schiere dei bot, e ai pochi superstiti non restò che rintanarsi nella vecchia tomba. Qui hanno una specie di base per le incursioni, preparata apposta.\n\nMaurycy: Va bene, portatemi qua un bot da spaccare.\n\nSilverdragon: A dire il vero il grosso del lavoro è già fatto. Il problema è che non riusciamo a entrare nel cuore della tomba: lo protegge un possente muro di pietra con un massiccio portone di ferro. Quell'affare maledetto si apre solo dall'interno e non c'è modo di arrivarci.\n\nIngvar: Se si apre solo dall'interno, loro come ci sono entrati? Ci dev'essere qualche meccanismo nascosto...\n\n<usericon:1,98,129>\n\n<usericon:1,156,123>\n\n*Trova il modo di aprire i portoni e banna tutti i bot nella tomba*\n",
+    "501": "<font:$local$\\fonts\\fonthead16bld.fnt>\nDRAGHI\n<font:$local$\\fonts\\font12.fnt>\n\nSilverdragon: Tutti i draghi che incontrerai nei corridoi si metteranno ai tuoi ordini, Proszak...\n\n<usericon:1,244,133>\n",
+    "502": "<font:$local$\\fonts\\fonthead16bld.fnt>\nBOT BANNATI!\n<font:$local$\\fonts\\font12.fnt>\n\nAbbiamo sconfitto tutti i bot... ne ho abbastanza di questi sotterranei, andiamocene da qui!\n",
+    "503": "<font:$local$\\fonts\\fonthead16bld.fnt>\nPORTONE APERTO\n<font:$local$\\fonts\\font12.fnt>\n\nQuando prememmo i pulsanti giusti si udì un gran botto e i portoni verso l'interno dei sotterranei si spalancarono.\n"
+  }
+}

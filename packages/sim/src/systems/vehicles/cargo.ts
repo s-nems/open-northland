@@ -1,8 +1,8 @@
-import { CargoRun, Position, Rider, Vehicle, VehicleDrive, VehicleStock } from '../../components/index.js';
+import { CargoRun, Position, Rider, Vehicle, VehicleStock } from '../../components/index.js';
 import type { Command } from '../../core/commands/index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { System, SystemContext } from '../context.js';
-import { isShipAtSea, landingOf, landRider, pinnedTraderOf, refuseCrew } from './crew.js';
+import { landingOf, landRider, letsRidersOut, pinnedTraderOf, refuseCrew } from './crew.js';
 import { cargoHandHasWork, clearVehicleWanted, hasCargoHand, setVehicleWanted } from './stock.js';
 
 // The wanted-amount orders of docs/formats/VEHICLES.md "Cargo", the booking a cargo hand holds on a hold
@@ -79,9 +79,7 @@ export const cargoHandDisembarkSystem: System = (world, ctx) => {
     const e = riders[i] as Entity;
     if (world.has(e, Position)) continue;
     const vehicle = world.get(e, Rider).vehicle;
-    const state = world.tryGet(vehicle, Vehicle);
-    if (state === undefined || state.carrier !== null || state.heldGoal !== null) continue;
-    if (world.has(vehicle, VehicleDrive) || isShipAtSea(ctx, state)) continue;
+    if (!letsRidersOut(world, ctx, vehicle)) continue;
     if (!cargoHandHasWork(world, ctx.content, vehicle, e) && !leftAboard(world, vehicle, e)) continue;
     const landing = landingOf(world, ctx, vehicle);
     if (landing !== null) landRider(world, ctx, e, landing);

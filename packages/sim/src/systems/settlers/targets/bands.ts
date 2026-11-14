@@ -13,12 +13,10 @@ import {
 } from '../../../components/index.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import type { SpatialGate } from '../../../nav/node-circle.js';
-import { intersectReach } from '../../../nav/range-search.js';
 import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
 import type { SystemContext } from '../../context.js';
 import { isFinishedPrayerSite } from '../../readviews/index.js';
-import { goodsSearchLimitAt } from '../../signposts/reach.js';
-import { landReachAt } from '../../signposts/settlement-reach.js';
+import { goodsSearchGate } from '../../signposts/settlement-reach.js';
 import { InteractionCellIndex } from './cell-index.js';
 import { type HeldBands, heldBands, type SyncedBand } from './held-bands.js';
 
@@ -55,22 +53,9 @@ export class TargetBands {
     this.stamp = this.generationSum();
   }
 
-  /** Where a fetch from `here` may find its source: `gate` met with the goods search there, else the land
-   *  under `here`, so no source across water is ever picked. */
+  /** {@link goodsSearchGate} for a fetch from `here`. */
   goodsGate(here: NodeId, owner: number | undefined, gate?: SpatialGate): SpatialGate {
-    return (
-      intersectReach(
-        gate,
-        goodsSearchLimitAt(
-          this.world,
-          this.ctx.content,
-          this.terrain,
-          owner,
-          this.terrain.xOf(here),
-          this.terrain.yOf(here),
-        ),
-      ) ?? landReachAt(this.terrain, here)
-    );
+    return goodsSearchGate(this.world, this.ctx.content, this.terrain, owner, here, gate);
   }
 
   /** Stores {@link storeYieldsGood} would strip of `goodType`, drawn from the cross-tick holder ledger so

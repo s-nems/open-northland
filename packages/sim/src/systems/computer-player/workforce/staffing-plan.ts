@@ -8,6 +8,7 @@ import {
 } from '../../ai-shared/content-lookup.js';
 import type { SystemContext } from '../../context.js';
 import { farmWorkGood } from '../../economy/fields.js';
+import { isBarracksType } from '../../readviews/index.js';
 import { isCarrierJob } from '../../stores/index.js';
 import { seatArchetype, seatHasSide, TUNIC_SIDES } from '../build-order/order/seat-order.js';
 import { breadChainSupplier } from '../build-order/steps/food-first.js';
@@ -19,7 +20,7 @@ import {
 } from '../game-phase.js';
 import { seatHerdKept } from '../herd.js';
 import { COLLECTED_GOOD_IDS, COLLECTOR_WORKSHOP_BY_GOOD_ID } from './collectors/index.js';
-import { type CraftPlan, craftGlutPending, openingRunPending, productsOf, seatCraftPlans } from './craft.js';
+import { type CraftPlan, openingRunPending, productsOf, seatCraftPlans } from './craft.js';
 import {
   type BuildingStaffing,
   discoveryPending,
@@ -61,9 +62,16 @@ function storageStaffing(tick: number): BuildingStaffing {
   return tick >= STORE_CARRIERS_FROM_TICKS ? LATE_STORAGE_STAFFING : EARLY_STORAGE_STAFFING;
 }
 
-/** The training building plan at `tick`. */
-function trainingStaffing(tick: number): BuildingStaffing {
-  return tick >= TRAINING_CARRIERS_FROM_TICKS ? LATE_TRAINING_STAFFING : EARLY_STORAGE_STAFFING;
+/** The training building plan at `tick`; a barracks runs at least the seat's `drillPorters` at the target
+ *  tier, the porters fetching its drill coins (`../military/coin-drill.ts`). */
+function trainingStaffing(tick: number, type: BuildingType, drillPorters: number): BuildingStaffing {
+  const plan = tick >= TRAINING_CARRIERS_FROM_TICKS ? LATE_TRAINING_STAFFING : EARLY_STORAGE_STAFFING;
+  if (!isBarracksType(type) || drillPorters <= plan.carrierTarget) return plan;
+  return {
+    ...plan,
+    carrierTarget: drillPorters,
+    carrierSurplus: Math.max(plan.carrierSurplus ?? 0, drillPorters),
+  };
 }
 
 /** The goods whose shortage puts a carrier into the workshop at the minimum tier (authored), by stable
@@ -71,6 +79,7 @@ function trainingStaffing(tick: number): BuildingStaffing {
  *  line and kept until every one reaches its comfort line ({@link SeatSupply}). */
 export const SUPPLY_CARRIER_GOODS_BY_BUILDING_ID: Readonly<Record<string, readonly string[]>> = {
   work_pottery_01: ['brick', 'tile'],
+  work_pottery_02: ['brick', 'tile'],
   work_mason_hut_01: ['pillar', 'ornament'],
 };
 
@@ -90,6 +99,8 @@ export interface SeatStaffing {
   readonly apprentices?: ReadonlySet<Entity>;
   /** Whether the seat's bread chain is open and unfinished (`../build-order/steps/food-first.ts`). */
   readonly breadChainOpen?: boolean;
+  /** The porters its barracks runs for the drill coins (`../military/coin-drill.ts`); none when absent. */
+  readonly drillPorters?: number;
 }
 
 /**
@@ -112,7 +123,7 @@ export function buildingStaffing(
   held: HeldStaff,
 ): BuildingStaffing | null {
   if (type.kind === 'storage') return storageStaffing(ctx.tick);
-  if (type.kind === 'training') return trainingStaffing(ctx.tick);
+  if (type.kind === 'training') return trainingStaffing(ctx.tick, type, seat.drillPorters ?? 0);
   if (type.kind !== 'workplace') return null;
   const { plan: row, gateFloor } = rowPlan(ctx, type);
   const authored = STAFFING_BY_BUILDING_ID[type.id];
@@ -130,16 +141,7 @@ export function buildingStaffing(
   const islandMaster = island && discoveryPending(world, ctx, seat.player, authored?.islandMasterUntil);
   if (opening || islandMaster || discoveryPending(world, ctx, seat.player, authored?.aloneUntil))
     plan = capOperators(plan, 1);
-  else if (gate !== null) {
-    const crafting = craftGlutPending(
-      ctx,
-      seat.supply,
-      staffingCraftPlans(world, ctx, seat),
-      type,
-      held.operators > gate,
-    );
-    plan = capOperators(plan, gate, crafting ? Number.POSITIVE_INFINITY : gate);
-  }
+  else if (gate !== null) plan = capOperators(plan, gate);
   const holdsCarrier = held.carriers > 0;
   if (
     suppliesShort(ctx, seat, type, holdsCarrier) ||

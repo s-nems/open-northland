@@ -1,9 +1,10 @@
+import { systems } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import { GFX_DIR_TO_FACING } from '../../../src/data/sprites/settler.js';
 import type { FrameListAnim } from '../../../src/data/sprites/settler-bindings.js';
 import {
-  resolveShipYardSiteDraw,
   resolveVehicleDraw,
+  resolveVehicleYardSiteDraw,
   VEHICLE_ATTACK_TICKS,
 } from '../../../src/data/sprites/vehicle.js';
 import type { VehicleBinding, VehicleLook } from '../../../src/data/sprites/vehicle-bindings.js';
@@ -63,6 +64,8 @@ const catapult: VehicleLook = {
   attack: strip(9000, 40, VEHICLE_ATTACK_TICKS),
 };
 const CATAPULT = 5;
+/** An attack clip longer than the original's 48 ticks. */
+const LONG_SHOT_TICKS = 78;
 
 const binding: VehicleBinding = {
   byTribe: {
@@ -142,9 +145,15 @@ describe('resolveVehicleDraw', () => {
 
   it('stretches the catapult shot over the attack cadence while the vehicle attacks, whatever its motion state', () => {
     const attacking = { typeId: CATAPULT, facing: 1, task: 'attacks' as const };
+    // The first frame holds while the vehicle settles before its shot.
     expect(resolveVehicleDraw(binding, item(attacking), 0)?.bob).toBe(9100);
-    // Entry `12 * 40 / 48` of the 40-frame shot.
-    expect(resolveVehicleDraw(binding, item(attacking), 12)?.bob).toBe(9100 + 10);
+    expect(resolveVehicleDraw(binding, item(attacking), systems.VEHICLE_SHOT_SETTLE_TICKS - 1)?.bob).toBe(
+      9100,
+    );
+    // Then the clip plays over the rest: 12 ticks on is clip tick `12 * 47 / 35`, entry `16 * 40 / 48`.
+    expect(resolveVehicleDraw(binding, item(attacking), systems.VEHICLE_SHOT_SETTLE_TICKS + 12)?.bob).toBe(
+      9100 + 13,
+    );
     expect(
       resolveVehicleDraw(binding, item({ ...attacking, state: 'moving' }), VEHICLE_ATTACK_TICKS - 1)?.bob,
     ).toBe(9100 + 39);
@@ -153,6 +162,17 @@ describe('resolveVehicleDraw', () => {
     expect(resolveVehicleDraw(binding, item({ typeId: HANDCART, facing: 1, task: 'attacks' }), 12)?.bob).toBe(
       1001,
     );
+  });
+
+  it('plays the shot once per clip of the look’s own length, with no second throw inside a longer clip', () => {
+    const longShot: VehicleBinding = {
+      byTribe: { [VIKING]: { [CATAPULT]: { ...catapult, attack: strip(9000, 40, LONG_SHOT_TICKS) } } },
+      fallbackTribe: VIKING,
+    };
+    const attacking = item({ typeId: CATAPULT, facing: 1, task: 'attacks' });
+    expect(resolveVehicleDraw(longShot, attacking, VEHICLE_ATTACK_TICKS)?.bob).not.toBe(9100);
+    expect(resolveVehicleDraw(longShot, attacking, LONG_SHOT_TICKS - 1)?.bob).toBe(9100 + 39);
+    expect(resolveVehicleDraw(longShot, attacking, LONG_SHOT_TICKS)?.bob).toBe(9100);
   });
 
   it('draws an unbound tribe’s vehicles from the fallback tribe, and nothing for a type nobody binds', () => {
@@ -178,28 +198,28 @@ describe('resolveVehicleDraw', () => {
   });
 });
 
-describe('resolveShipYardSiteDraw', () => {
+describe('resolveVehicleYardSiteDraw', () => {
   const SHIP_YARD = 44;
   const OTHER_HOUSE = 6;
   const LAUNCH_FACING = 4;
   const yards: VehicleBinding = {
     ...binding,
-    shipYards: { vehicleByHouse: { [SHIP_YARD]: SHIP }, facing: LAUNCH_FACING },
+    vehicleYards: { vehicleByHouse: { [SHIP_YARD]: SHIP }, facing: LAUNCH_FACING },
   };
   const site = (fields: Parameters<typeof drawItem>[1]) =>
     drawItem('building', { tribe: VIKING, typeId: SHIP_YARD, builtPct: 40, ...fields });
 
   it('raises a yard site as its tribe’s moored ship at the launch facing, the fallback tribe’s when unbound', () => {
     const own = { bob: 7000 + LAUNCH_FACING, layer: ship.layer, sway: 'none', indexed: false };
-    expect(resolveShipYardSiteDraw(yards, site({}))).toEqual(own);
-    expect(resolveShipYardSiteDraw(yards, site({ tribe: EGYPT }))).toEqual(own);
+    expect(resolveVehicleYardSiteDraw(yards, site({}))).toEqual(own);
+    expect(resolveVehicleYardSiteDraw(yards, site({ tribe: EGYPT }))).toEqual(own);
   });
 
   it('leaves a finished yard, another house and a binding without yards to the building draw', () => {
     expect(
-      resolveShipYardSiteDraw(yards, drawItem('building', { tribe: VIKING, typeId: SHIP_YARD })),
+      resolveVehicleYardSiteDraw(yards, drawItem('building', { tribe: VIKING, typeId: SHIP_YARD })),
     ).toBeNull();
-    expect(resolveShipYardSiteDraw(yards, site({ typeId: OTHER_HOUSE }))).toBeNull();
-    expect(resolveShipYardSiteDraw(binding, site({}))).toBeNull();
+    expect(resolveVehicleYardSiteDraw(yards, site({ typeId: OTHER_HOUSE }))).toBeNull();
+    expect(resolveVehicleYardSiteDraw(binding, site({}))).toBeNull();
   });
 });

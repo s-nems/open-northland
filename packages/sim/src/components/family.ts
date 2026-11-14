@@ -28,9 +28,17 @@ export const Marriage = defineComponent<{ spouse: Entity; child: Entity | null }
  */
 export const Wedding = defineComponent<{ partner: Entity; kissing: boolean }>('Wedding', 'settlers');
 
-/** Where a settler lives: the built `home` building it is assigned to. The `assignHouse` command assigns a
- *  whole family at once; a home houses up to `homeSize` families rather than settlers (see `familiesOf`). */
-export const Residence = defineComponent<{ home: Entity }>('Residence', 'settlers');
+/** Where a settler lives: the built `home` building it is assigned to, since tick `since` it moved in. The
+ *  `assignHouse` command assigns a whole family at once; a home houses up to `homeSize` families rather than
+ *  settlers (see `familiesOf`), more while furnished. */
+export const Residence = defineComponent<{ home: Entity; since: number }>('Residence', 'settlers', {
+  simOnlyFields: ['since'],
+});
+
+/** A settler whose household had to move out of a home when its furniture ran out or was forbidden, and
+ *  has not lived anywhere since. The assistant re-houses such a household whoever it holds. The claim ends
+ *  where the household does: a child growing up, a widowed man, a settler handed to another player. */
+export const Evicted = defineComponent<{ readonly evicted: true }>('Evicted', 'settlers', { simOnly: true });
 
 /**
  * Why a standing child order waits undriven: the wife has no home, it is still a building site, the
@@ -65,26 +73,34 @@ export const FamilyDuty = defineComponent<{ readonly duty: true }>('FamilyDuty',
  */
 export const HomeQuality = defineComponent<{
   cooking: number;
-  rest: number;
+  lodging: number;
   piety: number;
 }>('HomeQuality', 'settlers');
+
+/**
+ * The furniture a home's extra families live on: `pieces[i]` is what is left, in the furniture's quality
+ * points, of the piece the i-th family above the home's base `homeSize` wears. {@link HomeQuality}'s
+ * `lodging` pool is the spare that replaces a worn-out piece.
+ */
+export const Lodgings = defineComponent<{ pieces: number[] }>('Lodgings', 'settlers');
 
 /** Settlement-wide permission to supply and consume each household good. Absent means
  *  {@link DEFAULT_HOUSEHOLD_GOOD_POLICY}. */
 export const HouseholdGoodPolicy = defineComponent<{
   player: number;
   cooking: boolean;
-  rest: boolean;
+  lodging: boolean;
   piety: boolean;
 }>('HouseholdGoodPolicy', 'players');
 
 /** A player's household-good policy until it changes one: holy oil starts off, so its homes burn none
  *  unless the player allows it (owner rule). */
-export const DEFAULT_HOUSEHOLD_GOOD_POLICY: Readonly<{ cooking: boolean; rest: boolean; piety: boolean }> = {
-  cooking: true,
-  rest: true,
-  piety: false,
-};
+export const DEFAULT_HOUSEHOLD_GOOD_POLICY: Readonly<{ cooking: boolean; lodging: boolean; piety: boolean }> =
+  {
+    cooking: true,
+    lodging: true,
+    piety: false,
+  };
 
 /**
  * A home where a resident couple is currently making love - both parents inside, hearts over the house (the

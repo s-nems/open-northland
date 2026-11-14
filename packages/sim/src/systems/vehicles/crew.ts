@@ -7,6 +7,7 @@ import {
   HuntFocus,
   hasFreeOrdinarySeat,
   hasFreeSeat,
+  MealBreak,
   ownerOf,
   PlayerOrder,
   Position,
@@ -16,6 +17,7 @@ import {
   setSeatInside,
   TradeShip,
   Vehicle,
+  VehicleDrive,
   vehicleCommander,
   vehiclePassengers,
 } from '../../components/index.js';
@@ -299,6 +301,17 @@ export function landingOf(world: World, ctx: MapContext, vehicle: Entity): HalfC
   return node === null ? null : { hx: terrain.xOf(node), hy: terrain.yOf(node) };
 }
 
+/**
+ * Whether a rider inside `vehicle` may step out of its own accord, for the hold's work or a meal: the
+ * vehicle stands still under no order, a cart with no drive or held goal or a moored ship, and rides no
+ * carrier.
+ */
+export function letsRidersOut(world: World, ctx: ContentContext, vehicle: Entity): boolean {
+  const state = world.tryGet(vehicle, Vehicle);
+  if (state === undefined || state.carrier !== null || state.heldGoal !== null) return false;
+  return !world.has(vehicle, VehicleDrive) && !isShipAtSea(ctx, state);
+}
+
 /** Stand `e` on `point`, restoring the Position that boarding gave up. */
 export function placeOnNode(world: World, e: Entity, point: HalfCellNode): void {
   const at = positionOfNode(point.hx, point.hy);
@@ -368,6 +381,8 @@ export function boardRider(world: World, rider: Entity, vehicle: Entity): void {
   world.remove(rider, Engagement);
   world.remove(rider, AttackOrder);
   world.remove(rider, HuntFocus);
+  // A meal ashore the vehicle called its rider back from ends here: nothing plans a rider aboard.
+  world.remove(rider, MealBreak);
   world.remove(rider, Position);
   const seat = world.tryMut(rider, Rider);
   if (seat === undefined) world.add(rider, Rider, { vehicle, boarding: false, leaving: null });
@@ -428,8 +443,8 @@ export function unloadPeople(
 
 /**
  * Detach `e` ahead of an ordinary order that takes it elsewhere - the original's forced detach before a
- * work, walk, attack or home command. False when the rider may not leave, in which case the order is
- * dropped (`riderRefused` already told the player).
+ * work, walk or attack command. False when the rider may not leave, in which case the order is dropped
+ * (`riderRefused` already told the player).
  */
 export function detachBeforeOrder(world: World, ctx: SystemContext, e: Entity): boolean {
   if (!world.has(e, Rider)) return true;
@@ -437,8 +452,9 @@ export function detachBeforeOrder(world: World, ctx: SystemContext, e: Entity): 
 }
 
 /** The player commands that take a settler away from its vehicle first. Approximation: the original's
- *  list is not confirmed exhaustively. The walk orders reach here only for a rider that is not the commander: the commander's
- *  go to its vehicle (`commander.ts`). */
+ *  list is not confirmed exhaustively, and its home order leaves a rider aboard where `assignHouse` takes
+ *  it off. The walk orders reach here only for a rider that is not the commander: the commander's go to its
+ *  vehicle (`commander.ts`). */
 export function forcesDetach(command: Command): command is Command & { entity: Entity } {
   switch (command.kind) {
     case 'moveUnit':
@@ -449,6 +465,7 @@ export function forcesDetach(command: Command): command is Command & { entity: E
     case 'assignBuilder':
     case 'assignHouse':
     case 'trainSoldier':
+    case 'orderCoinDrill':
     case 'learn':
     case 'explore':
     case 'placeSignpost':

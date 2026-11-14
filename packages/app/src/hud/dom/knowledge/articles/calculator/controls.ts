@@ -6,7 +6,12 @@ import {
   weaponGroups,
   weaponLabel,
 } from '../../../../knowledge/calculator.js';
-import { CAP_HITS, combatTargets, experienceBonusPct } from '../../../../knowledge/combat.js';
+import {
+  CAP_POINTS,
+  combatTargets,
+  experienceBonusPct,
+  experienceCutPct,
+} from '../../../../knowledge/combat.js';
 import { durationText, formatFactNumber } from '../../../../knowledge/facts/reader.js';
 import type { KnowledgeWeapon } from '../../../../knowledge/model.js';
 import { element, setStyleVar, write } from '../../../parts/dom.js';
@@ -46,22 +51,46 @@ export function checkbox(
   return { host, box };
 }
 
-/** The fight-experience slider; its readout says what the hits are worth. */
+/** What a fight-experience slider's readout names: the striker's raise, the target's cut, or both for a
+ *  duel's fighter. */
+export type ExperienceReadout = 'dealt' | 'taken' | 'both';
+
+function experienceReadout(readout: ExperienceReadout, points: number): string {
+  const copy = messages().knowledge.mechanics;
+  const dealt = experienceBonusPct(points);
+  const taken = experienceCutPct(points);
+  switch (readout) {
+    case 'dealt':
+      return formatMessage(copy.experienceValue, { points, percent: dealt });
+    case 'taken':
+      return formatMessage(copy.targetExperienceValue, { points, percent: taken });
+    case 'both':
+      return formatMessage(copy.fighterExperienceValue, { points, dealt, taken });
+  }
+}
+
+/** The fight-experience slider; its readout says what the points are worth. */
 export function experienceSlider(
   value: number,
   change: (next: number) => void,
-): { readonly host: HTMLElement; readonly input: HTMLInputElement } {
-  const copy = messages().knowledge.mechanics;
+  readout: ExperienceReadout = 'dealt',
+  label: string = messages().knowledge.mechanics.pointsLabel,
+): {
+  readonly host: HTMLElement;
+  readonly input: HTMLInputElement;
+  setReadout(next: ExperienceReadout): void;
+} {
   const host = element('div', 'kn-calc__slider');
   const input = element('input', '');
   input.type = 'range';
   input.min = '0';
-  input.max = String(CAP_HITS);
+  input.max = String(CAP_POINTS);
   input.value = String(value);
-  input.setAttribute('aria-label', copy.hitsLabel);
+  input.setAttribute('aria-label', label);
   const shown = element('output', 'kn-calc__value');
-  const show = (hits: number): void => {
-    write(shown, formatMessage(copy.experienceValue, { hits, percent: experienceBonusPct(hits) }));
+  let named = readout;
+  const show = (points: number): void => {
+    write(shown, experienceReadout(named, points));
   };
   show(value);
   input.addEventListener('input', () => {
@@ -69,7 +98,14 @@ export function experienceSlider(
     change(input.valueAsNumber);
   });
   host.append(input, shown);
-  return { host, input };
+  return {
+    host,
+    input,
+    setReadout: (next) => {
+      named = next;
+      show(input.valueAsNumber);
+    },
+  };
 }
 
 export function tribeDropdown(

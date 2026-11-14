@@ -17,18 +17,15 @@ import {
   UnderConstruction,
 } from '../../../components/index.js';
 import { contentIndex } from '../../../core/content-index.js';
-import { TICKS_PER_SECOND } from '../../../core/loop.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
 import { postGraduate } from '../../assistant/graduates.js';
-import { guardPost } from '../../conflict/chase.js';
 import type { SystemContext } from '../../context.js';
 import { heldGatherGood, holdToGatherGood, jobGathersGood } from '../../economy/gather-goods.js';
-import { moveAnchor } from '../../orders/combat.js';
 import { isSchoolOrFoundation, schoolMethodJob } from '../../orders/education.js';
 import { keepingOrderQueue } from '../../orders/guards.js';
-import { rallyNodeOf } from '../../orders/rally-point.js';
-import { takeTrainingSeat } from '../../orders/training-seats.js';
+import { takeRallyPost } from '../../orders/rally-point.js';
+import { takeSeat } from '../../orders/training-seats.js';
 import { reidleAsJob } from '../../orders/work/index.js';
 import { typeAllowed } from '../../progression/unlocks.js';
 import { atomicDuration } from '../../readviews/animations.js';
@@ -48,6 +45,7 @@ import { armRecruitInPlace } from '../planner/recruit-arming.js';
 import type { PlannerSpacing } from '../planner/spacing.js';
 import { interactionCell } from '../targets/index.js';
 import { isUnreachableGoal, unreachableGoals } from '../unreachable-goals.js';
+import { BARRACKS_TERM_TICKS } from './barracks-term.js';
 import { planDelivery } from './economy/delivery.js';
 import { deliveryTargetFor } from './economy/delivery-targets.js';
 import { fetchNeededMaterial } from './economy/site-supply.js';
@@ -66,12 +64,12 @@ function lessonGoods(content: ContentSet, good: number): number[] {
 }
 
 /**
- * How long a recruit stays inside the barracks before it comes back out a soldier: 15 s of game time,
+ * How long a recruit stays inside the barracks before it comes back out a soldier: one barracks term,
  * drawn down per completed repetition, so the last one always overruns. Every recruit serves this one
  * standard drill; a weapon-class recruit takes what gear it can from the barracks' stock on the way out,
- * the rest in a later arming errand. Source basis: authored.
+ * the rest in a later arming errand.
  */
-export const BARRACKS_DRILL_TICKS = 15 * TICKS_PER_SECOND;
+export const BARRACKS_DRILL_TICKS = BARRACKS_TERM_TICKS;
 
 /**
  * The barracks-drill rung: drive a settler's live `TrainingOrder` one step forward. It walks to the
@@ -179,8 +177,8 @@ export function planTraining(
   if (!drillDoorOpen(world, ctx, e, door, limit)) return abandonDrill(world, e);
   const foundation = world.has(order.house, UnderConstruction);
   if (foundation && supplyFoundation(plan, spacing, order.house, load)) return true;
-  if (!takeTrainingSeat(world, ctx, e) || foundation)
-    return waitInYard(world, ctx, terrain, e, here, door, spacing, idle);
+  if (!takeSeat(world, ctx, e) || foundation)
+    return waitInYard(world, ctx, terrain, e, here, door, spacing, idle) || abandonDrill(world, e);
   enterBuilding(world, e, order.house, here, door, () =>
     startAtomic(
       world,
@@ -212,11 +210,12 @@ function supplyFoundation(
 }
 
 /**
- * Wait beside the house's door for it to stand or for a free seat, re-checked on the idle beat. The walk
- * goes to a yard cell, not the door, so a failed walk to any yard cell is what tells an unreachable house:
- * the errand is then dropped as it would be at a standing house's door.
+ * Wait beside the house's door for it to stand or for a free seat, re-checked on the idle beat; false, with
+ * nothing started, when the house is unreachable. The walk goes to a yard cell, not the door, so a failed
+ * walk to any yard cell is what tells an unreachable house: the caller then drops the errand as it would
+ * at a standing house's door.
  */
-function waitInYard(
+export function waitInYard(
   world: World,
   ctx: SystemContext,
   terrain: TerrainGraph,
@@ -229,7 +228,7 @@ function waitInYard(
   const failed = unreachableGoals(world, ctx, e);
   if (failed !== null) {
     const yard = spacing.yard(door);
-    if (failed.some((goal) => yard.has(goal.cell))) return abandonDrill(world, e);
+    if (failed.some((goal) => yard.has(goal.cell))) return false;
   }
   idle.stand(e, false);
   atOrWalk(world, e, here, loiterCell(world, terrain, e, here, door, spacing), () => {});
@@ -271,20 +270,16 @@ function abandonDrill(world: World, e: Entity): boolean {
 }
 
 /**
- * Post a fresh soldier at its barracks' rally point: the point becomes its guard anchor and it walks there
- * from the door, armed or not (owner's ruling). A barracks with no rally point leaves it anchored at its
- * feet. So does a booking: an assistant recruit keeps the door until the arming pass posts him, with the
- * weapon in hand or on the outing that fetches it (`recruit-arming.ts`).
+ * Post a fresh soldier at its barracks' rally point: his own place there becomes his guard anchor and he
+ * walks to it from the door, armed or not (owner's ruling). A barracks with no rally point leaves him
+ * anchored at his feet. So does a booking: an assistant recruit keeps the door until the arming pass posts
+ * him, with the weapon in hand or on the outing that fetches it (`recruit-arming.ts`).
  */
 function sendToRallyPoint(world: World, ctx: SystemContext, e: Entity, barracks: Entity): void {
   if (ctx.terrain === undefined || world.has(e, AssistantRecruit)) return;
-  const rally = rallyNodeOf(world, ctx.terrain, barracks);
-  if (rally === undefined) return;
-  moveAnchor(world, ctx.content, e, rally);
-  // The post is the anchor, or the open node beside it when something stands on the anchor.
-  const here = entityNode(world, ctx.terrain, e);
-  const post = guardPost(world, ctx, ctx.terrain, rally, here);
-  if (post !== here) world.add(e, MoveGoal, { cell: post });
+  const post = takeRallyPost(world, ctx, ctx.terrain, barracks, e);
+  if (post !== undefined && post !== entityNode(world, ctx.terrain, e))
+    world.add(e, MoveGoal, { cell: post });
 }
 
 /**

@@ -27,24 +27,29 @@ import {
   shotLandDelay,
 } from '../../../../../conflict/shot-aim.js';
 import { buildingBodyNodes } from '../../../../../conflict/target-node.js';
+import { attackClipTiming, type MissileShot } from '../../../../../conflict/weapons.js';
 import type { SystemContext } from '../../../../../context.js';
-import { weaponClassHits } from '../../../../../progression/index.js';
-import { isHeroJob, WEAPON_MAIN_TYPE } from '../../../../../readviews/index.js';
+import { type BlowShare, personalFightPoints } from '../../../../../progression/index.js';
+import { isHeroJob } from '../../../../../readviews/index.js';
 import { entityNode } from '../../../../../spatial/nodes.js';
 import { exploreAround, SHOT_SIGHT_NODES } from '../../../../../vision/index.js';
-
-type RangedSwing = NonNullable<Extract<AtomicEffect, { kind: 'attack' }>['projectile']>;
 
 /** One shot as its shooter looses it: who fires, the weapon it carries, and where it comes down. */
 export interface LooseShot {
   readonly source: Entity;
   readonly target: Entity;
   readonly player: number | null;
-  readonly weapon: RangedSwing;
+  readonly weapon: MissileShot;
   readonly weaponMainType: number | null;
+  /** The attack cadence in ticks the shot stands for (`Projectile.blowTicks`). */
+  readonly blowTicks: number;
+  /** The shot's share of that cadence (`Projectile.blowShare`); absent, the whole of it. */
+  readonly blowShare?: BlowShare;
   /** The defence-mode building that fires the shot itself, read only by the render. */
   readonly cover: Entity | null;
   readonly aim: { readonly x: Fixed; readonly y: Fixed };
+  /** Where the shot leaves from when its source stands nowhere on the map: the ship a deck bowman rides. */
+  readonly from?: { readonly x: Fixed; readonly y: Fixed };
 }
 
 /**
@@ -57,23 +62,48 @@ export function launchProjectile(
   ctx: SystemContext,
   attacker: Entity,
   effect: Extract<AtomicEffect, { kind: 'attack' }>,
+  share: BlowShare,
 ): void {
   const weapon = effect.projectile;
   if (weapon === undefined) return; // not a ranged swing; the caller already gates this
-  const from = world.tryGet(attacker, Position);
-  if (from === undefined || world.tryGet(effect.target, Position) === undefined) return;
+  if (!world.has(attacker, Position) || !world.has(effect.target, Position)) return;
   // A target drained to 0 earlier this tick is dead but not yet reaped: no shot, and no launch cue, at a
   // corpse. Checked before the aim draws, so a withheld shot takes nothing from the stream.
   if ((world.tryGet(effect.target, Health)?.hitpoints ?? 0) <= 0) return;
-  const experience = world.tryGet(attacker, SettlerProgress)?.experience ?? new Map<number, number>();
+  const mainType = effect.weaponMainType ?? null;
+  looseSettlerShot(world, ctx, attacker, attacker, effect.target, weapon, mainType, 0, share);
+}
+
+/**
+ * Loose settler `shooter`'s shot at `target` from `body`: the shooter himself, or the ship a deck bowman
+ * rides. `extraSpread` nodes widen its scatter; `share` is the shot's share of the shooter's attack clip.
+ */
+export function looseSettlerShot(
+  world: World,
+  ctx: SystemContext,
+  shooter: Entity,
+  body: Entity,
+  target: Entity,
+  weapon: MissileShot,
+  weaponMainType: number | null,
+  extraSpread: number,
+  share?: BlowShare,
+): void {
+  const release = world.tryGet(body, Position);
+  if (release === undefined) return;
+  const experience = world.tryGet(shooter, SettlerProgress)?.experience ?? new Map<number, number>();
+  const settler = world.tryGet(shooter, Settler);
   looseProjectile(world, ctx, {
-    source: attacker,
-    target: effect.target,
-    player: world.tryGet(attacker, Owner)?.player ?? null,
+    source: shooter,
+    target,
+    player: world.tryGet(shooter, Owner)?.player ?? null,
     weapon,
-    weaponMainType: effect.weaponMainType ?? null,
+    weaponMainType,
+    blowTicks: settler === undefined ? 0 : attackClipTiming(ctx.content, settler).length,
+    ...(share !== undefined && share.events > 1 ? { blowShare: share } : {}),
     cover: null,
-    aim: settlerAim(world, ctx, attacker, from, effect.target, weapon.speed, experience),
+    aim: settlerAim(world, ctx, shooter, body, target, weapon.speed, experience, extraSpread),
+    ...(body !== shooter ? { from: release } : {}),
   });
 }
 
@@ -85,32 +115,33 @@ function settlerAim(
   world: World,
   ctx: SystemContext,
   shooter: Entity,
-  release: { x: Fixed; y: Fixed },
+  body: Entity,
   target: Entity,
   speed: number,
   experience: ReadonlyMap<number, number>,
+  extraSpread: number,
 ): { x: Fixed; y: Fixed } {
   const terrain = ctx.terrain;
   if (terrain === undefined) return world.get(target, Position);
   let aim: { x: Fixed; y: Fixed };
   let mark = entityNode(world, terrain, target);
   if (world.has(target, Building) || world.has(target, Palisade)) {
-    const body = buildingBodyNodes(world, ctx, terrain, target);
-    mark = body[ctx.rng.int(body.length)] ?? mark;
+    const walls = buildingBodyNodes(world, ctx, terrain, target);
+    mark = walls[ctx.rng.int(walls.length)] ?? mark;
     aim = positionOfNode(terrain.xOf(mark), terrain.yOf(mark));
   } else {
-    aim = leadPoint(world, ctx, release, target, speed);
+    aim = leadPoint(world, ctx, world.get(body, Position), target, speed);
     mark = terrain.nodeAtClamped(nodeHxOfPosition(aim.x, aim.y), nodeHyOfPosition(aim.x, aim.y));
   }
   if (isHeroJob(ctx.content, world.tryGet(shooter, Settler)?.jobType ?? null)) return aim;
-  const from = entityNode(world, terrain, shooter);
+  const from = entityNode(world, terrain, body);
   const distance = hexDistanceBetween(
     terrain.xOf(from),
     terrain.yOf(from),
     terrain.xOf(mark),
     terrain.yOf(mark),
   );
-  const spread = marksmanSpread(ctx, distance, weaponClassHits(experience, WEAPON_MAIN_TYPE.BOW));
+  const spread = marksmanSpread(ctx, distance, personalFightPoints(experience)) + extraSpread;
   if (spread === 0) return aim;
   const landing = scatteredNode(ctx, terrain, mark, spread);
   return positionOfNode(terrain.xOf(landing), terrain.yOf(landing));
@@ -118,7 +149,7 @@ function settlerAim(
 
 /** Put `shot` in flight from its source's position toward its aim. */
 export function looseProjectile(world: World, ctx: SystemContext, shot: LooseShot): void {
-  const from = world.tryGet(shot.source, Position);
+  const from = shot.from ?? world.tryGet(shot.source, Position);
   if (from === undefined) return;
   const p = world.create();
   world.add(p, Position, { x: from.x, y: from.y });
@@ -132,6 +163,8 @@ export function looseProjectile(world: World, ctx: SystemContext, shot: LooseSho
     damage: { ...shot.weapon.damage },
     hitSounds: { ...shot.weapon.hitSounds },
     weaponMainType: shot.weaponMainType,
+    blowTicks: shot.blowTicks,
+    ...(shot.blowShare !== undefined ? { blowShare: shot.blowShare } : {}),
     missSounds: { ...shot.weapon.missSounds },
     munitionType: shot.weapon.munitionType,
     // Frozen at release: the render's ballistic-arc origin and the landing blow's direction.

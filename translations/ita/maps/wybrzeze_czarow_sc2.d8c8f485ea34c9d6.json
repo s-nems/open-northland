@@ -1,0 +1,36 @@
+{
+  "version": 1,
+  "map": "wybrzeze_czarow_sc2",
+  "basis": {
+    "lang": "eng",
+    "digest": "05deaba5c7813f4a263a00f3867834d3f94bf79d3af22c90442c6c8bfeb152f1"
+  },
+  "strings": {
+    "0": "COSTA DEGLI INCANTESIMI - SCUOLA 2",
+    "1": "zorian",
+    "30": "Björn",
+    "31": "Hring",
+    "32": "Ivar",
+    "33": "Karl",
+    "34": "Zorian",
+    "35": "Al-Epaqa",
+    "36": "Barbaforcuta",
+    "37": "Lejba",
+    "38": "Albert",
+    "39": "Harald",
+    "40": "Lucius",
+    "41": "Bruno",
+    "42": "Żyrosław",
+    "43": "Pierres",
+    "44": "Maestro",
+    "50": "Tu",
+    "51": "Koslowford",
+    "52": "Zorian",
+    "100": "Fai in modo che Al-Epaqa ceda il potere alla scuola di Koslowford."
+  },
+  "briefings": {
+    "500": "<font:$local$\\fonts\\fonthead16bld.fnt>\nSCUOLA DI KOSLOWFORD\n<font:$local$\\fonts\\font12.fnt>\n\nScendemmo di nuovo nei sotterranei della scuola. Stavolta senza Karl, ma con Zorian, che sembrava stranamente inquieto... la cosa più importante era che avevamo con noi Al-Epaqa.\n\n<usericon:1,54,32>\n\n\"Tu stai calmo e non farti notare\", ordinò Ivar a Zorian con fermezza.\n\nAndiamo nella sala principale. Il nostro obiettivo è a un passo!",
+    "501": "\"Bentornati.\n\n<usericon:1,36,63>\n\nVedo che avete portato un ospite. Tenetelo al sicuro...\n\n... eccolo! Come ti chiami, amico musulmano?\"\n\n\"Salam Alaykum, sono Al-Epaqa, vengo da Taqsir.\"\n\n\"Senti dentro di te un grande potere, il potere di creare persone?\"\n\n\"Purtroppo sì...\"\n\n\"Allora tra poco riporteremo questo potere al posto che gli spetta. Fai solo come ti diciamo e andrà tutto bene.\"\n\nE così fece. Nella sala calò il silenzio...\n\n\"Sei libero. Puoi tornare dalla tua famiglia, che Dio ti protegga.\"\n\nIl potere di Wallmar era tornato a Koslowford. La nostra missione era riuscita.",
+    "502": "<font:$local$\\fonts\\fonthead16bld.fnt>\nZORIAN!?\n<font:$local$\\fonts\\font12.fnt>\n\nAll'improvviso Zorian si avvicinò al maestro, gli strappò di mano alcune carte e si diede alla fuga!\n\n<usericon:2,34>\n\n\"Ah, ah, ah!\" fu tutto quello che disse.\n\n\"Voi... voi...\" esplose il maestro, rosso di rabbia, \"...siete venuti qui apposta per rubare i testi sui nostri incantesimi e sulle nostre arti... traditori e impostori! Vi uccideremo, vi schiacceremo come i Franchi schiacciarono gli Arabi a Poitiers!\"\n\nCercammo di difenderci, di spiegare che era stato il tradimento di Zorian... ma non avevamo più scampo. Le guardie ci si scagliarono contro!\n\nNon doveva finire così!"
+  }
+}

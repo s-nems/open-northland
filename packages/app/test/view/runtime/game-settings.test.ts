@@ -41,6 +41,7 @@ const LIVE_SETTINGS: readonly LiveSetting[] = [
   { patch: { groupNumbers: true }, seam: 'setGroupNumbersShown', applied: true },
   { patch: { blood: false }, seam: 'setBloodEnabled', applied: false },
   { patch: { bonesFade: false }, seam: 'setBonesFade', applied: false },
+  { patch: { equipmentEffects: false }, seam: 'setEquipmentEffects', applied: false },
   { patch: { fpsCounter: true }, seam: 'setFpsCounterShown', applied: true },
   { patch: { fpsLimit: 30 }, seam: 'setFpsLimit', applied: 30 },
   { patch: { fpsLimit: null }, seam: 'setFpsLimit', applied: null },
@@ -111,6 +112,7 @@ function harness(overrides: Partial<GameSettingsRuntimeDeps> = {}) {
   const setDayNightShown = vi.fn();
   const setBloodEnabled = vi.fn();
   const setBonesFade = vi.fn();
+  const setEquipmentEffects = vi.fn();
   const setFpsCounterShown = vi.fn();
   const setFpsLimit = vi.fn();
   const settings = createGameSettingsRuntime({
@@ -144,6 +146,7 @@ function harness(overrides: Partial<GameSettingsRuntimeDeps> = {}) {
     setDayNightShown,
     setBloodEnabled,
     setBonesFade,
+    setEquipmentEffects,
     setFpsCounterShown,
     setFpsLimit,
     ...overrides,
@@ -173,6 +176,7 @@ function harness(overrides: Partial<GameSettingsRuntimeDeps> = {}) {
     setDayNightShown,
     setBloodEnabled,
     setBonesFade,
+    setEquipmentEffects,
     setFpsCounterShown,
     setFpsLimit,
   };

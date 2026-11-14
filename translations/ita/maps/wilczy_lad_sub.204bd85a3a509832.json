@@ -1,0 +1,27 @@
+{
+  "version": 1,
+  "map": "wilczy_lad_sub",
+  "basis": {
+    "lang": "eng",
+    "digest": "507c81de2544ef523554ea87ecdbb4e9f1cf8400c7860d41f298d24f435bf95d"
+  },
+  "strings": {
+    "38": "Trova l'obelisco nascosto",
+    "98": "Durante uno dei loro viaggi, i Vichinghi si fermano su un'isola pittoresca. Capiscono presto che non è un posto qualunque...",
+    "99": "Terra dei Lupi - Missione aggiuntiva",
+    "100": "Bjarni",
+    "101": "Cyra",
+    "102": "Sigurd",
+    "600": "Vichinghi",
+    "700": "V",
+    "800": "LUPO MANNARO",
+    "900": "Lupo"
+  },
+  "briefings": {
+    "500": "<font:$local$\\fonts\\fonthead16bld.fnt>\nTERRA DEI LUPI - MISSIONE AGGIUNTIVA\n<font:$local$\\fonts\\font12.fnt>\nAppena scendemmo nei sotterranei, Sigurd cominciò a tremare.\n\n\"Calmati, con noi sei al sicuro.\"\n\n\"È l'emozione.\"\n\nSigurd rispose con una voce così incredibilmente bassa e tremante che nessuno ebbe bisogno di aggiungere altro. La grotta era buia e vecchia, e la volta sembrava cedere. Ci pareva che da un momento all'altro potesse caderci in testa.\n\nTrova l'obelisco scomparso e leggi che cosa c'è scritto!",
+    "501": "Un interruttore misterioso.\n\nChissà a cosa serve?",
+    "502": "Nel profondo dei sotterranei ci imbattemmo in spettri inquietanti.\n\nSi comportano come i lupi, e i lupi non fanno loro alcun male. Forse sono gli spiriti della leggendaria tribù dei Lupi Mannari.\n\nDobbiamo stare attenti, perché non sembrano molto ospitali.",
+    "503": "<font:$local$\\fonts\\fonthead16bld.fnt>\nOBELISCO TROVATO\n<font:$local$\\fonts\\font12.fnt>\nFinalmente riuscimmo a raggiungere sani e salvi l'obelisco scomparso.\n\n<usericon:1,29,24>\n\nPortava un'iscrizione che non capimmo fino in fondo. C'erano alcune parole cancellate, ma riuscimmo comunque a leggere alcune frasi chiave:\n\n\"Isola dell'Obelisco Miracoloso\"\n\n\"Fare un'offerta\"\n\n\"Spezzare la maledizione\"\n\ne\n\n\"30 unità di olio rituale\".\n\nNon ci resta che uscire dalla grotta e provare a eseguire le istruzioni scritte lì.\nForse significa che, per spezzare la maledizione, bisogna offrire 30 unità di olio rituale sull'Isola dell'Obelisco Miracoloso.\n\nOra dobbiamo uscire in fretta dalla grotta, prima che crolli.",
+    "504": "<font:$local$\\fonts\\fonthead16bld.fnt>\nSCONFITTA!\n<font:$local$\\fonts\\font12.fnt>\nLa morte di un eroe è una tragedia particolarmente dolorosa. Dopo questo triste evento non ha alcun senso continuare la missione.\n\n<picture:$local$\\graphics\\Hero_Dead_F.pcx>"
+  }
+}

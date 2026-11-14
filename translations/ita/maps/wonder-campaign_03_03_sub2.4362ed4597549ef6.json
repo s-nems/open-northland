@@ -1,0 +1,35 @@
+{
+  "version": 1,
+  "map": "wonder-campaign_03_03_sub2",
+  "basis": {
+    "lang": "eng",
+    "digest": "b42de7030db36b1eaa502a94d51e980c19bba905c762d56128420ec07deb0811"
+  },
+  "strings": {
+    "0": "Descrizione breve 0",
+    "1": "Descrizione breve 1",
+    "50": "Giocatore",
+    "51": "Demetrios",
+    "60": "Giocatore",
+    "61": "Demet",
+    "71": "Bjarni",
+    "78": "Gunnar",
+    "98": "COLOSSO - PASSAGGIO SEGRETO",
+    "99": "COLOSSO - PASSAGGIO SEGRETO",
+    "100": "Porta il carretto pieno di idromele all'uscita del tunnel. Assicurati che sia completamente pieno!"
+  },
+  "briefings": {
+    "10": "NEBBIE CURATIVE\n\nQuesti strani banchi di nebbia sembravano avere poteri curativi!\n\nBastava restarvi dentro per pochi secondi e tutte le ferite si rimarginavano!",
+    "100": "<font:$local$\\fonts\\fonthead16bld.fnt>\nMISSIONE FALLITA!\n<font:$local$\\fonts\\font12.fnt>\n<picture:$local$\\graphics\\Hero_Dead_F.pcx>\nEroismo o imprudenza? Alla morte di BJARNI gli dèi piansero... senza questo eroe, l'esito di questa missione ti resterà ignoto!",
+    "110": "MISSIONE FALLITA\n\nIl carretto con l'idromele è stato distrutto! La tua missione è fallita!",
+    "120": "RINFORZI\n\nPetros ti manda alcuni rinforzi. \nÈ l'unico aiuto che può offrirti...",
+    "200": "<font:$local$\\fonts\\fonthead16bld.fnt>\nMISSIONE FALLITA!\n<font:$local$\\fonts\\font12.fnt>\n<picture:$local$\\graphics\\Hero_Dead_F.pcx>\nBasta un attimo di distrazione per perdere la vita! La tua eroina CYRA è morta per la tua negligenza! Senza questa eroina, l'esito di questa missione ti resterà ignoto! ",
+    "300": "<font:$local$\\fonts\\fonthead16bld.fnt>\nMISSIONE FALLITA!\n<font:$local$\\fonts\\font12.fnt>\n<picture:$local$\\graphics\\Hero_Dead_F.pcx>\nBasta un attimo di distrazione per perdere la vita! Il tuo amico ed eroe HATCHIE è morto per la tua negligenza! Senza questo eroe, l'esito di questa missione ti resterà ignoto! ",
+    "400": "<font:$local$\\fonts\\fonthead16bld.fnt>\nMISSIONE FALLITA!\n<font:$local$\\fonts\\font12.fnt>\n<picture:$local$\\graphics\\Hero_Dead_F.pcx>\nBasta un attimo di distrazione per perdere la vita! Il tuo amico ed eroe SIGURD è morto per la tua negligenza! Senza questo eroe, l'esito di questa missione ti resterà ignoto! ",
+    "500": "<font:$local$\\fonts\\fonthead16bld.fnt>\nMISSIONE FALLITA!\n<font:$local$\\fonts\\font12.fnt>\n<picture:$local$\\graphics\\People_Dead_F.pcx>\nHai attaccato i tuoi migliori amici nonostante gli avvertimenti! \n\nCosì non potrai portare a termine la tua missione!",
+    "header": "IL PASSAGGIO SEGRETO",
+    "00_start": "Porta il carretto pieno di idromele fino all'uscita, senza che subisca danni. I soldati ti scorteranno e ti proteggeranno da eventuali nemici nei tunnel.\n\n<usericon:1,91,129>\n\nE ricorda: il carretto deve essere PIENO quando raggiungi l'uscita! \nNon toccare l'idromele! Non è per te!\n\nBuona fortuna!",
+    "09_end_header": "BEN FATTO! ",
+    "09_end_text1": "Hai portato il carretto con 10 bottiglie di idromele attraverso il passaggio sotterraneo, senza un graffio! Ben fatto.\n\nAspetta Metros all'esterno."
+  }
+}

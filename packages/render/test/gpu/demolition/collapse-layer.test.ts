@@ -85,6 +85,17 @@ const razed = (
   built = SIM_ONE,
 ) => ({ kind: 'buildingDestroyed', entity, player: 2, buildingType, built, at }) as SimEvent;
 const AT = { hx: 4, hy: 6 };
+const wrecked = (entity: number, cause: 'destroyed' | 'script', ruins: readonly unknown[]) =>
+  ({
+    kind: 'vehicleDestroyed',
+    entity,
+    player: 2,
+    vehicleType: 5,
+    tribe: 1,
+    cause,
+    at: AT,
+    ruins,
+  }) as SimEvent;
 
 describe('foldBuildingCollapses', () => {
   it('keeps the body falling when salvage lands underneath it', () => {
@@ -93,6 +104,13 @@ describe('foldBuildingCollapses', () => {
     expect(collapseProgress(collapse, 100 + RUIN_COLLAPSE_TICKS)).toBeGreaterThan(0);
     expect(collapseProgress(collapse, 100 + RUIN_COLLAPSE_TICKS)).toBeLessThan(1);
     expect(foldBuildingCollapses([collapse], [], 100 + RUIN_COLLAPSE_TICKS)).toHaveLength(1);
+  });
+
+  it('falls a land wreck apart, and neither a sunk ship nor a scripted removal', () => {
+    const events = [wrecked(1, 'destroyed', [AT]), wrecked(2, 'destroyed', []), wrecked(3, 'script', [AT])];
+    expect(foldBuildingCollapses([], events, 100)).toEqual([
+      { entity: 1, typeId: 5, tribe: 1, hx: 4, hy: 6, spawnTick: 100, vehicle: true },
+    ]);
   });
 
   it('spawns a collapse per positioned buildingDestroyed and expires it once the dust settles', () => {
@@ -212,6 +230,32 @@ describe('CollapseLayer', () => {
     textures.clear();
     body.destroy();
     damagePage.destroy();
+  });
+
+  it('breaks a wrecked vehicle up where it was last drawn, and leaves an undrawn one out', () => {
+    const spriteLayer = new Container();
+    const body = new Texture({ source });
+    const release = vi.fn();
+    const drawn = new Set([1]);
+    const layer = new CollapseLayer(
+      spriteLayer,
+      new TextureCache(),
+      sheet,
+      () => [{ texture: body, x: -10, y: -20, scale: 1, alpha: 1, release }],
+      (ref) => (drawn.has(ref) ? { x: 300, y: 200, zIndex: 77 } : undefined),
+    );
+    layer.ingest([wrecked(1, 'destroyed', [AT]), wrecked(2, 'destroyed', [AT])], 0);
+    layer.draw(FLAT, VIEW_ALL, 0);
+    expect(spriteLayer.children).toHaveLength(1);
+    const node = spriteLayer.children[0] as Container;
+    expect(node.position).toMatchObject({ x: 300, y: 200 });
+    expect(node.zIndex).toBe(77);
+    layer.ingest([], COLLAPSE_LIFETIME_TICKS);
+    layer.draw(FLAT, VIEW_ALL, COLLAPSE_LIFETIME_TICKS);
+    expect(spriteLayer.children).toHaveLength(0);
+    expect(release).toHaveBeenCalledTimes(1);
+    layer.destroy();
+    body.destroy();
   });
 
   it('dismantles each body in place without moving geometry or cropping its texture, then retires it', () => {

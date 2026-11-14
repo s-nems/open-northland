@@ -26,16 +26,16 @@ export const FIELD_YIELD_PER_FIELD = 1;
  *  the count gates. */
 export const WHEAT_WORK_REPEATS = 2;
 
-/** How far from the workplace's anchor its workers sow and fetch piles, in half-cell nodes (16 nodes ≈ 8
- *  tiles). Approximation of the original's search extent: the pile search runs 10 map points out from
+/** How far from his work centre (the workplace, or the flag he was given) a farmer sows and fetches
+ *  piles, in half-cell nodes (16 nodes ≈ 8 tiles). Approximation of the original's search extent: the pile search runs 10 map points out from
  *  the work centre for the farmer and the herb guy alike, 20 for every other trade, and the field and
  *  plantable-spot searches the same 10;
  *  that hexagon is read here as a Manhattan diamond. The packed sow keeps an open plot within a few nodes,
  *  so this bounds the pile pickup and the detours a plot takes around obstacles. */
 export const FARM_FIELD_RADIUS = 16;
 
-/** Fields one workplace keeps standing at once, whatever its crew size. Original behavior: a worker plants
- *  only while fewer than 25 fields stand. */
+/** Fields one plot keeps standing at once, whatever its crew size. Original behavior: a worker plants only
+ *  while fewer than 25 fields stand around his work centre. */
 export const FARM_MAX_FIELDS = 25;
 
 /** The one shared block, since the original farms by the good's data alone. */

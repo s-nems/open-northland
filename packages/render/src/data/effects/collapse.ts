@@ -3,8 +3,9 @@ import { clamp01 } from '../math.js';
 import { ONE } from '../projection/index.js';
 
 /**
- * The pure half of the building-collapse transient: `buildingDestroyed` events fold into a list of
- * collapsing buildings whose last visible layers unwind through their construction order. Progress is
+ * The pure half of the collapse transient: `buildingDestroyed` events fold into a list of collapsing
+ * buildings whose last visible layers unwind through their construction order, and a wrecked land
+ * vehicle falls apart the same way from the roof down. Progress is
  * measured in sim ticks, not wall-clock, so a paused game and a `?shot` capture reproduce exactly.
  * Reverse construction, chip motion and procedural dust are artistic approximations.
  */
@@ -22,6 +23,8 @@ export interface BuildingCollapse {
   readonly hx: number;
   readonly hy: number;
   readonly spawnTick: number;
+  /** A wrecked land vehicle: {@link typeId} is its vehicle type, and it falls only as it was last drawn. */
+  readonly vehicle?: true;
 }
 
 /** Artistic pacing for readability at ×3: smoke and accelerating removal take one real second.
@@ -67,6 +70,24 @@ export function foldBuildingCollapses(
     return active;
   const next = active.filter((c) => tick - c.spawnTick < COLLAPSE_LIFETIME_TICKS);
   for (const ev of events) {
+    // A wreck that leaves ruins stood on the ground; a ship leaves none, and a scripted removal is silent.
+    if (
+      ev.kind === 'vehicleDestroyed' &&
+      ev.cause !== 'script' &&
+      ev.ruins.length > 0 &&
+      ev.at !== undefined
+    ) {
+      next.push({
+        entity: ev.entity,
+        typeId: ev.vehicleType,
+        tribe: ev.tribe,
+        hx: ev.at.hx,
+        hy: ev.at.hy,
+        spawnTick: tick,
+        vehicle: true,
+      });
+      continue;
+    }
     if (ev.kind !== 'buildingDestroyed' || ev.at === undefined) continue;
     // An unfinished site collapses as its construction stage, on the same whole-percent scale the
     // live construction reveal uses.

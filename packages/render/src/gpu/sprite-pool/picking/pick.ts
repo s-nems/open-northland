@@ -24,12 +24,23 @@ export interface DrawnGeometry {
   readonly selectionOf?: (ref: number) => SelectionEllipse | undefined;
   readonly boundsOf: (ref: number) => EntityBounds | undefined;
   readonly anchorOf: (ref: number) => { x: number; y: number } | undefined;
+  /** The painter depth a drawn entity sorts at in the sprite layer. */
+  readonly depthOf?: (ref: number) => number | undefined;
   /** A drawn ship's keel line ({@link keelOf}), valid until the next call. */
   readonly keelOf?: (ref: number) => readonly number[] | undefined;
 }
 
-/** One drawn damaged building or gate, including a remembered appearance under fog. */
+/** One drawn damaged building, gate or land vehicle, including a remembered appearance under fog. */
 export interface DamagedBuilding {
+  readonly ref: number;
+  readonly hpFrac: number;
+  readonly ghost?: boolean;
+  /** A land vehicle: its body changes frame as it turns and works, and it smokes less and never burns. */
+  readonly vehicle?: boolean;
+}
+
+/** One drawn damaged ship, whose hull wears in its own shader, including one remembered under fog. */
+export interface DamagedShip {
   readonly ref: number;
   readonly hpFrac: number;
   readonly ghost?: boolean;

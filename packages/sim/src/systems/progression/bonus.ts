@@ -4,7 +4,14 @@ import { type Fixed, fx, ONE } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { SystemContext } from '../context.js';
 import { isCarrierJob } from '../stores/index.js';
-import { fightExperienceTypeFor, generalTrackFor, trackFor } from './experience.js';
+import {
+  FIGHT_EXPERIENCE_FULL_UNITS,
+  FIGHT_EXPERIENCE_TYPE,
+  FIGHT_EXPERIENCE_UNITS_PER_POINT,
+  fightExperienceTypeFor,
+  generalTrackFor,
+  trackFor,
+} from './experience.js';
 
 /**
  * The original's experience curve. A track accrues its `experienceFactor` per completed work and the curve
@@ -110,30 +117,89 @@ export function jobExperiencePercent(
   return experiencePercent(experiencePoints(xp));
 }
 
-/** Landed hits recorded in `weaponMainType`'s fight bucket: 0 for a class with no bucket. */
-export function weaponClassHits(
+/** A person's personal fight counter in its stored units ({@link FIGHT_EXPERIENCE_UNITS_PER_POINT} a
+ *  point), at most full. */
+export function personalFightUnits(experience: ReadonlyMap<number, number>): number {
+  const held = experience.get(FIGHT_EXPERIENCE_TYPE.PERSONAL) ?? 0;
+  return Math.min(Math.max(held, 0), FIGHT_EXPERIENCE_FULL_UNITS);
+}
+
+/** A person's personal fight counter in whole points, a part of a point truncated. */
+export function personalFightPoints(experience: ReadonlyMap<number, number>): number {
+  return Math.trunc(personalFightUnits(experience) / FIGHT_EXPERIENCE_UNITS_PER_POINT);
+}
+
+/** {@link personalFightUnits} of a settler; 0 for one with no progress. */
+export function settlerFightUnits(world: World, e: Entity): number {
+  const progress = world.tryGet(e, SettlerProgress);
+  return progress === undefined ? 0 : personalFightUnits(progress.experience);
+}
+
+/** The fight units a blow with `weaponMainType` draws on: the personal counter for a class that trains
+ *  it, 0 for the catapult or no class. */
+export function fightUnitsWith(
   experience: ReadonlyMap<number, number>,
   weaponMainType: number | null | undefined,
 ): number {
   if (weaponMainType == null) return 0;
-  const bucket = fightExperienceTypeFor(weaponMainType);
-  return bucket === undefined ? 0 : (experience.get(bucket) ?? 0);
+  return fightExperienceTypeFor(weaponMainType) === FIGHT_EXPERIENCE_TYPE.PERSONAL
+    ? personalFightUnits(experience)
+    : 0;
 }
 
-/** The landed hits past which fight experience stops raising damage. Original behavior. */
-export const FIGHT_EXPERIENCE_DAMAGE_CAP_HITS = 100;
-/** The numerator of the fight-experience factor `NUMERATOR / (NUMERATOR - hits)`. Original behavior. */
-const FIGHT_EXPERIENCE_DAMAGE_NUMERATOR = 200;
+/** The scale of the fight-experience factors: full experience in units times percent, so each stored unit
+ *  is one step of a percent's effect and the bonus grows smoothly within a point. */
+export const FIGHT_EXPERIENCE_FACTOR_SCALE = FIGHT_EXPERIENCE_FULL_UNITS * PERCENT;
+/** The percent full fight experience adds to the damage a person deals. Our rule. */
+export const FIGHT_EXPERIENCE_DEALT_PCT_AT_FULL = 40;
+/** The percent full fight experience takes off the damage a person is dealt. Our rule. */
+export const FIGHT_EXPERIENCE_TAKEN_PCT_AT_FULL = 40;
+
+/** The dealt-damage factor at fight `units` (stored units, not points), over
+ *  {@link FIGHT_EXPERIENCE_FACTOR_SCALE}: linear from x1 at 0 to x1.4 at full. */
+function fightExperienceDealtFactor(units: number): number {
+  return FIGHT_EXPERIENCE_FACTOR_SCALE + FIGHT_EXPERIENCE_DEALT_PCT_AT_FULL * clampedUnits(units);
+}
+
+/** The taken-damage factor at fight `units` (stored units, not points), over
+ *  {@link FIGHT_EXPERIENCE_FACTOR_SCALE}: linear from x1 at 0 to x0.6 at full. */
+export function fightExperienceTakenFactor(units: number): number {
+  return FIGHT_EXPERIENCE_FACTOR_SCALE - FIGHT_EXPERIENCE_TAKEN_PCT_AT_FULL * clampedUnits(units);
+}
+
+function clampedUnits(units: number): number {
+  return Math.min(Math.max(Math.trunc(units), 0), FIGHT_EXPERIENCE_FULL_UNITS);
+}
 
 /**
- * `base` weapon damage raised by `hits` landed with the swinging weapon's class:
- * `base * 200 / (200 - min(hits, 100))` in integer division, so a hundred landed hits double it.
- * Original behavior, for a blow on a person, a building or an animal alike.
+ * The dealt-damage factor of a striker's fight `units` and his carried `dealtPct`, over
+ * {@link FIGHT_EXPERIENCE_FACTOR_SCALE}. Our rule: the two raises add, so full experience (+40%) with a
+ * 140 strength amulet (+40%) deals x1.80, not x1.96.
  */
-export function withFightExperience(base: number, hits: number): number {
+export function dealtDamageFactor(units: number, dealtPct: number = PERCENT): number {
+  return fightExperienceDealtFactor(units) + (dealtPct - PERCENT) * (FIGHT_EXPERIENCE_FACTOR_SCALE / PERCENT);
+}
+
+/** `damage` raised once by the summed {@link dealtDamageFactor}, truncating. */
+export function withDealtBonuses(damage: number, units: number, dealtPct: number = PERCENT): number {
+  return Math.trunc((damage * dealtDamageFactor(units, dealtPct)) / FIGHT_EXPERIENCE_FACTOR_SCALE);
+}
+
+/**
+ * `damage` a person with fight `units` takes under his carried `takenPct`, truncating once. Our rule: the
+ * experience cut multiplies with the defence amulet, so full experience under a x0.6 amulet takes x0.36.
+ */
+export function withTakenBonuses(damage: number, units: number, takenPct: number = PERCENT): number {
+  const experienceFactor = fightExperienceTakenFactor(units);
+  if (takenPct === PERCENT && experienceFactor === FIGHT_EXPERIENCE_FACTOR_SCALE) return damage;
+  return Math.trunc((damage * takenPct * experienceFactor) / (PERCENT * FIGHT_EXPERIENCE_FACTOR_SCALE));
+}
+
+/**
+ * `base` weapon damage raised by the striker's fight `units` alone, truncating, so full experience adds
+ * 40%. Our rule, a departure from the original's `base * 200 / (200 - hits)`.
+ */
+export function withFightExperience(base: number, units: number): number {
   if (base <= 0) return base;
-  const capped = Math.min(Math.max(hits, 0), FIGHT_EXPERIENCE_DAMAGE_CAP_HITS);
-  return Math.trunc(
-    (base * FIGHT_EXPERIENCE_DAMAGE_NUMERATOR) / (FIGHT_EXPERIENCE_DAMAGE_NUMERATOR - capped),
-  );
+  return withDealtBonuses(base, units);
 }

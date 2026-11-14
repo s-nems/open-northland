@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import * as components from '../../../../src/components/index.js';
 import type { Entity } from '../../../../src/ecs/world.js';
-import { cellAnchorNode, fx, positionOfNode, Simulation } from '../../../../src/index.js';
+import { cellAnchorNode, fx, nodeOfPosition, positionOfNode, Simulation } from '../../../../src/index.js';
 import {
   EXPERIENCE_MASTERY_POINTS,
   EXPERIENCE_XP_PER_POINT,
@@ -16,6 +16,7 @@ import {
   ctxOf,
   FARMER,
   FIELD_CAP,
+  FIELD_RADIUS,
   farmAt,
   farmerAt,
   fieldAt,
@@ -208,14 +209,14 @@ describe('planFarmer - the drive ladder', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(8, 8) });
     const farm = farmAt(sim, 4, 4);
     fieldAt(sim, farm, 4, 4, { stage: 3 }); // underfoot, but ahead
-    const laggard = fieldAt(sim, farm, 1, 1, { stage: 2 });
+    const laggard = fieldAt(sim, farm, 2, 2, { stage: 2 }); // at the edge of the plot's radius
     for (const [x, y] of RING_AROUND_FARM.slice(0, FIELD_CAP - 2)) fieldAt(sim, farm, x, y, { stage: 3 });
     const farmer = farmerAt(sim, 4, 4, farm);
 
     plannerSystem(sim.world, ctxOf(sim));
 
     const task = sim.world.get(farmer, components.FarmTask);
-    const at = cellAnchorNode(1, 1);
+    const at = cellAnchorNode(2, 2);
     expect(task.node).toBe(sim.terrain?.nodeAt(at.hx, at.hy));
     expect(sim.world.tryGet(farmer, components.MoveGoal)).toBeDefined(); // walking to the laggard
     expect(sim.world.tryGet(farmer, components.CurrentAtomic)).toBeUndefined();
@@ -281,6 +282,43 @@ describe('planFarmer - the drive ladder', () => {
     };
     expect(peakFields(1)).toBe(FIELD_CAP);
     expect(peakFields(2)).toBe(FIELD_CAP);
+  });
+
+  it('a flagged farmer works around his flag: the plot left by the farm neither holds the cap nor calls him back', () => {
+    // Several seeds, since the sow draws among the nearest free nodes: none of them may hold a flag, his
+    // own or the one a colleague planted beside it.
+    for (const seed of [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]) {
+      const sim = new Simulation({ seed, content: testContent(), map: grassMap(40, 8) });
+      const { farm, farmer } = plotAtCap(sim, { stage: STAGES }); // at the cap with a ripe field, by the farm at (4, 4)
+      const colleague = farmerAt(sim, 4, 4, farm);
+      const own = cellAnchorNode(30, 4);
+      // The colleague's flag one node over, among the nearest free nodes the sow draws from.
+      const flagCells = [own, { hx: own.hx + 1, hy: own.hy }];
+      for (const [i, worker] of [farmer, colleague].entries()) {
+        const cell = flagCells[i];
+        if (cell === undefined) throw new Error('a flag cell per worker');
+        sim.world.add(worker, components.Owner, { player: 0 });
+        sim.enqueueSetup({ kind: 'setWorkFlag', entity: worker, x: cell.hx, y: cell.hy });
+      }
+      sim.run(1);
+
+      const terrain = sim.terrain;
+      if (terrain === undefined) throw new Error('scene sim has terrain');
+      const flagNodes = [farmer, colleague].map((worker) => {
+        const flag = sim.world.get(worker, components.HaulFlag);
+        expect(flag.radius).toBe(FIELD_RADIUS);
+        const p = sim.world.get(flag.flag, Position);
+        const n = nodeOfPosition(p.x, p.y);
+        return terrain.nodeAt(n.hx, n.hy);
+      });
+      const task = sim.world.get(farmer, components.FarmTask);
+      expect(task.sow, `seed ${seed}`).toBe(true);
+      expect(flagNodes, `seed ${seed}`).not.toContain(task.node);
+      const at = terrain.coordsOf(task.node);
+      expect(Math.abs(at.x - own.hx) + Math.abs(at.y - own.hy), `seed ${seed}`).toBeLessThanOrEqual(
+        FIELD_RADIUS,
+      );
+    }
   });
 
   it('a spawned farmer is farm-bound, NOT a flag gatherer (no auto work flag)', () => {

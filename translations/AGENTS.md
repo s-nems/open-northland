@@ -15,7 +15,7 @@ translations/
                                  license, permission; or "machine translation, unreviewed"
   glossary.csv                   the imported term table (names, goods, buildings, tribes); each import
                                  rewrites it whole
-  glossary-project.csv           the project's own terms, same columns, edited in place
+  glossary-project.csv           the project's own terms, the same columns plus `ita`, edited in place
   <lang>/
     maps/<map>.<map.dat prefix>.json
                                  strings by id, briefing blocks by label  (MapOverlay)
@@ -44,7 +44,7 @@ of the same language, `map.dat` and alias adds the first 12 hex digits of its `b
 
 ## Rules
 
-- An overlay language (`chs`, `cht`) may overlay anything. A source language (`pol`, `eng`, `ger`,
+- An overlay language (`ita`, `chs`, `cht`) may overlay anything. A source language (`pol`, `eng`, `ger`,
   `rus`) may overlay only a community map (pack provenance `mod` or `user`, or a catalogue archive);
   the pipeline refuses a source-language overlay on a campaign map, on the original game's tutorials
   the mod bundles (`tutorial_001` to `tutorial_007`), on an object table and on a book, because that
@@ -58,6 +58,12 @@ of the same language, `map.dat` and alias adds the first 12 hex digits of its `b
   much of a pool as it likes, and a name it leaves out keeps the raw one.
 - When the pack or archive ships the overlay's language itself, the shipped text wins and the
   translations audit lists the overlay as redundant, unless the overlay's basis is that language.
+- `ita` is an overlay language the pack also ships: the official Italian edition's text lives only in
+  the pack, never in the repository. Its overlays translate from a source language and fill what the
+  pack lacks: a map without Italian text, an object-table or description id the Italian tables lack,
+  the history book and a campaign title where the pack has none. Shipped Italian wins per map, per id,
+  for the book and for the title. Fixes to official Italian text belong to the pack builder, not to an
+  overlay or a correction. The glossary's `ita` column holds single terms and names only.
 - An overlay whose basis is its own language is the project's edit of a community map's text: a typo,
   a wrong instruction, a name that disagrees with the rest of the map. It carries only the edited ids
   and labels, each with its whole corrected string or block body.

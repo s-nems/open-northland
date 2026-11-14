@@ -1,6 +1,7 @@
 import { type SoundBus, VOLUME_CHANNELS } from '@open-northland/audio';
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import type { ReplayOffer } from '../../../../src/hud/dom/match-result.js';
 import { createSystemMenu, type SystemMenu } from '../../../../src/hud/dom/system/menu.js';
 import { currentLocale, messages, setActiveLocale } from '../../../../src/i18n/index.js';
 import * as graphicsStartup from '../../../../src/view/graphics/startup.js';
@@ -40,7 +41,7 @@ function mount(
     canLoad?: boolean;
     paused?: boolean;
     onNetwork?: () => void;
-    onRestart?: () => void;
+    restart?: ReplayOffer;
     previewBus?: (bus: SoundBus) => void;
     onSettingsLeft?: (opened: MenuSettings, closed: MenuSettings) => void;
   } = {},
@@ -201,21 +202,22 @@ describe('system menu navigation', () => {
     expect(onQuit).toHaveBeenCalledOnce();
   });
 
-  it('restarts the map only after its confirmation, and offers no restart without a replay', async () => {
-    const onRestart = vi.fn();
-    const { menu } = mount({ onRestart });
+  it('restarts the main map only after its confirmation, and offers no restart without a replay', async () => {
+    const start = vi.fn();
+    const { menu } = mount({ restart: { scope: 'mainMap', start } });
     menu.toggle();
-    const restart = messages().hud.systemMenuDetails.restartMission;
+    const restart = messages().hud.systemMenuDetails.restartMap;
     button(restart).click();
     button(messages().hud.systemMenuDetails.cancel).click();
     await Promise.resolve();
-    expect(onRestart).not.toHaveBeenCalled();
+    expect(start).not.toHaveBeenCalled();
     button(restart).click();
     const question = document.querySelector('[role="alertdialog"]');
     if (question === null) throw new Error('Missing confirmation');
+    expect(question.textContent).toContain(messages().hud.playAgainMainMapConfirm);
     button(restart, question).click();
     await Promise.resolve();
-    expect(onRestart).toHaveBeenCalledOnce();
+    expect(start).toHaveBeenCalledOnce();
     menu.dispose();
     mount().menu.toggle();
     expect(document.querySelector('.on-system-menu')?.textContent).not.toContain(restart);

@@ -31,10 +31,32 @@ export interface BuildingStatusInputs {
   readonly workDetail: string | null;
   /** A home's families, null for any other house. */
   readonly families: number | null;
+  /** A finished temple's blessing, null for any other house and another seat's temple. */
+  readonly blessing: TempleBlessing | null;
 }
 
-/** The first state that holds: the site, the alarm, a home's families, a running craft, a tower's
- *  garrison, missing hands, a stall the posted worker reports, and the house simply standing. */
+/** Whether a temple blesses, with the game seconds its stored oil still burns (null for a temple that
+ *  needs none), or what keeps it from blessing. */
+export type TempleBlessing =
+  | { readonly state: 'on'; readonly secondsLeft: number | null }
+  | { readonly state: 'no-oil' | 'damaged' | 'doused' };
+
+const SECONDS_PER_MINUTE = 60;
+
+type StatusCopy = ReturnType<typeof messages>['hud']['buildingPanel']['status'];
+
+/** What a temple that does not bless says, by what keeps it from blessing. */
+const BLESSING_OFF_LABEL: Readonly<
+  Record<Exclude<TempleBlessing['state'], 'on'>, (copy: StatusCopy) => string>
+> = {
+  'no-oil': (copy) => copy.noOil,
+  damaged: (copy) => copy.blessingDamaged,
+  doused: (copy) => copy.blessingDoused,
+};
+
+/** The first state that holds: the site, the alarm, a temple's blessing, a home's families, a running
+ *  craft, a tower's garrison, missing hands, a stall the posted worker reports, and the house simply
+ *  standing. A temple's porter is optional, so its empty post is no trouble. */
 export function buildingStatus(inputs: BuildingStatusInputs): BuildingStatusModel {
   const copy = messages().hud.buildingPanel.status;
   const { site, alarm, seats, garrison } = inputs;
@@ -48,6 +70,24 @@ export function buildingStatus(inputs: BuildingStatusInputs): BuildingStatusMode
   }
   if (alarm !== null) {
     return { label: copy.alarm, detail: formatMessage(copy.sheltered, alarm), tone: 'trouble' };
+  }
+  const blessing = inputs.blessing;
+  if (blessing !== null) {
+    if (blessing.state !== 'on') {
+      return {
+        label: BLESSING_OFF_LABEL[blessing.state](copy),
+        detail: null,
+        tone: 'trouble',
+      };
+    }
+    // None left to count on a scripted seat's temple, which blesses on an empty store.
+    const left = blessing.secondsLeft;
+    const minutes = left === null || left <= 0 ? null : Math.ceil(left / SECONDS_PER_MINUTE);
+    return {
+      label: copy.blessing,
+      detail: minutes === null ? null : formatMessage(copy.oilLeft, { minutes }),
+      tone: 'ok',
+    };
   }
   if (inputs.families !== null) {
     return inputs.families > 0

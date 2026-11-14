@@ -11,6 +11,7 @@ import {
   RoadSite,
   SiteAssignment,
   UnderConstruction,
+  Vehicle,
 } from '../../../../components/index.js';
 import { ONE } from '../../../../core/fixed.js';
 import type { Entity, World } from '../../../../ecs/world.js';
@@ -43,6 +44,7 @@ import {
   interactionCell,
   nearestBuilderSite,
   QUALIFIES,
+  type TargetCandidates,
   unreachableSiteStand,
 } from '../../targets/index.js';
 import { unreachableGoalVeto } from '../../unreachable-goals.js';
@@ -61,27 +63,26 @@ import { constructionMaterialResolver, type SiteSupplyReach } from './site-suppl
 type MaterialResolver = ReturnType<typeof constructionMaterialResolver>;
 
 /**
- * BUILD - mend the nearest damaged gate that is safe to reach, else such a building, else such a wall
- * segment, else take the building site of the highest tier (`SITE_TIER`: a few hands finish a supplied
- * or nearly done site before fresh ones are begun) with a task for this builder, the nearest within a
- * tier and its own crew site first among equals, so the ordinary work spreads over the sites by
- * distance. At the site, delivered material is hammered before more is fetched, and a covered site keeps
- * a finishing crew waiting for its last loads. The last builder at a site with a task stays, unless it
- * has no step to hammer there and the site it would go to has nobody, or that site is prioritized and
- * its own is not. With no task anywhere the builder
- * waits beside a site, unless only its signposts keep it from one; a machine seat's builder waiting there
- * re-plans on the short idle beat, as does one waiting for material at the site of a run. A road or wall
- * run the player started ({@link BuildMode}) goes before all of that. New wall segments wait while a building site holds a task
- * the builder can do, and road sites wait while a building or a wall site holds one. Player pins and
- * unfinished workplace bindings are strict: their builders stay with that site even while another has
- * work.
+ * BUILD - mend the nearest damaged gate that is safe to reach, else such a building, else such a moored ship,
+ * else such a wall segment, else take the building site of the highest tier (`SITE_TIER`: a few hands finish
+ * a supplied or nearly done site before fresh ones are begun) with a task for this builder, the nearest
+ * within a tier and its own crew site first among equals, so the ordinary work spreads over the sites by
+ * distance. At the site, delivered material is hammered before more is fetched, and a covered site keeps a
+ * finishing crew waiting for its last loads. The last builder at a site with a task stays, unless it has no
+ * step to hammer there and the site it would go to has nobody, or that site is prioritized and its own is
+ * not. With no task anywhere the builder waits beside a site, unless only its signposts keep it from one; a
+ * machine seat's builder waiting there re-plans on the short idle beat, as does one waiting for material at
+ * the site of a run. A road or wall run the player started ({@link BuildMode}) goes before all of that. New
+ * wall segments wait while a building site holds a task the builder can do, and road sites wait while a
+ * building or a wall site holds one. Player pins and unfinished workplace bindings are strict: their builders
+ * stay with that site even while another has work.
  *
  * Source basis: builders recruited to a damaged building and repair ahead of an upgrade are original
- * behavior. Authored: the safety gate, repair outranking all automatic construction work, a crew the
- * builder is already on included, where the original recruits only builders with no site, the repair
- * order gates, buildings, walls (owner ruling), new walls after buildings, then roads last (owner
- * ruling), the site ranking and the finishing crew (owner ruling), hammering ahead of hauling, and the
- * machine seat's short beat, a cost cut that takes up new work up to that idle period late.
+ * behavior. Authored: the safety gate, repair outranking all automatic construction work, a crew the builder
+ * is already on included, where the original recruits only builders with no site, the repair order gates,
+ * buildings, moored ships, walls (owner rulings; the original mends no ship), new walls after buildings, then
+ * roads last (owner ruling), the site ranking and the finishing crew (owner ruling), hammering ahead of
+ * hauling, and the machine seat's short beat, a cost cut that takes up new work up to that idle period late.
  */
 export function planBuilder(
   plan: PlannerContext,
@@ -497,16 +498,29 @@ function siteHasTask(
   return (site) => (claims.hasHammerWork(site) || materials.has(site)) && canStandAt(site);
 }
 
-type RepairKind = 'gate' | 'building' | 'wall';
+type RepairKind = 'gate' | 'building' | 'ship' | 'wall';
 
 /** The order an automatic builder takes damaged structures in: a broken gate is the hole an attack walks
- *  through, so it goes first. */
-const REPAIR_ORDER: readonly RepairKind[] = ['gate', 'building', 'wall'];
+ *  through, so it goes first; a moored ship waits for the buildings (owner rule: mended like one). */
+const REPAIR_ORDER: readonly RepairKind[] = ['gate', 'building', 'ship', 'wall'];
 
 function repairKindOf(world: World, site: Entity): RepairKind {
+  if (world.has(site, Vehicle)) return 'ship';
   const wall = world.tryGet(site, Palisade);
   if (wall === undefined) return 'building';
   return wall.gate !== null ? 'gate' : 'wall';
+}
+
+function repairSitesOf(targets: TargetCandidates, kind: RepairKind): InteractionCellIndex {
+  switch (kind) {
+    case 'building':
+      return targets.repairSiteCells;
+    case 'ship':
+      return targets.shipRepairCells;
+    case 'gate':
+    case 'wall':
+      return targets.wallRepairCells;
+  }
 }
 
 /** Start a repair swing at the builder's own repair crew's site while it still qualifies, else at the
@@ -535,7 +549,7 @@ function repairNearest(
   const site =
     crewSite ??
     nearestBuilderSite(
-      kind === 'building' ? targets.repairSiteCells : targets.wallRepairCells,
+      repairSitesOf(targets, kind),
       world,
       here,
       plan.owner,

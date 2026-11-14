@@ -1,0 +1,18 @@
+{
+  "version": 1,
+  "map": "krol_przeleczy",
+  "basis": {
+    "lang": "eng",
+    "digest": "5c885f180e2b01b8e40831b043f9edb369b1b1454947e9980b6270d99d2a5419"
+  },
+  "strings": {
+    "0": "IL RE DEL PASSO",
+    "1": "Due clan si contendono un passo di montagna ricco di risorse.",
+    "50": "CLAN DEL NORD",
+    "51": "CLAN DEL SUD",
+    "101": "Sconfiggi il clan nemico e prendi il controllo del passo."
+  },
+  "briefings": {
+    "500": "<font:$local$\\fonts\\fonthead16bld.fnt>\nIL RE DEL PASSO\n<font:$local$\\fonts\\font12.fnt>\n\nLa notizia di un passo di montagna appena scoperto, ricco di risorse naturali, si diffuse in un lampo, attirando l'attenzione di molti guerrieri.\nI primi a fronteggiarsi sono i Clan del Nord e del Sud, ciascuno deciso a prendere il controllo della zona.\nSolo uno di loro potrà conquistare il titolo di \"Re del Passo\", assicurando così il futuro del proprio clan.\n\n ~~ Ares ~~\n"
+  }
+}

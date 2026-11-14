@@ -2,8 +2,9 @@
 
 **Area:** app · **Priority:** P3
 
-`placeBuilding` refuses a site within `CONTESTED_GROUND_RADIUS_NODES` of a hostile fighter the seat can
-see (`packages/sim/src/systems/conflict/contested-ground.ts`). The build-mode wash dims the disc and the
+`placeBuilding` refuses a site within `CONTESTED_GROUND_RADIUS_NODES` of a hostile fighter or unarmed
+vehicle, or `CONTESTED_SIEGE_RADIUS_POINTS` of a catapult, the seat can see
+(`packages/sim/src/systems/conflict/contested-ground.ts`). The build-mode wash dims the disc and the
 ghost hides, but the refusal gives the same signal as a tree or fogged ground: a vanished ghost and a
 swallowed click. A house refused over clear grass eight cells from a soldier the player has not noticed
 is not self-explaining. A site past the seat's site reach (`systems/footprint/placement/site-reach.ts`)
@@ -22,6 +23,6 @@ is refused just as silently.
 - Headless: the scene's predicates pass; the banner model reports the contested reason at a node inside
   the disc and none outside, and the reach reason past the town's reach.
 - Browser: pick a house while an enemy band stands near the town. The wash dims a diamond around each
-  enemy soldier and hero, not around civilians or a tower archer at his post; the ghost vanishes inside
-  and returns outside; the banner names the reason; the diamond slides with a walking soldier without
-  the rest of the wash flickering.
+  enemy soldier, hero, cart and ship and a wider hexagon around each catapult, not around civilians or a
+  tower archer at his post; the ghost vanishes inside and returns outside; the banner names the reason;
+  the diamond slides with a walking soldier without the rest of the wash flickering.

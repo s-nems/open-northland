@@ -25,9 +25,10 @@ export const MILITARY: ArticleGroup = {
             head: ['Multiplier', 'Value'],
             rows: [
               [
-                '[[article:exp-combat|Experience with this weapon]] (melee only)',
+                "Attacker's [[article:exp-combat|combat experience]] (melee only)",
                 'up to ×{{combat.fightCapFactor}}',
               ],
+              ["Target's [[article:exp-combat|combat experience]]", 'down to ×{{combat.fightTakenFactor}}'],
               ['Blow from the rear flank', '×{{combat.backSideFactor}}'],
               ['Blow from behind', '×{{combat.behindFactor}}'],
             ],
@@ -36,7 +37,7 @@ export const MILITARY: ArticleGroup = {
         },
         {
           list: [
-            "Experience doesn't work on arrows, stones, vehicles or stockades.",
+            "The attacker's experience doesn't strengthen arrows, stones or blows on vehicles and stockades. The target's experience cuts every blow and shot on a person.",
             'Blow direction and the Amulet of Defence count only against people. For an arrow, direction is taken from where it was fired.',
             'A Catapult cannot take an Amulet of Strength.',
             'A stockade counts damage its own way: [[article:walls|Stockades and Gates]].',
@@ -102,6 +103,16 @@ export const MILITARY: ArticleGroup = {
             ],
             foot: 'If a better item on the strip lies in a store in reach, the recruit goes for it instead of taking the worse one from the Barracks.',
           },
+        },
+        {
+          h: 'Rally point',
+        },
+        {
+          list: [
+            'In the [[building:barracks|Barracks]] panel you can plant a rally flag, or right-click the ground with only the Barracks selected.',
+            'Soldiers the Barracks trains after that walk to the flag and each takes his own place in the ranks around it as his post. A recruit who first goes for a weapon ends that walk at the flag.',
+            'Without a flag, new soldiers stay at the Barracks door.',
+          ],
         },
         {
           h: 'What the Barracks holds',
@@ -197,14 +208,14 @@ export const MILITARY: ArticleGroup = {
         },
         {
           table: {
-            head: ['Hits', 'Chance of an accurate shot'],
+            head: ['Points', 'Chance of an accurate shot'],
             rows: [
               ['0', '{{aim.basePct}}%'],
               ['50', '{{aim.samplePct}}%'],
-              ['{{aim.noSpreadHits}}+', 'Always on target'],
+              ['{{aim.noSpreadPoints}}+', 'Always on target'],
             ],
             num: [0, 1],
-            foot: 'Each hit adds 1%. From {{aim.noSpreadHits}} hits even an inaccurate arrow lands on target. Short Bow and Longbow count hits together, the [[article:catapult|Catapult]] separately but on the same table. A hero always hits.',
+            foot: 'Each point of [[article:exp-combat|combat experience]] adds 1%, points from the coin drill and from fighting with another weapon too. From {{aim.noSpreadPoints}} points even an inaccurate arrow lands on target. The [[article:catapult|Catapult]] counts its own hits, but on the same table. A hero always hits.',
           },
         },
         {
@@ -321,7 +332,7 @@ export const MILITARY: ArticleGroup = {
           h: 'The "Eating and sleeping" switch',
         },
         {
-          p: 'On "Prohibited" a soldier doesn\'t go to eat, sleep or pray on his own. He doesn\'t even eat what he carries or from the tower\'s stock, and hunger doesn\'t break off a long order. Without potions he will starve in the end. An Eat order or switching back to "Allowed" helps.',
+          p: "On \"Prohibited\" a soldier doesn't go to eat, sleep or pray on his own. He doesn't even eat what he carries or from the tower's stock, doesn't stop to drink Mead, and hunger doesn't break off a long order. Without potions he will starve in the end. An Eat order or switching back to \"Allowed\" helps.",
         },
         {
           p: 'Potions, amulets and the Eat, Sleep and Pray orders work with either setting. In the order menu the settings are called "Allow Regeneration" and "Prohibit Regeneration".',
@@ -356,7 +367,7 @@ export const MILITARY: ArticleGroup = {
             head: ['Trait', 'Soldier', 'Hero'],
             rows: [
               ['Vision range in hexes', '{{vision.soldier}}', '{{vision.hero}}'],
-              ['Bow accuracy', 'Grows with hits', 'Always true'],
+              ['Bow accuracy', 'Grows with combat experience', 'Always true'],
               ['Combat experience', 'Grows', 'Grows only if the mission allows it'],
               ['Eating and sleeping', 'Needs them', "Doesn't need them"],
               ['Weapon, armour, Shoes', 'Can change, Shoes wear out', "Fixed, Shoes don't wear out"],
@@ -415,7 +426,7 @@ export const MILITARY: ArticleGroup = {
             'Civilians, Women and children run to the nearest building with a free place that they can walk to.',
             'Soldiers, heroes and the [[job:scout|Scout]] stay outside.',
             'Anyone who finds no place keeps working.',
-            "On alarm a settler breaks off eating and sleeping. Inside he doesn't work and eats only what he carries.",
+            "On alarm a settler breaks off eating and sleeping. Inside he doesn't work and eats what he carries or from the building's stock.",
             "Someone hidden inside can't be attacked.",
             'When the building is destroyed, those hidden inside come out.',
           ],
@@ -637,14 +648,14 @@ export const MILITARY: ArticleGroup = {
           h: 'Defence wall',
         },
         {
-          p: 'The [[building:work_pottery_02|Defence wall]] is an ordinary building and takes damage from the Building column. A soldier treats it like a stockade.',
+          p: 'The [[building:defence_wall|Defence wall]] is an ordinary building and takes damage from the Building column. A soldier treats it like a stockade.',
         },
       ],
       see: [
         'article:damage',
         'article:catapult',
         'article:construction',
-        'building:work_pottery_02',
+        'building:defence_wall',
         'good:wood',
       ],
     },
@@ -716,7 +727,7 @@ export const MILITARY: ArticleGroup = {
           h: 'Accuracy',
         },
         {
-          p: 'Accuracy grows as with an archer: [[article:aim|Hitting and Shooting]]. At {{catapult.max}} hexes an inaccurate stone lands up to {{stone.spread.0}} hexes from the target at 0 hits, {{stone.spread.25}} at 25, {{stone.spread.50}} at 50. From {{aim.noSpreadHits}} hits it lands on target. The commander collects the hits: every stone that damaged something counts, a building included, but only once, even if it hit several targets.',
+          p: 'Accuracy grows as with an archer: [[article:aim|Hitting and Shooting]]. At {{catapult.max}} hexes an inaccurate stone lands up to {{stone.spread.0}} hexes from the target at 0 hits, {{stone.spread.25}} at 25, {{stone.spread.50}} at 50. It never lands past the target: a stone that would fly over it falls short instead. From {{aim.noSpreadPoints}} hits it lands on target. The commander collects the hits: every stone that damaged something counts, a building included, but only once, even if it hit several targets.',
         },
         {
           h: 'Catapult stances',
@@ -739,8 +750,10 @@ export const MILITARY: ArticleGroup = {
         },
         {
           list: [
-            'If the target is closer than {{catapult.min}} hexes, the Catapult backs off. If it is farther than {{catapult.max}}, it moves up to {{catapult.bandMin}}-{{catapult.max}} hexes.',
-            'It fires only standing still, and only when not touching another vehicle.',
+            'In its {{catapult.min}}-{{catapult.max}} hex reach it fires first at towers, the Headquarters, the Barracks, houses shooting from inside and enemy Catapults, then at archers and other soldiers who shoot, then at the other soldiers, and only then at other houses and people.',
+            'Outside Ignorant, when none of the targets from the first two groups is in reach, one of them up to {{catapult.priorityReach}} hexes away draws it closer: a tower, the Headquarters, the Barracks, a house shooting from inside, an enemy Catapult, or archers and other soldiers who shoot. It drives up even when other soldiers are in reach or enemies crowd its side.',
+            'With nothing in reach it backs off from a lone enemy closer than {{catapult.min}} hexes, but stays put when two or more are that close. If the target is farther than {{catapult.max}}, it moves up to {{catapult.bandMin}}-{{catapult.max}} hexes.',
+            'It fires only standing still. Of Catapults that touch each other only one fires: the one already firing there. The others drive to a free spot, or wait where they are when there is none.',
             'You can order it to fire at any spot on the ground. It shoots at a stockade only on orders.',
           ],
         },

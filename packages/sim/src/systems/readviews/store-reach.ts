@@ -1,19 +1,27 @@
-import { ownerOf, ownersCompatible, Position } from '../../components/index.js';
+import { ownerOf, ownersCompatible, Position, sameSideAs } from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import { nodeOfPosition } from '../../nav/halfcell.js';
+import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
+import { QUALIFIES } from '../settlers/targets/cell-index.js';
+import { heldBands } from '../settlers/targets/held-bands.js';
+import { FetchableStock } from '../settlers/targets/stores/fetchable-stock.js';
+import { unclaimedStockOf } from '../settlers/targets/stores/stock.js';
 import { interactionCell } from '../settlers/targets/workplaces.js';
-import { navigationLimitFor } from '../signposts/index.js';
+import { goodsSearchGate, navigationLimitFor } from '../signposts/index.js';
+import { refillingGoodsOf } from '../stores/index.js';
 
 /** Stores or sources of the worker's side one diagnosis weighs before it stops calling the case decided. */
 const MAX_DIAGNOSTIC_STORES = 128;
 
 /**
- * Where a worker's side has stores for an errand: at least one inside the worker's signpost area
- * (`inReach`), only outside it (`outOfReach`), or none at all (`none`). A worker nothing confines, or a
- * band too large to decide, counts as `inReach`, so the diagnosis never claims a blocker it cannot prove.
+ * Where a worker's side has stores for an errand, against the area its search covers: at least one inside
+ * it (`inReach`), only ones outside it (`outOfReach`), none at all (`none`), or neither provable
+ * (`undecided`): more than one diagnosis weighs with none of those inside, or an input only its owner's
+ * storage minimum holds back. So the diagnosis never claims what it cannot prove. A search nothing confines
+ * finds every store in reach.
  */
-export type StoreReach = 'inReach' | 'outOfReach' | 'none';
+export type StoreReach = 'inReach' | 'outOfReach' | 'none' | 'undecided';
 
 /** Where `worker`'s side has `stores`, against its signpost area, as its confined search sees them. */
 export function storeReach(
@@ -37,6 +45,63 @@ export function storesOnlyOutOfReach(
   return gate !== null && reachAmong(world, worker, stores, gate) === 'outOfReach';
 }
 
+/**
+ * Where `operator`'s side has `goodType` for `workplace`, as the operator's fetch searches for it: from the
+ * workplace's door, through the goods search there within the operator's signpost area, else over the
+ * door's land. The stores are searched in the fetch's own index, so they cost one search bounded by that
+ * area however many lie beyond it; the side's `producers`, whose next unit lands on a shelf, are weighed
+ * one by one. A mapless sim confines nothing.
+ */
+export function inputReach(
+  world: World,
+  ctx: SystemContext,
+  operator: Entity,
+  workplace: Entity,
+  goodType: number,
+  producers: Iterable<Entity>,
+): StoreReach {
+  const stock = FetchableStock.of(world, ctx);
+  // A store the fetch lifts from: one lending a unit past its owner's storage minimum, or a self-filling
+  // house of the good, never the workplace's own shelf. Units other walkers claimed are not held back, as
+  // their claims come and go.
+  const lends = (e: Entity): boolean =>
+    e !== workplace &&
+    (unclaimedStockOf(world, ctx, undefined, e, goodType) > 0 ||
+      refillingGoodsOf(world, ctx, e).includes(goodType));
+  const owner = ownerOf(world, operator);
+  const terrain = ctx.terrain;
+  const here = terrain === undefined ? null : nodeOf(world, terrain, operator);
+  if (terrain === undefined || here === null) {
+    const stored = reachAmong(world, operator, kept(stock.holders(goodType), lends), null);
+    const found = stored === 'none' ? reachAmong(world, operator, producers, null) : stored;
+    return found === 'none' ? unsourced(stock, owner, goodType) : found;
+  }
+  const door = interactionCell(world, ctx, terrain, workplace, here);
+  const limit = navigationLimitFor(world, ctx.content, terrain, operator) ?? undefined;
+  const gate = goodsSearchGate(world, ctx.content, terrain, owner, door, limit);
+  const band = heldBands(world, ctx, terrain).supplying(goodType);
+  band.sync();
+  const lender = (e: Entity) => (lends(e) ? QUALIFIES : null);
+  if (band.index.nearest(here, lender, gate, undefined, sameSideAs(world, owner), door) !== null) {
+    return 'inReach';
+  }
+  const produced = reachAmong(world, operator, producers, (source) =>
+    gate.allowsNode(interactionCell(world, ctx, terrain, source, here)),
+  );
+  if (produced !== 'none') return produced;
+  const stocked =
+    owner === undefined
+      ? stock.holders(goodType).size + stock.refillers(goodType).size > 0
+      : stock.sideSupplies(owner, goodType);
+  return stocked ? 'outOfReach' : unsourced(stock, owner, goodType);
+}
+
+/** The verdict on an input nothing lends or makes: `none`, unless `owner`'s storehouses keep units of it
+ *  back for its storage minimum, which is no source the fetch lifts but which `none` would deny exists. */
+function unsourced(stock: FetchableStock, owner: number | undefined, goodType: number): StoreReach {
+  return owner !== undefined && stock.storedUnits(owner, goodType) > 0 ? 'undecided' : 'none';
+}
+
 function reachAmong(
   world: World,
   worker: Entity,
@@ -49,7 +114,7 @@ function reachAmong(
   for (const store of stores) {
     // Another side's stores never count, so they cannot use up the cap before the worker's own are seen.
     if (!ownersCompatible(owner, ownerOf(world, store))) continue;
-    if (examined++ >= MAX_DIAGNOSTIC_STORES) return 'inReach';
+    if (examined++ >= MAX_DIAGNOSTIC_STORES) return 'undecided';
     if (reaches === null || reaches(store)) return 'inReach';
     ownSide = true;
   }
@@ -59,11 +124,22 @@ function reachAmong(
 /** Whether a store's door lies inside `worker`'s signpost area; null when nothing confines the worker. */
 function signpostGate(world: World, ctx: SystemContext, worker: Entity): ((store: Entity) => boolean) | null {
   const terrain = ctx.terrain;
-  const position = world.tryGet(worker, Position);
-  if (terrain === undefined || position === undefined) return null;
+  const here = terrain === undefined ? null : nodeOf(world, terrain, worker);
+  if (terrain === undefined || here === null) return null;
   const limit = navigationLimitFor(world, ctx.content, terrain, worker);
   if (limit === null) return null;
-  const node = nodeOfPosition(position.x, position.y);
-  const here = terrain.nodeAtClamped(node.hx, node.hy);
   return (store) => limit.allowsNode(interactionCell(world, ctx, terrain, store, here));
+}
+
+/** The entries of `items` that `keep` admits, in order. */
+function* kept(items: Iterable<Entity>, keep: (item: Entity) => boolean): Generator<Entity> {
+  for (const item of items) if (keep(item)) yield item;
+}
+
+/** The node `e` stands on, or null for an unplaced one. */
+function nodeOf(world: World, terrain: TerrainGraph, e: Entity): NodeId | null {
+  const position = world.tryGet(e, Position);
+  if (position === undefined) return null;
+  const node = nodeOfPosition(position.x, position.y);
+  return terrain.nodeAtClamped(node.hx, node.hy);
 }

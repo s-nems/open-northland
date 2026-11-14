@@ -1,0 +1,47 @@
+{
+  "version": 1,
+  "map": "asgard-campaign_01_07",
+  "basis": {
+    "lang": "eng",
+    "digest": "8da2e658c715b33db631af3fd77aaf8b890ffb0b51744a0b8d89462b6281533c"
+  },
+  "strings": {
+    "0": "Sconfiggi il generale traditore.",
+    "1": "Conquista l'ultima roccaforte del generale sulle montagne del nord.",
+    "2": "Paga il tributo per placare il generale.",
+    "3": "Va' al tuo villaggio.",
+    "21": "Paga il tributo richiesto per un accordo commerciale.",
+    "22": "Placa di nuovo Bisanzio.",
+    "51": "Bizantini",
+    "52": "Soldati di Hardradi",
+    "53": "Guardia del ponte",
+    "54": "Profughi",
+    "98": "Il generale ha preso il comando dell'esercito e conquistato la parte settentrionale di Bisanzio. Ora il futuro dipende dalla Guardia variaga: saranno i suoi sforzi a decidere la piega del destino.",
+    "99": "LA BATTAGLIA PER BISANZIO",
+    "101": "Bjarni",
+    "102": "Sigurd",
+    "103": "Cyra",
+    "104": "Generale Hardradi",
+    "105": "Sven Herulfson"
+  },
+  "briefings": {
+    "14": "<font:$local$\\fonts\\fonthead16bld.fnt>\nMISSIONE FALLITA!\n<font:$local$\\fonts\\font12.fnt>\n<picture:$local$\\graphics\\Hero_Dead_F.pcx>\nÈ la fine! Ora la visione non potrà mai compiersi! Nonostante una lotta accanita, uno dei tuoi eroi è stato sopraffatto dal nemico!",
+    "header": "\nBATTAGLIA PER BISANZIO\n",
+    "start_00": "Ci dirigemmo verso la capitale il più in fretta possibile. La principessa ci attendeva fuori città, sconvolta e fuori di sé, e mi implorò di aiutarla. Pareva che fossimo arrivati troppo tardi. ",
+    "start_01": "Il generale aveva preso il comando dell'esercito e conquistato la parte settentrionale della città, e ora intimava all'imperatore di abdicare. Non restava alcuna difesa, a parte qualche reparto scelto ancora fedele all'imperatore. \n\nIl futuro ora dipendeva da noi e dalla Guardia variaga. Sarebbero stati i nostri sforzi a decidere la piega del destino.\n\n\nRafforza il tuo esercito e avanza contro il nemico.",
+    "nachricht": "Quando giungemmo al primo avamposto del generale, egli ci mandò un messaggio: se fossimo stati disposti a combattere al suo fianco, una volta diventato imperatore ci avrebbe ricompensato con generosità.\n\n\nPaga il tributo richiesto se vuoi accettare la proposta del generale.",
+    "genaralinbyzanz": "<font:$local$\\fonts\\fonthead16bld.fnt>\nMISSIONE FALLITA!\n<font:$local$\\fonts\\font12.fnt>\nQuando il generale conquistò Bisanzio, sparse paura e disperazione tra la popolazione, e ben presto fu incoronato nuovo imperatore dell'Impero bizantino. \n\nIl vecchio imperatore e sua figlia furono gettati in fondo alle segrete, e il regno tracotante del generale durò molti anni. Tradiva i suoi alleati, e i patti che stringeva non valevano la carta su cui erano scritti. \n\nCi ordinò di lasciare il paese e minacciò di farci guerra se non ci fossimo sottomessi al suo dominio. Se anche l'imperatore avesse saputo dove trovare l'ultimo pezzo della mappa, ormai era troppo tardi per chiederglielo. ",
+    "brückenwächter": "A nord-ovest trovammo il forte delle guardie del ponte. Fino ad allora erano riuscite a resistere alle truppe del generale. \n\nCi fornirono volentieri alcune delle loro catapulte per sostenerci nella lotta contro di lui.",
+    "byzanzsiegkaisertot": "<font:$local$\\fonts\\fonthead16bld.fnt>\nMISSIONE FALLITA!\n<font:$local$\\fonts\\font12.fnt>\n<picture:$local$\\graphics\\People_Dead_F.pcx>\nEravamo riusciti a conquistare Bisanzio. Le rovine della città un tempo così fiera erano nelle nostre mani. Quello stesso giorno mi incoronai nuovo imperatore di Bisanzio. \n\nMa era un regno triste quello su cui regnavo, dopo aver tradito e scacciato i nostri stessi amici! Avevo dimenticato lo scopo del nostro viaggio. Se anche l'imperatore avesse saputo dove trovare l'ultimo pezzo della mappa, ormai era troppo tardi per chiederglielo.",
+    "won_00": "<font:$local$\\fonts\\fonthead16bld.fnt>\nMISSIONE COMPIUTA!\n<font:$local$\\fonts\\font12.fnt>\nLa vittoria era nostra! \n\nPer le strade di Bisanzio risuonavano grida di giubilo, e io e i miei uomini fummo condotti per la città in corteo trionfale, quasi come i Cesari dei tempi antichi. \n\nL'imperatore ci colmò di doni e onori, e sua figlia mi ricompensò in segreto con un bacio che per me valeva più di tutto l'oro e la gloria.",
+    "won_01": "Quella sera ci sottraemmo ai festeggiamenti e raccontai alla principessa il motivo del nostro viaggio. \n\nLei mi fissò, con la sorpresa mista a una strana espressione sul volto. Disse di aver avuto una visione molto simile nelle segrete del generale. \n\nPoteva essere lei uno degli eroi che avevo visto? Mi raccontò che l'ultimo pezzo della mappa sarebbe stato avvistato nell'Estremo Oriente. Gliene aveva parlato sua zia ad Alessandria.\n \nPassammo molto tempo a escogitare come convincere suo padre a lasciarla partire con noi. Alla fine lei disse di voler far visita alla zia, e pochi giorni dopo eravamo in viaggio.",
+    "armee": "...",
+    "bjarnitot": "<font:$local$\\fonts\\fonthead16bld.fnt>\nMISSIONE FALLITA!\n<font:$local$\\fonts\\font12.fnt>\n<picture:$local$\\graphics\\Hero_Dead_F.pcx>\nEroismo o imprudenza? Alla morte di Bjarni gli dèi piansero... il loro destino era segnato, e con esso la fine del mondo degli uomini.",
+    "spielertot": "<font:$local$\\fonts\\fonthead16bld.fnt>\nMISSIONE FALLITA!\n<font:$local$\\fonts\\font12.fnt>\n<picture:$local$\\graphics\\People_Dead_F.pcx>\nHai fallito! \n\nI tuoi Vichinghi si erano fidati di te e tu li hai delusi! Non ci sarà posto per te alla tavola di Odino!",
+    "zerstörtesdorf": "Avevamo le lacrime agli occhi mentre ci avvicinavamo al nostro vecchio villaggio. \n\nIl generale Hardradi aveva davvero distrutto la nostra casa, lasciando in piedi soltanto le fondamenta. Il nostro dolore e la nostra rabbia non si potevano esprimere a parole, e così, guardando le rovine fumanti del nostro insediamento un tempo così fiero, giurammo un'amara vendetta!",
+    "flucht": "Più a nord trovammo un insediamento bizantino i cui abitanti erano fuggiti dal generale. \n\nErano indeboliti e non ci avrebbero sostenuto nella lotta contro il generale, ma forse avremmo potuto commerciare con loro.",
+    "rückzug": "Quando il generale vide che il nostro esercito gli infliggeva perdite sempre più gravi, ordinò la ritirata nel suo quartier generale segreto a nord. \n\nLe vecchie mura dove lo sfidammo a battaglia erano quasi inespugnabili, ma dovevamo espugnarle se volevamo porre fine al suo regno del terrore.",
+    "soldaten": "Quando gli abitanti di Bisanzio videro che il nostro esercito, radunato per salvarli, continuava a crescere, ripresero coraggio.\n\nL'imperatore radunò tutti i soldati della guardia di cui poteva fare a meno e li mandò sull'altra sponda del fiume, ponendoli al nostro comando.",
+    "wikiflucht": "I profughi del nostro villaggio avevano cominciato a costruire un nuovo insediamento davanti alle porte della città. \n\nFurono davvero felici di vederci."
+  }
+}

@@ -5,6 +5,7 @@ import { contentIndex } from '../../core/content-index.js';
 import { ONE } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { ContentContext, SystemContext } from '../context.js';
+import { isTempleFuel } from '../readviews/buildings.js';
 import { exportedGoodForm, isFoodKeptAtHome } from '../readviews/food.js';
 import { livestockTribeOfGood } from '../readviews/tribes/livestock.js';
 
@@ -23,9 +24,9 @@ export function mergedRecipeOf(world: World, ctx: ContentContext, building: Enti
 
 /**
  * Whether a fetch may lift `goodType` out of `store`: a workshop's stock of a good its own recipe
- * consumes is the reserve it needs to run, so nobody else may take it, and a home's food is its family's
- * ({@link isFoodKeptAtHome}). Authored rule, keyed on recipe inputs, so a slot no recipe consumes stays
- * strippable.
+ * consumes is the reserve it needs to run, so nobody else may take it, and a house keeps some stock for
+ * itself ({@link keepsOwnStock}). Authored rule, keyed on recipe inputs, so a slot no recipe consumes
+ * stays strippable.
  */
 export function mayFetchGoodFrom(
   world: World,
@@ -35,8 +36,14 @@ export function mayFetchGoodFrom(
 ): boolean {
   return (
     !recipeConsumes(mergedRecipeOf(world, ctx, store)?.inputs, goodType) &&
-    !isFoodKeptAtHome(world, ctx, store, goodType)
+    !keepsOwnStock(world, ctx, store, goodType)
   );
+}
+
+/** Whether `house` keeps its stock of `goodType` for itself: a home's food ({@link isFoodKeptAtHome}) and
+ *  a temple's fuel ({@link isTempleFuel}). */
+export function keepsOwnStock(world: World, ctx: ContentContext, house: Entity, goodType: number): boolean {
+  return isFoodKeptAtHome(world, ctx, house, goodType) || isTempleFuel(world, ctx, house, goodType);
 }
 
 /** {@link mayFetchGoodFrom}'s test with the recipe already in hand; undefined inputs mean no recipe. */

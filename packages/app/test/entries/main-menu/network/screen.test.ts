@@ -15,6 +15,8 @@ import {
 } from '../../../../src/entries/main-menu/network/index.js';
 import { messages } from '../../../../src/i18n/index.js';
 import type { ConnectionEvent, NetworkConnection } from '../../../../src/net/connection.js';
+import * as storeBrowser from '../../../../src/view/runtime/save-load/store-browser.js';
+import * as worldNames from '../../../../src/view/runtime/save-load/world-names.js';
 
 const NICK = 'Astrid';
 
@@ -127,6 +129,7 @@ beforeEach(() => {
 });
 afterEach(() => {
   vi.unstubAllGlobals();
+  vi.restoreAllMocks();
   document.body.replaceChildren();
 });
 
@@ -198,6 +201,36 @@ it('shows the games, players and chat the relay pushes to the hall, and says a l
   input.value = ' hej ';
   input.form?.requestSubmit();
   expect(fake.client.sayInHall).toHaveBeenCalledExactlyOnceWith('hej');
+  screen.dispose();
+});
+
+it('closes the open save list on an Esc the screen never saw, keeping the relay connection', () => {
+  vi.spyOn(storeBrowser, 'browserSaveStore').mockReturnValue({
+    list: async () => [],
+    read: async () => null,
+    write: async () => undefined,
+    remove: async () => undefined,
+  });
+  vi.spyOn(worldNames, 'worldNameIndex').mockResolvedValue(() => null);
+  const fake = fakeConnection();
+  const screen = connectedScreen(fake, vi.fn());
+  const copy = messages().network;
+  const labelled = (label: string) =>
+    [...screen.element.querySelectorAll('button')].find((button) => button.textContent === label);
+  labelled(copy.fromSave)?.click();
+  const change = labelled(copy.changeSave);
+  change?.click();
+  const saves = [...screen.element.querySelectorAll<HTMLElement>('.network-menu__pick')].find(
+    (pick) => pick.querySelector('.on-saves') !== null,
+  );
+  expect(saves?.hidden).toBe(false);
+  // The focus left on the page, where the screen's own Esc listener never hears the key.
+  (document.activeElement as HTMLElement | null)?.blur();
+  expect(screen.escape?.()).toBe(true);
+  expect(saves?.hidden).toBe(true);
+  expect(document.activeElement).toBe(change);
+  expect(screen.escape?.()).toBe(false);
+  expect(fake.dispose).not.toHaveBeenCalled();
   screen.dispose();
 });
 

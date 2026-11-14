@@ -1,0 +1,25 @@
+{
+  "version": 1,
+  "map": "asgard-campaign_01_05_sub",
+  "basis": {
+    "lang": "eng",
+    "digest": "2dc7af4f6ac0de75bdfe573813636730f36c90a463539bce2894c5b80269a43d"
+  },
+  "strings": {
+    "0": "Salva la figlia dell'imperatore!",
+    "51": "Briganti",
+    "52": "Principessa",
+    "99": "MIKLAGARD - Sub",
+    "101": "Bjarni",
+    "102": "Sigurd",
+    "103": "Cyra"
+  },
+  "briefings": {
+    "header": "\nLE SEGRETE\n",
+    "verließ": "Finalmente avevamo scoperto l'ingresso posteriore nascosto delle segrete in cui era tenuta prigioniera la figlia dell'imperatore. Ora era essenziale entrare di soppiatto, senza farci scoprire, perché non avevamo idea di quanto fosse forte il nemico. \n\nDecisi di andare da solo, ma l'eroe dei Franchi insistette per accompagnarmi e non ci fu verso di dissuaderlo. Davanti a noi si aprì uno stretto passaggio sotterraneo... \nChissà che cosa ci attendeva?\n\n\nSalva la figlia dell'imperatore!",
+    "wachen": "<font:$local$\\fonts\\fonthead16bld.fnt>\nMISSIONE COMPIUTA!\n<font:$local$\\fonts\\font12.fnt>\n\nL'astuzia e molta fortuna ci avevano permesso di sopraffare le guardie e liberare la figlia dell'imperatore bizantino. \n\nTornammo in fretta in superficie, dove i nostri uomini, sollevati, ci accolsero: ci avevano atteso con impazienza. Ora non ci restava che riportare la principessa, stremata e confusa, sana e salva da suo padre.\n\n\nScorta la figlia dell'imperatore sana e salva da suo padre.",
+    "bjarnitot": "<font:$local$\\fonts\\fonthead16bld.fnt>\nMISSIONE FALLITA!\n<font:$local$\\fonts\\font12.fnt>\n<picture:$local$\\graphics\\Hero_Dead_F.pcx>\nEroismo o imprudenza? Alla morte di Bjarni gli dèi piansero... il loro destino era segnato, e con esso la fine del mondo degli uomini.",
+    "heldtot": "<font:$local$\\fonts\\fonthead16bld.fnt>\nMISSIONE FALLITA!\n<font:$local$\\fonts\\font12.fnt>\n<picture:$local$\\graphics\\Hero_Dead_F.pcx>\nÈ la fine! Ora la visione non potrà mai compiersi!\n\nNonostante una lotta accanita, uno dei tuoi eroi è stato sopraffatto dal nemico!",
+    "knopf": "Udimmo un forte cigolio...\n\n... e un tintinnio metallico!\n\nDoveva significare qualcosa!"
+  }
+}

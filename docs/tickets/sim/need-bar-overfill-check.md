@@ -3,8 +3,9 @@
 **Area:** sim, app · **Priority:** P3
 **Needs user:** observation of the running original
 
-A need event can push a bar past 100%. Since the at-home rules, a nap at a furnished home pays its
-clip's 8000 rest twice (16000), and a candy meal at home pays 12000 food. The sim stores up to half a
+A need event can push a bar past 100%. Since the at-home rules, a candy meal at home pays 12000 food;
+the original's nap at a furnished home pays its clip's 8000 rest twice (16000), where ours, whose
+furniture houses families instead, pays it once. The sim stores up to half a
 bar above full and clamps the rest away (`NEED_OVERFILL_UNITS`, `clampNeed` in
 `packages/sim/src/systems/lifecycle/needs/scale.ts`). The settler panel clamps the gauge to 100%
 (`packages/app/src/hud/details-panel/model/settler.ts`), so the banked reserve is invisible.

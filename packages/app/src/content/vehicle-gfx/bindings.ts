@@ -2,14 +2,14 @@ import { UNLOADED_GOOD_TYPE, type VehicleGraphics } from '@open-northland/data';
 import {
   type ClothIndexRanges,
   type FrameListAnim,
-  type ShipYardSites,
   VEHICLE_ATTACK_TICKS,
   type VehicleBinding,
   type VehicleLook,
   type VehicleTribeLooks,
+  type VehicleYardSites,
 } from '@open-northland/render';
 import { ATTACK_ATOMIC } from '../../catalog/atomics.js';
-import { servedShadowStem } from '../ir/joins.js';
+import { atomicClipTicks, servedShadowStem } from '../ir/joins.js';
 import type { ContentIr } from '../ir/rows.js';
 import { frameListsByFacing } from '../settler-gfx/index.js';
 
@@ -117,6 +117,7 @@ export function vehicleLook(
   loaded: ReadonlySet<string>,
   frames: DrawableFrames,
   ownerFamily?: string,
+  attackTicks: number = VEHICLE_ATTACK_TICKS,
 ): VehicleLook | undefined {
   const layer = vehicleAtlasStem(row, ownerFamily);
   const drawable = frames.get(layer);
@@ -125,10 +126,9 @@ export function vehicleLook(
     const clip = row.clips.find((c) => c.action === action);
     return clip === undefined ? undefined : clipAnim(clip.dirFrames, drawable);
   };
-  // The shot's lists stretch over the attack cadence, as the original plays a `gfxanimmode 0` list.
+  // The shot's lists stretch over one attack clip, as the original plays a `gfxanimmode 0` list.
   const attackClip = row.clips.find((c) => c.action === ATTACK_ATOMIC);
-  const attack =
-    attackClip === undefined ? undefined : clipAnim(attackClip.dirFrames, drawable, VEHICLE_ATTACK_TICKS);
+  const attack = attackClip === undefined ? undefined : clipAnim(attackClip.dirFrames, drawable, attackTicks);
   let moving: FrameListAnim | undefined;
   let loadedMoving: FrameListAnim | undefined;
   const movingByGood: Record<number, FrameListAnim> = {};
@@ -191,6 +191,19 @@ export function vehicleGraphicsRows(ir: ContentIr | null): readonly VehicleGraph
   return ir?.vehicleGraphics ?? [];
 }
 
+/** The ticks of the attack clip each row's tribe binds for its job, per tribe resolved once. */
+export function vehicleAttackClipTicks(ir: ContentIr | null): (row: VehicleGraphics) => number | undefined {
+  const byTribe = new Map<number, ReturnType<typeof atomicClipTicks>>();
+  return (row) => {
+    let ticks = byTribe.get(row.tribe);
+    if (ticks === undefined) {
+      ticks = atomicClipTicks(ir, row.tribe);
+      byTribe.set(row.tribe, ticks);
+    }
+    return ticks(row.job, ATTACK_ATOMIC);
+  };
+}
+
 /**
  * The binding over every row whose atlas loaded. `fallbackTribe` is the world's base tribe: a tribe the
  * data binds no vehicles for (Egypt in the shipped content) draws its looks, and so does a tribe whose
@@ -206,13 +219,15 @@ export function buildVehicleBinding(
     readonly ships?: ReadonlySet<number>;
     /** The palette family whose LUT loaded; its rows bind the indexed body. */
     readonly ownerFamily?: string;
-    readonly shipYards?: ShipYardSites;
+    readonly vehicleYards?: VehicleYardSites;
+    /** The ticks of the attack clip a row's tribe binds for its job, which the sim times the shot by. */
+    readonly attackTicks?: (row: VehicleGraphics) => number | undefined;
   } = {},
 ): VehicleBinding | undefined {
   const byTribe: Record<number, Record<number, VehicleLook>> = {};
   let any = false;
   for (const row of rows) {
-    const look = vehicleLook(row, loaded, frames, options.ownerFamily);
+    const look = vehicleLook(row, loaded, frames, options.ownerFamily, options.attackTicks?.(row));
     if (look === undefined) continue;
     const looks = byTribe[row.tribe] ?? {};
     looks[row.vehicleType] = options.ships?.has(row.vehicleType) === true ? { ...look, afloat: true } : look;
@@ -225,6 +240,6 @@ export function buildVehicleBinding(
   return {
     byTribe: tribes,
     fallbackTribe,
-    ...(options.shipYards !== undefined ? { shipYards: options.shipYards } : {}),
+    ...(options.vehicleYards !== undefined ? { vehicleYards: options.vehicleYards } : {}),
   };
 }

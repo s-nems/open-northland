@@ -1,0 +1,27 @@
+{
+  "version": 1,
+  "map": "asgard-campaign_01_11",
+  "basis": {
+    "lang": "eng",
+    "digest": "f7256c2281a989382baa7bcd7d6becf781441002e6ba9ebc0e0e50659d6d8b2b"
+  },
+  "strings": {
+    "0": "Affronta il Serpente di Midgard con tutti e quattro i tuoi eroi.",
+    "51": "Popolo serpente",
+    "98": "Dopo una lunga odissea, i Vichinghi approdano una mattina su una costa morta e desolata, come guidati da una mano invisibile. Questa deve essere la loro meta, il regno del Serpente di Midgard: il Muro di Wigrid!",
+    "99": "MURO DI WIGRID",
+    "101": "Bjarni",
+    "102": "Sigurd",
+    "103": "Cyra",
+    "104": "Hatchie"
+  },
+  "briefings": {
+    "0": "Dopo una lunga odissea attraverso fitte nebbie, una mattina approdammo su una costa morta e desolata, come se una mano invisibile ci avesse guidati fin lì. Questa doveva essere la nostra meta, il regno del Serpente di Midgard, che le leggende chiamavano Jormungand!\n\nSì, era proprio ciò che avevo visto nella mia visione! Qui si sarebbe deciso il destino! Il Serpente di Midgard, antico avversario degli dèi e nemico dei viventi, era emerso dai mari molto prima del tempo, perché il Ragnarök, l'ultima battaglia degli dèi, non era ancora cominciato!\n\nNon ancora pronti alla lotta, gli dèi erano stati costretti a chiudere le porte della fortezza di Asgard e non potevano stare al fianco di noi mortali.\n\nFremente di rabbia, il serpente cominciava a soffocare il mondo con il suo alito pestilenziale. Il destino di Midgard era soltanto nelle nostre mani...\n\n\nTrova il Serpente di Midgard e distruggilo!",
+    "1": "<font:$local$\\fonts\\fonthead16bld.fnt>\nMISSIONE COMPIUTA!\n<font:$local$\\fonts\\font12.fnt>\nIl Serpente di Midgard morì con un ruggito assordante. Il pericolo soverchiante era stato scongiurato!\n\nInsieme avevamo compiuto ciò che gli dèi non erano riusciti a fare: avevamo vinto!\n\nLe Porte di Asgard si riaprirono! Una luce dorata si riversò dalla fortezza e squarciò la notte eterna del serpente. L'ombra che già aveva cominciato a coprire il mondo si dissolse, e tutto ciò che era appassito e avvelenato ora rifioriva.\n\nPer un istante le quattro grandi culture dell'Occidente si erano avvicinate un poco, unite per scongiurare la rovina del mondo. Solo il futuro avrebbe mostrato che cosa avrebbero portato le nostre nuove amicizie...",
+    "2": "<font:$local$\\fonts\\fonthead16bld.fnt>\nMISSIONE FALLITA!\n<font:$local$\\fonts\\font12.fnt>\n<picture:$local$\\graphics\\Hero_Dead_F.pcx>\nEroismo o imprudenza? Alla morte di Bjarni gli dèi piansero... il loro destino era segnato, e con esso la fine del mondo degli uomini.",
+    "3": "<font:$local$\\fonts\\fonthead16bld.fnt>\nMISSIONE FALLITA!\n<font:$local$\\fonts\\font12.fnt>\n<picture:$local$\\graphics\\Hero_Dead_F.pcx>\nBasta un attimo di distrazione per perdere la vita! Sigurd, l'eroe della profezia, è morto per la tua negligenza! Il mondo è perduto.",
+    "4": "<font:$local$\\fonts\\fonthead16bld.fnt>\nMISSIONE FALLITA!\n<font:$local$\\fonts\\font12.fnt>\n<picture:$local$\\graphics\\Hero_Dead_F.pcx>\nBasta un attimo di distrazione per perdere la vita! Cyra, l'eroina della profezia, è morta per la tua negligenza! Il mondo è perduto.",
+    "5": "<font:$local$\\fonts\\fonthead16bld.fnt>\nMISSIONE FALLITA!\n<font:$local$\\fonts\\font12.fnt>\n<picture:$local$\\graphics\\Hero_Dead_F.pcx>\nBasta un attimo di distrazione per perdere la vita! Hatchie, l'eroe della profezia, è morto per la tua negligenza! Il mondo è perduto.",
+    "header": "\nMURO DI WIGRID\n"
+  }
+}

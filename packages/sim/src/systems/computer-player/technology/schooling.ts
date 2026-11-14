@@ -21,7 +21,7 @@ import { tradeExperience } from '../../ai-shared/workforce/experience.js';
 import type { SpareForce } from '../../ai-shared/workforce/pool.js';
 import type { SystemContext } from '../../context.js';
 import { schoolMethodJob } from '../../orders/education.js';
-import { trainingSeats } from '../../orders/training-seats.js';
+import { unclaimedSeats } from '../../orders/training-seats.js';
 import {
   goodEnabled,
   jobEnabled,
@@ -222,14 +222,7 @@ export class Schooling {
   private seatsLeft(school: Entity): number {
     let left = this.freeSeats.get(school);
     if (left === undefined) {
-      const capacity = trainingSeats(this.world, this.ctx, school);
-      left = Number.POSITIVE_INFINITY;
-      if (capacity !== undefined) {
-        let claimed = 0;
-        for (const e of this.world.query(TrainingOrder))
-          if (this.world.get(e, TrainingOrder).house === school) claimed++;
-        left = capacity - claimed;
-      }
+      left = unclaimedSeats(this.world, this.ctx, school);
       this.freeSeats.set(school, left);
     }
     return left;

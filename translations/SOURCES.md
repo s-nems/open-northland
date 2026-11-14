@@ -74,6 +74,12 @@ Overlays the project wrote itself, edited in place:
 - `eng/maps/`, `ger/maps/` and `rus/maps/` files for community maps that ship only Polish: the
   project's machine translation from the Polish text with the glossary, reusing the earlier version's
   shipped translation where the text is unchanged; unreviewed by a native speaker.
+- `ita/`: the project's own machine (agent) translation with the glossary's `ita` terms, from the
+  English text where the map ships it, else from the Polish original, each map
+  reviewed once by a second agent; unreviewed by a native speaker. It covers what
+  the pack's official Italian text does not: maps outside the Northland edition, the object-table ids
+  the edition lacks, and campaign titles. The `ita` column of `glossary-project.csv` follows the
+  edition's word choice for the game's terms and names.
 
 
 ## Campaign film subtitles
@@ -87,9 +93,13 @@ separate from the imported JSON overlays above.
   where recognition disagreed. Cue times follow each language's word timestamps; silent passages
   carry no lingering cue. Speech recognition is evidence, not a native-speaker listening review.
 - `rus`: project translation of the checked English narration; the pack has no Russian film audio.
+- `ita` (`asgard` and `wonder` only): project translation of the checked English narration on the
+  English timeline, the Italian fallback audio; the pack ships Italian-dubbed Northland films, which
+  need no subtitle track.
 - `chs`: HaoJun0823's native-speaker translation, retained verbatim as contributed.
-- The Russian translation is AI-assisted and not native-speaker reviewed. There is no `cht` film
-  subtitle track; this project does not undertake a Traditional Chinese translation of these films.
+- The Russian and Italian translations are AI-assisted and not native-speaker reviewed. There is no
+  `cht` film subtitle track; this project does not undertake a Traditional Chinese translation of
+  these films.
 
 Character spellings follow the shipped campaign strings and `glossary.csv`: English **Hatchie**,
 German/Polish **Hatschi**, Russian **Хатчи**; **Bjarni**, **Cyra**, **Sigurd** and their localized forms.

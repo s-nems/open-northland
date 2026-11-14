@@ -3,6 +3,7 @@ import { chs } from './chs.js';
 import { cht } from './cht.js';
 import { de } from './de.js';
 import { en, type Messages } from './en.js';
+import { it } from './it.js';
 import { pl } from './pl.js';
 import { ru } from './ru.js';
 
@@ -14,7 +15,7 @@ export type Locale = Language;
 /** Where a preferred language with no shipped catalog lands. */
 const FALLBACK_LOCALE: Locale = 'eng';
 
-const LOCALES: Readonly<Record<Locale, Messages>> = { pol: pl, eng: en, ger: de, rus: ru, chs, cht };
+const LOCALES: Readonly<Record<Locale, Messages>> = { pol: pl, eng: en, ger: de, rus: ru, ita: it, chs, cht };
 let activeLocale: Locale | undefined;
 
 /** Display names that replace authored catalog entries, keyed as each catalog table keys them. */

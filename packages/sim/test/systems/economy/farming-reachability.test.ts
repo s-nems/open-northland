@@ -1,3 +1,4 @@
+import type { ContentSet } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
 import {
   FarmTask,
@@ -17,8 +18,24 @@ import { ctxOf } from '../../fixtures/context.js';
 import { grassNodeMap } from '../../fixtures/terrain.js';
 import { FIELD_CAP, farmAt, farmerAt, fieldAtNode, STAGES, WHEAT } from './farming/support.js';
 
+/** A plot radius, in half-cell nodes, that reaches the fixture's farthest field from the farm at node (5, 6). */
+const WIDE_FIELD_RADIUS = 16;
+
+/** The fixture with its farm's plot widened to {@link WIDE_FIELD_RADIUS}. */
+function wideFarmContent(): ContentSet {
+  const base = testContent();
+  return {
+    ...base,
+    goods: base.goods.map((good) =>
+      good.farming === undefined
+        ? good
+        : { ...good, farming: { ...good.farming, fieldRadius: WIDE_FIELD_RADIUS } },
+    ),
+  };
+}
+
 function setup() {
-  const sim = new Simulation({ seed: 1, content: testContent(), map: grassNodeMap(30, 20) });
+  const sim = new Simulation({ seed: 1, content: wideFarmContent(), map: grassNodeMap(30, 20) });
   const farm = farmAt(sim, 2, 3);
   const farmer = farmerAt(sim, 1, 3, farm);
   const wall = sim.world.create();

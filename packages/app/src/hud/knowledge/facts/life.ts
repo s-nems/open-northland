@@ -1,3 +1,4 @@
+import type { LodgingWear } from '@open-northland/data';
 import {
   components,
   DEFAULT_NODE_ROUGHNESS,
@@ -11,7 +12,6 @@ import { CRITICAL_CHANCE_PCT, HUMAN_HITPOINTS, STRENGTH_PCT } from '../combat.js
 import type { KnowledgeBase } from '../model.js';
 import {
   clipNeedPct,
-  clipOf,
   clipSeconds,
   duration,
   equipOf,
@@ -24,6 +24,7 @@ import {
   PERCENT,
   seconds,
   stockOf,
+  twoDecimals,
   whole,
 } from './reader.js';
 
@@ -48,14 +49,10 @@ const manSleepPct: FactReader = (base) => sleepPct(base, JOB_CIVILIST);
 
 const womanSleepPct: FactReader = (base) => sleepPct(base, JOB_WOMAN);
 
-/** One sleep's use of the furniture: a use per rest event the clip plays. */
-function furnitureSleeps(base: KnowledgeBase, jobType: number): FactValue {
+/** The `source` activities of an extra family that wear out one delivered piece of furniture. */
+function furnitureCovers(base: KnowledgeBase, source: keyof LodgingWear): FactValue {
   const ware = homeWare(base, 'furniture');
-  const restEvents = clipOf(base, systems.SLEEP_ATOMIC_ID, jobType)?.events.filter(
-    (event) => event.type === systems.ATOMIC_EVENT_CHANNEL.REST,
-  ).length;
-  if (ware === undefined || restEvents === undefined || restEvents === 0) return undefined;
-  return ware.deliveryValue / ware.useCost / restEvents;
+  return ware?.effect === 'lodging' ? Math.ceil(ware.deliveryValue / ware.wear[source]) : undefined;
 }
 
 const pctFactor = (pct: FactValue): FactValue => (pct === undefined ? undefined : pct / PERCENT);
@@ -74,13 +71,13 @@ const auraSeconds = HUMAN_HITPOINTS / systems.TEMPLE_AURA_HITPOINTS;
 /** A home ware's `field` in delivered units. */
 function wareRatio(base: KnowledgeBase, good: string, field: 'capacity' | 'fetchBelow'): FactValue {
   const ware = homeWare(base, good);
-  return ware === undefined ? undefined : ware[field] / ware.deliveryValue;
+  return ware === undefined || ware.effect === 'lodging' ? undefined : ware[field] / ware.deliveryValue;
 }
 
 /** One delivered unit of oil's burn, a use a second. */
 function oilBurnSeconds(base: KnowledgeBase): FactValue {
   const ware = homeWare(base, 'holy_oil');
-  return ware === undefined ? undefined : ware.deliveryValue / ware.useCost;
+  return ware === undefined || ware.effect === 'lodging' ? undefined : ware.deliveryValue / ware.useCost;
 }
 
 export const NEED_FACTS: Readonly<Record<string, Fact>> = {
@@ -101,10 +98,8 @@ export const NEED_FACTS: Readonly<Record<string, Fact>> = {
   ),
   'sleep.manAwayPct': whole(scaled(manSleepPct, 1 / systems.AWAY_REST_DIVISOR)),
   'sleep.manHomePct': whole(manSleepPct),
-  'sleep.manFurnishedPct': whole(scaled(manSleepPct, systems.AT_HOME_FACTOR)),
   'sleep.womanAwayPct': whole(scaled(womanSleepPct, 1 / systems.AWAY_REST_DIVISOR)),
   'sleep.womanHomePct': whole(womanSleepPct),
-  'sleep.womanFurnishedPct': whole(scaled(womanSleepPct, systems.AT_HOME_FACTOR)),
   'sleep.soldierPct': whole((base) => sleepPct(base, JOB_SOLDIER_UNARMED)),
   'pray.seconds': oneDecimal((base) => clipSeconds(base, systems.PRAY_ATOMIC_ID, JOB_CIVILIST)),
   'pray.pct': whole((base) =>
@@ -141,6 +136,12 @@ export const HEALTH_FACTS: Readonly<Record<string, Fact>> = {
     systems.REGENERATION_HITPOINTS_PER_TICK * TICKS_PER_SECOND + systems.TEMPLE_AURA_HITPOINTS,
   ),
   'aura.pietyPct': oneDecimal(needPct(systems.TEMPLE_AURA_PIETY_UNITS)),
+  'aura.oilBurnTime': duration(systems.TEMPLE_FUEL_BURN_SECONDS),
+  'aura.oilUnits': whole((base) => stockOf(base, 'work_temple', 'holy_oil')),
+  'aura.oilFullBurnTime': duration((base) => {
+    const units = stockOf(base, 'work_temple', 'holy_oil');
+    return typeof units === 'number' ? units * systems.TEMPLE_FUEL_BURN_SECONDS : undefined;
+  }),
   'draught.healBelow': whole((HUMAN_HITPOINTS * systems.HEALING_DRAUGHT_BELOW_PCT) / PERCENT),
   'draught.healSmallTotal': whole((base) =>
     scaled(healSip, equipOf(base, 'potion_heal_small')?.uses ?? 0)(base),
@@ -157,7 +158,9 @@ export const HEALTH_FACTS: Readonly<Record<string, Fact>> = {
   'amulet.critFactor': oneDecimal((base) =>
     pctFactor(equipOf(base, 'amulet_crithit')?.criticalHit?.damagePct),
   ),
-  'amulet.comboFactor': oneDecimal((base) => {
+  'amulet.stunBasePct': whole(systems.CRITICAL_STUN_BASE_PCT),
+  'amulet.stunSeconds': whole(seconds(systems.CRITICAL_STUN_TICKS)),
+  'amulet.comboFactor': twoDecimals((base) => {
     const critical = pctFactor(equipOf(base, 'amulet_crithit')?.criticalHit?.damagePct);
     return critical === undefined ? undefined : (critical * STRENGTH_PCT) / PERCENT;
   }),
@@ -178,12 +181,12 @@ export const LIFE_FACTS: Readonly<Record<string, Fact>> = {
   'home.wareUnits': whole((base) => wareRatio(base, 'crockery', 'capacity')),
   'home.crockeryDeliveries': whole((base) => {
     const ware = homeWare(base, 'crockery');
-    return ware === undefined ? undefined : ware.deliveryValue / ware.useCost;
+    return ware === undefined || ware.effect === 'lodging' ? undefined : ware.deliveryValue / ware.useCost;
   }),
-  'home.furnitureManSleeps': whole((base) => furnitureSleeps(base, JOB_CIVILIST)),
-  'home.furnitureWomanSleeps': whole((base) => furnitureSleeps(base, JOB_WOMAN)),
+  'home.furnitureChildren': whole((base) => furnitureCovers(base, 'child')),
+  'home.furnitureSleeps': whole((base) => furnitureCovers(base, 'sleep')),
+  'home.furnitureMeals': whole((base) => furnitureCovers(base, 'meal')),
   'home.crockeryFetchBelow': whole((base) => wareRatio(base, 'crockery', 'fetchBelow')),
-  'home.furnitureFetchBelow': whole((base) => wareRatio(base, 'furniture', 'fetchBelow')),
   'home.oilFetchBelow': whole((base) => wareRatio(base, 'holy_oil', 'fetchBelow')),
   'oil.burnTime': duration(oilBurnSeconds),
   'oil.fullBurnTime': duration((base) => {

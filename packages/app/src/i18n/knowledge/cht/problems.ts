@@ -69,7 +69,7 @@ export const PROBLEMS: ArticleGroup = {
             ],
             [
               '田不長',
-              '不澆水的田地每{{field.stageSeconds}}秒只長1階段。在[[building:work_farm_00|農場]]工作的[[job:farmer|農夫]]或在[[building:work_herb_hut|草藥屋]]工作的[[job:herb_mush_guy|草藥師]]會澆水。他先播種，滿{{field.max}}塊田或無處可播時才澆水。田地澆{{field.waterings}}次成熟，一次澆水同時覆蓋6塊相鄰田地。沙地和道路上不能播種，播種範圍在建築{{field.radius}}格以內。',
+              '不澆水的田地每{{field.stageSeconds}}秒只長1階段。在[[building:work_farm_00|農場]]工作的[[job:farmer|農夫]]或在[[building:work_herb_hut|草藥屋]]工作的[[job:herb_mush_guy|草藥師]]會澆水。他先播種，滿{{field.max}}塊田或無處可播時才澆水。田地澆{{field.waterings}}次成熟，一次澆水同時覆蓋6塊相鄰田地。沙地和道路上不能播種，播種範圍在建築{{field.radius}}格以內，有工作旗幟時則以旗幟為中心。',
             ],
             [
               '雨、雪或黑夜有影響嗎？',
@@ -271,7 +271,7 @@ export const PROBLEMS: ArticleGroup = {
                 '建築沒了或居民被解僱，他已{{notice.idleSeconds}}秒沒有旗幟閒著。職業保留',
                 '指派工作地點或換職業',
               ],
-              ['「需要重新開始」', '重要', '更改的設定要重啟後才生效', 'Esc選單裡的「重新開始任務」'],
+              ['「需要重新開始」', '重要', '更改的設定要重啟後才生效', 'Esc選單裡的「重新開始地圖」'],
               ['「產品已鎖定」', '值得注意', '所選產品尚不可用', '選其他產品'],
               [
                 '「經驗不足」',

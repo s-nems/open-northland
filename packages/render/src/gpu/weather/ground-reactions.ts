@@ -2,6 +2,7 @@ import { BufferImageSource, Geometry, Mesh, Shader, Texture, UniformGroup } from
 import { TILE_HALF_H, TILE_HALF_W } from '../../data/projection/index.js';
 import {
   RAIN_SATURATING_AMOUNT,
+  RAIN_SPLASH_RGB,
   SAND_SATURATING_AMOUNT,
   SNOW_SATURATING_AMOUNT,
 } from '../../data/weather/cover.js';
@@ -153,7 +154,7 @@ const VERTEX = `#version 300 es
   }
 `;
 
-const SPLASH_COLOUR = 'vec3(0.84, 0.9, 0.97)';
+const SPLASH_COLOUR = `vec3(${RAIN_SPLASH_RGB.map(f).join(', ')})`;
 const RIPPLE_COLOUR = 'vec3(0.82, 0.9, 0.96)';
 const SNOW_WISP_COLOUR = 'vec3(1.0, 1.0, 1.0)';
 const SAND_WISP_COLOUR = 'vec3(0.98, 0.88, 0.68)';

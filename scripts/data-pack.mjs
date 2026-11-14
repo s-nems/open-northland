@@ -3,10 +3,11 @@ import { createReadStream } from 'node:fs';
 import { lstat, readdir, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
-export const DATA_PACK_VERSION = 4;
+export const DATA_PACK_VERSION = 5;
 export const DATA_PACK_FORMAT = 'open-northland-data';
-/** The map text languages, spelled as the original's `text/<language>/` folders. */
-const LANGUAGES = ['pol', 'eng', 'ger', 'rus'];
+/** The languages the pack ships text in (the engine's `PACK_LANGUAGES`), spelled as the original's
+ *  `text/<language>/` folders. */
+const LANGUAGES = ['pol', 'eng', 'ger', 'rus', 'ita'];
 const CAMPAIGN_VERSION = 2;
 const MAP_ID = /^[a-z0-9]+(?:_[a-z0-9]+)*$/;
 /** Served as `/campaigns/<id>/<path>`, so lower-case like the app's campaign asset URLs. */

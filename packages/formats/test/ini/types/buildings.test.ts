@@ -15,6 +15,7 @@ describe('extractBuildings', () => {
         id: 'wardenhall',
         kind: 'storage', // logicmaintype 1
         homeSize: 0,
+        furnishedFamilies: 0,
         buildOnBioPattern: false,
         canEnableDefenceMode: true, // logicCanEnableDefenceMode 1
         refillsOwnStock: false,
@@ -37,6 +38,7 @@ describe('extractBuildings', () => {
         id: 'burrow_nest_00',
         kind: 'home', // logicmaintype 2
         homeSize: 1, // logichomesize
+        furnishedFamilies: 0,
         buildOnBioPattern: false,
         canEnableDefenceMode: false,
         refillsOwnStock: false,
@@ -56,6 +58,7 @@ describe('extractBuildings', () => {
         id: 'grind_lodge_00',
         kind: 'workplace', // logicmaintype 3
         homeSize: 0,
+        furnishedFamilies: 0,
         buildOnBioPattern: true,
         canEnableDefenceMode: false,
         refillsOwnStock: false,
@@ -75,6 +78,7 @@ describe('extractBuildings', () => {
         id: 'work_well_00',
         kind: 'workplace',
         homeSize: 0,
+        furnishedFamilies: 0,
         buildOnBioPattern: true,
         collectAtomic: 44, // the engine's well pump for logictype 10, not an .ini key
         canEnableDefenceMode: false,
@@ -95,6 +99,7 @@ describe('extractBuildings', () => {
         id: 'work_hive_00',
         kind: 'workplace',
         homeSize: 0,
+        furnishedFamilies: 0,
         buildOnBioPattern: true,
         collectAtomic: 45, // the engine's hive pick-up for logictype 11
         canEnableDefenceMode: false,

@@ -31,6 +31,7 @@ import {
   scanChangedBytes,
 } from '../../../src/index.js';
 import { SharedSightMask } from '../../../src/simulation/shared-sight.js';
+import { SHELTER_SHOT_PERIOD_TICKS } from '../../../src/systems/conflict/shelter-fire.js';
 import { SIGHT_RADIUS_NODES } from '../../../src/systems/conflict/targeting.js';
 import { MILITARY_MODE, type MilitaryMode } from '../../../src/systems/readviews/index.js';
 import { looseProjectile } from '../../../src/systems/settlers/atomics/effects/combat/index.js';
@@ -245,6 +246,7 @@ describe('exploreAround - one look at a point, with no eye behind it', () => {
         missSounds: {},
       },
       weaponMainType: null,
+      blowTicks: SHELTER_SHOT_PERIOD_TICKS,
       cover: null,
       aim: { x: fx.fromInt(30), y: fx.fromInt(4) },
     });

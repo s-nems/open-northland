@@ -207,6 +207,11 @@ describe('carrier pickup flag', () => {
     expect(workStatus(s.world, ctxOf(s), porter)?.kind).not.toBe('nothingAtFlag');
     plantFlag(s, porter, 24);
     expect(workStatus(s.world, ctxOf(s), porter)).toEqual({ kind: 'nothingAtFlag' });
+    // A farmer's flag bounds his plot, not a pickup area.
+    const farmer = workerAt(s, 11, buildingAt(s, FARM, 10), FARMER);
+    plantFlag(s, farmer, 24);
+    expect(s.world.has(farmer, HaulFlag)).toBe(true);
+    expect(workStatus(s.world, ctxOf(s), farmer)?.kind).not.toBe('nothingAtFlag');
   });
 
   it('collects wherever its signposts reach again once the flag is cleared', () => {

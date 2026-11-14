@@ -163,8 +163,8 @@ describe('a workshop operator performing its craft', () => {
     const third = settlerAt(shop.sim, 1, 0, CARPENTER, shop.shop);
     world.add(shop.shop, Production, {
       cycles: [
-        { elapsed: 3, duration: KITCHEN_RECIPE_TICKS, goodType: PLANK },
-        { elapsed: 11, duration: KITCHEN_RECIPE_TICKS, goodType: PLANK },
+        { elapsed: 3, duration: KITCHEN_RECIPE_TICKS, goodType: PLANK, operator: null },
+        { elapsed: 11, duration: KITCHEN_RECIPE_TICKS, goodType: PLANK, operator: null },
       ],
     });
     const seatOf = (worker: Entity): number | null => {
@@ -190,8 +190,8 @@ describe('a workshop operator performing its craft', () => {
     const world = sim.world;
     world.add(mill, Production, {
       cycles: [
-        { elapsed: 3, duration: TWIN_MILL_RECIPE_TICKS, goodType: PLANK },
-        { elapsed: 11, duration: TWIN_MILL_RECIPE_TICKS, goodType: PLANK },
+        { elapsed: 3, duration: TWIN_MILL_RECIPE_TICKS, goodType: PLANK, operator: null },
+        { elapsed: 11, duration: TWIN_MILL_RECIPE_TICKS, goodType: PLANK, operator: null },
       ],
     });
 
@@ -271,7 +271,12 @@ describe('a seated crafter between its idle beats', () => {
     const mill = buildingAt(sim, TWIN_MILL, 1, 0, [[WOOD, 4]]);
     if (elapsed.length > 0) {
       sim.world.add(mill, Production, {
-        cycles: elapsed.map((e) => ({ elapsed: e, duration: TWIN_MILL_RECIPE_TICKS, goodType: PLANK })),
+        cycles: elapsed.map((e) => ({
+          elapsed: e,
+          duration: TWIN_MILL_RECIPE_TICKS,
+          goodType: PLANK,
+          operator: null,
+        })),
       });
     }
     const ctx = ctxOf(sim);
@@ -302,8 +307,8 @@ describe('a seated crafter between its idle beats', () => {
     productionSystem(sim.world, offBeat); // batch 0 lands; the one left advances to 6
     plannerSystem(sim.world, offBeat);
 
-    expect(atomicElapsed(sim.world.get(first, AtomicClock), fixtureTick(sim))).toBe(6);
-    expect(sim.world.has(second, CurrentAtomic)).toBe(false); // a hand beyond the batches
+    expect(atomicElapsed(sim.world.get(second, AtomicClock), fixtureTick(sim))).toBe(6);
+    expect(sim.world.has(first, CurrentAtomic)).toBe(false); // its batch landed; the other is second's
   });
 
   it('re-pairs the whole crew when one crafter is woken alone', () => {
@@ -328,8 +333,8 @@ describe('a seated crafter between its idle beats', () => {
     const world = sim.world;
     world.add(mill, Production, {
       cycles: [
-        { elapsed: 3, duration: TWIN_MILL_RECIPE_TICKS, goodType: PLANK },
-        { elapsed: 11, duration: TWIN_MILL_RECIPE_TICKS, goodType: PLANK },
+        { elapsed: 3, duration: TWIN_MILL_RECIPE_TICKS, goodType: PLANK, operator: null },
+        { elapsed: 11, duration: TWIN_MILL_RECIPE_TICKS, goodType: PLANK, operator: null },
       ],
     });
     const ctx = ctxOf(sim);

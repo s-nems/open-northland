@@ -1,10 +1,13 @@
 /**
  * Pure reads over a frozen `WorldSnapshot`: no DOM and no Pixi, the interactive glue lives one level up.
  */
+
+export * from './amulet-arcs.js';
 export * from './building-points.js';
 export * from './construction-signs.js';
 export * from './diplomacy-rows.js';
 export * from './door-badges.js';
+export * from './draught-glow.js';
 export * from './entity-anchor.js';
 export * from './experience-stars.js';
 export * from './fog-gates.js';
@@ -16,3 +19,4 @@ export * from './range-rings.js';
 export * from './selected-flags.js';
 export * from './settler-bubbles.js';
 export * from './snapshot-projections.js';
+export * from './wind-trail.js';

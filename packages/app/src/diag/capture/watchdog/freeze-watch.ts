@@ -18,8 +18,16 @@ export const BOOT_FREEZE_REPORT_MS = 60_000;
  *  counts as the boot's. */
 export const BOOT_GRACE_MS = 3000;
 
-/** A freeze of `lastedMs` is worth a report; a `slow` one, of a boot or of a page drawn in software,
- *  only when it lasted as long as a stuck boot. */
+/** A watchdog check this late means the page did not run at all that long: the machine slept or the
+ *  browser suspended the tab, far past any delay of a busy scheduler. */
+export const MACHINE_AWAY_MS = 30_000;
+
+/** A freeze that began this soon after such a wake is the system bringing the app back, paging its
+ *  memory in and restarting the GPU: one woken desktop page stalled 11 to 38 s. An approximation. */
+export const WAKE_GRACE_MS = 60_000;
+
+/** A freeze of `lastedMs` is worth a report; a `slow` one, of a boot, of a page drawn in software or
+ *  of a page just woken, only when it lasted as long as a stuck boot. */
 export function freezeWorthReport(lastedMs: number, slow: boolean): boolean {
   return lastedMs >= (slow ? BOOT_FREEZE_REPORT_MS : FREEZE_REPORT_MS);
 }
@@ -27,8 +35,9 @@ export function freezeWorthReport(lastedMs: number, slow: boolean): boolean {
 export interface FreezeReports {
   /** The page went silent while visible, `silentMs` ago, last beating with `context`. */
   frozen(silentMs: number, context: CaptureContext | null): void;
-  /** A frozen page beat again after `freezeMs` of silence. */
-  thawed(freezeMs: number, context: CaptureContext | null): void;
+  /** A frozen page beat again after `freezeMs` of silence; `afterWake`: the freeze began within
+   *  {@link WAKE_GRACE_MS} of the machine waking. */
+  thawed(freezeMs: number, context: CaptureContext | null, afterWake: boolean): void;
 }
 
 /**
@@ -41,27 +50,35 @@ export class FreezeWatch {
   private readonly silence: StallWatch;
   private visible = false;
   private context: CaptureContext | null = null;
+  private lastCheckMs: number;
+  private wokeAtMs = Number.NEGATIVE_INFINITY;
+  private beatAtMs = 0;
 
   constructor(reports: FreezeReports, thresholdMs: number, beatMs: number, nowMs: number) {
     this.silence = new StallWatch(
       {
         stalled: (silentMs) => reports.frozen(silentMs, this.context),
-        recovered: (silentMs) => reports.thawed(silentMs, this.context),
+        recovered: (silentMs) =>
+          reports.thawed(silentMs, this.context, this.beatAtMs - silentMs - this.wokeAtMs <= WAKE_GRACE_MS),
       },
       thresholdMs,
       beatMs,
       nowMs,
     );
+    this.lastCheckMs = nowMs;
   }
 
   /** A beat; a freeze it ends is told with the context from before it. */
   beat(nowMs: number, visible: boolean, context: CaptureContext): void {
+    this.beatAtMs = nowMs;
     this.silence.heard(nowMs);
     this.visible = visible;
     this.context = context;
   }
 
   check(nowMs: number): void {
+    if (nowMs - this.lastCheckMs > MACHINE_AWAY_MS) this.wokeAtMs = nowMs;
+    this.lastCheckMs = nowMs;
     if (this.visible) this.silence.check(nowMs);
     else this.silence.heard(nowMs);
   }

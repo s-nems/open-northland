@@ -14,7 +14,7 @@ campaigns/<campaign-id>/
   maps/<map-id>/
     world/                    shared terrain and world resources
     mission/                  shared mission files
-    locales/{pol,eng,ger,rus}/ language-specific text and speech
+    locales/{pol,eng,ger,rus,ita}/ language-specific text and speech
 ```
 
 The base tree has these source namespaces:
@@ -29,13 +29,19 @@ The base tree has these source namespaces:
 - `attack-alerts/`: optional; the shouted attack alert takes, an addition the original does not
   have. See [Attack alerts](#attack-alerts).
 
+Text languages are `pol`, `eng`, `ger`, `rus` and `ita`, in `text/<language>/` and
+`Data/text/<language>/` folders and campaign `locales/<language>/`. Italian text is CP1252. Italian is
+an overlay language the pack also ships: where the pack carries Italian text, it wins over the
+repository's `ita` overlays per map, per object-table id, for the history book and for a campaign title
+([translations contract](../translations/AGENTS.md)).
+
 The initial materials derive from CNMod 1.3.2. That is provenance, not the pack identity or an
 assumption made by the conversion stages. The pack builder translates upstream paths before
 publication; the engine reads only the pack layout.
 
 The root manifest has exactly these fields:
 
-- `format`: `open-northland-data`; `version`: `4`; `base`: `base`.
+- `format`: `open-northland-data`; `version`: `5`; `base`: `base`.
 - `components`: records with a stable `id`, `kind` (`base` or `animation`) and source `sha256`.
   Exactly one component is the base. An animation is included only by an explicit release selection.
 - `campaigns`: unique campaign ids; empty until campaign sources are prepared.

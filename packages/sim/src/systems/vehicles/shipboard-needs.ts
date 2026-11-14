@@ -1,6 +1,8 @@
 import {
   LISTEN_ATOMIC_ID,
+  MealBreakRetry,
   needsEnabled,
+  ownerOf,
   Position,
   Rider,
   Settler,
@@ -10,30 +12,35 @@ import {
   vehicleStockEntries,
 } from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
+import { BattleFront } from '../conflict/battle-alert.js';
 import type { System, SystemContext } from '../context.js';
 import {
   applyNeedUnits,
   carriesNeeds,
+  drinkPressingDraughtsUnseen,
   mutNeeds,
   NEED_DRIVE_THRESHOLD,
   needLevel,
 } from '../lifecycle/needs/index.js';
+import { MEAL_BREAK_RETRY_TICKS, mayLeaveForMeal, startMealBreak } from '../orders/meal-break.js';
 import { atomicClipName, atomicDuration, atomicEventChannelDelta } from '../readviews/animations.js';
 import { ATOMIC_EVENT_CHANNEL, isFood, jobIgnoresHomeHouse } from '../readviews/index.js';
 import { isAboardShip } from '../readviews/vehicles.js';
 import { EAT_ATOMIC_ID, mealAtomicId, SLEEP_ATOMIC_ID } from '../settlers/atomics/start.js';
 import { canonicalById } from '../spatial/nodes.js';
+import { landingOf, landRider, letsRidersOut, pinnedTraderOf } from './crew.js';
 import { consumeVehicleGood } from './stock.js';
 
 const { REST, HUNGER, LEISURE } = ATOMIC_EVENT_CHANNEL;
 
 /**
  * SHIPBOARD NEEDS - a settler riding inside a ship answers its needs aboard (owner's choice; whether the
- * original serves a rider aboard is unconfirmed): hungry, it eats a unit of food out of the ship's hold;
- * tired, it sleeps; short of company, it chats with a fellow passenger. Each is worth what the clip the
- * settler would play on land pays in, rest counting half as out of doors, and a rider is served at most
- * once per length of that clip, phased by its id, so a voyage paces its meals as a day ashore would.
- * Piety waits for land.
+ * original serves a rider aboard is unconfirmed): hungry or tired, it first drinks what it carries, as on
+ * land; still hungry, it steps ashore for a meal where the ship lies moored ({@link eatAshore}) and
+ * otherwise eats a unit of food out of the ship's hold; tired, it sleeps; short of company, it chats with
+ * a fellow passenger. Each is worth what the clip the settler would play on land pays in, rest counting
+ * half as out of doors, and a rider is served at most once per length of that clip, phased by its id, so a
+ * voyage paces its meals as a day ashore would. Piety waits for land.
  */
 export const shipboardNeedsSystem: System = (world, ctx) => {
   if (!needsEnabled(world)) return;
@@ -46,6 +53,7 @@ export const shipboardNeedsSystem: System = (world, ctx) => {
     serving.add(world.get(e, Rider).vehicle);
   }
   if (serving === undefined) return;
+  const front = new BattleFront(world, ctx);
   const aboard = new Map<Entity, Entity[]>();
   for (const e of world.query(Rider, Settler)) {
     if (world.has(e, Position) || !isAboardShip(world, ctx.content, e)) continue;
@@ -59,7 +67,11 @@ export const shipboardNeedsSystem: System = (world, ctx) => {
     const riders = canonicalById(aboard.get(vehicle) ?? []);
     for (const e of riders) {
       if (!carriesNeeds(world, ctx.content, e)) continue;
-      eatAboard(world, ctx, e, vehicle) || sleepAboard(world, ctx, e) || chatAboard(world, ctx, e, riders);
+      drinkPressingDraughtsUnseen(world, ctx, e);
+      eatAshore(world, ctx, front, e, vehicle) ||
+        eatAboard(world, ctx, e, vehicle) ||
+        sleepAboard(world, ctx, e) ||
+        chatAboard(world, ctx, e, riders);
     }
   }
 };
@@ -89,6 +101,37 @@ function due(ctx: SystemContext, e: Entity, duration: number): boolean {
 function clipWorth(ctx: SystemContext, world: World, e: Entity, atomicId: number, channel: number): number {
   const clip = atomicClipName(ctx.content, world.get(e, Settler), atomicId);
   return clip === undefined ? 0 : atomicEventChannelDelta(ctx.content, clip, channel);
+}
+
+/**
+ * A hungry rider of a ship that lies moored under no order steps out on a meal break, as hunger takes a
+ * settler off its orders on land, and the rider rung brings it back aboard once it has eaten: the hold is
+ * for the voyage, and a crew eating it at the shore outpaces the hand restocking it. A rider that may not
+ * look for food, or that found none ashore within the retry, eats from the hold; a pinned trade ship's
+ * crew always does, and so does a crew whose shore the battle alert holds, which waits out the retry
+ * aboard. Named addition, not taken from the original.
+ */
+function eatAshore(
+  world: World,
+  ctx: SystemContext,
+  front: BattleFront,
+  e: Entity,
+  vehicle: Entity,
+): boolean {
+  if (needLevel(world.get(e, SettlerNeeds), 'hunger', ctx.tick) < NEED_DRIVE_THRESHOLD) return false;
+  if (!due(ctx, e, atomicDuration(ctx.content, world.get(e, Settler), EAT_ATOMIC_ID))) return false;
+  if (!letsRidersOut(world, ctx, vehicle) || pinnedTraderOf(world, vehicle) !== null) return false;
+  if (!mayLeaveForMeal(world, ctx, e)) return false;
+  const landing = landingOf(world, ctx, vehicle);
+  if (landing === null) return false;
+  const owner = ownerOf(world, e);
+  if (owner !== undefined && front.holdsRestAt(e, owner, landing)) {
+    world.add(e, MealBreakRetry, { retryAt: ctx.tick + MEAL_BREAK_RETRY_TICKS });
+    return false;
+  }
+  landRider(world, ctx, e, landing);
+  startMealBreak(world, e);
+  return true;
 }
 
 function eatAboard(world: World, ctx: SystemContext, e: Entity, vehicle: Entity): boolean {
@@ -122,7 +165,7 @@ function sleepAboard(world: World, ctx: SystemContext, e: Entity): boolean {
 function chatAboard(world: World, ctx: SystemContext, e: Entity, riders: readonly Entity[]): boolean {
   const settler = world.get(e, Settler);
   if (needLevel(world.get(e, SettlerNeeds), 'enjoyment', ctx.tick) < NEED_DRIVE_THRESHOLD) return false;
-  const listener = riders.find((other) => other !== e);
+  const listener = riders.find((other) => other !== e && !world.has(other, Position));
   if (listener === undefined) return false;
   if (!due(ctx, e, atomicDuration(ctx.content, settler, TALK_ATOMIC_ID))) return false;
   const talked = clipWorth(ctx, world, e, TALK_ATOMIC_ID, LEISURE);

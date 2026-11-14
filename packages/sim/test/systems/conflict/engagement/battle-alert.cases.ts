@@ -52,8 +52,6 @@ const HEADQUARTERS = 1;
 const PRESSING: Fixed = fx.div(fx.fromInt(9), fx.fromInt(10));
 /** Between the drive threshold and the critical mark, where a unit on alert still holds for food. */
 const HUNGRY: Fixed = fx.div(fx.fromInt(85), fx.fromInt(100));
-/** What one sip of mead takes off the hunger bar: half of it. */
-const MEAD_SIP: Fixed = fx.div(ONE, fx.fromInt(2));
 /** Cell distances along one row, where a cell is two half-cell nodes. `NEAR_CELLS` is inside the 40-node
  *  stand-to radius but past the 18-node sight radius, so the unit has the fight near it without being drawn
  *  into it; `CLEAR_CELLS` is past the 49-node rest clearance. */
@@ -279,7 +277,7 @@ describe('a fighting unit on alert takes no rest', () => {
 
     plannerSystem(sim.world, ctxOf(sim));
 
-    expect(needsOf(sim, hungry).hunger).toBe(fx.sub(PRESSING, MEAD_SIP));
+    expect(sim.world.tryGet(hungry, CurrentAtomic)?.effect.kind).toBe('drink');
     expect(sim.world.has(hungry, MoveGoal)).toBe(false);
   });
 
@@ -305,19 +303,6 @@ describe('a fighting unit on alert takes no rest', () => {
     plannerSystem(sim.world, ctxOf(sim));
 
     expect(sim.world.has(starving, MoveGoal)).toBe(true);
-  });
-
-  it('an engaged fighter holds even when starving', () => {
-    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(40, 1) });
-    const engaged = fighterAt(sim, 10, 0, VIKING, WOODCUTTER, { owner: P0 });
-    setNeeds(sim, engaged, { hunger: ONE });
-    sim.world.add(engaged, Engagement, { repathAt: sim.tick });
-    larderAt(sim, 0);
-    enemyAt(sim, 10 + NEAR_CELLS);
-
-    plannerSystem(sim.world, ctxOf(sim));
-
-    expect(sim.world.has(engaged, MoveGoal)).toBe(false);
   });
 
   it('an ordered sleeper still gets up for the target its attack order names', () => {

@@ -44,6 +44,7 @@ export interface GameSettingsRuntimeDeps {
   readonly setDayNightShown: (shown: boolean) => void;
   readonly setBloodEnabled: (enabled: boolean) => void;
   readonly setBonesFade: (fades: boolean) => void;
+  readonly setEquipmentEffects: (shown: boolean) => void;
   readonly setFpsCounterShown: (shown: boolean) => void;
   readonly setFpsLimit: (limit: MenuSettings['fpsLimit']) => void;
   readonly previewBus?: (bus: SoundBus) => void;
@@ -94,6 +95,7 @@ export function createGameSettingsRuntime(deps: GameSettingsRuntimeDeps): GameSe
     if (patch.distantDetail !== undefined) deps.setDistantDetail(patch.distantDetail);
     if (patch.blood !== undefined) deps.setBloodEnabled(patch.blood);
     if (patch.bonesFade !== undefined) deps.setBonesFade(patch.bonesFade);
+    if (patch.equipmentEffects !== undefined) deps.setEquipmentEffects(patch.equipmentEffects);
     if (patch.weather !== undefined) deps.setWeatherEnabled(patch.weather);
     if (patch.dayNight !== undefined) deps.setDayNightShown(patch.dayNight);
     if (patch.fpsCounter !== undefined) deps.setFpsCounterShown(patch.fpsCounter);

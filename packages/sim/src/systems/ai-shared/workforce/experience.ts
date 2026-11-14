@@ -3,7 +3,8 @@ import { SettlerProgress } from '../../../components/index.js';
 import { contentIndex } from '../../../core/content-index.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import type { SystemContext } from '../../context.js';
-import { generalTrackFor, trackFor } from '../../progression/experience.js';
+import { personalFightPoints } from '../../progression/bonus.js';
+import { FIGHT_EXPERIENCE_TYPE, generalTrackFor, trackFor } from '../../progression/experience.js';
 import { jobCanBuild } from '../../settlers/atomics/start.js';
 
 /** The track a post of `jobType` trains: the `(job, good)` track when a good is given, else the job's
@@ -44,13 +45,19 @@ export function experienceRank(
 }
 
 /** The settler's raw experience summed over every track but the builder trade's: what the seat would
- *  waste by keeping him on the building sites. Buckets no content track backs (fight, scout) count too. */
+ *  waste by keeping him on the building sites. Buckets no content track backs (fight, scout) count too,
+ *  the personal fight counter by its whole points. */
 export function tradeExperience(world: World, ctx: SystemContext, e: Entity): number {
   const tracks = contentIndex(ctx.content).jobExperience;
+  const experience = world.get(e, SettlerProgress).experience;
   let sum = 0;
-  for (const [trackId, points] of world.get(e, SettlerProgress).experience) {
+  for (const [trackId, raw] of experience) {
+    if (trackId === FIGHT_EXPERIENCE_TYPE.PERSONAL) {
+      sum += personalFightPoints(experience);
+      continue;
+    }
     const track = tracks.get(trackId);
-    if (track === undefined || !jobCanBuild(ctx.content, track.jobType)) sum += points;
+    if (track === undefined || !jobCanBuild(ctx.content, track.jobType)) sum += raw;
   }
   return sum;
 }

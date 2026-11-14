@@ -71,11 +71,11 @@ function seat(over: Partial<SeatBrief> = {}, access: Record<string, GoodAccess> 
 }
 
 describe('economic strategy selector', () => {
-  it('reads a roomy shared start as standard with iron, gold and herbs', () => {
+  it('reads a roomy shared start as standard with iron, gold, mushrooms and herbs', () => {
     expect(selectEconomy(seat())).toEqual({
       archetype: 'standard',
-      sides: ['ironArms', 'goldLine', 'herbs'],
-      evidence: ['ironInReach', 'goldAndMushroomOnLand', 'grassAtHome'],
+      sides: ['ironArms', 'goldLine', 'healingLine', 'herbs'],
+      evidence: ['ironInReach', 'goldOnLand', 'mushroomOnLand', 'grassAtHome'],
     });
   });
 
@@ -133,6 +133,15 @@ describe('economic strategy selector', () => {
     expect(scarce.evidence).toContain('ironScarce');
     // Two seats share the land, so half its 4000 iron counts.
     expect(armsWith(600, 4_000).sides).toContain('ironArms');
+  });
+
+  it('raises the gold line on gold and the healing line on mushrooms, each without the other', () => {
+    const none: GoodAccess = { access: 'none', zones: null };
+    const sides = (access: Record<string, GoodAccess>) => selectEconomy(seat({}, access)).sides;
+    expect(sides({ mushroom: none })).toContain('goldLine');
+    expect(sides({ mushroom: none })).not.toContain('healingLine');
+    expect(sides({ gold: none })).toContain('healingLine');
+    expect(sides({ gold: none })).not.toContain('goldLine');
   });
 
   it('keeps to one mint where little gold lies within reach', () => {

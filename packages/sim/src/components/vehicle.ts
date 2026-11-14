@@ -40,11 +40,14 @@ export interface VehicleAttack {
 /**
  * An attack-move: a siege vehicle drives to `goal` in the attack stance, fights what its scan finds on
  * the way, then drives on. `restUntil` is the tick before which it drives without scanning, set when a
- * chase could not reach its find. Null under every other order.
+ * chase could not reach its find. `behindFight` holds a march ordered while the vehicle was shooting:
+ * it fights on under its own stance, and the march starts once it holds no target.
+ * Null under every other order.
  */
 export interface VehicleMarch {
   goal: HalfCellNode;
   restUntil: number;
+  behindFight: boolean;
 }
 
 /** One occupied slot: who holds it, and whether the rider is aboard (off the map) rather than still
@@ -132,6 +135,12 @@ export const VehicleOrderQueue = defineComponent<{ orders: QueuedVehicleOrder[];
   'movement',
 );
 
+/** Where `ship` lies moored, or null. */
+export function mooringOf(world: World, ship: Entity): DeepReadonly<HalfCellNode> | null {
+  const state = world.tryGet(ship, Vehicle);
+  return state?.moored === true ? state.mooring : null;
+}
+
 /** Drop the drives `e` queued behind its current order: every vehicle order that takes it at once does. */
 export function dropVehicleOrderQueue(world: World, e: Entity): void {
   world.remove(e, VehicleOrderQueue);
@@ -156,7 +165,8 @@ export const Rider = defineComponent<{ vehicle: Entity; boarding: boolean; leavi
 
 /**
  * A lift a carrier makes with its hauling cart standing beside it, one lift a unit the way a trader loads
- * its cart: units off `from`'s shelf or heap into the hold, or out of the hold onto `store`'s shelf.
+ * its cart: units off `from`'s shelf or heap into the hold, or the hold's units of one good onto
+ * `store`'s shelf.
  */
 export type HaulingLift =
   | {
@@ -167,7 +177,13 @@ export type HaulingLift =
        *  at the slot's shortfall. */
       readonly units: number;
     }
-  | { readonly kind: 'unload'; readonly store: Entity };
+  | {
+      readonly kind: 'unload';
+      readonly store: Entity;
+      readonly goodType: number;
+      /** The store refused a unit of the good: this lift is over, another good may follow at the door. */
+      readonly refused: boolean;
+    };
 
 /**
  * A posted carrier's or a trader's hauling cart (named addition, owner's choice; the original's carrier
@@ -193,8 +209,8 @@ export type TradeDeparture = 'onward' | 'round';
  * The ship a player pinned to a trader's sea route (owner's choice; the original's sea trader job is an
  * empty stub), the ship's `Vehicle.hauler` naming the trader back so nobody boards or loads it but the
  * carriers assigned to help (`trade/helpers.ts`). The route owns the ship's hold. `dockRetryAt` is the tick
- * before which a failed voyage is not tried again, `failedDock` the mooring point that last failed, so a ship
- * already on that shore stays where it lies.
+ * before which a failed voyage is not tried again, `failedDock` the mooring point the last voyage could not
+ * take, docking nowhere or beside it, so a ship already on that shore stays where it lies.
  */
 export const TradeShip = defineComponent<{
   vehicle: Entity;

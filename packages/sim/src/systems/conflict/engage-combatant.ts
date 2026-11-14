@@ -23,9 +23,7 @@ import {
   removeCurrentAtomic,
   Settler,
   type SettlerIdentity,
-  SettlerProgress,
   Sheltering,
-  Vehicle,
   Weapon,
 } from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
@@ -36,7 +34,6 @@ import { isManningShelter } from '../defence/index.js';
 import { isStanding } from '../movement/collision/index.js';
 import { clearNavState, isTravelling, redirectRoute } from '../movement/nav-state.js';
 import { faceToward } from '../movement/turning.js';
-import { weaponClassHits, withFightExperience } from '../progression/index.js';
 import {
   isAnimalTribe,
   isFighterJob,
@@ -47,11 +44,13 @@ import {
   weaponDamageVsMaterial,
 } from '../readviews/index.js';
 import { atomicHoldsSettler } from '../settlers/atomics/busy.js';
+import { turnBackFromCoinDrill } from '../settlers/drives/coin-drill-coins.js';
 import { hexNodeDistance } from '../spatial/metric.js';
 import { entityNode } from '../spatial/nodes.js';
 import { breakOff, chase, disengage, holdEnemy, REPATH_CADENCE } from './chase.js';
 import { type CombatantStance, EngagementSpecs, resolveTarget, stanceMode } from './engagement.js';
 import { runsFromBlows, startBlowRun } from './flee.js';
+import { hungerKeepsFromFight } from './hunger-break.js';
 import { breaksHuntForNeed, holdPrey, preySearchResting, restPreySearch } from './hunting/index.js';
 import { strayedPastLeash } from './leash.js';
 import type { MeleeSlots } from './melee-slots.js';
@@ -150,6 +149,7 @@ export function engageCombatant(
     return;
   }
   if (breaksHuntForNeed(world, ctx, e, ordered)) return;
+  if (owned && hungerKeepsFromFight(world, ctx, terrain, e)) return;
 
   const travelling = isTravelling(world, e);
   if (walksUnderAnotherDrive(world, e, travelling, ordered || marching)) return;
@@ -216,6 +216,8 @@ function fight(
   }
 
   const { target, dist } = found;
+  // A soldier the fight takes between two coin-drill repetitions steps out of the barracks to it.
+  turnBackFromCoinDrill(world, ctx, e);
   if (spec.hold !== undefined || spec.animalSeeker === true) holdEnemy(world, ctx, e, target);
   // Woken: the rest already slept keeps, the clip is cut where it stands.
   if (dozing) removeCurrentAtomic(world, e);
@@ -518,16 +520,12 @@ function swingAt(
       held.waiting = undefined;
     }
   }
-  // The victim's armor material selects both the damage column and the impact sound, and fight experience
-  // with this weapon class raises the column. Original behavior: a wall and a vehicle take the bare column,
-  // unscaled by experience. A ranged swing's shot resolves the column again, without the experience,
-  // against whatever it strikes.
+  // The victim's armor material selects both the damage column and the impact sound. The striker's fight
+  // experience raises the blow as it lands, with his amulets (`landedDamage`). A ranged swing's shot
+  // resolves the column again against whatever it strikes.
   const material = targetMaterial(world, ctx, target);
   const base = weaponDamageVsMaterial(weapon.weapon, material);
-  const hits = weaponClassHits(world.get(e, SettlerProgress).experience, weapon.weapon.mainType);
-  let damage = withFightExperience(base, hits);
-  if (world.has(target, Palisade)) damage = wallBlowDamage(base);
-  else if (world.has(target, Vehicle)) damage = base;
+  const damage = world.has(target, Palisade) ? wallBlowDamage(base) : base;
   const blow = { damage, hitSoundType: hitSoundVsMaterial(weapon.weapon, material) };
   startAttack(world, ctx, attacker, e, target, blow, weapon.weapon);
 }

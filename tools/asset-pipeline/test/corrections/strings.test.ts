@@ -84,6 +84,18 @@ describe('string corrections', () => {
     expect(() => corrections.assertApplied()).not.toThrow();
   });
 
+  it('adds a missing id whole and refuses one the table already holds', async () => {
+    await writeEntries([{ ...ENTRY, id: 9, from: null }]);
+    const added = await convertRus();
+    expect(added.rus.goods).toEqual({ [GOOD_ID]: RUS_TEXT, 5: 'other', 9: 'Ёжик' });
+    expect(() => added.corrections.assertApplied()).not.toThrow();
+
+    await writeEntries([{ ...ENTRY, from: null }]);
+    const held = await convertRus();
+    expect(held.rus.goods?.[GOOD_ID]).toBe(RUS_TEXT);
+    expect(() => held.corrections.assertApplied()).toThrow(/rus\/goods\/4 null: the text is now "Ёж"/);
+  });
+
   it.each([
     ['the text changed', { ...ENTRY, from: 'Ёлка' }, /rus\/goods\/4 "Ёлка": the text is now "Ёж"/],
     ['the id is gone', { ...ENTRY, id: 9 }, /rus\/goods\/9 .*no such id/],
@@ -99,12 +111,16 @@ describe('string corrections', () => {
   it.each([
     ['an object instead of a list', { ...ENTRY }, /not a JSON array/],
     ['an unknown key', [{ ...ENTRY, sha256: 'x' }], /unknown key "sha256"/],
-    ['an unknown language', [{ ...ENTRY, lang: 'ru' }], /lang must be one of eng, pol, ger, rus/],
+    ['an unknown language', [{ ...ENTRY, lang: 'ru' }], /lang must be one of pol, eng, ger, rus/],
+    [
+      'a language whose shipped text stays private',
+      [{ ...ENTRY, lang: 'ita' }],
+      /lang must be one of pol, eng, ger, rus/,
+    ],
     ['an unknown table', [{ ...ENTRY, table: 'good' }], /table must be one of main, .*jobsPlural/],
     ['a missing reason', [{ ...ENTRY, reason: ' ' }], /reason must say why/],
     ['a non-integer id', [{ ...ENTRY, id: '4' }], /id must be a string id/],
     ['a no-op swap', [{ ...ENTRY, to: RUS_TEXT }], /two different strings/],
-    ['an addition to a GUI table', [{ ...ENTRY, from: null }], /two different strings/],
     ['two entries for one string', [ENTRY, { ...ENTRY, to: 'Ёжики' }], /second entry for rus\/goods\/4/],
   ])('rejects %s', async (_why, entries, message) => {
     await writeEntries(entries);
@@ -183,6 +199,16 @@ describe('help text corrections', () => {
     const { text, corrections } = await corrected([entry('silver', 'tin'), entry('Carried', 'Worn')]);
     expect(text).toBe('Made from gold. Worn by men. Gold is rare.');
     expect(corrections.unapplied().map(({ entry: e }) => e.from)).toEqual(['silver']);
+  });
+
+  it('adds a missing description whole, from one entry only', async () => {
+    const added = { ...entry('', TEXT), from: null };
+    const file = join(temp.root, 'tables.json');
+    await writeFile(file, JSON.stringify([added]));
+    const corrections = await loadStringCorrections(file);
+    expect(corrections.correct('eng', 'goodsHelp', {})[ID]).toBe(TEXT);
+    expect(() => corrections.assertApplied()).not.toThrow();
+    await expect(corrected([added, { ...added, to: 'Other.' }])).rejects.toThrow(/second entry/);
   });
 
   it('rejects an empty phrase, and still matches any other table whole', async () => {
@@ -282,6 +308,13 @@ describe('map string corrections', () => {
     const { strings, corrections } = await convertMaps([entry]);
     expect(strings.pol?.[STRING_ID]).toBe('Zbuduj ul.');
     expect(() => corrections.assertApplied()).toThrow(message);
+  });
+
+  it('rejects a map entry in a language whose shipped text stays private', async () => {
+    await writeFile(file, JSON.stringify([{ ...MAP_ENTRY, lang: 'ita' }]));
+    await expect(loadMapStringCorrections(file)).rejects.toThrow(
+      /lang must be one of pol, eng, ger, rus, chs, cht/,
+    );
   });
 
   it('rejects a table key in a map entry', async () => {

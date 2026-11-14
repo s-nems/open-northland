@@ -667,6 +667,6 @@ export function placePalisade(
     settleClosedWall(world, ctx, terrain, entity);
     // An authored wall below its maximum starts on the builders' list with no blow behind it; a new
     // segment's pool climbs with its build instead.
-    markShortPool(world, entity);
+    markShortPool(world, ctx, entity);
   }
 }

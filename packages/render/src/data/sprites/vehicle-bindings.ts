@@ -22,7 +22,7 @@ export interface VehicleLook {
   readonly movingByGood?: Readonly<Record<number, SpriteFrameRef>>;
   /** The drive with any cargo aboard, for a good {@link movingByGood} does not list. */
   readonly loadedMoving?: SpriteFrameRef;
-  /** The catapult's shot (action 81), played over the attack cadence while the vehicle attacks. */
+  /** The catapult's shot (action 81), played once per attack clip, its `ticks`, while the vehicle attacks. */
   readonly attack?: SpriteFrameRef;
   /** A ship: it rides the swell at sea (`gpu/sway/ship.ts`) and lies still moored. */
   readonly afloat?: boolean;
@@ -40,17 +40,18 @@ export type VehicleTribeLooks = Readonly<Record<number, VehicleLook>>;
 export interface VehicleBinding {
   readonly byTribe: Readonly<Record<number, VehicleTribeLooks>>;
   readonly fallbackTribe: number;
-  /** The yards whose construction site draws the ship it launches; see {@link ShipYardSites}. */
-  readonly shipYards?: ShipYardSites;
+  /** The yards whose construction site draws the vehicle it launches; see {@link VehicleYardSites}. */
+  readonly vehicleYards?: VehicleYardSites;
 }
 
 /**
- * The ship yard houses whose site rises as the finished ship rather than the house's own stage art: the
- * data gives every tribe's yard one viking longship stage, which matches only some tribes' ships. The
- * site draws its tribe's moored ship at the facing it launches in, in its owner's colour, and takes no
- * damage paint (approximation, owner's choice).
+ * The vehicle yard houses whose site rises as the finished vehicle rather than the house's own stage art:
+ * the data gives every tribe's ship yard one viking longship stage, which matches only some tribes' ships,
+ * and a land yard's stages show a few scraps of wood. The site draws its tribe's standing vehicle (a
+ * ship moored) at the facing it launches in. A ship, drawn through the colour LUT, shows its owner's
+ * colour and takes no damage paint (approximation, owner's choice).
  */
-export interface ShipYardSites {
+export interface VehicleYardSites {
   /** The vehicle type each yard house type launches. */
   readonly vehicleByHouse: Readonly<Record<number, number>>;
   /** The render facing a launched vehicle takes. */

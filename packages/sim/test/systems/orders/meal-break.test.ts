@@ -4,6 +4,7 @@ import {
   Building,
   CurrentAtomic,
   DeferredOrder,
+  Equipment,
   MealBreak,
   MealBreakRetry,
   MISSION_BEHAVIOUR,
@@ -46,6 +47,7 @@ const SCOUT = 27;
 const SOLDIER = 31;
 const HEADQUARTERS = 1;
 const FOOD = 3;
+const MEAD = 13;
 const LARDER = 5;
 const WALK_BUDGET = 1200;
 const EAT_ATOMIC = 10;
@@ -157,6 +159,29 @@ describe('meal break', () => {
     const e = ownedSettler(sim, 2, 2, SOLDIER, { hunger: NEARLY_CRITICAL });
     sim.enqueueSetup(walk(e, 60, 2));
     expect(stepUntil(sim, e, () => standsAt(sim, e, 60, 2))).toBe(true);
+  });
+
+  it('stops on the way to drink its mead, then walks its order and the one queued behind it', () => {
+    const sim = freshSim();
+    const larder = larderAt(sim, 20, 6);
+    const e = ownedSettler(sim, 2, 2, WOODCUTTER, { hunger: NEARLY_CRITICAL });
+    const misc = [{ goodType: MEAD, degreeOfUse: fx.fromInt(0) }, null, null, null];
+    sim.world.add(e, Equipment, { boots: null, tool: null, weapon: null, armor: null, misc });
+    sim.enqueueSetup(walk(e, 60, 2));
+    sim.enqueueSetup(walk(e, 60, 5, true));
+    let drank = false;
+    let reachedFirst = false;
+    const broke = stepUntil(sim, e, () => {
+      drank ||= sim.world.tryGet(e, CurrentAtomic)?.effect.kind === 'drink';
+      const p = sim.world.get(e, Position);
+      reachedFirst ||= fx.toInt(p.x) === 60 && fx.toInt(p.y) === 2;
+      return standsAt(sim, e, 60, 5) && !sim.world.has(e, OrderQueue);
+    });
+    expect(drank && reachedFirst).toBe(true);
+    expect(broke).toBe(false);
+    expect(standsAt(sim, e, 60, 5)).toBe(true);
+    expect(sim.world.get(e, Equipment).misc[0]?.degreeOfUse).toBeGreaterThan(fx.fromInt(0));
+    expect(sim.world.get(larder, Stockpile).amounts.get(FOOD)).toBe(LARDER);
   });
 
   it('fatigue waits for the orders to run out', () => {

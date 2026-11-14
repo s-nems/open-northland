@@ -1,23 +1,26 @@
-import type { SimEvent, WorldSnapshot } from '@open-northland/sim';
+import { type SimEvent, TICKS_PER_SECOND, type WorldSnapshot } from '@open-northland/sim';
 import type { Container, Texture } from 'pixi.js';
 import type { FootfallGround } from '../../data/effects/index.js';
 import type { Viewport } from '../../data/projection/index.js';
 import { type ImportMarker, importMarkersOf } from '../../data/scene/import-markers.js';
 import { OverheadColumn } from '../../data/scene/overhead-column.js';
+import type { HouseBodyOf } from '../../data/scene/temple-glow.js';
 import type { ElevationField, WaterField } from '../../data/terrain/index.js';
 import type { ViewDetail } from '../../data/view-detail.js';
 import { BloodLayer } from '../blood/layer.js';
 import type { FallenBody } from '../building-damage/building-damage.js';
-import { CollapseLayer } from '../demolition/collapse-layer.js';
+import { CollapseLayer, type WreckAnchor } from '../demolition/collapse-layer.js';
 import { FamilyEffectsLayer } from '../overlays/family-effects-layer.js';
 import { FootfallLayer } from '../overlays/footfall-layer.js';
 import {
+  AmuletArcLayer,
   BadgeLayer,
   type BuildingSignGfx,
   CombatEffectsLayer,
   type ConstructionSign,
   ConstructionSignLayer,
   type DoorBadge,
+  DraughtGlowLayer,
   type ExperienceStar,
   type ExperienceStarGfx,
   ExperienceStarLayer,
@@ -40,6 +43,9 @@ import {
   SettlerBubbleLayer,
   ShipWakeLayer,
   ShotLayer,
+  StunStarLayer,
+  TempleGlowLayer,
+  WindTrailLayer,
 } from '../overlays/index.js';
 import { SelectionLayer } from '../selection/layer.js';
 import type { RangeRing } from '../selection/range-ring.js';
@@ -58,6 +64,7 @@ const NO_WALKERS: readonly DrawnWalker[] = [];
 export type MarkSlots = Pick<
   WorldSceneLayers,
   | 'wakes'
+  | 'templeGlow'
   | 'selection'
   | 'orderMarkers'
   | 'bones'
@@ -96,6 +103,8 @@ export interface WorldMarksFrame {
   readonly walkers: readonly DrawnWalker[];
   /** Whether a road runs over a node. */
   readonly roadAt: (hx: number, hy: number) => boolean;
+  /** The rain wetness 0..1 the ground shows at a node. */
+  readonly wetAt: (hx: number, hy: number) => number;
   /** The map's water mask the wakes fade off. */
   readonly water: WaterField;
   readonly selection: ReadonlySet<number>;
@@ -121,6 +130,7 @@ export interface WorldMarksFrame {
 export class WorldMarks {
   private readonly wakes = new ShipWakeLayer();
   private readonly selection = new SelectionLayer();
+  private readonly templeGlow = new TempleGlowLayer();
   private readonly orderMarkers = new OrderMarkerLayer();
   private readonly mapPings: MapPingLayer;
   private readonly rallyBanners: RallyBannerLayer;
@@ -136,6 +146,11 @@ export class WorldMarks {
    *  front of a chain occludes it. */
   private readonly badges: BadgeLayer;
   private readonly familyEffects: FamilyEffectsLayer;
+  private readonly draughtGlows: DraughtGlowLayer;
+  private readonly amuletArcs: AmuletArcLayer;
+  private readonly stunStars: StunStarLayer;
+  private equipmentEffects = true;
+  private readonly windTrails: WindTrailLayer;
   /** Prints in their own ground slot, dust in the depth-sorted sprite layer. */
   private readonly footfall: FootfallLayer;
   private readonly constructionSigns: ConstructionSignLayer;
@@ -155,6 +170,7 @@ export class WorldMarks {
     sheet: SpriteSheet | undefined,
     playerColourOf?: (player: number) => number,
     captureDamage?: (ref: number) => readonly FallenBody[] | undefined,
+    wreckAnchor?: (ref: number) => WreckAnchor | undefined,
     mapPingPin?: Texture,
     rallyBanner?: Texture,
   ) {
@@ -165,14 +181,19 @@ export class WorldMarks {
       this.blood.surfaces.restore(sprite, id, groundY, lift),
     );
     this.blood.groundSurfaces = this.effects.groundContainer;
-    this.collapses = new CollapseLayer(spriteLayer, textures, sheet, captureDamage);
+    this.collapses = new CollapseLayer(spriteLayer, textures, sheet, captureDamage, wreckAnchor);
     this.shots = new ShotLayer(spriteLayer, textures, sheet);
     this.familyEffects = new FamilyEffectsLayer(spriteLayer, textures, sheet);
+    this.draughtGlows = new DraughtGlowLayer(spriteLayer);
+    this.amuletArcs = new AmuletArcLayer(spriteLayer);
+    this.stunStars = new StunStarLayer(spriteLayer);
+    this.windTrails = new WindTrailLayer(spriteLayer);
     this.footfall = new FootfallLayer(spriteLayer, textures, sheet);
     this.badges = new BadgeLayer(spriteLayer, playerColourOf);
     this.constructionSigns = new ConstructionSignLayer(playerColourOf);
     this.slots = {
       wakes: this.wakes.container,
+      templeGlow: this.templeGlow.container,
       selection: this.selection.container,
       orderMarkers: this.orderMarkers.container,
       bones: this.effects.groundContainer,
@@ -198,6 +219,7 @@ export class WorldMarks {
     this.collapses.ingest(events, tick);
     this.shots.ingest(events, tick);
     this.familyEffects.ingest(events, tick);
+    this.draughtGlows.ingest(events, tick);
   }
 
   /** Call once per map; `null` leaves every step without a mark. */
@@ -207,6 +229,29 @@ export class WorldMarks {
 
   setBloodEnabled(enabled: boolean): void {
     this.blood.setEnabled(enabled);
+  }
+
+  /** Good type → the colour a sip of it glows in; `null` shows no sip. */
+  setDraughtGlowColours(colourOfGood: ReadonlyMap<number, number> | null): void {
+    this.draughtGlows.setColours(colourOfGood);
+  }
+
+  setEquipmentEffects(shown: boolean): void {
+    this.equipmentEffects = shown;
+  }
+
+  /** Good type → the colour of the arc round a carrier of that amulet; `null` draws none. */
+  setAmuletArcColours(colourOfGood: ReadonlyMap<number, number> | null): void {
+    this.amuletArcs.setColours(colourOfGood);
+  }
+
+  /** The goods whose live carrier trails wind as it walks; `null` trails none. */
+  setWindTrailGoods(goods: ReadonlySet<number> | null): void {
+    this.windTrails.setGoods(goods);
+  }
+
+  setHouseBodies(bodyOf: HouseBodyOf | null): void {
+    this.templeGlow.setHouseBodies(bodyOf);
   }
 
   setBonesFade(fades: boolean): void {
@@ -255,6 +300,13 @@ export class WorldMarks {
   draw(frame: WorldMarksFrame): void {
     const { drawn, elevation, viewport, renderTime } = frame;
     this.wakes.draw(frame.ships, drawn, frame.water, renderTime);
+    this.templeGlow.draw({
+      snapshot: frame.snapshot,
+      drawn,
+      viewport,
+      fogVisible: frame.fogVisible,
+      seconds: renderTime / TICKS_PER_SECOND,
+    });
     this.selection.draw(
       {
         snapshot: frame.snapshot,
@@ -278,10 +330,29 @@ export class WorldMarks {
     const detail = frame.detail;
     this.badges.draw(frame.doorBadges, elevation, viewport, renderTime, detail.buildingSigns);
     this.familyEffects.draw(frame);
+    this.draughtGlows.draw({ drawn, viewport, renderTime });
+    this.amuletArcs.draw({
+      snapshot: frame.snapshot,
+      walkers: this.equipmentEffects && detail.amuletArcs ? frame.walkers : NO_WALKERS,
+      drawn,
+      viewport,
+      renderTime,
+    });
+    this.stunStars.draw({
+      snapshot: frame.snapshot,
+      walkers: detail.overheadIcons ? frame.walkers : NO_WALKERS,
+      drawn,
+      viewport,
+      renderTime,
+    });
+    if (this.equipmentEffects && detail.windTrails)
+      this.windTrails.draw({ snapshot: frame.snapshot, walkers: frame.walkers, drawn, viewport, renderTime });
+    else this.windTrails.clear();
     this.footfall.draw({
       snapshot: frame.snapshot,
       walkers: detail.footfalls ? frame.walkers : NO_WALKERS,
       roadAt: frame.roadAt,
+      wetAt: frame.wetAt,
       elevation,
       viewport,
       renderTime,
@@ -323,6 +394,7 @@ export class WorldMarks {
 
   destroy(): void {
     this.wakes.destroy();
+    this.templeGlow.destroy();
     this.selection.destroy();
     this.orderMarkers.destroy();
     this.mapPings.destroy();
@@ -333,6 +405,10 @@ export class WorldMarks {
     this.shots.destroy();
     this.badges.destroy();
     this.familyEffects.destroy();
+    this.draughtGlows.destroy();
+    this.amuletArcs.destroy();
+    this.stunStars.destroy();
+    this.windTrails.destroy();
     this.footfall.destroy();
     this.constructionSigns.destroy();
     this.bubbles.destroy();

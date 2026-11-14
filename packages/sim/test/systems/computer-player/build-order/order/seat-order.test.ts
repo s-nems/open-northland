@@ -27,6 +27,7 @@ import {
   orderSteps,
   PLAN_TUNING,
   SECOND_ANIMAL_FARM,
+  SECOND_TOP_POTTERY,
   SECOND_UPPER_TAILOR,
   seatSitePace,
   shapeBuildOrder,
@@ -247,11 +248,28 @@ describe('the seat strategy shapes the build order', () => {
     expect(mints(['ironArms', 'goldLine', 'oneMint'])).toBe(0);
   });
 
+  it('raises the druids where mushrooms lie and the mints where gold lies, each without the other', () => {
+    const shape = { archetype: 'standard', phase: 'opening', defenceFirst: false } as const;
+    const raises = (sides: readonly EconomicSide[], building: string): boolean =>
+      orderSteps(shapeBuildOrder(DEFAULT_BUILD_ORDER, { ...shape, sides })).some(
+        (e) => (e.kind === 'place' || e.kind === 'upgrade') && e.building === building,
+      );
+    expect(raises(['ironArms', 'healingLine'], 'work_druid_01')).toBe(true);
+    expect(raises(['ironArms', 'healingLine'], 'work_coin_mint')).toBe(false);
+    expect(raises(['ironArms', 'goldLine'], 'work_druid_01')).toBe(false);
+    expect(raises(['ironArms', 'goldLine'], 'work_coin_mint')).toBe(true);
+    // Without the druids no second top pottery follows them.
+    const steps = (sides: readonly EconomicSide[]) =>
+      orderSteps(shapeBuildOrder(DEFAULT_BUILD_ORDER, { ...shape, sides }));
+    expect(steps(['ironArms', 'healingLine'])).toContain(SECOND_TOP_POTTERY);
+    expect(steps(['ironArms', 'goldLine'])).not.toContain(SECOND_TOP_POTTERY);
+  });
+
   it('ends each archetype on the owner-ruled counts of its late workshops and homes', () => {
     const top = (archetype: 'rich' | 'standard' | 'cramped', building: string): number => {
       const order = shapeBuildOrder(DEFAULT_BUILD_ORDER, {
         archetype,
-        sides: ['ironArms', 'goldLine'],
+        sides: ['ironArms', 'goldLine', 'healingLine'],
         phase: 'late',
         defenceFirst: false,
       });
@@ -272,11 +290,12 @@ describe('the seat strategy shapes the build order', () => {
       'work_armory_01',
       'home_level_00',
       'work_bakery_01',
+      'work_pottery_02',
     ];
     const counts = (archetype: 'rich' | 'standard' | 'cramped') => buildings.map((b) => top(archetype, b));
-    expect(counts('rich')).toEqual([3, 3, 6, 6, 2, 14, 4]);
-    expect(counts('standard')).toEqual([3, 3, 6, 4, 2, 10, 2]);
-    expect(counts('cramped')).toEqual([2, 2, 4, 4, 2, 8, 1]);
+    expect(counts('rich')).toEqual([4, 3, 6, 6, 2, 14, 4, 2]);
+    expect(counts('standard')).toEqual([3, 3, 6, 4, 2, 10, 2, 2]);
+    expect(counts('cramped')).toEqual([2, 2, 4, 4, 2, 8, 1, 1]);
   });
 
   it('keeps one of each workshop, fewer homes and no catapults on a seat with no room', () => {
@@ -305,11 +324,14 @@ describe('the seat strategy shapes the build order', () => {
       'work_sewery_01',
       'work_brewery',
       'work_armory_01',
+      'work_pottery_02',
+      'work_joinery_00',
+      'work_joinery_02',
     ])
       expect(top(building), building).toBe(1);
     expect(top('home_level_00')).toBeLessThan(ARCHETYPE_TUNING.cramped.copyCaps.home_level_00 ?? 0);
     expect(steps).not.toContain(CATAPULT_JOINERY);
-    // No gold on its land: no herb hut, druid, temple or mint.
+    // No gold or mushrooms on its land: no herb hut, druid, temple or mint.
     for (const building of ['work_herb_hut', 'work_druid_00', 'work_temple', 'work_coin_mint'])
       expect(top(building), building).toBe(0);
     // The island's ship joinery still leads the army line.

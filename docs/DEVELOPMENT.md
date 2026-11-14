@@ -226,6 +226,7 @@ rebuild both weights.
 ```bash
 npm run translations:skeleton -- path/to/map.rar --lang chs
 npm run translations:skeleton -- path/to/MapFolder --lang eng --basis eng --force
+npm run translations:skeleton -- --pack .cache/data/unpacked saga-campaign_04_01 Gringo --lang ita --basis eng
 npm run translations:derive-cht
 ```
 
@@ -234,8 +235,10 @@ The skeleton command writes a map overlay for each map of a `.zip`, `.rar`, `.c2
 one of other text keeps its file and the skeleton takes a variant name beside it. Its basis is
 `--basis`, else the first source language the map ships, and every value is that language's text, for
 a translator to replace in place. A `--lang` equal to the basis writes an edit template; a `--lang` the
-map ships itself is refused, since the shipped text wins. The check sees only maps of the pack, so it
-cannot flag an unfinished skeleton of a catalogue map.
+map ships itself is refused, since the shipped text wins. With `--pack`, the input is the unpacked data
+pack and the arguments name its maps by pipeline id or folder name (every map without one); a campaign
+map's overlay takes its `<campaign>-<map>` id. The check sees only maps of the pack, so it cannot flag
+an unfinished skeleton of a catalogue map.
 
 ## Browser entries
 
@@ -298,11 +301,12 @@ ON_RELAY_URL=wss://relay.opennorthland.org npx vitest run --project core package
 
 The main menu's **Multiplayer** screen (`?menu=multiplayer` opens it directly) accepts an editable
 relay address (default `wss://relay.opennorthland.org`) and nickname, lists rooms, and creates games
-from installed maps or local saves. Players choose seats and readiness explicitly; the creator
-controls seats and settings. Connecting with a token the relay still holds in a started game shows
-that room with **Rejoin game** and **Leave room** instead of relaunching the game on its own.
-Use separate browser profiles/private windows for two independent players. The default endpoint is
-not deployed by the repository. For a local relay, enter `ws://127.0.0.1:8765`.
+from installed maps, from stored saves on multiplayer maps, or from any save file. Players choose
+seats and readiness explicitly; the creator controls seats and settings. Connecting with a token the
+relay still holds in a started game shows that room with **Rejoin game** and **Leave room** instead of
+relaunching the game on its own. Use separate browser profiles/private windows for two independent
+players. The default endpoint is not deployed by the repository. For a local relay, enter
+`ws://127.0.0.1:8765`.
 
 `?menu=campaign` opens the **Campaign** tab of **New Game**; `?menu=campaign&campaign=<id>` also
 selects the campaign with that `campaigns-index.json` id. The menu reads `campaign` once and drops it

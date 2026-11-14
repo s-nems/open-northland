@@ -15,6 +15,7 @@ const building = (typeId: number, id: string): ContentBuilding => ({
   id,
   kind: 'workplace',
   homeSize: 0,
+  furnishedFamilies: 0,
   workers: [],
   stock: [],
   produces: [],

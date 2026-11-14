@@ -21,7 +21,7 @@ import {
 import { standsAtPost } from '../../../../src/systems/conflict/tower-post.js';
 import type { SystemContext } from '../../../../src/systems/context.js';
 import { dynamicBlockOverlay } from '../../../../src/systems/footprint/index.js';
-import { TEMPLE_AURA_RANGE } from '../../../../src/systems/lifecycle/temple-aura.js';
+import { TEMPLE_AURA_RANGE } from '../../../../src/systems/lifecycle/temple/index.js';
 import { entityNode } from '../../../../src/systems/spatial/nodes.js';
 import { aiContent } from '../../../fixtures/ai-content.js';
 import { grassNodeMap } from '../../../fixtures/terrain.js';

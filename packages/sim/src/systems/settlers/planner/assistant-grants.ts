@@ -1,10 +1,10 @@
 import type { ContentSet, EquipCategory, EquipClass } from '@open-northland/data';
 import {
+  type AssistantGrantGroup,
   AssistantGrants,
   AssistantRecruit,
-  assistantCivilianOnlyGoods,
-  assistantSoldierOnlyGoods,
   assistantUpgradesTools,
+  assistantWithheldGoods,
   Carrying,
   Equipment,
   type EquipmentData,
@@ -28,7 +28,7 @@ import { towerPostFor } from '../../conflict/tower-post.js';
 import type { SystemContext } from '../../context.js';
 import { holdsSiteClaim, isSoloSite } from '../../economy/site-claim.js';
 import { isWornAtMost } from '../../equipment/index.js';
-import { CIVILIST_JOB } from '../../lifecycle/ageclass.js';
+import { CIVILIST_JOB, isCivilianTrade } from '../../lifecycle/ageclass.js';
 import { isFighterJob, isScoutJob, mayChangeEquipment } from '../../readviews/index.js';
 import { equipFetchLimitFor } from '../../signposts/index.js';
 import { anotherSystemOwns } from '../action-owner.js';
@@ -73,6 +73,13 @@ export function toolHelpsJob(content: ContentSet, jobType: number): boolean {
   return !isFighterJob(content, jobType) && !isScoutJob(content, jobType) && jobType !== CIVILIST_JOB;
 }
 
+/** The group a man of `jobType` takes the assistant's carried grants as: a fighter, a man without a
+ *  trade, or a man with one. */
+export function assistantGrantGroupOf(content: ContentSet, jobType: number | null): AssistantGrantGroup {
+  if (isFighterJob(content, jobType)) return 'soldiers';
+  return isCivilianTrade(jobType) ? 'civilians' : 'workers';
+}
+
 /** One granted good, its slot group pre-resolved from content. */
 interface GrantSpec {
   readonly goodType: number;
@@ -107,10 +114,8 @@ export function dispatchAssistantGrants(pass: PlannerPass): void {
     }
     return specs;
   };
-  // Each granting player's goods kept from civilians (the soldiers-only ones) and from fighters (the
-  // civilians-only ones), read once per pass rather than per settler.
-  const keptFromCivilians = new Map<number, readonly number[]>();
-  const keptFromFighters = new Map<number, readonly number[]>();
+  // Each granting player's goods withheld from each group, read once per pass rather than per settler.
+  const withheld = new Map<number, Readonly<Record<AssistantGrantGroup, readonly number[]>>>();
   const upgrades = new Map<number, boolean>();
   const upgradesOf = (player: number): boolean => {
     let on = upgrades.get(player);
@@ -120,14 +125,17 @@ export function dispatchAssistantGrants(pass: PlannerPass): void {
     }
     return on;
   };
-  const keptFrom = (player: number, fighter: boolean): readonly number[] => {
-    const held = fighter ? keptFromFighters : keptFromCivilians;
-    let goods = held.get(player);
-    if (goods === undefined) {
-      goods = fighter ? assistantCivilianOnlyGoods(world, player) : assistantSoldierOnlyGoods(world, player);
-      held.set(player, goods);
+  const keptFrom = (player: number, group: AssistantGrantGroup): readonly number[] => {
+    let byGroup = withheld.get(player);
+    if (byGroup === undefined) {
+      byGroup = {
+        civilians: assistantWithheldGoods(world, player, 'civilians'),
+        workers: assistantWithheldGoods(world, player, 'workers'),
+        soldiers: assistantWithheldGoods(world, player, 'soldiers'),
+      };
+      withheld.set(player, byGroup);
     }
-    return goods;
+    return byGroup[group];
   };
 
   // Indexed loops: on this every-tick pass a for-of costs an iterator result per step.
@@ -148,7 +156,6 @@ export function dispatchAssistantGrants(pass: PlannerPass): void {
     if (!mayChangeEquipment(world, ctx.content, e)) continue; // a woman, a child and a hero take no gear
     const jobType = world.get(e, Settler).jobType;
     if (jobType === null) continue; // the ladder never plans a jobless settler
-    const fighter = isFighterJob(ctx.content, jobType);
     // A settler on the way to a pickup keeps the unit it claimed. A loaded one is dispatched: the equip
     // rung yields to its delivery and sends it for the gear once its hands are free, which is the only
     // moment a busy porter is ever idle.
@@ -160,7 +167,7 @@ export function dispatchAssistantGrants(pass: PlannerPass): void {
     // unless the player sends him. Owner's ruling.
     if (towerPostFor(world, ctx, e, jobType) !== null) continue;
     const toolless = !toolHelpsJob(ctx.content, jobType);
-    const kept = keptFrom(owner, fighter);
+    const kept = keptFrom(owner, assistantGrantGroupOf(ctx.content, jobType));
 
     const heldAtStart = underwayAtStart?.get(owner);
     const eq = world.tryGet(e, Equipment);
@@ -337,7 +344,7 @@ function freeSlotFor(eq: EquipmentData | undefined, spec: GrantSpec): number | n
 }
 
 /** The slot `spec` fills for a settler wearing `eq`, or null when it is not his: a tool for a `toolless`
- *  trade, a good `kept` from his kind, or a want he already meets. With `upgrade`, a tool weaker than
+ *  trade, a good `kept` from his group, or a want he already meets. With `upgrade`, a tool weaker than
  *  `spec` is a want too. */
 function grantSlotFor(
   content: ContentSet,
@@ -348,7 +355,7 @@ function grantSlotFor(
   upgrade: boolean,
 ): number | null {
   if (toolless && spec.category === 'tool') return null; // its boots and misc grants still apply
-  if (kept.includes(spec.goodType)) return null; // the other group's alone
+  if (kept.includes(spec.goodType)) return null; // withheld from his group
   const free = freeSlotFor(eq, spec);
   if (free !== null || !upgrade || spec.category !== 'tool' || eq === undefined) return free;
   const held = equipSlotValue(eq, 'tool', 0);
@@ -388,7 +395,7 @@ export interface OwedGrant {
 }
 
 /**
- * The grants `e`'s owner still owes him, strongest first: each good his trade and kind may take, with a
+ * The grants `e`'s owner still owes him, strongest first: each good his trade and group may take, with a
  * free slot for it (or a weaker tool, while the upgrade switch is on) and a unit of his side's stock that
  * no errand underway holds, wherever it lies. The dispatch's rules without its beat and its walk-off gates,
  * for an errand out at a store to chain its next fetch.
@@ -402,9 +409,7 @@ export function owedAssistantGrants(world: World, ctx: SystemContext, e: Entity)
   if (wanted === undefined) return [];
   const toolless = !toolHelpsJob(ctx.content, jobType);
   const upgrade = assistantUpgradesTools(world, owner);
-  const kept = isFighterJob(ctx.content, jobType)
-    ? assistantCivilianOnlyGoods(world, owner)
-    : assistantSoldierOnlyGoods(world, owner);
+  const kept = assistantWithheldGoods(world, owner, assistantGrantGroupOf(ctx.content, jobType));
   const eq = world.tryGet(e, Equipment);
   const stock = FetchableStock.of(world, ctx);
   const underway = equipFetchesHeld(world).get(owner);

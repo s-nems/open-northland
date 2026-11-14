@@ -17,15 +17,20 @@ import type { Fixed } from '../../../core/fixed.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
 import type { SystemContext } from '../../context.js';
+import { wearLodging } from '../../family/lodging.js';
 import {
   carriesNeeds,
+  DRINK_IN_PLACE_LEVEL,
   drinkPressingDraughts,
   mutNeeds,
   NEED_CRITICAL_THRESHOLD,
   NEED_DRIVE_THRESHOLD,
   NEED_SATED_THRESHOLD,
   needLevel,
+  stoppingDraughtFor,
+  stopToDrink,
 } from '../../lifecycle/needs/index.js';
+import { noteOrderedMealUnserved } from '../../orders/meal-break.js';
 import { atomicDuration } from '../../readviews/animations.js';
 import { isEdibleFoodIn, jobNeedsReligion } from '../../readviews/index.js';
 import type { NavigationLimit } from '../../signposts/index.js';
@@ -35,10 +40,11 @@ import { atOrWalk, PRAY_ATOMIC_ID, SLEEP_ATOMIC_ID, startAtomic, startMeal } fro
 import { enterBuilding } from '../indoors.js';
 import type { PlannerSpacing } from '../planner/spacing.js';
 import { chooseMeal, nearestPrayerSite, type TargetCandidates } from '../targets/index.js';
+import { fillCompanyOnComingHome } from './at-home.js';
 import { prayAtHome, sleepAtHome } from './home-errands.js';
 import { prayerStand } from './prayer-stand.js';
 import { restingCell } from './rest-spot.js';
-import { eatAtPost, sleepAtPost } from './tower-post.js';
+import { eatAtPost, eatOffShelf, sleepAtPost } from './tower-post.js';
 
 // The needs drives: the highest-priority rungs of the planner ladder. Eat outranks sleep outranks pray,
 // and an unsatisfiable need falls through to normal work rather than freezing the settler. Every rung
@@ -105,31 +111,43 @@ function needsAfterDraughts(world: World, ctx: SystemContext, e: Entity): Settle
   return world.get(e, SettlerNeeds);
 }
 
+/** Whether `need` waits for the draught the settler stops to drink on its way rather than send it off to
+ *  food or a bed. */
+function waitsForDraught(world: World, ctx: SystemContext, e: Entity, need: 'hunger' | 'fatigue'): boolean {
+  return stoppingDraughtFor(world, ctx, e, need) !== null;
+}
+
 /**
  * The in-place half of the needs ladder, for a settler that must hold its ground: {@link planNeeds}'s rung
  * order with every tail that walks or lies down removed, a tower's bed included, so fatigue no draught
  * answers waits for the end of the fight.
  *
- * What is left to answer with is thin on purpose: a garrison eats from its tower, and a field unit eats
- * only what it happens to carry. A unit locked in a fight it cannot win before its hunger kills
- * it is the player's to pull out, with a move order or an ordered meal; both break the fight off.
+ * What is left to answer with is thin on purpose: a garrison eats from its tower, a settler under cover
+ * from its shelter's stock (owner ruling), and a field unit eats only what it happens to carry. Critical
+ * hunger takes a unit allowed to regenerate out of the fight on a meal break
+ * (`conflict/hunger-break.ts`); one forbidden to is the player's to pull out, with a move order or an
+ * ordered meal.
  */
 export function answerNeedInPlace(
   world: World,
   ctx: SystemContext,
   e: Entity,
   settler: SettlerIdentity,
+  /** The building `e` is held inside, whose own stock it may eat from. */
+  larder?: Entity,
 ): boolean {
   if (!carriesNeeds(world, ctx.content, e)) return false;
   if (orderedNeed(world, e) === 'piety' && !jobCanPray(ctx.content.jobs, settler.jobType))
     world.remove(e, NeedOrder);
   const ordered = orderedNeed(world, e);
   const needs = needsAfterDraughts(world, ctx, e);
+  if (stopToDrink(world, ctx, e, NEED_DRIVE_THRESHOLD)) return true;
   const fatigue = needLevel(needs, 'fatigue', ctx.tick);
   if (pressing(needLevel(needs, 'hunger', ctx.tick), ordered, 'hunger')) {
     const seek = maySeek(world, e, ordered, 'hunger');
     if (seek && eatCarried(world, ctx, e, settler, world.tryGet(e, Carrying))) return true;
     if (seek && eatAtPost(world, ctx, e, settler)) return true;
+    if (seek && larder !== undefined && eatOffShelf(world, ctx, e, settler, larder)) return true;
     if (seek) settleUnservedNeedForAi(world, ctx.tick, e, 'hunger');
   }
   if (pressing(fatigue, ordered, 'fatigue') && maySeek(world, e, ordered, 'fatigue')) {
@@ -158,8 +176,7 @@ function eatCarried(
  *
  * A settler on alert answers a need in place, as {@link answerNeedInPlace} does, except that it walks to
  * food once its hunger turns critical: hunger alone costs hitpoints, so a standoff that never comes to
- * blows cannot starve a unit that is free to go. One the fight itself holds is answered in place at any
- * level, which is where an army can still starve. `onAlert` is asked only where its answer decides a walk,
+ * blows cannot starve a unit that is free to go. `onAlert` is asked only where its answer decides a walk,
  * a bed or a prayer.
  */
 export function planNeeds(
@@ -191,10 +208,12 @@ export function planNeeds(
     world.remove(e, NeedOrder);
   const ordered = orderedNeed(world, e);
   const needs = needsAfterDraughts(world, ctx, e);
+  if (stopToDrink(world, ctx, e, DRINK_IN_PLACE_LEVEL)) return true;
   const hunger = needLevel(needs, 'hunger', ctx.tick);
   const fatigue = needLevel(needs, 'fatigue', ctx.tick);
   if (
     pressing(hunger, ordered, 'hunger') &&
+    !waitsForDraught(world, ctx, e, 'hunger') &&
     seekMeal(
       world,
       ctx,
@@ -206,8 +225,9 @@ export function planNeeds(
   ) {
     return true;
   }
+  if (ordered === 'hunger') noteOrderedMealUnserved(world, ctx, e);
 
-  if (pressing(fatigue, ordered, 'fatigue')) {
+  if (pressing(fatigue, ordered, 'fatigue') && !waitsForDraught(world, ctx, e, 'fatigue')) {
     if (maySeek(world, e, ordered, 'fatigue') && !onAlert()) {
       if (sleepAtPost(world, ctx, e, settler)) return true;
       if (sleepAtHome(world, ctx, terrain, e, settler, here, limit)) return true;
@@ -325,7 +345,12 @@ function seekMeal(
         : ({ kind: 'forage', bush: food.bush } as const);
     const serve = (): void => startMeal(world, ctx, e, settler, effect, target);
     if (food.kind === 'store' && food.atHome) {
-      enterBuilding(world, e, food.store, here, food.cell, serve);
+      const home = food.store;
+      enterBuilding(world, e, home, here, food.cell, () => {
+        fillCompanyOnComingHome(world, ctx, e);
+        serve();
+        wearLodging(world, ctx, home, e, 'meal');
+      });
     } else {
       atOrWalk(world, e, here, food.cell, serve);
     }

@@ -94,6 +94,7 @@ export const deSurfaces = {
         eng: 'Englisch',
         ger: 'Deutsch',
         rus: 'Russisch',
+        ita: 'Italienisch',
         chs: 'Chinesisch (vereinfacht)',
         cht: 'Chinesisch (traditionell)',
       },
@@ -354,6 +355,9 @@ export const deSurfaces = {
       bonesFade: 'Verblassende Knochen',
       bonesFadeTip:
         'Die Knochen der Gefallenen liegen eine Weile unberührt und verblassen dann langsam, nach fünf Minuten Spielzeit sind sie fort. Ausgeschaltet bleiben sie für immer liegen.',
+      equipmentEffects: 'Ausrüstungseffekte',
+      equipmentEffectsTip:
+        'Getragene Ausrüstung ist an der Figur zu sehen: Um die Füße jedes Amulettträgers läuft ein Lichtbogen in der Farbe des Amuletts, einer je Art, und hinter dem Träger des Windamuletts ziehen im Lauf Windstöße her.',
       weather: 'Wetter',
       weatherTip:
         'Regen, Schnee und Sandstürme nach Vorgabe der Karte: Tropfen und Flocken, Nebel und Sturmlicht, nasser und verschneiter Boden, Spritzer, Wind und Donner. Das Wetter beeinflusst den Spielablauf nicht. Aus zeigt klaren Himmel und schaltet Wettergeräusche ab.',
@@ -409,6 +413,7 @@ export const deSurfaces = {
         eng: 'English',
         ger: 'Deutsch',
         rus: 'Русский',
+        ita: 'Italiano',
         chs: '简体中文',
         cht: '繁體中文',
       },
@@ -466,11 +471,15 @@ export const deSurfaces = {
         defenceOff: 'Verteidigungsmodus in allen Gebäuden ausschalten',
         buildingAlarm: 'Verteidigungsmodus im gewählten Gebäude starten oder beenden',
         nextCivilian: 'Nächsten Zivilisten auswählen',
+        addCivilians: 'Alle freien Zivilisten zur Auswahl hinzufügen',
         nextScout: 'Nächsten Kundschafter auswählen',
+        addScouts: 'Alle Kundschafter zur Auswahl hinzufügen',
         nextSingleWoman: 'Nächste unverheiratete Frau ohne Wohnhaus auswählen',
+        addSingleWomen: 'Alle unverheirateten Frauen ohne Wohnhaus zur Auswahl hinzufügen',
         selectSoldiers: 'Alle Soldaten auswählen',
         addSoldiers: 'Alle Soldaten zur Auswahl hinzufügen',
         selectHeroes: 'Alle Helden auswählen',
+        addHeroes: 'Alle Helden zur Auswahl hinzufügen',
         keepHeroes: 'Nur Helden in der Auswahl behalten',
         keepSoldiers: 'Nur Soldaten in der Auswahl behalten',
         numpadPan: 'Karte bewegen (Ziffernblock, auch diagonal)',
@@ -678,7 +687,7 @@ export const deSurfaces = {
         'Du kannst über eigene und fremde Wegweiser bauen. Sie rücken zur Seite und bleiben miteinander verbunden.',
       scoutExplore: 'Mit dem Befehl „Kläre Gegend auf“ erkundet der Kundschafter die Karte selbstständig.',
       porterFlag:
-        'Träger in Lagerhäusern und Werkstätten können eine Sammelfahne erhalten und Waren in ihrer Nähe abholen, Abbauer, Jäger und Fischer mit Arbeitsplatz eine Fahne, an der sie arbeiten. Setze sie in der Zeile „{area}“ im Siedlerfenster.',
+        'Träger in Lagerhäusern und Werkstätten können eine Sammelfahne erhalten und Waren in ihrer Nähe abholen, Abbauer, Jäger, Fischer, Farmer und Kräutergärtner mit Arbeitsplatz eine Fahne, an der sie arbeiten. Setze sie in der Zeile „{area}“ im Siedlerfenster.',
       nationSwitch:
         'Wenn du Siedler eines anderen Stammes hast, kannst du im Baufenster ({key}) zu dessen Gebäuden wechseln.',
     },

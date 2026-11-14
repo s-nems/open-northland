@@ -85,6 +85,7 @@ export const plMapCatalogue = {
     eng: 'Angielski',
     ger: 'Niemiecki',
     rus: 'Rosyjski',
+    ita: 'Włoski',
     chs: 'Chiński (uproszczony)',
     cht: 'Chiński (tradycyjny)',
   },

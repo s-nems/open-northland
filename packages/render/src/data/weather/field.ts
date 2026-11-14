@@ -76,22 +76,37 @@ export function sectorSpanOf(
   return out;
 }
 
+/** The bilinear blend at a fractional half-cell node position of a per-sector value `at(sector index)`. */
+export function sectorBilinear(
+  sectorsX: number,
+  sectorsY: number,
+  hx: number,
+  hy: number,
+  at: (sector: number) => number,
+): number {
+  const fx = Math.min(sectorsX - 1, Math.max(0, (hx - SECTOR_CENTRE_NODES) / WEATHER_SECTOR_NODES));
+  const fy = Math.min(sectorsY - 1, Math.max(0, (hy - SECTOR_CENTRE_NODES) / WEATHER_SECTOR_NODES));
+  const x0 = Math.floor(fx);
+  const y0 = Math.floor(fy);
+  const x1 = Math.min(sectorsX - 1, x0 + 1);
+  const y1 = Math.min(sectorsY - 1, y0 + 1);
+  const tx = fx - x0;
+  const ty = fy - y0;
+  const top = at(y0 * sectorsX + x0) * (1 - tx) + at(y0 * sectorsX + x1) * tx;
+  const bottom = at(y1 * sectorsX + x0) * (1 - tx) + at(y1 * sectorsX + x1) * tx;
+  return top * (1 - ty) + bottom * ty;
+}
+
 /** The bilinear amount 0..1 of `kind` at a fractional half-cell node position. */
 export function weatherAmountAt(field: WeatherField, kind: WeatherKind, hx: number, hy: number): number {
   const k = kindIndex(kind);
-  const fx = Math.min(field.sectorsX - 1, Math.max(0, (hx - SECTOR_CENTRE_NODES) / WEATHER_SECTOR_NODES));
-  const fy = Math.min(field.sectorsY - 1, Math.max(0, (hy - SECTOR_CENTRE_NODES) / WEATHER_SECTOR_NODES));
-  const x0 = Math.floor(fx);
-  const y0 = Math.floor(fy);
-  const x1 = Math.min(field.sectorsX - 1, x0 + 1);
-  const y1 = Math.min(field.sectorsY - 1, y0 + 1);
-  const tx = fx - x0;
-  const ty = fy - y0;
-  const at = (sx: number, sy: number): number =>
-    field.amounts[(sy * field.sectorsX + sx) * KIND_COUNT + k] ?? 0;
-  const top = at(x0, y0) * (1 - tx) + at(x1, y0) * tx;
-  const bottom = at(x0, y1) * (1 - tx) + at(x1, y1) * tx;
-  return top * (1 - ty) + bottom * ty;
+  return sectorBilinear(
+    field.sectorsX,
+    field.sectorsY,
+    hx,
+    hy,
+    (sector) => field.amounts[sector * KIND_COUNT + k] ?? 0,
+  );
 }
 
 /**

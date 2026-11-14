@@ -47,7 +47,7 @@ function build(sim: Simulation): void {
   const hut = placeBuiltSandboxBuilding(sim, BUILDING_DRUID_HUT, HUT.x, HUT.y);
   const hut01 = placeBuiltSandboxBuilding(sim, BUILDING_DRUID_HUT_01, HUT_01.x, HUT_01.y);
   stock(sim, hut, ['mushroom']);
-  stock(sim, hut01, ['mushroom', 'water', 'herb', 'coin']);
+  stock(sim, hut01, ['mushroom', 'water', 'herb', 'crockery']);
   spawnWorkersAtDoor(sim, hut, DRUIDS);
   spawnWorkersAtDoor(sim, hut01, DRUIDS_01);
 }
@@ -68,7 +68,7 @@ export const alchemyScene: SceneDefinition = {
       predicate: (sim) => buildingStock(sim, BUILDING_DRUID_HUT, 'holy_oil') > 0,
     },
     {
-      label: 'the level-2 hut brewed at least one potion from water, mushroom, herb and coin',
+      label: 'the level-2 hut brewed at least one potion from water, mushroom, herb and crockery',
       predicate: (sim) => POTION_SLUGS.some((slug) => buildingStock(sim, BUILDING_DRUID_HUT_01, slug) > 0),
     },
   ],

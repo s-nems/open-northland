@@ -14,6 +14,7 @@ import {
 import { interactionNode } from '../footprint/index.js';
 import { markIfPostedOutOfReach } from '../settlers/drives/cut-off.js';
 import { navigationLimitFor } from '../signposts/index.js';
+import { detachBeforeOrder } from '../vehicles/crew.js';
 import { groupPlacementOrder } from './group-placement.js';
 import { dropOrderQueue, isOrderableSettler, mayTakeHome } from './guards.js';
 
@@ -57,7 +58,8 @@ export function assignHouse(
   if (world.tryGet(e, Residence)?.home === house) markIfPostedOutOfReach(world, ctx, e);
 }
 
-/** House the group's families in one home - see the command doc and {@link groupPlacementOrder}. */
+/** House the group's families in one home - see the command doc and {@link groupPlacementOrder}. Each member
+ *  leaves its vehicle first, as its own `assignHouse` order makes it, or stays put when it may not leave. */
 export function assignHouseGroup(
   world: World,
   ctx: SystemContext,
@@ -73,6 +75,7 @@ export function assignHouseGroup(
     homeOf,
   )) {
     if (homeOf(entity) === house) continue; // moved in with an earlier member's family
+    if (!detachBeforeOrder(world, ctx, entity)) continue;
     assignHouse(world, ctx, { kind: 'assignHouse', entity, house });
   }
 }

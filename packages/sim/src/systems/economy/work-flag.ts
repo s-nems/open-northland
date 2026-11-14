@@ -24,6 +24,7 @@ import { nearestWorkFlagPlacement, noteWorkFlagMove } from '../footprint/index.j
 import { clearNavState } from '../movement/nav-state.js';
 import { isFisherJob, isHunterJob } from '../readviews/index.js';
 import { canonicalById, entityNode } from '../spatial/nodes.js';
+import { farmWorkGood } from './fields.js';
 
 // The work-flag lifecycle, for a field worker's `WorkFlag` and a posted worker's `HaulFlag`. Minting and
 // removal go through `bindFreshFlag`, `bindHaulFlag` and `removeWorkFlag`, so a worker's `DeliveryFlag`
@@ -94,7 +95,11 @@ export function bindHaulFlag(
     return;
   }
   removeWorkFlag(world, e); // a stale binding's marker id
-  const radius = workFlagRadiusFor(ctx, world.tryGet(e, Settler)?.jobType ?? null);
+  // A farmer's flag bounds his plot, so it takes the farm's field radius.
+  const workplace = world.tryGet(e, JobAssignment)?.workplace;
+  const farm = workplace === undefined ? null : farmWorkGood(world, ctx, workplace);
+  const radius =
+    farm?.farming.fieldRadius ?? workFlagRadiusFor(ctx, world.tryGet(e, Settler)?.jobType ?? null);
   world.add(e, HaulFlag, { flag: mintFlagMarker(world, pos), radius });
   clearNavState(world, e);
 }

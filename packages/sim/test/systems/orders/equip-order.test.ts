@@ -36,6 +36,7 @@ import { EQUIP_FETCH_SEARCHES_PER_PASS } from '../../../src/systems/settlers/pla
 import { hexNodeDistance } from '../../../src/systems/spatial/metric.js';
 import { testContent } from '../../fixtures/content.js';
 import { ctxOf } from '../../fixtures/context.js';
+import { heldTrade } from '../../fixtures/settler.js';
 import { grassCellMap as grassMap } from '../../fixtures/terrain.js';
 import { combatant } from '../conflict/stances/support.js';
 
@@ -833,6 +834,7 @@ describe('enlisting - a fighter trade keeps no tool', () => {
   it('sets a fresh tool down at the settler feet instead of keeping or vanishing it', () => {
     const sim = freshSim();
     const e = ownedSettler(sim, 3, 2);
+    heldTrade(sim.world, e, FIGHTER_JOB); // a former soldier, so the order re-enlists him
     wear(sim, e, { tool: TOOL_WOODEN });
 
     sim.enqueueSetup({ kind: 'setJob', entity: e, jobType: FIGHTER_JOB });
@@ -847,6 +849,7 @@ describe('enlisting - a fighter trade keeps no tool', () => {
   it('destroys a part-used tool - fungible stock would regenerate it to fresh', () => {
     const sim = freshSim();
     const e = ownedSettler(sim, 3, 2);
+    heldTrade(sim.world, e, FIGHTER_JOB); // a former soldier, so the order re-enlists him
     wear(sim, e, { tool: { goodType: TOOL_WOODEN, usedPct: 40 } });
 
     sim.enqueueSetup({ kind: 'setJob', entity: e, jobType: FIGHTER_JOB });
@@ -860,6 +863,7 @@ describe('enlisting - a fighter trade keeps no tool', () => {
   it('calls off a tool-fetch errand in flight', () => {
     const sim = freshSim();
     const e = ownedSettler(sim, 2, 2);
+    heldTrade(sim.world, e, FIGHTER_JOB); // a former soldier, so the order re-enlists him
     pileAt(sim, 12, 2, TOOL_WOODEN, 1);
     sim.enqueueSetup(equip(e, TOOL_WOODEN, 'tool'));
     sim.step();
@@ -892,6 +896,7 @@ describe('enlisting - a fighter trade keeps no tool', () => {
   it('sets a fresh tool down beside a foreign heap when its hands are full', () => {
     const sim = freshSim();
     const e = ownedSettler(sim, 3, 2);
+    heldTrade(sim.world, e, FIGHTER_JOB); // a former soldier, so the order re-enlists him
     wear(sim, e, { tool: TOOL_WOODEN });
     sim.world.add(e, Carrying, { goodType: WOOD, amount: 1 }); // hands hold another good
     const feet = sim.world.get(e, Position);

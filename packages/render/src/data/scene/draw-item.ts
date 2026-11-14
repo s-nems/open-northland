@@ -227,6 +227,10 @@ export interface DrawItem extends Readonly<StaticDrawFields> {
   /** For a `craftfx` item: the `[GfxLandscape]` record (`EditName`) the in-house program stages here, a
    *  looping effect such as the fire under a cauldron. */
   readonly fxName?: string;
+  /** Pre-lift screen y the live painter sorts this item at when it draws away from its feet: a staged
+   *  effect sorts at its building's anchor row, so a point behind the house's middle still draws on the
+   *  house. */
+  readonly sortY?: number;
 }
 
 export interface PalisadePostDraw {
@@ -325,6 +329,7 @@ export function newDrawItem(
     inHouse: undefined,
     craftClip: undefined,
     fxName: undefined,
+    sortY: undefined,
   };
   return item as MutableSpriteDrawItem;
 }

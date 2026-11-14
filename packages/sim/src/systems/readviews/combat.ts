@@ -27,8 +27,8 @@ export const ARMOR_MATERIAL = {
 
 /**
  * The coarse weapon class a `WeaponType.mainType` carries (`logicdefines.inc` `WEAPON_MAIN_TYPE_*`, l.892) -
- * the axis the fight-experience buckets key on. The saber rows' 4 and the hero axe's 5 are left out: the
- * sim gives those weapons no class and no fight bucket, as the original gives them no bucket.
+ * the axis the fight-experience buckets key on. Original behavior: the saber and the hero axe train no
+ * bucket; our rule gives them the personal counter like every class but the catapult.
  */
 export const WEAPON_MAIN_TYPE = {
   NONE: 0,
@@ -36,6 +36,8 @@ export const WEAPON_MAIN_TYPE = {
   UNARMED: 1,
   SPEAR: 2,
   SWORD: 3,
+  /** The saber rows' class. */
+  SABER: 4,
   BOW: 6,
   /** Catapult (siege). */
   CATAPULT: 7,

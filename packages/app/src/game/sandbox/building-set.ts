@@ -24,8 +24,10 @@ import {
   BUILDING_OXCART_YARD,
   BUILDING_POTTERY,
   BUILDING_POTTERY_01,
+  BUILDING_POTTERY_02,
   BUILDING_SHIP_BIG_YARD,
   BUILDING_SHIP_SMALL_YARD,
+  BUILDING_TEMPLE,
   BUILDING_WAREHOUSE_00,
   BUILDING_WAREHOUSE_01,
   BUILDING_WAREHOUSE_02,
@@ -99,6 +101,9 @@ const ANIMAL_FARM_OUTPUT_CAPACITY = 30;
 const DRUID_INPUT_CAPACITY = 10;
 const DRUID_HUT_OIL_CAPACITY = 15;
 const DRUID_HUT_01_OUTPUT_CAPACITY = 25;
+// Our pack's "work temple": a holy oil store of five holding one, the fuel its blessing burns.
+const TEMPLE_OIL_CAPACITY = 5;
+const TEMPLE_OIL_INITIAL = 1;
 const CRAFT_INPUT_CAPACITY = 10;
 // Extracted `logicstock` on "work joinery 02": the cart slot is declared and never filled, since a
 // vehicle good is built on a yard, not shelved.
@@ -161,6 +166,8 @@ export interface SandboxBuildingRow {
   kind: string;
   /** How many families, not settlers, a home houses (`logichomesize`). */
   homeSize?: number;
+  /** The extra families a home takes while furnished (owner's design). */
+  furnishedFamilies?: number;
   schoolSize?: number;
   stock?: readonly StockSlot[];
   construction?: readonly { goodType: number; amount: number }[];
@@ -201,8 +208,8 @@ function holyOilRecipe(): SandboxRecipe {
   };
 }
 
-/** The level-2 hut's bottles, each with how many of every ingredient it costs: a small bottle one, a big
- *  bottle two. */
+/** The level-2 hut's bottles, each with how much water, mushroom and herb it costs: a small bottle one of
+ *  each, a big bottle two. */
 const POTIONS: readonly (readonly [ingredientAmount: number, goodType: number])[] = [
   [1, GOOD_POTION_FOOD_SMALL],
   [2, GOOD_POTION_FOOD_BIG],
@@ -212,12 +219,18 @@ const POTIONS: readonly (readonly [ingredientAmount: number, goodType: number])[
   [2, GOOD_POTION_HEAL_BIG],
 ];
 
+/** Owner ruling: every bottle, small or big, takes one crockery. */
+const CROCKERY_PER_POTION = 1;
+
 function potionRecipe(goodType: number, ingredientAmount: number): SandboxRecipe {
   return {
-    inputs: [GOOD_WATER, GOOD_MUSHROOM, GOOD_HERB, GOOD_COIN].map((input) => ({
-      goodType: input,
-      amount: ingredientAmount,
-    })),
+    inputs: [
+      ...[GOOD_WATER, GOOD_MUSHROOM, GOOD_HERB].map((input) => ({
+        goodType: input,
+        amount: ingredientAmount,
+      })),
+      { goodType: GOOD_CROCKERY, amount: CROCKERY_PER_POTION },
+    ],
     outputs: [{ goodType, amount: 1 }],
     ticks: DEFAULT_RECIPE_TICKS,
   };
@@ -421,8 +434,8 @@ const BUILDING_OVERRIDES: Readonly<Record<number, Partial<SandboxBuildingRow>>> 
     recipes: [holyOilRecipe()],
   },
   // Extracted shape ("work druid 01"): the oil recipe plus the six potions, each brewed from water,
-  // mushroom, herb and coin - one of each for a small bottle, two of each for a big one
-  // (`productionInputGoods 1 14 13 8` / `1 1 14 14 13 13 8 8`).
+  // mushroom and herb - one of each for a small bottle, two of each for a big one - and one crockery
+  // (`productionInputGoods 1 14 13 28` / `1 1 14 14 13 13 28` in our data pack).
   [BUILDING_DRUID_HUT_01]: {
     stock: [
       { goodType: GOOD_MUSHROOM, capacity: DRUID_INPUT_CAPACITY, initial: 0 },
@@ -433,7 +446,7 @@ const BUILDING_OVERRIDES: Readonly<Record<number, Partial<SandboxBuildingRow>>> 
       },
       { goodType: GOOD_WATER, capacity: DRUID_INPUT_CAPACITY, initial: 0 },
       { goodType: GOOD_HERB, capacity: DRUID_INPUT_CAPACITY, initial: 0 },
-      { goodType: GOOD_COIN, capacity: DRUID_INPUT_CAPACITY, initial: 0 },
+      { goodType: GOOD_CROCKERY, capacity: DRUID_INPUT_CAPACITY, initial: 0 },
       ...POTIONS.map(([, goodType]) => ({
         goodType,
         capacity: DRUID_HUT_01_OUTPUT_CAPACITY,
@@ -442,6 +455,9 @@ const BUILDING_OVERRIDES: Readonly<Record<number, Partial<SandboxBuildingRow>>> 
     ],
     produces: [GOOD_HOLY_OIL, ...POTIONS.map(([, goodType]) => goodType)],
     recipes: [holyOilRecipe(), ...POTIONS.map(([amount, goodType]) => potionRecipe(goodType, amount))],
+  },
+  [BUILDING_TEMPLE]: {
+    stock: [{ goodType: GOOD_HOLY_OIL, capacity: TEMPLE_OIL_CAPACITY, initial: TEMPLE_OIL_INITIAL }],
   },
   [BUILDING_WAREHOUSE_00]: { stock: storeStock(WAREHOUSE_SLOT_CAPACITY[0]) },
   [BUILDING_WAREHOUSE_01]: { stock: storeStock(WAREHOUSE_SLOT_CAPACITY[1]) },
@@ -474,7 +490,8 @@ const BUILDING_OVERRIDES: Readonly<Record<number, Partial<SandboxBuildingRow>>> 
     [GOOD_HANDCART, GOOD_OXCART, GOOD_SHIP_SMALL, GOOD_CATAPULT],
     [{ goodType: GOOD_LEATHER, capacity: JOINERY_03_LEATHER_CAPACITY, initial: 0 }],
   ),
-  // Extracted `work pottery 00/01`: the upgrade keeps bricks, adds tiles, and unlocks crockery.
+  // Extracted `work pottery 00/01/02`: each upgrade keeps the products below it and adds tiles, then
+  // crockery.
   [BUILDING_POTTERY]: {
     stock: [
       { goodType: GOOD_MUD, capacity: CRAFT_INPUT_CAPACITY, initial: 0 },
@@ -485,6 +502,16 @@ const BUILDING_OVERRIDES: Readonly<Record<number, Partial<SandboxBuildingRow>>> 
     recipes: [potteryRecipe(GOOD_BRICK, 1, 1)],
   },
   [BUILDING_POTTERY_01]: {
+    stock: [
+      { goodType: GOOD_MUD, capacity: CRAFT_INPUT_CAPACITY, initial: 0 },
+      { goodType: GOOD_WOOD, capacity: CRAFT_INPUT_CAPACITY, initial: 0 },
+      { goodType: GOOD_BRICK, capacity: 20, initial: 0 },
+      { goodType: GOOD_TILE, capacity: 20, initial: 0 },
+    ],
+    produces: [GOOD_BRICK, GOOD_TILE],
+    recipes: [potteryRecipe(GOOD_BRICK, 1, 1), potteryRecipe(GOOD_TILE, 2, 1)],
+  },
+  [BUILDING_POTTERY_02]: {
     stock: [
       { goodType: GOOD_MUD, capacity: CRAFT_INPUT_CAPACITY, initial: 0 },
       { goodType: GOOD_WOOD, capacity: CRAFT_INPUT_CAPACITY, initial: 0 },
@@ -770,13 +797,14 @@ function vehicleYardRow(yard: VehicleYard): SandboxBuildingRow {
   };
 }
 
-/** Extracted per home tier: `houses.ini` `logichomesize` 1..5 and `logicstock 16/17 <cap> 1`. */
+/** Extracted per home tier: `houses.ini` `logichomesize` 1..5 and `logicstock 16/17 <cap> 1`; the
+ *  furnished extra families are the owner's design, as in the extracted content. */
 const HOME_TIERS = [
-  { homeSize: 1, foodCapacity: 5 },
-  { homeSize: 2, foodCapacity: 10 },
-  { homeSize: 3, foodCapacity: 15 },
-  { homeSize: 4, foodCapacity: 15 },
-  { homeSize: 5, foodCapacity: 15 },
+  { homeSize: 1, furnishedFamilies: 1, foodCapacity: 5 },
+  { homeSize: 2, furnishedFamilies: 1, foodCapacity: 10 },
+  { homeSize: 3, furnishedFamilies: 1, foodCapacity: 15 },
+  { homeSize: 4, furnishedFamilies: 2, foodCapacity: 15 },
+  { homeSize: 5, furnishedFamilies: 2, foodCapacity: 15 },
 ] as const;
 
 /** A home's family capacity and the larder only its own residents eat from. */
@@ -786,6 +814,7 @@ function homeRow(b: VikingBuilding): Partial<SandboxBuildingRow> {
   const tier = HOME_TIERS[index] ?? smallestHome;
   return {
     homeSize: tier.homeSize,
+    furnishedFamilies: tier.furnishedFamilies,
     stock: [
       { goodType: GOOD_FOOD_SIMPLE, capacity: tier.foodCapacity, initial: 0 },
       { goodType: GOOD_FOOD_EXTRA, capacity: tier.foodCapacity, initial: 0 },

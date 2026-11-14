@@ -20,6 +20,7 @@ import type { NodeId } from '../../../../nav/terrain/index.js';
 import type { SystemContext } from '../../../context.js';
 import { holdsSiteClaim, isSoloSite } from '../../../economy/site-claim.js';
 import { constructionWorkCell } from '../../../footprint/index.js';
+import { templeFuelGoods } from '../../../readviews/index.js';
 import { landReachAt } from '../../../signposts/index.js';
 import {
   bankedSlot,
@@ -40,6 +41,7 @@ import {
 } from '../../targets/index.js';
 import { unreachableGoalVeto } from '../../unreachable-goals.js';
 import { hasRoom, isFarmCarrierHaulOutRole, isStorageSink } from './store-policy.js';
+import { templeFeedGate, templeShortOf } from './temple-fuel.js';
 
 /**
  * A rule's answer for one carried load: the sink to deliver to, `'no-sink'` when the rule owns the
@@ -68,6 +70,7 @@ export const DELIVERY_RULES: readonly DeliveryRule[] = [
   { kind: 'bound', resolve: toBoundStorage },
   { kind: 'bound', resolve: toOwnCrewSite },
   { kind: 'searched', resolve: toNeedingConstructionSite },
+  { kind: 'searched', resolve: toTempleShortOfFuel },
   { kind: 'searched', resolve: toStorageUnderMinimum },
   { kind: 'searched', resolve: toNearbyRecipeConsumer },
   { kind: 'searched', resolve: toNearestCapableStore },
@@ -213,6 +216,19 @@ function toNeedingConstructionSite(
       sameSideAs(world, owner),
     )?.entity ?? null
   );
+}
+
+/** A temple's fuel goes to a temple of the carrier's player that still takes a unit ({@link templeShortOf})
+ *  within his post's reach ({@link templeFeedGate}), so the oil a druid or a porter carries out feeds the
+ *  fires before any store (owner ruling). */
+function toTempleShortOfFuel(
+  plan: PlannerContext,
+  goodType: number,
+  area: DeliverySearchArea,
+): DeliveryVerdict {
+  if (!templeFuelGoods(plan.ctx).has(goodType)) return null;
+  const gate = templeFeedGate(plan, area.gate);
+  return templeShortOf(plan, (fuel) => fuel === goodType, gate, area.avoid)?.temple ?? null;
 }
 
 /** Whether a site's material can physically land on a legal perimeter cell. */

@@ -1,0 +1,35 @@
+{
+  "version": 1,
+  "map": "wybrzeze_czarow_sc1",
+  "basis": {
+    "lang": "eng",
+    "digest": "0724106abfc32e3fc9dc6581c4ce6c40b99b972a9c52817533572a6125421a28"
+  },
+  "strings": {
+    "0": "COSTA DEGLI INCANTESIMI - SCUOLA 1",
+    "1": "localizzazione",
+    "30": "Björn",
+    "31": "Hring",
+    "32": "Ivar",
+    "33": "Karl",
+    "34": "Zorian",
+    "35": "Al-Epaqa",
+    "36": "Barbaforcuta",
+    "37": "Lejba",
+    "38": "Albert",
+    "39": "Harald",
+    "40": "Lucius",
+    "41": "Bruno",
+    "42": "Żyrosław",
+    "43": "Pierres",
+    "44": "Maestro",
+    "50": "Tu",
+    "51": "Koslowford",
+    "52": "Zorian",
+    "100": "Trova chi possiede il potere di Wallmar."
+  },
+  "briefings": {
+    "500": "<font:$local$\\fonts\\fonthead16bld.fnt>\nSCUOLA DI KOSLOWFORD\n<font:$local$\\fonts\\font12.fnt>\n\nScendemmo per le vecchie scale nei sotterranei della scuola di Koslowford...\n\n<usericon:1,54,32>\n\nGià da qui si vedeva che il maestro e gli altri maghi ci stavano aspettando. Andiamo dunque nella sala principale.\n\n<usericon:1,36,63>",
+    "501": "\"Benvenuti, eroi.\n\n<usericon:1,36,63>\n\nStiamo per cominciare a cercare colui che possiede il potere di Wallmar. Aspettate un momento, ora con gli allievi scopriremo dove si trova. È tempo di usare i nostri poteri...\"\n\n...\n\n\"L'abbiamo trovato. Un arabo, nella città di Taqsir, nel Levante. Veste abiti verdi e porta con sé una sciabola. Barba e occhi inconfondibili. Purtroppo non riusciamo a scoprire il suo nome...\n\nDovete navigare fin laggiù e portarlo qui. Solo così potremo recuperare il potere senza rischi. Se muore, toccherà cercare di nuovo un'altra persona!\"\n\nDisgustati, lasciammo lentamente l'edificio della scuola..."
+  }
+}

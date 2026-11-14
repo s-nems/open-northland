@@ -224,6 +224,17 @@ export const WORLD: ArticleGroup = {
           ],
         },
         {
+          h: 'Statki w walce',
+        },
+        {
+          list: [
+            'Z pokładu [[vehicle:ship_small|Statku]], tego, który wozi Katapultę, strzela do wrogów, których widzisz, najwyżej {{deck.archers}} żołnierzy z łukiem. Najpierw celują we wrogie statki. Statek handlowy nie ma łuczników na pokładzie.',
+            'Z pokładu łuk sięga o {{deck.rangeLoss}} hexy mniej niż na lądzie, między strzałami czeka o {{deck.slowerPct}}% dłużej i rozrzuca szerzej: [[article:aim|Trafienie i strzelanie]].',
+            'Kamień z Katapulty zabiera statkowi {{ship.stoneFactor}} razy więcej niż innemu pojazdowi.',
+            'Poniżej {{ship.firePct}}% zdrowia statek płonie i traci {{ship.fireLoss}} zdrowia na sekundę, aż zatonie. Budowniczowie naprawiają statek przy brzegu jak budynek, a ogień gaśnie, gdy zdrowie wróci do {{ship.firePct}}%.',
+          ],
+        },
+        {
           h: 'Utrata pojazdu',
         },
         {
@@ -617,11 +628,18 @@ export const WORLD: ArticleGroup = {
               ['Zdrowie', '+{{aura.perSecond}} na sekundę, do {{aura.ceiling}}'],
               ['Religia', '+{{aura.pietyPct}}% na sekundę, gdy pasek ma do {{need.satedPct}}%'],
               ['Dla kogo', 'Wszyscy twoi ludzie, dzieci tylko zdrowie'],
-              ['Warunek', 'Świątynia ukończona i nieuszkodzona'],
+              ['Warunek', 'Świątynia ukończona, nieuszkodzona i pali [[good:holy_oil|Oliwę]]'],
+              [
+                'Oliwa',
+                '1 starcza na {{aura.oilBurnTime}}, pełny zapas {{aura.oilUnits}} na {{aura.oilFullBurnTime}}',
+              ],
               ['Kilka Świątyń', 'Aury się nie sumują'],
             ],
             foot: 'Zdrowie powyżej {{health.human}} zostaje, dopóki nie zabiorą go rany.',
           },
+        },
+        {
+          p: '[[job:druid|Druidzi]] sami zanoszą Oliwę do Świątyń w zasięgu swoich [[article:roads|drogowskazów]]. Może ją też przynieść [[job:carrier|Tragarz]] przypisany do Świątyni albo [[job:trader|Kupiec]]. Nowa Świątynia ma na start Oliwę z kosztu budowy. Bez Oliwy albo gdy jest uszkodzona, jej poświata i ogień gasną. Ogień możesz też sam wygasić w panelu Świątyni: zachowuje wtedy Oliwę i nie błogosławi, dopóki go nie rozpalisz.',
         },
       ],
       see: ['article:needs', 'article:health', 'building:work_temple', 'good:holy_oil'],

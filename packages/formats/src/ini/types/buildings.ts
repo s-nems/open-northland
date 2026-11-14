@@ -36,6 +36,16 @@ const PRAYER_SITE_BY_LOGIC_TYPE: Readonly<Record<number, PrayerSite>> = {
   1: PRAYER_SITE.headquarters,
 };
 
+/** Owner's design, not original data: the extra families each home tier takes while furnished, by
+ *  building id. */
+const FURNISHED_FAMILIES_BY_HOME_ID: Readonly<Record<string, number>> = {
+  home_level_00: 1,
+  home_level_01: 1,
+  home_level_02: 1,
+  home_level_03: 2,
+  home_level_04: 2,
+};
+
 function houseKind(mainType: number | undefined): BuildingType['kind'] {
   if (mainType === undefined) return 'maintype_unknown';
   return HOUSE_KIND_BY_MAIN_TYPE[mainType] ?? `maintype_${mainType}`;
@@ -72,13 +82,15 @@ export function extractBuildings(sections: readonly RuleSection[], src: SourceRe
       if (Number.isNaN(goodType) || Number.isNaN(capacity)) continue;
       stock.push({ goodType, capacity, initial: Number.isNaN(initial) ? 0 : initial });
     }
+    const id = name ? slug(name) : `house_${typeId}`;
     buildings.push(
       BuildingType.parse({
         typeId,
-        id: name ? slug(name) : `house_${typeId}`,
+        id,
         kind: houseKind(getInt(sec, 'logicmaintype')),
         schoolSize: getInt(sec, 'logicSchoolSize'),
         homeSize: getInt(sec, 'logichomesize') ?? 0,
+        furnishedFamilies: FURNISHED_FAMILIES_BY_HOME_ID[id] ?? 0,
         buildOnBioPattern: getInt(sec, 'logicbuildonbiopattern') === 1,
         collectAtomic: COLLECT_ATOMIC_BY_LOGIC_TYPE[typeId],
         refillsOwnStock: SELF_FILLING_LOGIC_TYPES.has(typeId),

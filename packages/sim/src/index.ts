@@ -2,6 +2,7 @@ export type {
   AssistantArmingIntent,
   AssistantArmorOrder,
   AssistantCounterValues,
+  AssistantGrantGroup,
 } from './components/assistant.js';
 export { CHEST_KINDS, CHEST_LANDSCAPE_SLUG, type ChestKind } from './components/chest.js';
 export {
@@ -132,6 +133,7 @@ export {
   type HashTraceEntry,
   type HashTraceOptions,
 } from './inspect/hashtrace.js';
+export { homeFamilyCapacityView, homeWareStock, lodgingPiecesView } from './inspect/home-capacity.js';
 export { type HouseholdGoodPolicyView, householdGoodPolicyView } from './inspect/household-policy.js';
 export { clonePlain, cloneReadView } from './inspect/plain-clone.js';
 export {
@@ -186,7 +188,7 @@ export { storageMinimumsView } from './inspect/storage-minimums.js';
 export { bucketsReach, TILE_BUCKET_SIZE, type TileBox, TileBuckets } from './inspect/tile-buckets.js';
 export type { BlockOverlay } from './nav/block-overlay.js';
 export { ClearanceField, MAX_CLEARANCE_CLASS } from './nav/clearance.js';
-export { formationNodes, pairBySpace } from './nav/formation.js';
+export { formationNodes, MILITARY_ROW_SPACING, pairBySpace } from './nav/formation.js';
 export {
   cellAnchorNode,
   cellOfAnchorNode,
@@ -329,5 +331,6 @@ export type { SignpostProbe } from './systems/signposts/index.js';
 export type { SignpostReachPost, SignpostReachView } from './systems/signposts/reach.js';
 export { heapReach } from './systems/stores/seat-stock.js';
 export type { TradeOffer, TraderShipState, TraderView, TradeStopView } from './systems/trade/index.js';
+export { HULL_GAP_NODES } from './systems/vehicles/dock.js';
 export type { MooringProbe, VehicleStockView, VehicleView } from './systems/vehicles/index.js';
 export { FOG_STATE } from './systems/vision/index.js';

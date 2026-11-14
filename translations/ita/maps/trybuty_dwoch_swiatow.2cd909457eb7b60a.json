@@ -1,0 +1,32 @@
+{
+  "version": 1,
+  "map": "trybuty_dwoch_swiatow",
+  "basis": {
+    "lang": "eng",
+    "digest": "756971797d484e93900e8d2814fd6c649de1e00d9ed945cc6696ca528faa4909"
+  },
+  "strings": {
+    "40": "TRIBUTI DI DUE MONDI",
+    "41": "Partita cooperativa multiplayer da due a sei giocatori. I tre giocatori a nord dispongono di legno, funghi e terreni erbosi, mentre gli altri tre a sud dispongono di argilla, pietra grezza, ferro e oro. Per svilupparsi, i giocatori devono scambiarsi le risorse tramite i tributi. Lo scopo della partita è distruggere l'accampamento nemico al centro della mappa.",
+    "42": "Invia merci al giocatore.",
+    "43": "DISTRUGGI L'ACCAMPAMENTO NEMICO AL CENTRO DELLA MAPPA",
+    "50": "Nord-ovest",
+    "51": "Nord-centro",
+    "52": "Nord-est",
+    "53": "Sud-ovest",
+    "54": "Sud-centro",
+    "55": "Sud-est",
+    "56": "Accampamento centrale",
+    "60": "NO",
+    "61": "N",
+    "62": "NE",
+    "63": "SO",
+    "64": "S",
+    "65": "SE",
+    "66": "Nemico"
+  },
+  "briefings": {
+    "500": "<font:$local$\\fonts\\fonthead16bld.fnt>\nTRIBUTI DI DUE MONDI\n<font:$local$\\fonts\\font12.fnt>\nLe tribù vichinghe del nord e del sud si sono riunite per distruggere una città nemica.\n<color:$local$\\palettes\\font_red_dark.pcx>\nAttenzione! Nel menu multiplayer almeno un giocatore umano deve occupare uno degli slot 1-2-3 e almeno un giocatore umano deve occupare uno degli slot 4-5-6. Altrimenti lo sviluppo tecnologico sarà impossibile.\n<color:$local$\\palettes\\font_dark.pcx>\nPer compensarsi a vicenda nello sviluppo tecnologico, i giocatori devono usare i tributi disponibili nella finestra della diplomazia.\n<color:$local$\\palettes\\font_blue_dark2.pcx>\nDa nord a sud si possono inviare i seguenti tributi:\n<color:$local$\\palettes\\font_blue.pcx>5 Legno + 5 Grano\n5 Acqua + 5 Miele\n<color:$local$\\palettes\\font_blue_dark2.pcx>\nDa sud a nord si possono inviare i seguenti tributi:\n<color:$local$\\palettes\\font_blue.pcx>5 Pietra grezza + 5 Argilla\n5 Ferro + 5 Oro\n<color:$local$\\palettes\\font_dark.pcx>\nI tre giocatori a nord dispongono di legno, funghi e terreni erbosi, mentre gli altri tre a sud dispongono di argilla, pietra grezza, ferro e oro.\nLo scopo della partita è distruggere l'accampamento nemico al centro della mappa.\n<color:$local$\\palettes\\font_green.pcx>\nSuggerimenti:\n\nNella parte meridionale della mappa compaiono lepri che sono una fonte di cibo rinnovabile, finché non si raggiunge il limite di animali.\n\nAssegnare alcune professioni disponibili fin dall'inizio può far avanzare l'albero tecnologico, anche se in apparenza non ha senso.\n\nAlcune professioni che certi giocatori non possono sbloccare in modo naturale sono disponibili nella scuola, una volta costruita.\n<color:$local$\\palettes\\font_dark.pcx>\n~~ Autore: Mikulus ~~\n\nwww.culturesnation.pl",
+    "501": "<font:$local$\\fonts\\fonthead16bld.fnt>\nVITTORIA!\n<font:$local$\\fonts\\font12.fnt>\nInsieme abbiamo distrutto la fortezza dei nostri nemici!\nAbbiamo vinto!\n\n~~ Autore: Mikulus ~~\n\nwww.culturesnation.pl"
+  }
+}

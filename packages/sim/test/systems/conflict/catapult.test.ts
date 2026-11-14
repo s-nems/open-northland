@@ -48,13 +48,18 @@ import {
 } from '../../../src/index.js';
 import { findPath } from '../../../src/nav/pathfinding/index.js';
 import { combatSystem } from '../../../src/systems/conflict/combat.js';
+import { VEHICLE_SHOT_SETTLE_TICKS } from '../../../src/systems/conflict/engage-vehicle.js';
 import { projectileSystem } from '../../../src/systems/conflict/projectile.js';
 import { isFleeThreat } from '../../../src/systems/conflict/targeting.js';
 import { UNREACHABLE_TARGET_MEMO_SIZE } from '../../../src/systems/conflict/unreachable-targets.js';
+import { VEHICLE_PRIORITY_REACH_POINTS } from '../../../src/systems/conflict/vehicle-targets.js';
 import { stampResourceFootprintData } from '../../../src/systems/footprint/index.js';
 import { REGENERATION_HITPOINTS_PER_TICK } from '../../../src/systems/lifecycle/needs/index.js';
 import { vehiclesGone } from '../../../src/systems/missions/goals/casualties.js';
-import { FIGHT_EXPERIENCE_TYPE } from '../../../src/systems/progression/index.js';
+import {
+  FIGHT_EXPERIENCE_FULL_UNITS,
+  FIGHT_EXPERIENCE_TYPE,
+} from '../../../src/systems/progression/index.js';
 import { ARMOR_MATERIAL, MILITARY_MODE } from '../../../src/systems/readviews/index.js';
 import { resolveCombatHit } from '../../../src/systems/settlers/atomics/effects/combat/hit/resolution.js';
 import { boardRider, createVehicle } from '../../../src/systems/vehicles/index.js';
@@ -83,6 +88,10 @@ const CATAPULT = 5;
 /** The fixture catapult's `logicsize`: the hex-disc radius its body covers. */
 const CATAPULT_LOGIC_SIZE = 1;
 const HOME = 3;
+const HEADQUARTERS = 4;
+/** A tower whose wall row runs eight map points east of its anchor. */
+const LONG_TOWER = 6;
+const LONG_TOWER_WALLS = [0, 1, 2, 3, 4, 5, 6, 7].map((dx) => ({ dx, dy: 0 }));
 const WALL_TYPE = 1;
 const WALL_HITPOINTS = 100;
 /** The extracted catapult row (`weapons.ini` type 21). */
@@ -96,6 +105,8 @@ const CATAPULT_VS_HOUSE = 3625;
 /** The catapult's attack clip (`atomicanimations.ini` `viking_catapult_attack`: `length 48`, `event 1 25`). */
 const VEHICLE_ATTACK_CLIP_TICKS = 48;
 const VEHICLE_ATTACK_EVENT_FRAME = 1;
+/** The clip tick the stone leaves at: its attack event, held back while the vehicle settles. */
+const SHOT_FRAME = VEHICLE_ATTACK_EVENT_FRAME + VEHICLE_SHOT_SETTLE_TICKS;
 const ATTACK_ATOMIC = 81;
 const ATOMIC_EVENT_ATTACK = 25;
 /** Every armor material a weapon row lists damage for. */
@@ -137,7 +148,18 @@ function siegeContent(): ContentSet {
       { typeId: ARCHER, id: 'soldier_bow_short' },
       { typeId: CATAPULT_JOB, id: 'vehicle_catapult' },
     ],
-    buildings: [{ typeId: HOME, id: 'home', kind: 'home', hitpoints: 10_000 }],
+    buildings: [
+      { typeId: HOME, id: 'home', kind: 'home', hitpoints: 10_000 },
+      { typeId: HEADQUARTERS, id: 'headquarters', kind: 'storage', hitpoints: 10_000 },
+      {
+        typeId: LONG_TOWER,
+        id: 'long_tower',
+        kind: 'tower',
+        hitpoints: 10_000,
+        workers: [{ jobType: ARCHER, count: 1 }],
+        footprint: { blocked: LONG_TOWER_WALLS },
+      },
+    ],
     landscape: [
       { typeId: GRASS, id: 'grass', walkable: true, buildable: true },
       { typeId: WATER, id: 'water', walkable: false, buildable: false },
@@ -274,10 +296,17 @@ function fighterAt(s: Simulation, hx: number, hy: number, owner: number, jobType
   return e;
 }
 
-function houseAt(s: Simulation, hx: number, hy: number, owner: number, hitpoints = 10_000): Entity {
+function houseAt(
+  s: Simulation,
+  hx: number,
+  hy: number,
+  owner: number,
+  hitpoints = 10_000,
+  buildingType = HOME,
+): Entity {
   const e = s.world.create();
   s.world.add(e, Position, positionOfNode(hx, hy));
-  s.world.add(e, Building, { buildingType: HOME, tribe: VIKING, built: ONE, level: 0 });
+  s.world.add(e, Building, { buildingType, tribe: VIKING, built: ONE, level: 0 });
   s.world.add(e, Health, { hitpoints, max: hitpoints });
   s.world.add(e, Owner, { player: owner });
   return e;
@@ -295,6 +324,12 @@ function catapultAt(s: Simulation, hx: number, hy: number, owner: number, skill 
   expect(seatPassenger(s.world, e, commander)).toBe(true);
   boardRider(s.world, commander, e);
   return e;
+}
+
+/** A hull no run of blows breaks, so a catapult outlasts the men battering it. */
+function toughen(s: Simulation, e: Entity): void {
+  s.world.mut(e, Health).hitpoints = TOUGH_HOUSE;
+  s.world.mut(e, Health).max = TOUGH_HOUSE;
 }
 
 function anchorOf(s: Simulation, e: Entity): HalfCellNode {
@@ -379,7 +414,155 @@ describe('catapult stances and scans', () => {
     expect(hits.some((ev) => ev.kind === 'projectileHit' && ev.target === house)).toBe(true);
   });
 
-  it('never fires while touching another catapult: stacked ones drive apart first, holding or not', () => {
+  it('takes its mark in the band by rank: headquarters, archer, swordsman, house, the nearer one or not', () => {
+    // Each case: a nearer enemy 10 map points east and a farther one of a better rank 20 points east.
+    const cases: { near: (s: Simulation) => Entity; far: (s: Simulation) => Entity }[] = [
+      {
+        near: (s) => fighterAt(s, 16, 8, P2, ARCHER),
+        far: (s) => houseAt(s, 26, 8, P2, 10_000, HEADQUARTERS),
+      },
+      { near: (s) => fighterAt(s, 16, 8, P2), far: (s) => fighterAt(s, 26, 8, P2, ARCHER) },
+      { near: (s) => houseAt(s, 16, 8, P2), far: (s) => fighterAt(s, 26, 8, P2) },
+    ];
+    for (const { near, far } of cases) {
+      const s = sim(grass(40, 12));
+      const catapult = catapultAt(s, 6, 8, P1);
+      near(s);
+      const mark = far(s);
+      s.run(2);
+      expect(s.world.get(catapult, Vehicle).attack?.target).toEqual({ kind: 'entity', entity: mark });
+    }
+  });
+
+  it('shoots what its band reaches rather than backing off from an enemy at its side', () => {
+    const s = sim(grass(40, 12));
+    const catapult = catapultAt(s, 8, 8, P1);
+    toughen(s, catapult);
+    s.enqueue(playerCommand(P1, { kind: 'setVehicleStance', vehicle: catapult, stance: 'attack' }));
+    fighterAt(s, 11, 8, P2); // 3 map points: inside the near reach
+    const house = houseAt(s, 24, 8, P2, TOUGH_HOUSE); // 16 map points: inside the band
+    let drove = false;
+    const launched = collect(s, SHOT_TICKS, ['projectileLaunched'], () => {
+      drove ||= s.world.has(catapult, VehicleDrive);
+    });
+    expect(drove).toBe(false);
+    expect(launched.length).toBeGreaterThan(0);
+    expect(launched.every((ev) => ev.kind === 'projectileLaunched' && ev.target === house)).toBe(true);
+  });
+
+  it('outside hold, drives up to a military target just past its band before a lesser one inside it', () => {
+    const s = sim(grass(40, 12));
+    const catapult = catapultAt(s, 6, 8, P1);
+    s.enqueue(playerCommand(P1, { kind: 'setVehicleStance', vehicle: catapult, stance: 'attack' }));
+    houseAt(s, 16, 8, P2, TOUGH_HOUSE); // 10 map points: a plain house inside the band
+    const past = CATAPULT_MAX_RANGE + VEHICLE_PRIORITY_REACH_POINTS;
+    const hq = houseAt(s, 6 + past, 8, P2, TOUGH_HOUSE, HEADQUARTERS);
+    let drove = false;
+    const hits = collect(s, 400, ['projectileHit'], () => {
+      drove ||= s.world.has(catapult, VehicleDrive);
+    });
+    expect(drove).toBe(true);
+    expect(hits.length).toBeGreaterThan(0);
+    expect(hits.every((ev) => ev.kind === 'projectileHit' && ev.target === hq)).toBe(true);
+  });
+
+  it('outside hold, drives up to archers past its band before the swordsmen inside it', () => {
+    const s = sim(grass(60, 12));
+    const catapult = catapultAt(s, 6, 8, P1);
+    toughen(s, catapult);
+    s.enqueue(playerCommand(P1, { kind: 'setVehicleStance', vehicle: catapult, stance: 'attack' }));
+    const swordsman = fighterAt(s, 22, 8, P2); // 16 map points: inside the band
+    s.world.mut(swordsman, Stance).mode = MILITARY_MODE.IGNORE;
+    const archer = fighterAt(s, 6 + CATAPULT_MAX_RANGE + VEHICLE_PRIORITY_REACH_POINTS, 8, P2, ARCHER);
+    s.world.mut(archer, Stance).mode = MILITARY_MODE.IGNORE;
+    s.run(2);
+    expect(s.world.get(catapult, Vehicle).attack?.target).toEqual({ kind: 'entity', entity: archer });
+    expect(s.world.has(catapult, VehicleDrive)).toBe(true);
+  });
+
+  it('shoots an archer inside its band before driving up to a military target past it', () => {
+    const s = sim(grass(60, 12));
+    const catapult = catapultAt(s, 6, 8, P1);
+    s.enqueue(playerCommand(P1, { kind: 'setVehicleStance', vehicle: catapult, stance: 'attack' }));
+    const archer = fighterAt(s, 22, 8, P2, ARCHER); // 16 map points: inside the band
+    s.world.mut(archer, Stance).mode = MILITARY_MODE.IGNORE;
+    houseAt(s, 6 + CATAPULT_MAX_RANGE + VEHICLE_PRIORITY_REACH_POINTS, 8, P2, TOUGH_HOUSE, HEADQUARTERS);
+    let drove = false;
+    collect(s, SHOT_TICKS, [], () => {
+      drove ||= s.world.has(catapult, VehicleDrive);
+    });
+    expect(drove).toBe(false);
+    expect(s.world.get(catapult, Vehicle).attack?.target).toEqual({ kind: 'entity', entity: archer });
+  });
+
+  it('keeps the military target past its band it holds over another one as far', () => {
+    const s = sim(grass(40, 12));
+    const at = 40;
+    const past = CATAPULT_MAX_RANGE + VEHICLE_PRIORITY_REACH_POINTS;
+    houseAt(s, at - past, 8, P2, TOUGH_HOUSE, HEADQUARTERS); // the lower id, which a tie between finds favours
+    const held = houseAt(s, at + past, 8, P2, TOUGH_HOUSE, HEADQUARTERS);
+    const catapult = catapultAt(s, at, 8, P1);
+    const vehicle = s.world.mut(catapult, Vehicle);
+    vehicle.stance = 'attack';
+    vehicle.attack = { target: { kind: 'entity', entity: held }, ordered: false };
+    collect(s, SHOT_TICKS, []);
+    expect(s.world.get(catapult, Vehicle).attack?.target).toEqual({ kind: 'entity', entity: held });
+  });
+
+  it('defending, takes a military target past its band only within its scan of the guard position', () => {
+    const s = sim(grass(40, 12));
+    const catapult = catapultAt(s, 16, 8, P1);
+    s.enqueue(playerCommand(P1, { kind: 'setVehicleStance', vehicle: catapult, stance: 'defence' }));
+    s.run(1);
+    // The guard position 14 map points behind it, where a chase that moved it out left it.
+    s.world.mut(catapult, Vehicle).guard = { hx: 2, hy: 8 };
+    const past = CATAPULT_MAX_RANGE + VEHICLE_PRIORITY_REACH_POINTS;
+    houseAt(s, 16 + past, 8, P2, TOUGH_HOUSE, HEADQUARTERS); // past its band, beyond the scan of its guard
+    let drove = false;
+    collect(s, SHOT_TICKS, [], () => {
+      drove ||= s.world.has(catapult, VehicleDrive);
+    });
+    expect(drove).toBe(false);
+    expect(s.world.get(catapult, Vehicle).attack).toBeNull();
+  });
+
+  it('judges a house by its nearest wall: one reaching inside the near reach is not in its band', () => {
+    const s = sim(grass(40, 12));
+    const catapult = catapultAt(s, 24, 8, P1);
+    s.enqueue(playerCommand(P1, { kind: 'setVehicleStance', vehicle: catapult, stance: 'attack' }));
+    houseAt(s, 29, 8, P2, TOUGH_HOUSE, LONG_TOWER); // walls 5..12 map points east
+    const archer = fighterAt(s, 9, 8, P2, ARCHER); // 15 map points west
+    let drove = false;
+    const launched = collect(s, SHOT_TICKS, ['projectileLaunched'], () => {
+      drove ||= s.world.has(catapult, VehicleDrive);
+    });
+    const commander = vehicleCommander(s.world.get(catapult, Vehicle));
+    const stones = launched.filter((ev) => ev.kind === 'projectileLaunched' && ev.shooter === commander);
+    expect(drove).toBe(false);
+    expect(stones.length).toBeGreaterThan(0);
+    expect(stones.every((ev) => ev.kind === 'projectileLaunched' && ev.target === archer)).toBe(true);
+  });
+
+  it('with nothing in its band backs off from a lone enemy at its side, and stands once a second joins', () => {
+    const s = sim(grass(40, 12));
+    const catapult = catapultAt(s, 20, 8, P1);
+    toughen(s, catapult);
+    s.enqueue(playerCommand(P1, { kind: 'setVehicleStance', vehicle: catapult, stance: 'attack' }));
+    fighterAt(s, 23, 8, P2);
+    s.run(3);
+    expect(s.world.has(catapult, VehicleDrive)).toBe(true);
+    const at = anchorOf(s, catapult);
+    fighterAt(s, at.hx - 2, at.hy, P2);
+    s.run(SHOT_TICKS); // the leg under way ends
+    const stood = anchorOf(s, catapult);
+    expect(hexDistanceBetween(stood.hx, stood.hy, at.hx, at.hy)).toBeLessThanOrEqual(LEG_MAX_POINTS);
+    s.run(SHOT_TICKS);
+    expect(s.world.has(catapult, VehicleDrive)).toBe(false);
+    expect(s.world.get(catapult, Vehicle).attack).toBeNull();
+    expect(anchorOf(s, catapult)).toEqual(stood);
+  });
+
+  it('lets one of two touching catapults fire: the other drives apart first, holding or not', () => {
     for (const stance of ['hold', 'attack'] as const) {
       const s = sim(grass(40, 12));
       const first = catapultAt(s, 6, 8, P1);
@@ -389,19 +572,64 @@ describe('catapult stances and scans', () => {
         s.enqueue(playerCommand(P1, { kind: 'setVehicleStance', vehicle, stance }));
       }
       const shooters = new Set<Entity>();
+      const drove = new Set<Entity>();
       const refused = collect(s, 400, ['vehicleMoveRefused'], () => {
-        for (const ev of s.events.current()) {
-          if (ev.kind !== 'projectileLaunched') continue;
-          const a = anchorOf(s, first);
-          const b = anchorOf(s, second);
-          // Two discs of this radius share no cell: the bodies do not touch.
-          expect(hexDistanceBetween(a.hx, a.hy, b.hx, b.hy)).toBeGreaterThan(2 * CATAPULT_LOGIC_SIZE);
-          shooters.add(ev.shooter);
-        }
+        for (const v of [first, second]) if (s.world.has(v, VehicleDrive)) drove.add(v);
+        const a = anchorOf(s, first);
+        const b = anchorOf(s, second);
+        // Two discs of this radius share no cell past this distance: the bodies do not touch.
+        const touching = hexDistanceBetween(a.hx, a.hy, b.hx, b.hy) <= 2 * CATAPULT_LOGIC_SIZE;
+        const firing = [first, second].filter((v) => s.world.get(v, Vehicle).attackClipStart !== null);
+        if (touching) expect(firing.length).toBeLessThan(2);
+        for (const ev of s.events.current()) if (ev.kind === 'projectileLaunched') shooters.add(ev.shooter);
       });
+      expect(drove.size).toBe(1); // one keeps the spot and fires from it
       expect(shooters.size).toBe(2);
-      expect(refused).toEqual([]); // each leaves for a spot of its own, so neither drive is turned back
+      expect(refused).toEqual([]); // the other leaves for a spot of its own, so its drive is not turned back
     }
+  });
+
+  it('fires beside a catapult nobody crews: an idle hull takes no spot', () => {
+    const s = sim(grass(40, 12));
+    const hull = createVehicle(s.world, ctxOf(s), {
+      vehicleType: CATAPULT,
+      x: 7,
+      y: 9,
+      tribe: VIKING,
+      owner: P1,
+    });
+    expect(hull).not.toBeNull();
+    const catapult = catapultAt(s, 6, 8, P1);
+    houseAt(s, 22, 8, P2, TOUGH_HOUSE);
+    let drove = false;
+    const launched = collect(s, 2 * VEHICLE_ATTACK_CLIP_TICKS, ['projectileLaunched'], () => {
+      drove ||= s.world.has(catapult, VehicleDrive);
+    });
+    expect(drove).toBe(false);
+    expect(launched.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it('keeps firing from its spot when another catapult drives into it', () => {
+    const s = sim(grass(40, 12));
+    const newcomer = catapultAt(s, 6, 16, P1); // the lower entity, which a tie between idle ones favours
+    const firing = catapultAt(s, 6, 8, P1);
+    const house = houseAt(s, 22, 8, P2, TOUGH_HOUSE);
+    for (const vehicle of [newcomer, firing]) {
+      s.enqueue(playerCommand(P1, { kind: 'setVehicleStance', vehicle, stance: 'hold' }));
+    }
+    s.run(SHOT_TICKS);
+    s.enqueue(playerCommand(P1, { kind: 'moveVehicle', vehicle: newcomer, x: 7, y: 9 }));
+    let moved = false;
+    const launched = collect(s, 6 * VEHICLE_ATTACK_CLIP_TICKS, ['projectileLaunched'], () => {
+      moved ||= s.world.has(firing, VehicleDrive);
+    });
+    expect(moved).toBe(false);
+    const commander = vehicleCommander(s.world.get(firing, Vehicle));
+    const own = launched.filter((ev) => ev.kind === 'projectileLaunched' && ev.shooter === commander);
+    expect(own.length).toBeGreaterThanOrEqual(5); // no clip skipped while the other stood in its disc
+    expect(own.every((ev) => ev.kind === 'projectileLaunched' && ev.target === house)).toBe(true);
+    // The newcomer left its disc and fires from a spot of its own.
+    expect(launched.length).toBeGreaterThan(own.length);
   });
 
   it('fires the shot at the clip event tick and repeats on the clip cadence', () => {
@@ -415,7 +643,7 @@ describe('catapult stances and scans', () => {
     }
     expect(launchTicks.length).toBeGreaterThanOrEqual(3);
     // The scan acquires on tick 1 and the clip starts there; its event frame fires `frame + 1` ticks later.
-    expect(launchTicks[0]).toBe(1 + VEHICLE_ATTACK_EVENT_FRAME + 1);
+    expect(launchTicks[0]).toBe(1 + SHOT_FRAME + 1);
     expect((launchTicks[1] ?? 0) - (launchTicks[0] ?? 0)).toBe(VEHICLE_ATTACK_CLIP_TICKS);
   });
 });
@@ -490,6 +718,19 @@ describe('an ordered target', () => {
     for (const { from, at } of fired) {
       expect(hexDistanceBetween(from.hx, from.hy, target, ROW)).toBeGreaterThanOrEqual(CATAPULT_MIN_RANGE);
       expect(at).toEqual({ hx: target, hy: ROW });
+    }
+  });
+
+  it("never lands a novice's stray stone farther from the catapult than the spot it was aimed at", () => {
+    const s = sim(grass(40, MAP_CELL_ROWS));
+    const catapult = catapultAt(s, 12, ROW, P1, 0);
+    const target = 12 + CATAPULT_MAX_RANGE;
+    orderGround(s, catapult, target);
+    const fired = shots(s, catapult, 40 * VEHICLE_ATTACK_CLIP_TICKS);
+    expect(fired.some(({ at }) => at.hx !== target || at.hy !== ROW)).toBe(true);
+    for (const { from, at } of fired) {
+      expect(from).toEqual({ hx: 12, hy: ROW });
+      expect(hexDistanceBetween(from.hx, from.hy, at.hx, at.hy)).toBeLessThanOrEqual(CATAPULT_MAX_RANGE);
     }
   });
 
@@ -774,7 +1015,7 @@ describe('the clip and its target', () => {
     order(s, catapult, P1, wall);
     s.step();
     expect(s.world.get(catapult, Vehicle).attack?.target).toEqual({ kind: 'entity', entity: wall });
-    collect(s, VEHICLE_ATTACK_CLIP_TICKS, ['projectileHit']);
+    collect(s, VEHICLE_ATTACK_CLIP_TICKS + VEHICLE_SHOT_SETTLE_TICKS, ['projectileHit']);
     expect(s.world.get(wall, Health).hitpoints).toBe(WALL_HITPOINTS - WALL_STEPS_PER_STONE);
   });
 
@@ -817,7 +1058,7 @@ describe('the clip and its target', () => {
 describe('a running clip', () => {
   const SECOND_HOUSE = { hx: 26, hy: 8 };
   /** The tick the first stone leaves for a house already in the band: tick 1 starts the clip. */
-  const FIRST_SHOT_TICK = 1 + VEHICLE_ATTACK_EVENT_FRAME + 1;
+  const FIRST_SHOT_TICK = 1 + SHOT_FRAME + 1;
 
   /** The ticks a stone left on over `ticks` steps; `beat` sends orders before each step. */
   function launchTicks(s: Simulation, ticks: number, beat: () => void): number[] {
@@ -1033,6 +1274,67 @@ describe('the attack-move march', () => {
     expect(s.world.get(catapult, Position)).toEqual(positionOfNode(GOAL.hx, GOAL.hy));
   });
 
+  it('stands while two enemies at its side press it with nothing in its band, and drives on once they fall', () => {
+    const s = sim(grass(40, 12));
+    const catapult = catapultAt(s, 4, 8, P1);
+    toughen(s, catapult);
+    const pressing = [fighterAt(s, 8, 8, P2), fighterAt(s, 8, 10, P2)];
+    march(s, catapult, true);
+    s.run(SHOT_TICKS);
+    const stood = anchorOf(s, catapult);
+    s.run(SHOT_TICKS);
+    expect(s.world.has(catapult, VehicleDrive)).toBe(false);
+    expect(anchorOf(s, catapult)).toEqual(stood);
+    expect(hexDistanceBetween(stood.hx, stood.hy, 4, 8)).toBeLessThanOrEqual(LEG_MAX_POINTS);
+    expect(s.world.get(catapult, Vehicle).march?.goal).toEqual(GOAL);
+    for (const e of pressing) s.world.mut(e, Health).hitpoints = 0;
+    runToGoal(s, catapult, GOAL);
+    expect(s.world.get(catapult, Position)).toEqual(positionOfNode(GOAL.hx, GOAL.hy));
+  });
+
+  it('ordered mid-fight, fires on at its mark from where it stands, and marches once the mark falls', () => {
+    const s = sim(grass(40, 12));
+    const catapult = catapultAt(s, 4, 8, P1); // holding
+    toughen(s, catapult);
+    const house = houseAt(s, 20, 8, P2, TOUGH_HOUSE); // 16 map points: inside the band
+    // 32 map points: past the band, but within the reach a started march rolls up to a shooter at.
+    const archer = fighterAt(s, 36, 8, P2, ARCHER);
+    s.world.mut(archer, Stance).mode = MILITARY_MODE.IGNORE;
+    for (let i = 0; i < SHOT_TICKS && s.world.get(catapult, Vehicle).attackClipStart === null; i++) s.step();
+    const stood = anchorOf(s, catapult);
+    march(s, catapult, true);
+    const hits = collect(s, 2 * SHOT_TICKS, ['projectileHit']);
+    expect(anchorOf(s, catapult)).toEqual(stood);
+    expect(s.world.has(catapult, VehicleDrive)).toBe(false);
+    expect(hits.length).toBeGreaterThan(0);
+    expect(hits.every((ev) => ev.kind === 'projectileHit' && ev.target === house)).toBe(true);
+    s.world.mut(house, Health).hitpoints = 0;
+    // Only the started march's attack stance takes the archer: holding, the catapult never looks past its band.
+    const aimsAtArcher = () => {
+      const target = s.world.get(catapult, Vehicle).attack?.target;
+      return target?.kind === 'entity' && target.entity === archer;
+    };
+    for (let i = 0; i < SHOT_TICKS && !aimsAtArcher(); i++) s.step();
+    expect(aimsAtArcher()).toBe(true);
+    s.world.mut(archer, Health).hitpoints = 0;
+    runToGoal(s, catapult, GOAL);
+    expect(s.world.get(catapult, Position)).toEqual(positionOfNode(GOAL.hx, GOAL.hy));
+  });
+
+  it('ordered while it batters a map point, drives off at once', () => {
+    const s = sim(grass(40, 12));
+    const catapult = catapultAt(s, 4, 8, P1);
+    const ground = { kind: 'ground', hx: 20, hy: 8 } as const;
+    s.enqueue(playerCommand(P1, { kind: 'attackWithVehicle', vehicle: catapult, target: ground }));
+    for (let i = 0; i < SHOT_TICKS && s.world.get(catapult, Vehicle).attackClipStart === null; i++) s.step();
+    expect(s.world.get(catapult, Vehicle).attackClipStart).not.toBeNull();
+    expect(s.world.has(catapult, VehicleDrive)).toBe(false);
+    march(s, catapult, true);
+    s.run(1);
+    expect(s.world.get(catapult, Vehicle).attack).toBeNull();
+    expect(s.world.has(catapult, VehicleDrive)).toBe(true);
+  });
+
   it('ends beside a goal another catapult reached first, without the no-path note', () => {
     const s = sim(grass(40, 12));
     const first = catapultAt(s, 56, 8, P1);
@@ -1182,7 +1484,7 @@ describe('the attack-move march', () => {
     s.run(1);
     // The goal moves across the strait under the drive, as if the way there had closed.
     const farShore = { hx: 70, hy: 8 };
-    s.world.mut(catapult, Vehicle).march = { goal: farShore, restUntil: 0 };
+    s.world.mut(catapult, Vehicle).march = { goal: farShore, restUntil: 0, behindFight: false };
     const refused = collect(s, MARCH_TICKS, ['vehicleMoveRefused']);
     const state = s.world.get(catapult, Vehicle);
     expect(state.march).toBeNull();
@@ -1335,6 +1637,7 @@ describe('the ground burst', () => {
       damage: Object.fromEntries(ALL_MATERIALS.map((m) => [String(m), CATAPULT_VS_HOUSE])),
       hitSounds: {},
       weaponMainType: CATAPULT_MAIN_TYPE,
+      blowTicks: 0,
       missSounds: {},
       munitionType: 0,
       hitSelf: true,
@@ -1399,7 +1702,7 @@ describe('wall demolition', () => {
         target: { kind: 'ground', ...at },
       }),
     );
-    const struck = collect(s, VEHICLE_ATTACK_CLIP_TICKS, ['projectileHit']);
+    const struck = collect(s, VEHICLE_ATTACK_CLIP_TICKS + VEHICLE_SHOT_SETTLE_TICKS, ['projectileHit']);
     expect(struck.map((ev) => (ev.kind === 'projectileHit' ? ev.target : -1))).toEqual([wall]);
     expect(s.world.get(wall, Health).hitpoints).toBe(WALL_HITPOINTS - WALL_STEPS_PER_STONE);
     collect(s, 3 * VEHICLE_ATTACK_CLIP_TICKS, ['projectileHit']);
@@ -1494,7 +1797,9 @@ describe('vehicles as targets', () => {
   it("a trained swordsman's blow on a vehicle is the bare column, unraised by his experience", () => {
     const s = sim(grass(20, 6));
     const soldier = fighterAt(s, 6, 4, P1);
-    s.world.mut(soldier, SettlerProgress).experience.set(FIGHT_EXPERIENCE_TYPE.SWORD, MASTER_SKILL);
+    s.world
+      .mut(soldier, SettlerProgress)
+      .experience.set(FIGHT_EXPERIENCE_TYPE.PERSONAL, FIGHT_EXPERIENCE_FULL_UNITS);
     const target = createVehicle(s.world, ctxOf(s), {
       vehicleType: CATAPULT,
       x: 7,

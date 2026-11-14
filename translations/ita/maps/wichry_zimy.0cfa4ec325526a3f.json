@@ -1,0 +1,45 @@
+{
+  "version": 1,
+  "map": "wichry_zimy",
+  "basis": {
+    "lang": "eng",
+    "digest": "c346a0f9a5a50702d55eb204fd51a5a6b356bf3023760d64cd7c1d8cc95bdc81"
+  },
+  "strings": {
+    "0": "VENTI D'INVERNO",
+    "1": "Indossa il mantello nero e affronta le orde dei Bruti nella gelida terra del nord. Cooperazione con trama per 2 giocatori.",
+    "30": "Difendi il Castello Nero dai Bruti, poi brucia Mance Rayder sul rogo",
+    "50": "Guardiani della notte",
+    "51": "Castello Nero",
+    "52": "Forte Orientale",
+    "53": "Bruti",
+    "54": "Qhorin il Monco",
+    "57": "Stannis",
+    "100": "Jeor Mormont",
+    "101": "Alliser Thorne",
+    "102": "Eddison Tollett",
+    "103": "Benjen Stark",
+    "104": "Grenn",
+    "105": "Janos Slynt",
+    "106": "Gran Maestro",
+    "107": "Qhorin il Monco",
+    "108": "Mance Rayder",
+    "109": "Signore delle Ossa",
+    "110": "Jon Snow",
+    "111": "Samwell Tarly",
+    "112": "Jaremy Rykker",
+    "113": "Stannis Baratheon",
+    "120": "Sacerdotessa rossa"
+  },
+  "briefings": {
+    "500": "<font:$local$\\fonts\\fonthead16bld.fnt>\nVENTI D'INVERNO\n<font:$local$\\fonts\\font12.fnt>\n\ndi Ares & Jozenkow\n\n\"La notte sta calando, e ora la mia guardia ha inizio. Non avrà fine fino alla mia morte. Non prenderò moglie, non possiederò terre, non genererò figli. Non porterò corona e non conquisterò gloria. Vivrò e morirò al mio posto. Sono la spada nelle tenebre. Sono la sentinella sulle mura. Sono il fuoco che arde contro il freddo, la luce che porta l'alba, il corno che risveglia i dormienti, lo scudo che veglia sui regni degli uomini. Consacro la mia vita e il mio onore ai Guardiani della notte, per questa notte e per tutte le notti a venire.\"\n\nQuesto fu il giuramento che i vostri eroi Jon Snow e Samwell Tarly pronunciarono al Castello Nero. Come migliori reclute dei Guardiani della notte, ricevete il comando di 5 costruttori e 5 esploratori. Sei tu a dover provvedere al loro cibo e alle loro armi. Col tempo altri esploratori si uniranno a te.\n\nNella parte orientale della Barriera, eretta anni fa da Brandon il Costruttore per difendersi dai Bruti, sorge una seconda fortezza, il Forte Orientale, ben presidiato dai nostri confratelli.\n\n<usericon:1,315,223>\n\n<usericon:1,111,146>\n\nQuesto è il tuo Lord Comandante, Jeor Mormont. La sua morte e la caduta della fortezza significheranno la sconfitta del Castello Nero e di tutti i Guardiani della notte.\n\nÈ appena arrivato un esploratore da oltre la Barriera, con notizie dall'accampamento di Qhorin il Monco. Riferisce che i Bruti guidati da Mance Rayder si stanno avvicinando alla Barriera. Esplora la zona e disponi i tuoi uomini. Preparati a un attacco da qualunque lato.\n\nLa tua guardia è appena cominciata.\n",
+    "501": "<font:$local$\\fonts\\fonthead16bld.fnt>\nNUOVI ESPLORATORI\n\n<font:$local$\\fonts\\font12.fnt>\n\nNuovi esploratori si uniscono ai vostri ranghi. Controlla ogni tanto se sono arrivati nuovi volontari.\n\n<usericon:1,144,117>",
+    "502": "<font:$local$\\fonts\\fonthead16bld.fnt>\nATTACCO!\n\n<font:$local$\\fonts\\font12.fnt>\n\nNotizie da oltre la Barriera! L'accampamento di Qhorin il Monco è stato attaccato dai Bruti! Il loro prossimo obiettivo sarà conquistare il Castello Nero. Dobbiamo rafforzare subito le difese!\n",
+    "503": "\nSiamo le sentinelle sulla Barriera, non turisti in gita nel Nord. Aspetta l'ordine del tuo Lord Comandante. Per ora non abbiamo alcuna possibilità contro i Bruti.\n",
+    "504": "\nIl numero dei guerrieri bruti è calato parecchio: è il momento perfetto per colpire. Il Lord Comandante ti ha dato il permesso di andare oltre la Barriera. Trova i tre accampamenti dei Bruti nascosti nelle foreste. Se sconfiggerai tutti i loro guerrieri in questa terra, va' a catturare Mance Rayder.\n\n<usericon:1,241,331>",
+    "505": "<font:$local$\\fonts\\fonthead16bld.fnt>\nMANCE RAYDER CATTURATO\n\n<font:$local$\\fonts\\font12.fnt>\n\nVedendo di non avere alcuna possibilità in battaglia, Mance Rayder si è ritirato e si è consegnato prigioniero. Ora portiamolo da Jeor Mormont.",
+    "506": "\n- \"Mance Rayder, ti chiamano il Re oltre la Barriera. Ho molti dei tuoi in prigionia. Le loro vite dipendono dal loro re. Arrenditi e inginocchiati.\" - ordinò Jeor Mormont a Mance.\n\n- \"Il Popolo libero non si inginocchia.\"\n\n- \"Ti do un'ultima possibilità. Pensaci bene. Inginocchiati e ti prometto la libertà, rifiuta e ti brucerò sul rogo.\"\n\n- \"Sarò sincero con te, non voglio morire. E per giunta bruciato? Non voglio che la mia gente mi ricordi così, in fiamme e urlante. Ma è sempre meglio che tradire tutto ciò in cui ho creduto per tutta la vita.\"\n\n<usericon:1,74,17>",
+    "507": "<font:$local$\\fonts\\fonthead16bld.fnt>\nVITTORIA!\n\n<font:$local$\\fonts\\font12.fnt>\n\nDopo una lunga battaglia i Bruti e il loro re sono stati finalmente sconfitti. Ancora una volta il Castello Nero è rimasto inespugnato.\n\n<usericon:1,193,332>\n\nE questo cos'è? Gli esploratori da oltre la Barriera portano notizia dell'arrivo di un esercito di non morti! Possibile che gli Estranei siano tornati e vogliano di nuovo prendersi la Barriera?\n\nIn questo mondo c'è una sola guerra: la vita contro la morte. Davanti alla minaccia dei non morti avremmo potuto allearci con i Bruti. Peccato che li abbiamo appena sterminati fino all'ultimo. Che sfortuna.\n",
+    "520": "<font:$local$\\fonts\\fonthead16bld.fnt>\nSCONFITTA\n\n<font:$local$\\fonts\\font12.fnt>\nLa morte del Lord Comandante significa la sconfitta dei Guardiani della notte... I Bruti hanno conquistato la Barriera...\n\n<picture:$local$\\graphics\\Hero_Dead_F.pcx> "
+  }
+}

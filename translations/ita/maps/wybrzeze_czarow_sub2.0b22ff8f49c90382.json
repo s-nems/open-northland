@@ -1,0 +1,33 @@
+{
+  "version": 1,
+  "map": "wybrzeze_czarow_sub2",
+  "basis": {
+    "lang": "eng",
+    "digest": "046c61f4f45d1006f510aeb967fcc6408148b69fbd3f75475a789b15d3b441e7"
+  },
+  "strings": {
+    "0": "COSTA DEGLI INCANTESIMI - ARABIA",
+    "1": "Gli eroi giunsero sulle coste dell'Arabia per trovare l'uomo che, alla morte di Wallmar, ne aveva ricevuto i poteri. Ma sarà davvero così semplice?",
+    "30": "Björn",
+    "31": "Hring",
+    "32": "Ivar",
+    "33": "Karl",
+    "34": "Zorian",
+    "35": "Al-Epaqa",
+    "50": "Vichinghi",
+    "51": "Taqsir",
+    "52": "Saraceni",
+    "100": "Trova l'arabo prescelto nella città di Taqsir.",
+    "101": "Sconfiggi i Saraceni per aprirti la strada verso Taqsir.",
+    "102": "Riporta gli eroi al punto di partenza."
+  },
+  "briefings": {
+    "500": "<font:$local$\\fonts\\fonthead16bld.fnt>\nARABIA\n<font:$local$\\fonts\\font12.fnt>\n\nDopo una decina di giorni e notti di viaggio, riuscimmo finalmente ad arrivare nei pressi della costa del Levante. All'orizzonte si vedeva già la riva ricoperta di palme e, dietro, una grande catena montuosa. Proprio al di là di essa doveva trovarsi la città di Taqsir.\n\nL'unica via sensata per arrivarci passa per un valico che, secondo le nostre informazioni, si trova da queste parti. Lo attraversa un'importante via commerciale tra Gerusalemme e Antiochia, quindi speriamo che superare questa barriera naturale non sia difficile. La città è un importante centro di commerci, perciò lì ci accoglieranno da amici.\n\n\"Hring, sento che qui ci cacceremo nei guai. Dei Saraceni non ci si può mai fidare...\" confidò Ivar, preoccupato.\n\n\"Non fasciamoci la testa prima di rompercela. Dobbiamo solo trovare quell'uomo e convincerlo a venire con noi a Koslowford\", gli rispose Hring.\n\n\"Esatto! E poi conosco questa zona, e l'ultima volta era tranquilla! La strada dovrebbe essere spalancata per noi!\" aggiunse Zorian, entusiasta.\n\nDentro di me però sentivo che quelle informazioni non avrebbero retto... poi dissi a tutti:\n\n\"Per prima cosa troviamo un buon posto per ormeggiare la nave. Ho la sensazione che dovremo allestire un piccolo accampamento.\"",
+    "501": "<font:$local$\\fonts\\fonthead16bld.fnt>\nAPPRODO\n<font:$local$\\fonts\\font12.fnt>\n\n\"Questo posto sembra perfetto per ormeggiare la nave\", dissi.\n\n<usericon:1,298,121>\n\n\"Una radura davvero graziosa, lo ammetto. Possiamo fermarci qui un po' a riposare\", aggiunse Karl.\n\n\"Non dimenticate perché siamo venuti!\" ricordò Hring. \"Dobbiamo solo trovare una persona e portarla via. Non abbiamo intenzione di trattenerci a lungo.\"\n\n\"Avete visto quel cartello sulla costa, a est di questa radura? Forse porta alla strada per Taqsir?\" fece notare Ivar.\n\n\"Ma certo! Andiamoci subito\", ci incitò Zorian.\n\nDiamo un'occhiata ai dintorni, poi troviamo il cartello indicatore che ha visto Ivar.",
+    "502": "<font:$local$\\fonts\\fonthead16bld.fnt>\nSARACENI\n<font:$local$\\fonts\\font12.fnt>\n\nPurtroppo Zorian doveva mancare da queste parti da parecchio tempo. Sul valico era sorta una nuova città saracena, per nulla ben disposta nei nostri confronti.\n\n<usericon:1,446,188>\n\n\"Andatevene, infedeli! Questa strada è riservata ai seguaci dell'unico Dio! Nessun parassita cristiano passerà di qui, questa è la nostra terra araba! Allahu Akbar!\"\n\nA quanto pare dovremo radunare un esercito e aprirci la strada con le armi.",
+    "503": "<font:$local$\\fonts\\fonthead16bld.fnt>\nSARACENI SCONFITTI\n<font:$local$\\fonts\\font12.fnt>\n\nDopo una lunga lotta, la città saracena fu ridotta in macerie.\n\n<usericon:1,446,188>\n\nOra la strada per Taqsir è aperta.",
+    "504": "<font:$local$\\fonts\\fonthead16bld.fnt>\nTAQSIR\n<font:$local$\\fonts\\font12.fnt>\n\nOltre le montagne trovammo l'agognata meta: la città mercantile di Taqsir. Ci accolse da amici.\n\n<usericon:1,463,18>\n\nSecondo le nostre informazioni, l'uomo che cerchiamo dovrebbe trovarsi qui. Perlustriamo la città.",
+    "505": "<font:$local$\\fonts\\fonthead16bld.fnt>\nMISSIONE COMPIUTA\n<font:$local$\\fonts\\font12.fnt>\n\nDopo una breve ricerca trovammo un arabo il cui aspetto corrispondeva alla descrizione ricevuta a Koslowford.\n\n<usericon:2,35>\n\nCi avvicinammo e avviammo con garbo una conversazione. Chiesi:\n\n\"Salute a te! Come ti chiami, e si vive bene in questa città?\"\n\n\"Salam Alaikum, mi chiamo Mohammad Al-Epaqa. Vivo a Taqsir da qualche anno e devo dire che è una delle città più meravigliose di tutta l'Arabia! È grande, piena di mercanti, si trova di tutto. Davvero, non mi pento di niente!\"\n\n\"Non vogliamo rovinarti la giornata, ma senti di avere un qualche potere di creare persone?\"\n\n\"In effetti da un po' di tempo ho l'impressione di poter creare con il pensiero guerrieri o harem tutti miei. Ma è contro la volontà di Allah, quindi non l'ho mai usato.\"\n\n\"Allora purtroppo devi venire con noi in Europa, a Koslowford per la precisione. Il precedente possessore di quel potere è morto, e a quanto pare è passato a te. Vogliamo riportarlo in un luogo sicuro...\"\n\n\"Forse non è del tutto conforme alla volontà di Dio, ma posso partire con voi. Quel potere è davvero grande.\"\n\nOra è tempo di tornare in Inghilterra (porta gli eroi al punto di partenza).",
+    "506": "<font:$local$\\fonts\\fonthead16bld.fnt>\nMISSIONE FALLITA\n<font:$local$\\fonts\\font12.fnt>\n\nUno degli eroi della missione è morto. Senza di lui è impossibile portarla a termine...\n\n<picture:$local$\\graphics\\Hero_Dead_F.pcx>"
+  }
+}

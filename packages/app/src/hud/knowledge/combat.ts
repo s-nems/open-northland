@@ -8,7 +8,7 @@ const PERCENT = 100;
 const { ARMOR_MATERIAL, WEAPON_MAIN_TYPE } = systems;
 
 export const HUMAN_HITPOINTS = systems.HUMAN_HITPOINTS;
-export const CAP_HITS = systems.FIGHT_EXPERIENCE_DAMAGE_CAP_HITS;
+export const CAP_POINTS = systems.FIGHT_EXPERIENCE_FULL;
 
 /** Percent a blow lands with by where it comes from. */
 export const HIT_DIRECTION = {
@@ -18,7 +18,7 @@ export const HIT_DIRECTION = {
 } as const;
 
 export const STRENGTH_PCT = EQUIP_CLASS_BY_SLUG.get('amulet_strength')?.damageDealtPct ?? PERCENT;
-const DEFENSE_TAKEN_PCT = EQUIP_CLASS_BY_SLUG.get('amulet_defense')?.damageTakenPct ?? PERCENT;
+export const DEFENSE_TAKEN_PCT = EQUIP_CLASS_BY_SLUG.get('amulet_defense')?.damageTakenPct ?? PERCENT;
 const CRITICAL_HIT = EQUIP_CLASS_BY_SLUG.get('amulet_crithit')?.criticalHit;
 
 export type TargetId = keyof Messages['knowledge']['targets'];
@@ -40,17 +40,20 @@ export type StrikingWeapon = Pick<KnowledgeWeapon, 'damage' | 'id' | 'mainType'>
 export interface BlowModifiers {
   /** A {@link HIT_DIRECTION} percent. */
   readonly direction: number;
-  /** Hits landed with this weapon class. */
-  readonly hits: number;
+  /** The striker's personal fight points. */
+  readonly points: number;
   readonly strength: boolean;
   readonly defense: boolean;
+  /** A person target's own fight points, which cut the blows he takes. */
+  readonly targetPoints: number;
 }
 
 export const NO_MODIFIERS: BlowModifiers = {
   direction: HIT_DIRECTION.front,
-  hits: 0,
+  points: 0,
   strength: false,
   defense: false,
+  targetPoints: 0,
 };
 
 /** Each person target's armour good, by the column its armour row names. */
@@ -141,7 +144,15 @@ export function isRanged(weapon: Pick<KnowledgeWeapon, 'mainType'>): boolean {
   return weapon.mainType === WEAPON_MAIN_TYPE.BOW || weapon.mainType === WEAPON_MAIN_TYPE.CATAPULT;
 }
 
-export type BlowStepId = 'base' | 'block' | 'defense' | 'direction' | 'experience' | 'floor' | 'strength';
+export type BlowStepId =
+  | 'base'
+  | 'block'
+  | 'defense'
+  | 'direction'
+  | 'experience'
+  | 'floor'
+  | 'strength'
+  | 'targetExperience';
 
 /** One step of a blow: `value` is the damage after it, `applies` says whether the rules run it here. */
 export interface BlowStep {
@@ -161,9 +172,10 @@ export function takesStrengthAmulet(weapon: Pick<KnowledgeWeapon, 'id'>): boolea
 }
 
 /**
- * One blow in the sim's order: fight experience on a soldier's melee blow at anything but a vehicle, then
- * for a person direction, blocking and the amulets; anything else takes only the striker's amulets. A
- * blow never heals, so a last `floor` step stops the sum at zero.
+ * One blow in the sim's order: for a person direction and blocking, then the striker's raises (fight
+ * experience on a soldier's melee blow at anything but a vehicle, and the strength amulet, added into one
+ * raise), then for a person the defence amulet and his own fight experience, multiplied in one
+ * truncation. A blow never heals, so a last `floor` step stops the sum at zero.
  */
 export function blowSteps(
   weapon: StrikingWeapon,
@@ -172,23 +184,28 @@ export function blowSteps(
 ): readonly BlowStep[] {
   const { person } = target;
   const base = weapon.damage[target.column] ?? 0;
-  const raised = gainsFightExperience(weapon, target)
-    ? systems.withFightExperience(base, modifiers.hits)
-    : base;
-  const directed = person ? systems.directedDamage(raised, modifiers.direction) : raised;
+  const directed = person ? systems.directedDamage(base, modifiers.direction) : base;
   const blocked = person ? directed - target.blocking : directed;
+  const experienced = gainsFightExperience(weapon, target);
+  // The calculator states fight experience in points; the sim's raises read the counter's fine units.
+  const units = experienced ? systems.fightUnitsOfPoints(modifiers.points) : 0;
+  const raised = experienced ? systems.withDealtBonuses(blocked, units) : blocked;
   const amulet = modifiers.strength && takesStrengthAmulet(weapon);
-  const strong = amulet ? systems.scaledDealtDamage(blocked, STRENGTH_PCT) : blocked;
+  const strong = amulet ? systems.withDealtBonuses(blocked, units, STRENGTH_PCT) : raised;
   const shielded =
     person && modifiers.defense ? systems.scaledTakenDamage(strong, DEFENSE_TAKEN_PCT) : strong;
+  const takenPct = modifiers.defense ? DEFENSE_TAKEN_PCT : PERCENT;
+  const targetUnits = systems.fightUnitsOfPoints(modifiers.targetPoints);
+  const hardened = person ? systems.withTakenBonuses(strong, targetUnits, takenPct) : shielded;
   return [
     { id: 'base', value: base, applies: true },
-    { id: 'experience', value: raised, applies: gainsFightExperience(weapon, target) },
     { id: 'direction', value: directed, applies: person },
     { id: 'block', value: blocked, applies: person },
+    { id: 'experience', value: raised, applies: experienced },
     { id: 'strength', value: strong, applies: takesStrengthAmulet(weapon) },
     { id: 'defense', value: shielded, applies: person },
-    { id: 'floor', value: Math.max(0, shielded), applies: shielded < 0 },
+    { id: 'targetExperience', value: hardened, applies: person },
+    { id: 'floor', value: Math.max(0, hardened), applies: hardened < 0 },
   ];
 }
 
@@ -204,10 +221,16 @@ export function landed(
 /** Large enough that the sim's integer division leaves the percent exact. */
 const EXPERIENCE_PROBE_DAMAGE = 10_000;
 
-/** How many percent `hits` landed with a weapon class add to its blow. */
-export function experienceBonusPct(hits: number): number {
-  const raised = systems.withFightExperience(EXPERIENCE_PROBE_DAMAGE, hits);
+/** How many percent a striker's fight points add to his melee blow. */
+export function experienceBonusPct(points: number): number {
+  const raised = systems.withFightExperience(EXPERIENCE_PROBE_DAMAGE, systems.fightUnitsOfPoints(points));
   return Math.round((raised * PERCENT) / EXPERIENCE_PROBE_DAMAGE) - PERCENT;
+}
+
+/** How many percent a person's fight points take off the blows he is dealt. */
+export function experienceCutPct(points: number): number {
+  const taken = systems.withTakenBonuses(EXPERIENCE_PROBE_DAMAGE, systems.fightUnitsOfPoints(points));
+  return PERCENT - Math.round((taken * PERCENT) / EXPERIENCE_PROBE_DAMAGE);
 }
 
 /** The damage a critical hit raises `damage` to. */

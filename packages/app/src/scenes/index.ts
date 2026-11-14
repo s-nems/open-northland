@@ -2,6 +2,7 @@ import { bearHuntScene } from './animals/bear-hunt.js';
 import { cowRaidScene } from './animals/cow-raid.js';
 import { creatureFormsScene } from './animals/creature-forms.js';
 import { creaturesScene } from './animals/creatures.js';
+import { farmLarderScene } from './animals/farm-larder.js';
 import { huntingScene } from './animals/hunting.js';
 import { livestockScene } from './animals/livestock.js';
 import { livestockYardScene } from './animals/livestock-yard.js';
@@ -15,14 +16,18 @@ import { attackMoveScene } from './army/attack-move.js';
 import { barracksScene } from './army/barracks.js';
 import { barracksArmoryScene } from './army/barracks-armory.js';
 import { barracksExitScene } from './army/barracks-exit.js';
+import { barracksMixedOrdersScene } from './army/barracks-mixed-orders.js';
+import { barracksRallyScene } from './army/barracks-rally.js';
 import { battleScene } from './army/battle.js';
 import { battleWearyScene } from './army/battle-weary.js';
+import { coinDrillScene } from './army/coin-drill.js';
 import { collisionScene } from './army/collision.js';
 import { defenceWallScene } from './army/defence-wall.js';
 import { focusFireScene } from './army/focus-fire.js';
 import { hitAlarmScene } from './army/hit-alarm.js';
 import { meleeFrontScene } from './army/melee-front.js';
 import { openGateAttackScene } from './army/open-gate-attack.js';
+import { precisionBattleScene } from './army/precision-battle.js';
 import { scoutVillageScene } from './army/scout-village.js';
 import { siegeScene } from './army/siege.js';
 import { towerDefenceScene } from './army/tower-defence.js';
@@ -40,6 +45,7 @@ import { equipmentScene } from './combat/equipment.js';
 import { equipmentEffectsScene } from './combat/equipment-effects.js';
 import { maceBlowsScene } from './combat/mace-blows.js';
 import { overheadIconsScene } from './combat/overhead-icons.js';
+import { potionSipsScene } from './combat/potion-sips.js';
 import { weaponFacingsScene } from './combat/weapon-facings.js';
 import { buildingDamageScene, buildingDamageVariantsScene } from './construction/building-damage.js';
 import { buildingDemolitionScene } from './construction/building-demolition.js';
@@ -83,6 +89,7 @@ import { tradeSeaAgreementScene } from './economy/trade-sea-agreement.js';
 import { tradeSeaCarriersScene } from './economy/trade-sea-carriers.js';
 import { tradeSeaPinScene } from './economy/trade-sea-pin.js';
 import { tradeSeaSettlementsScene } from './economy/trade-sea-settlements.js';
+import { tradeSeaSharedStopScene } from './economy/trade-sea-shared-stop.js';
 import { warehouseScene } from './economy/warehouse.js';
 import { workshopProductsScene } from './economy/workshop-products.js';
 import { berriesScene } from './gathering/berries.js';
@@ -113,9 +120,11 @@ import { childrenScene } from './settlers/children.js';
 import { everydayGesturesScene } from './settlers/everyday-gestures.js';
 import { familyScene } from './settlers/family.js';
 import { familyAwayScene } from './settlers/family-away.js';
+import { furnishedHomeScene } from './settlers/furnished-home.js';
 import { gossipScene } from './settlers/gossip.js';
 import { grownUpTrainingScene } from './settlers/grown-up-training.js';
 import { learningFoundationsScene } from './settlers/learning-foundations.js';
+import { meadDrinkScene } from './settlers/mead-drink.js';
 import { mealBreakScene } from './settlers/meal-break.js';
 import { movementContinuityScene } from './settlers/movement-continuity.js';
 import { personalNamesScene } from './settlers/personal-names.js';
@@ -126,22 +135,31 @@ import { schoolQueueScene } from './settlers/school-queue.js';
 import { scoutClaimScene } from './settlers/scout-claim.js';
 import { scoutExploreScene } from './settlers/scout-explore.js';
 import { templeAuraScene } from './settlers/temple-aura.js';
+import { templeOilScene } from './settlers/temple-oil.js';
 import { toolUpgradeScene } from './settlers/tool-upgrade.js';
 import type { SceneDefinition } from './types.js';
 import { cartDriversScene } from './vehicles/cart-drivers.js';
 import { haulingCartScene } from './vehicles/hauling-cart.js';
 import { shipWakesScene } from './vehicles/ship-wakes.js';
 import { vehicleAttackMoveScene } from './vehicles/vehicle-attack-move.js';
+import { vehicleAttackMoveFightScene } from './vehicles/vehicle-attack-move-fight.js';
 import { vehicleBuildingClearanceScene } from './vehicles/vehicle-building-clearance.js';
 import { vehicleCargoScene } from './vehicles/vehicle-cargo.js';
 import { vehicleCatapultScene } from './vehicles/vehicle-catapult.js';
+import { vehicleCatapultArchersScene } from './vehicles/vehicle-catapult-archers.js';
+import { vehicleCatapultAssaultScene } from './vehicles/vehicle-catapult-assault.js';
 import { vehicleCatapultSpreadScene } from './vehicles/vehicle-catapult-spread.js';
+import { vehicleCatapultTargetsScene } from './vehicles/vehicle-catapult-targets.js';
 import { vehicleCatapultWallScene } from './vehicles/vehicle-catapult-wall.js';
+import { vehicleDamageScene } from './vehicles/vehicle-damage.js';
 import { vehicleDockFleetScene } from './vehicles/vehicle-dock-fleet.js';
 import { vehicleOxScene } from './vehicles/vehicle-ox.js';
 import { vehicleOxYardScene } from './vehicles/vehicle-ox-yard.js';
+import { vehicleShipArchersScene } from './vehicles/vehicle-ship-archers.js';
 import { vehicleShipCargoScene } from './vehicles/vehicle-ship-cargo.js';
 import { vehicleShipColumnScene } from './vehicles/vehicle-ship-column.js';
+import { vehicleShipCrewMealScene } from './vehicles/vehicle-ship-crew-meal.js';
+import { vehicleShipRepairScene } from './vehicles/vehicle-ship-repair.js';
 import { vehicleShipSitesScene } from './vehicles/vehicle-ship-sites.js';
 import { vehicleShipVoyageScene } from './vehicles/vehicle-ship-voyage.js';
 import { vehicleShipsScene } from './vehicles/vehicle-ships.js';
@@ -160,6 +178,7 @@ export const SCENES: readonly SceneDefinition[] = [
   sandboxScene,
   collisionScene,
   battleScene,
+  precisionBattleScene,
   bowFlightScene,
   overheadIconsScene,
   weaponFacingsScene,
@@ -209,6 +228,7 @@ export const SCENES: readonly SceneDefinition[] = [
   workshopProductsScene,
   signpostsScene,
   mealBreakScene,
+  meadDrinkScene,
   familyScene,
   playerColoursScene,
   playerColoursExtraScene,
@@ -228,12 +248,14 @@ export const SCENES: readonly SceneDefinition[] = [
   storageMinimumPorterScene,
   storePriorityScene,
   templeAuraScene,
+  templeOilScene,
   idleWorkScene,
   storeReachScene,
   storageFullScene,
   farPostScene,
   livestockScene,
   livestockYardScene,
+  farmLarderScene,
   cowRaidScene,
   scoutClaimScene,
   scoutExploreScene,
@@ -252,9 +274,13 @@ export const SCENES: readonly SceneDefinition[] = [
   audioMixScene,
   netPanelScene,
   amuletsScene,
+  potionSipsScene,
   barracksScene,
   barracksArmoryScene,
+  barracksMixedOrdersScene,
   barracksExitScene,
+  barracksRallyScene,
+  coinDrillScene,
   armorScene,
   towerGarrisonScene,
   towerFinialsScene,
@@ -275,6 +301,7 @@ export const SCENES: readonly SceneDefinition[] = [
   tradeSeaAgreementScene,
   tradeSeaCarriersScene,
   tradeSeaSettlementsScene,
+  tradeSeaSharedStopScene,
   tributeScene,
   presentationScene,
   terrainEditsScene,
@@ -286,6 +313,7 @@ export const SCENES: readonly SceneDefinition[] = [
   gathererFlagFollowScene,
   toolUpgradeScene,
   assistantFamiliesScene,
+  furnishedHomeScene,
   assistantReminderScene,
   porterFlagScene,
   fieldPostFlagsScene,
@@ -298,19 +326,27 @@ export const SCENES: readonly SceneDefinition[] = [
   vehicleOxScene,
   vehicleOxYardScene,
   vehicleShipsScene,
+  vehicleShipArchersScene,
   vehicleShipColumnScene,
   vehicleShipVoyageScene,
+  vehicleDamageScene,
   vehicleDockFleetScene,
   shipWakesScene,
   vehicleShipyardScene,
   vehicleShipSitesScene,
   vehicleCargoScene,
   vehicleShipCargoScene,
+  vehicleShipCrewMealScene,
+  vehicleShipRepairScene,
   haulingCartScene,
   vehicleCatapultScene,
   vehicleAttackMoveScene,
+  vehicleAttackMoveFightScene,
   vehicleTightGapScene,
   vehicleCatapultSpreadScene,
+  vehicleCatapultTargetsScene,
+  vehicleCatapultArchersScene,
+  vehicleCatapultAssaultScene,
   vehicleCatapultWallScene,
 ];
 

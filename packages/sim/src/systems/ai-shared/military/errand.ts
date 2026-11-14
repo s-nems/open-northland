@@ -1,4 +1,4 @@
-import { EquipOrder, TrainingOrder } from '../../../components/index.js';
+import { CoinDrillOrder, EquipOrder, TrainingOrder } from '../../../components/index.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import { isTravelling } from '../../movement/nav-state.js';
 import { anotherSystemOwns } from '../../settlers/action-owner.js';
@@ -17,6 +17,7 @@ export function onErrand(world: World, e: Entity): boolean {
   return (
     anotherSystemOwns(world, e) ||
     world.has(e, TrainingOrder) ||
+    world.has(e, CoinDrillOrder) ||
     world.has(e, EquipOrder) ||
     atomicHoldsSettler(world, e)
   );

@@ -1,0 +1,22 @@
+{
+  "version": 1,
+  "map": "saracen_4_sub_2",
+  "basis": {
+    "lang": "eng",
+    "digest": "bd85d2c157a5766405cac883dd9851f9a4cdc7e27ab9a3e78e44cc34411bafb5"
+  },
+  "strings": {
+    "0": "PDP : 04 - I SOTTERRANEI DEL PROTETTORATO",
+    "1": "La caduta di Riad",
+    "30": "Trova i tre maghi",
+    "50": "Hatchie",
+    "51": "Popolo del Protettorato",
+    "100": "Hatchie",
+    "101": "Idris"
+  },
+  "briefings": {
+    "500": "<font:$local$\\fonts\\fonthead16bld.fnt>\nI SOTTERRANEI DEL PROTETTORATO\n\n<font:$local$\\fonts\\font12.fnt>\n- \"Benvenuti nei nostri sotterranei. - ci salutò uno dei servitori. - La strada per arrivare ai maghi è un po' tortuosa, ma è una protezione contro i malfattori. Non dovreste incontrare avversari. Alcuni cancelli sono chiusi, quindi dovete trovare i pulsanti che li aprono.\"\n\n- \"E cosa dobbiamo dire quando li avremo trovati?\"\n\n- \"Ecco, giusto, meno male che lo chiedi. Dovete usare la parola d'ordine segreta: 'PERSICO'. Poi di' che bisogna aprire la gabbia di Aaron e roba del genere.\"\n\n<usericon:1,384,19>\n\n",
+    "501": "<font:$local$\\fonts\\fonthead16bld.fnt>\nI MAGHI\n\n<font:$local$\\fonts\\font12.fnt>\nIn fondo ai corridoi trovammo tre maghi sdraiati su un prato verde. Mi avvicinai.\n\n- \"Attenzione, pronuncio la parola d'ordine: PERSICO!\"\n\n- \"Ehi, guardate! - disse uno. - Persico...\"\n\n- \"Oh nooo... tocca andare. E si stava così bene sdraiati.\" - aggiunse il secondo.\n\n- \"Cos'è successo di così grave da farti venire fin qui a cercarci?\" - mi chiese il terzo mago.\n\n- \"Una creatura chiamata Aaron è stata rinchiusa in una gabbia magica. Grazie al vostro potere posso liberarla.\"\n\n- \"D'accordo, signori, si esce.\"\n\nVolevo già tornare indietro, ma mi mostrarono un'uscita sul retro. Per fortuna non devo trascinarmi per tutta la strada al contrario.\n\n",
+    "520": "<font:$local$\\fonts\\fonthead16bld.fnt>\nSCONFITTA\n\n<font:$local$\\fonts\\font12.fnt>\nUno degli eroi è caduto in battaglia. Senza di lui la missione non può riuscire...\n\n\n<picture:$local$\\graphics\\People_Dead_F.pcx>\n"
+  }
+}

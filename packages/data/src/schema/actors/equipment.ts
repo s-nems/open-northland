@@ -18,7 +18,8 @@ export const EquipRestorePct = z.strictObject({
 });
 export type EquipRestorePct = z.infer<typeof EquipRestorePct>;
 
-/** A carried item's chance to multiply a landed blow's damage. */
+/** A carried item's chance to multiply a landed blow's damage. Such a blow can also break the swing its
+ *  victim has in flight and stun the victim. */
 export const EquipCriticalHit = z.strictObject({
   chancePct: z.number().int().min(1).max(100),
   damagePct: z.number().int().positive(),
@@ -43,8 +44,8 @@ export const EquipClass = z
     /** True when the item is consumed with use (potions/shoes/tools); false for permanent gear
      *  (weapons/armour/amulets). */
     wears: z.boolean().default(false),
-    /** Additive per-cycle production credit, whole percent of the recipe outputs (wooden tool 20,
-     *  iron 70, the original's values). It adds to the operator's experience bonus, never multiplies it. */
+    /** Additive per-cycle production credit, whole percent of the recipe outputs. It adds to the
+     *  operator's experience bonus, never multiplies it. */
     productionBonusPct: z.number().int().positive().optional(),
     /** A tool's work factor in percent (wooden 125, iron 175, the original's values): a gatherer's or
      *  fisher's strokes per unit divide by it and a builder's steps per swing multiply by it. */
@@ -55,11 +56,14 @@ export const EquipClass = z
     uses: z.number().int().positive().optional(),
     /** What one use restores: a sip of mead or a potion, or an amulet's top-up of its need. */
     restorePct: EquipRestorePct.optional(),
-    /** Percent of its damage a landed blow of the bearer deals (strength amulet 150). */
+    /** The bearer stops and plays the eat clip for each sip (mead), where every other draught acts on the
+     *  spot. Owner's rule, departing from the original's clipless sip. */
+    stopsToDrink: z.boolean().optional(),
+    /** Percent of its damage a landed blow of the bearer deals (the strength amulet). */
     damageDealtPct: z.number().int().positive().optional(),
-    /** Rolled per landed blow of the bearer, after `damageDealtPct` (critical-hit amulet: 20% for 200%). */
+    /** Rolled per landed blow of the bearer, after `damageDealtPct` (the critical-hit amulet). */
     criticalHit: EquipCriticalHit.optional(),
-    /** Percent of an incoming blow's damage the bearer takes, truncated (defense amulet 50). */
+    /** Percent of an incoming blow's damage the bearer takes, truncated (the defense amulet). */
     damageTakenPct: z.number().int().min(0).max(100).optional(),
     /** Ticks taken off every step of the bearer's walk, before the age and weight terms (speed amulet 2). */
     walkStepTicksSaved: z.number().int().positive().optional(),
@@ -82,7 +86,15 @@ export const EquipClass = z
   // healing one forever.
   .refine((e) => e.restorePct?.healthMax === undefined || e.wears, {
     message: 'a healing equip good must wear down',
-  });
+  })
+  // A healing sip lands with the blow it answers, so only a hunger or fatigue draught can wait for a clip.
+  .refine(
+    (e) =>
+      e.stopsToDrink !== true ||
+      (e.restorePct?.healthMax === undefined &&
+        (e.restorePct?.hunger !== undefined || e.restorePct?.fatigue !== undefined)),
+    { message: 'only a hunger or fatigue draught stops its bearer to drink' },
+  );
 export type EquipClass = z.infer<typeof EquipClass>;
 
 export const WeaponType = z.strictObject({

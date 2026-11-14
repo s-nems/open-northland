@@ -17,12 +17,16 @@ export interface ViewDetail {
   readonly figureShadows: boolean;
   /** Footprints and the dust of a step. */
   readonly footfalls: boolean;
+  /** The wind a fast walker trails. It stays a tier longer than the footfalls: it tells who is fast. */
+  readonly windTrails: boolean;
   /** The landscape's own motion: the frame loops of trees and bushes, the sway of vegetation and the
    *  breeze on it, and smoothed fish. Without it shore waves step every {@link WAVE_STEP_TICKS} ticks.
    *  One-shot clips, flat decor's GPU-played loops and the wind in sails are not part of it. */
   readonly motion: boolean;
   /** Thought bubbles, life hearts and experience stars over settlers. */
   readonly overheadIcons: boolean;
+  /** The arcs of light round an amulet's carrier. */
+  readonly amuletArcs: boolean;
   /** The cast shadows of trees, bushes, stumps, goods piles and flat decor. */
   readonly landscapeShadows: boolean;
   /** Sign chains at doors and construction stands. Garrison flags stay: they tell who holds a tower. */
@@ -55,8 +59,10 @@ export const VIEW_DETAILS: Readonly<Record<DetailTier, ViewDetail>> = {
     tier: 'full',
     figureShadows: true,
     footfalls: true,
+    windTrails: true,
     motion: true,
     overheadIcons: true,
+    amuletArcs: true,
     landscapeShadows: true,
     buildingSigns: true,
   },
@@ -64,8 +70,10 @@ export const VIEW_DETAILS: Readonly<Record<DetailTier, ViewDetail>> = {
     tier: 'reduced',
     figureShadows: false,
     footfalls: false,
+    windTrails: true,
     motion: false,
     overheadIcons: true,
+    amuletArcs: true,
     landscapeShadows: true,
     buildingSigns: true,
   },
@@ -73,8 +81,10 @@ export const VIEW_DETAILS: Readonly<Record<DetailTier, ViewDetail>> = {
     tier: 'sparse',
     figureShadows: false,
     footfalls: false,
+    windTrails: false,
     motion: false,
     overheadIcons: false,
+    amuletArcs: false,
     landscapeShadows: false,
     buildingSigns: true,
   },
@@ -82,8 +92,10 @@ export const VIEW_DETAILS: Readonly<Record<DetailTier, ViewDetail>> = {
     tier: 'minimal',
     figureShadows: false,
     footfalls: false,
+    windTrails: false,
     motion: false,
     overheadIcons: false,
+    amuletArcs: false,
     landscapeShadows: false,
     buildingSigns: false,
   },

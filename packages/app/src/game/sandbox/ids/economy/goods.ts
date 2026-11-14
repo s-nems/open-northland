@@ -92,24 +92,29 @@ const TOOL_USES = 100;
 const SMALL_BOTTLE_USES = 2;
 const BIG_BOTTLE_USES = 5;
 /** One sip's restore in percent of a need bar or of max hitpoints. The original's values: mead half of
- *  each bar, a food or stamina potion a whole bar, a healing potion 2000 of a settler's 5000 hitpoints. */
+ *  each bar, a food or stamina potion a whole bar. */
 const MEAD_RESTORE = { hunger: 50, fatigue: 50 } as const;
 const NEED_POTION_RESTORE_PCT = 100;
-const HEALING_POTION_RESTORE_PCT = 40;
+/** Our balance, departing from the original's 40 (2000 of a settler's 5000 hitpoints). */
+const HEALING_POTION_RESTORE_PCT = 30;
 /** Percent of the recipe outputs a worn tool adds per cycle, summed with the experience bonus rather
- *  than multiplied with it. The original's values. */
-const WOODEN_TOOL_BONUS_PCT = 20;
-const IRON_TOOL_BONUS_PCT = 70;
+ *  than multiplied with it. Our balance, departing from the original's 20 and 70 so the wooden tool
+ *  stays worth making beside iron. */
+const WOODEN_TOOL_BONUS_PCT = 30;
+const IRON_TOOL_BONUS_PCT = 60;
 /** A tool's work factor for strokes and build swings, percent of bare hands. The original's values. */
 const WOODEN_TOOL_WORK_FACTOR_PCT = 125;
 const IRON_TOOL_WORK_FACTOR_PCT = 175;
 
-/** The amulets' magnitudes, the original's values. The food and stamina amulets top up their need by
- *  4000 of its 10000 units whenever it falls to the drive level, and never wear. */
+/** The amulets' magnitudes, the original's values except where marked. The food and stamina amulets top
+ *  up their need by 4000 of its 10000 units whenever it falls to the drive level, and never wear. */
 const AMULET_RESTORE_PCT = 40;
-const AMULET_STRENGTH_DAMAGE_PCT = 150;
-const AMULET_CRITICAL_HIT = { chancePct: 20, damagePct: 200 } as const;
-const AMULET_DEFENSE_DAMAGE_TAKEN_PCT = 50;
+/** Our balance, departing from the original's 150. */
+const AMULET_STRENGTH_DAMAGE_PCT = 140;
+/** Our balance, departing from the original's 20% for 200%. */
+const AMULET_CRITICAL_HIT = { chancePct: 35, damagePct: 150 } as const;
+/** Our balance, departing from the original's 50. */
+const AMULET_DEFENSE_DAMAGE_TAKEN_PCT = 60;
 const AMULET_SPEED_STEP_TICKS_SAVED = 2;
 
 /**
@@ -200,6 +205,7 @@ export const EQUIP_GOODS: readonly EquipGoodSpec[] = [
     wears: true,
     uses: SMALL_BOTTLE_USES,
     restorePct: MEAD_RESTORE,
+    stopsToDrink: true,
   },
   {
     typeId: GOOD_POTION_FOOD_SMALL,

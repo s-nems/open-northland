@@ -1,0 +1,25 @@
+{
+  "version": 1,
+  "map": "straznicypolnocy_sub2",
+  "basis": {
+    "lang": "eng",
+    "digest": "d2e4a2c91f43319d311901c6e860c62e118c8d804d4db00b916fbfd6688339fb"
+  },
+  "strings": {
+    "0": "JOTUNHEIM",
+    "1": "Il mondo dell'inverno eterno, abitato dai Giganti di ghiaccio",
+    "25": "Distruggi i tre portali dei giganti e prendi la fonte del loro potere",
+    "80": "Ykol",
+    "81": "Elfi",
+    "82": "Giganti di ghiaccio",
+    "90": "Yk",
+    "91": "Elfi",
+    "92": "Giganti",
+    "100": "Ykol"
+  },
+  "briefings": {
+    "500": "<font:$local$\\fonts\\fonthead16bld.fnt>\nJOTUNHEIM - IL MONDO DEI GIGANTI DI GHIACCIO\n<font:$local$\\fonts\\font12.fnt>\n\nQuando entrammo in Yggdrasil, davanti a noi si aprì il ponte arcobaleno Bifrost, diretto verso Jotunheim. Al primo passo un fascio di luce ci trascinò in un viaggio tra le stelle, e prima che ce ne rendessimo conto eravamo già dall'altra parte del ponte.\n\nQuel pianeta era un vero deserto di neve e ghiaccio, un gelo perenne ostile a qualsiasi forma di vita. Per fortuna la magia del Bifrost aveva infuso nei guerrieri di Ykol una forza tale che non avevano più bisogno né di cibo né d'acqua.\n\n- \"Avete già dato prova di voi, uomini,\" - dissero gli elfi venuti con noi. - \"Ora tocca a noi. Appena raggiungeremo i portali, li distruggeremo con la nostra magia. In tutto i portali sono tre.\"\n\n- \"Laufey ha detto che la fonte del loro potere si trova al centro del pianeta,\" - disse Ykol.\n\n- \"Bene che tu lo ricordi. La fonte del potere dei Giganti di ghiaccio è un potente artefatto chiamato Fiamma gelida. Laufey ha fatto in modo che sia sorvegliato molto bene. Dobbiamo raggiungere anche quello, perché i Giganti di ghiaccio non siano più una minaccia.\"\n\n<usericon:1,151,169>\n\nTrova tutti e tre i portali e la Fiamma gelida!\n",
+    "501": "<font:$local$\\fonts\\fonthead16bld.fnt>\nVITTORIA!\n<font:$local$\\fonts\\font12.fnt>\n\nI Giganti di ghiaccio non sono più una minaccia per il mondo degli uomini.\n\n- \"Heimdall, apri il Bifrost!\" - gridò uno degli elfi, guardando il cielo. Un attimo dopo un fascio di luce arcobaleno ci riportò sulla Terra.\n",
+    "502": "<font:$local$\\fonts\\fonthead16bld.fnt>\nSCONFITTA\n<font:$local$\\fonts\\font12.fnt>\nSenza uno qualsiasi degli eroi non potremo portare a termine la missione...\n\n<picture:$local$\\graphics\\Hero_Dead_F.pcx>"
+  }
+}

@@ -22,8 +22,7 @@ export function isSiegeWeapon(weapon: WeaponType): boolean {
   return weapon.damageType !== undefined;
 }
 
-/** The extracted `mainType`: 1 fist, 2 spear, 3 sword, 6 bow, 7 catapult. The saber rows carry 4 and the
- *  hero axe 5, which the sim gives no class and no fight bucket. */
+/** The extracted `mainType`: 1 fist, 2 spear, 3 sword, 4 saber, 5 hero axe, 6 bow, 7 catapult. */
 export function weaponClassOf(weapon: WeaponType): number | undefined {
   return weapon.mainType;
 }

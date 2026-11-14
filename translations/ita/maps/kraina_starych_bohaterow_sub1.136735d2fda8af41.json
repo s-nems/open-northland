@@ -1,0 +1,28 @@
+{
+  "version": 1,
+  "map": "kraina_starych_bohaterow_sub1",
+  "basis": {
+    "lang": "eng",
+    "digest": "9aeff5bf6c5ddc430d6c8efa203a908a8aa47fc0e1959b44f0bfa45c2e307fb1"
+  },
+  "strings": {
+    "32": "TROVA L'ALTARE DEGLI ANTICHI EROI",
+    "33": "Trova l'uscita dalla tomba.",
+    "50": "VICHINGHI",
+    "51": "PREDONI",
+    "52": "SERPENTI MANNARI",
+    "53": "Antichi",
+    "98": "Tomba",
+    "99": "Tomba degli Antichi",
+    "101": "Cyra",
+    "102": "Sigurd",
+    "103": "Hatchie",
+    "104": "Loki",
+    "105": "Bjarni"
+  },
+  "briefings": {
+    "500": "<font:$local$\\fonts\\fonthead16bld.fnt>\nTERRA DEGLI ANTICHI EROI:\nPRIMA MISSIONE AGGIUNTIVA - TOMBA DEGLI ANTICHI\n<font:$local$\\fonts\\font12.fnt>\n\nSeguendo le indicazioni di Loki, scendemmo nelle profondità della tomba.\n\n\"Non so nemmeno io perché accetto...\" - brontolava Bjarni - \"Ci hai menato per il naso così tante volte che non mi fido per niente di te.\"\n\n\"È comprensibile\" - si giustificava umilmente Loki - \"Nemmeno io mi fido di me stesso. Voglio solo ripetere che è soltanto qui che possiamo trovare l'Altare degli Antichi Eroi. Io stesso non ci sono mai stato, quindi non prendetevela con me se troveremo qualche ostacolo sulla strada. Già è tanto che vi accompagni ancora per pura bontà d'animo.\"\n\n\"Grazie mille\" - rispose Hatchie - \"Sembrava quasi che sapessi che qualcosa o qualcuno ci sta già aspettando quaggiù.\"\n\n\"Da quel che diceva la gente dei Franchi, i predoni che assaltano la parte occidentale dell'impero di mio padre potrebbero nascondersi qui. Dobbiamo stare in guardia\" - disse Cyra.\n\n\"Sempre a vagare per qualche segreta\" - si lamentava Sigurd - \"Non sappiamo nemmeno se siano crollate.\"\n\n\"È vero\" - rispose Bjarni - \"Ma se la leggenda dice il vero, qui troveremo ciò che cerchiamo.\"\n\n<usericon:1,163,203>\n\n\"Questi meccanismi sono di sicuro vecchi. Spero che funzioni tutto senza metterci in situazioni rischiose\" - disse Sigurd.\n\n\"Anche se qualche meccanismo fosse un po' guasto...\" - cominciò Loki - \"...abbiamo sempre te.\"\n\n\"Molto divertente\" - rispose Sigurd, indignato.\n\nPerò è vero che solo il peso della \"sua armatura\" riesce ad azionare certi meccanismi.\n\nTrova l'Altare degli Antichi Eroi! Ma resta all'erta! Il male si nasconde ovunque!\n",
+    "501": "<font:$local$\\fonts\\fonthead16bld.fnt>\nALTARE TROVATO!\n<font:$local$\\fonts\\font12.fnt>\n\nDopo una lunga esplorazione delle rovine della tomba, ci imbattemmo in una cittadina distrutta.\n\n<usericon:1,180,368>\n\nAnche se ormai non erano che i resti del suo antico splendore, suscitavano ancora un'enorme meraviglia.\n\nNel cuore della cittadina abbandonata e in rovina si trovava il Prodigioso Altare, e accanto a esso stava un monaco misterioso.\n\n\"Voi dovete essere i cinque prescelti che aspetto da secoli\" - disse il vecchio - \"Ora la mia missione finalmente si compirà e potrò andarmene verso la luce.\"\n\nQualunque cosa dicesse il vecchio, non riuscivamo a concentrarci per ascoltarlo. La nostra attenzione era troppo distratta dalle ricchezze degli antichi.\n\n\"Questo luogo è la Tomba degli Eroi\" - riprese il monaco - \"Un tempo erano altri cinque, chiamati gli Straordinari, a custodire l'ordine del mondo. Ora questo compito spetta a voi. Avvicinatevi.\"\n\nNon avevamo idea di che cosa stesse succedendo. I nostri corpi cominciarono a risplendere e ci sentimmo leggerissimi. Una sensazione indescrivibile.\n\n\"Bjarni, coraggioso Vichingo, condurrai i tuoi compagni verso la pace.\"\n\nPer un attimo mi chiesi come facesse quel vecchio a conoscere il mio nome. Poi, all'improvviso, tutto divenne chiaro.\nIo e i miei compagni fummo colmati della saggezza degli antichi. Sapevamo esattamente come liberarci degli spiriti ostinati. Ora tutto sembrava così chiaro e semplice.\n\nSolo Loki pareva indifferente a quanto era accaduto. Come se avesse già saputo che cosa aspettarsi.\n\n\"Adesso torniamo in superficie!\" - gridò Loki - \"La benedizione che abbiamo ricevuto cambierà le nostre vite per sempre!\"\n\nQualunque cosa intendesse, ormai non si poteva più tornare indietro.\n\nPer tutto il tempo temetti che avessimo fatto qualcosa di sbagliato. È la sensazione che mi accompagna sempre quando Loki è nei paraggi...\n\n\"Ora dobbiamo concentrarci sulla nostra missione\" - disse Bjarni - \"Ogni dubbio svanirà con una boccata d'aria fresca, appena usciremo dalla tomba.\"\n\nAllora nessuno degli eroi si rendeva ancora conto di che cosa gli fosse davvero capitato...\n\n\nTrova l'uscita dalla tomba.\n",
+    "502": "<font:$local$\\fonts\\fonthead16bld.fnt>\nSCONFITTA!\n<font:$local$\\fonts\\font12.fnt>\n\nUno degli eroi indispensabili alla missione è caduto. Senza di lui la spedizione non potrà più concludersi con successo...\n\n<picture:$local$\\graphics\\Hero_Dead_F.pcx>\n"
+  }
+}

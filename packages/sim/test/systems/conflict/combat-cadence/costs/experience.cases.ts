@@ -1,13 +1,24 @@
 import { describe, expect, it } from 'vitest';
-import { CurrentAtomic, Health, SettlerProgress } from '../../../../../src/components/index.js';
-import { Simulation } from '../../../../../src/index.js';
+import {
+  Building,
+  Health,
+  MISSION_BEHAVIOUR,
+  Owner,
+  Position,
+  Settler,
+  SettlerProgress,
+  setMissionBehaviour,
+} from '../../../../../src/components/index.js';
+import type { Entity } from '../../../../../src/ecs/world.js';
+import { fx, ONE, Simulation, TICKS_PER_SECOND } from '../../../../../src/index.js';
+import { attackClipTiming } from '../../../../../src/systems/conflict/weapons.js';
 import {
   atomicSystem,
-  combatSystem,
-  FIGHT_EXPERIENCE_MAX,
+  FIGHT_EXPERIENCE_FULL,
+  FIGHT_EXPERIENCE_FULL_UNITS,
   FIGHT_EXPERIENCE_TYPE,
-  HERO_GENERAL_EXPERIENCE_TYPE,
-  SOLDIER_GENERAL_EXPERIENCE_TYPE,
+  FIGHT_EXPERIENCE_UNITS_PER_POINT,
+  fightUnitsOfPoints,
   WEAPON_MAIN_TYPE,
 } from '../../../../../src/systems/index.js';
 import { nextTickCtxOf } from '../../../../fixtures/context.js';
@@ -15,7 +26,6 @@ import {
   ARMOR_BLOCKING,
   CHAIN_CLASS,
   combatCadenceContent,
-  ctxOf,
   fighterAt,
   grass,
   HERO,
@@ -30,8 +40,32 @@ import {
   WOMAN,
 } from '../support.js';
 
-describe('atomicSystem - a damaging swing accrues fight XP into the weapon-class bucket', () => {
-  it('a spear swing accrues into the SPEAR fight bucket (the needfor-gate id space)', () => {
+const PERSONAL = FIGHT_EXPERIENCE_TYPE.PERSONAL;
+/** The owner's blow-time rates, in points per second of the attack clip. */
+const MELEE_POINTS_PER_SECOND = 0.75;
+const TAKEN_POINTS_PER_SECOND = 0.5;
+/** A blow on a structure earns a quarter of the same blow on a living target. */
+const STRUCTURE_SHARE_DENOMINATOR = 4;
+const HEADQUARTERS_TYPE = 1;
+const OTHER_PLAYER = 1;
+
+/** The seconds of `e`'s own attack clip. */
+function clipSeconds(sim: Simulation, e: Entity): number {
+  return attackClipTiming(sim.content, sim.world.get(e, Settler)).length / TICKS_PER_SECOND;
+}
+
+/** The stored units one landed melee blow of `striker` earns him. */
+function meleeUnits(sim: Simulation, striker: Entity): number {
+  return clipSeconds(sim, striker) * MELEE_POINTS_PER_SECOND * FIGHT_EXPERIENCE_UNITS_PER_POINT;
+}
+
+/** `e`'s personal counter in points, parts of a point kept. */
+function pointsOf(sim: Simulation, e: Entity): number {
+  return (sim.world.get(e, SettlerProgress).experience.get(PERSONAL) ?? 0) / FIGHT_EXPERIENCE_UNITS_PER_POINT;
+}
+
+describe('atomicSystem - a damaging swing accrues fight XP into the personal counter', () => {
+  it("a landed melee blow earns 3/4 point per second of the striker's own attack clip", () => {
     const sim = new Simulation({ seed: 1, content: combatCadenceContent(), map: grass(3, 1) });
     const attacker = fighterAt(sim, 0, 0, VIKING, SOLDIER_SPEAR);
     const target = fighterAt(sim, 1, 0, OTHER, null, { hitpoints: 10_000 });
@@ -42,28 +76,35 @@ describe('atomicSystem - a damaging swing accrues fight XP into the weapon-class
       4,
     );
 
-    atomicSystem(sim.world, nextTickCtxOf(sim)); // the blow lands (frame 0) and trains the weapon class
+    atomicSystem(sim.world, nextTickCtxOf(sim)); // the blow lands (frame 0) and trains its striker
 
     const xp = sim.world.get(attacker, SettlerProgress).experience;
-    expect(xp.get(FIGHT_EXPERIENCE_TYPE.SPEAR)).toBe(1); // soldier-general factor 1 per swing
-    expect(xp.get(FIGHT_EXPERIENCE_TYPE.SWORD)).toBeUndefined(); // only the spear bucket
-    expect(xp.get(SOLDIER_GENERAL_EXPERIENCE_TYPE)).toBe(1); // and the band's general track (69)
+    expect(pointsOf(sim, attacker)).toBe(clipSeconds(sim, attacker) * MELEE_POINTS_PER_SECOND);
+    expect(pointsOf(sim, attacker)).toBeGreaterThan(1); // a spear's slow swing earns more than a point
+    expect(xp.size).toBe(1); // no other bucket, no trade track
   });
 
-  it('maps each weapon class to its fight bucket (sword → SWORD, fist → FIST)', () => {
-    const check = (mainType: number, bucket: number): void => {
-      const sim = new Simulation({ seed: 1, content: combatCadenceContent(), map: grass(3, 1) });
-      const attacker = fighterAt(sim, 0, 0, VIKING, SOLDIER_UNARMED);
-      const target = fighterAt(sim, 1, 0, OTHER, null, { hitpoints: 10_000 });
+  it('a change of weapon keeps the counter: every class but the catapult adds to it, saber and axe too', () => {
+    const sim = new Simulation({ seed: 1, content: combatCadenceContent(), map: grass(3, 1) });
+    const attacker = fighterAt(sim, 0, 0, VIKING, SOLDIER_UNARMED);
+    const target = fighterAt(sim, 1, 0, OTHER, null, { hitpoints: 10_000 });
+    const classes = [
+      WEAPON_MAIN_TYPE.UNARMED,
+      WEAPON_MAIN_TYPE.SPEAR,
+      WEAPON_MAIN_TYPE.SWORD,
+      WEAPON_MAIN_TYPE.SABER,
+      HERO_AXE_MAIN_TYPE,
+    ];
+    for (const mainType of classes) {
       startSwing(sim, attacker, { target, damage: 100, hitFrames: [0], weaponMainType: mainType }, 2);
       atomicSystem(sim.world, nextTickCtxOf(sim));
-      expect(sim.world.get(attacker, SettlerProgress).experience.get(bucket)).toBe(1);
-    };
-    check(WEAPON_MAIN_TYPE.SWORD, FIGHT_EXPERIENCE_TYPE.SWORD);
-    check(WEAPON_MAIN_TYPE.UNARMED, FIGHT_EXPERIENCE_TYPE.FIST);
+    }
+    const xp = sim.world.get(attacker, SettlerProgress).experience;
+    expect(xp.get(PERSONAL)).toBe(classes.length * meleeUnits(sim, attacker));
+    expect(xp.size).toBe(1);
   });
 
-  it('trains nothing on a 0-damage swing; a hit of a class without a bucket trains only the band track', () => {
+  it('trains nothing on a 0-damage swing or on a hit of no weapon class', () => {
     const sim = new Simulation({ seed: 1, content: combatCadenceContent(), map: grass(3, 1) });
     const attacker = fighterAt(sim, 0, 0, VIKING, SOLDIER_SPEAR);
     const target = fighterAt(sim, 1, 0, OTHER, null, { hitpoints: 10_000 });
@@ -77,24 +118,17 @@ describe('atomicSystem - a damaging swing accrues fight XP into the weapon-class
     atomicSystem(sim.world, nextTickCtxOf(sim));
     expect(sim.world.get(attacker, SettlerProgress).experience.size).toBe(0);
 
-    // The hero axe's class has no fight bucket, but a soldier-band hit still feeds the class-gate
-    // track (69).
-    const hits = 2;
-    for (let hit = 0; hit < hits; hit++) {
-      startSwing(
-        sim,
-        attacker,
-        { target, damage: 400, hitFrames: [0], weaponMainType: HERO_AXE_MAIN_TYPE },
-        2,
-      );
-      atomicSystem(sim.world, nextTickCtxOf(sim));
-    }
-    const xp = sim.world.get(attacker, SettlerProgress).experience;
-    expect(xp.get(SOLDIER_GENERAL_EXPERIENCE_TYPE)).toBe(hits);
-    expect(xp.size).toBe(1); // no weapon bucket alongside it
+    startSwing(
+      sim,
+      attacker,
+      { target, damage: 400, hitFrames: [0], weaponMainType: WEAPON_MAIN_TYPE.NONE },
+      2,
+    );
+    atomicSystem(sim.world, nextTickCtxOf(sim));
+    expect(sim.world.get(attacker, SettlerProgress).experience.size).toBe(0);
   });
 
-  it("trains nothing when the armor's blockingValue takes the whole blow, and one point when it does not", () => {
+  it("trains nothing when the armor's blockingValue takes the whole blow, and the blow's time when it does not", () => {
     const sim = new Simulation({ seed: 1, content: combatCadenceContent(), map: grass(3, 1) });
     const attacker = fighterAt(sim, 0, 0, VIKING, SOLDIER_SPEAR);
     const target = fighterAt(sim, 1, 0, OTHER, null, { hitpoints: 10_000, armorClass: CHAIN_CLASS });
@@ -114,16 +148,14 @@ describe('atomicSystem - a damaging swing accrues fight XP into the weapon-class
 
     swing(ARMOR_BLOCKING + 1);
     expect(sim.world.get(target, Health).hitpoints).toBe(10_000 - 1);
-    expect(sim.world.get(attacker, SettlerProgress).experience.get(FIGHT_EXPERIENCE_TYPE.SPEAR)).toBe(1);
+    expect(sim.world.get(attacker, SettlerProgress).experience.get(PERSONAL)).toBe(meleeUnits(sim, attacker));
   });
 
-  it('a bucket stops at 10000 raw points', () => {
+  it('the personal counter stops at full experience', () => {
     const sim = new Simulation({ seed: 1, content: combatCadenceContent(), map: grass(3, 1) });
     const attacker = fighterAt(sim, 0, 0, VIKING, SOLDIER_SPEAR);
     const target = fighterAt(sim, 1, 0, OTHER, null, { hitpoints: 10_000 });
-    sim.world
-      .mut(attacker, SettlerProgress)
-      .experience.set(FIGHT_EXPERIENCE_TYPE.SPEAR, FIGHT_EXPERIENCE_MAX);
+    sim.world.mut(attacker, SettlerProgress).experience.set(PERSONAL, FIGHT_EXPERIENCE_FULL_UNITS);
     startSwing(
       sim,
       attacker,
@@ -132,10 +164,10 @@ describe('atomicSystem - a damaging swing accrues fight XP into the weapon-class
     );
     atomicSystem(sim.world, nextTickCtxOf(sim));
     const xp = sim.world.get(attacker, SettlerProgress).experience;
-    expect(xp.get(FIGHT_EXPERIENCE_TYPE.SPEAR)).toBe(FIGHT_EXPERIENCE_MAX);
+    expect(xp.get(PERSONAL)).toBe(FIGHT_EXPERIENCE_FULL_UNITS);
   });
 
-  it('routes the band track by job band: hero swings feed 70, civilian swings feed no band track', () => {
+  it('a hero and a civilian train only the personal counter, never a trade track', () => {
     const sim = new Simulation({ seed: 1, content: combatCadenceContent(), map: grass(4, 1) });
     const target = fighterAt(sim, 2, 0, OTHER, null, { hitpoints: 10_000 });
 
@@ -143,9 +175,8 @@ describe('atomicSystem - a damaging swing accrues fight XP into the weapon-class
     startSwing(sim, hero, { target, damage: 400, hitFrames: [0], weaponMainType: WEAPON_MAIN_TYPE.SWORD }, 2);
     atomicSystem(sim.world, nextTickCtxOf(sim));
     const heroXp = sim.world.get(hero, SettlerProgress).experience;
-    expect(heroXp.get(FIGHT_EXPERIENCE_TYPE.SWORD)).toBe(1);
-    expect(heroXp.get(HERO_GENERAL_EXPERIENCE_TYPE)).toBe(1); // the hero band's own track
-    expect(heroXp.get(SOLDIER_GENERAL_EXPERIENCE_TYPE)).toBeUndefined(); // never the soldier one
+    expect(heroXp.get(PERSONAL)).toBe(meleeUnits(sim, hero));
+    expect(heroXp.size).toBe(1);
 
     const civilian = fighterAt(sim, 1, 0, VIKING, WOMAN);
     startSwing(
@@ -156,8 +187,8 @@ describe('atomicSystem - a damaging swing accrues fight XP into the weapon-class
     );
     atomicSystem(sim.world, nextTickCtxOf(sim));
     const civXp = sim.world.get(civilian, SettlerProgress).experience;
-    expect(civXp.get(FIGHT_EXPERIENCE_TYPE.FIST)).toBe(1); // the weapon bucket still trains
-    expect(civXp.size).toBe(1); // but no band track for a non-fighter
+    expect(civXp.get(PERSONAL)).toBe(meleeUnits(sim, civilian));
+    expect(civXp.size).toBe(1);
   });
 
   it('a blow landing on a man felled earlier the same tick trains nothing and sounds no hit', () => {
@@ -171,7 +202,7 @@ describe('atomicSystem - a damaging swing accrues fight XP into the weapon-class
 
     atomicSystem(sim.world, nextTickCtxOf(sim)); // both blows reach their frame this tick; the first one kills
 
-    expect(sim.world.get(killer, SettlerProgress).experience.get(FIGHT_EXPERIENCE_TYPE.SPEAR)).toBe(1);
+    expect(sim.world.get(killer, SettlerProgress).experience.get(PERSONAL)).toBe(meleeUnits(sim, killer));
     expect(sim.world.get(late, SettlerProgress).experience.size).toBe(0);
     const hits = sim.events.current().filter((ev) => ev.kind === 'combatHit');
     expect(hits.map((ev) => ev.kind === 'combatHit' && ev.attacker)).toEqual([killer]);
@@ -189,10 +220,63 @@ describe('atomicSystem - a damaging swing accrues fight XP into the weapon-class
     );
     atomicSystem(sim.world, nextTickCtxOf(sim));
     expect(sim.world.get(wolf, Health).hitpoints).toBeLessThan(10_000);
-    expect(sim.world.get(attacker, SettlerProgress).experience.get(FIGHT_EXPERIENCE_TYPE.SPEAR)).toBe(1);
+    expect(sim.world.get(attacker, SettlerProgress).experience.get(PERSONAL)).toBe(meleeUnits(sim, attacker));
   });
 
-  it('a wild-animal bite trains nothing - progression is a civilization mechanic', () => {
+  it('a blow on a building earns a quarter of the same blow on a person, rounded down', () => {
+    const sim = new Simulation({ seed: 1, content: combatCadenceContent(), map: grass(3, 1) });
+    const attacker = fighterAt(sim, 0, 0, VIKING, SOLDIER_SPEAR);
+    const house = sim.world.create();
+    sim.world.add(house, Position, { x: fx.fromInt(1), y: fx.fromInt(0) });
+    sim.world.add(house, Building, { buildingType: HEADQUARTERS_TYPE, tribe: VIKING, built: ONE, level: 0 });
+    sim.world.add(house, Owner, { player: OTHER_PLAYER });
+    sim.world.add(house, Health, { hitpoints: 10_000, max: 10_000 });
+    startSwing(
+      sim,
+      attacker,
+      { target: house, damage: 100, hitFrames: [0], weaponMainType: WEAPON_MAIN_TYPE.SPEAR },
+      4,
+    );
+    atomicSystem(sim.world, nextTickCtxOf(sim));
+    expect(sim.world.get(house, Health).hitpoints).toBeLessThan(10_000);
+    const quarter = Math.floor(meleeUnits(sim, attacker) / STRUCTURE_SHARE_DENOMINATOR);
+    expect(quarter).toBeGreaterThan(0);
+    expect(sim.world.get(attacker, SettlerProgress).experience.get(PERSONAL)).toBe(quarter);
+  });
+
+  it("a clip of several attack events earns its striker and his victim the clip's blow time once, in all", () => {
+    const sim = new Simulation({ seed: 1, content: combatCadenceContent(), map: grass(3, 1) });
+    const attacker = fighterAt(sim, 0, 0, VIKING, SOLDIER_SPEAR);
+    const target = fighterAt(sim, 1, 0, VIKING, WOMAN, { hitpoints: 10_000 });
+    const hitFrames = [0, 1, 2];
+    startSwing(sim, attacker, { target, damage: 100, hitFrames, weaponMainType: WEAPON_MAIN_TYPE.SPEAR }, 4);
+    for (const _ of hitFrames) atomicSystem(sim.world, nextTickCtxOf(sim));
+
+    // Every event lands its own blow, each taking at least a hitpoint.
+    expect(10_000 - sim.world.get(target, Health).hitpoints).toBeGreaterThanOrEqual(hitFrames.length);
+    expect(pointsOf(sim, attacker)).toBe(clipSeconds(sim, attacker) * MELEE_POINTS_PER_SECOND);
+    expect(pointsOf(sim, target)).toBe(clipSeconds(sim, attacker) * TAKEN_POINTS_PER_SECOND);
+  });
+
+  it('a script-shielded victim earns nothing from a blow that takes him no hitpoints; his striker does', () => {
+    const sim = new Simulation({ seed: 1, content: combatCadenceContent(), map: grass(3, 1) });
+    const attacker = fighterAt(sim, 0, 0, VIKING, SOLDIER_SPEAR);
+    const target = fighterAt(sim, 1, 0, VIKING, WOMAN, { hitpoints: 10_000 });
+    setMissionBehaviour(sim.world, target, MISSION_BEHAVIOUR.INVULNERABLE, true);
+    startSwing(
+      sim,
+      attacker,
+      { target, damage: 100, hitFrames: [0], weaponMainType: WEAPON_MAIN_TYPE.SPEAR },
+      2,
+    );
+    atomicSystem(sim.world, nextTickCtxOf(sim));
+
+    expect(sim.world.get(target, Health).hitpoints).toBe(10_000);
+    expect(sim.world.get(target, SettlerProgress).experience.size).toBe(0);
+    expect(pointsOf(sim, attacker)).toBe(clipSeconds(sim, attacker) * MELEE_POINTS_PER_SECOND);
+  });
+
+  it("a wild-animal bite trains the beast nothing, and earns its victim 1/2 point per second of the beast's clip", () => {
     const sim = new Simulation({ seed: 1, content: combatCadenceContent(), map: grass(3, 1) });
     // A jobless animal-tribe attacker whose natural weapon carries the real `maintype 1` (bearfist/
     // wolvefist): without the wildlife gate every landed bite would accrue FIST XP and feed the mastery
@@ -207,28 +291,33 @@ describe('atomicSystem - a damaging swing accrues fight XP into the weapon-class
     );
     atomicSystem(sim.world, nextTickCtxOf(sim));
     expect(sim.world.get(wolf, SettlerProgress).experience.size).toBe(0);
+    expect(pointsOf(sim, target)).toBe(clipSeconds(sim, wolf) * TAKEN_POINTS_PER_SECOND);
   });
 });
 
-describe('combatSystem - fight experience raises the issued swing damage', () => {
-  const swingDamageOf = (spearHits: number): number => {
+describe('fight experience raises a landed melee blow', () => {
+  /** The hitpoints one melee blow of `base` takes off an unarmored man, struck by a spearman of `points`. */
+  const landedOf = (points: number, base: number): number => {
     const sim = new Simulation({ seed: 1, content: combatCadenceContent(), map: grass(3, 1) });
     const attacker = fighterAt(sim, 0, 0, VIKING, SOLDIER_SPEAR);
-    if (spearHits > 0) {
-      sim.world.mut(attacker, SettlerProgress).experience.set(FIGHT_EXPERIENCE_TYPE.SPEAR, spearHits);
-    }
-    fighterAt(sim, 1, 0, OTHER, null); // an adjacent unarmored enemy - the drive swings this tick
-    combatSystem(sim.world, ctxOf(sim));
-    const atomic = sim.world.get(attacker, CurrentAtomic);
-    if (atomic.effect.kind !== 'attack') throw new Error('expected an attack swing');
-    return atomic.effect.damage;
+    if (points > 0)
+      sim.world.mut(attacker, SettlerProgress).experience.set(PERSONAL, fightUnitsOfPoints(points));
+    const target = fighterAt(sim, 1, 0, OTHER, null, { hitpoints: 10_000 });
+    startSwing(
+      sim,
+      attacker,
+      { target, damage: base, hitFrames: [0], weaponMainType: WEAPON_MAIN_TYPE.SPEAR },
+      2,
+    );
+    atomicSystem(sim.world, nextTickCtxOf(sim));
+    return 10_000 - sim.world.get(target, Health).hitpoints;
   };
 
-  it('raises the column by 200 / (200 - min(hits, 100)), doubling it at a hundred hits', () => {
+  it('raises the blow linearly to +40% at full experience, truncating, as it lands', () => {
     const base = IRON_SPEAR_DAMAGE['0'];
-    expect(swingDamageOf(0)).toBe(base);
-    expect(swingDamageOf(50)).toBe(Math.trunc((base * 200) / 150));
-    expect(swingDamageOf(100)).toBe(base * 2);
-    expect(swingDamageOf(FIGHT_EXPERIENCE_MAX)).toBe(base * 2); // raw points past 100 buy nothing more
+    const bare = landedOf(0, base);
+    const HALF = FIGHT_EXPERIENCE_FULL / 2;
+    expect(landedOf(HALF, base)).toBe(Math.trunc((bare * 12_000) / 10_000));
+    expect(landedOf(FIGHT_EXPERIENCE_FULL, base)).toBe(Math.trunc((bare * 14_000) / 10_000));
   });
 });

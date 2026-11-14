@@ -45,9 +45,7 @@ export interface StaffingRow extends StaffingTiers {
   /** The minimum and target tiers' operators beyond the first are posts only while one of the type's
    *  products with supply lines (`SeatSupply`) is short: under its comfort line while one man or
    *  none works there, under its glut line while more do, one operator more per supply unit it lacks to
-   *  its comfort line (`gatedOperators`). The surplus tier is gated the same way, except that it
-   *  keeps the row's count while a good the type's craft plan caps at an authored glut lies under that
-   *  glut (`craftGlutPending`): a spare hand works the goods no supply line sizes. */
+   *  its comfort line (`gatedOperators`). The surplus tier is gated the same way. */
   readonly productGated?: true;
   /** The tiers from the late game ({@link LATE_GAME_FROM_TICKS}) on, over the rest of the row. */
   readonly late?: StaffingTiers;
@@ -126,11 +124,12 @@ export const STAFFING_BY_BUILDING_ID: Readonly<Record<string, StaffingRow>> = {
     islandSeat: { operatorMin: 3, operatorTarget: 3, carrierMin: 1 },
   },
   // The first potter and mason work alone, so a carrier hauls for them once the builder reserve is full.
-  // The upgraded tiers keep one only while their goods run short (SUPPLY_CARRIER_GOODS_BY_BUILDING_ID),
-  // except that from the late game the pottery runs one whenever clay is not short (rawGoodShort), since
-  // bricks bottleneck the late bills. The
-  // pottery's second potter is a minimum post, ahead of the builder reserve, while a building material
-  // runs short once the opening run is done, and a surplus post meanwhile, making the crockery.
+  // The middle pottery and the upper mason hut keep one only while their goods run short
+  // (SUPPLY_CARRIER_GOODS_BY_BUILDING_ID), except that from the late game the middle pottery runs one
+  // whenever clay is not short (rawGoodShort), since bricks bottleneck the late bills. Its second potter
+  // is a minimum post, ahead of the builder reserve, while a building material runs short (once its
+  // opening run is done). Owner ruling: the top pottery always keeps three potters at the target tier, its
+  // crockery potter and its first brick potter as minimum posts, and a carrier while clay is not short.
   // Owner ruling: the potter and the mason stay at work until they earn the tiles and the ornaments,
   // since the upper tiers' bills wait on them.
   work_pottery_00: { carrierTarget: 1, keptUntil: TILE, islandMasterUntil: TILE },
@@ -138,11 +137,11 @@ export const STAFFING_BY_BUILDING_ID: Readonly<Record<string, StaffingRow>> = {
   work_pottery_01: {
     operatorMin: 2,
     operatorTarget: 2,
-    operatorSurplus: 2,
     productGated: true,
     late: { carrierTarget: 1 },
     keptUntil: TILE,
   },
+  work_pottery_02: { operatorMin: 2, operatorTarget: 3, carrierTarget: 1 },
   work_mason_hut_01: { operatorTarget: 2, productGated: true, keptUntil: ORNAMENT },
   // Owner ruling: each tailor runs a porter at the target tier, as the animal farm does, and a tunic
   // seat's upper tailor its second tailor as a minimum post, so its two shops' four tailors stand early.
@@ -171,7 +170,7 @@ export const STAFFING_BY_BUILDING_ID: Readonly<Record<string, StaffingRow>> = {
     aloneUntil: BIG_HEALING_POTION,
     porterUntil: BIG_HEALING_POTION,
   },
-  // Owner ruling: the first coiner earns the amulets alone, his coins feeding the druids meanwhile.
+  // Owner ruling: the first coiner earns the amulets alone.
   work_coin_mint: {
     operatorTarget: 2,
     carrierTarget: 1,

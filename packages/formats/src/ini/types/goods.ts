@@ -8,9 +8,13 @@ import type { RuleSection } from '../grammar.js';
 import { makeSource, requireTypeId, type SourceRef, slug, tallyIds } from '../ir-fields.js';
 import { getInt, getIntValues, getStr } from '../props.js';
 
-/** Effects are described in the owned English tutorial; values are clean-room observations of the
- * original's house demand, delivery and per-use arithmetic. The readable good rows name no fields
- * for this policy, so it stays beside extraction as explicit calibrated content. */
+/** Holy oil and crockery: effects are described in the owned English tutorial; values are clean-room
+ * observations of the original's house demand, delivery and per-use arithmetic. Furniture is the owner's
+ * design, not an observation: a piece, 1000 points, houses one extra family (`furnishedFamilies`), and
+ * only that family wears it. Its wear aims at a piece lasting a family about half an hour of game time in
+ * sleeps and meals, scaled from AI-run play of a real map, where a family starts about 18 of them at home
+ * an hour; a child costs a fifth of a piece. The readable good rows name no fields for this policy, so it
+ * stays beside extraction as explicit calibrated content. */
 const HOME_QUALITY_BY_GOOD_ID = {
   holy_oil: {
     effect: 'piety',
@@ -29,12 +33,10 @@ const HOME_QUALITY_BY_GOOD_ID = {
     minimumHomeLevel: 0,
   },
   furniture: {
-    effect: 'rest',
-    deliveryValue: 100,
-    capacity: 500,
-    useCost: 5,
-    fetchBelow: 100,
+    effect: 'lodging',
+    deliveryValue: 1000,
     minimumHomeLevel: 0,
+    wear: { child: 200, sleep: 100, meal: 100 },
   },
 } as const;
 

@@ -1,4 +1,4 @@
-import type { BuildingType } from '@open-northland/data';
+import type { BuildingType, ContentSet } from '@open-northland/data';
 import type { TargetMark } from '@open-northland/render';
 import { entitiesWith, entityById, systems, type WorldSnapshot } from '@open-northland/sim';
 import { entitiesUnder, idsGroupedBy } from '../../../game/snapshot/id-index.js';
@@ -15,6 +15,7 @@ import {
   settlersIn,
   trainingHouseOf,
 } from '../../../game/snapshot/index.js';
+import { coinDrillersAt } from '../orders/coin-drill.js';
 import { markOf } from './target-mark.js';
 
 /** The slice of a building type these picks read. */
@@ -132,11 +133,33 @@ const houseOrFoundationOfType =
     return def !== undefined && is(def);
   };
 
+const isBarracksOrFoundation = houseOrFoundationOfType(systems.isBarracksType);
+
 /** The barracks a settler may drill at; the one it already drills at refuses a repeat. */
 export const drillPick: OwnBuildingPick = ownBuildingPick({
-  candidate: houseOrFoundationOfType(systems.isBarracksType),
+  candidate: isBarracksOrFoundation,
   accepts: (building, settler) => trainingHouseOf(settler) !== building.id,
 });
+
+/** The barracks and barracks foundations of the soldiers' owners, lit where a press would send at least
+ *  one of `fighterIds` to coin-drill, refused otherwise. */
+export function coinDrillHighlight(
+  content: ContentSet,
+  snapshot: WorldSnapshot,
+  fighterIds: readonly number[],
+  byType: ReadonlyMap<number, BuildingInfo>,
+): TargetMark[] {
+  const fighters = settlersIn(snapshot, fighterIds);
+  const items: TargetMark[] = [];
+  if (fighters.length === 0) return items;
+  for (const e of entitiesWith(snapshot, 'Building')) {
+    if (!isBarracksOrFoundation(e, byType)) continue;
+    const owned = fighters.filter((settler) => ownerPlayerOf(settler) === ownerPlayerOf(e)).map((f) => f.id);
+    if (owned.length > 0)
+      items.push(markOf(e.id, coinDrillersAt(content, snapshot, e.id, owned, byType).length > 0));
+  }
+  return items;
+}
 
 /** The schools; the course dialog a pick opens decides per course who may still learn it. */
 export const schoolPick: OwnBuildingPick = ownBuildingPick({

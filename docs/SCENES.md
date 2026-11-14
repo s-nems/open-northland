@@ -110,6 +110,11 @@ pinned ship. On both shores they carry a unit a trip between the warehouse and t
 trader's cart and ride along in between, 48 wood across in the 2220 ticks the trader alone lands 15.
 Select the ship for their seats, the captain's well still the trader's, and Ctrl click a seat to step one out.
 
+`?scene=trade-sea-shared-stop` runs two traders, each with its own warehouse on the west island and a
+small ship pinned to its route, carrying wood to one warehouse on the east island. The ship that reaches
+the east shore second moors beside the first rather than waiting for it to leave. Watch the east shore:
+both hulls lie there together while both carts ferry.
+
 `?scene=trade-sea-settlements` holds stock levels between two islands. Each island has two warehouses
 under one signpost, and both stops of the route stand for their whole settlement ("osada"). The east
 island is filled up to 20 bricks and 20 stone out of both west warehouses, and its wood goes west until 30
@@ -137,6 +142,10 @@ run they go back to their trade.
 
 `?scene=cow-raid` runs a red scout at a blue farm's cattle and back. The cows in his reach run, each
 its own way, the sheep beyond it keep grazing, and once he is gone the cows walk back to the farm.
+
+`?scene=farm-larder` stands three homes beside a headquarters full of food and a cattle farm further
+east with a full meat shelf. Watch the women walk past the headquarters and carry meat home from the
+farm, while the stock farmer keeps slaughtering cattle and the farm's leather grows.
 
 `?scene=creature-forms` lines up the five animal-body looks authored for the weresnake tribe: sheep,
 chicken, lion, wolf and bear. The lion, wolf and bear forms have soldiers nearby for observing their
@@ -213,6 +222,12 @@ holding iron stays where he is.
 `?scene=assistant-families` turns on the assistant's "found families" switch for three homeless women and
 three men beside a two-family home. Two women move in and each weds a man, who moves in with her. The third
 woman finds no free place, stays homeless and stays single.
+
+`?scene=furnished-home` stands three single-family homes. The west one holds two pieces of furniture
+and a second family. Two tired women walk home to the middle one, where the piece of the woman who
+moved in last lasts only until her next sleep: once she lies down it is gone, she moves out with a
+"Moved out" note, and the assistant moves her into the empty home in the east. Select each home for its families and
+its furniture row.
 
 `?scene=porter-flag` puts a stone miner at a quarry far east of the headquarters. The headquarters
 porter holds a pickup flag beside the miner's yard: he carries the quarry stone and the flour of an

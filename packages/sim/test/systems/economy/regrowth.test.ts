@@ -33,6 +33,10 @@ const MAP_NODES = 40;
 const FELLED = { hx: 20, hy: 20 } as const;
 const DELAY_MIN_TICKS = 3600;
 const DELAY_MAX_TICKS = DELAY_MIN_TICKS + 10800;
+/** A mushroom regrows this many times as fast as a tree. */
+const MUSHROOM_SPEEDUP = 2;
+const MUSHROOM_DELAY_MIN_TICKS = DELAY_MIN_TICKS / MUSHROOM_SPEEDUP;
+const MUSHROOM_DELAY_MAX_TICKS = DELAY_MAX_TICKS / MUSHROOM_SPEEDUP;
 /** The search's reach from the felled tree, in lattice steps. */
 const SEARCH_STEPS = 11;
 /** Enough regrowths that the one-in-ten failure cannot leave them all empty. */
@@ -133,7 +137,7 @@ describe('regrowth', () => {
     expect([...sim.world.query(Regrowth)]).toHaveLength(0);
   });
 
-  it('schedules a regrowth of its own record for each unit picked off a mushroom', () => {
+  it('schedules a regrowth of its own record 2.5 to 10 minutes out for each unit picked off a mushroom', () => {
     const sim = mapSim();
     const mushroom = mushroomAt(sim, FELLED.hx, FELLED.hy);
     sim.world.mut(mushroom, Resource).remaining = PICKS;
@@ -142,9 +146,14 @@ describe('regrowth', () => {
       expect(harvestFromNode(sim.world, ctxOf(sim), picker, mushroom, MUSHROOM, PICK_STROKES)).toBe(1);
     }
     expect(sim.world.isAlive(mushroom)).toBe(false);
-    expect(pending(sim)).toEqual(
+    const due = pending(sim);
+    expect(due).toEqual(
       Array.from({ length: PICKS }, () => expect.objectContaining({ ...FELLED, ...MUSHROOM_REGROWTH })),
     );
+    for (const { dueAtTick } of due) {
+      expect(dueAtTick).toBeGreaterThanOrEqual(sim.tick + MUSHROOM_DELAY_MIN_TICKS);
+      expect(dueAtTick).toBeLessThan(sim.tick + MUSHROOM_DELAY_MAX_TICKS);
+    }
   });
 
   it('schedules nothing for a pick off a node of any other landscape', () => {

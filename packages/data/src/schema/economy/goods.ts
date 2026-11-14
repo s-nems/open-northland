@@ -88,30 +88,58 @@ export const GoodFarming = z.strictObject({
   stages: z.number().int().positive(),
   /** Units a ripe field drops (as a ground sheaf) when reaped. */
   yieldPerField: z.number().int().positive(),
-  /** How far from the farm's anchor its workers sow, in half-cell nodes. */
+  /** How far from the work centre (the farm, or its sower's flag) fields are sown and tended, in half-cell
+   *  nodes. */
   fieldRadius: z.number().int().positive(),
-  /** Fields one farm keeps standing at once, whatever its crew size. */
+  /** Fields one plot keeps standing at once, whatever its crew size. */
   maxFields: z.number().int().positive(),
 });
 export type GoodFarming = z.infer<typeof GoodFarming>;
 
-export const HomeQualityEffect = z.enum(['cooking', 'rest', 'piety']);
+export const HomeQualityEffect = z.enum(['cooking', 'lodging', 'piety']);
 export type HomeQualityEffect = z.infer<typeof HomeQualityEffect>;
 
-/** A durable good delivered to a family's home and used there to improve one household activity. */
-export const HomeQuality = z.strictObject({
-  effect: HomeQualityEffect,
+/** What every household good states, whatever it serves. */
+const homeQualityDelivery = {
   /** Quality points credited when one carried unit reaches the home. */
   deliveryValue: z.number().int().positive(),
-  /** Maximum quality points retained by one home. */
-  capacity: z.number().int().positive(),
-  /** Quality points spent by one matching household action. */
-  useCost: z.number().int().positive(),
-  /** A home requests another unit while its stored quality is below this value. */
-  fetchBelow: z.number().int().nonnegative(),
   /** Zero-based home upgrade level required to request and use this good. */
   minimumHomeLevel: z.number().int().nonnegative(),
+};
+
+/** Quality points the piece an extra family lives on loses to each of that family's activities. */
+export const LodgingWear = z.strictObject({
+  /** The couple beginning to make a child in the home. */
+  child: z.number().int().positive(),
+  /** A member starting a sleep in the home. */
+  sleep: z.number().int().positive(),
+  /** A member starting a meal off the home's own larder. */
+  meal: z.number().int().positive(),
 });
+export type LodgingWear = z.infer<typeof LodgingWear>;
+
+/**
+ * A durable good delivered to a family's home and used there. Cooking and piety spend one `useCost` per
+ * matching action. Lodging houses extra families, one delivered unit to a family: the home keeps one spare
+ * unit per `furnishedFamilies` of its building type, and each extra family wears the unit it lives on.
+ */
+export const HomeQuality = z.discriminatedUnion('effect', [
+  z.strictObject({
+    effect: z.enum(['cooking', 'piety']),
+    ...homeQualityDelivery,
+    /** Maximum quality points retained by one home. */
+    capacity: z.number().int().positive(),
+    /** A home requests another unit while its stored quality is below this value. */
+    fetchBelow: z.number().int().nonnegative(),
+    /** Quality points spent by one matching household action. */
+    useCost: z.number().int().positive(),
+  }),
+  z.strictObject({
+    effect: z.literal('lodging'),
+    ...homeQualityDelivery,
+    wear: LodgingWear,
+  }),
+]);
 export type HomeQuality = z.infer<typeof HomeQuality>;
 export type HomeQualityUse = HomeQuality;
 

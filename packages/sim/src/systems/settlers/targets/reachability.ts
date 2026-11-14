@@ -3,9 +3,9 @@ import type { Entity, World } from '../../../ecs/world.js';
 import type { BlockOverlay } from '../../../nav/block-overlay.js';
 import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
 import type { SystemContext } from '../../context.js';
-import { constructionWorkCell } from '../../footprint/index.js';
+import { constructionWorkCell, dynamicBlockOverlay, routeRegions } from '../../footprint/index.js';
 import type { RouteRegions } from '../../footprint/route-regions.js';
-import { isUnreachableGoal } from '../unreachable-goals.js';
+import { isUnreachableGoal, unreachableGoals } from '../unreachable-goals.js';
 
 /** The reachability layers {@link unreachableWorkCell} probes. */
 export interface WorkCellGates {
@@ -31,6 +31,27 @@ export function unreachableWorkCell(gates: WorkCellGates, here: NodeId, cell: No
     terrain.componentOf(here) !== terrain.componentOf(cell) ||
     regions?.unroutable(here, cell) === true
   );
+}
+
+/**
+ * {@link unreachableWorkCell} as the cell veto a source search probes at each candidate's interaction
+ * cell, for `seeker` standing on `here`. A pile inside a building's body has no stand, so its cell is its
+ * blocked anchor and the veto retires it for every seeker, where the failed-goal memo alone forgets it.
+ */
+export function unreachableCellVeto(
+  world: World,
+  ctx: SystemContext,
+  terrain: TerrainGraph,
+  seeker: Entity,
+  here: NodeId,
+): (cell: NodeId) => boolean {
+  const gates: WorkCellGates = {
+    terrain,
+    blocked: dynamicBlockOverlay(world, ctx, terrain),
+    memo: unreachableGoals(world, ctx, seeker),
+    regions: routeRegions(world, ctx, terrain),
+  };
+  return (cell) => unreachableWorkCell(gates, here, cell);
 }
 
 /**

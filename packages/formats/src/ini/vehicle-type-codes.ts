@@ -13,15 +13,18 @@ export const VEHICLE_TYPE_CODES = {
   VEHICLE_TYPE_CART_NO_OX: 6,
 } as const satisfies Readonly<Record<string, number>>;
 
+/** Owner balance: the original's 3000 raised by a fifth, so the catapult lasts longer under fire. */
+const CATAPULT_HITPOINTS = 3600;
+
 /**
- * The original's hit-point table indexed by vehicle type (docs/formats/VEHICLES.md): both
- * ships 5000, the catapult 3000, every cart {@link VEHICLE_HITPOINTS_DEFAULT}.
+ * The hit-point table indexed by vehicle type: the original's (docs/formats/VEHICLES.md), both ships
+ * 5000 and every cart {@link VEHICLE_HITPOINTS_DEFAULT}, but the catapult {@link CATAPULT_HITPOINTS}.
  */
 export const VEHICLE_HITPOINTS_DEFAULT = 1000;
 export const VEHICLE_HITPOINTS_BY_TYPE: ReadonlyMap<number, number> = new Map([
   [VEHICLE_TYPE_CODES.VEHICLE_TYPE_SHIP_SMALL, 5000],
   [VEHICLE_TYPE_CODES.VEHICLE_TYPE_SHIP_BIG, 5000],
-  [VEHICLE_TYPE_CODES.VEHICLE_TYPE_CATAPULT, 3000],
+  [VEHICLE_TYPE_CODES.VEHICLE_TYPE_CATAPULT, CATAPULT_HITPOINTS],
 ]);
 
 /** `logicdefines.inc` places every `JOB_TYPE_VEHICLE_*` at its `VEHICLE_TYPE_*` plus this offset

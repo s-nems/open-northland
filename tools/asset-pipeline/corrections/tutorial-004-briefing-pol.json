@@ -1,5 +1,5 @@
 {
-  "reason": "U nas przycisk rozbudowy w panelu budynku nazywa się ROZBUDUJ (skrót R) i jest widoczny zawsze; nieaktywny, dopóki ludzie nie zdobędą potrzebnej wiedzy, a materiały na rozbudowę donoszą się dopiero po jej rozpoczęciu (plac budowy dla budowniczych), nie trzeba ich mieć wcześniej. Wyrób wybiera się przyciskiem towaru w sekcji PRODUKCJA panelu osadnika, nie w zakładce PRODUKT/PRACA. Poprawione są też błędy gramatyczne, literówki i nazwy wyrobów. Meble nie są skórzane, marmur powstaje z kamienia, a zwiadowca może schwytać zwierzęta. Naczynia powstają już w warsztacie garncarskim 2. Strona i cel uczą wyboru naczyń w sekcji PRODUKCJA i wyprodukowania przynajmniej jednej sztuki, zamiast niedostępnej kolejnej rozbudowy.",
+  "reason": "U nas przycisk rozbudowy w panelu budynku nazywa się ROZBUDUJ (skrót R) i jest widoczny zawsze; nieaktywny, dopóki ludzie nie zdobędą potrzebnej wiedzy, a materiały na rozbudowę donoszą się dopiero po jej rozpoczęciu (plac budowy dla budowniczych), nie trzeba ich mieć wcześniej. Wyrób wybiera się przyciskiem towaru w sekcji PRODUKCJA panelu osadnika, nie w zakładce PRODUKT/PRACA. Poprawione są też błędy gramatyczne, literówki i nazwy wyrobów. Meble nie są skórzane, marmur powstaje z kamienia, a zwiadowca może schwytać zwierzęta.",
   "file": "maps/community/tutorial_004/text/pol/briefings/briefings.txt",
   "sha256": "46cea421d38a6f52ec617c7c705d0610c31648a9d1a6944533c2ad319e2ea49d",
   "encoding": "windows-1250",
@@ -10,7 +10,7 @@
     },
     {
       "from": "Ulepsz WARSZTAT GARNCARSKI 2! Aby tego dokonać, otwórz okienko budynku klikając na warsztat garncarski. Kliknij na przycisk \"ROZPOCZNIJ ULEPSZANIE\". Przycisk pojawi się tylko wtedy, gdy wszystkie wymagane do ulepszenia środki zostaną zgromadzone.",
-      "to": "Jeśli warsztat nie ma jeszcze poziomu 2, najpierw ukończ jego rozbudowę. Wybierz garncarza pracującego w WARSZTACIE GARNCARSKIM 2 i kliknij aktywny przycisk z naczyniami w sekcji PRODUKCJA jego panelu. Wyprodukuj co najmniej jedną sztukę naczyń!"
+      "to": "Ulepsz WARSZTAT GARNCARSKI 2! Aby tego dokonać, otwórz okienko budynku, klikając na warsztat garncarski. Kliknij na przycisk \"ROZBUDUJ\" (lub naciśnij R). Przycisk jest aktywny dopiero wtedy, gdy twoi ludzie zdobędą potrzebną wiedzę. Wymagane do ulepszenia środki zostaną doniesione na plac rozbudowy, a ulepszenie wykonają twoi budowniczowie."
     },
     {
       "from": "Ulepsz WARSZTAT KAMIENIARSKI! Aby tego dokonać, otwórz okienko budynku klikając na warsztat kamieniarski. Kliknij na przycisk \"ROZPOCZNIJ ULEPSZANIE\". Przycisk pojawi się tylko wtedy, gdy wszystkie wymagane do ulepszenia środki zostaną zgromadzone.",
@@ -83,14 +83,6 @@
     {
       "from": "Ulepszyłeś warsztat ciesielski, ale cieśla nie wie, że powinien produkować meble skórzane zamiast drewnianych narzędzi ...",
       "to": "Ulepszyłeś warsztat ciesielski, ale cieśla nie wie, że powinien produkować meble zamiast drewnianych narzędzi ..."
-    },
-    {
-      "from": "ULEPSZANIE WARSZTATU GARNCARSKIEGO 2",
-      "to": "PRODUKCJA NACZYŃ"
-    },
-    {
-      "from": "Garncarz zdobył wystarczająco dużo doświadczenia w robieniu dachówek, aby teraz zacząć produkować naczynia. To wymaga ponownego ulepszenia warsztatu garncarskiego. ",
-      "to": "Garncarz ma już dość doświadczenia, aby produkować naczynia. Naczynia wytwarza w warsztacie garncarskim 2. "
     }
   ]
 }

@@ -17,23 +17,70 @@ function logicTypeByLevel(sec: RuleSection): Map<number, number> {
   return typeByLevel;
 }
 
+/** The `[GfxHouse]` keys whose first value is the size level the line belongs to. */
+const LEVEL_KEYS: ReadonlySet<string> = new Set([
+  'LogicType',
+  'logichitpoints',
+  'LogicConstructionGoods',
+  'LogicWalkBlockArea',
+  'LogicConstructionWorkArea',
+  'LogicDoorPoint',
+  'GfxBobId',
+  'GfxBobConstructionLayer',
+  'Gfxdoorbobid',
+  'GfxFlagPoint',
+  'GfxOverlay',
+  'GfxSmokePoint',
+  'GfxFirePoint',
+  'GfxHolyFirePoint',
+  'gfxoverlaylandscape',
+  'gfxsoldierflagpoint',
+]);
+
+function levelOf(p: RuleProp): number | undefined {
+  if (!LEVEL_KEYS.has(p.key)) return undefined;
+  const level = Number.parseInt(p.values[0] ?? '', 10);
+  return Number.isNaN(level) ? undefined : level;
+}
+
+/**
+ * Repeats a drawn level for the level above it when the `LogicType` table declares that level but no
+ * `GfxBobId` draws it: every per-level key the level does not set itself takes the lower level's lines,
+ * appended in their order. No shipped record leaves a level undrawn; a correction that adds a level to a
+ * house relies on this to reuse the level below's picture and ground. Project rule: how the original
+ * treats such a level is unknown.
+ */
+function drawUndrawnLevels(props: readonly RuleProp[]): readonly RuleProp[] {
+  const drawn = new Set(props.filter((p) => p.key === 'GfxBobId').map(levelOf));
+  const declared = [...new Set(props.filter((p) => p.key === 'LogicType').map(levelOf))]
+    .filter((level) => level !== undefined)
+    .sort((a, b) => a - b);
+  if (drawn.size === 0 || declared.every((level) => drawn.has(level))) return props;
+  const filled = [...props];
+  for (const [index, level] of declared.entries()) {
+    const below = declared[index - 1];
+    if (below === undefined || drawn.has(level) || !drawn.has(below)) continue;
+    drawn.add(level);
+    const own = new Set(filled.filter((p) => levelOf(p) === level).map((p) => p.key));
+    for (const p of filled.filter((line) => levelOf(line) === below && !own.has(line.key))) {
+      filled.push({ key: p.key, values: [String(level), ...p.values.slice(1)] });
+    }
+  }
+  return filled;
+}
+
 /**
  * Splits one `[GfxHouse]` section into its constituent house records. The mod packs several houses under
  * a single bracket, each sub-house delimited only by a fresh `EditName` line, and `parseIniSections`
  * opens a section only on a `[...]` header. Props before the first `EditName` are ignored.
  */
 function splitGfxHouseRecords(sec: RuleSection): RuleSection[] {
-  const records: RuleSection[] = [];
-  let props: RuleProp[] | undefined;
+  const records: RuleProp[][] = [];
   for (const p of sec.props) {
-    if (p.key === 'EditName') {
-      props = [p];
-      records.push({ name: sec.name, props });
-    } else if (props !== undefined) {
-      props.push(p);
-    }
+    if (p.key === 'EditName') records.push([p]);
+    else records.at(-1)?.push(p);
   }
-  return records;
+  return records.map((props) => ({ name: sec.name, props: drawUndrawnLevels(props) }));
 }
 
 /** Every house record of every `[GfxHouse]` section, in file order: the one traversal each extractor walks. */

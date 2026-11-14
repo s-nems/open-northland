@@ -189,6 +189,17 @@ export type SimEvent =
     }
   | {
       /**
+       * A family moved out of `home`: its furniture ran out or its owner forbade it, and the home's base
+       * `homeSize` has no slot left for the family. `entity` is the family's head (its lower adult id, or the
+       * child of a household with no adult), still alive and now homeless; `player` owns the home.
+       */
+      readonly kind: 'familyMovedOut';
+      readonly entity: Entity;
+      readonly home: Entity;
+      readonly player: number | null;
+    }
+  | {
+      /**
        * Two settlers became spouses this tick. `at` is the kiss node and `player` the couple's owner
        * (`null` for an unowned pair), for the marriage jingle (`DM_MUSIC_TYPE_JINGLE_MARRIAGE`,
        * `logicdefines.inc`), which rings for the owner alone.
@@ -245,12 +256,18 @@ export type SimEvent =
       readonly kind: 'atomicSound';
       readonly entity: Entity;
       readonly soundType: number;
+      /** The body the sound comes from when `entity` stands nowhere on the map: the warship a deck
+       *  bowman draws on, whose clip sounds as if he played it there. */
+      readonly from?: Entity;
+      /** The clip plays a sip of a carried draught on the eat clip, so its authored cue is a meal's
+       *  chewing that a sink may swap for a sip. */
+      readonly sip?: true;
     }
   | {
       /**
        * A melee blow connected this tick; a swing that struck air emits nothing. `at` is the victim's
-       * node, `weaponMainType` the striker's weapon class (1 fist / 2 spear / 3 sword / 6 bow / 7 catapult,
-       * `WEAPON_MAIN_TYPE_*`; the saber rows carry 4 and the hero axe 5) or `undefined` when the weapon
+       * node, `weaponMainType` the striker's weapon class (1 fist / 2 spear / 3 sword / 4 saber /
+       * 5 hero axe / 6 bow / 7 catapult, `WEAPON_MAIN_TYPE_*`) or `undefined` when the weapon
        * lists no class, and `structure` marks a blow that landed on a building rather than a body.
        * `soundType` is the sound bank's `logicSoundType` of the impact the weapon lists for the victim's
        * armor material (`soundtype_Hit`); a weapon listing none lands silently. A blow that does no damage
@@ -260,6 +277,8 @@ export type SimEvent =
       /** Wounding hitpoints after protection, capped to the living pool before instant healing. */
       readonly damage: number;
       readonly targetMaxHealth: number;
+      /** The striker's critical hit came up for this blow. */
+      readonly critical?: true;
       /** Identity at impact survives death and subsequent transformations. */
       readonly targetIdentity?: SettlerIdentity;
       readonly attacker: Entity;
@@ -334,9 +353,10 @@ export type SimEvent =
        * included.
        */
       readonly kind: 'projectileHit';
-      /** Wounding hitpoints and pool size, with the same semantics as combatHit. */
+      /** Wounding hitpoints, pool size and critical mark, with the same semantics as combatHit. */
       readonly damage: number;
       readonly targetMaxHealth: number;
+      readonly critical?: true;
       /** Identity at impact survives death and subsequent transformations. */
       readonly targetIdentity?: SettlerIdentity;
       readonly projectile: Entity;
@@ -415,11 +435,19 @@ export type SimEvent =
       readonly at: HalfCellNode;
     }
   | {
-      /** A road or wall was ordered over `nodes` this tick, destroying the walk-through `razed` there; the
-       *  static layer drops their sprites and the map's scenery anchored on those nodes. */
+      /** A road or wall was ordered or a signpost erected over `nodes` this tick, destroying the
+       *  walk-through `razed` there; the static layer drops their sprites and the map's scenery anchored on
+       *  those nodes. */
       readonly kind: 'groundCleared';
       readonly nodes: readonly HalfCellNode[];
       readonly razed: readonly Entity[];
+    }
+  | {
+      /** A settler took one sip of a carried draught where it stands: mead, a potion, or an amulet's
+       *  top-up of its need. */
+      readonly kind: 'draughtDrunk';
+      readonly entity: Entity;
+      readonly goodType: number;
     }
   | {
       /** A settler opened `chest` this tick and its contents were handed out. The original transitions

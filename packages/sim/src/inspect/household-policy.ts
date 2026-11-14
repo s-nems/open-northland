@@ -5,7 +5,7 @@ import { entitiesWith } from './snapshot-indexes.js';
 
 export interface HouseholdGoodPolicyView {
   readonly cooking: boolean;
-  readonly rest: boolean;
+  readonly lodging: boolean;
   readonly piety: boolean;
 }
 
@@ -15,9 +15,9 @@ export function householdGoodPolicyView(snapshot: WorldSnapshot, player: number)
   for (const entity of entitiesWith(snapshot, 'HouseholdGoodPolicy')) {
     const raw = entity.components.HouseholdGoodPolicy;
     if (!isPlainRecord(raw) || raw.player !== player) continue;
-    const { cooking, rest, piety } = raw;
-    if (typeof cooking !== 'boolean' || typeof rest !== 'boolean' || typeof piety !== 'boolean') continue;
-    return { cooking, rest, piety };
+    const { cooking, lodging, piety } = raw;
+    if (typeof cooking !== 'boolean' || typeof lodging !== 'boolean' || typeof piety !== 'boolean') continue;
+    return { cooking, lodging, piety };
   }
   return DEFAULT_HOUSEHOLD_GOOD_POLICY;
 }

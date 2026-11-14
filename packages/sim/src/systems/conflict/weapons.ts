@@ -13,15 +13,19 @@ import {
   type VehicleStateView,
   type WalkDirection,
 } from '../../components/index.js';
+import type { AtomicEffect } from '../../core/atomic-effect.js';
 import { contentIndex } from '../../core/content-index.js';
 import { SMALL_INTEGER_SPAN } from '../../core/small-integer.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { SystemContext } from '../context.js';
 import { headingToward } from '../movement/turning.js';
 import {
+  atomicAnimationByName,
   atomicDurationForName,
   boundAnimalAtomicAnimation,
   boundAtomicAnimation,
+  type ClipSoundCue,
+  clipEventFactsOf,
 } from '../readviews/animations.js';
 import {
   ARMOR_MATERIAL,
@@ -35,6 +39,7 @@ import {
   isAnimalTribe,
   isAreaWeapon,
   isRangedWeapon,
+  isShipVehicle,
 } from '../readviews/index.js';
 
 // The combat weapon layer: what an attacker fights with, which armor material a target presents, and the
@@ -65,7 +70,7 @@ const reaches = new WeakMap<WeaponType, WeaponReach>();
  * overrides resolve to the last definition in file order.
  */
 export function attackerWeapon(
-  ctx: SystemContext,
+  ctx: Pick<SystemContext, 'content'>,
   tribe: number,
   jobType: number | null,
   wornWeaponTypeId?: number,
@@ -122,7 +127,7 @@ function armingPart(id: number, span: number): number | null {
 }
 
 function resolveWeapon(
-  ctx: SystemContext,
+  ctx: Pick<SystemContext, 'content'>,
   tribe: number,
   jobType: number | null,
   wornWeaponTypeId: number | undefined,
@@ -168,7 +173,7 @@ export type ArmedWith = NonNullable<ReturnType<typeof attackerWeapon>>;
 /** The vehicle's weapon: the row its type's job binds for its tribe (weapon 21 for the catapult's job
  *  54). Null for every unarmed vehicle - the carts and ships. */
 export function vehicleWeapon(
-  ctx: SystemContext,
+  ctx: Pick<SystemContext, 'content'>,
   state: Pick<VehicleStateView, 'vehicleType' | 'tribe'>,
 ): ReturnType<typeof attackerWeapon> {
   const type = contentIndex(ctx.content).vehicles.get(state.vehicleType);
@@ -219,10 +224,25 @@ export function wallBlowDamage(houseDamage: number): number {
   return Math.trunc(Math.max(0, houseDamage) / HOUSE_DAMAGE_PER_WALL_VALENCY);
 }
 
-/** A blow's resolved damage against `target`: {@link wallBlowDamage} for a wall, else `damage` itself. A
- *  blow that takes no valency off a wall resolves to 0 and, like every zero-damage blow, lands nothing. */
-export function damageVsTarget(world: World, target: Entity, damage: number): number {
-  return world.has(target, Palisade) ? wallBlowDamage(damage) : damage;
+/** How many times its vehicle column a siege stone deals to a ship. Owner rule: ships hold twice the
+ *  original's pool, and a catapult on the shore stays the answer to a fleet. */
+export const SHIP_SIEGE_DAMAGE_FACTOR = 2;
+
+/** A blow's resolved damage against `target`: {@link wallBlowDamage} for a wall, a `siege` stone's
+ *  {@link SHIP_SIEGE_DAMAGE_FACTOR} on a ship, else `damage` itself. A blow that takes no valency off a
+ *  wall resolves to 0 and, like every zero-damage blow, lands nothing. */
+export function damageVsTarget(
+  world: World,
+  ctx: SystemContext,
+  target: Entity,
+  damage: number,
+  siege: boolean,
+): number {
+  if (world.has(target, Palisade)) return wallBlowDamage(damage);
+  const vehicle = siege ? world.tryGet(target, Vehicle) : undefined;
+  const type =
+    vehicle === undefined ? undefined : contentIndex(ctx.content).vehicles.get(vehicle.vehicleType);
+  return type !== undefined && isShipVehicle(type) ? damage * SHIP_SIEGE_DAMAGE_FACTOR : damage;
 }
 
 /**
@@ -275,22 +295,7 @@ export function startAttack(
   // A ranged weapon with a positive travel `speed` fires a projectile at the release frame instead of
   // landing the blow in place; a melee weapon, or a ranged one missing its `speed`, falls back to the
   // in-place hit.
-  const projectile =
-    isRangedWeapon(weapon) &&
-    weapon.speed !== undefined &&
-    weapon.speed > 0 &&
-    weapon.munitionType !== undefined
-      ? // Copied: saved state may not alias the content row another swing carries too.
-        {
-          munitionType: weapon.munitionType,
-          speed: weapon.speed,
-          hitSelf: weapon.hitSelf,
-          area: isAreaWeapon(weapon),
-          damage: { ...weapon.damage },
-          hitSounds: { ...weapon.hitSounds },
-          missSounds: { ...weapon.missSounds },
-        }
-      : undefined;
+  const projectile = isRangedWeapon(weapon) && loosesMissile(weapon) ? missileOf(weapon) : undefined;
   addCurrentAtomic(world, e, {
     atomicId: ATTACK_ATOMIC_ID,
     duration: atomicDurationForName(ctx.content, animation),
@@ -313,6 +318,29 @@ export function startAttack(
   });
   // The melee swoosh is announced at the strike frame by the executor, not here at windup, so it stays in
   // sync with the visible strike.
+}
+
+/** A weapon that looses a missile: a declared munition flying at a positive speed. */
+export type MissileWeapon = WeaponType & { munitionType: number; speed: number };
+
+/** The shot a missile weapon looses, as a swing and the projectile it becomes carry it. */
+export type MissileShot = NonNullable<Extract<AtomicEffect, { kind: 'attack' }>['projectile']>;
+
+export function loosesMissile(weapon: WeaponType | undefined): weapon is MissileWeapon {
+  return weapon?.munitionType !== undefined && weapon.speed !== undefined && weapon.speed > 0;
+}
+
+/** The shot `weapon` looses, its tables copied: saved state may not alias the content row. */
+export function missileOf(weapon: MissileWeapon): MissileShot {
+  return {
+    munitionType: weapon.munitionType,
+    speed: weapon.speed,
+    hitSelf: weapon.hitSelf,
+    area: isAreaWeapon(weapon),
+    damage: { ...weapon.damage },
+    hitSounds: { ...weapon.hitSounds },
+    missSounds: { ...weapon.missSounds },
+  };
 }
 
 /** Trades using civilian fists inherit the civilian swing's duration and hit events too.
@@ -361,6 +389,18 @@ export function attackClipTiming(
   const event = clip === undefined ? undefined : atomicEventFrame(content, clip, ATOMIC_EVENT_TYPE_ATTACK);
   return { length, shotAt: Math.min(event === undefined ? length : eventTick(event), length) };
 }
+
+/** The sounds the attack clip `attacker`'s trade binds authors, each at its tick of the clip. */
+export function attackClipSoundCues(
+  content: SystemContext['content'],
+  attacker: SettlerIdentity,
+): readonly ClipSoundCue[] {
+  const clip = attackAnimationName(content, attacker);
+  const anim = clip === undefined ? undefined : atomicAnimationByName(content, clip);
+  return anim === undefined ? NO_SOUND_CUES : clipEventFactsOf(anim).soundCues;
+}
+
+const NO_SOUND_CUES: readonly ClipSoundCue[] = [];
 
 /**
  * The numeric atomic id a combatant runs to attack - the original's `setatomic <job> 81 "..._attack"`

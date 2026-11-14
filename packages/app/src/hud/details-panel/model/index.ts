@@ -72,6 +72,7 @@ export {
   EXPERIENCE_FOLDED_MAX,
   type ExperienceRowModel,
   experienceShown,
+  type FightRowModel,
   type SettlerState,
   settlerStateHold,
 } from './settler.js';

@@ -15,6 +15,7 @@ import type { Entity } from '../../../src/ecs/world.js';
 import { type Fixed, positionOfNode, Simulation } from '../../../src/index.js';
 import type { NodeId, TerrainGraph } from '../../../src/nav/terrain/index.js';
 import { animalFrightSystem, FLIGHT_REACH_NODES } from '../../../src/systems/conflict/fright.js';
+import { SHELTER_SHOT_PERIOD_TICKS } from '../../../src/systems/conflict/shelter-fire.js';
 import { isTravelling } from '../../../src/systems/movement/nav-state.js';
 import {
   KIN_ALARM_RADIUS_NODES,
@@ -73,6 +74,7 @@ function loose(sim: Simulation, shooter: Entity, target: Entity, aim: { x: Fixed
       missSounds: {},
     },
     weaponMainType: null,
+    blowTicks: SHELTER_SHOT_PERIOD_TICKS,
     cover: null,
     aim,
   });

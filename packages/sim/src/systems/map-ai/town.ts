@@ -14,6 +14,7 @@ import {
   Stockpile,
   setStockAmount,
   UnderConstruction,
+  Vehicle,
   Wedding,
 } from '../../components/index.js';
 import type { PlayerCommand } from '../../core/commands/index.js';
@@ -29,6 +30,7 @@ import { openWorkerJobFromList } from '../economy/jobs/openings.js';
 import { needsRepair, repairCrewLimit } from '../economy/repair.js';
 import { liveWorkFlag } from '../economy/work-flag.js';
 import { isAdultSettler } from '../family/eligibility.js';
+import { homeFamilyCapacity } from '../family/home-quality.js';
 import { familyCountOf } from '../family/households.js';
 import { isFighterJob, isFisherJob } from '../readviews/index.js';
 import { interactionCell } from '../settlers/targets/index.js';
@@ -148,7 +150,7 @@ function spareMen(world: World, ctx: SystemContext, terrain: TerrainGraph, seat:
 
 /** Turn the nearest spare men builders until the house and wall sites and the repairs have their crews;
  *  the builders find their sites themselves. A workshop's vehicle yard is its own crew's work and wants
- *  no builder. */
+ *  no builder, and a moored ship hires none: the town's builders mend it once its buildings are whole. */
 function builderOrders(
   world: World,
   ctx: SystemContext,
@@ -176,7 +178,8 @@ function builderOrders(
     if (ownerOf(world, e) === seat) consider(e, repairCrewLimit(world, e));
   }
   for (const e of world.query(Damaged)) {
-    if (ownerOf(world, e) !== seat || world.has(e, UnderConstruction) || !needsRepair(world, e)) continue;
+    if (ownerOf(world, e) !== seat || world.has(e, UnderConstruction) || world.has(e, Vehicle)) continue;
+    if (!needsRepair(world, e)) continue;
     consider(e, Math.min(repairCrewLimit(world, e), TOWN_REPAIR_BUILDERS));
   }
   if (sites.length === 0) return [];
@@ -350,7 +353,11 @@ function homeOrders(
     if (type?.kind !== BUILDING_KIND.home) continue;
     const at = placedBuilding(world, ctx, terrain, house);
     if (!safe(at)) continue;
-    for (let free = type.homeSize - familyCountOf(world, house); free > 0; free--) {
+    for (
+      let free = homeFamilyCapacity(world, ctx, house, type) - familyCountOf(world, house);
+      free > 0;
+      free--
+    ) {
       const tribe = world.get(house, Building).tribe;
       const woman = takeBest(women, at, TOWN_HIRE_RADIUS_POINTS, (e) =>
         world.get(e, Settler).tribe === tribe ? 0 : null,

@@ -25,9 +25,10 @@ export const MILITARY: ArticleGroup = {
             head: ['Mnożnik', 'Wartość'],
             rows: [
               [
-                '[[article:exp-combat|Doświadczenie z tą bronią]] (tylko wręcz)',
+                '[[article:exp-combat|Doświadczenie w walce]] atakującego (tylko wręcz)',
                 'do ×{{combat.fightCapFactor}}',
               ],
+              ['[[article:exp-combat|Doświadczenie w walce]] celu', 'do ×{{combat.fightTakenFactor}}'],
               ['Cios w bok z tyłu', '×{{combat.backSideFactor}}'],
               ['Cios od tyłu', '×{{combat.behindFactor}}'],
             ],
@@ -36,7 +37,7 @@ export const MILITARY: ArticleGroup = {
         },
         {
           list: [
-            'Doświadczenie nie działa na strzały, kamienie, pojazdy i palisady.',
+            'Doświadczenie atakującego nie wzmacnia strzał, kamieni ani ciosów w pojazdy i palisady. Doświadczenie celu zmniejsza każdy cios i strzał w człowieka.',
             'Kierunek ciosu i Amulet Obrony liczą się tylko przy ludziach. Przy strzale kierunek liczy się od miejsca, z którego strzelano.',
             'Katapulta nie może mieć Amuletu Siły.',
             'Palisada liczy obrażenia inaczej: [[article:walls|Palisady i bramy]].',
@@ -102,6 +103,16 @@ export const MILITARY: ArticleGroup = {
             ],
             foot: 'Gdy lepsza rzecz z paska leży w magazynie w zasięgu, rekrut idzie po nią zamiast brać gorszą z Koszar.',
           },
+        },
+        {
+          h: 'Punkt zbiórki',
+        },
+        {
+          list: [
+            'W panelu [[building:barracks|Koszar]] możesz wbić flagę zbiórki albo kliknąć prawym na ziemi, gdy zaznaczone są same Koszary.',
+            'Żołnierze wyszkoleni potem w tych Koszarach idą do flagi i każdy zajmuje własne miejsce w szeregach wokół niej jako swój posterunek. Rekrut, który najpierw idzie po broń, kończy tę drogę przy fladze.',
+            'Bez flagi nowi żołnierze zostają przy drzwiach Koszar.',
+          ],
         },
         {
           h: 'Co trzymają Koszary',
@@ -197,14 +208,14 @@ export const MILITARY: ArticleGroup = {
         },
         {
           table: {
-            head: ['Trafień', 'Szansa na celny strzał'],
+            head: ['Punkty', 'Szansa na celny strzał'],
             rows: [
               ['0', '{{aim.basePct}}%'],
               ['50', '{{aim.samplePct}}%'],
-              ['{{aim.noSpreadHits}}+', 'Zawsze w cel'],
+              ['{{aim.noSpreadPoints}}+', 'Zawsze w cel'],
             ],
             num: [0, 1],
-            foot: 'Każde trafienie dodaje 1%. Od {{aim.noSpreadHits}} trafień nawet niecelna strzała spada w cel. Krótki i Długi Łuk liczą trafienia wspólnie, [[article:catapult|Katapulta]] osobno, ale według tej samej tabeli. Bohater zawsze trafia.',
+            foot: 'Każdy punkt [[article:exp-combat|doświadczenia w walce]] dodaje 1%, także punkty z musztry i z walki inną bronią. Od {{aim.noSpreadPoints}} pkt nawet niecelna strzała spada w cel. [[article:catapult|Katapulta]] liczy własne trafienia, ale według tej samej tabeli. Bohater zawsze trafia.',
           },
         },
         {
@@ -321,10 +332,10 @@ export const MILITARY: ArticleGroup = {
           h: 'Przełącznik "Jedzenie i sen"',
         },
         {
-          p: 'Przy "Zabronione" żołnierz sam nie idzie jeść, spać ani się modlić. Nie je nawet tego, co niesie, ani z zapasu wieży, a głód nie przerywa mu długiego rozkazu. Jeśli nie dostaje napojów, w końcu zacznie głodować. Pomoże rozkaz Jedz albo powrót na "Dozwolone".',
+          p: 'Przy "Zabronione" żołnierz sam nie idzie jeść, spać ani się modlić. Nie je nawet tego, co niesie, ani z zapasu wieży, nie zatrzymuje się na miód pitny, a głód nie przerywa mu długiego rozkazu. Jeśli nie ma mikstur, w końcu zacznie głodować. Pomoże rozkaz Jedz albo powrót na "Dozwolone".',
         },
         {
-          p: 'Napoje, amulety i rozkazy Jedz, Śpij, Módl się działają przy obu ustawieniach. W menu rozkazów te ustawienia nazywają się "Zezwól na przerwy" i "Bez przerw na potrzeby".',
+          p: 'Mikstury, amulety i rozkazy Jedz, Śpij, Módl się działają przy obu ustawieniach. W menu rozkazów te ustawienia nazywają się "Zezwól na przerwy" i "Bez przerw na potrzeby".',
         },
         {
           h: 'Odpoczynek blisko walki',
@@ -352,7 +363,7 @@ export const MILITARY: ArticleGroup = {
             head: ['Cecha', 'Żołnierz', 'Bohater'],
             rows: [
               ['Zasięg wzroku w hexach', '{{vision.soldier}}', '{{vision.hero}}'],
-              ['Celność łuku', 'Rośnie z trafieniami', 'Zawsze celny'],
+              ['Celność łuku', 'Rośnie z doświadczeniem w walce', 'Zawsze celny'],
               ['Doświadczenie w walce', 'Rośnie', 'Rośnie tylko, gdy pozwala na to misja'],
               ['Jedzenie i sen', 'Potrzebuje', 'Nie potrzebuje'],
               ['Broń, pancerz, Buty', 'Można zmienić, Buty się zużywają', 'Stałe, Buty się nie zużywają'],
@@ -411,7 +422,7 @@ export const MILITARY: ArticleGroup = {
             'Cywile, kobiety i dzieci biegną do najbliższego budynku z wolnym miejscem, do którego mogą dojść.',
             'Żołnierze, bohaterowie i [[job:scout|Zwiadowca]] zostają na zewnątrz.',
             'Kto nie znajdzie miejsca, pracuje dalej.',
-            'Na alarm osadnik przerywa jedzenie i sen. W środku nie pracuje i je tylko to, co ma przy sobie.',
+            'Na alarm osadnik przerywa jedzenie i sen. W środku nie pracuje i je to, co ma przy sobie, albo z zapasu budynku.',
             'Schowanego osadnika nie da się zaatakować.',
             'Gdy budynek zostanie zniszczony, schowani wychodzą.',
           ],
@@ -633,14 +644,14 @@ export const MILITARY: ArticleGroup = {
           h: 'Mur obronny',
         },
         {
-          p: '[[building:work_pottery_02|Mur obronny]] to zwykły budynek i dostaje obrażenia z kolumny Budynek. Żołnierz traktuje go jak palisadę.',
+          p: '[[building:defence_wall|Mur obronny]] to zwykły budynek i dostaje obrażenia z kolumny Budynek. Żołnierz traktuje go jak palisadę.',
         },
       ],
       see: [
         'article:damage',
         'article:catapult',
         'article:construction',
-        'building:work_pottery_02',
+        'building:defence_wall',
         'good:wood',
       ],
     },
@@ -712,7 +723,7 @@ export const MILITARY: ArticleGroup = {
           h: 'Celność',
         },
         {
-          p: 'Celność rośnie jak u łucznika: [[article:aim|Trafienie i strzelanie]]. Na {{catapult.max}} hexach niecelny kamień spada do {{stone.spread.0}} hexów od celu przy 0 trafień, {{stone.spread.25}} przy 25, {{stone.spread.50}} przy 50. Od {{aim.noSpreadHits}} trafień spada w cel. Trafienia zbiera dowódca: liczy się każdy kamień, który coś uszkodził, także budynek, ale tylko raz, nawet gdy trafił kilka celów.',
+          p: 'Celność rośnie jak u łucznika: [[article:aim|Trafienie i strzelanie]]. Na {{catapult.max}} hexach niecelny kamień spada do {{stone.spread.0}} hexów od celu przy 0 trafień, {{stone.spread.25}} przy 25, {{stone.spread.50}} przy 50. Nigdy nie spada za celem: kamień, który by go przeleciał, spada przed nim. Od {{aim.noSpreadPoints}} trafień spada w cel. Trafienia zbiera dowódca: liczy się każdy kamień, który coś uszkodził, także budynek, ale tylko raz, nawet gdy trafił kilka celów.',
         },
         {
           h: 'Postawy Katapulty',
@@ -735,8 +746,10 @@ export const MILITARY: ArticleGroup = {
         },
         {
           list: [
-            'Gdy cel jest bliżej niż {{catapult.min}} hexów, Katapulta odjeżdża. Gdy jest dalej niż {{catapult.max}}, podjeżdża na {{catapult.bandMin}}-{{catapult.max}} hexy.',
-            'Strzela tylko, gdy stoi i nie styka się z innym pojazdem.',
+            'W zasięgu {{catapult.min}}-{{catapult.max}} hexów strzela najpierw w wieże, Kwaterę główną, Koszary, budynki, z których ktoś strzela, i wrogie Katapulty, potem w łuczników i innych strzelców, potem w pozostałych żołnierzy, a dopiero na końcu w inne budynki i ludzi.',
+            'Poza Ignorowaniem, gdy w zasięgu nie ma żadnego celu z dwóch pierwszych grup, przyciąga ją taki cel do {{catapult.priorityReach}} hexów od niej: wieża, Kwatera główna, Koszary, budynek, z którego ktoś strzela, wroga Katapulta albo łucznicy i inni strzelcy. Podjeżdża nawet wtedy, gdy w zasięgu są pozostali żołnierze albo przy jej boku stoją wrogowie.',
+            'Gdy nic nie ma w zasięgu, odjeżdża od pojedynczego wroga bliżej niż {{catapult.min}} hexów, ale gdy tak blisko jest dwóch lub więcej, stoi w miejscu. Gdy cel jest dalej niż {{catapult.max}}, podjeżdża na {{catapult.bandMin}}-{{catapult.max}} hexy.',
+            'Strzela tylko, gdy stoi. Z Katapult, które się stykają, strzela tylko jedna: ta, która już stamtąd strzela. Pozostałe odjeżdżają na wolne miejsce albo czekają tam, gdzie stoją, gdy go nie ma.',
             'Możesz kazać jej strzelać w dowolne miejsce na ziemi. Palisadę ostrzeliwuje tylko na rozkaz.',
           ],
         },

@@ -10,7 +10,12 @@ import {
   Settler,
 } from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
-import { hexDistanceBetween, nodeHxOfPosition, nodeHyOfPosition } from '../../nav/halfcell.js';
+import {
+  type HalfCellNode,
+  hexDistanceBetween,
+  nodeHxOfPosition,
+  nodeHyOfPosition,
+} from '../../nav/halfcell.js';
 import type { SystemContext } from '../context.js';
 import { stanceFights, stanceMode } from '../readviews/index.js';
 import { playerSeesEntity } from '../vision/index.js';
@@ -108,13 +113,18 @@ export class BattleFront {
 
   /** Whether `e`, whose stance fights, holds its ground instead of resting or wandering off. */
   holdsRest(e: Entity, player: number): boolean {
-    return this.fightWithin(e, player, REST_CLEARANCE_NODES) || this.enemyStandsNear(e, player);
+    return this.holdsRestAt(e, player, this.nodeOf(e));
+  }
+
+  /** {@link holdsRest} asked of node `at`, for a unit off the map that would step out onto it. */
+  holdsRestAt(e: Entity, player: number, at: HalfCellNode): boolean {
+    return this.fightWithin(e, player, at, REST_CLEARANCE_NODES) || this.enemyStandsNear(e, player, at);
   }
 
   /** Whether a fight is on close enough to get `e` up from its sleep in the open. An enemy on its feet is
    *  not enough: one that comes within `e`'s own sight is acquired by the combat drive, which wakes it. */
   standsTo(e: Entity, player: number): boolean {
-    return this.fightWithin(e, player, STAND_TO_RADIUS_NODES);
+    return this.fightWithin(e, player, this.nodeOf(e), STAND_TO_RADIUS_NODES);
   }
 
   /** Whether anyone is fighting within {@link STAND_TO_RADIUS_NODES} of node `(hx, hy)`, whoever the sides
@@ -124,32 +134,32 @@ export class BattleFront {
     return !grid.empty && grid.anyWithin(hx, hy, STAND_TO_RADIUS_NODES, () => true);
   }
 
-  private fightWithin(e: Entity, player: number, radius: number): boolean {
+  private fightWithin(e: Entity, player: number, at: HalfCellNode, radius: number): boolean {
     const grid = this.ensureEngaged();
     if (grid.empty) return false;
     // Built on the first foreign member met, which most questions never reach: a unit stands to for its own
     // side's fight far more often than for anyone else's.
     let hostile: ((t: Entity) => boolean) | null = null;
-    return this.within(grid, e, radius, (t) => {
+    return grid.anyWithin(at.hx, at.hy, radius, (t) => {
       if (this.world.tryGet(t, Owner)?.player === player) return true;
       hostile ??= threatens(this.world, this.ctx, e, player);
       return hostile(t);
     });
   }
 
-  private enemyStandsNear(e: Entity, player: number): boolean {
+  private enemyStandsNear(e: Entity, player: number, at: HalfCellNode): boolean {
     const hostile = threatens(this.world, this.ctx, e, player);
-    return this.within(
-      this.ensureFighters(),
-      e,
+    return this.ensureFighters().anyWithin(
+      at.hx,
+      at.hy,
       STAND_TO_RADIUS_NODES,
       (t) => this.world.get(t, Owner).player !== player && hostile(t),
     );
   }
 
-  private within(grid: CoarseGrid, e: Entity, radius: number, accept: (t: Entity) => boolean): boolean {
+  private nodeOf(e: Entity): HalfCellNode {
     const p = this.world.get(e, Position);
-    return grid.anyWithin(nodeHxOfPosition(p.x, p.y), nodeHyOfPosition(p.x, p.y), radius, accept);
+    return { hx: nodeHxOfPosition(p.x, p.y), hy: nodeHyOfPosition(p.x, p.y) };
   }
 
   private ensureEngaged(): CoarseGrid {

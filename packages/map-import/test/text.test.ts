@@ -12,6 +12,7 @@ const LEGACY = [
   ['ger', '\xc4\xd6\xdc \xe4\xf6\xfc Stra\xdfe', 'ÄÖÜ äöü Straße'],
   ['eng', 'The Viking island', 'The Viking island'],
   ['rus', '\xcd\xce\xc2\xc0\xdf \xca\xc0\xd0\xd2\xc0', 'НОВАЯ КАРТА'],
+  ['ita', 'Citt\xe0 e libert\xe0, per\xf2', 'Città e libertà, però'],
 ] as const;
 
 describe('map text encodings', () => {

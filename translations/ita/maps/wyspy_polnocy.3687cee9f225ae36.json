@@ -1,0 +1,32 @@
+{
+  "version": 1,
+  "map": "wyspy_polnocy",
+  "basis": {
+    "lang": "eng",
+    "digest": "4d2f1eb6be936e707285a1fae64290897786dcc6a8349fe8ef03fdb0a9b6e97c"
+  },
+  "strings": {
+    "0": "LE ISOLE DEL NORD",
+    "1": "Colonizza la regione. Partita libera per 6 giocatori.",
+    "30": "Colonizza la regione",
+    "50": "0",
+    "51": "1",
+    "52": "2",
+    "53": "3",
+    "54": "4",
+    "55": "5",
+    "56": "Mercante",
+    "60": "0",
+    "61": "1",
+    "62": "2",
+    "63": "3",
+    "64": "4",
+    "66": "Mercante",
+    "90": "Lavoratore senza bisogni",
+    "91": "Mappa dell'intero paese"
+  },
+  "briefings": {
+    "500": "<font:$local$\\fonts\\fonthead16bld.fnt>\nLE ISOLE DEL NORD\n\n<font:$local$\\fonts\\font12.fnt>\nCostruisci una nave e colonizza nuove isole in questa terra gelida.\n\n~~ Creata da Jozenkow ~~\n",
+    "501": "<font:$local$\\fonts\\fonthead16bld.fnt>\n4 ORE DI GIOCO\n\n<font:$local$\\fonts\\font12.fnt>\n4 ore di gioco, che bello! Ora ogni ora ricevi uno spirito sull'isola del mercante.\n"
+  }
+}

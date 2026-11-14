@@ -66,6 +66,8 @@ export interface WorldRendererOptions {
   readonly bloodEnabled?: boolean;
   /** Local presentation preference: bone piles fade out with age, on by default. */
   readonly bonesFade?: boolean;
+  /** Whether worn equipment shows its signs on a person; on when absent. */
+  readonly equipmentEffects?: boolean;
   readonly enhancements?: WorldEnhancements;
   /** The loaded bob atlas + bindings; `undefined` draws placeholder geometry for every entity. */
   readonly sheet?: SpriteSheet | undefined;

@@ -1,7 +1,7 @@
 import {
   AssistantRecruit,
   assistantGrantedGoods,
-  assistantSoldierOnlyGoods,
+  assistantWithheldGoods,
   Building,
   Equipment,
   storePriorityGoods,
@@ -48,17 +48,21 @@ export function soldierOutfitGoods(ctx: SystemContext): number[] {
 
 /**
  * The commands putting the seat's soldier outfit on the assistant until it is there: each outfit good kept
- * for soldiers alone and granted, the limit before the grant so no civilian is dressed in the tick
- * between. The same hand-out a player switches on; the assistant's own pass then dresses the seat's
+ * for soldiers alone and granted, the limit before the grant so no civilian or worker is dressed in the
+ * tick between. The same hand-out a player switches on; the assistant's own pass then dresses the seat's
  * fighters wherever they stand.
  */
 export function outfitGrantOrders(world: World, ctx: SystemContext, player: number): PlayerCommand[] {
   const commands: PlayerCommand[] = [];
-  const limited = assistantSoldierOnlyGoods(world, player);
+  const fromCivilians = assistantWithheldGoods(world, player, 'civilians');
+  const fromWorkers = assistantWithheldGoods(world, player, 'workers');
+  const fromSoldiers = assistantWithheldGoods(world, player, 'soldiers');
   const granted = assistantGrantedGoods(world, player);
   for (const goodType of soldierOutfitGoods(ctx)) {
-    if (!limited.includes(goodType))
-      commands.push({ kind: 'setAssistantGrantAudience', player, goodType, audience: 'soldiers' });
+    const soldiersAlone =
+      fromCivilians.includes(goodType) && fromWorkers.includes(goodType) && !fromSoldiers.includes(goodType);
+    if (!soldiersAlone)
+      commands.push({ kind: 'setAssistantGrantAudience', player, goodType, groups: ['soldiers'] });
     if (!granted.includes(goodType))
       commands.push({ kind: 'setAssistantGrant', player, goodType, enabled: true });
   }

@@ -1,4 +1,4 @@
-import type { WeatherField } from './field.js';
+import { sectorBilinear, type WeatherField } from './field.js';
 import { WEATHER_KINDS } from './types.js';
 
 /**
@@ -20,6 +20,8 @@ const SAND = WEATHER_KINDS.indexOf('sand');
 export const RAIN_SATURATING_AMOUNT = 0.35;
 export const SNOW_SATURATING_AMOUNT = 0.4;
 export const SAND_SATURATING_AMOUNT = 0.1;
+/** The colour of a rain splash on the ground: a drop's own, and a step's on wet ground. */
+export const RAIN_SPLASH_RGB: readonly [number, number, number] = [0.84, 0.9, 0.97];
 /** How much of the melting snow shows as wet ground while it thaws. Tuned by eye. */
 const MELT_WETNESS = 0.8;
 
@@ -297,6 +299,14 @@ export class WeatherCover {
     if (this.data[alpha] === value) return false;
     this.data[alpha] = value;
     return true;
+  }
+
+  /** The ground's wetness 0..1 at a fractional half-cell node position, blended between sectors as the
+   *  shaded cover is; 0 without a field. */
+  wetAt(hx: number, hy: number): number {
+    const field = this.field;
+    if (field === null) return 0;
+    return sectorBilinear(field.sectorsX, field.sectorsY, hx, hy, (sector) => this.wet[sector] ?? 0);
   }
 
   /** Sector `i`'s cover as `[wet, snow, dust]`, for tests and diagnostics. */

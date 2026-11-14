@@ -1,4 +1,4 @@
-import { Graphics, Sprite, Texture, type TextureSource } from 'pixi.js';
+import { Graphics, Mesh, Sprite, Texture, type TextureSource } from 'pixi.js';
 import { describe, expect, it } from 'vitest';
 import type { ElevationField } from '../../../src/data/terrain/index.js';
 import { PlacementGhostLayer } from '../../../src/gpu/placement/ghost.js';
@@ -88,11 +88,9 @@ describe('PlacementGhostLayer', () => {
       FLAT,
     );
     const aura = layer.rangeContainer.children[0];
-    if (!(aura instanceof Graphics)) throw new Error('missing aura');
+    if (!(aura instanceof Mesh)) throw new Error('missing aura');
     expect(layer.rangeContainer.children).toHaveLength(1);
-    expect(aura.context.instructions.find((entry) => entry.action === 'stroke')?.data.style.color).toBe(
-      0xc5edff,
-    );
+    expect(aura.tint).toBe(0xc5edff);
 
     layer.set(null, FLAT);
     expect(layer.rangeContainer.visible).toBe(false);

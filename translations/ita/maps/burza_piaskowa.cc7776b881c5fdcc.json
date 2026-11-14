@@ -1,0 +1,32 @@
+{
+  "version": 1,
+  "map": "burza_piaskowa",
+  "basis": {
+    "lang": "eng",
+    "digest": "18a861bb160511aa82e48548d4a489d5cc0bf0668eb9d993f35705b3f377dd00"
+  },
+  "strings": {
+    "0": "TEMPESTA DI SABBIA",
+    "1": "I Vichinghi hanno cinto d'assedio la possente fortezza dei Saraceni e hanno piantato gli accampamenti attorno alla roccaforte per preparare le truppe all'attacco. Collabora con i tuoi alleati per sconfiggere i Saraceni... 6 giocatori collaborano per espugnare la fortezza saracena.",
+    "30": "Sconfiggi i Saraceni",
+    "50": "Vichinghi 1",
+    "51": "Vichinghi 2",
+    "52": "Saraceni",
+    "53": "Vichinghi 3",
+    "54": "Vichinghi 4",
+    "55": "Vichinghi 5",
+    "56": "Vichinghi 6",
+    "60": "Vic1",
+    "61": "Vic2",
+    "62": "Sar",
+    "63": "Vic3",
+    "64": "Vic4",
+    "65": "Vic5",
+    "66": "Vic6",
+    "787": "Numero di persone %d"
+  },
+  "briefings": {
+    "500": "<font:$local$\\fonts\\fonthead16bld.fnt>\nTEMPESTA DI SABBIA\n<font:$local$\\fonts\\font12.fnt>\n\nI Vichinghi cinsero d'assedio la possente fortezza dei Saraceni. Per farlo piantarono gli accampamenti attorno alla roccaforte, così da preparare le truppe all'attacco e costruire macchine d'assedio che li aiutassero contro un nemico più forte.\n\nLe tue spie sono riuscite a scoprire quando i Saraceni attaccheranno i vostri accampamenti. Gli assalti sono previsti a questi orari:\n\n0:25\n0:45\n1:00\n1:25\n1:50\n2:20\n2:50\ne poi ogni 30 minuti.\n\n\nBuona fortuna\nDi Ares&Jozenkow\n",
+    "501": "<font:$local$\\fonts\\fonthead16bld.fnt>\nVITTORIA\n<font:$local$\\fonts\\font12.fnt>\n\nHai espugnato la fortezza dei Saraceni! Ora questa terra appartiene ai Vichinghi!\n"
+  }
+}

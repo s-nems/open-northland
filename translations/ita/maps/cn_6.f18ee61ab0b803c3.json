@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "map": "cn_6",
+  "basis": {
+    "lang": "eng",
+    "digest": "c90f8156566c50b6d89c925ebfa1df2e6bed93b8b66f4b06bdb5bb8e674d8821"
+  },
+  "strings": {
+    "0": "CULTURESNATION: QUARTIER GENERALE",
+    "1": "GaTo e Piwko, due fottuti rifiuti",
+    "50": "Proszak",
+    "51": "GaTo e Piwko",
+    "100": "Proszak",
+    "101": "GaTo",
+    "102": "Piwko"
+  },
+  "briefings": {
+    "500": "<font:$local$\\fonts\\fonthead16bld.fnt>\nQUARTIER GENERALE\n<font:$local$\\fonts\\font12.fnt>\n\nGaTo e Piwko se ne stavano accanto al fuoco a scaldarsi il culo.\nFu in questo quartier generale che un giorno finì la vecchia culturesnation che conoscevamo e ricordavamo.\nGiustiziando questi due sfigati daremo inizio a una nuova era di CN.\n\n<usericon:1,50,43>\n",
+    "501": "Proszak: Io, Proszak, primo svichingo imberbe, per crimini contro l'umanità e soprattutto contro culturesnation, per stupro di minore, pedofilia e necrofilia, per furto, brigantaggio e rapina, per l'olocausto, per menzogna (l'editor interno si può scambiare con i punti), per produzione illegale di metanfetamina, per corruzione e intrallazzi, per omicidi con particolare crudeltà e soprattutto per essere dei fottuti coglioni del cazzo\ncondanno voi, GaTo e Piwko, a crepare di botte.\nAvete un'ultima parola?\n\nGaTo: Proszak, Proszak, Proszak... Lo sapevo che non dovevo tenerti in cella, ma mandarti dritto al macello. \n\nProszak: Tutto qui? Nessun commento? Sei un idiota fatto e finito. Dovevi combattere e morire in battaglia, non nasconderti. Che c'è, pensavi che non ti avremmo trovato?\n\nGaTo: Un tempo tutto aveva un senso, tutta questa lotta per culturesnation. Solo ora ho capito che non me ne frega un cazzo. Comandare su cn, incoraggiare i nuovi utenti, fare mappe, ripulire il sito dallo spam: chi la vorrebbe una vita così? E in più quella banda di bot.\n\nProszak: E che ti aspetti, che ti lasci andare e ci dimentichiamo di tutto?\n\nGaTo: Non ti chiedo di perdonarmi. Ti chiedo un nuovo inizio. Un reset. Me ne andrò per la mia strada e non mi vedrai mai più.\n\nProszak: Ah, GaTo, GaTo... non sai nemmeno morire. Quanto a te, Piwko, non so neanche chi cazzo sei. Tagliate loro la testa!!!\n\n<picture:$local$\\graphics\\cn_z.pcx>\n"
+  }
+}

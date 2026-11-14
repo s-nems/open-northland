@@ -7,6 +7,7 @@ import type { GameSettingsRuntime } from '../../../view/runtime/game-settings.js
 import type { SaveLoadSession } from '../../../view/runtime/save-load/index.js';
 import type { MenuSettings } from '../../../view/settings/store.js';
 import { GLYPH } from '../icons.js';
+import { type ReplayOffer, replayQuestion } from '../match-result.js';
 import { createHudPlane, type HudPlane } from '../root.js';
 import type { MenuPageView } from '../save-window/frame.js';
 import { createLoadWindow } from '../save-window/load-window.js';
@@ -26,8 +27,8 @@ export interface SystemMenu {
 }
 export interface SystemMenuDeps {
   readonly onQuit: () => void;
-  /** Starts the map again from its beginning; absent where a fresh boot cannot replay the world. */
-  readonly onRestart?: () => void;
+  /** Absent where a fresh boot cannot replay the world. */
+  readonly restart?: ReplayOffer;
   readonly saveLoad: SaveLoadSession;
   readonly settings: GameSettingsRuntime;
   readonly hud: Pick<HudPlane, 'element' | 'currentScale'>;
@@ -164,20 +165,20 @@ export function createSystemMenu(deps: SystemMenuDeps): SystemMenu {
       });
   });
   quit.classList.add('on-system-menu__quit');
-  const onRestart = deps.onRestart;
+  const offer = deps.restart;
   const restart =
-    onRestart === undefined
+    offer === undefined
       ? null
-      : button(text.restartMission, GLYPH.replay, () => {
+      : button(text.restartMap, GLYPH.replay, () => {
           void confirm
             .open({
-              title: text.restartMission,
-              message: copy.playAgainConfirm,
+              title: text.restartMap,
+              message: replayQuestion(offer),
               cancel: text.cancel,
-              confirm: text.restartMission,
+              confirm: text.restartMap,
             })
             .then((confirmed) => {
-              if (confirmed && !scope.signal.aborted) onRestart();
+              if (confirmed && !scope.signal.aborted) offer.start();
             });
         });
   const saves = document.createElement('div');

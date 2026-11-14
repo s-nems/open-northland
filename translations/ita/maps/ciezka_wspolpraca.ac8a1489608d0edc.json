@@ -1,0 +1,28 @@
+{
+  "version": 1,
+  "map": "ciezka_wspolpraca",
+  "basis": {
+    "lang": "eng",
+    "digest": "7275624dec29fc35658f3bda68a1f82a89abbee8e9ba169e86a3d8eda012c863"
+  },
+  "strings": {
+    "40": "Sconfiggi i nemici insieme al tuo alleato!",
+    "98": "Mappa per partite a squadre 2 contro 2.",
+    "99": "DIFFICILE COOPERAZIONE",
+    "101": "Blu",
+    "102": "Rosso",
+    "103": "Giallo",
+    "104": "Turchese",
+    "601": "ROSSO",
+    "603": "GIALLO",
+    "604": "TURCHESE",
+    "605": "BLU",
+    "701": "Rosso",
+    "703": "Giallo",
+    "704": "Turchese",
+    "705": "Blu"
+  },
+  "briefings": {
+    "500": "<font:$local$\\fonts\\fonthead16bld.fnt>\nDIFFICILE COOPERAZIONE\n<font:$local$\\fonts\\font12.fnt>\nUn villaggio vichingo ben organizzato aveva un capo nobile e coraggioso. Quando giacque sul letto di morte, però, chiamò a sé i suoi quattro figli e, purtroppo, non fece in tempo a dire quale di loro dovesse prendere il comando del villaggio.\n\nIl maggiore dei figli, di nome Rosso, aveva ereditato dal padre un enorme ardimento e la passione per le razzie, così decise di organizzare una lotta per il potere sui Vichinghi. Suo fratello, di poco più giovane, di nome Blu, aveva ereditato dal padre un grande buon senso, che subito gli suggerì di ritirarsi dalla contesa e di schierarsi con gli alleati di Rosso, per sostenerlo.\n\nSaputo ciò, anche i fratelli rimasti, il nobile Turchese e Giallo, dotato di uno straordinario senso tattico, unirono le forze per non restare a mani vuote, senza alcuna eredità paterna.\n\nGuidate dunque i quattro capi e cercate di stabilire a chi di loro spetti il pieno potere!\n\n\n~~ Creata da Brainy ~~\n"
+  }
+}

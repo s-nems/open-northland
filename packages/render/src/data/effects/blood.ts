@@ -18,6 +18,12 @@ export const BLOOD_AIR_TICKS = 11;
 export const MAX_BLOOD_MARKS = 4096;
 export const MAX_BLOOD_PER_NODE = 4;
 
+/** A full burst: a hit taking a quarter of the capped reference pool, or more. */
+const FULL_BURST_LOSS = 0.25;
+/** A critical hit's burst, in full bursts whatever the wound: far more blood than the blow would draw,
+ *  so the hit reads at a glance. */
+const CRITICAL_BURST_AMOUNT = 5;
+
 export type BloodProfile = 'cut' | 'pierce' | 'blunt';
 export interface BloodMark {
   readonly palette: BloodPalette;
@@ -31,7 +37,7 @@ export interface BloodMark {
   readonly heading: number;
   readonly profile: BloodProfile;
   readonly fatal: boolean;
-  /** Burst strength: one quarter of the capped reference HP reaches full intensity (see bloodLoss). */
+  /** Burst strength: 1 is a full burst, which a plain hit never exceeds and a critical one does. */
   readonly amount: number;
 }
 
@@ -78,7 +84,8 @@ export function makeBloodMarks(
       ...bloodAppearance(event.targetIdentity),
       target: event.target,
       spawnTick: tick,
-      amount: Math.min(1, bloodLoss(event) / 0.25),
+      amount:
+        event.critical === true ? CRITICAL_BURST_AMOUNT : Math.min(1, bloodLoss(event) / FULL_BURST_LOSS),
       seed,
       heading: dx === 0 && dy === 0 ? frac(seed, 0) * Math.PI * 2 : Math.atan2(dy, dx),
       profile:

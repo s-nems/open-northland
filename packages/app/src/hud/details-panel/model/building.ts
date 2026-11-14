@@ -1,8 +1,12 @@
+import type { HomeQualityUse } from '@open-northland/data';
 import {
   countedBy,
+  homeFamilyCapacityView,
   homeQualityView,
+  homeWareStock,
   householdGoodPolicyView,
   indexesOf,
+  lodgingPiecesView,
   storageMinimumsView,
   systems,
   type WorldSnapshot,
@@ -54,6 +58,7 @@ import {
   type UnitPanelModelContext,
 } from './context.js';
 import type { SeatControl } from './settler-household.js';
+import { type TempleFireModel, templeBlessing, templeFireModel } from './temple-fire.js';
 import { offerSide, type TradeOfferSide } from './trade.js';
 import { workStatusDetail } from './work-status.js';
 
@@ -61,8 +66,9 @@ export * from './building-materials.js';
 export * from './building-production.js';
 export * from './building-staff.js';
 export * from './building-status.js';
+export * from './temple-fire.js';
 
-export type HouseholdEffect = 'cooking' | 'rest' | 'piety';
+export type HouseholdEffect = 'cooking' | 'lodging' | 'piety';
 
 export interface HomeQualityRow {
   readonly effect: HouseholdEffect;
@@ -71,10 +77,18 @@ export interface HomeQualityRow {
   readonly value: number;
   readonly capacity: number;
   readonly allowed: boolean;
-  /** Remaining household actions; omitted for holy oil, whose pool drains continuously. */
+  /** Remaining household actions of a ware spent per action: crockery. */
   readonly uses?: number;
   /** Only the holy-oil row carries this live finished-home status. */
   readonly holyFireActive?: boolean;
+  /** Only the furniture row: the spare pieces the store holds, in tenths and never none while some is
+   *  left, the extra families the home has room for now (0 while it serves none), and the percent left of
+   *  the piece each extra family lives on. */
+  readonly furniture?: {
+    readonly pieces: number;
+    readonly extraFamilies: number;
+    readonly inUse: readonly number[];
+  };
 }
 
 /** Household: the household wares a finished home keeps, and the owner's policy over every home. */
@@ -180,6 +194,8 @@ export interface BuildingPanelModel {
   /** A site's builders, beside the staff it already has; null once it stands. */
   readonly crew: BuildingStaffModel | null;
   readonly production: ProductionModel | null;
+  /** A fuelled temple's burning unit of oil, null for any other house and a foreign one. */
+  readonly templeFire: TempleFireModel | null;
   readonly stock: readonly StockRow[];
   readonly stockLayout: StockLayout;
   readonly homeQuality: HomeQualityModel | null;
@@ -253,7 +269,41 @@ function ownsSeveralTribes(snapshot: WorldSnapshot, owner: number | undefined): 
  *  "<name> N"; the head shows the tier on its own line. */
 const TIER_SUFFIX = /\s*(\([^()]*\)|\d+)$/;
 
-const HOUSEHOLD_ORDER: Readonly<Record<HouseholdEffect, number>> = { cooking: 0, rest: 1, piety: 2 };
+const HOUSEHOLD_ORDER: Readonly<Record<HouseholdEffect, number>> = { cooking: 0, lodging: 1, piety: 2 };
+
+const TENTHS = 10;
+const PERCENT = 100;
+
+/** `points` of a ware delivered `deliveryValue` points a piece, in tenths of a piece; some left never
+ *  reads as none. */
+function piecesOf(points: number, deliveryValue: number): number {
+  const tenths = Math.round((points * TENTHS) / deliveryValue);
+  return (points > 0 ? Math.max(1, tenths) : tenths) / TENTHS;
+}
+
+/** What a ware's row says of its pool of `value` points: the uses left, the holy fire, or the furniture
+ *  in store, the `extraFamilies` the home has room for and the pieces `inUse`, in points left. */
+function wareState(
+  use: HomeQualityUse,
+  value: number,
+  extraFamilies: number,
+  inUse: readonly number[],
+): Pick<HomeQualityRow, 'uses' | 'holyFireActive' | 'furniture'> {
+  switch (use.effect) {
+    case 'piety':
+      return { holyFireActive: value > 0 };
+    case 'lodging':
+      return {
+        furniture: {
+          pieces: piecesOf(value, use.deliveryValue),
+          extraFamilies,
+          inUse: inUse.map((left) => Math.ceil((left * PERCENT) / use.deliveryValue)),
+        },
+      };
+    case 'cooking':
+      return { uses: Math.floor(value / use.useCost) };
+  }
+}
 
 function homeQuality(
   ctx: UnitPanelModelContext,
@@ -264,8 +314,10 @@ function homeQuality(
 ): HomeQualityModel | null {
   const player = ownerPlayerOf(ent);
   if (player === undefined || def.kind !== 'home') return null;
-  const pools = homeQualityView(snapshot, ent.id) ?? { cooking: 0, rest: 0, piety: 0 };
+  const pools = homeQualityView(snapshot, ent.id) ?? { cooking: 0, lodging: 0, piety: 0 };
   const policy = householdGoodPolicyView(snapshot, player);
+  const extraFamilies = homeFamilyCapacityView(snapshot, ent.id, def, ctx.goods) - def.homeSize;
+  const inUse = lodgingPiecesView(snapshot, ent.id);
   const rows = ctx.goods
     .flatMap((good): HomeQualityRow[] => {
       const use = good.homeQuality;
@@ -277,11 +329,9 @@ function homeQuality(
           goodId: good.id,
           label: goodLabel(ctx, good.typeId),
           value,
-          capacity: use.capacity,
+          capacity: homeWareStock(use, def).capacity,
           allowed: policy[use.effect],
-          ...(use.effect === 'piety'
-            ? { holyFireActive: value > 0 }
-            : { uses: Math.floor(value / use.useCost) }),
+          ...wareState(use, value, extraFamilies, inUse),
         },
       ];
     })
@@ -517,6 +567,7 @@ export function buildingPanelModel(
     garrison: site ? null : garrisonPosts(snapshot, def, ent.id),
     workDetail: work === undefined ? null : workStatusDetail(ctx, work),
     families: kind === 'home' && !site ? (homeFamiliesOf(snapshot, ent.id)?.length ?? 0) : null,
+    blessing: foreign || site ? null : templeBlessing(ent),
   });
   const level = num(b.level) ?? 0;
   const name = buildingTitle(ctx, rawType);
@@ -557,6 +608,7 @@ export function buildingPanelModel(
     staff,
     crew,
     production: foreign || site ? null : productionModel(ctx, snapshot, def, ent),
+    templeFire: foreign || site ? null : templeFireModel(ctx, ent),
     stock,
     stockLayout: stockLayoutOf(def, stock),
     homeQuality:

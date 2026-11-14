@@ -15,10 +15,12 @@ import { WEAPON_MAIN_TYPE } from '../../src/systems/readviews/index.js';
  * tower pair the coverage entry (the kind-'tower' wall row proves the id allowlist). Numeric ids
  * follow the original's job/good bands where they exist (woman 5, civilist 6, builder 7, collector
  * 8, farmer 18, miller 19, baker 20, brewer 21, carrier 24, scout 27, and the fighter band's
- * soldier_bow_short 40); the joiner takes a free slot, 16.
+ * soldier_bow_short 40); the joiner takes a free slot, 16. A case that needs ships or engines passes
+ * their rows as `vehicles`.
  */
-export function aiContent(): ContentSet {
+export function aiContent(vehicles: readonly unknown[] = []): ContentSet {
   return parseContentSet({
+    vehicles,
     manifest: { version: IR_VERSION, generatedFrom: { data: 'synthetic-test-fixture' }, locale: 'eng' },
     goods: [
       { typeId: 0, id: 'none' },
@@ -338,7 +340,7 @@ export function aiContent(): ContentSet {
       },
       {
         typeId: 16,
-        id: 'work_pottery_02',
+        id: 'defence_wall',
         kind: 'tower',
         construction: [{ goodType: 1, amount: 2 }],
       },

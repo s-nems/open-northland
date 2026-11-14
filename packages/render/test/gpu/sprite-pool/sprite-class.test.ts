@@ -597,7 +597,7 @@ describe('LayerBinder - a ship yard site rises as its indexed ship through the v
       vehicle: {
         byTribe: { [TRIBE]: { [SHIP]: hull } },
         fallbackTribe: TRIBE,
-        shipYards: { vehicleByHouse: { [SHIP_YARD]: SHIP }, facing: 0 },
+        vehicleYards: { vehicleByHouse: { [SHIP_YARD]: SHIP }, facing: 0 },
       },
     },
   };
@@ -620,6 +620,50 @@ describe('LayerBinder - a ship yard site rises as its indexed ship through the v
     expect(binder.create('building', { ...site(25), typeId: SHIP_YARD + 1 }).paletted).toBe(false);
   });
 
+  it('stands a yard site’s vehicle whole and translucent behind its built part', () => {
+    const [outline, built, ...rest] = resolveLayers(shipSheet, site(25), 0) ?? [];
+    expect(rest).toEqual([]);
+    expect(outline?.reveal).toBeUndefined();
+    expect(outline?.alpha).toBeGreaterThan(0);
+    expect(outline?.alpha).toBeLessThan(1);
+    expect(built?.reveal).toBe(0.25);
+    expect(built?.alpha).toBeUndefined();
+  });
+
+  it('binds a baked land vehicle site as a translucent whole sprite under an opaque built one', () => {
+    const CART_YARD = SHIP_YARD + 1;
+    const CART = SHIP + 1;
+    const cartSheet: SpriteSheet = {
+      ...shipSheet,
+      bindings: {
+        ...shipSheet.bindings,
+        vehicle: {
+          byTribe: { [TRIBE]: { [CART]: { ...hull, indexed: false } } },
+          fallbackTribe: TRIBE,
+          vehicleYards: { vehicleByHouse: { [CART_YARD]: CART }, facing: 0 },
+        },
+      },
+    };
+    const item = { ...site(50), typeId: CART_YARD };
+    const binder = new LayerBinder(new TextureCache(), cartSheet);
+    const pe = binder.create('building', item);
+    expect(pe.paletted).toBe(false);
+    pe.reveal = 0.5;
+    binder.bind(
+      pe,
+      item,
+      resolveLayers(cartSheet, item, 0),
+      { camera: CAMERA, screenW: 800, screenH: 600 },
+      1,
+    );
+    const [outline, built] = pe.sprites;
+    expect(outline?.alpha).toBeGreaterThan(0);
+    expect(outline?.alpha).toBeLessThan(1);
+    expect(built?.alpha).toBe(1);
+    // Damage paint and fires read the built part only.
+    expect(pe.damageBodies).toEqual([built]);
+  });
+
   it("draws a scene-built site on its owner's row", () => {
     const HALF_BUILT = 1 << 15; // half of the sim's fixed-point one
     const layer = new Container();
@@ -637,7 +681,7 @@ describe('LayerBinder - a ship yard site rises as its indexed ship through the v
     expect(quad.lutRow).toBe(OWNER);
   });
 
-  it("keeps the built bottom rows on the owner's row and hides the hull before any is built", () => {
+  it("keeps the built bottom rows on the owner's row over the whole translucent hull", () => {
     const binder = new LayerBinder(new TextureCache(), shipSheet);
     const bindAt = (builtPct: number) => {
       const item = site(builtPct);
@@ -651,17 +695,24 @@ describe('LayerBinder - a ship yard site rises as its indexed ship through the v
         { camera: CAMERA, screenW: 800, screenH: 600 },
         1,
       );
-      const quad = pe.sprites[0];
-      if (!(quad instanceof PalettedQuad)) throw new Error('a ship yard site must bind a PalettedQuad');
-      return quad;
+      const [outline, built] = pe.sprites;
+      if (!(outline instanceof PalettedQuad) || !(built instanceof PalettedQuad))
+        throw new Error('a ship yard site must bind two PalettedQuads');
+      return { outline, built };
     };
 
-    const quarter = bindAt(25);
+    const { outline, built: quarter } = bindAt(25);
+    expect(outline.texture.frame).toMatchObject({ y: 0, height: HULL_HEIGHT });
+    expect(outline.alpha).toBeLessThan(1);
+    expect(outline.lutRow).toBe(OWNER);
+    expect(quarter.alpha).toBe(1);
     const hidden = HULL_HEIGHT * 0.75;
     expect(quarter.texture.frame).toMatchObject({ y: hidden, height: HULL_HEIGHT - hidden });
     expect(quarter.offsetY).toBe(-32 + hidden);
     expect(quarter.lutRow).toBe(OWNER);
     expect(palettedLutOf(quarter.texture)).toBe(lut.source);
-    expect(bindAt(0).visible).toBe(false);
+    const unbuilt = bindAt(0);
+    expect(unbuilt.built.visible).toBe(false);
+    expect(unbuilt.outline.visible).toBe(true);
   });
 });

@@ -22,9 +22,9 @@ import {
 /**
  * The six `vehicletypes.ini` records with their extracted slot, size, door and pool values
  * (docs/formats/VEHICLES.md), keyed on the sandbox's own good and job ids: every good but the sentinel
- * may ride in a hold, and the ships take every adult job plus the ferryman while the carts take the two
- * haulers and the catapult the fighters; the script captain is the trader on a cart, the carrier on a
- * ship and the unarmed soldier on the catapult, as `logiccommander` authors them. `jobId` follows
+ * may ride in a hold, and the ships take every adult job while the carts take the two haulers and the
+ * catapult the fighters; the script captain is the trader on a cart, the carrier on a ship and the
+ * unarmed soldier on the catapult, as `logiccommander` authors them. `jobId` follows
  * `JOB_TYPE_VEHICLE_* = type + 49` (`logicdefines.inc`); the sandbox declares only the catapult's, for
  * its weapon row.
  */
@@ -122,5 +122,7 @@ const SHIP_BIG_PASSENGERS = 9;
 /** `passengervector 2 4`: the door four steps off at facing offset 2. */
 const SHIP_DOOR = { direction: 2, distance: 4 } as const;
 const CART_HITPOINTS = 1000;
-const SHIP_HITPOINTS = 5000;
-const CATAPULT_HITPOINTS = 3000;
+/** The pipeline's owner rule: both ships take 10000 where the original's table gives 5000. */
+const SHIP_HITPOINTS = 10_000;
+/** As the content pipeline stamps it: the original's 3000 raised by a fifth. */
+const CATAPULT_HITPOINTS = 3600;

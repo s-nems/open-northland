@@ -25,7 +25,7 @@ import { loadSourceCorrections } from '../../src/corrections.js';
 import { writeFileWithParents } from '../../src/files.js';
 import type { SourceRoots } from '../../src/roots.js';
 import { campaignMapId, convertCampaignStage } from '../../src/stages/campaigns.js';
-import { convertGuiHistory, convertGuiStrings } from '../../src/stages/gui/index.js';
+import { convertGuiHistory, convertGuiObjectHelp, convertGuiStrings } from '../../src/stages/gui/index.js';
 import { readGameObjectNames } from '../../src/stages/gui/strings.js';
 import { convertMapDatTree, summarizeMapOverlays } from '../../src/stages/maps/index.js';
 import { type GameOutTemp, makeGameOutTemp } from '../support/game-tree.js';
@@ -58,6 +58,8 @@ function digestOf(bytes: Uint8Array): string {
 }
 
 const utf8 = (text: string): Uint8Array => new TextEncoder().encode(text);
+/** One byte per character, as a Windows code page file stores Latin-1 range text. */
+const latinBytes = (text: string): Uint8Array => Uint8Array.from(text, (char) => char.charCodeAt(0));
 
 async function readJson(path: string): Promise<unknown> {
   return JSON.parse(await readFile(path, 'utf8'));
@@ -280,6 +282,60 @@ describe('gui strings stage', () => {
       expect.stringContaining('chs jobs edit left out: its pol basis text changed'),
     ]);
   });
+  it("fills only the ids a pack-shipped overlay language's own tables lack", async () => {
+    await temp.write(
+      'Data/text/ita/strings/gameobjects/houses.ini',
+      latinBytes('[text]\nstringn 1 "Citt\xe0"\nstringn 2 "Casa"\n'),
+    );
+    await temp.write(
+      'Data/text/ita/strings/ingamegui/ingameguimain.ini',
+      latinBytes('[text]\nstring "Gi\xf9"\n'),
+    );
+    const roots: SourceRoots = {
+      data: temp.game,
+      overlays: overlays({
+        objects: new Map<Language, ReadonlyMap<string, ObjectTableOverlay>>([
+          ['ita', new Map([['houses', table({ '2': 'Dimora', '22': 'Mura' })]])],
+        ]),
+      }),
+    };
+
+    const done = await convertGuiStrings(roots, temp.out, ['ita']);
+
+    expect(done).toEqual([{ lang: 'ita', path: 'gui/strings/ita.json', tables: 2, strings: 4 }]);
+    expect(await readJson(join(temp.out, 'gui', 'strings', 'ita.json'))).toEqual({
+      main: { '0': 'Giù' },
+      houses: { '1': 'Città', '2': 'Casa', '22': 'Mura' },
+    });
+    expect(warnings()).toEqual(
+      expect.arrayContaining([
+        expect.stringContaining('ita houses overlay ids the pack ships, kept shipped: 2'),
+      ]),
+    );
+  });
+
+  it("fills only the description ids a pack-shipped overlay language's own help lacks", async () => {
+    await temp.write(
+      'Data/text/ita/strings/help/goodshelp.ini',
+      latinBytes('[text]\nstringn 1 "Legno{newline}secco"\n'),
+    );
+    const roots: SourceRoots = {
+      data: temp.game,
+      overlays: overlays({
+        objects: new Map<Language, ReadonlyMap<string, ObjectTableOverlay>>([
+          ['ita', new Map([['goodsHelp', table({ '1': 'Altro legno', '47': 'Faro' })]])],
+        ]),
+      }),
+    };
+
+    const done = await convertGuiObjectHelp(roots, temp.out, ['ita']);
+
+    expect(done).toEqual([{ lang: 'ita', path: 'gui/help/ita.json', strings: 2 }]);
+    expect(await readJson(join(temp.out, 'gui', 'help', 'ita.json'))).toEqual({
+      goods: { '1': 'Legno\nsecco', '47': 'Faro' },
+      houses: {},
+    });
+  });
 });
 
 describe('gui history stage', () => {
@@ -324,6 +380,31 @@ describe('gui history stage', () => {
     expect(await texts('chs')).toEqual(['SAGAS', '古老的故事']);
     expect(await texts('eng')).toEqual(['SAGAS', 'Old tales']);
     expect(warnings()).toEqual([expect.stringContaining('refused ger history overlay')]);
+  });
+
+  it('keeps the book a pack-shipped overlay language ships over its overlay', async () => {
+    const dir = join('Data', 'text', 'ita', 'hypertext', 'history');
+    await temp.write(join(dir, 'Book.txt'), utf8('[blockstart:body]\nSaghe\n[blockend:body]\n'));
+    await temp.write(join(dir, 'index.hlt'), utf8('<include:$local$\\Book.txt,body,1>\n'));
+    const roots: SourceRoots = {
+      data: temp.game,
+      overlays: overlays({
+        books: new Map<Language, ReadonlyMap<string, BookOverlay>>([
+          ['ita', new Map([['history', book({ 'book.txt': { body: 'Altre saghe' } })]])],
+        ]),
+      }),
+    };
+
+    const done = await convertGuiHistory(roots, temp.out, ['ita']);
+
+    expect(done.map((result) => result.lang)).toEqual(['ita']);
+    const { pages } = (await readJson(join(temp.out, 'gui', 'history', 'ita.json'))) as {
+      pages: Record<string, { text?: string }[]>;
+    };
+    expect((pages.index ?? []).flatMap((block) => (block.text === undefined ? [] : [block.text]))).toEqual([
+      'Saghe',
+    ]);
+    expect(warnings()).toEqual([expect.stringContaining('skipped ita history overlay')]);
   });
 });
 
@@ -417,6 +498,66 @@ describe('campaigns stage', () => {
         expect.stringContaining('translation overlay eng refused'),
         expect.stringContaining('cht overlays cover 1 of 2 maps'),
         expect.stringContaining('refused eng title overlay'),
+      ]),
+    );
+  });
+
+  it("keeps a pack-shipped overlay language's own map text and title over its overlays", async () => {
+    const pack = join(temp.root, 'pack');
+    const keys: string[] = [];
+    for (const [index, id] of MAPS.entries()) {
+      const dat = buildMapDat(1, 1, [index, index, index, index]);
+      keys.push(mapOverlayDatKey(digestOf(dat)));
+      const dir = join(pack, 'campaigns', CAMPAIGN, 'maps', id);
+      await writeFileWithParents(join(dir, 'world/map.dat'), dat);
+      await writeFileWithParents(join(dir, 'world/map.cif'), mapCif(index + 1));
+      await writeFileWithParents(
+        join(dir, 'locales/pol/strings.ini'),
+        `[text]\nstring "Etap ${index + 1}"\n`,
+      );
+      await writeFileWithParents(
+        join(dir, 'locales/ita/strings.ini'),
+        `[text]\nstring "Tappa ${index + 1}"\n`,
+      );
+    }
+    await writeFileWithParents(join(pack, 'campaigns', CAMPAIGN, 'presentation/map.png'), 'png');
+    const shipped = source();
+    const campaign: CampaignSource = {
+      ...shipped,
+      title: { pol: 'Nakladka', ita: 'Sovrapposta' },
+      languages: ['pol', 'ita'],
+      maps: shipped.maps.map((map) => ({
+        ...map,
+        locales: { ...map.locales, ita: { 'text/ita/strings.ini': 'locales/ita/strings.ini' } },
+      })),
+    };
+    const roots: SourceRoots = {
+      data: join(pack, 'base'),
+      overlays: overlays({
+        maps: new Map(
+          keys.map((key) => [
+            key,
+            new Map<Language, readonly MapOverlay[]>([['ita', [mapOverlay({ '0': 'Altro' })]]]),
+          ]),
+        ),
+        campaigns: new Map<Language, ReadonlyMap<string, CampaignOverlay>>([
+          ['ita', new Map([[CAMPAIGN, { version: OVERLAY_VERSION, title: 'Altra' }]])],
+        ]),
+      }),
+    };
+
+    const result = await convertCampaignStage(roots, pack, [campaign], temp.out, new Set());
+
+    const [entry] = result.index.campaigns;
+    expect(entry?.languages).toEqual(['pol', 'ita']);
+    expect(entry?.title).toEqual({ pol: 'Nakladka', ita: 'Sovrapposta' });
+    expect(entry?.stages[0]?.title).toEqual({ pol: 'Etap 1', ita: 'Tappa 1' });
+    expect(result.maps[0]?.overlays.map((outcome) => `${outcome.lang}:${outcome.status}`)).toEqual([
+      'ita:redundant',
+    ]);
+    expect(warnings()).toEqual(
+      expect.arrayContaining([
+        expect.stringContaining('skipped ita title overlay: the pack ships the title'),
       ]),
     );
   });

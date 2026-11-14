@@ -9,12 +9,13 @@ const ROW = 2;
 const PLOTS: readonly ConstructionPlot[] = [
   {
     ref: 10,
+    foundation: true,
     cells: [
       { col: SEEN_COL, row: ROW },
       { col: HIDDEN_COL, row: ROW },
     ],
   },
-  { ref: 20, cells: [{ col: HIDDEN_COL, row: ROW + 2 }] },
+  { ref: 20, foundation: true, cells: [{ col: HIDDEN_COL, row: ROW + 2 }] },
 ];
 
 describe('createVisiblePlots', () => {
@@ -37,7 +38,7 @@ describe('createVisiblePlots', () => {
       },
     );
     const first = visible({ generation: 1, player: 0 });
-    expect(first).toEqual([{ ref: 10, cells: [{ col: SEEN_COL, row: ROW }] }]);
+    expect(first).toEqual([{ ref: 10, foundation: true, cells: [{ col: SEEN_COL, row: ROW }] }]);
     const cellsPerPass = filtered;
 
     expect(visible({ generation: 1, player: 0 })).toBe(first);
@@ -60,11 +61,11 @@ describe('createVisiblePlots', () => {
       (col) => col === (seat === 0 ? SEEN_COL : HIDDEN_COL),
     );
     const first = visible({ generation: 1, player: 0 });
-    expect(first).toEqual([{ ref: 10, cells: [{ col: SEEN_COL, row: ROW }] }]);
+    expect(first).toEqual([{ ref: 10, foundation: true, cells: [{ col: SEEN_COL, row: ROW }] }]);
     seat = 1;
     expect(visible({ generation: 1, player: 1 })).toEqual([
-      { ref: 10, cells: [{ col: HIDDEN_COL, row: ROW }] },
-      { ref: 20, cells: [{ col: HIDDEN_COL, row: ROW + 2 }] },
+      { ref: 10, foundation: true, cells: [{ col: HIDDEN_COL, row: ROW }] },
+      { ref: 20, foundation: true, cells: [{ col: HIDDEN_COL, row: ROW + 2 }] },
     ]);
   });
 });

@@ -244,7 +244,7 @@ export class BloodGround {
     const halfW = texture.width / 2,
       halfH = texture.height / 2;
     const { x0, y0, x1, y1, x2, y2, x3, y3 } = texture.uvs;
-    const opacity = (0.25 + 0.75 * Math.sqrt(mark.amount)) * (1 - water);
+    const opacity = Math.min(1, 0.25 + 0.75 * Math.sqrt(mark.amount)) * (1 - water);
     const dry = 360 + frac(mark.seed, 97) * 240;
     for (let corner = 0; corner < GROUND_QUAD_VERTICES; corner++) {
       const u = corner === 0 || corner === 3 ? -halfW : halfW;

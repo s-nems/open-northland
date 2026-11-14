@@ -206,6 +206,7 @@ export function graphicsSettingsRows(
       'dayNight',
       'blood',
       'bonesFade',
+      'equipmentEffects',
     ] as const
   ).map((key) => {
     const toggle = togglePill(settings[key], (enabled) => {

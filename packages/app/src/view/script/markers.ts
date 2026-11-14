@@ -2,19 +2,19 @@ import {
   type Camera,
   type ElevationField,
   halfCellToScreen,
-  type PalettedSprite,
+  PalettedSprite,
+  type PaletteLut,
 } from '@open-northland/render';
 import type { HalfCellNode, SimEvent } from '@open-northland/sim';
 import { Container, Graphics } from 'pixi.js';
-import { type GuiArt, makeGuiSprite } from '../../content/gui/art.js';
+import type { GuiArt } from '../../content/gui/art.js';
 
 /**
  * The markers a map script puts on the ground: the ten GUI marker slots, the area rings and the
  * import markers. Drawn as a screen overlay over the world at each point's projected position, the
- * way the original draws the GUI markers (reading: it cycles six bobs of the GUI
- * sheet at 150 ms in the player's palette). Approximations: the bobs draw in the GUI's context palette
- * rather than the player's, and the area and import markers, the original's own map entities with
- * their own art, draw with the first of those bobs.
+ * way the original draws the GUI markers (reading: it cycles six bobs of the GUI sheet at 150 ms
+ * through the local player's `human_playerNN` palette). Approximation: the area and import markers,
+ * the original's own map entities with their own art, draw with the first of those bobs in that palette.
  */
 
 /** The six GUI sheet bobs the marker cycles through, and the cycle's pace (reading). */
@@ -39,9 +39,11 @@ interface Marker {
   readonly point: HalfCellNode;
 }
 
-interface MarkerSprite {
-  readonly sprite: PalettedSprite;
-  gfx: number;
+/** The GUI sheet the marker bobs are cut from and the player palettes they draw through. */
+export interface ScriptMarkerArt {
+  readonly gui: GuiArt;
+  /** Every colour slot's player palette, row = colour slot. */
+  readonly players: PaletteLut;
 }
 
 const pointKey = (p: HalfCellNode): string => `${p.hx},${p.hy}`;
@@ -54,9 +56,11 @@ export interface ScriptMarkers {
   dispose(): void;
 }
 
+/** `colourSlot` answers the colour slot of the seat the view shows, read every frame. */
 export function createScriptMarkers(
   parent: Container,
-  art: GuiArt | null,
+  art: ScriptMarkerArt | null,
+  colourSlot: () => number,
   elevation?: ElevationField,
 ): ScriptMarkers {
   const container = new Container();
@@ -66,29 +70,29 @@ export function createScriptMarkers(
   /** GUI markers by slot; area and import markers by point. */
   const gui = new Map<number, Marker>();
   const ground = new Map<string, Marker>();
-  const sprites: MarkerSprite[] = [];
+  const sprites: PalettedSprite[] = [];
   /** Whether the flat fallback holds strokes, so an empty frame never dirties it. */
   let drawnFallback = false;
 
   const markers = (): Marker[] => [...gui.values(), ...ground.values()];
 
-  const spriteAt = (i: number, gfx: number): PalettedSprite | null => {
+  const spriteAt = (i: number, gfx: number, row: number): PalettedSprite | null => {
     if (art === null) return null;
-    let slot = sprites[i];
-    if (slot === undefined) {
-      const built = makeGuiSprite(art, gfx, { defaultPalette: 'context', colorKey: 'full' });
-      if (built === null) return null;
-      slot = { sprite: built.sprite, gfx };
-      sprites.push(slot);
-      container.addChild(built.sprite);
-    } else if (slot.gfx !== gfx) {
-      const frame = art.layer.atlas.frames.get(gfx);
-      if (frame === undefined) return null;
-      slot.sprite.setFrame(art.layer.source, frame, art.layer.atlas.width, art.layer.atlas.height);
-      slot.gfx = gfx;
+    const { layer } = art.gui;
+    const frame = layer.atlas.frames.get(gfx);
+    if (frame === undefined) return null;
+    let sprite = sprites[i];
+    if (sprite === undefined) {
+      // No colour key: the black player's ramp lies in the band the GUI keys as near-black backdrop.
+      sprite = new PalettedSprite(art.players.source, art.players.colours);
+      sprites.push(sprite);
+      container.addChild(sprite);
     }
-    slot.sprite.visible = true;
-    return slot.sprite;
+    // Only a new bob re-frames: `stretchToRect` voids `setFrame`'s own unchanged-frame check.
+    if (sprite.frame !== frame) sprite.setFrame(layer.source, frame, layer.atlas.width, layer.atlas.height);
+    if (sprite.player !== row) sprite.player = row;
+    sprite.visible = true;
+    return sprite;
   };
 
   return {
@@ -113,7 +117,7 @@ export function createScriptMarkers(
       }
     },
     update(camera, screen, nowMs) {
-      if (gui.size + ground.size === 0 && !drawnFallback && sprites.every((slot) => !slot.sprite.visible))
+      if (gui.size + ground.size === 0 && !drawnFallback && sprites.every((sprite) => !sprite.visible))
         return;
       const zoom = camera.scale ?? 1;
       const phase = Math.floor(nowMs / GUI_MARKER_FRAME_MS) % GUI_MARKER_FRAMES.length;
@@ -121,7 +125,8 @@ export function createScriptMarkers(
       const still = GUI_MARKER_FRAMES[0];
       if (drawnFallback) fallback.clear();
       drawnFallback = false;
-      for (const slot of sprites) slot.sprite.visible = false;
+      for (const sprite of sprites) sprite.visible = false;
+      const row = colourSlot();
       const margin = OFFSCREEN_MARGIN * zoom;
       let placed = 0;
       for (const marker of markers()) {
@@ -134,8 +139,8 @@ export function createScriptMarkers(
         if (sx < -margin || sy < -margin || sx > screen.width + margin || sy > screen.height + margin)
           continue;
         const gfx = marker.style === 'gui' ? animated : still;
-        const sprite = spriteAt(placed, gfx);
-        const frame = art?.layer.atlas.frames.get(gfx);
+        const sprite = spriteAt(placed, gfx, row);
+        const frame = art?.gui.layer.atlas.frames.get(gfx);
         if (sprite !== null && frame !== undefined) {
           placed++;
           sprite.stretchToRect(

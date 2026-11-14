@@ -14,6 +14,7 @@ import { advanceConstructionLabor } from '../../../economy/construction.js';
 import { applySow, applyWater } from '../../../economy/fields.js';
 import { repairStructure } from '../../../economy/repair.js';
 import { wearWornTool } from '../../../equipment/index.js';
+import { drinkSip } from '../../../lifecycle/needs/index.js';
 import {
   grantCarryExperience,
   grantProfessionExperience,
@@ -28,6 +29,7 @@ import {
   unloadTraderHold,
 } from '../../../trade/index.js';
 import { loadHaulingCart, unloadHaulingCart } from '../../../vehicles/hauling-cart.js';
+import { serveCoinDrillRepetition } from '../../drives/coin-drill-coins.js';
 import { serveDrillRepetition } from '../../drives/training.js';
 import {
   consumeFood,
@@ -104,7 +106,8 @@ export function applyEffect(
       loadHaulingCart(world, ctx, settler, effect.from, effect.goodType);
       return;
     case 'haulUnload':
-      if (unloadHaulingCart(world, ctx, settler, effect.store)) grantCarryExperience(world, ctx, settler);
+      if (unloadHaulingCart(world, ctx, settler, effect.store, effect.goodType))
+        grantCarryExperience(world, ctx, settler);
       return;
     case 'vehicleLoad':
       if (loadVehicleHold(world, ctx, settler, effect.vehicle)) grantCarryExperience(world, ctx, settler);
@@ -122,8 +125,14 @@ export function applyEffect(
       forageBerry(world, ctx, effect.bush);
       clearNeedOrder(world, settler, 'hunger');
       return;
+    case 'drink':
+      drinkSip(world, ctx, settler, effect.slot, effect.goodType);
+      return;
     case 'exercise':
       serveDrillRepetition(world, settler, atomic.duration);
+      return;
+    case 'coinDrill':
+      serveCoinDrillRepetition(world, ctx, settler, atomic.duration);
       return;
     case 'erectSignpost': {
       world.remove(settler, ErectSignpostOrder);
@@ -184,6 +193,7 @@ export function applyEffect(
     // its hit frame, and crafting cycles advance from the workplace, never from a worker's atomic.
     case 'move':
     case 'idle':
+    case 'stunned':
     case 'attack':
     case 'produce':
       return;

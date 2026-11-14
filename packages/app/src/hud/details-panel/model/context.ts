@@ -1,6 +1,7 @@
 import type { ContentSet } from '@open-northland/data';
 import type { SignpostReachView } from '@open-northland/sim';
 import {
+  type components,
   PRODUCTION_COUNT_MAX,
   PRODUCTION_UNLIMITED,
   systems,
@@ -97,6 +98,15 @@ export interface UnitPanelModelContext {
   /** The sim's work-status read seam (`Simulation.workStatus`) for the one selected tradesman; absent
    *  leaves the status line without a product or an idle reason. */
   readonly workStatus?: ((entity: number) => SettlerWorkStatus | undefined) | undefined;
+  /** The sim's fight-experience read (`systems.fightExperienceEffects`): what a person's fight counter
+   *  buys with the weapon he holds. Absent leaves the fight row without its bonuses. */
+  readonly fightEffects?:
+    | ((
+        settler: components.SettlerIdentity,
+        wornWeaponTypeId: number | undefined,
+        experience: ReadonlyMap<number, number>,
+      ) => systems.FightExperienceEffects)
+    | undefined;
   /** The viewer seat's stance toward another owner, for a foreign person's owner line. */
   readonly diplomacyStance?: ((owner: number) => DiplomacyStance) | undefined;
 }

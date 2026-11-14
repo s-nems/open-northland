@@ -376,6 +376,12 @@ export function messagesFromEvents(
         if (e !== undefined) raiser.settler(USER_MESSAGE_TYPE.noOneToMarry, e);
         break;
       }
+      case 'familyMovedOut': {
+        if (ev.player !== localPlayer) break;
+        const e = ownedPerson(ev.entity);
+        if (e !== undefined) raiser.settler(USER_MESSAGE_TYPE.familyMovedOut, e);
+        break;
+      }
       case 'settlerGrewUp': {
         const e = ownedPerson(ev.entity);
         if (e !== undefined) raiser.settler(USER_MESSAGE_TYPE.grewUp, e);

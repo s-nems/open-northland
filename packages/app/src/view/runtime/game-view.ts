@@ -44,6 +44,7 @@ import { movieSubtitles } from '../../campaign/subtitles.js';
 import { pickerEntries } from '../../catalog/professions.js';
 import { emblemBuildingType } from '../../content/building-gfx/emblems.js';
 import { loadGuiArt } from '../../content/gui/art.js';
+import { loadPlayerPaletteLut } from '../../content/gui/player-palettes.js';
 import { type BriefingVoiceLoader, briefingVoicePlayer } from '../../content/map-source/briefing-voices.js';
 import type { FellingClips } from '../../content/object-gfx/felling-clips.js';
 import { hasDebugFlag } from '../../diag/debug-flags.js';
@@ -59,7 +60,6 @@ import { settlerName } from '../../game/character-names/index.js';
 import { installPetNames, type PetNames, petNamesOf } from '../../game/character-names/pet-names.js';
 import { type MissionBriefSource, missionReader } from '../../game/map/mission-brief.js';
 import type { ObserverSeatEntry } from '../../game/match/observer-seats.js';
-import { replaySearch } from '../../game/match/session-url.js';
 import { HUMAN_PLAYER, PRIMARY_TRIBE } from '../../game/rules.js';
 import { technologyName, vehicleLabel } from '../../game/technology.js';
 import {
@@ -79,6 +79,7 @@ import {
   createMatchResultOverlay,
   keepsPlayingAfterResult,
   type MatchResultOverlay,
+  type ReplayOffer,
 } from '../../hud/dom/match-result.js';
 import { createLinkLostScreen, type LinkLostScreen } from '../../hud/dom/network/link-lost-screen.js';
 import { mountHudDomRoot } from '../../hud/dom/root.js';
@@ -141,14 +142,17 @@ import { nodeBounds } from '../picking.js';
 import { createPlacementGates } from '../placement/gates.js';
 import { makeGhostPlotAt } from '../placement/ghost-plot.js';
 import {
+  amuletArcColours,
   createFogGates,
   diplomacyMapNations,
   diplomacyMetSeats,
   diplomacyPanelRows,
+  draughtGlowColours,
   entityAnchor,
   memoBySnapshot,
   messageTargetAnchor,
   templeAuraRadius,
+  windTrailGoods,
 } from '../projections/index.js';
 import { createScriptEffects } from '../script/effects.js';
 import { createScriptMarkers } from '../script/markers.js';
@@ -190,7 +194,7 @@ import {
 import { otherWorldLoader } from './save-load/other-world.js';
 import { worldScreenshot, worldThumbnail } from './save-load/thumbnail.js';
 import { noteRestartOnLeave } from './settings-restart.js';
-import { createSubMissions, type PrepareSubMission } from './sub-missions.js';
+import { createSubMissions, type PrepareSubMission, replayPlan } from './sub-missions.js';
 import { rememberedFog, viewerFog } from './viewer-fog.js';
 import { createWorldEventHandler } from './world-events.js';
 import { createWorldTeardown } from './world-teardown.js';
@@ -283,6 +287,11 @@ export interface GameViewDeps {
   readonly playerColourOf?: (player: number) => number;
   /** Owner slot to the roster's authored seat name, which the stats header prefers over the slot id. */
   readonly seatNameOf?: (player: number) => string | undefined;
+  /** A relayed session's nick of the person who played a seat, which the result's ranking prefers. */
+  readonly playerNickOf?: (player: number) => string | undefined;
+  /** A shared session's word that the match is over for its people while the others play on; the
+   *  result opens then for everyone, a winner and a watcher too, rather than at the match's end. */
+  readonly playersDecided?: () => boolean;
   /** The map roster's player slots; the diplomacy window lists the discovered ones. Default empty. */
   readonly rosterPlayers?: readonly number[];
   /** The map's `[playermisc]` relation rows, which hide players from the diplomacy window or its
@@ -466,9 +475,11 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
           }
           leaveWorld(`?${search}`);
         };
-  // A sub-mission starts from its parent's save, which a fresh boot of its entry would leave behind.
-  const replay =
-    sharedClock || deps.parentSave !== undefined ? undefined : (): void => leaveWorld(replaySearch(params));
+  const replayStart = sharedClock ? null : replayPlan(params, deps.parentSave);
+  const replay: ReplayOffer | undefined =
+    replayStart === null
+      ? undefined
+      : { scope: replayStart.scope, start: () => leaveWorld(replayStart.search()) };
 
   try {
     const storedSettings = readStoredSettings();
@@ -499,6 +510,10 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
         seed: saveLoad.worldSeed,
       }),
     );
+
+    renderer.setDraughtGlowColours(draughtGlowColours(host.content.goods));
+    renderer.setAmuletArcColours(amuletArcColours(host.content.goods));
+    renderer.setWindTrailGoods(windTrailGoods(host.content.goods));
 
     // A checkout without a decoded sound bank degrades to silence.
     const weatherAllowed = deps.weatherMode !== 'off';
@@ -927,11 +942,12 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
     // verdict to hear.
     if (deps.observer !== true || sharedClock) {
       verdict = createMatchResultOverlay({
-        localPlayer,
+        localPlayer: deps.observer === true ? null : localPlayer,
         sharedClock,
         scriptedEnding: scriptEndsVictory,
         ranking: () => host.matchRanking(),
         ...(deps.seatNameOf !== undefined ? { seatNameOf: deps.seatNameOf } : {}),
+        playerNickOf: deps.playerNickOf,
         hud: hudDom,
         onOpen: () => systemMenu?.close(),
         setCameraSuspended: cameraCtl.setSuspended,
@@ -939,13 +955,15 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
         resume: () => pauseHolds.release(PAUSE_HOLDER_VERDICT),
         onQuit: quitToMenu,
         ...(sharedClock ? {} : { onLoad: (back) => systemMenu?.openPage('load', back) }),
-        ...(replay !== undefined ? { onPlayAgain: replay } : {}),
+        ...(replay !== undefined ? { playAgain: replay } : {}),
         onContinue: () => {
-          if (sharedClock) {
+          if (!sharedClock) issueTrusted({ kind: 'continueMatch', player: localPlayer });
+          else if (!watching) {
+            // A watcher keeps the seat it follows.
             watching = true;
             switchableSeat?.watch(PLAYERS_SIGHT);
             deps.onWatchAfterResult?.();
-          } else issueTrusted({ kind: 'continueMatch', player: localPlayer });
+          }
         },
       });
     }
@@ -1264,6 +1282,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
     const {
       goodLabel,
       buildingGeometry,
+      houseBodyOf,
       overlayFrame,
       signpostOverlayFrame,
       litOverlayFrame,
@@ -1291,12 +1310,16 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       selection: { ids: controls.selectedIds, version: controls.selectionVersion },
     });
     pickableDoorBadges = () => drawnDoorBadgesFor(host.snapshot());
+    renderer.setHouseBodies(houseBodyOf);
 
     // The script's markers draw over the world and under every HUD plane.
     const scriptOverlay = new Container();
     cleanup.push(() => scriptOverlay.destroy({ children: true }));
     scriptOverlay.zIndex = SCRIPT_OVERLAY_Z;
     app.stage.addChild(scriptOverlay);
+    const [guiArt, playerPalettes] = await Promise.all([loadGuiArt(), loadPlayerPaletteLut()]);
+    const markerArt =
+      guiArt === null || playerPalettes === null ? null : { gui: guiArt, players: playerPalettes };
     presentation = createScriptPresentation({
       host,
       camera: cameraCtl.camera,
@@ -1308,7 +1331,12 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       centerOn: jumpToWorld,
       screen: () => app.screen,
       ...(deps.elevation !== undefined ? { elevation: deps.elevation } : {}),
-      markers: createScriptMarkers(scriptOverlay, await loadGuiArt(), deps.elevation),
+      markers: createScriptMarkers(
+        scriptOverlay,
+        markerArt,
+        () => deps.playerColourOf?.(viewerPlayer()) ?? viewerPlayer(),
+        deps.elevation,
+      ),
       effects: createScriptEffects(),
       weather: createWeatherFeed(
         deps.mapSize,
@@ -1470,6 +1498,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       setDistantDetail: (enabled) => renderer.setDetailMode(detailModeOf(enabled)),
       setBloodEnabled: applyWhenWarmed((enabled) => renderer.setBloodEnabled(enabled), turnedOn),
       setBonesFade: (fades) => renderer.setBonesFade(fades),
+      setEquipmentEffects: (shown) => renderer.setEquipmentEffects(shown),
       setFpsCounterShown: perfReadout.setShown,
       setFpsLimit: (limit) => {
         loop?.setFpsLimit(limit);
@@ -1493,7 +1522,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
 
     systemMenu = createSystemMenu({
       onQuit: quitToMenu,
-      ...(replay !== undefined ? { onRestart: replay } : {}),
+      ...(replay !== undefined ? { restart: replay } : {}),
       saveLoad: {
         ...saveLoad,
         forcePause: () => pauseHolds.hold(PAUSE_HOLDER_MENU),
@@ -1575,6 +1604,9 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
           // A spectator's seat switch or a rebinding changes what the ping button says.
           mapPing?.refresh();
           followLink?.();
+          // Read per frame over the seats alone: a person leaving decides it as a verdict does.
+          if (verdict !== null && deps.playersDecided?.() === true)
+            verdict.playersDecided(watching ? 'undecided' : host.matchOutcome(localPlayer));
           deps.onFrame?.(snapshot);
         },
       },

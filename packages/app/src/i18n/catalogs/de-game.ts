@@ -169,10 +169,7 @@ export const deGame = {
     workFlag: 'Arbeitsfahne',
     specialization: 'Spezialisierung {id}',
     weaponXp: {
-      fist: 'Kämpfen - Faust',
-      spear: 'Kämpfen - Speer',
-      sword: 'Kämpfen - Schwert',
-      bow: 'Kämpfen - Bogen',
+      fight: 'Kämpfen',
       catapult: 'Kämpfen - Katapult',
     },
     trackLabels: {
@@ -303,7 +300,7 @@ export const deGame = {
     tradeOffers: 'Handelsangebote',
     systemMenuDetails: {
       leaveGame: 'Spiel verlassen',
-      restartMission: 'Mission neu starten',
+      restartMap: 'Karte neu starten',
       resume: 'Zurück zum Spiel',
       paused: 'Spiel pausiert',
       multiplayer: 'Mehrspielerspiel läuft weiter',
@@ -332,6 +329,7 @@ export const deGame = {
     matchFinishedTitle: 'Partie beendet',
     matchFinishedDetail: 'Die Partie ist beendet.',
     matchKicker: 'Das Schicksal deines Stammes',
+    matchTribesKicker: 'Das Schicksal der Stämme',
     matchWatchHint: 'Du kannst die Karte und die anderen Spieler beobachten, ohne Befehle zu erteilen.',
     matchContinue: 'Weiterspielen',
     matchRankingTitle: 'Rangliste',
@@ -348,6 +346,8 @@ export const deGame = {
     quitConfirmNo: 'Weiterspielen',
     playAgain: 'Erneut spielen',
     playAgainConfirm: 'Diese Karte von vorn beginnen? Nicht gespeicherter Fortschritt geht verloren.',
+    playAgainMainMapConfirm:
+      'Zur Hauptkarte zurückkehren und sie von vorn beginnen? Nicht gespeicherter Fortschritt geht verloren.',
     closeMenu: 'Schließen',
     saveGame: 'Spiel speichern',
     loadGame: 'Spiel laden',
@@ -507,6 +507,7 @@ export const deGame = {
       placeSignpost: 'Wegweiser setzen',
       bombard: 'Beschießen',
       rallyPoint: 'Sammelpunkt setzen',
+      coinDrill: 'Exerzieren',
       tooManyUnits: 'Zu viele Einheiten',
       noFreePlaces: 'Keine freien Plätze',
       noRoom: 'Kein Platz',
@@ -530,6 +531,7 @@ export const deGame = {
       fighting: 'Kämpft',
       training: 'Lernt',
       eating: 'Isst',
+      drinking: 'Trinkt',
       mealBreak: 'Hungrig, geht essen',
       sleeping: 'Schläft',
       praying: 'Betet',
@@ -748,6 +750,7 @@ export const deGame = {
         collector: 'in Reichweite der Wegweiser',
         hunter: 'rund um den Arbeitsplatz',
         fisher: 'nahe dem Arbeitsplatz',
+        farmer: 'rund um den Arbeitsplatz',
       },
       assignWorkArea: 'Arbeitsfahne setzen',
       assignWorkAreaHint: {
@@ -755,6 +758,7 @@ export const deGame = {
         collector: 'Wähle die Stelle, in deren Umgebung der Abbauer Rohstoffe sammeln soll · Esc bricht ab',
         hunter: 'Wähle die Stelle, in deren Umgebung der Jäger jagen soll · Esc bricht ab',
         fisher: 'Wähle das Gewässer, an dem der Fischer fischen soll · Esc bricht ab',
+        farmer: 'Wähle die Stelle, in deren Umgebung die Felder angelegt werden sollen · Esc bricht ab',
       },
       clearWorkArea: 'Fahne entfernen',
       clearWorkAreaHint: {
@@ -762,6 +766,7 @@ export const deGame = {
         collector: 'Der Abbauer sammelt wieder überall in Reichweite der Wegweiser Rohstoffe',
         hunter: 'Der Jäger jagt wieder rund um den Arbeitsplatz',
         fisher: 'Der Fischer fischt wieder nahe dem Arbeitsplatz',
+        farmer: 'Die Felder werden wieder rund um den Arbeitsplatz angelegt',
       },
       centreFlag: 'Fahne anzeigen',
       centreFlagHint: 'Ansicht auf die Fahne zentrieren',
@@ -854,6 +859,10 @@ export const deGame = {
       agreementUpToTooltip: 'Handeln, bis so viel {good} vorhanden ist: {where} · ∞: keine Obergrenze',
       repeats: '{count} Mal',
       repeatsBonus: '{count} Mal, Ertrag +{bonus}%',
+      fightShare: 'Kampferfahrung: {pct}%',
+      fightDealt: 'Verursachter Schaden: +{pct}%',
+      fightTaken: 'Erlittener Schaden: -{pct}%',
+      fightAccuracy: 'Treffsicherheit: {pct}%',
       unlockTooltip: 'Schaltet {unlocks} frei (Erfahrung: {track})',
       moreRows: '{count} weitere',
       fewerRows: 'Weniger anzeigen',
@@ -1190,6 +1199,11 @@ export const deGame = {
         sheltered: 'Untergebracht: {sheltered} / {capacity}',
         working: 'In Betrieb',
         noWorkers: 'Keine Arbeiter',
+        blessing: 'Segnet',
+        oilLeft: 'Öl für {minutes} Min.',
+        noOil: 'Kein Öl',
+        blessingDamaged: 'Beschädigt, kein Segen',
+        blessingDoused: 'Gelöscht, kein Segen',
         noGarrison: 'Keine Garnison',
         manned: 'Bemannt',
         idle: 'Untätig',
@@ -1223,6 +1237,13 @@ export const deGame = {
       productionUnfold: 'alle anzeigen ({count})',
       productionFold: 'weniger',
       productionIdle: 'Zurzeit wird nichts hergestellt',
+      templeFire: 'Heiliges Feuer',
+      templeFireLeft: 'Die brennende Öleinheit reicht noch {time}, der ganze Vorrat {minutes} Min.',
+      templeFireOut: 'Das Feuer brennt nicht',
+      templeFireDoused: 'Das Feuer ist gelöscht',
+      templeFireDouse: 'Löschen',
+      templeFireLight: 'Entzünden',
+      templeFireDouseTooltip: 'Ein gelöschtes Feuer verbrennt kein Öl und segnet niemanden',
       needs: '{good}\nBenötigt: {inputs}',
       need: '{good}: {have} vorhanden, {need} pro Durchgang',
       fields: 'Felder {sown} · reif {ripe}',
@@ -1238,6 +1259,16 @@ export const deGame = {
       uses: 'Nutzungen: {count}',
       holyFireOn: 'brennt',
       holyFireOff: 'erloschen',
+      furnitureLodges: {
+        one: '{pieces} Stk. · +{count} Familie',
+        few: '{pieces} Stk. · +{count} Familien',
+        many: '{pieces} Stk. · +{count} Familien',
+      },
+      furnitureIdle: '{pieces} Stk. · keine weitere Familie',
+      furnitureInUse: 'in Gebrauch: {left}',
+      furniturePieceLeft: '{percent}%',
+      furnitureTip:
+        'Ein Stück Möbel gibt Platz für eine weitere Familie. Jede dieser Familien nutzt ihr eigenes Stück ab und nimmt danach das nächste aus dem Vorrat des Hauses. Ohne Vorrat zieht die Familie aus.',
       allowed: '{good} · in allen Wohnhäusern erlaubt · Klicken: verbieten',
       forbidden: '{good} · in allen Wohnhäusern verboten · Klicken: erlauben',
       policyForeign: 'Der Besitzer legt die Regeln fest',
@@ -1537,10 +1568,12 @@ export const deGame = {
       charmsTip: 'Eines jeder Art pro Mann. Ein Amulett nutzt sich nie ab.',
       shortage: {
         lacking: 'Ohne: {count}',
-        soldiers: {
-          one: '(darunter {count} Soldat)',
-          few: '(darunter {count} Soldaten)',
-          many: '(darunter {count} Soldaten)',
+        split: '({parts})',
+        separator: ', ',
+        part: {
+          civilians: 'Zivilisten {count}',
+          workers: 'Arbeiter {count}',
+          soldiers: 'Soldaten {count}',
         },
         short: 'Reicht nicht für alle: der Rest wartet auf Nachschub.',
         covered: 'Reicht für alle.',
@@ -1563,7 +1596,10 @@ export const deGame = {
         label: 'wer es bekommt',
         civilians: 'Zivilisten',
         civiliansTip:
-          'Erwachsene Männer, die keine Soldaten sind. An: Jeder ohne eines holt sich eines aus dem Lager. Aus: Wer eines hat, behält es.',
+          'Erwachsene Männer ohne Beruf. An: Jeder ohne eines holt sich eines aus dem Lager. Aus: Wer eines hat, behält es.',
+        workers: 'Arbeiter',
+        workersTip:
+          'Erwachsene Männer mit Beruf, die keine Soldaten sind. An: Jeder ohne eines holt sich eines aus dem Lager. Aus: Wer eines hat, behält es.',
         soldiers: 'Soldaten',
         soldiersTip:
           'An: Jeder Soldat ohne eines holt sich eines aus dem Lager. Aus: Wer eines hat, behält es.',
@@ -1583,15 +1619,15 @@ export const deGame = {
         },
         trainSword: {
           label: 'Schwertkämpfer',
-          tip: 'Bewaffnet zuerst Soldaten ohne Waffe und bildet dann neue aus. Waffe und Rüstung in der Reihenfolge darunter.',
+          tip: 'Bewaffnet zuerst Soldaten ohne Waffe und bildet dann neue aus, wenn eine Waffe für sie da ist. Waffe und Rüstung in der Reihenfolge darunter.',
         },
         trainSpear: {
           label: 'Speerträger',
-          tip: 'Bewaffnet zuerst Soldaten ohne Waffe und bildet dann neue aus. Waffe und Rüstung in der Reihenfolge darunter.',
+          tip: 'Bewaffnet zuerst Soldaten ohne Waffe und bildet dann neue aus, wenn eine Waffe für sie da ist. Waffe und Rüstung in der Reihenfolge darunter.',
         },
         trainBow: {
           label: 'Bogenschützen',
-          tip: 'Bewaffnet zuerst Soldaten ohne Waffe und bildet dann neue aus. Waffe und Rüstung in der Reihenfolge darunter.',
+          tip: 'Bewaffnet zuerst Soldaten ohne Waffe und bildet dann neue aus, wenn eine Waffe für sie da ist. Waffe und Rüstung in der Reihenfolge darunter.',
         },
       },
       switches: {
@@ -1637,7 +1673,7 @@ export const deGame = {
         },
         giveDefenseAmulet: {
           label: 'Verteidigungsamulett',
-          tip: 'Jeder Mann ohne eines holt sich eines aus dem Lager. Sein Träger nimmt nur halben Schaden.',
+          tip: 'Jeder Mann ohne eines holt sich eines aus dem Lager. Sein Träger nimmt weniger Schaden.',
         },
         giveCriticalHitAmulet: {
           label: 'Trefferamulett',
@@ -1653,7 +1689,7 @@ export const deGame = {
         },
         postGraduates: {
           label: 'Schulabgänger automatisch Werkstätten zuweisen',
-          tip: 'Ein Schulabgänger geht direkt zum nächsten freien Arbeitsplatz seines Berufs.',
+          tip: 'Ein Schulabgänger geht zu einem freien Arbeitsplatz seines Berufs: einem fertigen vor einer Baustelle, einem unbesetzten vor einem besetzten, dann zum nächsten.',
         },
         moveFlags: {
           label: 'Abbauer versetzen ihre Fahne automatisch',
@@ -1661,7 +1697,7 @@ export const deGame = {
         },
         foundFamilies: {
           label: 'Familien gründen',
-          tip: 'Eine obdachlose Frau zieht in das nächste Haus mit einem freien Platz. Eine Frau, die schon ein Haus hat, heiratet, sobald ein Mann frei ist.',
+          tip: 'Eine obdachlose Frau zieht in das nächste Haus mit einem freien Platz. Eine Frau, die schon ein Haus hat, heiratet, sobald ein Mann frei ist. Eine Familie, die mangels Möbeln ausziehen musste, zieht ebenfalls in ein solches Haus.',
         },
       },
       notes: {
@@ -2104,6 +2140,7 @@ export const deGame = {
         she: 'Erwachsene Frau',
       },
       noOneToMarry: 'Kein Partner',
+      familyMovedOut: 'Ausgezogen',
       cannotEnterVehicle: 'Einsteigen nicht möglich',
       cannotLeaveVehicle: 'An Bord gefangen',
       settlementAttacked: 'Dorf angegriffen',
@@ -2195,6 +2232,8 @@ export const deGame = {
         he: '{name} hat keine Frau zum Heiraten gefunden. Eine unverheiratete Frau muss in seiner Reichweite leben.',
         she: '{name} hat keinen Mann zum Heiraten gefunden. Ein unverheirateter Mann muss in ihrer Reichweite leben.',
       },
+      familyMovedOut:
+        '{name} zieht mit Familie aus: Das Wohnhaus hat keine Möbel mehr für sie. Bring Möbel hin oder weise ihnen ein anderes Wohnhaus zu.',
       cannotEnterVehicle:
         '{name} kann dieses Fahrzeug nicht besteigen: Es gibt keinen freien Platz oder das Schiff ist auf See. Bringe das Schiff ans Ufer oder wähle ein anderes Fahrzeug.',
       cannotLeaveVehicle:

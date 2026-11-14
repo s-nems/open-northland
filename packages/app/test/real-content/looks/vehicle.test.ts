@@ -1,14 +1,23 @@
 import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { systems } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
+import { ATTACK_ATOMIC } from '../../../src/catalog/atomics.js';
 import type { ContentIr } from '../../../src/content/ir/rows.js';
 import {
   buildVehicleBinding,
   type DrawableFrames,
   vehicleAtlasStems,
+  vehicleAttackClipTicks,
   vehicleGraphicsRows,
 } from '../../../src/content/vehicle-gfx/index.js';
-import { contentDir, hasRealIr, rawIrUnderTest, servedAtlasManifest } from '../helpers.js';
+import {
+  contentDir,
+  hasRealIr,
+  loadContentUnderTest,
+  rawIrUnderTest,
+  servedAtlasManifest,
+} from '../helpers.js';
 
 /**
  * The shipped `vehicleGraphics` rows over the REAL baked atlases: every row binds a look, and the data
@@ -42,7 +51,9 @@ describe.runIf(hasRealIr())('the vehicle looks over the decoded content', () => 
       return [[stem, drawable] as const];
     }),
   );
-  const binding = buildVehicleBinding(rows, loaded, frames, VIKING);
+  const binding = buildVehicleBinding(rows, loaded, frames, VIKING, {
+    attackTicks: vehicleAttackClipTicks(ir),
+  });
 
   it('binds a look for every row that authors a wait or a drive', () => {
     expect(binding).toBeDefined();
@@ -62,10 +73,24 @@ describe.runIf(hasRealIr())('the vehicle looks over the decoded content', () => 
     expect(look?.loadedMoving).toBeUndefined();
   });
 
-  it('drives the byzantine ox cart on the viking drive, and fires the viking catapult on the 48-tick clip', () => {
+  it('drives the byzantine ox cart on the viking drive, and fires the viking catapult', () => {
     expect(binding?.byTribe[BYZANTINE]?.[OXCART]?.moving).toBe(binding?.byTribe[VIKING]?.[OXCART]?.moving);
     expect(binding?.byTribe[VIKING]?.[CATAPULT]?.attack).toBeDefined();
     expect(binding?.byTribe[EGYPT]).toBeUndefined();
     expect(binding?.fallbackTribe).toBe(VIKING);
+  });
+
+  it('plays each shot over the attack clip the simulation times that shot by', async () => {
+    const { real } = await loadContentUnderTest();
+    const shooting = rows.filter(
+      (row) => binding?.byTribe[row.tribe]?.[row.vehicleType]?.attack !== undefined,
+    );
+    expect(shooting.length).toBeGreaterThan(0);
+    for (const row of shooting) {
+      const clip = systems.atomicDuration(real, { tribe: row.tribe, jobType: row.job }, ATTACK_ATOMIC);
+      const attack = binding?.byTribe[row.tribe]?.[row.vehicleType]?.attack;
+      const ticks = typeof attack === 'object' && 'ticks' in attack ? attack.ticks : undefined;
+      expect(ticks, `${row.tribe}/${row.vehicleType}`).toBe(clip);
+    }
   });
 });

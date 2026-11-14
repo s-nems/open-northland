@@ -1,0 +1,31 @@
+{
+  "version": 1,
+  "map": "magiczny_las",
+  "basis": {
+    "lang": "eng",
+    "digest": "c384a7cfc601eb33ee9b86403f89d4e47c79996966806e43fe262068a8406810"
+  },
+  "strings": {
+    "0": "LA FORESTA MAGICA",
+    "1": "Battaglia multiplayer 3 contro 3",
+    "30": "Sconfiggi le tribù nemiche dall'altra parte della Foresta magica",
+    "50": "Vichinghi 1",
+    "51": "Vichinghi 2",
+    "52": "Vichinghi 3",
+    "53": "Vichinghi 4",
+    "54": "Vichinghi 5",
+    "55": "Vichinghi 6",
+    "56": "Spiriti della Foresta magica",
+    "60": "Vic1",
+    "61": "Vic2",
+    "62": "Vic3",
+    "63": "Vic4",
+    "64": "Vic5",
+    "65": "Vic6",
+    "66": "Spiriti"
+  },
+  "briefings": {
+    "500": "<font:$local$\\fonts\\fonthead16bld.fnt>\nLA FORESTA MAGICA\n<font:$local$\\fonts\\font12.fnt>\n\nDue clan vichinghi ostili sono giunti in questa terra bella e fertile. Li separa una foresta magica che, secondo i racconti popolari, è infestata dagli spiriti.\n\nIl tuo compito è collaborare con gli alleati per sconfiggere i nemici dall'altra parte della foresta.\n\nBuona fortuna\ndi Jozenkow\n",
+    "501": "<font:$local$\\fonts\\fonthead16bld.fnt>\nVITTORIA\n<font:$local$\\fonts\\font12.fnt>\n\nHai sconfitto le tribù nemiche!\n"
+  }
+}

@@ -1,4 +1,9 @@
+import { components, type Entity, fx, type Simulation, systems } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
+import { grassTerrain } from '../../../src/catalog/buildings.js';
+import { JOB_SOLDIER_SWORD } from '../../../src/catalog/jobs.js';
+import { HUMAN_PLAYER, PRIMARY_TRIBE } from '../../../src/game/rules.js';
+import { spawnSettlerDirect } from '../../../src/game/sandbox/index.js';
 import { createKnowledgeBase } from '../../../src/hud/knowledge/base.js';
 import {
   blowResult,
@@ -16,12 +21,16 @@ import {
 import {
   ANIMAL_TARGET,
   type BlowModifiers,
+  CAP_POINTS,
   combatTargets,
+  DEFENSE_TAKEN_PCT,
   HIT_DIRECTION,
   HUMAN_HITPOINTS,
   landed,
 } from '../../../src/hud/knowledge/combat.js';
 import type { KnowledgeWeapon } from '../../../src/hud/knowledge/model.js';
+import { createSceneSim } from '../../../src/scenes/runtime.js';
+import { goodBySlug } from '../../../src/scenes/sandbox-queries.js';
 import {
   FRANK,
   FRANK_SMITHY_HITPOINTS,
@@ -35,6 +44,7 @@ const SPEAR_TYPE = 2;
 const BOW_TYPE = 6;
 const CATAPULT_TYPE = 7;
 const CLIP_TICKS = 24;
+const MAP_CELLS = 16;
 
 const content = knowledgeContent();
 const base = createKnowledgeBase(content);
@@ -68,7 +78,7 @@ const armedBase = (rows: readonly KnowledgeWeapon[]) => ({
 const fighter = (over: Partial<DuelFighter>): DuelFighter => ({
   tribe: VIKING,
   weapon: 'iron_spear',
-  hits: 0,
+  points: 0,
   strength: false,
   armour: 'bare',
   defense: false,
@@ -77,9 +87,9 @@ const fighter = (over: Partial<DuelFighter>): DuelFighter => ({
 
 describe('breakdown', () => {
   const modifiers: readonly BlowModifiers[] = [
-    { direction: HIT_DIRECTION.front, hits: 0, strength: false, defense: false },
-    { direction: HIT_DIRECTION.behind, hits: 60, strength: true, defense: true },
-    { direction: HIT_DIRECTION.backSide, hits: 100, strength: true, defense: false },
+    { direction: HIT_DIRECTION.front, points: 0, strength: false, defense: false, targetPoints: 0 },
+    { direction: HIT_DIRECTION.behind, points: 60, strength: true, defense: true, targetPoints: 100 },
+    { direction: HIT_DIRECTION.backSide, points: 100, strength: true, defense: false, targetPoints: 30 },
   ];
   const weapons = [
     row(),
@@ -125,6 +135,20 @@ describe('breakdown', () => {
     expect(skip(row(), 'vehicle', 'direction')).toBe('notPerson');
     expect(skip(row({ id: 'catapult', mainType: CATAPULT_TYPE }), 'building', 'strength')).toBe('catapult');
     expect(skip(row({ id: 'house_bow', mainType: BOW_TYPE }), 'bare', 'strength')).toBe('catapult');
+    expect(skip(row(), 'bare', 'targetExperience')).toBe('unseasoned');
+    expect(skip(row(), 'building', 'targetExperience')).toBe('notPerson');
+  });
+
+  it("cuts a blow by the target's experience, multiplied with his Amulet of Defence", () => {
+    const bare = targets.find((t) => t.id === 'bare');
+    if (bare === undefined) throw new Error('no bare target');
+    const blow = { ...(modifiers[0] as BlowModifiers), targetPoints: CAP_POINTS };
+    const plain = landed(row(), bare);
+    const full = systems.fightUnitsOfPoints(CAP_POINTS);
+    expect(landed(row(), bare, blow)).toBe(systems.withTakenBonuses(plain, full));
+    expect(landed(row(), bare, { ...blow, defense: true })).toBe(
+      systems.withTakenBonuses(plain, full, DEFENSE_TAKEN_PCT),
+    );
   });
 });
 
@@ -262,8 +286,74 @@ describe('duelResult', () => {
   });
 
   it("uses each fighter's own amulets against the other's armour", () => {
-    const halved = duelResult(armed, [fighter({}), fighter({ defense: true })]);
-    expect(halved?.sides[0].damage).toBe(500);
-    expect(halved?.sides[1].damage).toBe(1000);
+    const guarded = duelResult(armed, [fighter({}), fighter({ defense: true })]);
+    expect(guarded?.sides[0].damage).toBe(600);
+    expect(guarded?.sides[1].damage).toBe(1000);
+  });
+});
+
+describe('the calculator against the sim', () => {
+  const FIGHT_HP = 100_000;
+  const STRIKER_POINTS = 60;
+  const TARGET_POINTS = 30;
+  const CHAMPION = { x: 8, y: 6 } as const;
+  const RIVAL = { x: 10, y: 6 } as const;
+  const RED = 1;
+  const RUN_TICKS = 200;
+  const { Equipment, Health, MISC_EQUIP_SLOTS, SettlerProgress } = components;
+
+  /** A short-sword soldier carrying `amulets`, at `points` of fight experience that blows will not move. */
+  function duelist(
+    sim: Simulation,
+    at: { readonly x: number; readonly y: number },
+    owner: number,
+    amulets: readonly string[],
+    points: number,
+  ): Entity {
+    const e = spawnSettlerDirect(sim, JOB_SOLDIER_SWORD, at.x, at.y, owner);
+    const misc = Array.from({ length: MISC_EQUIP_SLOTS }, (_, slot) => {
+      const slug = amulets[slot];
+      return slug === undefined ? null : { goodType: goodBySlug(sim, slug), degreeOfUse: fx.fromInt(0) };
+    });
+    sim.world.add(e, Equipment, { boots: null, tool: null, weapon: null, armor: null, misc });
+    sim.world.add(e, Health, { hitpoints: FIGHT_HP, max: FIGHT_HP });
+    sim.world
+      .mut(e, SettlerProgress)
+      .experience.set(systems.FIGHT_EXPERIENCE_TYPE.PERSONAL, systems.fightUnitsOfPoints(points));
+    components.stampMissionBehaviour(sim.world, e, components.MISSION_BEHAVIOUR.NO_JOB_EXPERIENCE);
+    return e;
+  }
+
+  it('lands the blow the sim lands, with experience on both sides and both amulets', () => {
+    let champion: Entity | undefined;
+    let rival: Entity | undefined;
+    const sim = createSceneSim({
+      seed: 3,
+      terrain: grassTerrain(MAP_CELLS, MAP_CELLS),
+      build: (s) => {
+        champion = duelist(s, CHAMPION, HUMAN_PLAYER, ['amulet_strength'], STRIKER_POINTS);
+        rival = duelist(s, RIVAL, RED, ['amulet_defense'], TARGET_POINTS);
+        s.enqueueSetup({ kind: 'attackUnit', entity: champion, target: rival });
+      },
+    });
+    let dealt: number | undefined;
+    for (let i = 0; i < RUN_TICKS && dealt === undefined; i++) {
+      sim.step();
+      for (const ev of sim.events.current())
+        if (ev.kind === 'combatHit' && ev.attacker === champion && ev.target === rival) dealt = ev.damage;
+    }
+    const knowledge = createKnowledgeBase(sim.content);
+    const weapon = knowledge.weapons.get(PRIMARY_TRIBE)?.find((w) => w.jobType === JOB_SOLDIER_SWORD);
+    const bare = combatTargets(knowledge).find((t) => t.id === 'bare');
+    if (weapon === undefined || bare === undefined) throw new Error('setup: sword row and bare target');
+    const calculated = landed(weapon, bare, {
+      direction: HIT_DIRECTION.front,
+      points: STRIKER_POINTS,
+      strength: true,
+      defense: true,
+      targetPoints: TARGET_POINTS,
+    });
+    expect(calculated).not.toBe(landed(weapon, bare));
+    expect(dealt).toBe(calculated);
   });
 });

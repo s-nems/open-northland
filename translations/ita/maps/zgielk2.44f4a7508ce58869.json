@@ -1,0 +1,33 @@
+{
+  "version": 1,
+  "map": "zgielk2",
+  "basis": {
+    "lang": "eng",
+    "digest": "ef0bec65e9ea87b7b1b66f4ec598eb67441265d935747276582f64b1534c3f1e"
+  },
+  "strings": {
+    "0": "SPECIALE: TRAMBUSTO 2",
+    "1": "Acchiappa la mucca: 4 tribù vichinghe si contendono il bestiame di un piccolo paese.",
+    "2": "Trova e cattura tutte le mucche e le pecore del paese! Per farle tue, manda un esploratore abbastanza vicino a loro!",
+    "3": "Mucche catturate: %d su 12",
+    "4": "Mucche catturate: %d su 12",
+    "5": "Mucche catturate: %d su 12",
+    "6": "Mucche catturate: %d su 12",
+    "7": "Pecore catturate: %d su 12",
+    "8": "Pecore catturate: %d su 12",
+    "9": "Pecore catturate: %d su 12",
+    "10": "Greenlanders",
+    "11": "Greenlanders",
+    "20": "Vinlanders",
+    "21": "Vinlanders",
+    "30": "Hellulanders",
+    "31": "Hellulanders",
+    "40": "Marklanders",
+    "41": "Marklanders",
+    "91": "Pecore catturate: %d su 12"
+  },
+  "briefings": {
+    "header": "\nTRAMBUSTO 2\n",
+    "begin_00": "Cerca di impadronirti di tutte le mucche e le pecore del paese. Ce ne sono 12 per ciascuna specie!\n\nI tuoi avversari cercheranno di fare lo stesso, quindi sta' in guardia: tieni d'occhio gli animali che hai già catturato!\n\nATTENZIONE:\nOvviamente le mucche di questo paese non si possono uccidere!"
+  }
+}

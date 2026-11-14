@@ -24,7 +24,8 @@ export const MILITARY: ArticleGroup = {
           table: {
             head: ['倍率', '数值'],
             rows: [
-              ['[[article:exp-combat|该武器的经验]]（仅近战）', '最高×{{combat.fightCapFactor}}'],
+              ['攻击者的[[article:exp-combat|战斗经验]]（仅近战）', '最高×{{combat.fightCapFactor}}'],
+              ['目标的[[article:exp-combat|战斗经验]]', '最低×{{combat.fightTakenFactor}}'],
               ['从后侧攻击', '×{{combat.backSideFactor}}'],
               ['从背后攻击', '×{{combat.behindFactor}}'],
             ],
@@ -33,7 +34,7 @@ export const MILITARY: ArticleGroup = {
         },
         {
           list: [
-            '经验对箭矢、石弹、载具和木栅栏无效。',
+            '攻击者的经验不加强箭矢、石弹，也不加强对载具和木栅栏的攻击。目标的经验会减少打在人身上的每次攻击和射击。',
             '攻击方向和防御护符只对人起作用。箭矢的方向按射出的位置算。',
             '投石机不能使用力量护符。',
             '木栅栏的伤害另算：[[article:walls|木栅栏与栅门]]。',
@@ -99,6 +100,16 @@ export const MILITARY: ArticleGroup = {
             ],
             foot: '范围内的仓库有排位更高的装备时，新兵会去取它，而不拿兵营里较差的。',
           },
+        },
+        {
+          h: '集结点',
+        },
+        {
+          list: [
+            '在[[building:barracks|兵营]]面板里可以插上集结旗，也可以只选中兵营时右键点击地面。',
+            '此后兵营训练出的士兵会走到旗帜处，各自在旗帜周围的队列中占一个位置作为岗位守着。先去取武器的新兵会在旗帜处结束这趟路。',
+            '没有旗帜时，新士兵留在兵营门口。',
+          ],
         },
         {
           h: '兵营存放',
@@ -194,14 +205,14 @@ export const MILITARY: ArticleGroup = {
         },
         {
           table: {
-            head: ['命中次数', '射准的几率'],
+            head: ['点数', '射准的几率'],
             rows: [
               ['0', '{{aim.basePct}}%'],
               ['50', '{{aim.samplePct}}%'],
-              ['{{aim.noSpreadHits}}+', '总落在目标上'],
+              ['{{aim.noSpreadPoints}}+', '总落在目标上'],
             ],
             num: [0, 1],
-            foot: '每命中一次增加1%。{{aim.noSpreadHits}}次命中起，打偏的箭也落在目标上。短弓和长弓一起累计命中，[[article:catapult|投石机]]单独累计，但用同一张表。英雄总能射中。',
+            foot: '每一点[[article:exp-combat|战斗经验]]增加1%，操练和用其他武器战斗得到的点数也算。{{aim.noSpreadPoints}}点起，打偏的箭也落在目标上。[[article:catapult|投石机]]单独累计自己的命中，但用同一张表。英雄总能射中。',
           },
         },
         {
@@ -312,10 +323,10 @@ export const MILITARY: ArticleGroup = {
           h: '“进食与睡眠”开关',
         },
         {
-          p: '设为“禁止”时，士兵不会自己去吃饭、睡觉或祈祷，连随身带的和箭塔存的食物也不吃，饥饿也不会打断长命令。没有饮品的话，他最后会挨饿。下“进食”命令或改回“允许”就能解决。',
+          p: '设为“禁止”时，士兵不会自己去吃饭、睡觉或祈祷，连随身带的和箭塔存的食物也不吃，也不会停下来喝蜂蜜酒，饥饿也不会打断长命令。没有药水的话，他最后会挨饿。下“进食”命令或改回“允许”就能解决。',
         },
         {
-          p: '饮品、护符以及进食、睡觉、祈祷命令在两种设置下都有效。命令菜单里这两种设置叫“允许休整”和“禁止休整”。',
+          p: '药水、护符以及进食、睡觉、祈祷命令在两种设置下都有效。命令菜单里这两种设置叫“允许休整”和“禁止休整”。',
         },
         {
           h: '战斗附近的休息',
@@ -343,7 +354,7 @@ export const MILITARY: ArticleGroup = {
             head: ['项目', '士兵', '英雄'],
             rows: [
               ['视野（格）', '{{vision.soldier}}', '{{vision.hero}}'],
-              ['弓箭准头', '随命中次数上升', '总是打得准'],
+              ['弓箭准头', '随战斗经验上升', '总是打得准'],
               ['战斗经验', '增长', '只有任务允许时才增长'],
               ['吃饭和睡觉', '需要', '不需要'],
               ['武器、护甲、鞋子', '可更换，鞋子会磨损', '固定，鞋子不磨损'],
@@ -402,7 +413,7 @@ export const MILITARY: ArticleGroup = {
             '平民、妇女和儿童跑向最近的、走得到的有空位的建筑。',
             '士兵、英雄和[[job:scout|侦察兵]]留在外面。',
             '找不到位置的人继续工作。',
-            '防御模式开启时，居民会中断吃饭和睡觉。在里面不工作，只吃随身带的。',
+            '防御模式开启时，居民会中断吃饭和睡觉。在里面不工作，吃随身带的或建筑库存里的食物。',
             '躲进去的居民不会受到攻击。',
             '建筑被毁时，躲在里面的人会出来。',
           ],
@@ -604,14 +615,14 @@ export const MILITARY: ArticleGroup = {
           h: '防御墙',
         },
         {
-          p: '[[building:work_pottery_02|防御墙]]是普通建筑，伤害看“建筑”列。士兵对待它和木栅栏一样。',
+          p: '[[building:defence_wall|防御墙]]是普通建筑，伤害看“建筑”列。士兵对待它和木栅栏一样。',
         },
       ],
       see: [
         'article:damage',
         'article:catapult',
         'article:construction',
-        'building:work_pottery_02',
+        'building:defence_wall',
         'good:wood',
       ],
     },
@@ -683,7 +694,7 @@ export const MILITARY: ArticleGroup = {
           h: '命中率',
         },
         {
-          p: '准头和弓手一样随命中上升：[[article:aim|命中与射击]]。在{{catapult.max}}格处，打偏的石弹落在目标周围：0次命中时最多{{stone.spread.0}}格，25次{{stone.spread.25}}格，50次{{stone.spread.50}}格。{{aim.noSpreadHits}}次命中起落在目标上。命中次数归指挥官：每发打坏了东西的石弹都算，建筑也算，但即使打中多个目标也只算一次。',
+          p: '准头和弓手一样随命中上升：[[article:aim|命中与射击]]。在{{catapult.max}}格处，打偏的石弹落在目标周围：0次命中时最多{{stone.spread.0}}格，25次{{stone.spread.25}}格，50次{{stone.spread.50}}格。石弹不会落到目标后方：本会飞过目标的石弹改为落在目标前方。{{aim.noSpreadPoints}}次命中起落在目标上。命中次数归指挥官：每发打坏了东西的石弹都算，建筑也算，但即使打中多个目标也只算一次。',
         },
         {
           h: '投石机的姿态',
@@ -701,8 +712,10 @@ export const MILITARY: ArticleGroup = {
         },
         {
           list: [
-            '目标近于{{catapult.min}}格时，投石机后撤。目标远于{{catapult.max}}格时，它会开到{{catapult.bandMin}}-{{catapult.max}}格处。',
-            '只在静止且不与其他载具接触时射击。',
+            '在{{catapult.min}}-{{catapult.max}}格射程内，它先打箭塔、大本营、兵营、有人从里面射击的房屋和敌方投石机，再打弓箭手等射手，然后是其他士兵，最后才是其他房屋和人。',
+            '不在无视姿态时，如果射程内没有前两类目标，{{catapult.priorityReach}}格内的这类目标会把它吸引过去：箭塔、大本营、兵营、有人从里面射击的房屋、敌方投石机，或弓箭手和其他远程士兵。即使射程内还有其他士兵，或身边围着敌人，它也会开过去。',
+            '射程内没有目标时，它会从近于{{catapult.min}}格的单个敌人身边后撤；若有两个或更多敌人这么近，它就原地不动。目标远于{{catapult.max}}格时，它会开到{{catapult.bandMin}}-{{catapult.max}}格处。',
+            '只在静止时射击。互相接触的投石机中只有一台射击：已经在那里射击的那一台。其余的会开到空位上，没有空位时就在原地等待。',
             '可以命令它射击地面上的任意位置。只有下令它才会打木栅栏。',
           ],
         },

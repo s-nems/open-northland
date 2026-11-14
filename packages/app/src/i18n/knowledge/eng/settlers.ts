@@ -65,7 +65,7 @@ export const SETTLERS: ArticleGroup = {
               ['{{need.satedPct}}%', 'At home he tops up Stamina, then Energy, to this level and leaves.'],
               [
                 '{{need.overfillPct}}%',
-                'The most a bar holds. A meal at home or sleep at home with Furniture stores a reserve above 100%.',
+                'The most a bar holds. A meal or a sleep at home can bank a reserve above 100%.',
               ],
             ],
           },
@@ -75,44 +75,24 @@ export const SETTLERS: ArticleGroup = {
         },
         {
           table: {
-            head: [
-              'Who',
-              'Sleep time',
-              'Stamina per sleep: away from home',
-              'at home',
-              'at home with Furniture',
-            ],
+            head: ['Who', 'Sleep time', 'Stamina per sleep: away from home', 'at home'],
             rows: [
-              [
-                'Man',
-                '{{sleep.manSeconds}} s',
-                '+{{sleep.manAwayPct}}%',
-                '+{{sleep.manHomePct}}%',
-                '+{{sleep.manFurnishedPct}}%',
-              ],
+              ['Man', '{{sleep.manSeconds}} s', '+{{sleep.manAwayPct}}%', '+{{sleep.manHomePct}}%'],
               [
                 '[[job:woman|Woman]]',
                 '{{sleep.womanSeconds}} s',
                 '+{{sleep.womanAwayPct}}%',
                 '+{{sleep.womanHomePct}}%',
-                '+{{sleep.womanFurnishedPct}}%',
               ],
               [
                 'Merchant, Scout (always as at home)',
                 '{{sleep.manSeconds}} s',
                 '+{{sleep.manHomePct}}%',
                 '-',
-                '-',
               ],
-              [
-                'Soldier (wherever he sleeps)',
-                '{{sleep.soldierSeconds}} s',
-                '+{{sleep.soldierPct}}%',
-                '-',
-                '-',
-              ],
+              ['Soldier (wherever he sleeps)', '{{sleep.soldierSeconds}} s', '+{{sleep.soldierPct}}%', '-'],
             ],
-            num: [1, 2, 3, 4],
+            num: [1, 2, 3],
           },
         },
         {
@@ -129,7 +109,7 @@ export const SETTLERS: ArticleGroup = {
               ['Cart passenger', 'Bars do not drain, health does not change.'],
               [
                 'Ship passenger',
-                'Eats from the hold, sleeps as away from home, talks. Prays only once ashore.',
+                'Drinks what he carries first. With the ship moored he goes ashore to eat, at sea he eats from the hold. Sleeps as away from home, talks. Prays only once ashore.',
               ],
             ],
           },
@@ -211,7 +191,7 @@ export const SETTLERS: ArticleGroup = {
         },
         {
           steps: [
-            'A [[job:woman|Woman]] with a finished dwelling looks for the nearest food outside dwellings.',
+            'A [[job:woman|Woman]] with a finished dwelling first fetches the nearest [[good:meat|Meat]], as on a [[building:work_animal_farm|Cattle Farm]], and otherwise the nearest food outside dwellings.',
             'She carries {{haul.carry}} piece home.',
             'With [[good:crockery|Crockery]] in the dwelling, each delivery puts {{haul.crockeryDelivery}} pieces in the larder.',
           ],
@@ -280,7 +260,7 @@ export const SETTLERS: ArticleGroup = {
         {
           list: [
             'Only the "Assign home" order gives a dwelling. Nobody moves in on their own, and a wedding moves only the spouse.',
-            'A dwelling holds as many families as the Families column of the level table says. The order fails on a full one.',
+            'A dwelling holds as many families as the Families column of the level table says, more with [[good:furniture|Furniture]]. The order fails on a full one.',
             'Reassigning moves the whole family: settler, spouse and growing child.',
           ],
         },
@@ -290,7 +270,7 @@ export const SETTLERS: ArticleGroup = {
         {
           list: [
             'A wedding takes the "Marry" order.',
-            'The order pairs the settler with the nearest adult of the opposite sex, same tribe, same player.',
+            'The order pairs the settler with the nearest adult of the opposite sex, same tribe, same player. A Woman takes a man with a profession before a Civilian.',
             'The candidate must be within the settler\'s [[article:roads|signpost]] reach. With no candidate the order is lost and the game shows "No match".',
             'Soldiers, heroes, Scouts and anyone sent to the [[building:barracks|Barracks]] or [[building:school|School]] do not marry.',
             "A couple lives in the wife's dwelling, or the husband's if she has none.",
@@ -342,9 +322,9 @@ export const SETTLERS: ArticleGroup = {
               [
                 '[[good:furniture|Furniture]]',
                 'Dwelling 1',
-                'Sleep ×{{home.factor}}',
-                '{{home.furnitureManSleeps}} sleeps for a man, {{home.furnitureWomanSleeps}} for a woman',
-                '{{home.furnitureFetchBelow}}',
+                'Room for more families',
+                '{{home.furnitureChildren}} children, {{home.furnitureSleeps}} sleeps or {{home.furnitureMeals}} meals',
+                'when a spare piece is missing',
               ],
               [
                 '[[good:holy_oil|Oil]]',
@@ -355,8 +335,14 @@ export const SETTLERS: ArticleGroup = {
               ],
             ],
             num: [4],
-            foot: 'A dwelling holds up to {{home.wareUnits}} pieces of each of these goods. Oil burns nonstop, even when nobody is praying.',
+            foot: 'A dwelling holds up to {{home.wareUnits}} pieces of Crockery and of Oil. It keeps one spare piece of Furniture for each extra family it can take. Oil burns nonstop, even when nobody is praying.',
           },
+        },
+        {
+          list: [
+            'One piece of Furniture is room for one extra family, up to what the With Furniture column of the level table says. The extra families are those that moved in last. The places last while the player allows Furniture.',
+            'Each extra family wears its own piece: by conceiving a child, sleeping in the dwelling and eating from its larder. The other families wear none. When a piece is worn out, the family takes the next from the store of the dwelling.',
+          ],
         },
         {
           p: 'In the dwelling panel the player can turn off Crockery and Furniture use and Oil deliveries for the whole settlement. Oil already stored keeps burning.',
@@ -371,6 +357,10 @@ export const SETTLERS: ArticleGroup = {
               ['Widower', 'Loses it once the child has grown up or died.'],
               ['Widow', 'Stays in the dwelling.'],
               ['Grown child', 'Loses it on reaching adulthood.'],
+              [
+                'Family above the base number',
+                'Moves out when its Furniture is worn out and the dwelling has none in store, or when the player prohibits Furniture, and the game shows "Moved out". With "Found families" on, the [[article:assistant|Assistant]] moves it into a free place.',
+              ],
               [
                 'Merchant, Scout, soldier',
                 'The family keeps the dwelling, but he neither eats nor sleeps there.',
@@ -432,12 +422,12 @@ export const SETTLERS: ArticleGroup = {
                 'on',
                 'a worker with a Wooden Tool, while Iron tools is on',
               ],
-              ['[[good:mead|Mead]]', 'off', 'Civilians, Soldiers'],
-              ['Nourishing potions, Stamina potions, Healing potions', 'off', 'Civilians, Soldiers'],
+              ['[[good:mead|Mead]]', 'off', 'Civilians, Workers, Soldiers'],
+              ['Nourishing potions, Stamina potions, Healing potions', 'off', 'Civilians, Workers, Soldiers'],
               [
                 'Amulet: Nourishing, Stamina, Strength, Defence, Precision, Wind',
                 'off',
-                'Civilians, Soldiers',
+                'Civilians, Workers, Soldiers',
               ],
               [
                 'School graduates assigned to workshops automatically',
@@ -445,8 +435,9 @@ export const SETTLERS: ArticleGroup = {
                 '[[building:school|School]] graduate',
               ],
               ['Extractors move their flag automatically', 'off', '[[job:collector|Extractor]] with a flag'],
+              ['Found families', 'off', 'homeless Woman, Woman with a dwelling, family that moved out'],
             ],
-            foot: 'For potions and amulets, the "Civilians" and "Soldiers" buttons choose who receives them. Both start on. Switching one off takes nothing back. A notice reminds you of a switch that is off once its good lies in store and someone lacks it, and of the flag switch once an Extractor runs out by his flag.',
+            foot: 'For drinks and amulets, the "Civilians" (no trade), "Workers" and "Soldiers" buttons choose who receives them; with all three off, the switch is off. Switching one off takes nothing back. A notice reminds you of a switch that is off once its good lies in store and someone lacks it, and of the flag switch once an Extractor runs out by his flag.',
           },
         },
         {
@@ -459,12 +450,23 @@ export const SETTLERS: ArticleGroup = {
           ],
         },
         {
+          h: 'Families',
+        },
+        {
+          list: [
+            'With "Found families" on, a homeless adult [[job:woman|Woman]] moves into the nearest dwelling with a free place she can walk to.',
+            'A Woman with a dwelling gets the "Marry" order once a man is free. The Assistant doesn\'t marry off a homeless Woman.',
+            'A family that had to move out for lack of [[good:furniture|Furniture]] moves into a free place too, a furnished one included: [[article:family|Family and Home]].',
+          ],
+        },
+        {
           h: 'The Barracks draft',
         },
         {
           list: [
-            'Only an adult Civilian with no job and nothing to do goes to the Barracks, unmarried men first. The Assistant never pulls anyone off work.',
-            'The Sword fighters, Spearmen or Archers counter first arms an unarmed soldier, if a weapon is in his reach.',
+            'Only an unmarried adult Civilian with no job and nothing to do goes to the Barracks. The Assistant never pulls anyone off work.',
+            'The Sword fighters, Spearmen or Archers counter first arms an unarmed soldier, if a weapon is in his reach. He then gathers at the nearest Barracks.',
+            "Such a counter drafts a new recruit only while a store in the Barracks' reach holds a weapon of that kind for him. A recruit whose weapon has run out goes over to another counter whose weapon he can fetch.",
           ],
         },
         {
@@ -476,6 +478,10 @@ export const SETTLERS: ArticleGroup = {
               [
                 'An unarmed soldier is waiting for a weapon of this kind',
                 "Deliver the weapon. Until then he holds the new recruit's place.",
+              ],
+              [
+                "No weapon of this kind in a store in the Barracks' reach",
+                'Make the weapon or bring it closer.',
               ],
             ],
             foot: 'A recruit on his way to the Barracks already counts toward the counter.',
@@ -497,7 +503,7 @@ export const SETTLERS: ArticleGroup = {
         },
         {
           list: [
-            'A graduate goes to the nearest free post in his profession, even a workshop still being built. A workshop making the product he studied comes first, even if it is further away.',
+            'A graduate goes to a free post in his profession, even in a workshop still being built. A finished workshop comes before a site, one where nobody of his profession works yet before a staffed one, then one making the product he studied, and among equal ones the nearest.',
             "With no free post he waits at the School. The Assistant doesn't place [[job:collector|Extractors]], [[job:hunter|Hunters]], [[job:fisher|Fishermen]] or soldiers.",
           ],
         },
@@ -520,7 +526,7 @@ export const SETTLERS: ArticleGroup = {
     {
       id: 'draughts',
       name: 'Potions and Amulets',
-      lead: "A settler drinks on the spot without stopping what he's doing. Amulets never wear out.",
+      lead: "A settler drinks potions on the spot without stopping what he's doing. For Mead he stops on his way, as he would to eat. Amulets never wear out.",
       blocks: [
         {
           h: 'Potions',
@@ -595,6 +601,7 @@ export const SETTLERS: ArticleGroup = {
           list: [
             'A second copy of the same amulet does nothing.',
             'Different amulets work together: Strength and Precision give ×{{amulet.comboFactor}} on a lucky roll.',
+            'A critical blow can break the swing of the enemy it hits before that swing lands and stun him for {{amulet.stunSeconds}} s. The chance is {{amulet.stunBasePct}}% plus the percent of health the blow took. Vehicles are not affected.',
             'With a Nourishing Amulet a settler never goes to eat, and with an Amulet of Stamina he never goes to sleep.',
           ],
         },

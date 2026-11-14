@@ -196,6 +196,7 @@ export function pushEffectItems(
       'idle',
     );
     fx.fxName = overlay.name;
+    fx.sortY = anchor.y;
     if (owner.lift !== undefined) fx.lift = owner.lift;
     list.push(fx);
   }

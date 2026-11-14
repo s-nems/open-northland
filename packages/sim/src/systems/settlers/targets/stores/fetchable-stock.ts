@@ -13,10 +13,10 @@ import { ChangeFeed } from '../../../../ecs/change-feed.js';
 import { JournaledCaptures } from '../../../../ecs/journaled-captures.js';
 import type { Entity, World } from '../../../../ecs/world.js';
 import type { ContentContext } from '../../../context.js';
-import { isFoodKeptAtHome } from '../../../readviews/food.js';
 import {
   accessibleStockAmounts,
   isStorehouseType,
+  keepsOwnStock,
   mergedRecipeOf,
   recipeConsumes,
   refillingGoodsOf,
@@ -56,8 +56,8 @@ const NO_HOLDERS: ReadonlySet<Entity> = new Set();
  * Every good's fetchable store and pile stock: the units per owner, for the assistant's grant budget,
  * the stores holding any, for the holding band, and the finished self-filling houses of each good, which
  * the workshop input search adds since they hold the next unit within a game second. A from-scratch
- * construction site and a workshop's own input reserve are excluded, matching {@link storeYieldsGood}; an
- * unowned pile counts for every player.
+ * construction site, a workshop's own input reserve and what a house keeps for itself are excluded,
+ * matching {@link storeYieldsGood}; an unowned pile counts for every player.
  *
  * Kept across ticks per world, so a tick pays for the stores that changed rather than every stockpile.
  * Stock in other signpost networks and buried piles is counted too: the totals only bound the grant
@@ -266,7 +266,7 @@ function contributionOf(
   c.refilled = refilled;
   // keys() plus get: destructured entries would allocate a pair per slot of every store written.
   for (const good of amounts.keys()) {
-    if (recipeConsumes(reserved, good) || isFoodKeptAtHome(world, ctx, e, good)) continue;
+    if (recipeConsumes(reserved, good) || keepsOwnStock(world, ctx, e, good)) continue;
     const amount = amounts.get(good) ?? 0;
     c.goods[c.lent] = good;
     c.units[c.lent++] = amount;

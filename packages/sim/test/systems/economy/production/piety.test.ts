@@ -195,7 +195,9 @@ describe('production events share the batch clock with the displayed craft', () 
           sim.step();
       } else for (let i = 0; i < 4; i++) productionSystem(sim.world, nextTickCtxOf(sim));
       expect(sim.world.get(mill, Stockpile).amounts.get(freeGood)).toBe(1);
-      expect(sim.world.get(mill, Production).cycles).toEqual([{ goodType: PLANK, elapsed: 0, duration: 4 }]);
+      expect(sim.world.get(mill, Production).cycles).toEqual([
+        { goodType: PLANK, elapsed: 0, duration: 4, operator: worker },
+      ]);
       sim.world.remove(worker, MoveGoal);
       sim.world.add(worker, Position, { x: fx.fromInt(0), y: fx.fromInt(0) });
       setNeeds(sim, worker, { piety: needBar(5000) });
@@ -205,8 +207,10 @@ describe('production events share the batch clock with the displayed craft', () 
     },
   );
 
-  it('keeps two operators at different executable batches instead of sending the empty one for inputs', () => {
+  it('finishes its own batch first, then takes over one its owner may no longer craft and keeps it', () => {
     const base = contentWithMilitaryPlank();
+    const freeGood = 3;
+    const freeGoodTicks = 2;
     const content = parseContentSet({
       ...base,
       buildings: base.buildings.map((b) =>
@@ -215,10 +219,14 @@ describe('production events share the batch clock with the displayed craft', () 
           : {
               ...b,
               workers: [{ jobType: CARPENTER, count: 2 }],
-              stock: [...b.stock, { goodType: 3, capacity: 20, initial: 0 }],
+              stock: [...b.stock, { goodType: freeGood, capacity: 20, initial: 0 }],
               recipes: [
                 ...b.recipes,
-                { inputs: [{ goodType: WOOD, amount: 1 }], outputs: [{ goodType: 3, amount: 1 }], ticks: 20 },
+                {
+                  inputs: [{ goodType: WOOD, amount: 1 }],
+                  outputs: [{ goodType: freeGood, amount: 1 }],
+                  ticks: freeGoodTicks,
+                },
               ],
             },
       ),
@@ -226,21 +234,52 @@ describe('production events share the batch clock with the displayed craft', () 
     const sim = new Simulation({ seed: 1, content, map: grassMap(12, 12) });
     const { mill, worker } = sawmill(sim, []);
     if (worker === null) throw new Error('missing maker');
-    const second = spawnSettler(sim, CARPENTER, 0, 0, PLANK_GATE_EARNED);
-    sim.world.add(second, JobAssignment, { workplace: mill });
-    setNeeds(sim, second, { piety: ONE });
-    buildingAt(sim, HEADQUARTERS, 4, 0, [[WOOD, 2]]);
+    const empty = spawnSettler(sim, CARPENTER, 0, 0, PLANK_GATE_EARNED);
+    sim.world.add(empty, JobAssignment, { workplace: mill });
+    setNeeds(sim, empty, { piety: ONE });
     sim.world.add(mill, Production, {
       cycles: [
-        { goodType: PLANK, elapsed: 0, duration: 4 },
-        { goodType: 3, elapsed: 0, duration: 20 },
+        { goodType: PLANK, elapsed: 0, duration: 4, operator: empty },
+        { goodType: freeGood, elapsed: 0, duration: freeGoodTicks, operator: worker },
       ],
     });
+    buildingAt(sim, HEADQUARTERS, 4, 0, [[WOOD, 2]]);
+    const plankBatch = () => sim.world.get(mill, Production).cycles.find((c) => c.goodType === PLANK);
+
+    productionSystem(sim.world, nextTickCtxOf(sim));
+    expect(plankBatch()).toEqual({ goodType: PLANK, elapsed: 0, duration: 4, operator: empty });
+    productionSystem(sim.world, nextTickCtxOf(sim));
+    expect(sim.world.get(mill, Stockpile).amounts.get(freeGood)).toBe(1);
+    // The planner holds him at the batch left open rather than sending him out for wood.
     plannerSystem(sim.world, ctxOf(sim));
     expect(sim.world.has(worker, MoveGoal)).toBe(false);
-    expect(sim.world.has(second, MoveGoal)).toBe(false);
     productionSystem(sim.world, nextTickCtxOf(sim));
-    expect(sim.world.get(mill, Production).cycles.map((cycle) => cycle.elapsed)).toEqual([1, 1]);
+    expect(plankBatch()).toEqual({ goodType: PLANK, elapsed: 1, duration: 4, operator: worker });
+    // Its old owner's religion back, the batch stays with the colleague now working it.
+    setNeeds(sim, empty, { piety: needBar(5000) });
+    productionSystem(sim.world, nextTickCtxOf(sim));
+    expect(plankBatch()).toEqual({ goodType: PLANK, elapsed: 2, duration: 4, operator: worker });
+  });
+
+  it('leaves a batch its owner may not craft to wait when the free colleague has not earned the ware', () => {
+    const base = contentWithMilitaryPlank();
+    const content = parseContentSet({
+      ...base,
+      buildings: base.buildings.map((b) =>
+        b.typeId === 2 ? { ...b, workers: [{ jobType: CARPENTER, count: 2 }] } : b,
+      ),
+    });
+    const sim = new Simulation({ seed: 1, content, map: grassMap(12, 12) });
+    const { mill } = sawmill(sim, [], false);
+    const owner = spawnSettler(sim, CARPENTER, 0, 0, PLANK_GATE_EARNED);
+    const novice = spawnSettler(sim, CARPENTER, 0, 0);
+    for (const e of [owner, novice]) sim.world.add(e, JobAssignment, { workplace: mill });
+    setNeeds(sim, owner, { piety: ONE });
+    const batch = { goodType: PLANK, elapsed: 0, duration: 4, operator: owner };
+    sim.world.add(mill, Production, { cycles: [{ ...batch }] });
+
+    productionSystem(sim.world, nextTickCtxOf(sim));
+    expect(sim.world.get(mill, Production).cycles).toEqual([batch]);
   });
 
   it('credits the actual maker when a later batch finishes first', () => {
@@ -258,8 +297,8 @@ describe('production events share the batch clock with the displayed craft', () 
     sim.world.add(second, JobAssignment, { workplace: mill });
     sim.world.add(mill, Production, {
       cycles: [
-        { goodType: PLANK, elapsed: 0, duration: 4 },
-        { goodType: PLANK, elapsed: 3, duration: 4 },
+        { goodType: PLANK, elapsed: 0, duration: 4, operator: null },
+        { goodType: PLANK, elapsed: 3, duration: 4, operator: null },
       ],
     });
     for (const maker of [worker, second])
@@ -287,8 +326,8 @@ describe('production events share the batch clock with the displayed craft', () 
     if (worker === null) throw new Error('missing maker');
     sim.world.add(mill, Production, {
       cycles: [
-        { goodType: PLANK, elapsed: 0, duration: 8 },
-        { goodType: PLANK, elapsed: 3, duration: 8 },
+        { goodType: PLANK, elapsed: 0, duration: 8, operator: null },
+        { goodType: PLANK, elapsed: 3, duration: 8, operator: null },
       ],
     });
     sim.world.add(worker, Resting, { at: mill });

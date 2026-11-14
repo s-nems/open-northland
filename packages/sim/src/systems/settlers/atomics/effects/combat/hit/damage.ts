@@ -16,7 +16,7 @@ import {
 } from '../../../../../../nav/halfcell.js';
 import { targetBlocking } from '../../../../../conflict/weapons.js';
 import type { SystemContext } from '../../../../../context.js';
-import { damageDealtBy, damageTakenBy } from '../../../../../equipment/index.js';
+import { type DealtBlow, damageDealtBy, damageTakenBy } from '../../../../../equipment/index.js';
 import { hexHeadingOfWalk, INITIAL_WALK_DIRECTION } from '../../../../../movement/turning.js';
 
 const PERCENT = 100;
@@ -33,15 +33,16 @@ export const BEHIND_HIT_PCT = 150;
 export const HIT_DIRECTION_PCT: readonly number[] = [PERCENT, PERCENT, BACK_SIDE_HIT_PCT, BEHIND_HIT_PCT];
 
 /**
- * The hitpoints one landed blow takes from `target`, from `base`: the weapon's column for the target,
- * already raised by the striker's fight experience on a melee blow at a person, a beast or a building.
+ * The hitpoints one landed blow takes from `target`, from `base`: the weapon's column for the target.
  * Original behavior, by what is struck:
  * - a person: the hit direction multiplier, then its armor's `blockingValue` off, then the striker's
- *   amulets, then the person's own defence amulet;
- * - a building or a wall: nothing for a zero base, then the striker's amulets;
- * - an animal or a vehicle: the striker's amulets.
- * `strikerAmulets` is false for a vehicle's shot, which no amulet raises. A result at or below zero does
- * nothing: no damage and no fight experience.
+ *   raises, then the person's own defence amulet and, our rule, his fight experience;
+ * - a building or a wall: nothing for a zero base, then the striker's raises;
+ * - an animal or a vehicle: the striker's raises.
+ * The striker's raises are his amulets and, our rule, the `fightUnits` of a melee blow, summed
+ * ({@link damageDealtBy}); original behavior, a wall and a vehicle take no experience. `strikerAmulets` is false for a
+ * vehicle's shot, which nothing raises. A result at or below zero does nothing: no damage and no fight
+ * experience. `critical` tells whether the striker's critical hit came up.
  */
 export function landedDamage(
   world: World,
@@ -51,13 +52,18 @@ export function landedDamage(
   base: number,
   from: { readonly x: Fixed; readonly y: Fixed } | undefined,
   strikerAmulets: boolean,
-): number {
-  const dealtBy = (raw: number): number => (strikerAmulets ? damageDealtBy(world, ctx, attacker, raw) : raw);
-  if (world.has(target, Building) || world.has(target, Palisade)) return base === 0 ? 0 : dealtBy(base);
-  if (isWildlife(world, target) || world.has(target, Vehicle)) return dealtBy(base);
+  fightUnits = 0,
+): DealtBlow {
+  const none: DealtBlow = { damage: 0, critical: false };
+  const dealtBy = (raw: number, units = fightUnits): DealtBlow =>
+    strikerAmulets ? damageDealtBy(world, ctx, attacker, raw, units) : { damage: raw, critical: false };
+  if (world.has(target, Palisade)) return base === 0 ? none : dealtBy(base, 0);
+  if (world.has(target, Building)) return base === 0 ? none : dealtBy(base);
+  if (world.has(target, Vehicle)) return dealtBy(base, 0);
+  if (isWildlife(world, target)) return dealtBy(base);
   const directed = directedDamage(base, hitDirectionPct(world, target, from));
-  const blocked = directed - targetBlocking(world, ctx, target);
-  return damageTakenBy(world, ctx, target, dealtBy(blocked));
+  const dealt = dealtBy(directed - targetBlocking(world, ctx, target));
+  return { damage: damageTakenBy(world, ctx, target, dealt.damage), critical: dealt.critical };
 }
 
 /**

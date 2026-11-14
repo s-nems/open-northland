@@ -111,7 +111,7 @@ function fixture() {
           level: 0,
         });
       }
-      if (kind === 'home') sim.world.add(eater, Residence, { home: e });
+      if (kind === 'home') sim.world.add(eater, Residence, { home: e, since: 0 });
     }
     return e;
   };

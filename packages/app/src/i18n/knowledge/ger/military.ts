@@ -25,9 +25,10 @@ export const MILITARY: ArticleGroup = {
             head: ['Faktor', 'Wert'],
             rows: [
               [
-                '[[article:exp-combat|Erfahrung mit dieser Waffe]] (nur Nahkampf)',
+                '[[article:exp-combat|Kampferfahrung]] des Angreifers (nur Nahkampf)',
                 'bis ×{{combat.fightCapFactor}}',
               ],
+              ['[[article:exp-combat|Kampferfahrung]] des Ziels', 'bis ×{{combat.fightTakenFactor}}'],
               ['Schlag von der hinteren Flanke', '×{{combat.backSideFactor}}'],
               ['Schlag von hinten', '×{{combat.behindFactor}}'],
             ],
@@ -36,7 +37,7 @@ export const MILITARY: ArticleGroup = {
         },
         {
           list: [
-            'Erfahrung wirkt nicht bei Pfeilen und Steinen und nicht gegen Fahrzeuge und Palisaden.',
+            'Die Erfahrung des Angreifers verstärkt keine Pfeile und Steine und keine Schläge gegen Fahrzeuge und Palisaden. Die Erfahrung des Ziels senkt jeden Schlag und Schuss auf einen Menschen.',
             'Schlagrichtung und Verteidigungsamulett zählen nur bei Menschen. Beim Pfeil richtet sich die Richtung nach dem Ort, von dem er abgeschossen wurde.',
             'Ein Katapult kann kein Amulett der Stärke tragen.',
             'Palisaden rechnen Schaden anders: [[article:walls|Palisaden und Tore]].',
@@ -102,6 +103,16 @@ export const MILITARY: ArticleGroup = {
             ],
             foot: 'Liegt etwas Besseres von der Leiste in einem Lager in Reichweite, holt der Rekrut es dort, statt das Schlechtere aus der Kaserne zu nehmen.',
           },
+        },
+        {
+          h: 'Sammelpunkt',
+        },
+        {
+          list: [
+            'Im Panel der [[building:barracks|Kaserne]] kannst du eine Sammelflagge setzen oder mit Rechtsklick auf den Boden klicken, während nur die Kaserne ausgewählt ist.',
+            'Soldaten, die die Kaserne danach ausbildet, gehen zur Flagge, und jeder nimmt seinen eigenen Platz in den Reihen um sie herum als seinen Posten ein. Ein Rekrut, der zuerst eine Waffe holt, beendet diesen Weg an der Flagge.',
+            'Ohne Flagge bleiben neue Soldaten an der Tür der Kaserne.',
+          ],
         },
         {
           h: 'Was die Kaserne lagert',
@@ -197,14 +208,14 @@ export const MILITARY: ArticleGroup = {
         },
         {
           table: {
-            head: ['Treffer', 'Chance auf genauen Schuss'],
+            head: ['Punkte', 'Chance auf genauen Schuss'],
             rows: [
               ['0', '{{aim.basePct}}%'],
               ['50', '{{aim.samplePct}}%'],
-              ['{{aim.noSpreadHits}}+', 'Immer im Ziel'],
+              ['{{aim.noSpreadPoints}}+', 'Immer im Ziel'],
             ],
             num: [0, 1],
-            foot: 'Jeder Treffer bringt 1% mehr. Ab {{aim.noSpreadHits}} Treffern landet auch ein ungenauer Pfeil im Ziel. Kurz- und Langbogen zählen Treffer gemeinsam, das [[article:catapult|Katapult]] getrennt, aber nach derselben Tabelle. Helden treffen immer.',
+            foot: 'Jeder Punkt [[article:exp-combat|Kampferfahrung]] bringt 1% mehr, auch Punkte aus dem Exerzieren und aus Kämpfen mit einer anderen Waffe. Ab {{aim.noSpreadPoints}} Punkten landet auch ein ungenauer Pfeil im Ziel. Das [[article:catapult|Katapult]] zählt eigene Treffer, aber nach derselben Tabelle. Helden treffen immer.',
           },
         },
         {
@@ -327,10 +338,10 @@ export const MILITARY: ArticleGroup = {
           h: 'Schalter „Essen und Schlafen“',
         },
         {
-          p: 'Bei „Verboten“ geht ein Soldat nicht von selbst essen, schlafen oder beten. Er isst nicht einmal, was er trägt, oder aus dem Turmvorrat, und Hunger unterbricht keinen langen Befehl. Ohne Getränke verhungert er am Ende. Da hilft der Befehl Iss oder das Zurückschalten auf „Erlaubt“.',
+          p: 'Bei „Verboten“ geht ein Soldat nicht von selbst essen, schlafen oder beten. Er isst nicht einmal, was er trägt, oder aus dem Turmvorrat, hält nicht für Met an, und Hunger unterbricht keinen langen Befehl. Ohne Tränke verhungert er am Ende. Da hilft der Befehl Iss oder das Zurückschalten auf „Erlaubt“.',
         },
         {
-          p: 'Getränke, Amulette und die Befehle Iss, Schlaf, Bete wirken in beiden Stellungen. Im Befehlsmenü heißen die Stellungen „Erlaube Soldaten Regeneration“ und „Verbiete Soldaten Regeneration“.',
+          p: 'Tränke, Amulette und die Befehle Iss, Schlaf, Bete wirken in beiden Stellungen. Im Befehlsmenü heißen die Stellungen „Erlaube Soldaten Regeneration“ und „Verbiete Soldaten Regeneration“.',
         },
         {
           h: 'Ruhe nahe am Kampf',
@@ -362,7 +373,7 @@ export const MILITARY: ArticleGroup = {
             head: ['Eigenschaft', 'Soldat', 'Held'],
             rows: [
               ['Sichtweite in Hexfeldern', '{{vision.soldier}}', '{{vision.hero}}'],
-              ['Genauigkeit mit dem Bogen', 'Steigt mit Treffern', 'Immer genau'],
+              ['Genauigkeit mit dem Bogen', 'Steigt mit der Kampferfahrung', 'Immer genau'],
               ['Kampferfahrung', 'Steigt', 'Steigt nur, wenn die Mission es erlaubt'],
               ['Essen und Schlaf', 'Braucht er', 'Braucht er nicht'],
               [
@@ -425,7 +436,7 @@ export const MILITARY: ArticleGroup = {
             'Zivilisten, Frauen und Kinder laufen zum nächsten Gebäude mit freiem Platz, das sie zu Fuß erreichen.',
             'Soldaten, Helden und [[job:scout|Kundschafter]] bleiben draußen.',
             'Wer keinen Platz findet, arbeitet weiter.',
-            'Im Verteidigungsmodus bricht ein Siedler Essen und Schlaf ab. Drinnen arbeitet er nicht und isst nur, was er bei sich hat.',
+            'Im Verteidigungsmodus bricht ein Siedler Essen und Schlaf ab. Drinnen arbeitet er nicht und isst, was er bei sich hat oder was das Gebäude vorrätig hat.',
             'Wer drinnen ist, lässt sich nicht angreifen.',
             'Wird das Gebäude zerstört, kommen alle heraus, die sich drinnen versteckt haben.',
           ],
@@ -637,14 +648,14 @@ export const MILITARY: ArticleGroup = {
           h: 'Mauer',
         },
         {
-          p: 'Die [[building:work_pottery_02|Mauer]] ist ein normales Gebäude und bekommt Schaden aus der Spalte Gebäude. Ein Soldat behandelt sie wie eine Palisade.',
+          p: 'Die [[building:defence_wall|Mauer]] ist ein normales Gebäude und bekommt Schaden aus der Spalte Gebäude. Ein Soldat behandelt sie wie eine Palisade.',
         },
       ],
       see: [
         'article:damage',
         'article:catapult',
         'article:construction',
-        'building:work_pottery_02',
+        'building:defence_wall',
         'good:wood',
       ],
     },
@@ -716,7 +727,7 @@ export const MILITARY: ArticleGroup = {
           h: 'Genauigkeit',
         },
         {
-          p: 'Die Genauigkeit steigt wie beim Bogenschützen: [[article:aim|Treffen und Schießen]]. Auf {{catapult.max}} Hexfeldern landet ein ungenauer Stein bei 0 Treffern bis {{stone.spread.0}} Hexfelder neben dem Ziel, bei 25 bis {{stone.spread.25}}, bei 50 bis {{stone.spread.50}}. Ab {{aim.noSpreadHits}} Treffern landet er im Ziel. Die Treffer sammelt der Kommandant: Es zählt jeder Stein, der etwas beschädigt hat, auch ein Gebäude, aber nur einmal, auch wenn er mehrere Ziele trifft.',
+          p: 'Die Genauigkeit steigt wie beim Bogenschützen: [[article:aim|Treffen und Schießen]]. Auf {{catapult.max}} Hexfeldern landet ein ungenauer Stein bei 0 Treffern bis {{stone.spread.0}} Hexfelder neben dem Ziel, bei 25 bis {{stone.spread.25}}, bei 50 bis {{stone.spread.50}}. Er landet nie hinter dem Ziel: Ein Stein, der darüber hinausfliegen würde, fällt stattdessen davor. Ab {{aim.noSpreadPoints}} Treffern landet er im Ziel. Die Treffer sammelt der Kommandant: Es zählt jeder Stein, der etwas beschädigt hat, auch ein Gebäude, aber nur einmal, auch wenn er mehrere Ziele trifft.',
         },
         {
           h: 'Katapultmodi',
@@ -739,8 +750,10 @@ export const MILITARY: ArticleGroup = {
         },
         {
           list: [
-            'Ist das Ziel näher als {{catapult.min}} Hexfelder, fährt das Katapult weg. Ist es weiter als {{catapult.max}}, rückt es auf {{catapult.bandMin}}-{{catapult.max}} Hexfelder heran.',
-            'Es schießt nur im Stand und nur, wenn es kein anderes Fahrzeug berührt.',
+            'In seiner Reichweite von {{catapult.min}}-{{catapult.max}} Hexfeldern schießt es zuerst auf Türme, das Hauptquartier, die Kaserne, Häuser, aus denen geschossen wird, und feindliche Katapulte, dann auf Bogenschützen und andere Schützen, dann auf die übrigen Soldaten und erst zuletzt auf andere Häuser und Leute.',
+            'Außer im Modus Ignorant gilt: Ist kein Ziel aus den ersten beiden Gruppen in Reichweite, zieht es ein solches Ziel bis {{catapult.priorityReach}} Hexfelder entfernt näher heran: ein Turm, das Hauptquartier, die Kaserne, ein Haus, aus dem geschossen wird, ein feindliches Katapult oder Bogenschützen und andere Soldaten, die schießen. Es fährt auch dann heran, wenn andere Soldaten in Reichweite sind oder Feinde an seiner Seite stehen.',
+            'Ist nichts in Reichweite, fährt es vor einem einzelnen Feind weg, der näher als {{catapult.min}} Hexfelder steht; stehen zwei oder mehr so nah, bleibt es stehen. Ist das Ziel weiter als {{catapult.max}}, rückt es auf {{catapult.bandMin}}-{{catapult.max}} Hexfelder heran.',
+            'Es schießt nur im Stand. Von Katapulten, die sich berühren, schießt nur eines: das, das dort bereits schießt. Die anderen fahren auf einen freien Platz oder warten, wo sie stehen, wenn es keinen gibt.',
             'Du kannst es auf eine beliebige Stelle am Boden schießen lassen. Palisaden beschießt es nur auf Befehl.',
           ],
         },

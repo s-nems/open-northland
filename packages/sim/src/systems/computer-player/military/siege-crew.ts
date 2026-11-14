@@ -11,7 +11,7 @@ import type { Raider } from '../../ai-shared/military/defence/threat.js';
 import { spokenFor } from '../../ai-shared/military/errand.js';
 import { anchorNodeOf, nearestRingNode, towardNode } from '../../ai-shared/node-geometry.js';
 import { isBuilt } from '../../ai-shared/seat-roster.js';
-import { VEHICLE_SCAN_RADIUS_POINTS } from '../../conflict/engage-vehicle.js';
+import { VEHICLE_SCAN_RADIUS_POINTS } from '../../conflict/vehicle-targets.js';
 import type { SystemContext } from '../../context.js';
 import { vehicleAnchor } from '../../footprint/index.js';
 import { interactionCell } from '../../settlers/targets/index.js';
@@ -21,7 +21,7 @@ import { seatBarracksOf } from '../base.js';
 import { continentOf } from './march/geometry.js';
 
 // The seat's catapults: a soldier drives each one, and one idle at home parks on the attack stance by the
-// barracks or a tower, where its own scan (`conflict/engage-vehicle.ts`) answers what comes near; a raid
+// barracks or a tower, where its own scan (`conflict/vehicle-targets.ts`) answers what comes near; a raid
 // beyond that scan draws it out on an attack-move. Every distance here is authored.
 
 /** The band around a barracks or tower door (Manhattan half-cell nodes) a catapult parks in: off the

@@ -69,7 +69,7 @@ export const PROBLEMS: ArticleGroup = {
             ],
             [
               '田不长',
-              '不浇水的田地每{{field.stageSeconds}}秒只长1阶段。在[[building:work_farm_00|农场]]工作的[[job:farmer|农夫]]或在[[building:work_herb_hut|草药屋]]工作的[[job:herb_mush_guy|草药师]]会浇水。他先播种，满{{field.max}}块田或无处可播时才浇水。田地浇{{field.waterings}}次成熟，一次浇水覆盖6块相邻田地。沙地和道路上不能播种，播种范围在建筑{{field.radius}}格以内。',
+              '不浇水的田地每{{field.stageSeconds}}秒只长1阶段。在[[building:work_farm_00|农场]]工作的[[job:farmer|农夫]]或在[[building:work_herb_hut|草药屋]]工作的[[job:herb_mush_guy|草药师]]会浇水。他先播种，满{{field.max}}块田或无处可播时才浇水。田地浇{{field.waterings}}次成熟，一次浇水覆盖6块相邻田地。沙地和道路上不能播种，播种范围在建筑{{field.radius}}格以内，有工作旗帜时则以旗帜为中心。',
             ],
             [
               '雨、雪或黑夜有影响吗？',
@@ -256,7 +256,7 @@ export const PROBLEMS: ArticleGroup = {
                 '建筑没了或他被解雇了，已经{{notice.idleSeconds}}秒没有旗帜。职业保留',
                 '分配工作场所或换职业',
               ],
-              ['“需要重启”', '紧急', '更改的设置要重启后才生效', 'Esc菜单里的“重新开始任务”'],
+              ['“需要重启”', '紧急', '更改的设置要重启后才生效', 'Esc菜单里的“重新开始地图”'],
               ['“产品未解锁”', '重要', '所选产品尚不可用', '选其他产品'],
               [
                 '“经验不足”',

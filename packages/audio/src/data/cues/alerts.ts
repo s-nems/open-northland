@@ -2,8 +2,8 @@ import type { AttackFront, VoiceClass } from '@open-northland/data';
 import { type Camera, halfCellToScreen } from '@open-northland/render/data';
 import { entityById, type HalfCellNode, type WorldSnapshot } from '@open-northland/sim';
 import { groupFiles, poolGain, type SoundIndex } from '../bank/bank.js';
+import { voiceClassIn } from '../bank/voices.js';
 import { VOICE_MUSIC_DUCK_DB } from '../mixer.js';
-import { voiceClassOf } from '../snapshot.js';
 import { inEarshot, offsetOfScreenPoint } from '../spatial.js';
 import type { Lane, NoticeVoiceSound, OneShot, SoundBindings } from '../types.js';
 import { NOTICE_CUE_INTERVAL_S } from './ui-cues.js';
@@ -165,7 +165,7 @@ export function noticeVoiceShot(
 ): OneShot | null {
   const e = entityById(snapshot, settler);
   if (e === undefined) return null;
-  const voiceClass: VoiceClass = voiceClassOf(e.components);
+  const voiceClass: VoiceClass = voiceClassIn(index, e);
   const sound = bindings.noticeVoices?.[voice][voiceClass];
   const files = sound === undefined ? undefined : noticeVoiceFiles(index, sound);
   if (files === undefined) return null;

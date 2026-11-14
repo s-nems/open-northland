@@ -117,6 +117,7 @@ const MOMENTARY_EVENTS: ReadonlySet<SimEvent['kind']> = new Set([
   'projectileLaunched',
   'projectileMissed',
   'groundBurst',
+  'draughtDrunk',
 ]);
 
 const outlastsMoment = (event: SimEvent): boolean => !MOMENTARY_EVENTS.has(event.kind);

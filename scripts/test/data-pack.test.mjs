@@ -3,7 +3,7 @@ import { mkdtemp, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
-import { dataPath, readCampaigns, readDataPack } from '../data-pack.mjs';
+import { DATA_PACK_VERSION, dataPath, readCampaigns, readDataPack } from '../data-pack.mjs';
 import { syntheticPack } from './support/data-pack.mjs';
 
 async function temp(t) {
@@ -28,7 +28,10 @@ test('rejects unsafe paths, extra files and changed source bytes', async (t) => 
 test('rejects the previous source layout version', async (t) => {
   const root = await temp(t);
   const manifest = await syntheticPack(root);
-  await writeFile(join(root, 'manifest.json'), JSON.stringify({ ...manifest, version: 1 }));
+  await writeFile(
+    join(root, 'manifest.json'),
+    JSON.stringify({ ...manifest, version: DATA_PACK_VERSION - 1 }),
+  );
   await assert.rejects(readDataPack(root), /version|Unsupported/);
 });
 
@@ -46,6 +49,7 @@ function campaignPack(overrides = {}) {
     locales: {
       pol: { 'text/pol/strings.ini': 'locales/pol/strings.ini', 'sfx/pol/0001.wav': 'locales/pol/0001.wav' },
       eng: { 'text/eng/strings.ini': 'locales/eng/strings.ini' },
+      ita: { 'text/ita/strings.ini': 'locales/ita/strings.ini' },
     },
   };
   const campaign = {
@@ -80,6 +84,7 @@ function campaignPack(overrides = {}) {
     'campaigns/synthetic/maps/first_map/locales/pol/strings.ini': 'polski',
     'campaigns/synthetic/maps/first_map/locales/pol/0001.wav': 'glos',
     'campaigns/synthetic/maps/first_map/locales/eng/strings.ini': 'english',
+    'campaigns/synthetic/maps/first_map/locales/ita/strings.ini': 'italiano',
     'campaigns/synthetic/presentation/map.png': 'background',
     'campaigns/synthetic/presentation/logo-pol.png': 'logo',
     'campaigns/synthetic/films/video/end.webm': 'picture',
@@ -94,7 +99,7 @@ test('reads a campaign with shared map files, language layers, presentation and 
   const manifest = await syntheticPack(root, files, ['synthetic']);
   await readDataPack(root);
   const [campaign] = await readCampaigns(root, manifest);
-  assert.deepEqual(campaign.languages, ['pol', 'eng']);
+  assert.deepEqual(campaign.languages, ['pol', 'eng', 'ita']);
   assert.equal(campaign.maps[0].locales.pol['sfx/pol/0001.wav'], 'locales/pol/0001.wav');
   assert.equal(campaign.movies.pol.videos[0].audio, 'films/pol/end.webm');
 });

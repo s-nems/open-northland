@@ -1,4 +1,4 @@
-import { formatMessage, messages } from '../../../i18n/index.js';
+import { bcp47Tag, formatMessage, messages, pluralForm } from '../../../i18n/index.js';
 import type { BuildingPanelModel, HomeQualityRow } from '../../details-panel/model/index.js';
 import { goodIconMarkup } from '../good-art.js';
 import { GLYPH } from '../icons.js';
@@ -11,10 +11,30 @@ import type { BuildingPanelDeps } from './actions.js';
 /** Design px of a ware's icon in its well (foundation.css `.on-good-well`). */
 const WARE_ICON_PX = 18;
 
-/** What a ware's line says after its name: the uses its pool holds, or whether the holy fire burns. */
+/** Furniture pieces read to a tenth. */
+const PIECE_FRACTION_DIGITS = 1;
+
+/** What a ware's line says after its name: the uses its pool holds, whether the holy fire burns, or the
+ *  furniture in store, the families the home has room for above its base, and what is left of the piece
+ *  each extra family lives on. */
 export function wareState(row: HomeQualityRow): string {
   const copy = messages().hud.buildingPanel;
   if (row.holyFireActive !== undefined) return row.holyFireActive ? copy.holyFireOn : copy.holyFireOff;
+  if (row.furniture !== undefined) {
+    const tag = bcp47Tag();
+    const { pieces, extraFamilies, inUse } = row.furniture;
+    const values = {
+      pieces: pieces.toLocaleString(tag, { maximumFractionDigits: PIECE_FRACTION_DIGITS }),
+      count: extraFamilies,
+    };
+    const store =
+      extraFamilies > 0
+        ? formatMessage(pluralForm(extraFamilies, copy.furnitureLodges, tag), values)
+        : formatMessage(copy.furnitureIdle, values);
+    if (inUse.length === 0) return store;
+    const left = inUse.map((percent) => formatMessage(copy.furniturePieceLeft, { percent })).join(', ');
+    return `${store} · ${formatMessage(copy.furnitureInUse, { left })}`;
+  }
   return formatMessage(copy.uses, { count: row.uses ?? 0 });
 }
 
@@ -89,6 +109,7 @@ export function createHomeSection(deps: BuildingPanelDeps): HomeSection {
         if (view === undefined) return;
         write(view.name, row.label);
         write(view.state, wareState(row));
+        setTip(view.state, row.furniture === undefined ? '' : copy.furnitureTip);
         setStyleVar(view.item, '--fill', meterFill(row.value, row.capacity));
         setTip(view.name, row.label);
         const words = formatMessage(row.allowed ? copy.allowed : copy.forbidden, { good: row.label });

@@ -177,7 +177,7 @@ it('leaves a ship yard site no body to unwind, as its hull reads through a LUT t
       vehicle: {
         byTribe: { 1: { [SHIP]: hull } },
         fallbackTribe: 1,
-        shipYards: { vehicleByHouse: { [SHIP_YARD]: SHIP }, facing: 0 },
+        vehicleYards: { vehicleByHouse: { [SHIP_YARD]: SHIP }, facing: 0 },
       },
     },
   };

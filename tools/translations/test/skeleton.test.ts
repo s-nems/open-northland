@@ -6,11 +6,14 @@ import { MapOverlay, mapOverlayDatKey, mapOverlayFileId, OVERLAY_VERSION } from 
 import { mapSourceTextDigest, readMapSourceText } from '@open-northland/map-import';
 import { loadTranslationOverlays } from '@open-northland/translations';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import type { PackMap } from '../src/pack-text.js';
 import {
   type MapSkeleton,
   mapSkeletons,
+  packMapSkeletons,
   readMapInput,
   type SkeletonOptions,
+  selectPackMaps,
   writeMapOverlay,
 } from '../src/skeleton.js';
 
@@ -137,6 +140,54 @@ describe('mapSkeletons', () => {
     const { skeletons } = await skeletonsOf(join(dir, 'download', 'Fjord'), { lang: 'chs' });
 
     expect(skeletons).toMatchObject([{ folder: 'Fjord', overlay: { map: 'fjord' } }]);
+  });
+});
+
+describe('packMapSkeletons', () => {
+  const text = (languages: PackMap['text']['languages']): PackMap['text'] => ({
+    datDigest: 'a'.repeat(64),
+    languages,
+  });
+  const english = { strings: { 0: 'Stage one' }, briefings: new Map([['title', 'To the north']]) };
+  const maps: PackMap[] = [
+    {
+      folder: 'campaigns/saga/campaign_04_01',
+      id: 'saga-campaign_04_01',
+      campaign: 'saga',
+      takesSourceLanguages: false,
+      datMd5: '0'.repeat(32),
+      text: text({ eng: english }),
+    },
+    {
+      folder: 'maps/community/fjord',
+      id: 'fjord',
+      takesSourceLanguages: true,
+      datMd5: '1'.repeat(32),
+      text: text({ eng: english, ita: { strings: { 0: 'Tappa uno' }, briefings: new Map() } }),
+    },
+  ];
+
+  it('names a campaign map by its pipeline id and refuses a map that ships the language', () => {
+    const selected = selectPackMaps(new Map([['k', maps]]), ['SAGA-campaign_04_01', 'Fjord']);
+
+    expect(packMapSkeletons(selected, { lang: 'ita', basis: 'eng' })).toEqual([
+      {
+        kind: 'skeleton',
+        folder: 'campaigns/saga/campaign_04_01',
+        digest: 'a'.repeat(64),
+        overlay: expect.objectContaining({
+          map: 'saga-campaign_04_01',
+          strings: { '0': 'Stage one' },
+          briefings: { title: 'To the north' },
+        }),
+      },
+      {
+        kind: 'refused',
+        folder: 'maps/community/fjord',
+        refusal: 'the map ships ita text itself, which wins over an overlay',
+      },
+    ]);
+    expect(() => selectPackMaps(new Map([['k', maps]]), ['nowhere'])).toThrow(/no pack map named nowhere/);
   });
 });
 

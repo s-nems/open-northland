@@ -8,6 +8,8 @@
  * `content/goods/manifest.json`, so no typeId has to match for art to appear.
  */
 
+import type { HomeQualityUse } from '@open-northland/data';
+
 /** Added to each ir.json good typeId to mint its sandbox-scoped id, clearing the core ids (≤ 14). */
 export const EXTENDED_GOOD_TYPE_OFFSET = 100;
 
@@ -20,14 +22,7 @@ export interface CatalogGood {
   /** False for the animal, vehicle and special tokens, which are herded, driven or sentinel rather than
    *  carried. Which carried wares a store slots is the sandbox store set's call, not this flag's. */
   readonly storable: boolean;
-  readonly homeQuality?: {
-    readonly effect: 'cooking' | 'rest' | 'piety';
-    readonly deliveryValue: number;
-    readonly capacity: number;
-    readonly useCost: number;
-    readonly fetchBelow: number;
-    readonly minimumHomeLevel: number;
-  };
+  readonly homeQuality?: HomeQualityUse;
 }
 
 /** The extended goods in ir.json typeId order. */
@@ -87,12 +82,10 @@ export const EXTENDED_GOODS: readonly CatalogGood[] = [
     name: 'Furniture',
     storable: true,
     homeQuality: {
-      effect: 'rest',
-      deliveryValue: 100,
-      capacity: 500,
-      useCost: 5,
-      fetchBelow: 100,
+      effect: 'lodging',
+      deliveryValue: 1000,
       minimumHomeLevel: 0,
+      wear: { child: 200, sleep: 100, meal: 100 },
     },
   },
   { typeId: 130, id: 'shoes', name: 'Shoes', storable: true },

@@ -38,8 +38,9 @@ export const EAST_HOUSE_AT = { x: 20, y: 7 } as const;
 const TRADER_AT = { x: 7, y: 11 } as const;
 /** The handcart the trader pulls, a cell beside the trader. */
 const CART_AT = { x: 8, y: 11 } as const;
-/** One cell off the west shore, within its door distance of the land. */
-const SHIP_AT = { x: STRAIT.fromX + 1, y: 7 } as const;
+/** One cell off the west shore, within a ship's door distance of the land. */
+export const WEST_SHIP_X = STRAIT.fromX + 1;
+const SHIP_AT = { x: WEST_SHIP_X, y: 7 } as const;
 /** Two cart loads, within the small ship's fifty. */
 const TRADE_SEA_WOOD = 30;
 export const TRADE_SEA_ZOOM = 0.8;

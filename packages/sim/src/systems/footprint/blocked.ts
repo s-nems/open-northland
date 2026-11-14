@@ -1,5 +1,6 @@
-import { type ContentSet, footprintCellDx } from '@open-northland/data';
+import { BUILDING_KIND, type ContentSet, footprintCellDx } from '@open-northland/data';
 import { Building, Position, UnderConstruction } from '../../components/index.js';
+import { contentIndex } from '../../core/content-index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { BlockOverlay } from '../../nav/block-overlay.js';
 import { nodeOfPosition } from '../../nav/halfcell.js';
@@ -16,6 +17,9 @@ import { walkBlockMask } from './walk-block-mask.js';
  *  `(col, row)` half-cell nodes, the coords `halfCellToScreen` projects. */
 export interface ConstructionPlot {
   readonly ref: number;
+  /** Whether the site lays a foundation: a house does, a vehicle's yard builds on the ground or water as
+   *  it lies. */
+  readonly foundation: boolean;
   readonly cells: readonly { readonly col: number; readonly row: number }[];
 }
 
@@ -53,6 +57,7 @@ export function constructionSitePlots(world: World, content: ContentSet): readon
   world.journalValueWrites(Building);
   const types = new Map<Entity, number>();
   const plots: ConstructionPlot[] = [];
+  const buildings = contentIndex(content).buildings;
   for (const e of world.query(UnderConstruction, Building, Position)) {
     const b = world.get(e, Building);
     types.set(e, b.buildingType);
@@ -60,7 +65,11 @@ export function constructionSitePlots(world: World, content: ContentSet): readon
     const p = world.get(e, Position);
     const { hx, hy } = nodeOfPosition(p.x, p.y);
     const body = footprint !== undefined && footprint.blocked.length > 0 ? footprint.blocked : ANCHOR_ONLY;
-    plots.push({ ref: e, cells: body.map((c) => ({ col: hx + footprintCellDx(hy, c), row: hy + c.dy })) });
+    plots.push({
+      ref: e,
+      foundation: buildings.get(b.buildingType)?.kind !== BUILDING_KIND.vehicle,
+      cells: body.map((c) => ({ col: hx + footprintCellDx(hy, c), row: hy + c.dy })),
+    });
   }
   constructionPlotMemo.set(world, {
     content,

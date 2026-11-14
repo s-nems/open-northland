@@ -102,8 +102,8 @@ function sproutedMushroom(sim: Simulation): boolean {
 }
 
 /**
- * Mushrooms regrow as the original regrows them: a picked mushroom may sprout again in the forest
- * minutes later, and every pick a collector makes schedules one such regrowth.
+ * Mushrooms regrow in the forest: a picked mushroom may sprout again there minutes later, and every pick
+ * a collector makes schedules one such regrowth.
  */
 export const mushroomRegrowthScene: SceneDefinition = {
   id: 'mushroom-regrowth',

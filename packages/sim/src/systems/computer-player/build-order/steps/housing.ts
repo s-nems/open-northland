@@ -17,6 +17,7 @@ import type { EnemyFire } from '../../../ai-shared/military/defence/index.js';
 import { isBuilt } from '../../../ai-shared/seat-roster.js';
 import type { SystemContext } from '../../../context.js';
 import { isAdultSettler } from '../../../family/eligibility.js';
+import { homeFamilyCapacity } from '../../../family/home-quality.js';
 import { buildingEnabled } from '../../../progression/index.js';
 import { femaleDemand } from '../../female-stock.js';
 import { homeStockOf } from '../../home-stock.js';
@@ -182,7 +183,10 @@ function homesOf(world: World, ctx: SystemContext, owned: readonly Entity[], ent
   return owned.filter((e) => tiers.has(world.get(e, Building).buildingType));
 }
 
-/** The family slots the seat's homes will hold, a site counted at the tier it is becoming. */
+/** The family slots the seat's homes will hold: a standing home the families it takes now, its furnished
+ *  ones included ({@link homeFamilyCapacity}), as the population module books daughters into them; a site
+ *  the base slots of the tier it is becoming. A home whose furniture runs out loses its extra slots, so the
+ *  families it moves out make the lane short again. */
 function familySlots(
   world: World,
   ctx: SystemContext,
@@ -192,8 +196,11 @@ function familySlots(
   const index = contentIndex(ctx.content);
   let slots = 0;
   for (const e of homesOf(world, ctx, owned, entry)) {
-    const tier = world.tryGet(e, Upgrading)?.target ?? world.get(e, Building).buildingType;
-    slots += index.buildings.get(tier)?.homeSize ?? 0;
+    const rising = world.tryGet(e, Upgrading)?.target;
+    const type = index.buildings.get(rising ?? world.get(e, Building).buildingType);
+    if (type === undefined) continue;
+    slots +=
+      rising === undefined && isBuilt(world, e) ? homeFamilyCapacity(world, ctx, e, type) : type.homeSize;
   }
   return slots;
 }
@@ -415,9 +422,11 @@ function upgradeLeavesRoom(
   if (!homes.some((e) => world.has(e, Upgrading))) return () => true;
   const index = contentIndex(ctx.content);
   let standing = 0;
-  for (const e of homes)
-    if (isBuilt(world, e) && !world.has(e, UnderConstruction))
-      standing += index.buildings.get(world.get(e, Building).buildingType)?.homeSize ?? 0;
+  for (const e of homes) {
+    if (!isBuilt(world, e) || world.has(e, UnderConstruction)) continue;
+    const type = index.buildings.get(world.get(e, Building).buildingType);
+    if (type !== undefined) standing += homeFamilyCapacity(world, ctx, e, type);
+  }
   const demand = femaleDemand(world, ctx, player);
   return (size) => standing - size > demand;
 }

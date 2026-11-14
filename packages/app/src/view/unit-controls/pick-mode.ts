@@ -1,5 +1,5 @@
 import type { UiCue } from '@open-northland/audio';
-import { type BuildingType, type ContentSet, lastByTypeId } from '@open-northland/data';
+import { type BuildingType, type ContentSet, type GoodType, lastByTypeId } from '@open-northland/data';
 import type { TargetFlashTone, TargetMark } from '@open-northland/render';
 import {
   type Entity,
@@ -15,6 +15,7 @@ import { ownerPlayerOf } from '../../game/snapshot/index.js';
 import { clampTile, nodeBounds, pickTopAt, type Tile } from '../picking.js';
 import { memoBySnapshot } from '../projections/index.js';
 import {
+  coinDrillHighlight,
   computeAssignHighlight,
   computeHouseHighlight,
   drillPick,
@@ -30,6 +31,7 @@ import {
 } from './highlights/index.js';
 import type { AnsweredOrders } from './orders/answered.js';
 import { DOCK_PICK_SNAP_NODES } from './orders/berths.js';
+import { coinDrillersAt, isFighterSettler } from './orders/coin-drill.js';
 import type { UnitOrderController } from './orders/controller.js';
 import { enqueueUnitSelection } from './orders/group.js';
 import type { VehicleOrderController } from './orders/vehicle.js';
@@ -108,12 +110,14 @@ type SpotMode = Extract<
   }
 >;
 
+/** A highlight reads the content: its goods' furniture adds family slots to a home. */
 interface BuildingPick {
   readonly highlight: (
     snapshot: WorldSnapshot,
     settlers: readonly number[],
     byType: ReadonlyMap<number, BuildingType>,
     canTrade: TradeHouseRule,
+    content: ContentSet,
   ) => TargetMark[];
   /** The orders a click on `building` issues, empty when it orders nothing; null for
    *  the trade-house pick, whose click asks the sim first. */
@@ -123,6 +127,7 @@ interface BuildingPick {
         settlers: readonly number[],
         building: number,
         byType: ReadonlyMap<number, BuildingType>,
+        goods: readonly GoodType[],
       ) => PlayerCommand[])
     | null;
 }
@@ -144,9 +149,10 @@ const BUILDING_PICKS: Readonly<Record<BuildingPickKind, BuildingPick>> = {
     },
   },
   home: {
-    highlight: computeHouseHighlight,
-    orders: (snapshot, settlers, building, byType) =>
-      houseAssignableAt(snapshot, building, settlers, byType)
+    highlight: (snapshot, settlers, byType, _canTrade, content) =>
+      computeHouseHighlight(snapshot, settlers, byType, content.goods),
+    orders: (snapshot, settlers, building, byType, goods) =>
+      houseAssignableAt(snapshot, building, settlers, byType, goods)
         ? [
             {
               kind: 'assignHouseGroup',
@@ -170,12 +176,21 @@ const BUILDING_PICKS: Readonly<Record<BuildingPickKind, BuildingPick>> = {
       tradeHousePick.highlight(snapshot, settlers, canTrade),
     orders: null,
   },
-  // A school is resolved before these orders: its pick opens the course dialog instead.
+  // A school is resolved before these orders: its pick opens the course dialog instead. A barracks enlists
+  // the civilians and coin-drills the soldiers it has coins for.
   'learning-place': {
-    highlight: (snapshot, settlers, byType) => [
-      ...drillPick.highlight(snapshot, settlers, byType),
-      ...schoolPick.highlight(snapshot, settlers, byType),
-    ],
+    highlight: (snapshot, settlers, byType, _canTrade, content) => {
+      const fighters = settlers.filter((settler) => isFighterSettler(content, snapshot, settler));
+      const fighting = new Set(fighters);
+      const recruits = settlers.filter((settler) => !fighting.has(settler));
+      return [
+        ...litByAny([
+          drillPick.highlight(snapshot, recruits, byType),
+          coinDrillHighlight(content, snapshot, fighters, byType),
+        ]),
+        ...schoolPick.highlight(snapshot, settlers, byType),
+      ];
+    },
     orders: (snapshot, settlers, building, byType) =>
       settlers
         .filter((settler) => drillPick.assignableAt(snapshot, building, settler, byType))
@@ -241,6 +256,8 @@ export type PickAim =
       readonly fits: boolean;
       /** A school offers its courses to the settlers that may learn there. */
       readonly school: boolean;
+      /** At a barracks the press coin-drills more soldiers than it enlists civilians. */
+      readonly coinDrill: boolean;
     }
   | { readonly kind: 'board'; readonly fits: boolean }
   | { readonly kind: 'loadAboard'; readonly fits: boolean }
@@ -406,6 +423,14 @@ function computeVehicleHighlight(
   return items;
 }
 
+/** One mark per target over several judgings of it: lit where any of them lit it. */
+function litByAny(judgings: readonly (readonly TargetMark[])[]): TargetMark[] {
+  const lit = new Map<number, boolean>();
+  for (const marks of judgings)
+    for (const mark of marks) lit.set(mark.id, lit.get(mark.id) === true || mark.tone === 'candidate');
+  return [...lit].map(([id, candidate]) => markOf(id, candidate));
+}
+
 export function createPickModeController(deps: PickModeDeps): PickModeController {
   const buildingsByType = lastByTypeId(deps.content.buildings);
   const canTrade: TradeHouseRule = deps.canAttachTradeHouse ?? (() => false);
@@ -449,6 +474,19 @@ export function createPickModeController(deps: PickModeDeps): PickModeController
       schoolPick.assignableAt(deps.snapshot(), building, settler, buildingsByType),
     );
 
+  /** Whether a press on `building` coin-drills more of `settlers` than it enlists, so the drill names it. */
+  const drillsMoreThanEnlists = (building: number, settlers: readonly number[]): boolean => {
+    const snapshot = deps.snapshot();
+    const drillers = coinDrillersAt(deps.content, snapshot, building, settlers, buildingsByType).length;
+    if (drillers === 0) return false;
+    const recruits = settlers.filter(
+      (settler) =>
+        !isFighterSettler(deps.content, snapshot, settler) &&
+        drillPick.assignableAt(snapshot, building, settler, buildingsByType),
+    );
+    return drillers > recruits.length;
+  };
+
   /** A `queued` press lines a site or a drill up behind each settler's current order. */
   const orderAtBuilding = (
     building: number,
@@ -467,13 +505,38 @@ export function createPickModeController(deps: PickModeDeps): PickModeController
     }
     const pick = BUILDING_PICKS[kind].orders;
     if (pick === null) return attachTradeHouse(settlers, building);
-    const orders = pick(snapshot, settlers, building, buildingsByType);
-    const selectedOrders = orders
-      .filter(
-        (order): order is Extract<UnitSelectionCommand, { kind: 'assignBuilder' | 'trainSoldier' }> =>
-          order.kind === 'assignBuilder' || order.kind === 'trainSoldier',
-      )
-      .map((order) => (queued ? { ...order, queued } : order));
+    // At a barracks a soldier who may coin-drill drills there while its coins last; the order is never
+    // queued. A soldier never enlists again, so one who may not drill gets no order.
+    const learningPlace = kind === 'learning-place';
+    const drillers =
+      learningPlace && !queued
+        ? coinDrillersAt(deps.content, snapshot, building, settlers, buildingsByType)
+        : [];
+    const drills = drillers.map(
+      (settler): UnitSelectionCommand => ({
+        kind: 'orderCoinDrill',
+        entity: settler as Entity,
+        house: building as Entity,
+      }),
+    );
+    const orders = pick(
+      snapshot,
+      learningPlace
+        ? settlers.filter((settler) => !isFighterSettler(deps.content, snapshot, settler))
+        : settlers,
+      building,
+      buildingsByType,
+      deps.content.goods,
+    );
+    const selectedOrders: UnitSelectionCommand[] = [
+      ...orders
+        .filter(
+          (order): order is Extract<UnitSelectionCommand, { kind: 'assignBuilder' | 'trainSoldier' }> =>
+            order.kind === 'assignBuilder' || order.kind === 'trainSoldier',
+        )
+        .map((order) => (queued ? { ...order, queued } : order)),
+      ...drills,
+    ];
     let ordered: boolean;
     if (selectedOrders.length > 0) {
       ordered = enqueueUnitSelection(selectedOrders, deps.enqueue, deps.onOrderLimit);
@@ -778,7 +841,7 @@ export function createPickModeController(deps: PickModeDeps): PickModeController
       // Only the building picks light targets up; the rest show on the ground or the cursor.
       const kind = buildingPickOf(mode);
       if (kind === null || !('units' in mode)) return null;
-      return BUILDING_PICKS[kind].highlight(snapshot, mode.units, buildingsByType, canTrade);
+      return BUILDING_PICKS[kind].highlight(snapshot, mode.units, buildingsByType, canTrade, deps.content);
     },
     () => pickVersion + (deps.answersVersion?.() ?? 0),
   );
@@ -853,7 +916,7 @@ export function createPickModeController(deps: PickModeDeps): PickModeController
         const fits =
           deps.askAttachTradeHouse !== undefined &&
           mode.units.some((trader) => deps.tradeHouseAttachAnswer?.(trader, building) !== false);
-        return { kind: 'building', pick: 'trade-house', building, fits, school: false };
+        return { kind: 'building', pick: 'trade-house', building, fits, school: false, coinDrill: false };
       }
       case 'workplace':
       case 'home':
@@ -864,11 +927,14 @@ export function createPickModeController(deps: PickModeDeps): PickModeController
         const judged = judgedAim(clientX, clientY);
         if (judged === null) {
           const building = buildingAt(clientX, clientY, pick);
-          if (building !== null) return { kind: 'building', pick, building, fits: false, school: false };
+          if (building !== null)
+            return { kind: 'building', pick, building, fits: false, school: false, coinDrill: false };
           return mode.kind === 'workplace-or-flag' ? { kind: 'workArea' } : null;
         }
         const school = pick === 'learning-place' && learnersAt(judged.target, mode.units).length > 0;
-        return { kind: 'building', pick, building: judged.target, fits: judged.fits, school };
+        const coinDrill =
+          pick === 'learning-place' && !school && drillsMoreThanEnlists(judged.target, mode.units);
+        return { kind: 'building', pick, building: judged.target, fits: judged.fits, school, coinDrill };
       }
       case 'destination':
         return { kind: 'walk' };

@@ -1,4 +1,4 @@
-export const DATA_PACK_VERSION: 4;
+export const DATA_PACK_VERSION: 5;
 export const DATA_PACK_FORMAT: 'open-northland-data';
 export interface DataManifest {
   readonly format: typeof DATA_PACK_FORMAT;
@@ -16,7 +16,7 @@ export function dataPath(value: unknown): string;
 export function parseDataManifest(value: unknown): DataManifest;
 export function sha256File(path: string): Promise<string>;
 export function readDataPack(root: string): Promise<DataManifest>;
-export type DataLanguage = 'pol' | 'eng' | 'ger' | 'rus';
+export type DataLanguage = 'pol' | 'eng' | 'ger' | 'rus' | 'ita';
 export interface CampaignRouteSource {
   readonly file: string;
   readonly x: number;

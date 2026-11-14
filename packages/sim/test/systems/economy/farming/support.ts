@@ -59,6 +59,8 @@ export const PICKUP_ATOMIC = 22;
 export const STAGES = 5;
 /** The fixture farm's plot size - flat, whatever the crew (keep in sync with fixtures/content.ts). */
 export const FIELD_CAP = 6;
+/** How far from the work centre the fixture farm sows, in half-cell nodes (keep in sync with fixtures/content.ts). */
+export const FIELD_RADIUS = 8;
 const BARREN = 2;
 const WATER = 1;
 /** This suite's own walled type - see {@link wallsContent}; high enough to stay clear of the ids other

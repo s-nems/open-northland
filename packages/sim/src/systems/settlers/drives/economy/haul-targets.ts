@@ -20,7 +20,9 @@ import type { NodeId } from '../../../../nav/terrain/index.js';
 import type { SystemContext } from '../../../context.js';
 import { WORKPLACE_COLLECT_RADIUS } from '../../../economy/haul-flag.js';
 import { buildingBlockedCells } from '../../../footprint/index.js';
+import { templeFuelShortfall } from '../../../lifecycle/temple/index.js';
 import { edibleClassOf } from '../../../readviews/food.js';
+import { isTempleFuel, templeFuelSlotOf } from '../../../readviews/index.js';
 import { entityNode } from '../../../spatial/nodes.js';
 import { assignedWorkers } from '../../../stores/assigned-workers.js';
 import {
@@ -60,11 +62,13 @@ import { isFarmCarrierHaulOutRole } from './store-policy.js';
  * reach; a wall or road site's delivered material is never one. The good lifted is the pile's lowest-id
  * stocked one passing `deliverable`, and the scan is canonical by Manhattan distance then ascending cell
  * id. The tests run per candidate, so a lift or claim earlier in the pass is seen by the next porter, and
- * a good every unit of which a walker already claimed is passed over.
+ * a good every unit of which a walker already claimed is passed over. `rankFrom` replaces the flag as
+ * the node a flagged porter's finds are ranked from, for the next stop of a cart's round.
  */
-function nearestLoosePickup(
+export function nearestLoosePickup(
   plan: PlannerContext,
   deliverable: (goodType: number) => boolean,
+  rankFrom?: NodeId,
 ): { from: Entity; goodType: number } | null {
   const { world, ctx, terrain, here, targets, supply } = plan;
   const walls = buildingBlockedCells(world, ctx, terrain);
@@ -98,7 +102,7 @@ function nearestLoosePickup(
     area.gate,
     avoid,
     onSide,
-    area.center,
+    rankFrom ?? area.center,
   );
   return best === null ? null : { from: best.entity, goodType: best.payload };
 }
@@ -170,11 +174,11 @@ function restockSearch(plan: PlannerContext, owner: number): RestockSearch {
 }
 
 /**
- * The nearest unit of a good the porter's own store marks as priority (our rule), while the store has
- * room for it: in another of the owner's storehouses that does not prioritize the good too, in a
- * workplace's finished output or in a ground heap. Searched like {@link nearestMinimumRestock}, ascending
- * by good, and only a load the porter carries as itself and delivers home qualifies. The lift is capped
- * at the room its fellow porters' loads and claims leave, so no surplus walks back to its source.
+ * The nearest unit of a good the porter's own store marks as priority or burns ({@link restockGoodsOf}),
+ * while the store has room for it: in another of the owner's storehouses that does not prioritize the good
+ * too, in a workplace's finished output or in a ground heap. Searched like {@link nearestMinimumRestock},
+ * ascending by good, and only a load the porter carries as itself and delivers home qualifies. The lift is
+ * capped at the room its fellow porters' loads and claims leave, so no surplus walks back to its source.
  * A storehouse source lends only past the owner's storage minimum, even to another storehouse.
  */
 function nearestPriorityRestock(
@@ -184,7 +188,7 @@ function nearestPriorityRestock(
   const { world, ctx, entity, here, owner, targets, supply } = plan;
   const home = world.tryGet(entity, JobAssignment)?.workplace;
   if (home === undefined || owner === undefined) return null;
-  const goods = storePriorityGoods(world, home);
+  const goods = restockGoodsOf(plan, home);
   if (goods.length === 0 || ownerOf(world, home) !== owner) return null;
 
   let lifted = 0;
@@ -210,7 +214,7 @@ function nearestPriorityRestock(
   let best: NearestByCell<number> | null = null;
   let bestRoom = 0;
   for (const goodType of goods) {
-    const room = roomLeftForPorters(plan, home, goodType);
+    const room = Math.min(roomLeftForPorters(plan, home, goodType), fuelRoomLeft(plan, home, goodType));
     if (room <= 0) continue;
     if (carriedGoodForm(world, ctx, entity, goodType) !== goodType || sinkOf(goodType) !== home) continue;
     const holders = targets.bands.holding(goodType);
@@ -230,6 +234,25 @@ function nearestPriorityRestock(
     best = nearer;
   }
   return best === null ? null : { from: best.entity, goodType: best.payload, amount: bestRoom };
+}
+
+/** The goods `home`'s porters fetch while it has room, ascending: what the player marked as priority
+ *  there, and a temple's fuel, which its porter always fetches (owner ruling). */
+function restockGoodsOf(plan: PlannerContext, home: Entity): readonly number[] {
+  const marked = storePriorityGoods(plan.world, home);
+  const type = plan.world.tryGet(home, Building)?.buildingType;
+  const fuel = type === undefined ? undefined : templeFuelSlotOf(plan.ctx.content, type)?.goodType;
+  if (fuel === undefined || marked.includes(fuel)) return marked;
+  return [...marked, fuel].sort((a, b) => a - b);
+}
+
+/** The units of a temple's fuel `home` still takes once every load on its way lands, the druids'
+ *  included; unbounded for any other good or store. */
+function fuelRoomLeft(plan: PlannerContext, home: Entity, goodType: number): number {
+  const { world, ctx, supply } = plan;
+  return isTempleFuel(world, ctx, home, goodType)
+    ? templeFuelShortfall(world, ctx, supply, home)
+    : Number.POSITIVE_INFINITY;
 }
 
 /** The units of `goodType` `home`'s shelf still takes once the loads its other porters carry, have

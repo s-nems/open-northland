@@ -35,6 +35,25 @@ export function isSiegeVehicle(vehicle: VehicleType): boolean {
   return !isShipVehicle(vehicle) && vehicle.stockSlots === 0;
 }
 
+/**
+ * A warship rather than a trade ship: a ship whose `logicpassenger` list admits a siege engine. Of the two
+ * ships only the small one carries the catapult; the big one is the merchant hull.
+ */
+export function isWarship(content: ContentSet, vehicle: VehicleType): boolean {
+  let held = warships.get(vehicle);
+  if (held === undefined) {
+    const siegeJobs = new Set<number>();
+    for (const type of contentIndex(content).vehicles.values())
+      if (isSiegeVehicle(type)) siegeJobs.add(type.jobId);
+    held = isShipVehicle(vehicle) && vehicle.passengerJobs.some((job) => siegeJobs.has(job));
+    warships.set(vehicle, held);
+  }
+  return held;
+}
+
+/** Content-keyed: each vehicle row's {@link isWarship} answer. */
+const warships = new WeakMap<VehicleType, boolean>();
+
 /** Whether the vehicle still needs its draught animal: its type recruits one and none has arrived. Such a
  *  vehicle waits under `waitsForAnimal` and refuses a goto with `vehicleNoAnimal`. */
 export function awaitsDraughtAnimal(vehicle: VehicleType, state: { readonly harnessed: boolean }): boolean {

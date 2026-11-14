@@ -27,6 +27,7 @@ import { interactionNodeId } from '../footprint/interaction.js';
 import { evictSettlersFromFootprint } from '../movement/evict.js';
 import { settleClosedWall, travellerOnClosing } from '../palisades/index.js';
 import { buildStepsPerSwing, jobExperiencePercent } from '../progression/index.js';
+import { templeFuelSlotOf } from '../readviews/index.js';
 import { cancelRoadSitesUnder, finishRoadSite } from '../roads/sites.js';
 import { retargetHomeErrands } from '../settlers/drives/home-upgrade.js';
 import { assignedWorkers } from '../stores/assigned-workers.js';
@@ -36,13 +37,14 @@ import {
   constructionTotalUnits,
   deliveredConstructionFraction,
   isWorkplaceOperator,
+  markFinishedBarracksCoin,
 } from '../stores/index.js';
 import { createVehicle } from '../vehicles/create.js';
 import { evictVehiclesFromFootprint } from '../vehicles/evict.js';
 import { awakeSitesOf } from './awake-sites.js';
 import { destroyBerryBushesInReserved } from './berries.js';
 import { evictCarcassesFromFootprint } from './carcasses.js';
-import { retireCompletedSiteErrands } from './completed-site-errands.js';
+import { retireCompletedSiteErrands, siteCrew } from './completed-site-errands.js';
 import { destroyFieldsUnderBuilding } from './fields.js';
 import { evictLooseGoodsFromFootprint } from './goods-evict.js';
 import { scatterSpilledStock, spilledStockOf } from './goods-spill.js';
@@ -117,7 +119,7 @@ function advanceBuildingSite(
   // A free (empty-cost) type has nothing to install, so its labor requirement is waived.
   const laborComplete = constructionTotalUnits(world, ctx, e) === 0 || labor >= ONE;
   if (laborComplete && constructionMaterialsPresent(world, ctx, e)) {
-    consumeMaterials(world, e, cost);
+    consumeMaterials(world, e, spentBill(ctx, building.buildingType, cost));
     const type = contentIndex(ctx.content).buildings.get(building.buildingType);
     if (type?.kind === BUILDING_KIND.vehicle && type.vehicleType !== undefined) return 'launch';
     finishBuilding(world, ctx, e, building);
@@ -229,6 +231,7 @@ function finishBuilding(
   fillHealth(world, e);
   if (adoptedTier) retargetHomeErrands(world, ctx, e, previousDoor);
   settleFootprint(world, ctx, e);
+  markFinishedBarracksCoin(world, ctx, e);
   ctx.events.emit(
     adoptedTier
       ? { kind: 'buildingUpgraded', entity: e, level: building.level }
@@ -273,16 +276,31 @@ function launchVehicle(world: World, ctx: SystemContext, site: Entity): void {
   const { hx, hy } = nodeOfPosition(p.x, p.y);
   const owner = ownerOf(world, site);
   const spill = spilledStockOf(world, site);
+  const crewLands = landsStoodOn(world, ctx, siteCrew(world, site));
   // The yard spends its rotation turn when its drive releases the worker's SiteAssignment.
   world.destroy(site);
   scatterSpilledStock(world, ctx, spill);
-  createVehicle(world, ctx, {
-    vehicleType,
-    tribe,
-    ...(owner !== undefined ? { owner } : {}),
-    x: hx,
-    y: hy,
-  });
+  createVehicle(
+    world,
+    ctx,
+    { vehicleType, tribe, ...(owner !== undefined ? { owner } : {}), x: hx, y: hy },
+    crewLands,
+  );
+}
+
+/** The land components `settlers` stand on; one aboard a vehicle or mid-step over water counts none. */
+function landsStoodOn(world: World, ctx: SystemContext, settlers: readonly Entity[]): ReadonlySet<number> {
+  const lands = new Set<number>();
+  const terrain = ctx.terrain;
+  if (terrain === undefined) return lands;
+  for (const e of settlers) {
+    const p = world.tryGet(e, Position);
+    if (p === undefined) continue;
+    const { hx, hy } = nodeOfPosition(p.x, p.y);
+    const node = terrain.nodeAtClamped(hx, hy);
+    if (terrain.isWalkable(node)) lands.add(terrain.componentOf(node));
+  }
+  return lands;
 }
 
 /**
@@ -338,6 +356,17 @@ function fillHealth(world: World, e: Entity): void {
   const health = world.tryMut(e, Health);
   if (health !== undefined) health.hitpoints = health.max;
   clearRepairedDamage(world, e);
+}
+
+/** The part of a finished site's bill its structure takes: all of it, except a temple's fuel, which stays
+ *  in its store as the first its fire burns (owner ruling). */
+function spentBill(
+  ctx: SystemContext,
+  buildingType: number,
+  cost: ReadonlyArray<{ goodType: number; amount: number }>,
+): ReadonlyArray<{ goodType: number; amount: number }> {
+  const fuel = templeFuelSlotOf(ctx.content, buildingType)?.goodType;
+  return fuel === undefined ? cost : cost.filter((line) => line.goodType !== fuel);
 }
 
 /** Spend the `cost` materials into the structure; the caller has verified

@@ -1,11 +1,13 @@
 import { JobAssignment } from '../../../../components/index.js';
+import { isTempleFuel } from '../../../readviews/index.js';
 import { isCarrierJob } from '../../../stores/index.js';
+import { carryCapacityOf } from '../../../vehicles/hauling-cart.js';
 import { walkPickupBatch } from '../../atomics/start.js';
 import type { PlannerContext } from '../../planner/context.js';
 import type { IdleStands } from '../../planner/idle-replan.js';
 import { nearestWorkplaceOutput } from '../../targets/index.js';
 import { unreachableGoalVeto } from '../../unreachable-goals.js';
-import { deliverableGoodProbe, homeBoundGoodProbe } from './delivery-targets.js';
+import { deliverableGoodProbe, homeBoundGoodProbe, sinkRoomFor } from './delivery-targets.js';
 import { haulFlagArea, waitAtHaulFlag } from './haul-flag-area.js';
 import { porterPickupTarget } from './haul-targets.js';
 import { markPorterDormant, porterDormant, wakePorter } from './porter-dormancy.js';
@@ -39,8 +41,19 @@ export function planPorter(plan: PlannerContext, idle: IdleStands): boolean {
     return true;
   }
   wakePorter(world, e);
-  walkPickupBatch(plan, pick.from, pick.goodType, undefined, pick.amount);
+  stampTempleFuelRun(plan, pick.goodType, pick.amount);
+  walkPickupBatch(plan, pick.from, pick.goodType, undefined, pick.amount ?? sinkRoomFor(plan, pick.goodType));
   return true;
+}
+
+/** A temple's porter setting out for its fuel commits the load to the temple from the start, so a druid
+ *  counting what the temple still takes leaves that unit to him. */
+function stampTempleFuelRun(plan: PlannerContext, goodType: number, most: number | undefined): void {
+  const { world, ctx, entity, supply } = plan;
+  const home = world.tryGet(entity, JobAssignment)?.workplace;
+  if (home === undefined || !isTempleFuel(world, ctx, home, goodType)) return;
+  const amount = Math.min(most ?? Number.POSITIVE_INFINITY, carryCapacityOf(world, ctx.content, entity));
+  supply.stampSupplyRun(entity, { site: home, goodType, amount });
 }
 
 /**
@@ -69,6 +82,6 @@ export function planCarrierHaul(plan: PlannerContext, anyHaulable: boolean): boo
       )
     : null;
   if (haul === null) return false;
-  walkPickupBatch(plan, haul.workplace, haul.goodType);
+  walkPickupBatch(plan, haul.workplace, haul.goodType, undefined, sinkRoomFor(plan, haul.goodType));
   return true;
 }

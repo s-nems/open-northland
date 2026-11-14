@@ -66,7 +66,7 @@ export const plContent = {
     work_sewery_01: 'Zakład krawiecki (poziom 2)',
     work_pottery_00: 'Warsztat garncarski (poziom 1)',
     work_pottery_01: 'Warsztat garncarski (poziom 2)',
-    work_pottery_02: 'Mur obronny',
+    work_pottery_02: 'Warsztat garncarski (poziom 3)',
     work_joinery_00: 'Warsztat ciesielski (poziom 1)',
     work_joinery_01: 'Warsztat ciesielski (poziom 2)',
     work_joinery_02: 'Warsztat ciesielski (poziom 3)',
@@ -100,6 +100,7 @@ export const plContent = {
     wonder_pyramid_of_gizeh: 'Piramida',
     wonder_8th_wonder: '8. Cud',
     work_murek: 'Mur obronny',
+    defence_wall: 'Mur obronny',
   },
   goods: {
     wood: 'Drewno',
@@ -197,10 +198,15 @@ export const plContent = {
       summary:
         '1000 na 1000 na powiększonym polu bitwy: rozproszone oddziały, pięć rodzajów broni i różne pancerze.',
     },
+    'precision-battle': {
+      title: 'Bitwa amuletu precyzji',
+      summary:
+        '60 wojowników w zbrojach płytowych z amuletem precyzji, po dziesięciu z każdą bronią, przeciw 78 bez amuletu, po trzynastu z każdą bronią. Na wschodzie mała walka: pięciu przeciw siedmiu.',
+    },
     'overhead-icons': {
       title: 'Ikony nad głową',
       summary:
-        'Każdy miecznik nosi gwiazdkę, która rośnie co ćwierć zadanych trafień; żołnierz oznaczony przez skrypt nosi nad nią znacznik. Zaznacz wszystkich, by w kolumnie stanęły serca życia i gwiazdka fachu mistrza zbieracza.',
+        'Każdy miecznik nosi gwiazdkę, która rośnie co 25 pkt doświadczenia w walce; żołnierz oznaczony przez skrypt nosi nad nią znacznik. Zaznacz wszystkich, by w kolumnie stanęły serca życia i gwiazdka fachu mistrza zbieracza.',
     },
     'bow-flight': {
       title: 'Lot strzały',
@@ -412,6 +418,11 @@ export const plContent = {
       summary:
         'Na każdej wyspie stoją dwa magazyny w jednej sieci drogowskazów, a oba punkty trasy kupca liczą całą osadę. Wschodnia wyspa trzyma 20 cegieł i 20 kamieni, dowożonych z obu zachodnich magazynów, a jej drewno płynie na zachód, aż w jej dwóch magazynach zostanie 30. Zaznacz kupca, by zobaczyć włączony przycisk „osada” przy obu punktach.',
     },
+    'trade-sea-shared-stop': {
+      title: 'Dwie trasy przez morze ze wspólnym przystankiem',
+      summary:
+        'Każdy z dwóch kupców ma własny magazyn na zachodniej wyspie i mały statek przypięty do trasy, a obaj wożą drewno do jednego magazynu na wschodniej wyspie. Statek, który dopłynie do wschodniego brzegu drugi, cumuje obok pierwszego, zamiast czekać, aż ten odpłynie. Patrz na wschodni brzeg: oba statki stoją przy nim razem, a wózki obu kupców kursują do magazynu.',
+    },
     'trade-domestic': {
       title: 'Handel między własnymi magazynami',
       summary:
@@ -446,6 +457,16 @@ export const plContent = {
       title: 'Woźnice wszystkich nacji',
       summary:
         'Kupiec z wózkiem i tragarz z wozem z wołem każdej nacji jadą na wschód; każdy woźnica ma głowę swojej nacji.',
+    },
+    'vehicle-damage': {
+      title: 'Uszkodzone i niszczone pojazdy',
+      summary:
+        'Katapulty i statki stoją z coraz mniejszym zdrowiem: kadłuby są poszarpane i dymią, statki pod koniec płoną i same idą na dno po około dwóch i pół minuty, katapulty tylko lekko dymią. Po drugiej stronie cieśniny wrodzy łucznicy dobijają statek i katapultę: statek płonie i idzie na dno, katapulta rozpada się w odrobinie kurzu.',
+    },
+    'vehicle-ship-archers': {
+      title: 'Łucznicy na pokładzie',
+      summary:
+        'Dwunastu łuczników wsiada na statek wojenny, a trzech na handlowy, i oba płyną w stronę wojowników z mieczami na drugim brzegu. Pierwszych dziesięciu łuczników strzela z pokładu statku wojennego, z większym rozrzutem niż na lądzie; pozostali dwaj i załoga statku handlowego nie strzelają.',
     },
     'vehicle-ships': {
       title: 'Statek przez cieśninę',
@@ -512,6 +533,16 @@ export const plContent = {
       summary:
         'Zacumowany statek zamawia drewno ze stert na brzegu. Przynoszą je sztuka po sztuce tragarz i płynący z nim kowal; żołnierz wsiada i zostaje na pokładzie.',
     },
+    'vehicle-ship-crew-meal': {
+      title: 'Posiłek załogi statku',
+      summary:
+        'Głodująca załoga żołnierzy na zacumowanym statku z pustą ładownią. Każdy wypija miód pitny, który ma przy sobie; wciąż głodni schodzą na brzeg, jedzą w magazynie i wracają na pokład.',
+    },
+    'vehicle-ship-repair': {
+      title: 'Naprawa statku',
+      summary:
+        'Uszkodzony statek płonie zacumowany przy brzegu, a drugi, też uszkodzony, stoi na środku cieśniny. Trzech budowniczych schodzi na brzeg przy zacumowanym statku i naprawia go do pełna, a pożar gaśnie; statek na morzu jest poza ich zasięgiem i zostaje uszkodzony.',
+    },
     'hauling-cart': {
       title: 'Wózek tragarza',
       summary:
@@ -527,6 +558,11 @@ export const plContent = {
       summary:
         'Dwie obsadzone katapulty dostają rozkaz ataku z marszu na wschód. Na starcie żadna wroga chata nie jest w zasięgu; każda pojawia się po drodze, więc katapulty stają, burzą ją i jadą dalej do celu. Zaznacz katapultę, naciśnij klawisz ataku z marszu i kliknij punkt, aby poprowadzić ją samemu.',
     },
+    'vehicle-attack-move-fight': {
+      title: 'Atak z marszu w trakcie ostrzału',
+      summary:
+        'Katapulta w postawie utrzymania pozycji ostrzeliwuje wrogą chatę w swoim zasięgu, a tuż za zasięgiem stoi wroga wieża. Rozkaz ataku z marszu na wschód, wydany w trakcie ostrzału, nie rusza jej z miejsca: strzela dalej, aż chata padnie, i dopiero wtedy rusza, podjeżdża pod wieżę, burzy ją i jedzie do celu. Zaznacz katapultę, naciśnij klawisz ataku z marszu i kliknij za wieżą, gdy strzela, aby wydać rozkaz samemu.',
+    },
     'vehicle-tight-gap': {
       title: 'Wąskie przejazdy',
       summary:
@@ -535,7 +571,22 @@ export const plContent = {
     'vehicle-catapult-spread': {
       title: 'Katapulty rozjeżdżają się przed strzałem',
       summary:
-        'Cztery obsadzone katapulty stoją parami, każda para na jednym polu, a wroga chata jest w zasięgu. Katapulta nigdy nie strzela z wnętrza innej: każda ze stłoczonych najpierw odjeżdża na własne miejsce, dopiero potem bateria otwiera ogień. Wyślij kilka katapult w jeden punkt, aby zobaczyć, jak trzymają odstęp.',
+        'Cztery obsadzone katapulty stoją parami, każda para na jednym polu, a wroga chata jest w zasięgu. Z dwóch stykających się katapult strzela tylko jedna: jedna z każdej pary otwiera ogień tam, gdzie stoi, a druga najpierw odjeżdża na własne miejsce. Wyślij kilka katapult w jeden punkt, aby zobaczyć, jak trzymają odstęp.',
+    },
+    'vehicle-catapult-targets': {
+      title: 'W co katapulta strzela najpierw',
+      summary:
+        'Obsadzona katapulta w postawie ataku ma w zasięgu łucznika, a tuż za zasięgiem wrogą wieżę, podczas gdy dwaj miecznicy podbiegają i biją w jej kadłub. Najpierw strzela w łucznika w zasięgu, potem podjeżdża kilka kroków do wieży i ją burzy. Miecznicy przy jej boku są za blisko na kamień; przed dwoma nie próbuje odjechać, a gdy nic już nie ma w zasięgu, po prostu stoi.',
+    },
+    'vehicle-catapult-archers': {
+      title: 'Katapulta przeciw łucznikom',
+      summary:
+        'Obsadzona katapulta trzyma pozycję, a trzech wrogich łuczników z długimi łukami, w kolczugach, idzie prosto na nią. Gdy wchodzą w jej zasięg, ciska w nich kamieniami, a oni ze swojego zasięgu strzelają w jej kadłub. Na każdego łucznika trzeba trzech kamieni, a kadłub wytrzymuje dość długo, by powalić dwóch, zanim pęknie.',
+    },
+    'vehicle-catapult-assault': {
+      title: 'Bateria szturmuje bronioną osadę',
+      summary:
+        'Trzy obsadzone katapulty dostają atak-ruch za wrogą palisadę. Na skrzydłach, w ich zasięgu, stoją miecznicy, dalej z tyłu łucznicy, a za palisadą wieża. Katapulty nie marnują kamieni na mieczników: najpierw podjeżdżają pod łuczników, a potem pod wieżę, a każda strzela z własnego miejsca.',
     },
     'vehicle-catapult-wall': {
       title: 'Katapulta ostrzeliwuje miejsce za palisadą',
@@ -586,6 +637,11 @@ export const plContent = {
       title: 'Asystent zakłada rodziny',
       summary:
         'Trzy bezdomne kobiety i trzech mężczyzn stoją przy domu na dwie rodziny, a asystent zakłada rodziny. Dwie kobiety wprowadzają się do domu i wychodzą za mąż, a mężowie zamieszkują z nimi. Trzecia nie znajduje wolnego miejsca, zostaje bezdomna i niezamężna.',
+    },
+    'furnished-home': {
+      title: 'Meble mieszczą dodatkowe rodziny',
+      summary:
+        'Trzy domy dla jednej rodziny. W zachodnim są dwie sztuki mebli, więc mieszka w nim druga rodzina. Do środkowego wracają dwie zmęczone kobiety, a mebel tej, która wprowadziła się ostatnia, starczy tylko do jej najbliższego snu: gdy się położy, mebla już nie ma, więc się wyprowadza, a asystent przenosi ją do pustego domu na wschodzie.',
     },
     'gatherer-flag-follow': {
       title: 'Flagi idą za surowcami',
@@ -689,6 +745,11 @@ export const plContent = {
       summary:
         'Głodny zwiadowca z kolejką drogowskazów idzie najpierw po jedzenie, je i stawia resztę. Żołnierz z regeneracją też schodzi coś zjeść, ten bez regeneracji maszeruje dalej głodny.',
     },
+    'mead-drink': {
+      title: 'Picie miodu pitnego',
+      summary:
+        'Trzech osadników idzie na wschód i po kilku krokach robi się głodnych. Cywil i żołnierz zatrzymują się na drodze, piją miód pitny z animacją jedzenia i idą dalej. Żołnierz z zakazaną regeneracją nie otwiera miodu, tylko w marszu pije miksturę odżywczą.',
+    },
     'scout-claim': {
       title: 'Zwiadowca zajmuje zwierzę',
       summary:
@@ -711,17 +772,22 @@ export const plContent = {
     alchemy: {
       title: 'Chatki alchemika',
       summary:
-        'Druid warzy oliwę z grzybów w małej chatce, a dwóch druidów mikstury z wody, grzybów, ziół i monet w dużej.',
+        'Druid warzy oliwę z grzybów w małej chatce, a dwóch druidów mikstury z wody, grzybów, ziół i naczyń w dużej.',
     },
     'temple-aura': {
       title: 'Aura świątyni',
       summary:
-        'Zaznacz świątynię, aby zobaczyć jasnoniebieski zasięg błogosławieństwa. Bliski osadnik odzyskuje religię, odległy pozostaje poza aurą.',
+        'W rzędzie stoi świątynia każdej nacji. Zaznacz jedną, aby zobaczyć jasnoniebieski zasięg błogosławieństwa. Bliski osadnik odzyskuje religię, odległy pozostaje poza aurą.',
+    },
+    'temple-oil': {
+      title: 'Oliwa w świątyni',
+      summary:
+        'Świątynie wszystkich nacji zaczynają bez oliwy, a druid każdej z nich zanosi ją ze swojej chaty: zapala się ogień wikingów i jasna poświata przy każdej świątyni. Uszkodzona świątynia zostaje ciemna mimo pełnego zapasu.',
     },
     'household-goods': {
       title: 'Wyposażenie domu',
       summary:
-        'Garncarze, cieśle i druid zaopatrują rozbudowany dom w naczynia, meble i oliwę, wspomagające posiłki, odpoczynek i modlitwę.',
+        'Garncarze, cieśle i druid zaopatrują rozbudowany dom w naczynia, meble i oliwę: więcej jedzenia z dostawy, miejsce dla kolejnych rodzin i modlitwę przed domem.',
     },
     'storage-minimum': {
       title: 'Minimum w magazynach',
@@ -873,6 +939,11 @@ export const plContent = {
       summary:
         'Owce i woły na północy idą do bliższego magazynu. Południowe stado nie ma magazynu i zbiera się przy bliższym domu.',
     },
+    'farm-larder': {
+      title: 'Kobiety przy fermie bydła',
+      summary:
+        'Trzy kobiety mieszkają obok kwatery głównej pełnej jedzenia, a ferma bydła stoi dalej na wschodzie z pełną półką mięsa. Kobiety mijają kwaterę i biorą mięso z fermy, więc hodowca dalej ubija bydło i przybywa skóry, zamiast żeby sam wynosił mięso.',
+    },
     livestock: {
       title: 'Hodowla zwierząt',
       summary:
@@ -938,6 +1009,11 @@ export const plContent = {
       summary:
         'Dwaj zbieracze maszerują do lasu - ten w butach wyraźnie szybciej, a buty zużywają się w drodze; młynarz z żelaznym narzędziem miele 5 pszenicy z premią do produkcji, a osadnicy sami piją miód i mikstury, gdy dopada ich głód lub zmęczenie.',
     },
+    'potion-sips': {
+      title: 'Łyki mikstur',
+      summary:
+        'Osadnicy piją sami i to widać: czterej głodni zbieracze po kolei piją miksturę odżywczą, czterej zmęczeni miksturę wytrzymałości, a ranny wojownik z miksturami leczenia broni się przed trzema rywalami. Każdy łyk rozświetla pijącego kolorem mikstury, puszcza po ziemi krąg i kilka iskier w górę.',
+    },
     amulets: {
       title: 'Amulety',
       summary:
@@ -946,17 +1022,32 @@ export const plContent = {
     barracks: {
       title: 'Szkolenie w koszarach',
       summary:
-        'Osadnik wysłany do koszar ćwiczy w środku 15 sekund i wychodzi jako żołnierz bez broni; obok żołnierz, który tylko trenuje, i cywil, dla którego zawód żołnierza pozostaje zamknięty.',
+        'Osadnik wysłany do koszar ćwiczy w środku do końca szkolenia i wychodzi jako żołnierz bez broni; obok cywil, który nie ćwiczył, więc zawód żołnierza pozostaje dla niego zamknięty.',
     },
     'barracks-armory': {
       title: 'Zbrojownia koszar',
       summary:
         'Dwóch osadników ćwiczy na licznik mieczników w koszarach, które mają jeden długi miecz, jeden krótki miecz i dwie kolczugi. Pierwszy wychodzi jako długi miecznik w kolczudze. Drugi zakłada przy wyjściu drugą kolczugę, zostawia w koszarach słabszy krótki miecz i idzie po długi miecz leżący przy siedzibie.',
     },
+    'barracks-mixed-orders': {
+      title: 'Mieszane zamówienia koszar',
+      summary:
+        'Asystent ma zamówienie na dwóch mieczników i dwóch łuczników, ale w zbrojowni przy siedzibie leży jeden długi miecz i dwa łuki. Trzech z czterech osadników ćwiczy i wychodzi jako długi miecznik i dwóch łuczników. Pod brakujący drugi miecz nikt nie zostaje powołany: czwarty osadnik zostaje w domu i żaden żołnierz nie stoi bez broni. Po powrocie ze zbrojowni uzbrojeni rozchodzą się wokół drzwi koszar, zamiast tłoczyć się na jednym polu.',
+    },
     'barracks-exit': {
       title: 'Wyjście z koszar',
       summary:
         'Sześciu osadników ćwiczy naraz w jednych koszarach i wychodzi jako żołnierze bez broni. Każdy schodzi ze wspólnego pola przed drzwiami na wolne obok i tam trzyma posterunek, więc oddział stoi rozstawiony wokół drzwi, a nie w jednym stosie.',
+    },
+    'barracks-rally': {
+      title: 'Punkt zbiórki koszar',
+      summary:
+        'Pięciu osadników wyszkolonych ręcznie i trzech, których asystent uzbraja w miecze z kwatery głównej, idzie do flagi zbiórki koszar. Każdy zajmuje własne miejsce w szeregach co jedno pole wokół niej i tam trzyma posterunek, zamiast żeby cały oddział tłoczył się na fladze.',
+    },
+    'coin-drill': {
+      title: 'Musztra za monety',
+      summary:
+        'Miecznik, włócznik i łucznik ćwiczą w koszarach, w których leży sześć monet. Każda moneta to jedna musztra w środku, a na jej koniec punkty doświadczenia w walce. Miecznik i łucznik ćwiczą aż do limitu, włócznikowi, który jest już blisko niego, wystarczy jedna moneta. Szósta moneta zostaje, bo nikt poniżej limitu już na nią nie czeka.',
     },
     armor: {
       title: 'Parada zbroi',

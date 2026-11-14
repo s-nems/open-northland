@@ -12,14 +12,15 @@ import {
 } from '../../components/index.js';
 import { TICKS_PER_SECOND } from '../../core/loop.js';
 import type { Entity, World } from '../../ecs/world.js';
+import type { HalfCellNode } from '../../nav/halfcell.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { System, SystemContext } from '../context.js';
 import { wakeIdle } from '../settlers/planner/idle-replan.js';
 import { boardCrew } from '../vehicles/boarding.js';
 import { boardRider, landingOf, landRider, releaseRider } from '../vehicles/crew.js';
-import { startDock } from '../vehicles/dock.js';
+import { startDockAtFirst } from '../vehicles/dock.js';
 import { releaseTradeShip, stowCartOnShip } from '../vehicles/hauling-cart.js';
-import { mooringTargetOfStop, shipLiesOn, stopContinent, tradeShipHolds } from './ship.js';
+import { mooringSpotsNearStop, shipLiesOn, stopContinent, tradeShipHolds } from './ship.js';
 
 /** How long a voyage whose dock found no route waits before it tries again. Approximation: a named
  *  addition, long enough that a sea closed for good costs a search now and then. */
@@ -79,16 +80,30 @@ export function shipLiesAwayFrom(
   return !dockFailedTo(world, terrain, trader, target);
 }
 
-/** One voyage step of a trader aboard its pinned ship and the ship lying idle. */
+/** The nodes `spots` names, as dock points, made only as far as a dock reads them. */
+function* pointsOf(terrain: TerrainGraph, spots: readonly NodeId[]): Generator<HalfCellNode> {
+  for (const spot of spots) {
+    const { x, y } = terrain.coordsOf(spot);
+    yield { hx: x, hy: y };
+  }
+}
+
+/**
+ * One voyage step of a trader aboard its pinned ship and the ship lying idle. The ship docks at the stop's
+ * mooring, or, while other ships lie at it or sail to dock there, at the next spot nearest the stop's door
+ * where its hull lies clear of theirs, however far: a named addition, so ships whose routes share a stop
+ * moor side by side instead of waiting their turn.
+ */
 function sail(world: World, ctx: SystemContext, terrain: TerrainGraph, trader: Entity, ship: Entity): void {
   const state = world.get(ship, Vehicle);
   const route = world.tryGet(trader, TradeRoute);
   // A route no plan has taken up yet starts at its first stop, as the planner starts it.
   const stop = route?.stops[Math.max(route.current, 0)];
-  const target =
+  const spots =
     route === undefined || route.stops.length !== TRADE_ROUTE_HOUSES || stop === undefined
-      ? null
-      : mooringTargetOfStop(world, ctx, terrain, ship, stop);
+      ? []
+      : mooringSpotsNearStop(world, ctx, terrain, ship, stop);
+  const target = spots[0] ?? null;
   if (stop === undefined || target === null) {
     if (state.moored) landTrader(world, ctx, trader, ship); // at sea the ship stays for the player
     return;
@@ -113,10 +128,13 @@ function sail(world: World, ctx: SystemContext, terrain: TerrainGraph, trader: E
   }
   if (!boardCrew(world, ctx, ship)) return; // helpers come aboard first, a unit in hand finished
   const { x, y } = terrain.coordsOf(target);
-  if (startDock(world, ctx, terrain, ship, { hx: x, hy: y })) return;
+  const docked = startDockAtFirst(world, ctx, terrain, ship, pointsOf(terrain, spots));
+  if (docked !== null && docked.hx === x && docked.hy === y) return;
+  // A dock beside the mooring is a failed dock to it, so the trader works from where the ship lands.
   const pin = world.mut(trader, TradeShip);
-  pin.dockRetryAt = ctx.tick + TRADE_DOCK_RETRY_TICKS;
   pin.failedDock = { hx: x, hy: y };
+  if (docked !== null) return;
+  pin.dockRetryAt = ctx.tick + TRADE_DOCK_RETRY_TICKS;
   if (state.moored) landTrader(world, ctx, trader, ship);
 }
 

@@ -1,0 +1,37 @@
+{
+  "version": 1,
+  "map": "saga-campaign_04_04_sub1",
+  "basis": {
+    "lang": "eng",
+    "digest": "7f5be34fa8a138779c24128f1aadc0b6c0ac639c4c14f9ffb4099f7b56dd2d42"
+  },
+  "strings": {
+    "0": "@TROVA I TRE DRAGHI D'ACQUA CHE HAI LIBERATO!",
+    "1": "Parla con Glup.",
+    "53": "Aquas, draghi d'acqua",
+    "63": "Aquas",
+    "71": "Bjarni",
+    "72": "Cyra",
+    "74": "GLUP",
+    "75": "Mani",
+    "76": "Norbert",
+    "77": "CIARLONE",
+    "78": "ONDINA",
+    "79": "FLUTTO",
+    "99": "LE TRE CASCATE"
+  },
+  "briefings": {
+    "100": "<font:$local$\\fonts\\fonthead16bld.fnt>\nMISSIONE FALLITA!\n<font:$local$\\fonts\\font12.fnt>\n<picture:$local$\\graphics\\Hero_Dead_F.pcx>\nEroismo o imprudenza? Alla morte di BJARNI gli dèi piansero... senza questo eroe, l'esito di questa missione ti resterà ignoto!",
+    "200": "<font:$local$\\fonts\\fonthead16bld.fnt>\nMISSIONE FALLITA!\n<font:$local$\\fonts\\font12.fnt>\n<picture:$local$\\graphics\\Hero_Dead_F.pcx>\nBasta un attimo di distrazione per perdere la vita! La tua eroina CYRA è morta per la tua negligenza! Senza questa eroina, l'esito di questa missione ti resterà ignoto!",
+    "header": "LE TRE CASCATE",
+    "00_start": "Avevamo seguito i draghi, e all'improvviso ci ritrovammo in un luogo molto strano.\nNon c'era alcun dubbio: eravamo di nuovo dentro uno dei tanti templi d'acqua degli AQUAS!",
+    "00_start1": "I nostri compagni presero subito la loro strada. Dovevamo trovare il custode di questo tempio. Forse poteva aiutarci nella nostra missione?\n\nTrova GLUP!",
+    "50_endheader": "MISSIONE COMPIUTA!",
+    "50_end": "SORPRESA!\n\n\"Le cascate in realtà non sono altro che una piccola centrale idroelettrica. Con tutta questa forza dell'acqua, e azionando i tre interruttori, possiamo far funzionare i teletrasporti in superficie!\"\n\n<usericon:1,73,37>",
+    "50_end1": "Per ringraziarci di averli salvati, e perché per noi erano molto più che draghi qualunque, gli Aquas attivarono i teletrasporti.",
+    "01": "GLUP\n\n\"Davvero avete compiuto una grande impresa salvando i nostri fratelli.\"\n\n<usericon:2,4>\n\n\n\"Li avete guardati bene? Vi ricordate ancora i loro nomi? Tre di loro sono qui alle cascate. Trovateli, e avranno una sorpresa per voi!\"\n\nTrova i tre draghi d'acqua che hanno viaggiato con te.",
+    "02": "CIARLONE\n\n<usericon:2,11>\n\n\"Mi avete riconosciuto! Allora il vecchio chiacchierone CIARLONE è riuscito a ciarlare fin dentro le vostre teste?\"",
+    "03": "ONDINA\n\n<usericon:2,12>\n\n\"Mi avete riconosciuta! Anche ONDINA vi porterà sempre nel cuore!\"",
+    "04": "FLUTTO\n\n<usericon:2,13>\n\n\"Mi avete riconosciuto!\""
+  }
+}

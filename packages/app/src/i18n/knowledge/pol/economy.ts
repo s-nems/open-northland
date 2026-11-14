@@ -29,8 +29,12 @@ export const ECONOMY: ArticleGroup = {
               ],
               ['Drzewo, skała, złoże, palisada', 'Muszą stać poza miejscem na najwyższy poziom budynku.'],
               [
-                'Wrogi żołnierz',
-                'Nie zbudujesz w promieniu {{contest.radius}} hexów od niego, po skosie około {{contest.diagonal}}. Liczą się tylko żołnierze, których widzisz, ale nie załoga wieży.',
+                'Wrogi żołnierz, wóz lub statek',
+                'Nie zbudujesz w promieniu {{contest.radius}} hexów od niego, po skosie około {{contest.diagonal}}. Liczą się tylko te, które widzisz, ale nie załoga wieży.',
+              ],
+              [
+                'Wroga katapulta',
+                'Nie zbudujesz w promieniu {{contest.siegeRadius}} hexów od niej, tak daleko szuka celu, z załogą czy pusta. Liczą się tylko katapulty, które widzisz.',
               ],
               [
                 'Budynek gracza, z którym masz pokój',
@@ -117,7 +121,7 @@ export const ECONOMY: ArticleGroup = {
           h: 'Co Budowniczy robi najpierw',
         },
         {
-          p: 'Budowniczy najpierw naprawia, potem stawia budynki, a palisady i drogi zostawia na koniec. Jeśli przypiszesz go do placu, zostaje przy nim, nawet gdy gdzie indziej czeka praca.',
+          p: 'Budowniczy najpierw naprawia, potem stawia budynki, a palisady i drogi zostawia na koniec. Jeśli przypiszesz go do placu, zostaje przy nim, nawet gdy gdzie indziej czeka praca. Plac, któremu dasz Priorytet w jego panelu, idzie przed każdym placem bez priorytetu i odciąga z takiego placu nawet ostatniego Budowniczego.',
         },
         {
           h: 'Rozbudowa',
@@ -135,7 +139,7 @@ export const ECONOMY: ArticleGroup = {
           h: 'Naprawa',
         },
         {
-          p: 'Budowniczy przywraca budynkowi {{repair.minPerSwing}}-{{repair.maxPerSwing}} zdrowia na uderzenie, a jeden budynek naprawia naraz najwyżej {{repair.crew}} Budowniczych. Naprawa nie kosztuje materiału. Palisadę i bramę naprawia się inaczej, doświadczenie i narzędzie nic tam nie zmieniają: [[article:walls|Palisady i bramy]].',
+          p: 'Budowniczy przywraca budynkowi {{repair.minPerSwing}}-{{repair.maxPerSwing}} zdrowia na uderzenie, a jeden budynek naprawia naraz najwyżej {{repair.crew}} Budowniczych. Naprawa nie kosztuje materiału. Palisadę i bramę naprawia się inaczej, doświadczenie i narzędzie nic tam nie zmieniają: [[article:walls|Palisady i bramy]]. Tak samo naprawia twój uszkodzony statek, gdy stoi przy brzegu: [[article:vehicles|Pojazdy i statki]].',
         },
         {
           p: 'Budowniczy sam nie naprawia przez {{repair.calmSeconds}} s od ostatniego trafienia ani wtedy, gdy w promieniu {{alert.standTo}} hexów trwa walka. Na twój rozkaz pójdzie od razu.',
@@ -246,9 +250,12 @@ export const ECONOMY: ArticleGroup = {
               ['"Tylko to dobro"', 'Ten towar ∞, reszta 0'],
               [
                 'Prawy klik na zasobie',
-                'Rozkaz "Zbieraj": ten towar ∞, reszta 0. Flaga robocza zostaje na miejscu.',
+                'Rozkaz "Zbieraj": ten towar ∞, reszta 0, a flaga robocza przenosi się na zasób. Bez flagi zmienia się tylko towar.',
               ],
-              ['Ctrl i prawy klik na zasobie', 'To samo, ale flaga przenosi się na zasób'],
+              [
+                'Ctrl i prawy klik',
+                'Flaga przenosi się w to miejsce, a na zasobie zmienia się też towar jak wyżej',
+              ],
               ['Wszystkie liczniki na 0', 'Zbieracz ma stan "Towary na 0" i nic nie zbiera'],
               [
                 'Towar już leży na ziemi',
@@ -377,11 +384,11 @@ export const ECONOMY: ArticleGroup = {
               ['[[building:work_herb_hut|Chatka zielarza]]', '{{field.max}}', '{{field.radius}} hexów'],
             ],
             num: [1],
-            foot: 'Po skosie promień to około {{field.diagonal}} hexów. Limit pól jest na budynek, nie na pracownika, więc więcej ludzi daje szybsze zbiory, ale nie więcej pól. Załogę i zapas podaje karta budynku.',
+            foot: 'Po skosie promień to około {{field.diagonal}} hexów. Limit pól dotyczy poletka, nie pracownika, więc więcej ludzi daje szybsze zbiory, ale nie więcej pól. Pracownik z flagą roboczą zakłada własne poletko wokół niej. Załogę i zapas podaje karta budynku.',
           },
         },
         {
-          p: 'Pola nie zasiejesz na piasku ani na drodze. Dzikie pola z mapy w zasięgu budynku liczą się do jego limitu. Pole, do którego przez {{field.reclaimSeconds}} s nie da się dojść od drzwi budynku, znika i zwalnia miejsce w limicie.',
+          p: 'Pola nie zasiejesz na piasku ani na drodze. Dzikie pola z mapy w zasięgu poletka liczą się do jego limitu. Pole, do którego przez {{field.reclaimSeconds}} s nie da się dojść od drzwi budynku, znika i zwalnia miejsce w limicie.',
         },
         {
           h: 'Co odrasta',
@@ -413,7 +420,7 @@ export const ECONOMY: ArticleGroup = {
               ],
               [
                 'Grzyb',
-                'Zebrany grzyb w {{regrow.inTen}} na 10 przypadków po {{regrow.minMinutes}}-{{regrow.maxMinutes}} min odrasta obok, jeśli znajdzie wolne miejsce z co najmniej {{regrow.forestTrees}} drzewami wokół',
+                'Zebrany grzyb w {{regrow.inTen}} na 10 przypadków po {{regrow.mushroomMinMinutes}}-{{regrow.mushroomMaxMinutes}} min odrasta obok, jeśli znajdzie wolne miejsce z co najmniej {{regrow.forestTrees}} drzewami wokół',
                 '1 grzyb na zebrany, tylko w lesie',
               ],
               ['Skała, złoże', 'Nie odrastają', '-'],
@@ -521,7 +528,7 @@ export const ECONOMY: ArticleGroup = {
           h: 'Priorytet',
         },
         {
-          p: 'Priorytet ustawiasz w magazynie, Kwaterze głównej, Koszarach lub wieży. Tragarze tego budynku zwożą wtedy dany towar z innych magazynów, warsztatów i stosów, dopóki jest na niego miejsce.',
+          p: 'Priorytet ustawiasz w magazynie, Kwaterze głównej, Koszarach lub wieży. Tragarze tego budynku zwożą wtedy dany towar z innych magazynów, warsztatów i stosów, dopóki jest na niego miejsce. Nowo zbudowane Koszary mają od razu priorytet na [[good:coin|Monety]]; gdy zdejmiesz go w którychkolwiek swoich Koszarach, kolejne Koszary do końca meczu startują bez niego.',
         },
         {
           h: 'Minimum',
@@ -542,7 +549,8 @@ export const ECONOMY: ArticleGroup = {
           list: [
             'Wóz weźmie tylko Tragarz, który ma miejsce pracy, i [[job:trader|Kupiec]].',
             'Wóz musi być twój, wolny i stać na tym samym lądzie.',
-            'Jeśli na wozie zostało miejsce, Tragarz magazynu dobiera ten sam towar ze stosów i warsztatów w promieniu {{haul.cartTopUp}} hexów, zanim wróci.',
+            'Tragarz magazynu, któremu zostało miejsce na wozie, zbiera dalej, także inne towary: stosy w swoim obszarze zbierania, od najbliższego, potem stosy i warsztaty w promieniu {{haul.cartTopUp}} hexów. Bierze tylko to, na co jego magazyn ma miejsce.',
+            'Tragarz warsztatu z wozem w jednym kursie wywozi gotowe towary i przywozi brakujące surowce, kilka rodzajów naraz. Gdy w jednym miejscu jest ich za mało, jedzie po resztę do następnego. Gdy warsztat stoi i czeka na ładunek, najpierw go dowozi.',
           ],
         },
         {
@@ -582,7 +590,7 @@ export const ECONOMY: ArticleGroup = {
               [
                 'Kto',
                 '[[job:collector|Zbieracz]], [[job:fisher|Rybak]], [[job:hunter|Myśliwy]]',
-                'Ci sami, plus [[job:carrier|Tragarz]] magazynu, Kwatery głównej lub warsztatu',
+                'Ci sami, plus [[job:carrier|Tragarz]] magazynu, Kwatery głównej lub warsztatu oraz [[job:farmer|Farmer]] i [[job:herb_mush_guy|Zielarz]]',
               ],
               [
                 'Skąd się bierze flaga',
@@ -606,6 +614,7 @@ export const ECONOMY: ArticleGroup = {
               ['Zbieracz', 'Cały zasięg drogowskazów'],
               ['Tragarz magazynu', 'Stosy do {{flag.radius}} hexów od budynku'],
               ['Myśliwy', 'Wokół miejsca pracy'],
+              ['Farmer, Zielarz', 'Wokół miejsca pracy'],
               ['Rybak', 'Łowi od miejsca, w którym stoi'],
             ],
           },
@@ -623,7 +632,7 @@ export const ECONOMY: ArticleGroup = {
               ['[[job:fisher|Rybak]]', 'Flaga robocza', '{{flag.fisher}}', 'około {{flag.fisherDiagonal}}'],
               [
                 '[[job:farmer|Farmer]], [[job:herb_mush_guy|Zielarz]]',
-                'Budynek',
+                'Flaga robocza lub budynek',
                 '{{field.radius}}',
                 'około {{field.diagonal}}',
               ],
@@ -686,6 +695,7 @@ export const ECONOMY: ArticleGroup = {
             'Twój nowy drogowskaz musi stać co najmniej {{reach.spacing}} hexów od innego.',
             'Towaru osadnik szuka bliżej niż {{reach.goods}} hexów od siebie albo od drogowskazów w tym zasięgu.',
             'Budynek postawiony na drogowskazie przesuwa go najwyżej o {{reach.displace}} hexów, a jeśli się nie da, drogowskaz znika.',
+            'Nowy drogowskaz odsuwa flagę roboczą i usuwa ze swojego miejsca grzyby, glinę, zboże, zioła, krzewy, pnie i otwarte skrzynie.',
           ],
         },
         {

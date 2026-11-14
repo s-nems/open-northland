@@ -384,6 +384,22 @@ function sweepDeadEntries(world: World, memo: LimitMemo): void {
   memo.sweepAt = Math.max(LIMIT_MEMO_SWEEP_MIN, memo.entries.size * 2);
 }
 
+/** The confinement a settler of `jobType` and `player` carries standing on `(hx, hy)`, as
+ *  {@link navigationLimitFor} would give it there before a script lifts its walk range; null when nothing
+ *  confines the trade. An errand judged from a post rather than the walker's feet asks this. */
+export function jobLimitAt(
+  world: World,
+  content: ContentSet,
+  terrain: TerrainGraph,
+  jobType: number | null,
+  player: number,
+  hx: number,
+  hy: number,
+): NavigationLimit | null {
+  if (!signpostNavigationEnabled(world)) return null;
+  return computeNavigationLimit(world, content, terrain, jobType, player, hx, hy);
+}
+
 function computeNavigationLimit(
   world: World,
   content: ContentSet,

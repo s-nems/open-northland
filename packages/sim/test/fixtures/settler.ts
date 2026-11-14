@@ -6,6 +6,7 @@ import {
   Position,
   type SettlerInitialState,
   SettlerNeeds as SettlerNeedsComponent,
+  SettlerProgress,
 } from '../../src/components/index.js';
 import { ZERO } from '../../src/core/fixed.js';
 import type { Entity, World } from '../../src/ecs/world.js';
@@ -90,4 +91,12 @@ export function needsOf(sim: Simulation, e: Entity): NeedLevels {
 /** Overwrite some of `e`'s bars as they stand at the fixture's current tick. */
 export function setNeeds(sim: Simulation, e: Entity, levels: SettlerNeeds): void {
   Object.assign(mutNeeds(sim.world, e, fixtureTick(sim)), levels);
+}
+
+/** Record that `e` held `jobType` before, as a trade change leaves it learned: a former soldier may
+ *  take the soldier trades again without a barracks term. */
+export function heldTrade(world: World, e: Entity, jobType: number): void {
+  const progress = world.mut(e, SettlerProgress);
+  progress.learned ??= { job: [], good: [] };
+  progress.learned.job.push(jobType);
 }

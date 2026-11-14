@@ -469,6 +469,38 @@ export function startVehicleDrive(
   return true;
 }
 
+/** A route this many nodes longer than the straight run to its goal is a detour worth weighing against
+ *  the other goals; a shorter one is driven without looking further. */
+const DIRECT_ROUTE_SLACK_NODES = 4;
+
+/**
+ * Drive `vehicle` to whichever of `goals`, snapped nodes listed nearest first, has the shortest route: the
+ * first whose route runs about straight, else the shortest of them all, so a goal near as the crow flies
+ * but a long way around obstacles loses to one a little farther in the open. False when none has a route.
+ */
+export function startVehicleDriveToNearest(
+  world: World,
+  ctx: SystemContext,
+  terrain: TerrainGraph,
+  vehicle: Entity,
+  goals: readonly NodeId[],
+): boolean {
+  const anchor = vehicleAnchor(world, vehicle);
+  if (anchor === null) return false;
+  let best: { readonly goal: NodeId; readonly route: HalfCellNode[] } | null = null;
+  for (const goal of goals) {
+    const route = vehicleRouteTo(world, ctx, terrain, vehicle, goal);
+    if (route === null) continue;
+    if (best === null || route.length < best.route.length) best = { goal, route };
+    const straight = hexDistance(anchor, nodeOf(terrain, goal));
+    if (route.length <= straight + DIRECT_ROUTE_SLACK_NODES) break;
+  }
+  if (best === null) return false;
+  castOff(world, vehicle);
+  deliverRoute(world, ctx, vehicle, nodeOf(terrain, best.goal), best.route);
+  return true;
+}
+
 /** Casting off: a walk that starts clears the moored flag (original behavior), and a goal held for
  *  boarding is consumed by the drive that replaces it. */
 function castOff(world: World, vehicle: Entity): void {
@@ -687,19 +719,74 @@ export function cutRoute(world: World, vehicle: Entity): boolean {
   return true;
 }
 
+/**
+ * {@link cutRoute} for a fight, keeping a march's route to rejoin: the drive ends after the leg under way,
+ * or, where that leg ends on a node the vehicle may only pass or in another vehicle's cells, after the
+ * first node ahead it may stand on. Cut in such a gap, the drive's end would start a drive out of it
+ * ({@link settleOutOfGap}) that the next pass's cut ends again, and the vehicle would stand there for
+ * good. False when no drive stands.
+ */
+export function cutRouteAtRest(
+  world: World,
+  ctx: SystemContext,
+  terrain: TerrainGraph,
+  vehicle: Entity,
+): boolean {
+  const drive = world.tryGet(vehicle, VehicleDrive);
+  if (drive === undefined) return false;
+  const route = world.tryGet(vehicle, VehicleRoute)?.nodes ?? [];
+  const ahead = route.length - drive.step;
+  if (ahead <= 0) return true;
+  const kept = legsToRest(world, ctx, terrain, vehicle, route, drive.step);
+  if (kept >= ahead) return true;
+  keepMarchRoute(world, vehicle);
+  world.mut(vehicle, VehicleRoute).nodes = route.slice(drive.step, drive.step + kept);
+  world.mut(vehicle, VehicleDrive).step = 0;
+  return true;
+}
+
+/** How many nodes of `route` from `step` a land vehicle still enters to stand where it may rest: none
+ *  where it may rest on the node it is on, or where no node ahead lets it. */
+function legsToRest(
+  world: World,
+  ctx: SystemContext,
+  terrain: TerrainGraph,
+  vehicle: Entity,
+  route: readonly HalfCellNode[],
+  step: number,
+): number {
+  const type = contentIndex(ctx.content).vehicles.get(world.get(vehicle, Vehicle).vehicleType);
+  const anchor = vehicleAnchor(world, vehicle);
+  if (type === undefined || anchor === null || vehicleTraversal(type) !== 'land') return 0;
+  const standable = vehicleStandable(world, ctx, terrain, type.logicSize);
+  const rests = (at: HalfCellNode): boolean => {
+    const node = terrain.nodeAtClamped(at.hx, at.hy);
+    return standable(node) && !otherVehicleCovers(world, ctx, terrain, vehicle, node);
+  };
+  if (rests(anchor)) return 0;
+  for (let i = step; i < route.length; i++) {
+    const at = route[i];
+    if (at !== undefined && rests(at)) return i + 1 - step;
+  }
+  return 0;
+}
+
 /** How far (Manhattan half-cell nodes) a march may stand from its kept route and still rejoin it.
  *  Authored: past a chase within a catapult's range band, far under a route across a continent. */
 const MARCH_REJOIN_HOP_NODES = 48;
 
 /** Keep the rest of `vehicle`'s march route when a fight is about to cut it: only a drive to the march's
  *  own goal is the march's, a chase is not. */
-export function keepMarchRoute(world: World, vehicle: Entity): void {
+function keepMarchRoute(world: World, vehicle: Entity): void {
   const { march } = world.get(vehicle, Vehicle);
   const drive = world.tryGet(vehicle, VehicleDrive);
   const route = world.tryGet(vehicle, VehicleRoute);
   if (march === null || drive === undefined || route === undefined) return;
   if (drive.goal.hx !== march.goal.hx || drive.goal.hy !== march.goal.hy) return;
   if (drive.step >= route.nodes.length) return;
+  // A route a fight already cut short no longer leads to the goal: the rest it kept then stands.
+  const end = route.nodes[route.nodes.length - 1];
+  if (end === undefined || end.hx !== march.goal.hx || end.hy !== march.goal.hy) return;
   const kept = { goal: { hx: march.goal.hx, hy: march.goal.hy }, nodes: route.nodes.slice(drive.step) };
   if (world.has(vehicle, VehicleMarchRoute)) {
     const live = world.mut(vehicle, VehicleMarchRoute);
@@ -906,9 +993,10 @@ function abandonDock(world: World, vehicle: Entity): void {
  * snaps to nothing on the vehicle's continent or has no route. A pinned trader who can reach its ship
  * commands it from ashore. A crew still outside is boarded first: the goal is held under the
  * `waitsForHuman` task and the drive starts once everyone is inside (the original boards its crew ahead
- * of any target). Approximation: the original ignores an off-continent
- * target silently and raises `vehicleNoPath` only from its pathfinder. Returns whether a drive or a held
- * goal now stands.
+ * of any target). A siege vehicle's attack-move ordered while it shoots at a unit, house or vehicle
+ * waits behind that fight (`VehicleMarch.behindFight`). Approximation: the original ignores an
+ * off-continent target silently and raises `vehicleNoPath` only from its pathfinder. Returns whether a
+ * drive, a held goal or a waiting march now stands.
  */
 export function moveVehicle(
   world: World,
@@ -935,18 +1023,32 @@ export function moveVehicle(
     refuseMove(world, ctx, e, 'noCommander');
     return false;
   }
-  dropAttack(world, e);
+  const marches = command.attackMove === true && type !== undefined && isSiegeVehicle(type);
+  // An attack-move leaves a fight under way alone: the march waits behind it instead of driving off.
+  const behindFight = marches && shootsAtUnitOrHouse(world, e);
+  if (behindFight) endMarch(world, e);
+  else dropAttack(world, e);
   const goal = snapVehicleTarget(world, ctx, terrain, e, { hx: command.x, hy: command.y });
   if (goal === null) {
     refuseMove(world, ctx, e, 'noPath');
     return false;
   }
-  if (!sendVehicleTo(world, ctx, terrain, e, goal, orders)) return false;
-  if (command.attackMove === true && type !== undefined && isSiegeVehicle(type)) {
-    world.mut(e, Vehicle).march = { goal: nodeOf(terrain, goal), restUntil: 0 };
-  }
+  if (behindFight) {
+    if (vehicleRouteTo(world, ctx, terrain, e, goal, orders) === null) {
+      refuseMove(world, ctx, e, 'noPath');
+      return false;
+    }
+  } else if (!sendVehicleTo(world, ctx, terrain, e, goal, orders)) return false;
+  if (marches) world.mut(e, Vehicle).march = { goal: nodeOf(terrain, goal), restUntil: 0, behindFight };
   recordAiOrder(world, e, origin);
   return true;
+}
+
+/** Whether `e` is shooting at a unit, house or vehicle: it holds one as its target and plays its attack
+ *  clip. A battered map point never falls, so it is no fight to wait for. */
+function shootsAtUnitOrHouse(world: World, e: Entity): boolean {
+  const state = world.get(e, Vehicle);
+  return state.attack?.target.kind === 'entity' && state.attackClipStart !== null;
 }
 
 /**

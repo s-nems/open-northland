@@ -1,4 +1,4 @@
-import { Vehicle, VehicleDrive } from '../../../../components/index.js';
+import { mooringOf, Vehicle, VehicleDrive } from '../../../../components/index.js';
 import type { PlayerCommand } from '../../../../core/commands/index.js';
 import type { DeepReadonly, Entity, World } from '../../../../ecs/world.js';
 import type { HalfCellNode } from '../../../../nav/halfcell.js';
@@ -9,12 +9,6 @@ export function landOf(terrain: TerrainGraph, at: DeepReadonly<HalfCellNode> | n
   return at !== null && terrain.inBounds(at.hx, at.hy)
     ? terrain.componentOf(terrain.nodeAt(at.hx, at.hy))
     : NO_COMPONENT;
-}
-
-/** Where `ship` lies moored, or null. */
-export function mooringOf(world: World, ship: Entity): DeepReadonly<HalfCellNode> | null {
-  const state = world.tryGet(ship, Vehicle);
-  return state?.moored === true ? state.mooring : null;
 }
 
 /** Whether `ship` lies moored on `land`. */

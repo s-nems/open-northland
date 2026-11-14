@@ -206,6 +206,17 @@ export const WORLD: ArticleGroup = {
           ],
         },
         {
+          h: '船隻作戰',
+        },
+        {
+          list: [
+            '能載投石機的[[vehicle:ship_small|船]]上，最多{{deck.archers}}名持弓士兵會從甲板上射擊你能看到的敵人，優先射敵船。大船上沒有甲板弓手。',
+            '在甲板上，弓的射程比岸上短{{deck.rangeLoss}}格，兩次射擊的間隔長{{deck.slowerPct}}%，散布更大：[[article:aim|命中與射擊]]。',
+            '投石機的石頭對船造成的傷害是對其他載具的{{ship.stoneFactor}}倍。',
+            '生命值低於{{ship.firePct}}%時船會著火，每秒損失{{ship.fireLoss}}點生命值，直到沉沒。建築工人會像修建築一樣修理靠岸的船，生命值回到{{ship.firePct}}%火就會熄滅。',
+          ],
+        },
+        {
           h: '失去載具',
         },
         {
@@ -573,11 +584,15 @@ export const WORLD: ArticleGroup = {
               ['生命值', '每秒+{{aura.perSecond}}，上限{{aura.ceiling}}'],
               ['信仰', '需求條不超過{{need.satedPct}}%時每秒+{{aura.pietyPct}}%'],
               ['對象', '你的所有人，兒童只加生命值'],
-              ['條件', '神廟已完工且無損傷'],
+              ['條件', '神廟已完工、無損傷且在燃燒[[good:holy_oil|油]]'],
+              ['油', '1份能燒{{aura.oilBurnTime}}，滿儲{{aura.oilUnits}}份能燒{{aura.oilFullBurnTime}}'],
               ['多座神廟', '光環不疊加'],
             ],
             foot: '超過{{health.human}}的生命值一直保留，直到被傷害扣除。',
           },
+        },
+        {
+          p: '[[job:druid|德魯伊]]會自己把油送到[[article:roads|路標]]範圍內的神廟。派駐神廟的[[job:carrier|搬運工]]或[[job:trader|商人]]也能送油。新建的神廟自帶建造費用裡的那份油。沒有油或受損時，神廟的光芒和火焰會熄滅。你也可以在神廟面板裡自己熄滅聖火：神廟會保留油，在你重新點燃之前不再賜福。',
         },
       ],
       see: ['article:needs', 'article:health', 'building:work_temple', 'good:holy_oil'],

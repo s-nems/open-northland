@@ -56,6 +56,7 @@ function isEquipOrderable(world: World, ctx: SystemContext, e: Entity, group: Eq
  */
 function stampEquipOrder(
   world: World,
+  ctx: SystemContext,
   terrain: TerrainGraph,
   e: Entity,
   spec: { group: EquipCategory; slot: number; goodType: number | null; skipReturn: boolean },
@@ -67,7 +68,7 @@ function stampEquipOrder(
     ...target,
     returnTo: skipReturn ? null : terrain.nodeAtClamped(n.hx, n.hy),
   };
-  supersedeStandingOrders(world, e); // queued or active, this errand is the latest order
+  supersedeStandingOrders(world, ctx, e); // queued or active, this errand is the latest order
   const active = world.tryMut(e, EquipOrder);
   if (active?.issuer === 'player' && (active.group !== spec.group || active.slot !== spec.slot)) {
     active.queued ??= [];
@@ -117,7 +118,7 @@ export function equipGood(
   if (!canEquipCategory(ctx.content, jobType, command.group)) return;
   if (isHeroJob(ctx.content, jobType) && !heroMayCarry(ctx.content, command.goodType)) return;
   if (command.group === 'weapon' && !weaponKeepsLockedJob(world, ctx.content, e, command.goodType)) return;
-  stampEquipOrder(world, terrain, e, {
+  stampEquipOrder(world, ctx, terrain, e, {
     group: command.group,
     slot: command.slot,
     goodType: command.goodType,
@@ -142,7 +143,7 @@ export function unequipGood(
   const eq = world.tryGet(e, Equipment);
   if (eq === undefined || equipSlotValue(eq, command.group, command.slot) === null) return;
   if (command.group === 'weapon' && !weaponKeepsLockedJob(world, ctx.content, e, null)) return;
-  stampEquipOrder(world, terrain, e, {
+  stampEquipOrder(world, ctx, terrain, e, {
     group: command.group,
     slot: command.slot,
     goodType: null,

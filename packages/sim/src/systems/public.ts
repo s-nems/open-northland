@@ -86,11 +86,13 @@ export {
 // the drive ladder holds it at.
 export { REST_CLEARANCE_NODES, STAND_TO_RADIUS_NODES } from './conflict/battle-alert.js';
 export { ATTACK_RETURN_SLACK_NODES, rangedStandoff } from './conflict/chase.js';
-export { CONTESTED_GROUND_RADIUS_NODES } from './conflict/contested-ground.js';
+export { CONTESTED_GROUND_RADIUS_NODES, CONTESTED_SIEGE_RADIUS_POINTS } from './conflict/contested-ground.js';
+export { DECK_ARCHER_LIMIT } from './conflict/deck-archers.js';
+export { DECK_RANGE_PENALTY_POINTS, deckShotIntervalTicks } from './conflict/deck-fire.js';
 export {
   APPROACH_BAND_DEPTH,
   VEHICLE_DEFENCE_LEASH_POINTS,
-  VEHICLE_SCAN_RADIUS_POINTS,
+  VEHICLE_SHOT_SETTLE_TICKS,
 } from './conflict/engage-vehicle.js';
 export {
   DEFEND_LEASH_NODES,
@@ -111,11 +113,12 @@ export {
   SIGHT_RADIUS_NODES,
 } from './conflict/targeting.js';
 export { TOWER_RANGE_BONUS_NODES } from './conflict/tower-post.js';
-export { HOUSE_DAMAGE_PER_WALL_VALENCY } from './conflict/weapons.js';
+export { VEHICLE_PRIORITY_REACH_POINTS, VEHICLE_SCAN_RADIUS_POINTS } from './conflict/vehicle-targets.js';
+export { HOUSE_DAMAGE_PER_WALL_VALENCY, SHIP_SIEGE_DAMAGE_FACTOR } from './conflict/weapons.js';
 export { BERRY_REGROW_TICKS, BERRY_STAGE_TICKS, createBerryBush } from './economy/berries.js';
 export { STEPS_PER_UNIT } from './economy/construction.js';
 export { STRANDED_FIELD_RECLAIM_TICKS } from './economy/field-reclaim.js';
-export { createMapCrop } from './economy/fields.js';
+export { createMapCrop, sowsFieldsAt } from './economy/fields.js';
 export {
   addFishSwarms,
   FISH_CAST_ATOMIC,
@@ -144,8 +147,7 @@ export {
 export { BREEDING_PAIR } from './economy/production/cycles.js';
 export {
   MUSHROOM_LANDSCAPE_SLUG,
-  REGROWTH_DELAY_MIN_TICKS,
-  REGROWTH_DELAY_SPREAD_TICKS,
+  REGROWTH_DELAY,
   REGROWTH_FAIL_PERCENT,
   REGROWTH_FOREST_TREES,
 } from './economy/regrowth.js';
@@ -155,7 +157,7 @@ export { insideBuildingReservedZone } from './economy/reserved-decor.js';
 export { startTreeGrowth, TREE_GROWTH_PERIOD_TICKS } from './economy/tree-growth.js';
 export { jobUsesWorkFlag } from './economy/work-flag.js';
 export { HEALING_DRAUGHT_BELOW_PCT } from './equipment/draughts.js';
-export { BARE_HANDS_WORK_FACTOR_PCT, scaledDealtDamage, scaledTakenDamage } from './equipment/effects.js';
+export { BARE_HANDS_WORK_FACTOR_PCT, scaledTakenDamage } from './equipment/effects.js';
 export { CARRYING_WEAR_FACTOR } from './equipment/wear.js';
 export { isOnMission } from './family/eligibility.js';
 export type { HouseKey } from './footprint/geometry.js';
@@ -201,7 +203,8 @@ export {
   TEMPLE_AURA_HITPOINTS,
   TEMPLE_AURA_PIETY_UNITS,
   TEMPLE_AURA_RANGE,
-} from './lifecycle/temple-aura.js';
+  TEMPLE_FUEL_BURN_SECONDS,
+} from './lifecycle/temple/index.js';
 // The herding ring bound and the farm herd's leash, asserted by the livestock scenes; the slaughter
 // clip's wares, so the real-content suite reads them the way the sim does.
 export { FARM_HERD_LEASH_NODES, LIVESTOCK_GRAZE_RANGE_NODES } from './livestock/assignment.js';
@@ -247,23 +250,44 @@ export {
   experiencePercent,
   experiencePoints,
   experienceRepeats,
-  FIGHT_EXPERIENCE_DAMAGE_CAP_HITS,
+  FIGHT_EXPERIENCE_DEALT_PCT_AT_FULL,
+  FIGHT_EXPERIENCE_TAKEN_PCT_AT_FULL,
+  personalFightPoints,
   rawXpForRepeats,
   requirementRepeats,
-  weaponClassHits,
+  withDealtBonuses,
   withFightExperience,
+  withTakenBonuses,
 } from './progression/bonus.js';
+// What the HUD asks of a coin drill: who may drill, the limit and what one coin buys.
+export {
+  COIN_DRILL_ATOMIC_ID,
+  COIN_DRILL_LIMIT,
+  COIN_DRILL_TERM_TICKS,
+  coinDrillClip,
+  coinDrillCoinsOf,
+  coinDrillPointsOf,
+  drillCoinGood,
+  mayCoinDrill,
+} from './progression/coin-drill.js';
 export {
   buildStepsPerSwing,
   EXPERIENCE_PCT_PER_SAVED_STROKE,
   strokesPerUnit,
 } from './progression/efficiency.js';
 export {
+  BLOW_TAKEN_POINTS_RATE,
+  FIGHT_EXPERIENCE_FULL,
+  FIGHT_EXPERIENCE_FULL_UNITS,
   FIGHT_EXPERIENCE_TYPE,
-  SOLDIER_GENERAL_EXPERIENCE_TYPE,
+  FIGHT_EXPERIENCE_UNITS_PER_POINT,
+  fightUnitsOfPoints,
+  MELEE_BLOW_POINTS_RATE,
+  SHOT_POINTS_RATE,
+  STRUCTURE_BLOW_SHARE,
   startingExperience,
-  TRAINING_EXPERIENCE_TYPE,
 } from './progression/experience.js';
+export { type FightExperienceEffects, fightExperienceEffects } from './progression/fight-effects.js';
 // The atomic clip resolution and the need channels its events carry, so the real-content suite can pin the
 // joins against the served IR rather than a fixture, and the committed catalog can author its cues and its
 // need clips on the same ids the sim reads back.
@@ -336,6 +360,10 @@ export {
   HIT_DIRECTION_PCT,
   hitDirectionBin,
 } from './settlers/atomics/effects/combat/hit/damage.js';
+export {
+  CRITICAL_STUN_BASE_PCT,
+  CRITICAL_STUN_TICKS,
+} from './settlers/atomics/effects/combat/hit/reaction.js';
 export { KIN_ALARM_RADIUS_NODES } from './settlers/atomics/effects/combat/hit/reactions.js';
 export { SPILL_MAX_RADIUS } from './settlers/atomics/effects/goods/piles.js';
 export { CROCKERY_BONUS_UNITS } from './settlers/atomics/effects/goods/transfer.js';
@@ -353,12 +381,13 @@ export {
   SLEEP_ATOMIC_ID,
 } from './settlers/atomics/start.js';
 export { STROKE_REST_ATOMIC_IDS } from './settlers/atomics/stroke-cadence.js';
-export { CART_TOP_UP_REACH } from './settlers/drives/economy/cart-top-up.js';
+export { CART_TOP_UP_REACH } from './settlers/drives/economy/cart-round.js';
 export { REPAIR_CALM_TICKS } from './settlers/drives/economy/repair.js';
 export { VEHICLE_CARGO_SEARCH_RADIUS } from './settlers/drives/economy/vehicle-cargo.js';
 export { BARRACKS_DRILL_TICKS } from './settlers/drives/training.js';
-// Whom the assistant hands a tool: the trades that work with one.
-export { toolHelpsJob } from './settlers/planner/assistant-grants.js';
+// Whom the assistant hands a tool (the trades that work with one), and the group a man takes drinks and
+// amulets as.
+export { assistantGrantGroupOf, toolHelpsJob } from './settlers/planner/assistant-grants.js';
 // The idle re-plan period, so a real-content probe can wait out an idle settler's reaction to new work.
 export { IDLE_REPLAN_PERIOD_TICKS } from './settlers/planner/idle-replan.js';
 export { BUSH_AT_HAND_NODES } from './settlers/targets/food.js';
@@ -387,9 +416,12 @@ export {
   loadSpeedLossPercent,
 } from './vehicles/drag.js';
 export { DRAUGHT_BREEDING_PAIR } from './vehicles/draught.js';
-// createVehicle stands a vehicle in pre-tick assembly the way the command does; modifyVehicleStock and
-// stockVehicleGoods are the writes into a hold, the second the booked-and-stowed one a loaded spawn uses.
+export { SHIP_FIRE_DAMAGE_PER_SECOND, SHIP_FIRE_HEALTH_PERCENT } from './vehicles/hull-fire.js';
+// createVehicle stands a vehicle in pre-tick assembly the way the command does and boardRider seats a
+// crew inside it there; modifyVehicleStock and stockVehicleGoods are the writes into a hold, the second
+// the booked-and-stowed one a loaded spawn uses.
 export {
+  boardRider,
   createVehicle,
   modifyVehicleStock,
   removeVehicle,

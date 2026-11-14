@@ -1,6 +1,7 @@
 import {
   AtomicClock,
   atomicElapsed,
+  CoinDrillOrder,
   CurrentAtomic,
   DeferredOrder,
   HarvestFocus,
@@ -12,7 +13,8 @@ import {
 import type { Entity } from '../../../ecs/world.js';
 import type { System } from '../../context.js';
 import { religionAllowsClip } from '../../lifecycle/needs/religion.js';
-import { atomicClip, eventTick } from '../../readviews/animations.js';
+import { WHOLE_CLIP } from '../../progression/index.js';
+import { atomicClip, eventTick, eventTickWithin } from '../../readviews/animations.js';
 import { prayerSiteAvailable } from '../../readviews/prayer-sites.js';
 import { applyEffect } from './effects/apply.js';
 import {
@@ -80,13 +82,14 @@ export const atomicSystem: System = (world, ctx) => {
       let struck = false;
       if (frames === undefined) {
         struck = elapsed === duration;
-        if (struck) resolveAttackHit(world, ctx, e, running, running.effect, pendingReactions);
+        if (struck) resolveAttackHit(world, ctx, e, running, running.effect, pendingReactions, WHOLE_CLIP);
       } else {
         // Indexed, with no closure: every swing in flight asks this every tick.
         for (let i = 0; i < frames.length; i++) {
           if (elapsed !== eventTickWithin(frames[i] as number, duration)) continue;
           struck = true;
-          resolveAttackHit(world, ctx, e, running, running.effect, pendingReactions);
+          const share = { event: i, events: frames.length };
+          resolveAttackHit(world, ctx, e, running, running.effect, pendingReactions, share);
         }
       }
       const lunge = running.effect.lunge;
@@ -99,7 +102,16 @@ export const atomicSystem: System = (world, ctx) => {
       }
     }
 
-    if (needsOn && !workshopDisplay && settler !== undefined)
+    // A coin drill's clip runs only for the order that paid for it; its coin and points are the term's.
+    if (
+      running.effect.kind === 'coinDrill' &&
+      world.tryGet(e, CoinDrillOrder)?.house !== running.effect.house
+    ) {
+      removeCurrentAtomic(world, e);
+      continue;
+    }
+    // A drink borrows the eat clip, and the draught pays instead of the clip's food events.
+    if (needsOn && !workshopDisplay && running.effect.kind !== 'drink' && settler !== undefined)
       applyClipNeedEvents(world, ctx, e, settler, clip, elapsed);
     // Tested here: only a slaughter clip deposits, and the pass is too large for the call to inline.
     if (running.effect.kind === 'slay') applyAtomicStockEvents(world, ctx, e, running, elapsed);
@@ -163,11 +175,4 @@ function lungesOn(frames: readonly number[], elapsed: number): boolean {
     if (eventTick(frames[i] as number) === elapsed) return true;
   }
   return false;
-}
-
-/** The tick an animation's event frame fires on, clamped into the `duration` ticks the atomic actually runs.
- *  Approximation: the original never fires a frame past its clip; here such a blow lands once, on the last
- *  tick, so an attack clip authored that way still hits. No shipped clip has one. */
-function eventTickWithin(frame: number, duration: number): number {
-  return Math.min(eventTick(frame), duration);
 }

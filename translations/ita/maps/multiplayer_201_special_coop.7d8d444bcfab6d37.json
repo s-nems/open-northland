@@ -1,0 +1,32 @@
+{
+  "version": 1,
+  "map": "multiplayer_201_special_coop",
+  "basis": {
+    "lang": "eng",
+    "digest": "874605f4d360887b9b3a2a94aa89c00a4ed0183d6608c684bd8ebc60f6540e4b"
+  },
+  "strings": {
+    "0": "COOPERAZIONE: BUFERA",
+    "1": "6 tribù vichinghe combattono contro le truppe ostili di una tribù vichinga forte e aggressiva.",
+    "2": "Stringi un'alleanza con i tuoi vicini e cacciate insieme il nemico da queste terre!",
+    "10": "Grasslanders",
+    "11": "Grass",
+    "20": "Vinlanders",
+    "21": "Vin",
+    "30": "Hellulanders",
+    "31": "Hellu",
+    "40": "Marklanders",
+    "41": "Mark",
+    "50": "Flatlanders",
+    "51": "Flat",
+    "60": "Highlanders",
+    "61": "High",
+    "70": "Gloomlanders",
+    "71": "Gloom"
+  },
+  "briefings": {
+    "header": "\nBUFERA\n",
+    "begin_00": "Per i Vichinghi sono giunti tempi bui...\n\nDa qualche tempo tu e i tuoi pacifici vicini siete minacciati da una grande tribù vichinga che si è proclamata unica padrona di queste terre.\n\nMa ora tutte le tribù si sono unite e si armano contro questo nemico, sostenendosi a vicenda nella lotta contro l'avversario comune! Potete sperare di sconfiggere le potenti forze nemiche solo se colpirete insieme.\n\nPer cedere alcuni Vichinghi ai tuoi alleati, mandali alla fiamma sacra della loro tribù. Fa' entrare la tua gente nel cerchio di fuoco magico: da quel momento obbedirà agli ordini del tuo alleato, perché apparterrà alla sua tribù!\n\nSuggerimento:\nNel tuo territorio hai alcuni permessi di costruzione. Usali in fretta e con giudizio!",
+    "begin_01": "\nCONGRATULAZIONI!\n\nI malvagi sono stati sconfitti! Dopo lunghe e dure battaglie, la terra è finalmente libera dalla paura e dalla tirannia!\n\nLa pace è tornata, e le tribù che hanno combattuto fianco a fianco possono ora stringere ottimi rapporti tra loro!"
+  }
+}

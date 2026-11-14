@@ -9,6 +9,7 @@ import {
 import { describe, expect, it } from 'vitest';
 import { shelterCapacityById } from '../../../../src/catalog/defence.js';
 import {
+  JOB_ARCHER,
   JOB_BABY_MALE,
   JOB_BUILDER,
   JOB_CHILD_MALE,
@@ -21,6 +22,7 @@ import {
   JOB_HEROINE_BOW,
   JOB_HUNTER,
   JOB_SOLDIER,
+  JOB_SOLDIER_SWORD,
   JOB_TRADER,
   JOB_WOMAN,
 } from '../../../../src/catalog/jobs.js';
@@ -61,6 +63,7 @@ import {
   GOOD_WHEAT,
   GOOD_WOOD,
   GOOD_WOOL,
+  JOB_FARMER_SLOT,
 } from '../../../../src/game/sandbox/ids/index.js';
 import { num } from '../../../../src/game/snapshot/index.js';
 import { fixedViewerSeat } from '../../../../src/game/viewer-seat.js';
@@ -87,6 +90,9 @@ import {
  *  own with `freshSandboxCtx`. */
 let sharedSandboxCtx: UnitPanelModelContext | undefined;
 const sandboxCtx = (): UnitPanelModelContext => (sharedSandboxCtx ??= freshSandboxCtx());
+
+/** Fight points at half the counter's full. */
+const HALF_FIGHT = 50;
 
 /** The equipment scene's first-tick snapshot + its content context - the preamble both equipment
  *  tests open with. */
@@ -466,19 +472,20 @@ describe('selection details panel model', () => {
     expect(model.kind === 'building' && model.orders?.upgrade?.control).toBe('Requires collector');
   });
 
-  it('shows exact household durability, remaining uses, and the mature home holy fire', () => {
-    const quality = { cooking: 240, rest: 75, piety: 2000 };
+  it('shows household durability, remaining uses, furniture in store and in use, and the holy fire', () => {
+    const quality = { cooking: 240, lodging: 1000, piety: 2000 };
     const mature = buildUnitPanelModel(
       snapshotOf([
         buildingEntity(1, BUILDING_HOME_02, {
           components: {
             Building: { buildingType: BUILDING_HOME_02, tribe: 1, built: ONE, level: 2 },
             HomeQuality: quality,
+            Lodgings: { pieces: [750] },
           },
         }),
         {
           id: 99,
-          components: { HouseholdGoodPolicy: { player: 0, cooking: true, rest: true, piety: true } },
+          components: { HouseholdGoodPolicy: { player: 0, cooking: true, lodging: true, piety: true } },
         },
       ]),
       new Set([1]),
@@ -494,11 +501,11 @@ describe('selection details panel model', () => {
         uses: 48,
       }),
       expect.objectContaining({
-        effect: 'rest',
+        effect: 'lodging',
         goodId: 'furniture',
-        value: 75,
-        capacity: 500,
-        uses: 15,
+        value: 1000,
+        capacity: 1000,
+        furniture: { pieces: 1, extraFamilies: 1, inUse: [75] },
       }),
       expect.objectContaining({
         effect: 'piety',
@@ -509,6 +516,9 @@ describe('selection details panel model', () => {
       }),
     ]);
     expect(mature.homeQuality?.rows.find((row) => row.effect === 'piety')?.uses).toBeUndefined();
+    const home02 = sandboxCtx().buildings.find((b) => b.typeId === BUILDING_HOME_02);
+    if (home02 === undefined) throw new Error('sandbox lacks home level 02');
+    expect(mature.staff?.count?.capacity).toBe(home02.homeSize + home02.furnishedFamilies);
     expect(mature.homeQuality?.rows.map((row) => row.goodId)).toEqual([
       sandboxCtx().goods.find((good) => good.typeId === GOOD_CROCKERY)?.id,
       sandboxCtx().goods.find((good) => good.typeId === GOOD_FURNITURE)?.id,
@@ -525,7 +535,7 @@ describe('selection details panel model', () => {
       sandboxCtx(),
     );
     if (young.kind !== 'building') throw new Error('expected a building panel');
-    expect(young.homeQuality?.rows.map((row) => row.effect)).toEqual(['cooking', 'rest']);
+    expect(young.homeQuality?.rows.map((row) => row.effect)).toEqual(['cooking', 'lodging']);
 
     const dry = buildUnitPanelModel(
       snapshotOf([
@@ -537,7 +547,7 @@ describe('selection details panel model', () => {
         }),
         {
           id: 99,
-          components: { HouseholdGoodPolicy: { player: 0, cooking: true, rest: false, piety: false } },
+          components: { HouseholdGoodPolicy: { player: 0, cooking: true, lodging: false, piety: false } },
         },
       ]),
       new Set([1]),
@@ -545,7 +555,11 @@ describe('selection details panel model', () => {
     );
     if (dry.kind !== 'building') throw new Error('expected a building panel');
     expect(dry.homeQuality?.rows.find((row) => row.effect === 'piety')?.holyFireActive).toBe(false);
-    expect(dry.homeQuality?.rows.find((row) => row.effect === 'rest')?.allowed).toBe(false);
+    expect(dry.homeQuality?.rows.find((row) => row.effect === 'lodging')).toMatchObject({
+      allowed: false,
+      furniture: { pieces: 1, extraFamilies: 0, inUse: [] },
+    });
+    expect(dry.staff?.count?.capacity).toBe(home02.homeSize);
 
     const retainedOil = buildUnitPanelModel(
       snapshotOf([
@@ -557,7 +571,7 @@ describe('selection details panel model', () => {
         }),
         {
           id: 99,
-          components: { HouseholdGoodPolicy: { player: 0, cooking: true, rest: true, piety: false } },
+          components: { HouseholdGoodPolicy: { player: 0, cooking: true, lodging: true, piety: false } },
         },
       ]),
       new Set([1]),
@@ -1168,6 +1182,40 @@ describe('selection details panel model', () => {
     expect(model.production).toMatchObject({ kind: 'fields', sown: 3, growing: 0, ripe: 3 });
   });
 
+  it("counts map fields around a sower's flag as well as the farm, each field once", () => {
+    const mapField = (id: number, tileX: number) => ({
+      id,
+      components: {
+        Position: { x: tileX * ONE, y: 4 * ONE },
+        Crop: { farm: null, goodType: GOOD_WHEAT, stage: 5, stages: 5 },
+      },
+    });
+    const FLAG = 10;
+    const snapshot = snapshotOf([
+      buildingEntity(1, BUILDING_FARM, {
+        components: { Position: { x: fx.fromInt(4), y: fx.fromInt(4) } },
+      }),
+      {
+        id: 9,
+        components: {
+          Settler: { tribe: 1, jobType: JOB_FARMER_SLOT },
+          JobAssignment: { workplace: 1 },
+          HaulFlag: { flag: FLAG, radius: 16 },
+        },
+      },
+      { id: FLAG, components: { Position: { x: fx.fromInt(12), y: fx.fromInt(4) }, DeliveryFlag: {} } },
+      mapField(2, 5), // by the farm only
+      mapField(3, 12), // within both plots
+      mapField(4, 20), // node (40, 8): the flag plot's edge
+      mapField(5, 30), // off both
+    ]);
+
+    const model = buildUnitPanelModel(snapshot, new Set([1]), sandboxCtx());
+    expect(model.kind).toBe('building');
+    if (model.kind !== 'building') return;
+    expect(model.production).toMatchObject({ kind: 'fields', sown: 3, ripe: 3 });
+  });
+
   it('shows a settler equipment section with labeled rows, worn goods, condition percentages and empty slots', () => {
     const { snapshot, ctx } = equipmentWorld();
     const bootsGood = (e: (typeof snapshot.entities)[number]): number | undefined =>
@@ -1248,7 +1296,11 @@ describe('selection details panel model', () => {
   });
 
   it('gives a woman and a child a worker’s slots, none wearable, and no experience section', () => {
-    const trained = { SettlerProgress: { experience: [[systems.FIGHT_EXPERIENCE_TYPE.FIST, 5]] } };
+    const trained = {
+      SettlerProgress: {
+        experience: [[systems.FIGHT_EXPERIENCE_TYPE.PERSONAL, systems.fightUnitsOfPoints(5)]],
+      },
+    };
     const modelFor = (jobType: number, extra: Record<string, unknown>) => {
       const snapshot = snapshotOf([
         { id: 1, components: { Settler: { tribe: 1, jobType }, ...trained, ...extra } },
@@ -1409,7 +1461,8 @@ describe('selection details panel model', () => {
             experience: [
               [3, 50], // 50 raw points at rate 10 → 5 wood gathered, half a curve point
               [9, 100], // 100 raw points at rate 100 → 1 repeat, one curve point
-              [systems.FIGHT_EXPERIENCE_TYPE.SWORD, 4], // 4 hits: 100 * 200 / 196, so +2% damage
+              // 5 points and part of a sixth, shown as 5; the raise on his fists reads the fine units
+              [systems.FIGHT_EXPERIENCE_TYPE.PERSONAL, systems.fightUnitsOfPoints(5) + 1],
             ],
           },
         },
@@ -1418,17 +1471,64 @@ describe('selection details panel model', () => {
     const model = buildUnitPanelModel(snapshot, new Set([1]), ctx);
     if (model.kind !== 'settler') throw new Error('expected a settler model');
     // The collector's own tracks lead, repeats descending; the percents read the curve in raw hundredths
-    // (50 raw → 0%, 100 raw → 17%) and the fight bucket's own damage factor (4 hits: +2%).
+    // (50 raw → 0%, 100 raw → 17%), and the fight counter states its share alone.
     expect(model.experience.map((r) => ({ repeats: r.repeats, bonusPct: r.bonusPct, own: r.own }))).toEqual([
       { repeats: 5, bonusPct: 0, own: true },
       { repeats: 1, bonusPct: 17, own: true },
-      { repeats: 4, bonusPct: 2, own: false },
+      { repeats: 5, bonusPct: null, own: false },
     ]);
+    // 5 points raise his fists' blows by 2% and cut the blows he takes: 100 * 9800 / 10000, so -2%.
+    expect(model.experience[2]?.fight).toEqual({
+      sharePct: 5,
+      dealtPct: 2,
+      takenCutPct: 2,
+      accuracyPct: null,
+    });
     expect(model.experience[0]?.label).toBe('Zbieranie - Drewno'); // hand-translated trackLabels entry
     expect(model.experience[1]?.label).not.toMatch(/Specjalizacja/); // general track labels by its job
-    expect(model.experience[2]?.label).toBe('Walka - Miecz'); // the sword fight bucket's weapon label
-    // Both own rows show before the fold; the sword row waits behind "1 more".
+    expect(model.experience[2]?.label).toBe('Walka'); // the personal fight counter's label
+    // Both own rows show before the fold; the fight row waits behind "1 more".
     expect(experienceShown(model.experience)).toBe(2);
+  });
+
+  it('states the fight bonuses the weapon in hand buys: damage for a blade, aim for a bow, a heroine none but the cut', () => {
+    const ctx = sandboxCtx();
+    const fightOf = (jobType: number) => {
+      const snapshot = snapshotOf([
+        {
+          id: 1,
+          components: {
+            Settler: { tribe: 1, jobType },
+            SettlerProgress: {
+              experience: [[systems.FIGHT_EXPERIENCE_TYPE.PERSONAL, systems.fightUnitsOfPoints(HALF_FIGHT)]],
+            },
+          },
+        },
+      ]);
+      const model = buildUnitPanelModel(snapshot, new Set([1]), ctx);
+      if (model.kind !== 'settler') throw new Error('expected a settler model');
+      return model.experience.find((row) => row.fight !== null)?.fight;
+    };
+    // Half the counter: +20% on a blade's blows, 61% of a bowman's shots true, -20% on every blow taken.
+    expect(fightOf(JOB_SOLDIER_SWORD)).toEqual({
+      sharePct: HALF_FIGHT,
+      dealtPct: 20,
+      takenCutPct: 20,
+      accuracyPct: null,
+    });
+    expect(fightOf(JOB_ARCHER)).toEqual({
+      sharePct: HALF_FIGHT,
+      dealtPct: null,
+      takenCutPct: 20,
+      accuracyPct: systems.trueShotPct(HALF_FIGHT),
+    });
+    // A heroine's shot flies true whatever her counter; the blows she takes are still cut.
+    expect(fightOf(JOB_HEROINE_BOW)).toEqual({
+      sharePct: HALF_FIGHT,
+      dealtPct: null,
+      takenCutPct: 20,
+      accuracyPct: null,
+    });
   });
 
   it('leaves out a general track that only repeats its one trained good, and keeps it as a total', () => {

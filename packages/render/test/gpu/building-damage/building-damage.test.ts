@@ -283,6 +283,35 @@ describe('visible damage ownership', () => {
     damage.destroy();
   });
 
+  it('keeps the scarred frames of a turning vehicle instead of baking each again', () => {
+    const reads = mockCanvas();
+    const damage = new BuildingDamage();
+    const cart = subject();
+    const turned = new Texture({
+      source: new TextureSource({ width: W, height: H }),
+      frame: new Rectangle(0, 0, W, H),
+    });
+    const draw = () =>
+      damage.draw([{ ref: 7, hpFrac: 0.1, vehicle: true }], () => cart, 10, undefined, true, true, 1);
+    draw();
+    const ahead = cart.body.texture;
+    expect(ahead).not.toBe(cart.texture);
+    cart.body.texture = turned; // The binder shows another facing.
+    draw();
+    const aside = cart.body.texture;
+    expect(aside).not.toBe(turned);
+    expect(ahead.destroyed).toBe(false);
+    const count = reads.mock.calls.length;
+    cart.body.texture = cart.texture; // And the first one again.
+    draw();
+    expect(cart.body.texture).toBe(ahead);
+    expect(reads).toHaveBeenCalledTimes(count);
+    damage.draw([], () => undefined, 11, undefined, true, true, 1);
+    expect(ahead.destroyed).toBe(true);
+    expect(aside.destroyed).toBe(true);
+    damage.destroy();
+  });
+
   it('moves the last damaged pixels into a collapse lease instead of flashing pristine art', () => {
     mockCanvas();
     const damage = new BuildingDamage(),

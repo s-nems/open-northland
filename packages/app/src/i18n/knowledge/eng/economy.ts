@@ -32,8 +32,12 @@ export const ECONOMY: ArticleGroup = {
                 "They must stand outside the room for the building's top level.",
               ],
               [
-                'Enemy soldier',
-                "You can't build within {{contest.radius}} hexes of him, about {{contest.diagonal}} on the slant. Only soldiers you can see count, and a tower's crew doesn't.",
+                'Enemy soldier, cart or ship',
+                "You can't build within {{contest.radius}} hexes of one, about {{contest.diagonal}} on the slant. Only those you can see count, and a tower's crew doesn't.",
+              ],
+              [
+                'Enemy catapult',
+                "You can't build within {{contest.siegeRadius}} hexes of it, as far as it looks for a target, crewed or empty. Only catapults you can see count.",
               ],
               [
                 'Building of a player you are at peace with',
@@ -120,7 +124,7 @@ export const ECONOMY: ArticleGroup = {
           h: 'What a Builder does first',
         },
         {
-          p: 'A Builder repairs first, then puts up buildings, and leaves stockades and roads for last. If you assign him to a site, he stays there even when there is work elsewhere.',
+          p: 'A Builder repairs first, then puts up buildings, and leaves stockades and roads for last. If you assign him to a site, he stays there even when there is work elsewhere. A site you give priority in its panel comes before every site without priority and calls even the last Builder away from such a site.',
         },
         {
           h: 'Upgrades',
@@ -138,7 +142,7 @@ export const ECONOMY: ArticleGroup = {
           h: 'Repairs',
         },
         {
-          p: 'A Builder restores {{repair.minPerSwing}}-{{repair.maxPerSwing}} health to a building per stroke, and at most {{repair.crew}} Builders repair one building at once. Repairs cost no material. Stockades and gates are repaired differently, and experience and tools change nothing there: [[article:walls|Stockades and Gates]].',
+          p: 'A Builder restores {{repair.minPerSwing}}-{{repair.maxPerSwing}} health to a building per stroke, and at most {{repair.crew}} Builders repair one building at once. Repairs cost no material. Stockades and gates are repaired differently, and experience and tools change nothing there: [[article:walls|Stockades and Gates]]. He mends your damaged ship the same way while it lies moored: [[article:vehicles|Vehicles and Ships]].',
         },
         {
           p: "A Builder won't repair on his own for {{repair.calmSeconds}} s after the last hit, or while a fight is on within {{alert.standTo}} hexes. On your order he goes right away.",
@@ -249,9 +253,12 @@ export const ECONOMY: ArticleGroup = {
               ['"Only this good"', 'This good ∞, rest 0'],
               [
                 'Right-click a resource',
-                'The "Gather" order: this good ∞, rest 0. The work flag stays where it is.',
+                'The "Gather" order: this good ∞, rest 0, and the work flag moves to the resource. Without a flag only the good changes.',
               ],
-              ['Ctrl + right-click a resource', 'The same, but the flag moves to the resource'],
+              [
+                'Ctrl + right-click',
+                'The flag moves to that spot, and on a resource the good changes as above',
+              ],
               ['All counters at 0', 'The Extractor shows "All set to 0" and gathers nothing'],
               [
                 'Goods already lie on the ground',
@@ -380,11 +387,11 @@ export const ECONOMY: ArticleGroup = {
               ['[[building:work_herb_hut|Herb Hut]]', '{{field.max}}', '{{field.radius}} hexes'],
             ],
             num: [1],
-            foot: "On the slant the radius is about {{field.diagonal}} hexes. The field limit is per building, not per worker, so more people means faster harvests but not more fields. The building's card gives its crew and stock.",
+            foot: "On the slant the radius is about {{field.diagonal}} hexes. The field limit belongs to the plot, not to each worker, so more people means faster harvests but not more fields. A worker given a work flag sows his own plot around it. The building's card gives its crew and stock.",
           },
         },
         {
-          p: "You can't sow a field on sand or on a road. Wild fields from the map within the building's radius count toward its limit. A field nobody can reach from the building's door for {{field.reclaimSeconds}} s disappears and frees a place in the limit.",
+          p: "You can't sow a field on sand or on a road. Wild fields from the map within the plot's radius count toward its limit. A field nobody can reach from the building's door for {{field.reclaimSeconds}} s disappears and frees a place in the limit.",
         },
         {
           h: 'What grows back',
@@ -416,7 +423,7 @@ export const ECONOMY: ArticleGroup = {
               ],
               [
                 'Mushroom',
-                'A picked mushroom, {{regrow.inTen}} times in 10, grows back nearby after {{regrow.minMinutes}}-{{regrow.maxMinutes}} min, on a free spot with at least {{regrow.forestTrees}} trees around it',
+                'A picked mushroom, {{regrow.inTen}} times in 10, grows back nearby after {{regrow.mushroomMinMinutes}}-{{regrow.mushroomMaxMinutes}} min, on a free spot with at least {{regrow.forestTrees}} trees around it',
                 '1 mushroom per picked one, only in a forest',
               ],
               ['Rock, deposit', 'Never grow back', '-'],
@@ -524,7 +531,7 @@ export const ECONOMY: ArticleGroup = {
           h: 'Priority',
         },
         {
-          p: "You set priority in a warehouse, Headquarters, Barracks or tower. That building's Carriers then bring the good in from other warehouses, workshops and piles as long as there is room for it.",
+          p: "You set priority in a warehouse, Headquarters, Barracks or tower. That building's Carriers then bring the good in from other warehouses, workshops and piles as long as there is room for it. A newly built Barracks starts with priority on [[good:coin|Coins]]; once you take it off in any of your Barracks, Barracks you build later start without it until the end of the match.",
         },
         {
           h: 'Storage minimum',
@@ -545,7 +552,8 @@ export const ECONOMY: ArticleGroup = {
           list: [
             'Only a Carrier who has a workplace and a [[job:trader|Merchant]] take a cart.',
             'The cart must be yours, free and on the same landmass.',
-            'If there is room left on the cart, a warehouse Carrier picks up the same good from piles and workshops within {{haul.cartTopUp}} hexes before he heads back.',
+            'A warehouse Carrier with room left on the cart keeps collecting, other goods too: the piles of his pickup area, nearest first, then piles and workshops within {{haul.cartTopUp}} hexes. He takes only what his warehouse has room for.',
+            'A workshop Carrier with a cart takes the finished goods out and brings the missing materials back in one round trip, several kinds at once. If one source has too little, he drives on to the next. An idle workshop waiting on his load gets it first.',
           ],
         },
         {
@@ -585,7 +593,7 @@ export const ECONOMY: ArticleGroup = {
               [
                 'Who',
                 '[[job:collector|Extractor]], [[job:fisher|Fisherman]], [[job:hunter|Hunter]]',
-                'The same, plus a [[job:carrier|Carrier]] from a warehouse, Headquarters or workshop',
+                'The same, plus a [[job:carrier|Carrier]] from a warehouse, Headquarters or workshop, and a [[job:farmer|Farmer]] or [[job:herb_mush_guy|Herbalist]]',
               ],
               [
                 'Where the flag comes from',
@@ -609,6 +617,7 @@ export const ECONOMY: ArticleGroup = {
               ['Extractor', 'Full signpost reach'],
               ['Warehouse Carrier', 'Piles within {{flag.radius}} hexes of the building'],
               ['Hunter', 'Around the workplace'],
+              ['Farmer, Herbalist', 'Around the workplace'],
               ['Fisherman', 'Fishes from where he stands'],
             ],
           },
@@ -626,7 +635,7 @@ export const ECONOMY: ArticleGroup = {
               ['[[job:fisher|Fisherman]]', 'Work flag', '{{flag.fisher}}', 'about {{flag.fisherDiagonal}}'],
               [
                 '[[job:farmer|Farmer]], [[job:herb_mush_guy|Herbalist]]',
-                'Building',
+                'Work flag or building',
                 '{{field.radius}}',
                 'about {{field.diagonal}}',
               ],
@@ -689,6 +698,7 @@ export const ECONOMY: ArticleGroup = {
             'Your new signpost has to stand at least {{reach.spacing}} hexes from another one.',
             'A settler looks for goods closer than {{reach.goods}} hexes from himself or from signposts within that reach.',
             "A building placed on a signpost moves it up to {{reach.displace}} hexes aside, and if that isn't possible, the signpost is gone.",
+            'A new signpost pushes a work flag aside and clears its spot of mushrooms, clay, crops, herbs, bushes, stumps and opened chests.',
           ],
         },
         {

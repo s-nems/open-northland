@@ -34,13 +34,13 @@ type Metric = 'damage' | 'dps' | 'hits';
 const METRICS: readonly Metric[] = ['damage', 'hits', 'dps'];
 const DIRECTIONS = ['front', 'backSide', 'behind'] as const;
 type Direction = (typeof DIRECTIONS)[number];
-const HIT_STOPS = ['0', '50', '100'] as const;
-type HitStop = (typeof HIT_STOPS)[number];
+const POINT_STOPS = ['0', '50', '100'] as const;
+type PointStop = (typeof POINT_STOPS)[number];
 
 interface MatrixState {
   metric: Metric;
   direction: Direction;
-  hits: HitStop;
+  points: PointStop;
   strength: boolean;
   defense: boolean;
   heroes: boolean;
@@ -55,7 +55,7 @@ function matrixState(context: KnowledgeContext): MatrixState {
   const fresh: MatrixState = {
     metric: 'damage',
     direction: 'front',
-    hits: '0',
+    points: '0',
     strength: false,
     defense: false,
     heroes: false,
@@ -66,9 +66,10 @@ function matrixState(context: KnowledgeContext): MatrixState {
 
 const blowOf = (state: MatrixState): BlowModifiers => ({
   direction: HIT_DIRECTION[state.direction],
-  hits: Number(state.hits),
+  points: Number(state.points),
   strength: state.strength,
   defense: state.defense,
+  targetPoints: 0,
 });
 
 function cellValue(
@@ -171,8 +172,8 @@ function matrix(context: KnowledgeContext): HTMLElement {
     paint();
     refresh();
   });
-  const hits = createSegmented(HIT_STOPS, copy.hitsLabel, (key) => {
-    state.hits = key;
+  const points = createSegmented(POINT_STOPS, copy.pointsLabel, (key) => {
+    state.points = key;
     paint();
     refresh();
   });
@@ -193,7 +194,7 @@ function matrix(context: KnowledgeContext): HTMLElement {
       },
       state.direction,
     );
-    hits.update({ '0': { label: '0' }, '50': { label: '50' }, '100': { label: '100+' } }, state.hits);
+    points.update({ '0': { label: '0' }, '50': { label: '50' }, '100': { label: '100' } }, state.points);
   }
   paint();
   const field = (label: string, control: HTMLElement): HTMLElement => {
@@ -205,7 +206,7 @@ function matrix(context: KnowledgeContext): HTMLElement {
   controls.append(
     field(copy.matrixShow, metric.element),
     field(copy.dialLabel, direction.element),
-    field(copy.hitsLabel, hits.element),
+    field(copy.pointsLabel, points.element),
     checkbox(copy.strengthAmulet, state.strength, (on) => {
       state.strength = on;
       refresh();
@@ -278,12 +279,15 @@ function jobs({ base }: KnowledgeContext): HTMLElement {
 function homes(context: KnowledgeContext): HTMLElement {
   const copy = messages().knowledge.mechanics;
   return plainTable(
-    [copy.homeLevel, copy.homeFamilies, copy.homeLarder, copy.health],
+    [copy.homeLevel, copy.homeFamilies, copy.homeFurnished, copy.homeLarder, copy.health],
     context.base.buildings
       .filter((b) => b.kind === 'home')
       .map((b) => [
         goLink(`building:${b.id}`, b.name),
         b.homeSize,
+        b.furnishedFamilies > 0
+          ? formatMessage(copy.homeFurnishedExtra, { count: b.furnishedFamilies })
+          : '-',
         b.stock[0]?.capacity ?? '-',
         buildingHitpoints(b, context.tribe()) ?? '-',
       ]),

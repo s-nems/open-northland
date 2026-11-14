@@ -16,7 +16,7 @@ import type { WorkplaceOperators } from '../../stores/index.js';
  * A completed cycle's extra output on top of its recipe outputs, in tenths of a unit: the operator's
  * experience percent buys up to {@link MASTERY_BONUS_TENTHS}, its worn tool adds its own tenths, and the
  * two are summed, never multiplied. The workplace banks the tenths per good and shelves each whole unit
- * they add up to. Original behavior: a master with an iron tool makes 3.2 units per cycle.
+ * they add up to. The sum is original behavior; the tool's credit is its good's `productionBonusPct`.
  */
 
 /** Tenths of a unit in one whole unit, the granularity the bonus is banked in. */

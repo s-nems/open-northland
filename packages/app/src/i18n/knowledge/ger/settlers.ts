@@ -74,7 +74,7 @@ export const SETTLERS: ArticleGroup = {
               ],
               [
                 '{{need.overfillPct}}%',
-                'Obergrenze. Eine Mahlzeit zu Hause und Schlaf zu Hause mit Möbeln legen Vorrat über 100% an.',
+                'Obergrenze. Eine Mahlzeit oder Schlaf zu Hause kann Vorrat über 100% anlegen.',
               ],
             ],
           },
@@ -84,44 +84,24 @@ export const SETTLERS: ArticleGroup = {
         },
         {
           table: {
-            head: [
-              'Wer',
-              'Schlafdauer',
-              'Kondition je Schlaf: außer Haus',
-              'zu Hause',
-              'zu Hause mit Möbeln',
-            ],
+            head: ['Wer', 'Schlafdauer', 'Kondition je Schlaf: außer Haus', 'zu Hause'],
             rows: [
-              [
-                'Mann',
-                '{{sleep.manSeconds}} s',
-                '+{{sleep.manAwayPct}}%',
-                '+{{sleep.manHomePct}}%',
-                '+{{sleep.manFurnishedPct}}%',
-              ],
+              ['Mann', '{{sleep.manSeconds}} s', '+{{sleep.manAwayPct}}%', '+{{sleep.manHomePct}}%'],
               [
                 '[[job:woman|Frau]]',
                 '{{sleep.womanSeconds}} s',
                 '+{{sleep.womanAwayPct}}%',
                 '+{{sleep.womanHomePct}}%',
-                '+{{sleep.womanFurnishedPct}}%',
               ],
               [
                 'Händler, Kundschafter (immer wie zu Hause)',
                 '{{sleep.manSeconds}} s',
                 '+{{sleep.manHomePct}}%',
                 '-',
-                '-',
               ],
-              [
-                'Soldat (wo immer er schläft)',
-                '{{sleep.soldierSeconds}} s',
-                '+{{sleep.soldierPct}}%',
-                '-',
-                '-',
-              ],
+              ['Soldat (wo immer er schläft)', '{{sleep.soldierSeconds}} s', '+{{sleep.soldierPct}}%', '-'],
             ],
-            num: [1, 2, 3, 4],
+            num: [1, 2, 3],
           },
         },
         {
@@ -138,7 +118,7 @@ export const SETTLERS: ArticleGroup = {
               ['Mitfahrer im Karren', 'Balken sinken nicht, Gesundheit bleibt gleich.'],
               [
                 'Passagier auf dem Schiff',
-                'Isst aus dem Frachtraum, schläft wie außer Haus, redet. Betet erst wieder an Land.',
+                'Trinkt zuerst, was er bei sich hat. Ist das Schiff angedockt, geht er zum Essen an Land, auf See isst er aus dem Frachtraum. Schläft wie außer Haus, redet. Betet erst wieder an Land.',
               ],
             ],
           },
@@ -220,7 +200,7 @@ export const SETTLERS: ArticleGroup = {
         },
         {
           steps: [
-            'Eine [[job:woman|Frau]] mit fertigem Wohnhaus sucht das nächste Essen außerhalb von Wohnhäusern.',
+            'Eine [[job:woman|Frau]] mit fertigem Wohnhaus holt zuerst das nächste [[good:meat|Fleisch]], etwa aus einer [[building:work_animal_farm|Viehzüchterei]], sonst das nächste Essen außerhalb von Wohnhäusern.',
             'Sie trägt {{haul.carry}} Stück nach Hause.',
             'Mit [[good:crockery|Geschirr]] im Haus bringt jede Lieferung {{haul.crockeryDelivery}} Stück in die Speisekammer.',
           ],
@@ -289,7 +269,7 @@ export const SETTLERS: ArticleGroup = {
         {
           list: [
             'Ein Wohnhaus bekommt man nur mit dem Befehl „Wohnhaus zuweisen“. Niemand zieht von selbst ein, die Hochzeit bringt nur den Ehepartner mit.',
-            'Ein Wohnhaus fasst so viele Familien, wie die Spalte Familien der Stufentabelle angibt. Bei vollem Haus wirkt der Befehl nicht.',
+            'Ein Wohnhaus fasst so viele Familien, wie die Spalte Familien der Stufentabelle angibt, mit [[good:furniture|Möbeln]] mehr. Bei vollem Haus wirkt der Befehl nicht.',
             'Eine neue Zuweisung zieht die ganze Familie um: Siedler, Ehepartner und heranwachsendes Kind.',
           ],
         },
@@ -299,7 +279,7 @@ export const SETTLERS: ArticleGroup = {
         {
           list: [
             'Geheiratet wird nur auf den Befehl „Heirate“.',
-            'Der Befehl verbindet den Siedler mit der nächsten erwachsenen Person des anderen Geschlechts, vom selben Stamm und Spieler.',
+            'Der Befehl verbindet den Siedler mit der nächsten erwachsenen Person des anderen Geschlechts, vom selben Stamm und Spieler. Eine Frau nimmt einen Mann mit Beruf vor einem Zivilisten.',
             'Der Partner muss in der [[article:roads|Wegweiser]]-Reichweite des Siedlers sein. Sonst verfällt der Befehl, und das Spiel meldet „Kein Partner“.',
             'Soldaten, Helden, Kundschafter und Siedler auf dem Weg in [[building:barracks|Kaserne]] oder [[building:school|Schule]] heiraten nicht.',
             'Das Paar wohnt im Haus der Frau. Hat sie keines, im Haus des Mannes.',
@@ -351,9 +331,9 @@ export const SETTLERS: ArticleGroup = {
               [
                 '[[good:furniture|Möbel]]',
                 'Wohnhaus 1',
-                'Schlaf ×{{home.factor}}',
-                '{{home.furnitureManSleeps}} Schlafphasen eines Mannes, {{home.furnitureWomanSleeps}} einer Frau',
-                '{{home.furnitureFetchBelow}}',
+                'Platz für weitere Familien',
+                '{{home.furnitureChildren}} Kinder, {{home.furnitureSleeps}} Schlafphasen oder {{home.furnitureMeals}} Mahlzeiten',
+                'wenn ein Stück Vorrat fehlt',
               ],
               [
                 '[[good:holy_oil|Öl]]',
@@ -364,8 +344,14 @@ export const SETTLERS: ArticleGroup = {
               ],
             ],
             num: [4],
-            foot: 'Ein Wohnhaus fasst bis zu {{home.wareUnits}} Stück jeder dieser Waren. Öl brennt ohne Pause, auch wenn niemand betet.',
+            foot: 'Ein Wohnhaus fasst bis zu {{home.wareUnits}} Stück Geschirr und ebenso viel Öl. An Möbeln hält es je weitere Familie, die es aufnehmen kann, ein Stück Vorrat. Öl brennt ohne Pause, auch wenn niemand betet.',
           },
+        },
+        {
+          list: [
+            'Ein Stück Möbel gibt Platz für eine weitere Familie, höchstens so viele, wie die Spalte Mit Möbeln der Stufentabelle angibt. Weitere Familien sind die zuletzt eingezogenen. Die Plätze bleiben, solange der Spieler Möbel erlaubt.',
+            'Jede weitere Familie nutzt ihr eigenes Stück ab: wenn sie ein Kind zeugt, im Haus schläft oder aus der Speisekammer isst. Die übrigen Familien nutzen keine Möbel ab. Ist ein Stück aufgebraucht, nimmt die Familie das nächste aus dem Vorrat des Hauses.',
+          ],
         },
         {
           p: 'Im Wohnhaus-Panel schaltest du für das ganze Dorf Geschirr, Möbel und Öllieferungen ab. Schon eingelagertes Öl brennt weiter.',
@@ -380,6 +366,10 @@ export const SETTLERS: ArticleGroup = {
               ['Witwer', 'Verliert es, wenn das Kind erwachsen oder gestorben ist.'],
               ['Witwe', 'Bleibt wohnen.'],
               ['Erwachsenes Kind', 'Verliert es, sobald es erwachsen ist.'],
+              [
+                'Familie über der Grundzahl',
+                'Zieht aus, wenn ihre Möbel aufgebraucht sind und das Haus keinen Vorrat hat oder wenn der Spieler Möbel verbietet, und das Spiel meldet „Ausgezogen“. Ist „Familien gründen“ an, bringt der [[article:assistant|Assistent]] sie in ein Haus mit freiem Platz.',
+              ],
               [
                 'Händler, Kundschafter, Soldat',
                 'Das Wohnhaus bleibt der Familie, er selbst isst und schläft dort nicht.',
@@ -441,12 +431,12 @@ export const SETTLERS: ArticleGroup = {
                 'an',
                 'Berufstätige mit Holzwerkzeug, solange Eisenwerkzeug an ist',
               ],
-              ['[[good:mead|Met]]', 'aus', 'Zivilisten, Soldaten'],
-              ['Nahrungstränke, Wachtränke, Heiltränke', 'aus', 'Zivilisten, Soldaten'],
+              ['[[good:mead|Met]]', 'aus', 'Zivilisten, Arbeiter, Soldaten'],
+              ['Nahrungstränke, Wachtränke, Heiltränke', 'aus', 'Zivilisten, Arbeiter, Soldaten'],
               [
                 'Nahrungsamulett, Wachbleibamulett, Stärkeamulett, Verteidigungsamulett, Trefferamulett, Windamulett',
                 'aus',
-                'Zivilisten, Soldaten',
+                'Zivilisten, Arbeiter, Soldaten',
               ],
               [
                 'Schulabgänger automatisch Werkstätten zuweisen',
@@ -454,8 +444,9 @@ export const SETTLERS: ArticleGroup = {
                 'Absolventen der [[building:school|Schule]]',
               ],
               ['Abbauer versetzen ihre Fahne automatisch', 'aus', '[[job:collector|Abbauer]] mit Fahne'],
+              ['Familien gründen', 'aus', 'obdachlose Frau, Frau mit Wohnhaus, ausgezogene Familie'],
             ],
-            foot: 'Bei Getränken und Amuletten wählen die Knöpfe „Zivilisten“ und „Soldaten“ die Empfänger, anfangs sind beide an. Abschalten nimmt nichts weg, was schon ausgegeben ist. Liegt die Ware eines abgeschalteten Schalters im Lager und fehlt sie jemandem, erinnert dich eine Meldung daran, an den Fahnenschalter dann, wenn ein Abbauer an seiner Fahne nichts mehr findet.',
+            foot: 'Bei Getränken und Amuletten wählen die Knöpfe „Zivilisten“ (ohne Beruf), „Arbeiter“ und „Soldaten“ die Empfänger; sind alle drei aus, ist der Schalter aus. Abschalten nimmt nichts weg, was schon ausgegeben ist. Liegt die Ware eines abgeschalteten Schalters im Lager und fehlt sie jemandem, erinnert dich eine Meldung daran, an den Fahnenschalter dann, wenn ein Abbauer an seiner Fahne nichts mehr findet.',
           },
         },
         {
@@ -468,12 +459,23 @@ export const SETTLERS: ArticleGroup = {
           ],
         },
         {
+          h: 'Familien',
+        },
+        {
+          list: [
+            'Ist „Familien gründen“ an, zieht eine obdachlose erwachsene [[job:woman|Frau]] in das nächste Wohnhaus mit freiem Platz, das sie erreichen kann.',
+            'Eine Frau mit Wohnhaus bekommt den Befehl „Heirate“, sobald ein Mann frei ist. Eine obdachlose Frau verheiratet der Assistent nicht.',
+            'Eine Familie, die mangels [[good:furniture|Möbeln]] ausziehen musste, zieht ebenfalls auf einen freien Platz, auch einen möblierten: [[article:family|Familie und Wohnhaus]].',
+          ],
+        },
+        {
           h: 'Einberufung in die Kaserne',
         },
         {
           list: [
-            'In die Kaserne geht nur ein erwachsener Zivilist ohne Arbeit und ohne Beschäftigung, Unverheiratete zuerst. Der Assistent holt niemanden von der Arbeit weg.',
-            'Die Zähler Schwertkämpfer, Speerträger oder Bogenschützen bewaffnen zuerst einen unbewaffneten Soldaten, wenn eine Waffe in seiner Reichweite liegt.',
+            'In die Kaserne geht nur ein erwachsener, unverheirateter Zivilist ohne Arbeit und ohne Beschäftigung. Der Assistent holt niemanden von der Arbeit weg.',
+            'Die Zähler Schwertkämpfer, Speerträger oder Bogenschützen bewaffnen zuerst einen unbewaffneten Soldaten, wenn eine Waffe in seiner Reichweite liegt. Danach sammelt er sich an der nächsten Kaserne.',
+            'Einen neuen Rekruten beruft ein solcher Zähler nur ein, solange ein Lager in Reichweite der Kaserne eine Waffe dieser Art für ihn hat. Ein Rekrut, dessen Waffe ausgegangen ist, wechselt zu einem anderen Zähler, dessen Waffe er holen kann.',
           ],
         },
         {
@@ -485,6 +487,10 @@ export const SETTLERS: ArticleGroup = {
               [
                 'Ein unbewaffneter Soldat wartet auf eine Waffe dieser Art',
                 'Liefere die Waffe. Bis dahin belegt er den Platz eines neuen Rekruten.',
+              ],
+              [
+                'Keine Waffe dieser Art in einem Lager in Reichweite der Kaserne',
+                'Stelle die Waffe her oder bring sie näher heran.',
               ],
             ],
             foot: 'Ein Rekrut auf dem Weg zur Kaserne zählt schon zum Zähler.',
@@ -506,7 +512,7 @@ export const SETTLERS: ArticleGroup = {
         },
         {
           list: [
-            'Der Absolvent geht zum nächsten freien Platz seines Berufs, auch in eine Werkstatt im Bau. Eine Werkstatt, die das gelernte Produkt herstellt, hat Vorrang, auch wenn sie weiter weg ist.',
+            'Der Absolvent geht auf einen freien Platz seines Berufs, auch in eine Werkstatt im Bau. Eine fertige Werkstatt geht einer Baustelle vor, eine ohne jemanden seines Berufs einer besetzten, dann eine, die das gelernte Produkt herstellt, und unter gleichen die nächste.',
             'Ohne freien Platz wartet er an der Schule. [[job:collector|Abbauer]], [[job:hunter|Jäger]], [[job:fisher|Fischer]] und Soldaten teilt der Assistent nicht zu.',
           ],
         },
@@ -529,7 +535,7 @@ export const SETTLERS: ArticleGroup = {
     {
       id: 'draughts',
       name: 'Getränke und Amulette',
-      lead: 'Ein Siedler trinkt an Ort und Stelle und unterbricht dabei nichts. Ein Amulett nutzt sich nicht ab.',
+      lead: 'Tränke trinkt ein Siedler an Ort und Stelle und unterbricht dabei nichts. Für Met hält er unterwegs an, wie zum Essen. Ein Amulett nutzt sich nicht ab.',
       blocks: [
         {
           h: 'Getränke',
@@ -608,6 +614,7 @@ export const SETTLERS: ArticleGroup = {
           list: [
             'Ein zweites gleiches Amulett bringt nichts.',
             'Verschiedene Amulette wirken zusammen: Stärke und Treffer ergeben bei erfolgreichem Wurf ×{{amulet.comboFactor}}.',
+            'Ein kritischer Treffer kann den Schlag des getroffenen Gegners abbrechen, bevor er trifft, und ihn {{amulet.stunSeconds}} s lang betäuben. Die Chance beträgt {{amulet.stunBasePct}}% plus den Prozentsatz der Lebenspunkte, den der Treffer gekostet hat. Fahrzeuge sind nicht betroffen.',
             'Mit Nahrungsamulett geht der Siedler nie essen, mit Wachbleibamulett nie schlafen.',
           ],
         },

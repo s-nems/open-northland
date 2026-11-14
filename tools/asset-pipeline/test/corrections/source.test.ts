@@ -197,6 +197,39 @@ describe('source corrections', () => {
     }
   });
 
+  it('replaces a run from its first line through its last as one edit, inside its section', async () => {
+    const shipped =
+      '[GfxHouse]\r\nEditName "hut"\r\nSize 2\r\nLayer 0 1\r\nLayer 1 1\r\nFlag 1 5\r\n' +
+      '[GfxHouse]\r\nEditName "mill"\r\nSize 2\r\nFlag 1 5\r\n';
+    const path = await writeMod(AI_INC, shipped);
+    const edit = (through: string) => ({
+      reason: 'test',
+      file: AI_INC,
+      sha256: sha256(shipped),
+      lines: [{ section: 'EditName "hut"', from: 'Size 2', through, to: ['Size 3', 'Layer 0 0'] }],
+    });
+    await writeCorrection('run', edit('Flag 1 5'));
+    const corrections = await loadSourceCorrections(dir, mod);
+    expect(Buffer.from(await corrections.read(path)).toString('latin1')).toBe(
+      '[GfxHouse]\r\nEditName "hut"\r\nSize 3\r\nLayer 0 0\r\n' +
+        '[GfxHouse]\r\nEditName "mill"\r\nSize 2\r\nFlag 1 5\r\n',
+    );
+    expect(() => corrections.assertApplied()).not.toThrow();
+
+    // The closing line must stand in the same section.
+    await writeCorrection('run', edit('EditName "mill"'));
+    const refused = await loadSourceCorrections(dir, mod);
+    expect(Buffer.from(await refused.read(path)).toString('latin1')).toBe(shipped);
+    expect(() => refused.assertApplied()).toThrow(/no line "EditName "mill"" follows "Size 2"/);
+
+    // A run claims every line it spans, so another edit of a line inside it is refused.
+    const run = edit('Flag 1 5');
+    await writeCorrection('run', { ...run, lines: [...run.lines, { from: 'Layer 1 1', to: 'Layer 1 2' }] });
+    const overlapping = await loadSourceCorrections(dir, mod);
+    expect(Buffer.from(await overlapping.read(path)).toString('latin1')).toBe(shipped);
+    expect(() => overlapping.assertApplied()).toThrow(/two edits replace the line "Layer 1 1"/);
+  });
+
   it('refuses a malformed correction or two naming one file', async () => {
     const valid = { reason: 'test', file: AI_INC, sha256: sha256(SHIPPED_AI), lines: SWAP };
     const refused: readonly [object, RegExp][] = [
@@ -212,6 +245,8 @@ describe('source corrections', () => {
       [{ ...valid, encoding: 'windows-1251', lines: [{ from: 'a', to: 'ż' }] }, /windows-1251 cannot write/],
       [{ ...valid, lines: [{ from: 'a', to: 'z', every: false }] }, /"every"/],
       [{ ...valid, lines: [{ from: 'a', to: 'z', section: '' }] }, /"section"/],
+      [{ ...valid, lines: [{ from: 'a', to: 'z', through: 'b', every: true }] }, /"through"/],
+      [{ ...valid, lines: [{ from: 'a', to: 'z', thru: 'b' }] }, /unknown line edit key "thru"/],
       [{ ...valid, note: 'x' }, /unknown key "note"/],
     ];
     for (const [correction, why] of refused) {

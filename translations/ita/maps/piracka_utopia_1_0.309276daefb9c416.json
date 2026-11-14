@@ -1,0 +1,28 @@
+{
+  "version": 1,
+  "map": "piracka_utopia_1_0",
+  "basis": {
+    "lang": "eng",
+    "digest": "973f25213bfca5a13752d7a7b077df13b196801ff3652e0e91ad644c3ecb3d71"
+  },
+  "strings": {
+    "0": "UTOPIA PIRATA",
+    "1": "Un gruppo di naufraghi cerca di sopravvivere su un'isoletta inospitale. Cooperazione di 2 giocatori contro il nemico.",
+    "30": "Sopravvivi",
+    "50": "Naufraghi",
+    "51": "Naufraghi",
+    "52": "Pirati",
+    "53": "Avamposto",
+    "60": "Naufraghi",
+    "61": "Naufraghi",
+    "62": "Pirati",
+    "63": "Avamposto"
+  },
+  "briefings": {
+    "500": "<font:$local$\\fonts\\fonthead16bld.fnt>\nUtopia pirata\n<font:$local$\\fonts\\font12.fnt> \nAutore: Proszak\n<font:$local$\\fonts\\font12.fnt>\n\nMentre solcavamo arcipelaghi tropicali, fummo travolti da\nuna tempesta che sfasciò le nostre navi contro le scogliere vicine.\n\nI superstiti raggiunsero in scialuppa due piccole isole.\nLe risorse scarseggiano, ma bastano per costruire una nave.\nIl clima umido non ci va proprio a genio,\ne per giunta il vulcano qui vicino sembra attivo:\nsputa minacciose nubi di fumo velenoso.\n\n<usericon:1,83,33>\n\nNon è un buon posto per trattenersi a lungo: leviamo le tende al più presto.\n\nwww.culturesnation.pl\n",
+    "501": "\nNon siamo soli!\n\nUn gruppo di pirati del nord ci ha attaccati senza preavviso.\nQui non siamo i benvenuti.\nNon c'è alcuna speranza di risolvere la cosa in pace.\n\nDobbiamo resistere alle loro incursioni e cercare\ndi snidarli da questo posto.\n",
+    "502": "\nCi siamo sbarazzati dei pirati, ma tutto lascia pensare\nche questa non fosse la loro base principale.\n\nA quanto pare si trova ai piedi\ndel vulcano a nord. Probabilmente l'attività sismica\nli ha costretti a trasferirsi sulle isole\nche sfortunatamente abbiamo occupato noi: ecco perché ce l'hanno con noi.\nDifficile credere che, dopo la distruzione del loro\navamposto, ci lascino semplicemente andar via dall'arcipelago.\n\nDobbiamo eliminarli una volta per tutte, per evitare\ndi ritrovarceli alle calcagna in mare aperto.\n",
+    "503": "\nIntuito il nostro piano, i pirati hanno sferrato un attacco\npreventivo a sorpresa. Ormai non si torna indietro: è ora di scatenare l'inferno.\n\nSe riusciamo a respingere lo sbarco, dovremo\nassaltare il loro covo prima che si riprendano.\n",
+    "504": "\nDopo una battaglia estenuante abbiamo finalmente ripulito l'arcipelago\ndai pirati. È ora di raccogliere il bottino di guerra e lasciare questo posto disgraziato.\n"
+  }
+}

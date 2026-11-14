@@ -158,6 +158,8 @@ type Pending =
       readonly kind: 'cue';
       /** The cue's settler, whose {@link SoundBindings.wielderSounds} cue for this group replaces `files`. */
       readonly wielder?: number;
+      /** {@link SoundBindings.sipCue}, replacing `files` for a sip drunk on the eat clip. */
+      readonly sip?: readonly string[];
     })
   | (Omit<PendingBase, 'files'> & { readonly kind: 'scream'; readonly victim: number })
   | (PendingBase & {
@@ -319,6 +321,7 @@ export function eventOneShots(input: DirectorInput): OneShot[] {
   const wielderSounds = bindings.wielderSounds ?? [];
   const wielderBlows = wielderSounds.some((w) => w.blow !== undefined);
   const wielderCues = wielderSounds.some((w) => w.cues !== undefined);
+  const sipCue = bindings.sipCue ?? [];
   for (const ev of events) {
     if ((ev.kind === 'playerWon' || ev.kind === 'playerDefeated') && ev.notificationAlreadySent === true)
       continue;
@@ -349,15 +352,21 @@ export function eventOneShots(input: DirectorInput): OneShot[] {
       const files = index.groupsByLogicSoundType.get(ev.soundType);
       const id = eventEntity(ev);
       if (files !== undefined && files.length > 0 && id !== undefined) {
-        neededIds.add(id);
-        if (wielderCues) wielders.add(id);
+        // A deck bowman stands nowhere on the map: his cue sounds where his ship lies, in his own voice.
+        const at = ev.from ?? id;
+        neededIds.add(at);
+        if (wielderCues) {
+          neededIds.add(id);
+          wielders.add(id);
+        }
         pending.push({
           kind: 'cue',
           files,
           key: eventKey(ev),
           spatial: null,
-          entity: id,
+          entity: at,
           ...(wielderCues ? { wielder: id } : {}),
+          ...(ev.sip === true && sipCue.length > 0 ? { sip: sipCue } : {}),
         });
       }
       continue;
@@ -434,7 +443,7 @@ export function eventOneShots(input: DirectorInput): OneShot[] {
     let files: readonly string[];
     // A wielder's own sound rings at the gain of the one it replaces.
     let gainFiles: readonly string[] | undefined;
-    const own = wielderFiles(p, facts, index);
+    const own = (p.kind === 'cue' ? p.sip : undefined) ?? wielderFiles(p, facts, index);
     if (own !== undefined && p.kind !== 'scream') {
       files = own;
       gainFiles = p.files;

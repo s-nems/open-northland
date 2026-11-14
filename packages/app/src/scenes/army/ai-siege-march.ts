@@ -71,9 +71,9 @@ const TOWER_ARCHER_STARTS: readonly Tile[] = [
   [91, 3],
 ];
 
-/** Twenty times the HQ's own: the men are still breaking it when the catapults have come up and broken
+/** Fifty times the HQ's own: the men are still breaking it when the catapults have come up and broken
  *  the tower, so the scene shows the catapults go in on the HQ after it. */
-const SIEGE_HEADQUARTERS_HITPOINTS = 2_000_000;
+const SIEGE_HEADQUARTERS_HITPOINTS = 5_000_000;
 
 /** Across the route a third of the way over, where the wave walks to its gathering point. */
 const ROUTE_BAND: readonly Tile[] = [
@@ -90,13 +90,13 @@ const CAMERA_AT = { hx: 40, hy: 36 } as const;
 
 /** A catapult this near the HQ's site (Manhattan half-cell nodes) has driven in on it: nearer than the
  *  gathering point, which stands 40 nodes short of the objective, and than where it stood on the tower. */
-const AT_HEADQUARTERS_NODES = 32;
+const AT_HEADQUARTERS_NODES = 36;
 
-/** The tower has fallen to the catapults and every catapult fires at the HQ the men are still breaking.
- *  Measured: every check holds from tick 3245 to 3685. */
-const RUN_TICKS = 3500;
+/** The tower and its archers have fallen to the catapults and every catapult fires at the HQ the men are
+ *  still breaking. Measured: every check holds from about tick 4300 to 6300. */
+const RUN_TICKS = 5000;
 
-/** Past the HQ's fall. Measured: every check holds from tick 1679 through at least 6000. */
+/** Past the HQ's fall. Measured: every check holds from about tick 1700 through at least 7000. */
 const BAND_RUN_TICKS = 2400;
 
 const { Building, Health, isAboardVehicle, Owner, Settler, Vehicle, vehicleCommander } = components;

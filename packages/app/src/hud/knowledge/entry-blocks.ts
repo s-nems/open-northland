@@ -200,6 +200,7 @@ export type BuildingBlock =
   | 'output'
   | 'capacity'
   | 'teaches'
+  | 'coinDrill'
   | 'workers'
   | 'build'
   | 'materials'
@@ -215,6 +216,7 @@ export function buildingBlocks(
     readonly aura: boolean;
     readonly capacity: boolean;
     readonly teaches: boolean;
+    readonly coinDrill: boolean;
     readonly levels: boolean;
   },
 ): readonly BuildingBlock[] {
@@ -224,6 +226,7 @@ export function buildingBlocks(
     ...(building.recipes.length > 0 ? (['output'] as const) : []),
     ...(shows.capacity ? (['capacity'] as const) : []),
     ...(shows.teaches ? (['teaches'] as const) : []),
+    ...(shows.coinDrill ? (['coinDrill'] as const) : []),
     ...(building.workers.length > 0 ? (['workers'] as const) : []),
     'build',
     'materials',
@@ -241,6 +244,8 @@ export interface BuildingCapacity {
   /** The food a home keeps, off its first shelf. */
   readonly larder: number | null;
   readonly families: number;
+  /** The families furniture adds to {@link families}. */
+  readonly furnishedFamilies: number;
   readonly pupils: number;
 }
 
@@ -253,6 +258,7 @@ export function buildingCapacity(building: KnowledgeBuilding): BuildingCapacity 
     store: stores && uniform ? { perGood: shelf.capacity, goods: building.stock.length } : null,
     larder: home ? (shelf?.capacity ?? null) : null,
     families: building.homeSize,
+    furnishedFamilies: building.furnishedFamilies,
     pupils: building.schoolSize,
   };
 }

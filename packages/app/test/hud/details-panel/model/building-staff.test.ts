@@ -149,6 +149,30 @@ describe('building staff readers', () => {
     expect(buildingModel([buildingEntity(1, BUILDING_HEADQUARTERS)], 1).orders?.rally).toBeNull();
   });
 
+  it('lists coin-drillers with the recruits whose seats they share, seated or queued', () => {
+    const settler = (id: number, order: Record<string, unknown>) => ({
+      id,
+      components: { Settler: { jobType: JOB_CARRIER }, ...order },
+    });
+    const drill = (seated: boolean, stage = 'drill') => ({
+      CoinDrillOrder: { house: 1, returnTo: 0, stage, termTicksLeft: 0, enrolled: 0, seated },
+    });
+    const model = buildingModel(
+      [
+        buildingEntity(1, BUILDING_BARRACKS),
+        settler(2, { TrainingOrder: { house: 1, drillTicksLeft: 1, enrolled: 0, seated: true } }),
+        settler(3, drill(true)),
+        settler(4, drill(false)),
+        // On his way back he holds no place.
+        settler(5, drill(true, 'return')),
+      ],
+      1,
+    );
+    const group = (key: string) =>
+      model.staff?.groups.find((g) => g.key === key)?.people.map((person) => person.entity);
+    expect([group('trainees'), group('traineesQueued')]).toEqual([[2, 3], [4]]);
+  });
+
   it('lists a worker who shelters where it works on its trade line only', () => {
     const model = buildingModel(
       [
@@ -195,6 +219,7 @@ describe('building status', () => {
     garrison: null,
     workDetail: null,
     families: null,
+    blessing: null,
   };
   const status = messages().hud.buildingPanel.status;
 
@@ -241,6 +266,19 @@ describe('building status', () => {
       label: status.standing,
       tone: 'neutral',
     });
+  });
+
+  it("reads a temple's blessing over its empty porter post: the oil left, or what puts it out", () => {
+    expect(buildingStatus({ ...idle, seats: 0, blessing: { state: 'on', secondsLeft: 61 } })).toEqual({
+      label: status.blessing,
+      detail: formatMessage(status.oilLeft, { minutes: 2 }),
+      tone: 'ok',
+    });
+    expect(buildingStatus({ ...idle, seats: 0, blessing: { state: 'no-oil' } })).toMatchObject({
+      label: status.noOil,
+      tone: 'trouble',
+    });
+    expect(buildingStatus({ ...idle, blessing: { state: 'damaged' } }).label).toBe(status.blessingDamaged);
   });
 
   it('says whether a home is lived in, and a house without work only stands', () => {
@@ -595,7 +633,7 @@ describe('building orders', () => {
   });
 
   it('keeps four tiles in fixed places: Pracownicy, Wiedza, Zburz in red, then the tier with its bill', () => {
-    const views = orderViews({ orders: orders({}), name: 'Młyn', construction: null });
+    const views = orderViews({ orders: orders({}), name: 'Młyn', construction: null, templeFire: null });
     expect(views.map((view) => view.order)).toEqual(['workers', 'knowledge', 'demolish', 'upgrade']);
     expect(views[0]).toMatchObject({
       enabled: true,
@@ -614,12 +652,18 @@ describe('building orders', () => {
       }),
       name: 'Dom',
       construction: null,
+      templeFire: null,
     });
     expect(refused.map((view) => view.order)).toEqual(['workers', 'knowledge', 'demolish', 'upgrade']);
     expect(refused[0]).toMatchObject({ enabled: false, tooltip: copy.hireNone });
     expect(refused[3]).toMatchObject({ enabled: false, tooltip: copy.upgradeUnfinished });
     expect(
-      orderViews({ orders: orders({ cancelUpgrade: true }), name: 'Dom', construction: null })[3]?.order,
+      orderViews({
+        orders: orders({ cancelUpgrade: true }),
+        name: 'Dom',
+        construction: null,
+        templeFire: null,
+      })[3]?.order,
     ).toBe('cancelUpgrade');
   });
 
@@ -654,8 +698,8 @@ describe('building orders', () => {
     actions.demolish(2, 'Obca');
     actions.demolish(1, 'Kwatera');
     actions.demolish(1, 'Kwatera');
-    actions.setHouseholdGoodUse(HUMAN_PLAYER, 'rest', false);
-    actions.setHouseholdGoodUse(1, 'rest', false);
+    actions.setHouseholdGoodUse(HUMAN_PLAYER, 'lodging', false);
+    actions.setHouseholdGoodUse(1, 'lodging', false);
     actions.setStorageMinimum(HUMAN_PLAYER, GOOD_WOOD, 30);
     actions.setStorageMinimum(1, GOOD_WOOD, 30);
     actions.releaseGarrison(2, [8]);
@@ -668,7 +712,7 @@ describe('building orders', () => {
       { kind: 'setDefenceMode', building: 1 as Entity, enabled: true },
       { kind: 'setDefenceMode', building: 1 as Entity, enabled: true },
       { kind: 'setDefenceMode', building: 3 as Entity, enabled: true },
-      { kind: 'setHouseholdGoodUse', player: HUMAN_PLAYER, effect: 'rest', allowed: false },
+      { kind: 'setHouseholdGoodUse', player: HUMAN_PLAYER, effect: 'lodging', allowed: false },
       { kind: 'setStorageMinimum', player: HUMAN_PLAYER, goodType: GOOD_WOOD, amount: 30 },
       { kind: 'unassignWorker', entity: 6 as Entity },
       { kind: 'unassignWorker', entity: 7 as Entity },

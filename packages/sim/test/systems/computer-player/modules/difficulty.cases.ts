@@ -57,6 +57,7 @@ describe('AI difficulty profiles', () => {
     }
     expect(mostOf(easy, 'work_coin_mint')).toBe(1);
     expect(mostOf(easy, 'work_druid_01')).toBe(1);
+    expect(mostOf(easy, 'work_pottery_02')).toBe(1);
     expect(orderSteps(easy).some(catapultJoinery)).toBe(false);
     expect(orderSteps(easy).some(denseTowerLane)).toBe(false);
     // The same order object every decision, so the caches keyed on it hold.

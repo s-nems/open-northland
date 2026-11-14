@@ -15,20 +15,27 @@ import { BARE_HANDS_WORK_FACTOR_PCT } from '../../../../src/systems/equipment/in
 import {
   anchorOnlyFootprint,
   atomicSystem,
+  BLOW_TAKEN_POINTS_RATE,
   EXPERIENCE_MASTERY_POINTS,
   EXPERIENCE_XP_PER_POINT,
   experienceBonus,
   experiencePercent,
   experiencePoints,
   experienceRepeats,
-  FIGHT_EXPERIENCE_DAMAGE_CAP_HITS,
-  FIGHT_EXPERIENCE_MAX,
+  FIGHT_EXPERIENCE_FULL,
+  FIGHT_EXPERIENCE_FULL_UNITS,
   FIGHT_EXPERIENCE_TYPE,
+  FIGHT_EXPERIENCE_UNITS_PER_POINT,
+  fightUnitsOfPoints,
+  fightUnitsPerClipTick,
+  fightUnitsWith,
   jobExperiencePercent,
+  MELEE_BLOW_POINTS_RATE,
+  personalFightPoints,
+  SHOT_POINTS_RATE,
   stampResourceFootprintData,
   strokesPerUnit,
   WEAPON_MAIN_TYPE,
-  weaponClassHits,
   withFightExperience,
 } from '../../../../src/systems/index.js';
 import { testContent } from '../../../fixtures/content.js';
@@ -84,20 +91,36 @@ describe('experiencePoints - raw XP in hundredths, whatever the track', () => {
   });
 });
 
-describe('withFightExperience - hits with a weapon class raise its damage', () => {
-  it('scales a column by 200 / (200 - min(hits, 100)) in integer division', () => {
+describe('the blow-time rates of the personal fight counter', () => {
+  it('earns a whole number of stored units per tick of attack clip', () => {
+    for (const rate of [MELEE_BLOW_POINTS_RATE, SHOT_POINTS_RATE, BLOW_TAKEN_POINTS_RATE]) {
+      expect(Number.isInteger(fightUnitsPerClipTick(rate))).toBe(true);
+    }
+  });
+});
+
+describe('withFightExperience - personal fight units raise a blow', () => {
+  it('scales a column linearly to +40% at full experience, truncating', () => {
     expect(withFightExperience(3800, 0)).toBe(3800);
-    expect(withFightExperience(3800, 50)).toBe(5066); // 760000 / 150, truncated
-    expect(withFightExperience(3800, FIGHT_EXPERIENCE_DAMAGE_CAP_HITS)).toBe(7600);
-    expect(withFightExperience(3800, FIGHT_EXPERIENCE_MAX)).toBe(7600); // raw points past 100 buy nothing
-    expect(withFightExperience(0, FIGHT_EXPERIENCE_DAMAGE_CAP_HITS)).toBe(0); // a missing column stays 0
+    expect(withFightExperience(3801, FIGHT_EXPERIENCE_FULL_UNITS / 2)).toBe(4561); // 3801 * 1.2, truncated
+    expect(withFightExperience(3800, FIGHT_EXPERIENCE_FULL_UNITS)).toBe(5320);
+    expect(withFightExperience(0, FIGHT_EXPERIENCE_FULL_UNITS)).toBe(0); // a missing column stays 0
   });
 
-  it('weaponClassHits reads the bucket of the swinging weapon class', () => {
-    const sword = new Map([[FIGHT_EXPERIENCE_TYPE.SWORD, 40]]);
-    expect(weaponClassHits(sword, WEAPON_MAIN_TYPE.SWORD)).toBe(40);
-    expect(weaponClassHits(sword, WEAPON_MAIN_TYPE.SPEAR)).toBe(0); // untrained class
-    expect(weaponClassHits(sword, null)).toBe(0); // a class-less weapon
+  it('grows within a point, as the counter stores parts of one', () => {
+    const half = fightUnitsOfPoints(FIGHT_EXPERIENCE_FULL / 2);
+    const halfPoint = FIGHT_EXPERIENCE_UNITS_PER_POINT / 2;
+    expect(withFightExperience(10_000, half + halfPoint)).toBeGreaterThan(withFightExperience(10_000, half));
+  });
+
+  it('every weapon class but the catapult reads the one personal counter', () => {
+    const units = fightUnitsOfPoints(40) + 1;
+    const xp = new Map([[FIGHT_EXPERIENCE_TYPE.PERSONAL, units]]);
+    expect(fightUnitsWith(xp, WEAPON_MAIN_TYPE.SWORD)).toBe(units);
+    expect(fightUnitsWith(xp, WEAPON_MAIN_TYPE.BOW)).toBe(units);
+    expect(fightUnitsWith(xp, WEAPON_MAIN_TYPE.CATAPULT)).toBe(0);
+    expect(fightUnitsWith(xp, null)).toBe(0); // a class-less weapon
+    expect(personalFightPoints(xp)).toBe(40); // whole points, the part truncated
   });
 });
 

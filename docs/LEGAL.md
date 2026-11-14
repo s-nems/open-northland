@@ -39,6 +39,12 @@ Interactions" by qubodup (https://opengameart.org/node/5765), all under Creative
 lower) and `mace-swing.ogg`, each trimmed to its strike or swing, levelled and encoded as Ogg Opus; their
 notice is in the same file.
 
+A settler drinking mead swallows with "heavy_swallow.wav" by Mikes-MultiMedia
+(https://freesound.org/s/368711/), under Creative Commons CC0 1.0
+(https://creativecommons.org/publicdomain/zero/1.0/). The app ships it as
+`packages/app/public/audio/mead-sip.ogg`, levelled to the game's eating sounds and encoded as Ogg FLAC from
+Freesound's MP3 preview; its notice is in the same file.
+
 Text imported from game or mod tables is also generated content, including UI labels. Keep table/id
 bindings in code and load the wording through the pipeline. Project-authored UI text, intentional
 label overrides and independently written fallbacks may stay in the repository; a fallback must not
@@ -50,8 +56,12 @@ An imported or project-written translation holds only the translated text keyed 
 label. An overlay in a source language is the project's edit of a community map's text: the edited
 ids and blocks in the project's wording, never a campaign map's or an original tutorial's text, which
 stay pipeline corrections. The one exception is the glossary, `translations/glossary.csv` and
-`translations/glossary-project.csv`: beside each Chinese term it keeps the German, English and Polish
-term it translates (names of characters, places, objects and maps).
+`translations/glossary-project.csv`: beside each Chinese or Italian term it keeps the German, English
+and Polish term it translates (names of characters, places, objects and maps).
+
+The official Italian text of the original lives only in the data pack. The repository's `ita` overlays
+are the project's own translation of the text the pack lacks, never a copy or an edit of the official
+Italian text, and no correction quotes it; the glossary's `ita` column holds single terms and names.
 
 Independently authored film subtitles under `translations/<lang>/campaigns/<campaign>/films/`
 are also permitted: transcriptions of the narration and their translations, with provenance in

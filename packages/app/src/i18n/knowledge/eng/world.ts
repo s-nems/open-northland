@@ -232,6 +232,17 @@ export const WORLD: ArticleGroup = {
           ],
         },
         {
+          h: 'Ships in battle',
+        },
+        {
+          list: [
+            'Up to {{deck.archers}} soldiers with a bow shoot from the deck of a [[vehicle:ship_small|Ship]], the one that carries a Catapult, at enemies you can see. Enemy ships come first. A Big Ship has no archers on deck.',
+            'From the deck a bow reaches {{deck.rangeLoss}} hexes less than ashore, waits {{deck.slowerPct}}% longer between shots and scatters wider: [[article:aim|Hitting and Shooting]].',
+            'A Catapult stone takes {{ship.stoneFactor}} times as much from a ship as from another vehicle.',
+            'Below {{ship.firePct}}% health a ship burns and loses {{ship.fireLoss}} health a second until it sinks. Builders mend a moored ship like a building, and the fire goes out once it is back at {{ship.firePct}}%.',
+          ],
+        },
+        {
           h: 'Losing a vehicle',
         },
         {
@@ -628,11 +639,18 @@ export const WORLD: ArticleGroup = {
               ['Health', '+{{aura.perSecond}} per second, up to {{aura.ceiling}}'],
               ['Religion', '+{{aura.pietyPct}}% per second while the bar is at {{need.satedPct}}% or less'],
               ['For whom', 'All your people, children only health'],
-              ['Condition', 'Temple finished and undamaged'],
+              ['Condition', 'Temple finished, undamaged and burning [[good:holy_oil|Oil]]'],
+              [
+                'Oil',
+                '1 lasts {{aura.oilBurnTime}}, a full store of {{aura.oilUnits}} {{aura.oilFullBurnTime}}',
+              ],
               ['Several Temples', "Auras don't stack"],
             ],
             foot: 'Health above {{health.human}} stays until wounds take it.',
           },
+        },
+        {
+          p: '[[job:druid|Druids]] carry Oil to the Temples within their [[article:roads|signposts]] themselves. A [[job:carrier|Carrier]] posted at the Temple or a [[job:trader|Merchant]] can bring it too. A new Temple starts with the Oil of its building cost. Without Oil, or while damaged, its glow and fire go out. You can also put the fire out yourself in the Temple panel: it then keeps its Oil and blesses no one until you light it again.',
         },
       ],
       see: ['article:needs', 'article:health', 'building:work_temple', 'good:holy_oil'],

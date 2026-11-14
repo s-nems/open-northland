@@ -4,7 +4,13 @@ import type { Command, Entity, Fixed, GroupWorker, PlayerCommand, WorldSnapshot 
 import { components, fx, nodeOfPosition, ONE, playerCommand, Simulation, systems } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import { BUILD_HOUSE_ATOMIC } from '../../../../src/catalog/atomics.js';
-import { JOB_ARCHER, JOB_BUILDER, JOB_JOINER, JOB_TRADER } from '../../../../src/catalog/jobs.js';
+import {
+  JOB_ARCHER,
+  JOB_BUILDER,
+  JOB_JOINER,
+  JOB_SOLDIER_UNARMED,
+  JOB_TRADER,
+} from '../../../../src/catalog/jobs.js';
 import { HUMAN_PLAYER, PRIMARY_TRIBE } from '../../../../src/game/rules.js';
 import {
   BUILDING_BARRACKS,
@@ -493,6 +499,34 @@ describe('right-clicking a standing building', () => {
   });
 });
 
+describe('right-clicking a barracks with a mixed selection', () => {
+  it('enlists the civilian, coin-drills the soldier and takes no hero, all in one envelope', async () => {
+    const sim = new Simulation({ seed: 1, content: sandboxContent() });
+    // The sandbox catalog holds no hero trade; the served content names every one of them `hero*`.
+    const heroContent = {
+      ...sim.content,
+      jobs: sim.content.jobs.map((job) => (job.typeId === JOB_JOINER ? { ...job, id: 'hero_test' } : job)),
+    };
+    const barracks = buildingAt(sim, BUILDING_BARRACKS, ONE);
+    const coin = systems.drillCoinGood(sim.content);
+    if (coin === undefined) throw new Error('the sandbox has no drill coin');
+    sim.world.mut(barracks, Stockpile).amounts.set(coin, 1);
+    const civilian = settlerAt(sim, null);
+    const soldier = settlerAt(sim, JOB_SOLDIER_UNARMED);
+    const hero = settlerAt(sim, JOB_JOINER);
+
+    expect(await rightClick(sim, [civilian, soldier, hero], barracks, heroContent)).toEqual([
+      {
+        kind: 'unitOrdersGroup',
+        members: [
+          { entity: civilian, actions: [{ kind: 'trainSoldier', house: barracks }] },
+          { entity: soldier, actions: [{ kind: 'orderCoinDrill', house: barracks }] },
+        ],
+      },
+    ]);
+  });
+});
+
 describe('a right-click that orders nobody', () => {
   const schoolType = (sim: Simulation): number => {
     const school = sim.content.buildings.find((row) => systems.isSchoolType(row));
@@ -512,6 +546,15 @@ describe('a right-click that orders nobody', () => {
       flashed: [],
       tradeRefused: [],
     });
+  });
+
+  it('reports nothing for a Shift click on a barracks with only a soldier selected', async () => {
+    const sim = new Simulation({ seed: 1, content: sandboxContent() });
+    const barracks = buildingAt(sim, BUILDING_BARRACKS, ONE);
+    const soldier = settlerAt(sim, JOB_SOLDIER_UNARMED);
+
+    const shift = await pressRightClick(sim, [soldier], barracks, sim.content, true, 'settlers', true);
+    expect(shift).toEqual({ issued: [], ordered: false, flashed: [], tradeRefused: [] });
   });
 
   it('reports nothing when the foundation takes none of the selection', async () => {

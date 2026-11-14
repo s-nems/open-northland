@@ -121,14 +121,15 @@ function discoveryGate(
   enablingJobs.sort((a, b) => a - b);
   const needs: NeedRow[] = [];
   let lessonAmount = -1;
+  // Our rule: a fighter trade has no experience gate and the school refuses it; the barracks is its door.
+  const fighter = kind === 'job' && isFighterJob(content, typeId);
   for (const row of tribe.jobRequirements) {
-    if (row.target !== kind || row.targetId !== typeId) continue;
+    if (fighter || row.target !== kind || row.targetId !== typeId) continue;
     if (row.requirement === 'train') lessonAmount = Math.max(lessonAmount, row.amount);
     else if (row.amount > 0 && row.experienceTypes.length > 0)
       needs.push({ amount: row.amount, tracks: row.experienceTypes.map((id) => creditedTrack(content, id)) });
   }
-  // The school refuses a fighter trade: the barracks drill is its only door.
-  const taught = lessonAmount >= 0 && !(kind === 'job' && isFighterJob(content, typeId));
+  const taught = lessonAmount >= 0;
   return {
     kind,
     typeId,

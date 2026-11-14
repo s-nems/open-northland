@@ -1,15 +1,8 @@
 import { Building, JobAssignment, Position, Stockpile } from '../../../../components/index.js';
 import type { Entity, World } from '../../../../ecs/world.js';
 import type { SystemContext } from '../../../context.js';
-import { farmWorkGood } from '../../../economy/fields.js';
+import { farmedGoodOf, sowsFieldsAt } from '../../../economy/fields.js';
 import { bankedSlot, isStorageBuildingType } from '../../../stores/index.js';
-import { jobAtomics } from '../../targets/index.js';
-
-/** Whether a job is the field worker, rather than the carrier, of a farm building. */
-function isFieldWorkerOf(world: World, ctx: SystemContext, building: Entity, jobType: number): boolean {
-  const spec = farmWorkGood(world, ctx, building);
-  return spec !== null && jobAtomics(ctx, jobType).has(spec.plantAtomic);
-}
 
 /**
  * Whether `home` is a farm whose output this settler hauls out to storage: a field producer whose
@@ -23,7 +16,12 @@ export function isFarmCarrierHaulOutRole(
   home: Entity,
   jobType: number,
 ): boolean {
-  return farmWorkGood(world, ctx, home) !== null && !isFieldWorkerOf(world, ctx, home, jobType);
+  const building = world.tryGet(home, Building);
+  return (
+    building !== undefined &&
+    farmedGoodOf(ctx.content, building.buildingType) !== null &&
+    !sowsFieldsAt(ctx.content, jobType, building.buildingType)
+  );
 }
 
 /** Whether a settler is posted to a storage fixture rather than to a producing workplace. */

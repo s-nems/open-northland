@@ -1,0 +1,35 @@
+{
+  "version": 1,
+  "map": "krwawa_rzeka",
+  "basis": {
+    "lang": "eng",
+    "digest": "fbdd0122249d483f8123b62d3583bdaf8588f0a32590b10b6c67ab1b9ee8395a"
+  },
+  "strings": {
+    "30": "Con l'aiuto dei tuoi alleati sconfiggi la squadra nemica e prendi il controllo della regione.",
+    "98": "6 tribù si sono divise in due squadre rivali. Insieme ai tuoi alleati sconfiggi le tribù nemiche e impadronisciti delle terre sull'altra sponda del fiume.",
+    "99": "IL FIUME DI SANGUE",
+    "601": "Vinlanders",
+    "602": "Marklanders",
+    "603": "Hellulanders",
+    "604": "Flatlanders",
+    "605": "Highlanders",
+    "606": "Gloomlanders",
+    "607": "Fantasmi",
+    "608": "Fantasmi",
+    "701": "Vin",
+    "702": "Mark",
+    "703": "Hellu",
+    "704": "Flat",
+    "705": "High",
+    "706": "Gloom",
+    "707": "Fant.",
+    "708": "Fant."
+  },
+  "briefings": {
+    "500": "<font:$local$\\fonts\\fonthead16bld.fnt>\nIL FIUME DI SANGUE\n<font:$local$\\fonts\\font12.fnt>\n~~Proszak & Remik~~\n<font:$local$\\fonts\\font12.fnt>\n\nIn cerca di nuove terre in cui stabilirti, sei giunto in una vasta regione, straordinariamente ricca di risorse e di selvaggina.\nAnche due tribù vicine alla tua hanno scelto questo luogo.\nSembrano ben disposte.\nPurtroppo sull'altra sponda del fiume si sono stabilite altre tribù, decise a prendersi le tue terre.\nCollabora con i tuoi alleati e caccia i nemici una volta per tutte!\n\n\n\nwww.culturesnation.pl\n",
+    "501": "<font:$local$\\fonts\\fonthead16bld.fnt>\nVince la squadra del nord!\n\n <picture:$local$\\graphics\\People_Dead_F.pcx>\n\n\n",
+    "502": "<font:$local$\\fonts\\fonthead16bld.fnt>\nVince la squadra del sud!\n\n <picture:$local$\\graphics\\People_Dead_F.pcx>\n\n\n",
+    "503": "<font:$local$\\fonts\\fonthead16bld.fnt>\nGUERRIERI FANTASMA\n<font:$local$\\fonts\\font12.fnt>\n <picture:$local$\\graphics\\Duchy.pcx>\n\nSconfitta una delle tribù, dall'aldilà giunsero i suoi guerrieri caduti, decisi a vendicare i propri consanguinei.\n"
+  }
+}

@@ -19,10 +19,10 @@ import {
 import type { SceneDefinition } from '../types.js';
 
 /**
- * Catapults never fire stacked: four crewed catapults are set down as two pairs, each pair on one
- * node, with an enemy hut inside the weapon band. Each stacked catapult first drives to a firing spot
- * where its body touches no other, and only then does the battery open fire. Order a few
- * catapults onto one spot to watch them keep apart.
+ * Of catapults that touch only one fires: four crewed catapults are set down as two pairs, each pair on
+ * one node, with an enemy hut inside the weapon band. One of each pair opens fire where it stands, and
+ * the other first drives to a firing spot where its body touches no other. Order a few catapults onto one
+ * spot to watch them keep apart.
  */
 
 const MAP_W = 26;
@@ -35,7 +35,7 @@ const BATTERY: readonly { readonly catapult: [number, number]; readonly commande
   { catapult: [5, 11], commander: [2, 10] },
   { catapult: [5, 11], commander: [2, 12] },
 ];
-/** Eighteen nodes east of the pairs: inside the 8..24 band, so no catapult has to close in. */
+/** Eighteen nodes east of the pairs: inside the weapon band, so no catapult has to close in. */
 const ENEMY_HUT: readonly [string, number, number] = ['home_level_00', 14, 9];
 /** A hut no run of stones brings down, so every catapult is still firing when the run ends. */
 const TOUGH_HUT_HITPOINTS = 10_000_000;

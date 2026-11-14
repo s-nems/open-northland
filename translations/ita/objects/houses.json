@@ -1,0 +1,29 @@
+{
+  "version": 1,
+  "basis": {
+    "lang": "eng",
+    "digest": "f4716eb61d07c5944522a9ed73333c695bc6399ad2d2f24c365124840072a40b"
+  },
+  "names": {
+    "47": "Faro",
+    "48": "Giardini pensili",
+    "49": "Colosso",
+    "50": "Mausoleo",
+    "51": "Tempio di Artemide",
+    "52": "Statua di Zeus",
+    "53": "Piramide",
+    "54": "Ottava meraviglia",
+    "56": "Muro difensivo"
+  },
+  "plurals": {
+    "47": "Fari",
+    "48": "Giardini pensili",
+    "49": "Colossi",
+    "50": "Mausolei",
+    "51": "Templi di Artemide",
+    "52": "Statue di Zeus",
+    "53": "Piramidi",
+    "54": "Ottave meraviglie",
+    "56": "Muri difensivi"
+  }
+}

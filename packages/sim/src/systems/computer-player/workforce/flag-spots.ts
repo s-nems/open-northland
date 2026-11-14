@@ -21,6 +21,7 @@ import {
   type WalkDistances,
   WalkFlood,
   walkSeedNear,
+  walkWithinCap,
 } from '../walk-distance.js';
 
 /** A collector's flag stands 2-3 tiles from its resource (authored) - 4..6 half-cell nodes. */
@@ -59,6 +60,12 @@ const ORIGIN_WALK_BUDGET_NODES = 16384;
 /** The same for a computer seat's own posts, whose aimed walks search a corridor rather than a disc
  *  (authored): a target that corridor cannot reach within it ranks by straight distance instead. */
 const AIMED_WALK_BUDGET_NODES = 4096;
+/** The nodes a walk aimed at a resource past the carriers' flood settles before {@link FlagGround.walksWithin}
+ *  calls it too far (authored): a corridor round a long ridge, not a disc. */
+const AIMED_DETOUR_BUDGET_NODES = 8192;
+/** How many such aimed walks one decision runs (authored): a far bank of rejected trees costs a handful,
+ *  not one each. */
+const AIMED_DETOURS_PER_DECISION = 4;
 /** The nodes the flood from a resource's work cells settles (authored): a disc some thirty nodes wide,
  *  enough to walk round a ridge or a grove to the band on its far side. */
 const RESOURCE_FLOOD_BUDGET_NODES = 2048;
@@ -101,6 +108,9 @@ export interface FlagGround {
   /** The carriers' walk out from `origin`, searched toward the nodes within `reach` of `toward`: one
    *  {@link SeedWalks} per origin for the whole decision, answering as {@link flagGround} was asked. */
   readonly walkFrom: (origin: HalfCellNode, toward: HalfCellNode, reach: number) => WalkDistances;
+  /** Whether the walk from `origin` to `node` costs at most `cap` (tiles); true when `origin` has no
+   *  walkable ground near it or only a pocket behind its building. */
+  readonly walksWithin: (origin: HalfCellNode, node: NodeId, cap: Fixed) => boolean;
   /** The gatherer's walk out from `resource`'s work cells, one lazy flood per resource for the decision. */
   readonly walkOut: (resource: Entity) => WalkDistances;
   /** Whether `node` provably lies across a sealed pocket wall from the carriers' walk out of `origin`. */
@@ -130,8 +140,25 @@ export function flagGround(
     }
     return seed;
   };
+  const originBudget = carrierWalks === 'aimed' ? AIMED_WALK_BUDGET_NODES : ORIGIN_WALK_BUDGET_NODES;
   const fromOrigin = new Map<NodeId, SeedWalks>();
   let unseeded: WalkDistances | null = null;
+  const walkFrom = (origin: HalfCellNode, toward: HalfCellNode, reach: number): WalkDistances => {
+    const seed = seedOf(origin).node;
+    if (seed === null) {
+      unseeded ??= new WalkFlood(terrain, blocked, [], originBudget);
+      return unseeded;
+    }
+    let walks = fromOrigin.get(seed);
+    if (walks === undefined) {
+      walks = new SeedWalks(terrain, blocked, seed, originBudget, carrierWalks, (from, budget) =>
+        held.floodOf(from, budget),
+      );
+      fromOrigin.set(seed, walks);
+    }
+    return walks.toward(toward, reach);
+  };
+  const aimedVerdicts = new Map<string, boolean>();
   const fromResource = new Map<Entity, WalkDistances>();
   return {
     terrain,
@@ -142,25 +169,27 @@ export function flagGround(
       const seed = seedOf(origin);
       return seed.node !== null && !seed.pocketed && regions.unroutable(seed.node, node);
     },
-    walkFrom: (origin, toward, reach) => {
-      const seed = seedOf(origin).node;
-      if (seed === null) {
-        unseeded ??= new WalkFlood(terrain, blocked, [], ORIGIN_WALK_BUDGET_NODES);
-        return unseeded;
+    walkFrom,
+    walksWithin: (origin, node, cap) => {
+      const seed = seedOf(origin);
+      // No ground to walk from, or a pocket behind its building the carriers leave by the door: no measure.
+      if (seed.node === null || seed.pocketed) return true;
+      // The carriers' own held flood answers near nodes; one it has spent its budget short of gets a walk
+      // aimed at it.
+      const flood = held.floodOf(seed.node, ORIGIN_WALK_BUDGET_NODES);
+      if (flood.costWithin(node, cap) !== undefined) return true;
+      // Settled past the cap, or every walk still open already costs more.
+      if (flood.costFloor(node) !== undefined) return false;
+      const key = `${seed.node}:${node}:${cap}`;
+      let verdict = aimedVerdicts.get(key);
+      if (verdict === undefined) {
+        // Past the decision's allowance, a far candidate counts as too far unmeasured.
+        verdict =
+          aimedVerdicts.size < AIMED_DETOURS_PER_DECISION &&
+          walkWithinCap(terrain, blocked, seed.node, node, cap, AIMED_DETOUR_BUDGET_NODES);
+        aimedVerdicts.set(key, verdict);
       }
-      let walks = fromOrigin.get(seed);
-      if (walks === undefined) {
-        walks = new SeedWalks(
-          terrain,
-          blocked,
-          seed,
-          carrierWalks === 'aimed' ? AIMED_WALK_BUDGET_NODES : ORIGIN_WALK_BUDGET_NODES,
-          carrierWalks,
-          (from, budget) => held.floodOf(from, budget),
-        );
-        fromOrigin.set(seed, walks);
-      }
-      return walks.toward(toward, reach);
+      return verdict;
     },
     walkOut: (resource) => {
       let flood = fromResource.get(resource);

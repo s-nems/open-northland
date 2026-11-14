@@ -5,7 +5,6 @@ import {
   hexDistanceBetween,
   nodeOfPosition,
   type Simulation,
-  systems,
 } from '@open-northland/sim';
 import { grassTerrain } from '../../catalog/buildings.js';
 import { JOB_CIVILIST, JOB_SOLDIER, JOB_SOLDIER_BROADSWORD } from '../../catalog/jobs.js';
@@ -20,17 +19,13 @@ import {
 import { goodBySlug } from '../sandbox-queries.js';
 import type { SceneDefinition } from '../types.js';
 
-const { EquipOrder, Equipment, Position, Settler, SettlerProgress } = components;
-
-/** The drill banks nothing in this bucket, the rule `progression/experience.ts` states on it. */
-const TRAINING_TRACK = systems.TRAINING_EXPERIENCE_TYPE;
+const { EquipOrder, Equipment, Position, Settler } = components;
 
 const HEADQUARTERS = { x: 6, y: 12 } as const;
 const BARRACKS = { x: 14, y: 10 } as const;
 /** Clear of both building footprints under the approximate and the real geometries. */
 const START_ROW_Y = 6;
 const RECRUIT_X = 10;
-const VETERAN_X = 12;
 const DRAFTEE_X = 16;
 const BYSTANDER_X = 8;
 /** The armory pile the arming pass fetches from, by the headquarters and away from the barracks, so the
@@ -49,12 +44,10 @@ function build(sim: Simulation): void {
   placeSandboxBuilding(sim, BUILDING_HEADQUARTERS, HEADQUARTERS.x, HEADQUARTERS.y);
   const barracks = placeBuiltSandboxBuilding(sim, BUILDING_BARRACKS, BARRACKS.x, BARRACKS.y);
   const recruit = spawnSettlerDirect(sim, JOB_CIVILIST, RECRUIT_X, START_ROW_Y);
-  const veteran = spawnSettlerDirect(sim, JOB_SOLDIER, VETERAN_X, START_ROW_Y);
   // Spawn order matters: the assistant drafts the lowest-id free colonist, so the bystander comes after.
   spawnSettlerDirect(sim, JOB_CIVILIST, DRAFTEE_X, START_ROW_Y);
   spawnSettlerDirect(sim, JOB_CIVILIST, BYSTANDER_X, START_ROW_Y);
   sim.enqueueSetup({ kind: 'trainSoldier', entity: recruit, house: barracks });
-  sim.enqueueSetup({ kind: 'trainSoldier', entity: veteran, house: barracks });
   // Both swords in store, so the arming pass has to pick the stronger one.
   for (const slug of [SWORD_SHORT, SWORD_LONG, ARMOR_CHAIN])
     sim.enqueueSetup({
@@ -76,12 +69,11 @@ function build(sim: Simulation): void {
 /** Query order is spawn order, so the roles follow the sequence `build` spawns them in. */
 function cast(sim: Simulation): {
   recruit: Entity | undefined;
-  veteran: Entity | undefined;
   draftee: Entity | undefined;
   bystander: Entity | undefined;
 } {
-  const [recruit, veteran, draftee, bystander] = sim.world.query(Settler);
-  return { recruit, veteran, draftee, bystander };
+  const [recruit, draftee, bystander] = sim.world.query(Settler);
+  return { recruit, draftee, bystander };
 }
 
 /** The hex distance, in half-cell nodes, from an entity's position to node `to`. */
@@ -111,26 +103,7 @@ export const barracksScene: SceneDefinition = {
       },
     },
     {
-      label: 'his drill banked no experience stat - the trade flip is its whole product',
-      predicate: (sim) => {
-        const { recruit } = cast(sim);
-        return (
-          recruit !== undefined &&
-          (sim.world.get(recruit, SettlerProgress).experience.get(TRAINING_TRACK) ?? 0) === 0
-        );
-      },
-    },
-    {
-      label: 'the serving soldier sent in after him drills as a no-op, keeping the trade he had',
-      predicate: (sim) => {
-        const { veteran } = cast(sim);
-        if (veteran === undefined) return false;
-        const drilled = sim.world.get(veteran, SettlerProgress).experience.get(TRAINING_TRACK) ?? 0;
-        return sim.world.get(veteran, Settler).jobType === JOB_SOLDIER && drilled === 0;
-      },
-    },
-    {
-      label: 'the colonist who never drilled is still refused the soldier trade',
+      label: 'the colonist who never drilled is refused the soldier trade: only the barracks makes one',
       predicate: (sim) => {
         const { bystander } = cast(sim);
         return (

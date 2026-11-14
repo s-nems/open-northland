@@ -8,6 +8,7 @@ import { type GameObjectNames, HISTORY_BOOK } from '@open-northland/asset-pipeli
 import {
   type BookOverlay,
   isLanguage,
+  isPackLanguage,
   isSourceLanguage,
   type Language,
   type MapOverlay,
@@ -124,7 +125,7 @@ interface ValidOverlays {
   readonly mapEdits: MapOverlayFile[];
   readonly objects: ObjectTableOverlayFile[];
   readonly objectEdits: ObjectTableOverlayFile[];
-  readonly books: { readonly file: string; readonly overlay: BookOverlay }[];
+  readonly books: { readonly file: string; readonly lang: Language; readonly overlay: BookOverlay }[];
   readonly campaigns: { readonly file: string; readonly id: string }[];
   readonly names: { readonly file: string; readonly overlay: PersonalNameOverlay }[];
 }
@@ -249,7 +250,7 @@ async function readLayout(root: string, errors: AuditFinding[]): Promise<ValidOv
               break;
             }
             case 'books':
-              valid.books.push({ file, overlay: await readOverlayFile('books', path) });
+              valid.books.push({ file, lang, overlay: await readOverlayFile('books', path) });
               break;
             case 'campaigns':
               await readOverlayFile('campaigns', path);
@@ -497,6 +498,21 @@ function mapOverlaysByDatKey(maps: readonly MapOverlayFile[]): Map<string, Map<L
   return byKey;
 }
 
+/** The type ids the pack ships in `lang`'s own `table`: none for a language the pack does not carry or a
+ *  table it lacks. */
+async function shippedObjectIds(
+  pack: PackText,
+  lang: Language,
+  table: ObjectOverlayTable,
+): Promise<Set<string>> {
+  if (!isPackLanguage(lang)) return new Set();
+  try {
+    return new Set(Object.keys((await pack.objectNames(lang, table)).names));
+  } catch {
+    return new Set();
+  }
+}
+
 /**
  * Validates every overlay under `root` against its schema and the layout, and with `pack` checks each
  * against the source text it was written for. Only schema and layout violations are errors.
@@ -541,6 +557,15 @@ export async function auditTranslations(root: string, pack?: PackText): Promise<
       const ids = missingKeys(overlay.names, (id) => source.names[Number(id)] !== undefined);
       if (ids !== undefined) warn(file, `type ids the ${overlay.basis.lang} source lacks: ${ids}`);
     }
+    for (const { file, lang, table, overlay } of valid.objects) {
+      const shipped = await shippedObjectIds(pack, lang, table);
+      const redundant = Object.keys(overlay.names).filter((id) => shipped.has(id));
+      if (redundant.length > 0)
+        warn(file, `type ids the pack ships in ${lang}, which win; redundant: ${redundant.join(', ')}`);
+    }
+    for (const { file, lang } of valid.books)
+      if (isPackLanguage(lang) && (await pack.historyBlocks(lang)) !== undefined)
+        warn(file, `the pack ships the ${lang} history book, which wins; the overlay is redundant`);
     for (const { file, overlay } of valid.books) {
       const source = await pack.historyBlocks(overlay.basis.lang);
       if (source === undefined) {

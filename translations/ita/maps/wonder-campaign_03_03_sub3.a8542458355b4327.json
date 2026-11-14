@@ -1,0 +1,35 @@
+{
+  "version": 1,
+  "map": "wonder-campaign_03_03_sub3",
+  "basis": {
+    "lang": "eng",
+    "digest": "f5ea963a109fae910d2b57b3f908fa0ff7a594ddd82c2ffef05954ee58597ef2"
+  },
+  "strings": {
+    "0": "Descrizione breve 0",
+    "1": "Descrizione breve 1",
+    "50": "Giocatore",
+    "51": "Guardiano",
+    "60": "Giocatore",
+    "61": "Guardiano",
+    "71": "Bjarni",
+    "98": "COLOSSO - ORACOLO",
+    "99": "COLOSSO - ORACOLO",
+    "100": "Parla con l'oracolo. Fatti coraggio e avvicinati!",
+    "110": "Lascia l'oracolo..."
+  },
+  "briefings": {
+    "10": "CIRCE\n\nQuando ci trovammo davanti a Circe, la dea si rivolse a noi con voce misteriosa:\n\n\"Helios, il dio del sole, protettore di Rodi, parla per bocca mia.\nAscolta, straniero. Il tuo affanno non mi è ignoto. Demetrios, il miserabile blasfemo, cadrà con tutti i suoi uomini!\nChi scatena la furia degli dèi andrà incontro alla rovina!\n\nIn segno di gratitudine, erigi una statua in mio onore! Che sia possente e splendente, e onori il mio nome fino alla fine dei tempi! \nAdornerà la città di Rodi e ricorderà per sempre al popolo il mio aiuto! \n\nOra risali in superficie e sii testimone del mio potere!\"\n\n\nLascia l'oracolo.",
+    "20": "IL GUARDIANO DELL'ORACOLO\n\nAvremmo dovuto immaginarlo... \nDall'oscurità sorse davanti a noi un enorme demone, a guardia dell'oracolo!\n\nChe gli dèi ci siano propizi!",
+    "100": "<font:$local$\\fonts\\fonthead16bld.fnt>\nMISSIONE FALLITA!\n<font:$local$\\fonts\\font12.fnt>\n<picture:$local$\\graphics\\Hero_Dead_F.pcx>\nEroismo o imprudenza? Alla morte di BJARNI gli dèi piansero... senza questo eroe, l'esito di questa missione ti resterà ignoto!",
+    "200": "<font:$local$\\fonts\\fonthead16bld.fnt>\nMISSIONE FALLITA!\n<font:$local$\\fonts\\font12.fnt>\n<picture:$local$\\graphics\\Hero_Dead_F.pcx>\nBasta un attimo di distrazione per perdere la vita! La tua eroina CYRA è morta per la tua negligenza! Senza questa eroina, l'esito di questa missione ti resterà ignoto! ",
+    "300": "<font:$local$\\fonts\\fonthead16bld.fnt>\nMISSIONE FALLITA!\n<font:$local$\\fonts\\font12.fnt>\n<picture:$local$\\graphics\\Hero_Dead_F.pcx>\nBasta un attimo di distrazione per perdere la vita! Il tuo amico ed eroe HATCHIE è morto per la tua negligenza! Senza questo eroe, l'esito di questa missione ti resterà ignoto! ",
+    "400": "<font:$local$\\fonts\\fonthead16bld.fnt>\nMISSIONE FALLITA!\n<font:$local$\\fonts\\font12.fnt>\n<picture:$local$\\graphics\\Hero_Dead_F.pcx>\nBasta un attimo di distrazione per perdere la vita! Il tuo amico ed eroe SIGURD è morto per la tua negligenza! Senza questo eroe, l'esito di questa missione ti resterà ignoto! ",
+    "500": "<font:$local$\\fonts\\fonthead16bld.fnt>\nMISSIONE FALLITA!\n<font:$local$\\fonts\\font12.fnt>\n<picture:$local$\\graphics\\People_Dead_F.pcx>\nHai attaccato i tuoi migliori amici nonostante gli avvertimenti! \n\nCosì non potrai portare a termine la tua missione!",
+    "600": "<font:$local$\\fonts\\fonthead16bld.fnt>\nMISSIONE FALLITA!\n<font:$local$\\fonts\\font12.fnt>\n<picture:$local$\\graphics\\Hero_Dead_F.pcx>\nIl guardiano dell'oracolo si è dimostrato più forte di te. \n\nOra non saprai mai quale segreto custodisce l'oracolo!",
+    "header": "L'ORACOLO",
+    "00_start": "Un sentiero nelle cripte del tempio scendeva fino al luogo sacro dell'oracolo. Ma ciò che vedemmo laggiù ci gelò il sangue!\n\nL'oracolo non era altri che Circe, figlia del dio del sole Helios e della dea della luna Perseide! \nEra una potente maga, famigerata soprattutto per far perdere la testa agli uomini e trasformarli in animali!\n\nQuale sorte ci attendeva? Eravamo stati ingannati?\n\n\nRaggiungi l'oracolo.",
+    "09_end_header": "",
+    "09_end_text1": "USCITA\n\nBe', era stato più facile del previsto.\n\nIncuriositi, uscimmo all'aperto per vedere in che modo si sarebbe manifestata la furia degli dèi..."
+  }
+}

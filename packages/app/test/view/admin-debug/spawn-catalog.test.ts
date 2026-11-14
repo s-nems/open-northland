@@ -154,15 +154,26 @@ describe('admin spawn command mapping', () => {
     const rows: JobRequirement[] = [
       { requirement: 'need', target: 'job', targetId: 19, amount: 10, experienceTypes: [track.typeId] },
       { requirement: 'need', target: 'job', targetId: 20, amount: 30, experienceTypes: [track.typeId] },
-      { requirement: 'train', target: 'job', targetId: 31, amount: 5, experienceTypes: [RAW_TRACK] },
+      { requirement: 'train', target: 'job', targetId: 19, amount: 5, experienceTypes: [RAW_TRACK] },
     ];
-    const withRows = { ...content, tribes: [{ ...tribe, jobRequirements: rows }] };
+    const OLD_SWORD_BUCKET = 73;
+    const swordRow: JobRequirement = {
+      requirement: 'need',
+      target: 'job',
+      targetId: JOB_SOLDIER_SWORD,
+      amount: 10,
+      experienceTypes: [OLD_SWORD_BUCKET],
+    };
+    const withRows = { ...content, tribes: [{ ...tribe, jobRequirements: [...rows, swordRow] }] };
     const xp = new Map(everyJobExperience(withRows));
     for (const row of rows) {
       expect(
         systems.requirementRepeats(content.jobExperience, xp, row.experienceTypes),
       ).toBeGreaterThanOrEqual(row.amount);
     }
+    // The fighter's row names an old bucket nothing reads; the personal counter starts full instead.
+    expect(xp.has(OLD_SWORD_BUCKET)).toBe(false);
+    expect(xp.get(systems.FIGHT_EXPERIENCE_TYPE.PERSONAL)).toBe(systems.FIGHT_EXPERIENCE_FULL_UNITS);
   });
 
   it('a wood resource resolves to a felled tree node', () => {

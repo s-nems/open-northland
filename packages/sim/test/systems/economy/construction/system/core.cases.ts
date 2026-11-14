@@ -25,6 +25,7 @@ import {
   HOUSE_MAX_HP,
   placeSite,
   STONE,
+  TEMPLE,
   TOOL_IRON,
   tooledBuilderContent,
   VIKING,
@@ -77,6 +78,16 @@ describe('constructionSystem', () => {
     expect(sim.world.get(e, Building).built).toBe(ONE);
     expect(sim.world.get(e, Stockpile).amounts.get(STONE)).toBe(3); // 5 - 2
     expect(sim.world.get(e, Stockpile).amounts.get(WOOD)).toBe(2); // 3 - 1
+  });
+
+  it("keeps a temple's fuel from its bill in its store, as the first its fire burns", () => {
+    const sim = new Simulation({ seed: 1, content: constructionContent() });
+    const e = placeSite(sim, TEMPLE, { [STONE]: 2, [WOOD]: 1 });
+    fullyHammer(sim, e);
+    constructionSystem(sim.world, ctxOf(sim));
+    expect(sim.world.get(e, Building).built).toBe(ONE);
+    expect(sim.world.get(e, Stockpile).amounts.get(STONE)).toBe(0);
+    expect(sim.world.get(e, Stockpile).amounts.get(WOOD)).toBe(1);
   });
 
   it('ramps the site Health up with built, then fills it at completion', () => {

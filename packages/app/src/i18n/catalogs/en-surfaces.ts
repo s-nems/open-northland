@@ -76,6 +76,7 @@ export const enSurfaces = {
         eng: 'English',
         ger: 'German',
         rus: 'Russian',
+        ita: 'Italian',
         chs: 'Chinese (Simplified)',
         cht: 'Chinese (Traditional)',
       },
@@ -314,6 +315,9 @@ export const enSurfaces = {
       bonesFade: 'Fading bones',
       bonesFadeTip:
         'The bones of the fallen lie whole for a while, then slowly fade, gone after five minutes of game time. Off leaves them on the ground for good.',
+      equipmentEffects: 'Equipment effects',
+      equipmentEffectsTip:
+        "Worn equipment shows on a person: an arc of light in the amulet's colour runs round the feet of anyone carrying an amulet, one arc per kind, and the Wind Amulet trails gusts of wind behind its carrier on the move.",
       weather: 'Weather',
       weatherTip:
         'Rain, snow and sandstorms where the map calls for them: falling drops and flakes, mist and storm light, wet and snowy ground, splashes, wind and thunder. Weather never changes the game itself. Off shows clear skies and silences the weather.',
@@ -369,6 +373,7 @@ export const enSurfaces = {
         eng: 'English',
         ger: 'Deutsch',
         rus: 'Русский',
+        ita: 'Italiano',
         chs: '简体中文',
         cht: '繁體中文',
       },
@@ -426,11 +431,15 @@ export const enSurfaces = {
         defenceOff: 'Defence mode off in every building',
         buildingAlarm: 'Start or stop defence mode in the selected building',
         nextCivilian: 'Next civilian',
+        addCivilians: 'Add every free civilian to the selection',
         nextScout: 'Next scout',
+        addScouts: 'Add every scout to the selection',
         nextSingleWoman: 'Next unmarried homeless woman',
+        addSingleWomen: 'Add every unmarried homeless woman to the selection',
         selectSoldiers: 'Select all soldiers',
         addSoldiers: 'Add all soldiers to the selection',
         selectHeroes: 'Select all heroes',
+        addHeroes: 'Add all heroes to the selection',
         keepHeroes: 'Keep only heroes in the selection',
         keepSoldiers: 'Keep only soldiers in the selection',
         numpadPan: 'Pan map (numpad, diagonals too)',
@@ -633,7 +642,7 @@ export const enSurfaces = {
         "You can build over any signposts, your own or another player's. They move aside and keep their links.",
       scoutExplore: 'With the “Explore” order a scout explores the map by itself.',
       porterFlag:
-        'Warehouse and workshop carriers can get a pickup flag and gather goods around it, and posted extractors, hunters and fishermen a flag to work at. Set it in the "{area}" row of the settler panel.',
+        'Warehouse and workshop carriers can get a pickup flag and gather goods around it, and posted extractors, hunters, fishermen, farmers and herbalists a flag to work at. Set it in the "{area}" row of the settler panel.',
       nationSwitch:
         "With settlers of another tribe, the build window ({key}) can switch to that tribe's buildings.",
     },

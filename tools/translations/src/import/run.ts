@@ -1,13 +1,7 @@
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { HISTORY_BOOK } from '@open-northland/asset-pipeline/sources';
-import {
-  BookOverlay,
-  ObjectTableOverlay,
-  OVERLAY_LANGUAGES,
-  OVERLAY_VERSION,
-  type OverlayLanguage,
-} from '@open-northland/data';
+import { BookOverlay, ObjectTableOverlay, OVERLAY_VERSION } from '@open-northland/data';
 import {
   type BookBlocks,
   bookSourceDigest,
@@ -18,7 +12,12 @@ import {
   readPackText,
 } from '../pack-text.js';
 import { readLocalizedBook, translateBook } from './books.js';
-import { BASIS_LANGUAGE, LOCALIZATION_SOURCES } from './columns.js';
+import {
+  BASIS_LANGUAGE,
+  LOCALIZATION_LANGUAGES,
+  LOCALIZATION_SOURCES,
+  type LocalizationLanguage,
+} from './columns.js';
 import { type GermanCorrections, readGermanCorrections } from './corrected-keys.js';
 import { formatCsv, glossaryFromLanguageUnion } from './glossary.js';
 import { normalizeWhitespace } from './map-xml.js';
@@ -57,14 +56,14 @@ export interface TableResult {
   /** Written type ids whose German our corrections change, so the translation follows the original. */
   readonly corrected: readonly string[];
   readonly languages: Readonly<
-    Partial<Record<OverlayLanguage, { names: number; plurals: number; unknown: number }>>
+    Partial<Record<LocalizationLanguage, { names: number; plurals: number; unknown: number }>>
   >;
 }
 
 export interface BookResult {
   readonly alignment: Alignment;
   readonly languages: Readonly<
-    Partial<Record<OverlayLanguage, { blocks: number; unknown: readonly string[] }>>
+    Partial<Record<LocalizationLanguage, { blocks: number; unknown: readonly string[] }>>
   >;
 }
 
@@ -89,9 +88,11 @@ async function importTable(
   const theirGerman = await readLocalizedObjectTable(textRoot, BASIS_LANGUAGE, table);
   const drifted = theirGerman === undefined ? [] : driftedIds(basis, theirGerman);
   const digest = objectTableSourceDigest(basis);
-  const languages: Partial<Record<OverlayLanguage, { names: number; plurals: number; unknown: number }>> = {};
+  const languages: Partial<
+    Record<LocalizationLanguage, { names: number; plurals: number; unknown: number }>
+  > = {};
   const corrected = new Set<string>();
-  for (const lang of OVERLAY_LANGUAGES) {
+  for (const lang of LOCALIZATION_LANGUAGES) {
     const translated = await readLocalizedObjectTable(textRoot, LOCALIZATION_SOURCES[lang].textFolder, table);
     if (translated === undefined) continue;
     const { names, plurals, unknown } = translateObjectNames(translated, basis, drifted);
@@ -134,8 +135,8 @@ async function importBook(
   if (basis === undefined) return undefined;
   const alignment = bookAlignment(basis, await readLocalizedBook(textRoot, BASIS_LANGUAGE, HISTORY_BOOK));
   const digest = bookSourceDigest(basis);
-  const languages: Partial<Record<OverlayLanguage, { blocks: number; unknown: readonly string[] }>> = {};
-  for (const lang of OVERLAY_LANGUAGES) {
+  const languages: Partial<Record<LocalizationLanguage, { blocks: number; unknown: readonly string[] }>> = {};
+  for (const lang of LOCALIZATION_LANGUAGES) {
     const translated = await readLocalizedBook(textRoot, LOCALIZATION_SOURCES[lang].textFolder, HISTORY_BOOK);
     if (translated === undefined) continue;
     const { blocks, unknown } = translateBook(translated, basis);

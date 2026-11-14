@@ -1,0 +1,8 @@
+{
+  "reason": "Nagroda za misję ekipy budowlanej Remika odblokowuje graczowi mur obronny, który mod zapisał numerem 22. Ten numer to znowu garncarnia 3, więc nagroda dawałaby ją za darmo, z pominięciem wymaganej wiedzy, a muru by nie odblokowała. Mury mają teraz numer 56.",
+  "file": "maps/community/cn_-_2_dni/mission.inc",
+  "sha256": "917ba08fc5bb9081837a314865539425b0bbe5fdfa079bf40095f6304ab35ab6",
+  "lines": [
+    { "from": "result \"EnableHouse\" 0 \"viking\" 22", "to": "result \"EnableHouse\" 0 \"viking\" 56" }
+  ]
+}

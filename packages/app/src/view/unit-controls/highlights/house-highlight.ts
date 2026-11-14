@@ -1,5 +1,6 @@
+import type { BuildingType, GoodType } from '@open-northland/data';
 import type { TargetMark } from '@open-northland/render';
-import { entitiesWith, entityById, type WorldSnapshot } from '@open-northland/sim';
+import { entitiesWith, entityById, homeFamilyCapacityView, type WorldSnapshot } from '@open-northland/sim';
 import {
   buildingTypeOf,
   homeFamiliesOf,
@@ -12,11 +13,9 @@ import {
 } from '../../../game/snapshot/index.js';
 import { markOf } from './target-mark.js';
 
-/** `homeSize` (the original `logichomesize`, 1..5 by level) counts FAMILIES, not settlers. */
-export interface HouseInfo {
-  readonly kind?: string | undefined;
-  readonly homeSize?: number | undefined;
-}
+/** A house type as the verdict reads it: `homeSize` (the original `logichomesize`, 1..5 by level) counts
+ *  FAMILIES, not settlers, and furniture adds `furnishedFamilies` more. */
+export type HouseInfo = Pick<BuildingType, 'kind' | 'homeSize' | 'furnishedFamilies'>;
 
 /**
  * The selected members a group home order moves, counted by owner, as the sim's
@@ -57,6 +56,7 @@ function houseVerdict(
   house: SnapshotEntity,
   movers: Movers,
   housesByType: ReadonlyMap<number, HouseInfo>,
+  goods: readonly GoodType[],
 ): { readonly candidate: boolean; readonly ok: boolean } {
   if (!isBuilding(house)) return { candidate: false, ok: false };
   const typeId = buildingTypeOf(house);
@@ -66,13 +66,20 @@ function houseVerdict(
   }
   const key = ownerKeyOf(house);
   const moving = (movers.byKey.get(key) ?? 0) - (movers.livingAt.get(house.id)?.get(key) ?? 0);
-  return { candidate: true, ok: moving > 0 && homeHasFamilyRoom(snapshot, house.id, info) };
+  return { candidate: true, ok: moving > 0 && homeHasFamilyRoom(snapshot, house.id, info, goods) };
 }
 
 /** Whether a family from outside `house` fits beside the households living there: the sim's
- *  `moveFamilyInto` caps families, not people. */
-export function homeHasFamilyRoom(snapshot: WorldSnapshot, house: number, info: HouseInfo): boolean {
-  return (homeFamiliesOf(snapshot, house)?.length ?? 0) < (info.homeSize ?? 0);
+ *  `moveFamilyInto` caps families, not people, at the home's capacity with the furniture of `goods`. */
+export function homeHasFamilyRoom(
+  snapshot: WorldSnapshot,
+  house: number,
+  info: HouseInfo,
+  goods: readonly GoodType[],
+): boolean {
+  return (
+    (homeFamiliesOf(snapshot, house)?.length ?? 0) < homeFamilyCapacityView(snapshot, house, info, goods)
+  );
 }
 
 /**
@@ -84,12 +91,13 @@ export function computeHouseHighlight(
   snapshot: WorldSnapshot,
   settlerIds: readonly number[],
   housesByType: ReadonlyMap<number, HouseInfo>,
+  goods: readonly GoodType[],
 ): TargetMark[] {
   const movers = moversOf(snapshot, settlerIds);
   if (movers === null) return [];
   const items: TargetMark[] = [];
   for (const e of entitiesWith(snapshot, 'Building')) {
-    const { candidate, ok } = houseVerdict(snapshot, e, movers, housesByType);
+    const { candidate, ok } = houseVerdict(snapshot, e, movers, housesByType, goods);
     if (candidate) items.push(markOf(e.id, ok));
   }
   return items;
@@ -102,9 +110,10 @@ export function houseAssignableAt(
   buildingId: number,
   settlerIds: readonly number[],
   housesByType: ReadonlyMap<number, HouseInfo>,
+  goods: readonly GoodType[],
 ): boolean {
   const house = entityById(snapshot, buildingId);
   const movers = moversOf(snapshot, settlerIds);
   if (house === undefined || movers === null) return false;
-  return houseVerdict(snapshot, house, movers, housesByType).ok;
+  return houseVerdict(snapshot, house, movers, housesByType, goods).ok;
 }

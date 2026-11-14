@@ -8,12 +8,60 @@
     "reason": "Święty olej to olej do lamp i obrzędów, a nie ropa naftowa."
   },
   {
-    "lang": "rus",
+    "lang": "pol",
     "table": "houses",
     "id": 22,
-    "from": "Гончарня 3",
+    "from": "Mur obronny",
+    "to": "Warszt. garncarski 3",
+    "reason": "Budynek 22 to znów garncarnia 3 (decyzja właściciela: garncarnia ma trzy poziomy), a mur, którym zrobił go mod, ma teraz własny typ 56."
+  },
+  {
+    "lang": "eng",
+    "table": "houses",
+    "id": 22,
+    "from": "Defence wall",
+    "to": "Pottery 3",
+    "reason": "Budynek 22 to znów garncarnia 3 (decyzja właściciela: garncarnia ma trzy poziomy), a mur, którym zrobił go mod, ma teraz własny typ 56."
+  },
+  {
+    "lang": "ger",
+    "table": "houses",
+    "id": 22,
+    "from": "Mauer",
+    "to": "Töpferei 3",
+    "reason": "Budynek 22 to znów garncarnia 3 (decyzja właściciela: garncarnia ma trzy poziomy), a mur, którym zrobił go mod, ma teraz własny typ 56."
+  },
+  {
+    "lang": "pol",
+    "table": "houses",
+    "id": 56,
+    "from": null,
+    "to": "Mur obronny",
+    "reason": "Mur obronny ma własny typ 56, którego tablica nie zna; ta sama nazwa, którą mod dał typowi 22."
+  },
+  {
+    "lang": "eng",
+    "table": "houses",
+    "id": 56,
+    "from": null,
+    "to": "Defence wall",
+    "reason": "Mur obronny ma własny typ 56, którego tablica nie zna; ta sama nazwa, którą mod dał typowi 22."
+  },
+  {
+    "lang": "ger",
+    "table": "houses",
+    "id": 56,
+    "from": null,
+    "to": "Mauer",
+    "reason": "Mur obronny ma własny typ 56, którego tablica nie zna; ta sama nazwa, którą mod dał typowi 22."
+  },
+  {
+    "lang": "rus",
+    "table": "houses",
+    "id": 56,
+    "from": null,
     "to": "Стена",
-    "reason": "Budynek 22 to mur obronny (pol \"Mur obronny\", eng \"Defence wall\", ger \"Mauer\"), a nie garncarnia."
+    "reason": "Mur obronny ma własny typ 56, którego tablica nie zna; ta sama nazwa, którą mod dał typowi 22."
   },
   {
     "lang": "rus",
@@ -1443,129 +1491,129 @@
     "lang": "pol",
     "table": "goodsHelp",
     "id": 44,
-    "from": "złota",
-    "to": "monet",
-    "reason": "Receptury mikstur biorą monety, nie złoto."
+    "from": "potrzebuje złota na sekretne i rzadkie składniki",
+    "to": "zużywa na każdą miksturę jedno naczynie",
+    "reason": "Każda mikstura bierze jedno naczynie, nie złoto ani monety (decyzja właściciela)."
   },
   {
     "lang": "eng",
     "table": "goodsHelp",
     "id": 44,
-    "from": "gold",
-    "to": "coins",
-    "reason": "Receptury mikstur biorą monety, nie złoto."
+    "from": "needs gold for the secret and rare ingredients",
+    "to": "pours each potion into a piece of crockery",
+    "reason": "Każda mikstura bierze jedno naczynie, nie złoto ani monety (decyzja właściciela)."
   },
   {
     "lang": "ger",
     "table": "goodsHelp",
     "id": 44,
-    "from": "Gold.",
-    "to": "Münzen.",
-    "reason": "Receptury mikstur biorą monety, nie złoto."
+    "from": "Für die geheimen und höchst seltenen Zutaten benötigt der Druide zusätzlich Gold.",
+    "to": "Für jeden Trank braucht der Druide ein Stück Geschirr.",
+    "reason": "Każda mikstura bierze jedno naczynie, nie złoto ani monety (decyzja właściciela)."
   },
   {
     "lang": "rus",
     "table": "goodsHelp",
     "id": 44,
-    "from": "нужно золото",
-    "to": "нужны монеты",
-    "reason": "Receptury mikstur biorą monety, nie złoto."
+    "from": "нужно золото для покупки редких и секретных составляющих",
+    "to": "на каждое зелье нужна одна штука посуды",
+    "reason": "Każda mikstura bierze jedno naczynie, nie złoto ani monety (decyzja właściciela)."
   },
   {
     "lang": "pol",
     "table": "goodsHelp",
     "id": 45,
-    "from": "złota",
-    "to": "monet",
-    "reason": "Receptury mikstur biorą monety, nie złoto."
+    "from": "potrzebuje złota na sekretne i rzadkie składniki",
+    "to": "zużywa na każdą miksturę jedno naczynie",
+    "reason": "Każda mikstura bierze jedno naczynie, nie złoto ani monety (decyzja właściciela)."
   },
   {
     "lang": "eng",
     "table": "goodsHelp",
     "id": 45,
-    "from": "gold",
-    "to": "coins",
-    "reason": "Receptury mikstur biorą monety, nie złoto."
+    "from": "needs gold for the secret and rare ingredients",
+    "to": "pours each potion into a piece of crockery",
+    "reason": "Każda mikstura bierze jedno naczynie, nie złoto ani monety (decyzja właściciela)."
   },
   {
     "lang": "ger",
     "table": "goodsHelp",
     "id": 45,
-    "from": "Gold.",
-    "to": "Münzen.",
-    "reason": "Receptury mikstur biorą monety, nie złoto."
+    "from": "Für die geheimen und höchst seltenen Zutaten benötigt der Druide zusätzlich Gold.",
+    "to": "Für jeden Trank braucht der Druide ein Stück Geschirr.",
+    "reason": "Każda mikstura bierze jedno naczynie, nie złoto ani monety (decyzja właściciela)."
   },
   {
     "lang": "rus",
     "table": "goodsHelp",
     "id": 45,
-    "from": "нужно золото",
-    "to": "нужны монеты",
-    "reason": "Receptury mikstur biorą monety, nie złoto."
+    "from": "нужно золото для покупки редких и секретных составляющих",
+    "to": "на каждое зелье нужна одна штука посуды",
+    "reason": "Każda mikstura bierze jedno naczynie, nie złoto ani monety (decyzja właściciela)."
   },
   {
     "lang": "pol",
     "table": "goodsHelp",
     "id": 46,
-    "from": "złota",
-    "to": "monet",
-    "reason": "Receptury mikstur biorą monety, nie złoto."
+    "from": "potrzebuje złota na sekretne i rzadkie składniki",
+    "to": "zużywa na każdą miksturę jedno naczynie",
+    "reason": "Każda mikstura bierze jedno naczynie, nie złoto ani monety (decyzja właściciela)."
   },
   {
     "lang": "eng",
     "table": "goodsHelp",
     "id": 46,
-    "from": "gold",
-    "to": "coins",
-    "reason": "Receptury mikstur biorą monety, nie złoto."
+    "from": "needs gold for the secret and rare ingredients",
+    "to": "pours each potion into a piece of crockery",
+    "reason": "Każda mikstura bierze jedno naczynie, nie złoto ani monety (decyzja właściciela)."
   },
   {
     "lang": "ger",
     "table": "goodsHelp",
     "id": 46,
-    "from": "Gold.",
-    "to": "Münzen.",
-    "reason": "Receptury mikstur biorą monety, nie złoto."
+    "from": "Für die geheimen und höchst seltenen Zutaten benötigt der Druide zusätzlich Gold.",
+    "to": "Für jeden Trank braucht der Druide ein Stück Geschirr.",
+    "reason": "Każda mikstura bierze jedno naczynie, nie złoto ani monety (decyzja właściciela)."
   },
   {
     "lang": "rus",
     "table": "goodsHelp",
     "id": 46,
-    "from": "нужно золото",
-    "to": "нужны монеты",
-    "reason": "Receptury mikstur biorą monety, nie złoto."
+    "from": "нужно золото для покупки редких и секретных составляющих",
+    "to": "на каждое зелье нужна одна штука посуды",
+    "reason": "Każda mikstura bierze jedno naczynie, nie złoto ani monety (decyzja właściciela)."
   },
   {
     "lang": "pol",
     "table": "goodsHelp",
     "id": 47,
-    "from": "złota",
-    "to": "monet",
-    "reason": "Receptury mikstur biorą monety, nie złoto."
+    "from": "potrzebuje złota na sekretne i rzadkie składniki",
+    "to": "zużywa na każdą miksturę jedno naczynie",
+    "reason": "Każda mikstura bierze jedno naczynie, nie złoto ani monety (decyzja właściciela)."
   },
   {
     "lang": "eng",
     "table": "goodsHelp",
     "id": 47,
-    "from": "gold",
-    "to": "coins",
-    "reason": "Receptury mikstur biorą monety, nie złoto."
+    "from": "needs gold for the secret and rare ingredients",
+    "to": "pours each potion into a piece of crockery",
+    "reason": "Każda mikstura bierze jedno naczynie, nie złoto ani monety (decyzja właściciela)."
   },
   {
     "lang": "ger",
     "table": "goodsHelp",
     "id": 47,
-    "from": "Gold.",
-    "to": "Münzen.",
-    "reason": "Receptury mikstur biorą monety, nie złoto."
+    "from": "Für die geheimen und höchst seltenen Zutaten benötigt der Druide zusätzlich Gold.",
+    "to": "Für jeden Trank braucht der Druide ein Stück Geschirr.",
+    "reason": "Każda mikstura bierze jedno naczynie, nie złoto ani monety (decyzja właściciela)."
   },
   {
     "lang": "rus",
     "table": "goodsHelp",
     "id": 47,
-    "from": "нужно золото",
-    "to": "нужны монеты",
-    "reason": "Receptury mikstur biorą monety, nie złoto."
+    "from": "нужно золото для покупки редких и секретных составляющих",
+    "to": "на каждое зелье нужна одна штука посуды",
+    "reason": "Każda mikstura bierze jedno naczynie, nie złoto ani monety (decyzja właściciela)."
   },
   {
     "lang": "pol",
@@ -1573,15 +1621,15 @@
     "id": 48,
     "from": "męskiej, poza bohaterami, ",
     "to": "męskiej ",
-    "reason": "Bohater może nosić w torbie miksturę leczniczą. Receptury mikstur biorą monety, nie złoto."
+    "reason": "Bohater może nosić w torbie miksturę leczniczą. Każda mikstura bierze jedno naczynie, nie złoto ani monety (decyzja właściciela)."
   },
   {
     "lang": "pol",
     "table": "goodsHelp",
     "id": 48,
-    "from": "złota",
-    "to": "monet",
-    "reason": "Bohater może nosić w torbie miksturę leczniczą. Receptury mikstur biorą monety, nie złoto."
+    "from": "potrzebuje złota na sekretne i rzadkie składniki",
+    "to": "zużywa na każdą miksturę jedno naczynie",
+    "reason": "Bohater może nosić w torbie miksturę leczniczą. Każda mikstura bierze jedno naczynie, nie złoto ani monety (decyzja właściciela)."
   },
   {
     "lang": "eng",
@@ -1589,15 +1637,15 @@
     "id": 48,
     "from": "apart from the heroes ",
     "to": "",
-    "reason": "Bohater może nosić w torbie miksturę leczniczą. Receptury mikstur biorą monety, nie złoto."
+    "reason": "Bohater może nosić w torbie miksturę leczniczą. Każda mikstura bierze jedno naczynie, nie złoto ani monety (decyzja właściciela)."
   },
   {
     "lang": "eng",
     "table": "goodsHelp",
     "id": 48,
-    "from": "gold",
-    "to": "coins",
-    "reason": "Bohater może nosić w torbie miksturę leczniczą. Receptury mikstur biorą monety, nie złoto."
+    "from": "needs gold for the secret and rare ingredients",
+    "to": "pours each potion into a piece of crockery",
+    "reason": "Bohater może nosić w torbie miksturę leczniczą. Każda mikstura bierze jedno naczynie, nie złoto ani monety (decyzja właściciela)."
   },
   {
     "lang": "ger",
@@ -1605,23 +1653,23 @@
     "id": 48,
     "from": "außer den Helden ",
     "to": "",
-    "reason": "Bohater może nosić w torbie miksturę leczniczą. Receptury mikstur biorą monety, nie złoto."
+    "reason": "Bohater może nosić w torbie miksturę leczniczą. Każda mikstura bierze jedno naczynie, nie złoto ani monety (decyzja właściciela)."
   },
   {
     "lang": "ger",
     "table": "goodsHelp",
     "id": 48,
-    "from": "Gold.",
-    "to": "Münzen.",
-    "reason": "Bohater może nosić w torbie miksturę leczniczą. Receptury mikstur biorą monety, nie złoto."
+    "from": "Für die geheimen und höchst seltenen Zutaten benötigt der Druide zusätzlich Gold.",
+    "to": "Für jeden Trank braucht der Druide ein Stück Geschirr.",
+    "reason": "Bohater może nosić w torbie miksturę leczniczą. Każda mikstura bierze jedno naczynie, nie złoto ani monety (decyzja właściciela)."
   },
   {
     "lang": "rus",
     "table": "goodsHelp",
     "id": 48,
-    "from": "нужно золото",
-    "to": "нужны монеты",
-    "reason": "Receptury mikstur biorą monety, nie złoto."
+    "from": "нужно золото для покупки редких и секретных составляющих",
+    "to": "на каждое зелье нужна одна штука посуды",
+    "reason": "Każda mikstura bierze jedno naczynie, nie złoto ani monety (decyzja właściciela)."
   },
   {
     "lang": "pol",
@@ -1629,15 +1677,15 @@
     "id": 49,
     "from": "męskiej, poza bohaterami, ",
     "to": "męskiej ",
-    "reason": "Bohater może nosić w torbie miksturę leczniczą. Receptury mikstur biorą monety, nie złoto."
+    "reason": "Bohater może nosić w torbie miksturę leczniczą. Każda mikstura bierze jedno naczynie, nie złoto ani monety (decyzja właściciela)."
   },
   {
     "lang": "pol",
     "table": "goodsHelp",
     "id": 49,
-    "from": "złota",
-    "to": "monet",
-    "reason": "Bohater może nosić w torbie miksturę leczniczą. Receptury mikstur biorą monety, nie złoto."
+    "from": "potrzebuje złota na sekretne i rzadkie składniki",
+    "to": "zużywa na każdą miksturę jedno naczynie",
+    "reason": "Bohater może nosić w torbie miksturę leczniczą. Każda mikstura bierze jedno naczynie, nie złoto ani monety (decyzja właściciela)."
   },
   {
     "lang": "eng",
@@ -1645,15 +1693,15 @@
     "id": 49,
     "from": "apart from the heroes ",
     "to": "",
-    "reason": "Bohater może nosić w torbie miksturę leczniczą. Receptury mikstur biorą monety, nie złoto."
+    "reason": "Bohater może nosić w torbie miksturę leczniczą. Każda mikstura bierze jedno naczynie, nie złoto ani monety (decyzja właściciela)."
   },
   {
     "lang": "eng",
     "table": "goodsHelp",
     "id": 49,
-    "from": "gold",
-    "to": "coins",
-    "reason": "Bohater może nosić w torbie miksturę leczniczą. Receptury mikstur biorą monety, nie złoto."
+    "from": "needs gold for the secret and rare ingredients",
+    "to": "pours each potion into a piece of crockery",
+    "reason": "Bohater może nosić w torbie miksturę leczniczą. Każda mikstura bierze jedno naczynie, nie złoto ani monety (decyzja właściciela)."
   },
   {
     "lang": "ger",
@@ -1661,23 +1709,23 @@
     "id": 49,
     "from": "außer den Helden ",
     "to": "",
-    "reason": "Bohater może nosić w torbie miksturę leczniczą. Receptury mikstur biorą monety, nie złoto."
+    "reason": "Bohater może nosić w torbie miksturę leczniczą. Każda mikstura bierze jedno naczynie, nie złoto ani monety (decyzja właściciela)."
   },
   {
     "lang": "ger",
     "table": "goodsHelp",
     "id": 49,
-    "from": "Gold.",
-    "to": "Münzen.",
-    "reason": "Bohater może nosić w torbie miksturę leczniczą. Receptury mikstur biorą monety, nie złoto."
+    "from": "Für die geheimen und höchst seltenen Zutaten benötigt der Druide zusätzlich Gold.",
+    "to": "Für jeden Trank braucht der Druide ein Stück Geschirr.",
+    "reason": "Bohater może nosić w torbie miksturę leczniczą. Każda mikstura bierze jedno naczynie, nie złoto ani monety (decyzja właściciela)."
   },
   {
     "lang": "rus",
     "table": "goodsHelp",
     "id": 49,
-    "from": "нужно золото",
-    "to": "нужны монеты",
-    "reason": "Receptury mikstur biorą monety, nie złoto."
+    "from": "нужно золото для покупки редких и секретных составляющих",
+    "to": "на каждое зелье нужна одна штука посуды",
+    "reason": "Każda mikstura bierze jedno naczynie, nie złoto ani monety (decyzja właściciela)."
   },
   {
     "lang": "pol",
@@ -1898,6 +1946,38 @@
   {
     "lang": "pol",
     "table": "goodsHelp",
+    "id": 52,
+    "from": "o 50 procent",
+    "to": "o 40 procent",
+    "reason": "Amulet siły wzmacnia cios o 40%, nie o 50% (osłabiony decyzją właściciela)."
+  },
+  {
+    "lang": "eng",
+    "table": "goodsHelp",
+    "id": 52,
+    "from": "by 50 percent",
+    "to": "by 40 percent",
+    "reason": "Amulet siły wzmacnia cios o 40%, nie o 50% (osłabiony decyzją właściciela)."
+  },
+  {
+    "lang": "ger",
+    "table": "goodsHelp",
+    "id": 52,
+    "from": "um 50 Prozent",
+    "to": "um 40 Prozent",
+    "reason": "Amulet siły wzmacnia cios o 40%, nie o 50% (osłabiony decyzją właściciela)."
+  },
+  {
+    "lang": "rus",
+    "table": "goodsHelp",
+    "id": 52,
+    "from": "на 50 процентов",
+    "to": "на 40 процентов",
+    "reason": "Amulet siły wzmacnia cios o 40%, nie o 50% (osłabiony decyzją właściciela)."
+  },
+  {
+    "lang": "pol",
+    "table": "goodsHelp",
     "id": 53,
     "from": "Nie może być wytworzony,",
     "to": "Może być wytworzony w mennicy,",
@@ -1986,6 +2066,14 @@
   {
     "lang": "pol",
     "table": "goodsHelp",
+    "id": 53,
+    "from": "o 50 procent",
+    "to": "o 40 procent",
+    "reason": "Amulet obrony osłabia cios o 40%, nie o połowę (osłabiony decyzją właściciela)."
+  },
+  {
+    "lang": "pol",
+    "table": "goodsHelp",
     "id": 54,
     "from": "Nie może być wytworzony,",
     "to": "Może być wytworzony w mennicy,",
@@ -2006,6 +2094,22 @@
     "from": "kobietami i bohaterami, ",
     "to": "kobietami, ",
     "reason": "Bohater może nosić amulety siły, obrony, precyzji i wiatru: działają bez potrzeb. Mennica wytwarza wszystkie sześć amuletów."
+  },
+  {
+    "lang": "pol",
+    "table": "goodsHelp",
+    "id": 54,
+    "from": "20 procentową szansę podwojenia siły",
+    "to": "35 procentową szansę zwiększenia o połowę siły",
+    "reason": "Amulet precyzji: 35% szansy na cios o połowę mocniejszy, który może ogłuszyć trafionego."
+  },
+  {
+    "lang": "pol",
+    "table": "goodsHelp",
+    "id": 54,
+    "from": "wrogów.",
+    "to": "wrogów. Taki cios może też ogłuszyć trafionego.",
+    "reason": "Amulet precyzji: 35% szansy na cios o połowę mocniejszy, który może ogłuszyć trafionego."
   },
   {
     "lang": "eng",
@@ -2040,6 +2144,22 @@
     "reason": "Bohater może nosić amulety siły, obrony, precyzji i wiatru: działają bez potrzeb. Mennica wytwarza wszystkie sześć amuletów."
   },
   {
+    "lang": "eng",
+    "table": "goodsHelp",
+    "id": 54,
+    "from": "20 percent chance of doubling the strength",
+    "to": "35 percent chance of raising the strength by half",
+    "reason": "Amulet precyzji: 35% szansy na cios o połowę mocniejszy, który może ogłuszyć trafionego."
+  },
+  {
+    "lang": "eng",
+    "table": "goodsHelp",
+    "id": 54,
+    "from": "enemies.",
+    "to": "enemies. Such a blow can also stun its victim.",
+    "reason": "Amulet precyzji: 35% szansy na cios o połowę mocniejszy, który może ogłuszyć trafionego."
+  },
+  {
     "lang": "ger",
     "table": "goodsHelp",
     "id": 54,
@@ -2064,12 +2184,44 @@
     "reason": "Bohater może nosić amulety siły, obrony, precyzji i wiatru: działają bez potrzeb. Mennica wytwarza wszystkie sześć amuletów."
   },
   {
+    "lang": "ger",
+    "table": "goodsHelp",
+    "id": 54,
+    "from": "verdoppelt mit einer Wahrscheinlichkeit von 20 Prozent",
+    "to": "erhöht mit einer Wahrscheinlichkeit von 35 Prozent um die Hälfte",
+    "reason": "Amulet precyzji: 35% szansy na cios o połowę mocniejszy, który może ogłuszyć trafionego."
+  },
+  {
+    "lang": "ger",
+    "table": "goodsHelp",
+    "id": 54,
+    "from": "Feinde.",
+    "to": "Feinde. Ein solcher Treffer kann das Opfer auch betäuben.",
+    "reason": "Amulet precyzji: 35% szansy na cios o połowę mocniejszy, który może ogłuszyć trafionego."
+  },
+  {
     "lang": "rus",
     "table": "goodsHelp",
     "id": 54,
     "from": "нельзя создать, но его можно",
     "to": "можно создать на монетном дворе, а также",
     "reason": "Mennica wytwarza wszystkie sześć amuletów."
+  },
+  {
+    "lang": "rus",
+    "table": "goodsHelp",
+    "id": 54,
+    "from": "20 процентный шанс удвоения силы удара",
+    "to": "35 процентный шанс увеличения силы удара в полтора раза",
+    "reason": "Amulet precyzji: 35% szansy na cios o połowę mocniejszy, który może ogłuszyć trafionego."
+  },
+  {
+    "lang": "rus",
+    "table": "goodsHelp",
+    "id": 54,
+    "from": "атаки.",
+    "to": "атаки. Такой удар может ещё и оглушить жертву.",
+    "reason": "Amulet precyzji: 35% szansy na cios o połowę mocniejszy, który może ogłuszyć trafionego."
   },
   {
     "lang": "pol",
@@ -2226,58 +2378,58 @@
   {
     "lang": "pol",
     "table": "housesHelp",
-    "id": 22,
-    "from": "W warsztacie garncarskim 3, twój wykwalifikowany rzemieślnik używa gliny do wytwarzania naczyń. Naczynia pomagają kobietom w podwojeniu ilości żywności w domu.",
+    "id": 56,
+    "from": null,
     "to": "Mur obronny jest budowany z kamienia i kamiennych bloków. Zagradza wrogom drogę do twojej wioski, ale nie może być obsadzony przez żołnierzy.",
-    "reason": "Rekord 22 to mur obronny (2 kamienie i 1 kamienny blok, bez receptur i bez stanowisk), a nie trzecia garncarnia, której w grze nie ma."
+    "reason": "Opis muru obronnego, który ma teraz własny typ 56, a tablica nie zna tego id; ten sam tekst, który typ 22 miał jako mur."
   },
   {
     "lang": "eng",
     "table": "housesHelp",
-    "id": 22,
-    "from": "In the pottery 3, your skilled craftsmen use clay to make crockery. Crockery helps the women double the amount of food in a house.",
+    "id": 56,
+    "from": null,
     "to": "A defence wall is built from quarrystone and stone. It bars the enemy's way to your village, but it cannot be manned by soldiers.",
-    "reason": "Rekord 22 to mur obronny (2 kamienie i 1 kamienny blok, bez receptur i bez stanowisk), a nie trzecia garncarnia, której w grze nie ma."
+    "reason": "Opis muru obronnego, który ma teraz własny typ 56, a tablica nie zna tego id; ten sam tekst, który typ 22 miał jako mur."
   },
   {
     "lang": "ger",
     "table": "housesHelp",
-    "id": 22,
-    "from": "In der Töpferei 3 ",
-    "to": "Eine Mauer ",
-    "reason": "Rekord 22 to mur obronny (2 kamienie i 1 kamienny blok, bez receptur i bez stanowisk), a nie trzecia garncarnia, której w grze nie ma."
+    "id": 56,
+    "from": null,
+    "to": "Eine Mauer wird aus Bruchstein und Steinblöcken gebaut. Sie versperrt den Feinden den Weg ins Dorf, kann aber nicht mit Soldaten besetzt werden.",
+    "reason": "Opis muru obronnego, który ma teraz własny typ 56, a tablica nie zna tego id; ten sam tekst, który typ 22 miał jako mur."
   },
   {
-    "lang": "ger",
+    "lang": "rus",
     "table": "housesHelp",
-    "id": 22,
-    "from": "Lehm kunstvoll in liebevoller Handarbeit Geschirr geformt ",
-    "to": "Bruchstein ",
-    "reason": "Rekord 22 to mur obronny (2 kamienie i 1 kamienny blok, bez receptur i bez stanowisk), a nie trzecia garncarnia, której w grze nie ma."
-  },
-  {
-    "lang": "ger",
-    "table": "housesHelp",
-    "id": 22,
-    "from": "gebrannt. Mit Geschirr schmeckt",
-    "to": "Steinblöcken gebaut. Sie versperrt",
-    "reason": "Rekord 22 to mur obronny (2 kamienie i 1 kamienny blok, bez receptur i bez stanowisk), a nie trzecia garncarnia, której w grze nie ma."
-  },
-  {
-    "lang": "ger",
-    "table": "housesHelp",
-    "id": 22,
-    "from": "Wikingern ihr Essen gleich doppelt so gut und ihr Appetit bleibt längere Zeit gestillt.",
-    "to": "Feinden den Weg ins Dorf, kann aber nicht mit Soldaten besetzt werden.",
-    "reason": "Rekord 22 to mur obronny (2 kamienie i 1 kamienny blok, bez receptur i bez stanowisk), a nie trzecia garncarnia, której w grze nie ma."
+    "id": 56,
+    "from": null,
+    "to": "Стена строится из булыжника и камня. Она преграждает врагам путь к вашей деревне, но в ней нельзя разместить солдат.",
+    "reason": "Opis muru obronnego, który ma teraz własny typ 56, a tablica nie zna tego id; ten sam tekst, który typ 22 miał jako mur."
   },
   {
     "lang": "rus",
     "table": "housesHelp",
     "id": 22,
-    "from": "В гончарной мастерской 3 умелые мастера делают глинянную посуду. Глинянная посуда помогает женщинам удвоить количесто пищи в доме.",
-    "to": "Стена строится из булыжника и камня. Она преграждает врагам путь к вашей деревне, но в ней нельзя разместить солдат.",
-    "reason": "Rekord 22 to mur obronny (2 kamienie i 1 kamienny blok, bez receptur i bez stanowisk), a nie trzecia garncarnia, której w grze nie ma."
+    "from": "глинянную",
+    "to": "глиняную",
+    "reason": "Literówki w opisie garncarni 3, który wraca z typem 22."
+  },
+  {
+    "lang": "rus",
+    "table": "housesHelp",
+    "id": 22,
+    "from": "Глинянная",
+    "to": "Глиняная",
+    "reason": "Literówki w opisie garncarni 3, który wraca z typem 22."
+  },
+  {
+    "lang": "rus",
+    "table": "housesHelp",
+    "id": 22,
+    "from": "количесто",
+    "to": "количество",
+    "reason": "Literówki w opisie garncarni 3, który wraca z typem 22."
   },
   {
     "lang": "pol",
@@ -2501,7 +2653,7 @@
     "id": 36,
     "from": "oleju,",
     "to": "ziół,",
-    "reason": "Receptury mikstur biorą wodę, monety, zioła i grzyby, bez oliwy i złota."
+    "reason": "Receptury mikstur biorą wodę, naczynia, zioła i grzyby, bez oliwy, złota i monet."
   },
   {
     "lang": "pol",
@@ -2509,15 +2661,15 @@
     "id": 36,
     "from": "wody, ziół ",
     "to": "wody ",
-    "reason": "Receptury mikstur biorą wodę, monety, zioła i grzyby, bez oliwy i złota."
+    "reason": "Receptury mikstur biorą wodę, naczynia, zioła i grzyby, bez oliwy, złota i monet."
   },
   {
     "lang": "pol",
     "table": "housesHelp",
     "id": 36,
     "from": "złota.",
-    "to": "monet.",
-    "reason": "Receptury mikstur biorą wodę, monety, zioła i grzyby, bez oliwy i złota."
+    "to": "naczyń.",
+    "reason": "Receptury mikstur biorą wodę, naczynia, zioła i grzyby, bez oliwy, złota i monet."
   },
   {
     "lang": "eng",
@@ -2525,7 +2677,7 @@
     "id": 36,
     "from": "oil,",
     "to": "herbs,",
-    "reason": "Receptury mikstur biorą wodę, monety, zioła i grzyby, bez oliwy i złota."
+    "reason": "Receptury mikstur biorą wodę, naczynia, zioła i grzyby, bez oliwy, złota i monet."
   },
   {
     "lang": "eng",
@@ -2533,15 +2685,15 @@
     "id": 36,
     "from": "water, herbs ",
     "to": "water ",
-    "reason": "Receptury mikstur biorą wodę, monety, zioła i grzyby, bez oliwy i złota."
+    "reason": "Receptury mikstur biorą wodę, naczynia, zioła i grzyby, bez oliwy, złota i monet."
   },
   {
     "lang": "eng",
     "table": "housesHelp",
     "id": 36,
     "from": "gold.",
-    "to": "coins.",
-    "reason": "Receptury mikstur biorą wodę, monety, zioła i grzyby, bez oliwy i złota."
+    "to": "crockery.",
+    "reason": "Receptury mikstur biorą wodę, naczynia, zioła i grzyby, bez oliwy, złota i monet."
   },
   {
     "lang": "ger",
@@ -2549,7 +2701,7 @@
     "id": 36,
     "from": "Öl",
     "to": "Kräuter",
-    "reason": "Receptury mikstur biorą wodę, monety, zioła i grzyby, bez oliwy i złota."
+    "reason": "Receptury mikstur biorą wodę, naczynia, zioła i grzyby, bez oliwy, złota i monet."
   },
   {
     "lang": "ger",
@@ -2557,15 +2709,15 @@
     "id": 36,
     "from": "Wasser, Kräuter ",
     "to": "Wasser ",
-    "reason": "Receptury mikstur biorą wodę, monety, zioła i grzyby, bez oliwy i złota."
+    "reason": "Receptury mikstur biorą wodę, naczynia, zioła i grzyby, bez oliwy, złota i monet."
   },
   {
     "lang": "ger",
     "table": "housesHelp",
     "id": 36,
     "from": "Gold.",
-    "to": "Münzen.",
-    "reason": "Receptury mikstur biorą wodę, monety, zioła i grzyby, bez oliwy i złota."
+    "to": "Geschirr.",
+    "reason": "Receptury mikstur biorą wodę, naczynia, zioła i grzyby, bez oliwy, złota i monet."
   },
   {
     "lang": "rus",
@@ -2573,7 +2725,7 @@
     "id": 36,
     "from": "масло,",
     "to": "травы,",
-    "reason": "Receptury mikstur biorą wodę, monety, zioła i grzyby, bez oliwy i złota."
+    "reason": "Receptury mikstur biorą wodę, naczynia, zioła i grzyby, bez oliwy, złota i monet."
   },
   {
     "lang": "rus",
@@ -2581,15 +2733,15 @@
     "id": 36,
     "from": "вода, травы ",
     "to": "вода ",
-    "reason": "Receptury mikstur biorą wodę, monety, zioła i grzyby, bez oliwy i złota."
+    "reason": "Receptury mikstur biorą wodę, naczynia, zioła i grzyby, bez oliwy, złota i monet."
   },
   {
     "lang": "rus",
     "table": "housesHelp",
     "id": 36,
     "from": "золото.",
-    "to": "монеты.",
-    "reason": "Receptury mikstur biorą wodę, monety, zioła i grzyby, bez oliwy i złota."
+    "to": "посуда.",
+    "reason": "Receptury mikstur biorą wodę, naczynia, zioła i grzyby, bez oliwy, złota i monet."
   },
   {
     "lang": "pol",
@@ -2838,5 +2990,37 @@
     "from": "сборщика трав болжны",
     "to": "травника должны",
     "reason": "Zawód z Chatki zielarza to травник (zielarz), a nie osobny zbieracz ziół; budynek nazywa się od niego. Przy okazji literówka \"болжны\"."
+  },
+  {
+    "lang": "pol",
+    "table": "goodsHelp",
+    "id": 29,
+    "from": "Meble podnoszą standard życia, ponieważ twoi Wikingowie śpią lepiej w łóżku, niż na gołej podłodze. Dlatego też, są lepiej wypoczęci i dłużej obywają się bez snu.",
+    "to": "Jedna sztuka mebli to miejsce dla jednej dodatkowej rodziny: Dom 1, 2 i 3 mieści jedną taką rodzinę, Dom 4 i 5 dwie. Meble zużywa tylko dodatkowa rodzina, każda swoją sztukę, najbardziej przy narodzinach dzieci. Gdy jej meble się skończą, a dom nie ma zapasu, ta rodzina się wyprowadza.",
+    "reason": "Meble nie poprawiają już snu: jedna sztuka to miejsce dla jednej dodatkowej rodziny i tylko ta rodzina ją zużywa (decyzja właściciela)."
+  },
+  {
+    "lang": "eng",
+    "table": "goodsHelp",
+    "id": 29,
+    "from": "Furniture increases the standard of living, because your Vikings sleep better in a bed than on the bare floor, therefore they are well-rested and remain awake longer.",
+    "to": "One piece of furniture is room for one extra family: Dwelling 1, 2 and 3 take one such family, Dwelling 4 and 5 two. Only an extra family wears furniture, each its own piece, most of all when children are born. When its furniture runs out and the dwelling has none in store, that family moves out.",
+    "reason": "Meble nie poprawiają już snu: jedna sztuka to miejsce dla jednej dodatkowej rodziny i tylko ta rodzina ją zużywa (decyzja właściciela)."
+  },
+  {
+    "lang": "ger",
+    "table": "goodsHelp",
+    "id": 29,
+    "from": "Mit Möbeln steigt der Wohnkomfort, denn in einem Bett schläft es sich angenehmer als auf hartem Boden. Dadurch sind die Wikinger ausgeruhter und bleiben länger wach.",
+    "to": "Ein Stück Möbel gibt Platz für eine weitere Familie: Wohnhaus 1, 2 und 3 nehmen eine solche Familie auf, Wohnhaus 4 und 5 zwei. Möbel nutzt nur eine weitere Familie ab, jede ihr eigenes Stück, am meisten, wenn Kinder geboren werden. Sind ihre Möbel verbraucht und hat das Haus keinen Vorrat, zieht diese Familie aus.",
+    "reason": "Meble nie poprawiają już snu: jedna sztuka to miejsce dla jednej dodatkowej rodziny i tylko ta rodzina ją zużywa (decyzja właściciela)."
+  },
+  {
+    "lang": "rus",
+    "table": "goodsHelp",
+    "id": 29,
+    "from": "Мебель повышает уровень жизни ваших Викингов, так как они спят намного лучше на кроватях чем на голом полу, они лучше отдыхают и остаются дееспособными большее время.",
+    "to": "Одна штука мебели даёт место одной дополнительной семье: Жилище 1, 2 и 3 вмещает одну такую семью, Жилище 4 и 5 две. Мебель изнашивает только дополнительная семья, каждая свою штуку, больше всего при рождении детей. Когда её мебель кончается, а в жилище нет запаса, эта семья съезжает.",
+    "reason": "Meble nie poprawiają już snu: jedna sztuka to miejsce dla jednej dodatkowej rodziny i tylko ta rodzina ją zużywa (decyzja właściciela)."
   }
 ]

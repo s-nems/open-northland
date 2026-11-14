@@ -1,13 +1,22 @@
 import { describe, expect, it } from 'vitest';
 import {
   Health,
+  Settler,
   WALK_DIRECTION,
   type WalkDirection,
   WalkFacing,
 } from '../../../../../src/components/index.js';
 import type { Entity } from '../../../../../src/ecs/world.js';
 import { Simulation } from '../../../../../src/index.js';
-import { combatSystem } from '../../../../../src/systems/index.js';
+import { attackClipTiming } from '../../../../../src/systems/conflict/weapons.js';
+import {
+  BLOW_TAKEN_POINTS_RATE,
+  combatSystem,
+  fightUnitsPerClipTick,
+  MELEE_BLOW_POINTS_RATE,
+  withDealtBonuses,
+  withTakenBonuses,
+} from '../../../../../src/systems/index.js';
 import {
   combatCadenceContent,
   ctxOf,
@@ -65,8 +74,15 @@ describe('combatSystem - a swing turns the striker to its victim', () => {
         last.set(e, hp);
       }
     }
-    // Turned back to back they would take x1.5 from behind; facing each other it is x1.
-    expect(firstBlow.get(west)).toBe(IRON_SPEAR_DAMAGE['0']);
-    expect(firstBlow.get(east)).toBe(IRON_SPEAR_DAMAGE['0']);
+    // Turned back to back they would take x1.5 from behind; facing each other it is x1. The second victim
+    // may have landed his blow first, which cuts the one he takes, and the striker who took that blow
+    // strikes with its blow time.
+    const column = IRON_SPEAR_DAMAGE['0'];
+    const clip = attackClipTiming(sim.content, sim.world.get(west, Settler)).length;
+    const struck = clip * fightUnitsPerClipTick(MELEE_BLOW_POINTS_RATE);
+    const taken = clip * fightUnitsPerClipTick(BLOW_TAKEN_POINTS_RATE);
+    const returned = withTakenBonuses(withDealtBonuses(column, taken), struck);
+    expect([column, returned]).toContain(firstBlow.get(west));
+    expect([column, returned]).toContain(firstBlow.get(east));
   });
 });

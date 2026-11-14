@@ -26,6 +26,8 @@ function restored(original: Simulation): Simulation {
 
 /** A bow shot's flight over the five map points to its aim. */
 const FLIGHT_TICKS = 5;
+/** The attack clip the arrow stands for. */
+const BOW_CLIP_TICKS = 12;
 
 describe('save a projectile in flight', () => {
   it('keeps the arrow`s sound payload and lands the same miss event after loading', () => {
@@ -44,6 +46,7 @@ describe('save a projectile in flight', () => {
       damage: { '0': 70 },
       hitSounds: { '0': BOW_HIT_SOUND },
       weaponMainType: null,
+      blowTicks: BOW_CLIP_TICKS,
       missSounds: { ...BOW_MISS_SOUNDS },
       munitionType: 1,
       originX: positionOfNode(10, 10).x,

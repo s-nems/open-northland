@@ -1,4 +1,12 @@
 export {
+  ARC_DOTS,
+  ARC_DRAW_SCALE,
+  ARC_FRAME_PX,
+  type ArcDot,
+  arcDot,
+  arcDotStrip,
+} from './amulet-arcs.js';
+export {
   BONES_LIFETIME_TICKS,
   type BonePileMark,
   boneAlpha,
@@ -42,6 +50,15 @@ export {
 } from './marks.js';
 export { frac } from './random.js';
 export {
+  foldShipSinkings,
+  MAX_ACTIVE_SINKINGS,
+  type ShipSinking,
+  SINK_TICKS,
+  SINKING_LIFETIME_TICKS,
+  sinkProgress,
+  sinkSmokeAlpha,
+} from './ship-sinking.js';
+export {
   SMOKE_PUFF_PERIOD_TICKS,
   SMOKE_PUFFS_PER_EMITTER,
   SMOKE_RISE_PX,
@@ -63,3 +80,35 @@ export {
   type WakeMark,
   washMark,
 } from './wake.js';
+export {
+  WET_STEP_ALPHA,
+  WET_STEP_FOOT_X,
+  WET_STEP_FOOT_Y,
+  WET_STEP_FRAME_H,
+  WET_STEP_FRAME_W,
+  WET_STEP_FRAMES,
+  WET_STEP_LIFE_TICKS,
+  wetStepFrame,
+  wetStepStrength,
+  wetStepStrip,
+} from './wet-step.js';
+export {
+  WIND_GUST_ALPHA,
+  WIND_GUST_EVERY_TICKS,
+  WIND_GUST_FRAME_H,
+  WIND_GUST_FRAME_W,
+  WIND_GUST_FRAMES,
+  WIND_GUST_LIFE_TICKS,
+  WIND_GUST_MAX_SPEED,
+  WIND_GUST_MIN_SPEED,
+  WIND_GUST_SHAPES,
+  WIND_GUST_TAIL_X,
+  WIND_GUST_TEXELS_PER_PX,
+  type WindGust,
+  windGust,
+  windGustFrame,
+  windGustSheet,
+  windGustStretch,
+  windGustTailX,
+  windGustTailY,
+} from './wind-trail.js';

@@ -126,7 +126,7 @@ describe('extractGoods', () => {
     expect(flour?.gathering).toBeUndefined();
   });
 
-  it('attaches the owned-engine household-use calibration to the three durable home goods', () => {
+  it('attaches a household effect to the three durable home goods', () => {
     const goods = extractGoods(
       parseIniSections(
         [
@@ -138,40 +138,10 @@ describe('extractGoods', () => {
       { file: 'Data/logic/goodtypes.ini' },
     );
 
-    expect(goods.map((good) => [good.id, good.homeQuality])).toEqual([
-      [
-        'holy_oil',
-        {
-          effect: 'piety',
-          deliveryValue: 1000,
-          capacity: 5000,
-          useCost: 3,
-          fetchBelow: 3000,
-          minimumHomeLevel: 2,
-        },
-      ],
-      [
-        'crockery',
-        {
-          effect: 'cooking',
-          deliveryValue: 100,
-          capacity: 500,
-          useCost: 5,
-          fetchBelow: 100,
-          minimumHomeLevel: 0,
-        },
-      ],
-      [
-        'furniture',
-        {
-          effect: 'rest',
-          deliveryValue: 100,
-          capacity: 500,
-          useCost: 5,
-          fetchBelow: 100,
-          minimumHomeLevel: 0,
-        },
-      ],
+    expect(goods.map((good) => [good.id, good.homeQuality?.effect])).toEqual([
+      ['holy_oil', 'piety'],
+      ['crockery', 'cooking'],
+      ['furniture', 'lodging'],
     ]);
   });
 });

@@ -1,0 +1,50 @@
+{
+  "version": 1,
+  "map": "ucieczka_z_gazy",
+  "basis": {
+    "lang": "eng",
+    "digest": "9471d7512757692010ca84a708c1e604d3ba1d4bceda74965aaf059037d3ade8"
+  },
+  "strings": {
+    "0": "FUGA DA GAZA",
+    "1": "Fuggi dalle rovine della tua vecchia casa prima di tutti gli altri. Gara per 5 giocatori. Versione 1.1.",
+    "30": "Le truppe ostili degli Ebrei hanno ridotto la tua casa a un rogo e a un cumulo di macerie. Non resta che fuggire.",
+    "50": "Bambino filisteo 1",
+    "51": "Bambino filisteo 2",
+    "52": "Bambino filisteo 3",
+    "53": "Bambino filisteo 4",
+    "54": "Bambino filisteo 5",
+    "55": "Ebrei",
+    "56": "Filistei",
+    "57": "Ebrei",
+    "60": "FIL1",
+    "61": "FIL2",
+    "62": "FIL3",
+    "63": "FIL4",
+    "64": "FIL5",
+    "65": "EBR",
+    "66": "FIL",
+    "67": "EBR",
+    "100": "Bambino filisteo",
+    "101": "Bambino filisteo",
+    "102": "Bambino filisteo",
+    "103": "Bambino filisteo",
+    "104": "Bambino filisteo",
+    "105": "Bambino filisteo",
+    "106": "Bambino filisteo",
+    "107": "Bambino filisteo",
+    "108": "Bambino filisteo",
+    "109": "Bambino filisteo",
+    "110": "Donna filistea incinta",
+    "111": "Donna filistea incinta",
+    "112": "Donna filistea incinta",
+    "113": "Donna filistea incinta",
+    "114": "Donna filistea incinta",
+    "115": "Donna filistea incinta",
+    "116": "Bambino filisteo"
+  },
+  "briefings": {
+    "500": "<font:$local$\\fonts\\fonthead16bld.fnt>\nFUGA DA GAZA\n<font:$local$\\fonts\\font12.fnt>\n<usericon:1,77,26>\n\nLa tua casa natale è ridotta in macerie. Tutta Canaan brucia e la tua intera tribù è diventata l'ennesima vittima degli spietati Ebrei. I nostri antenati hanno costruito la loro eredità per generazioni, e ora tutta la loro opera arde davanti ai nostri occhi. Sei uno degli ultimi bambini sopravvissuti della fiera tribù dei Filistei. Con te ci sono i tuoi fratelli. Ci è giunta voce che da qualche parte a nord resista ancora una parte della nostra gente. Dobbiamo ritrovarla al più presto, evitando lungo la strada ogni pericolo.\n\n<font:$local$\\fonts\\fonthead16bld.fnt>\nMA FA' ATTENZIONE!\n<font:$local$\\fonts\\font12.fnt>\n<usericon:1,24,108>\n\nLa via di fuga è minata e irta di trappole, e sui sentieri si aggirano ancora le truppe degli Ebrei!\n\n<usericon:1,31,62>\n\nSta' in guardia e guarda dove metti i piedi.\nBuona fortuna!\n\nDi Zohanowaty",
+    "502": "<font:$local$\\fonts\\fonthead16bld.fnt>\nIN SALVO DAI CRUDELI NEMICI\n<font:$local$\\fonts\\font12.fnt>\n\nCongratulazioni!\nCe l'hai fatta a fuggire dalle rovine della tua città natale. Speriamo che anche gli altri riescano a mettersi in salvo. Ora dobbiamo decidere cosa fare, ma prima riposiamoci un po' per riprendere le forze.\n"
+  }
+}

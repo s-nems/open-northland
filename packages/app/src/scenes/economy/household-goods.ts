@@ -9,7 +9,7 @@ import {
   BUILDING_HOME_01,
   BUILDING_HOME_02,
   BUILDING_JOINERY_01,
-  BUILDING_POTTERY_01,
+  BUILDING_POTTERY_02,
   placeBuiltSandboxBuilding,
   spawnSettlerDirect,
   spawnWorkersAtDoor,
@@ -33,13 +33,13 @@ function seed(sim: Simulation, building: Entity, slug: string, amount: number): 
   setStockAmount(sim.world, building, goodBySlug(sim, slug), amount);
 }
 
-function quality(sim: Simulation, effect: 'cooking' | 'rest' | 'piety'): number {
+function quality(sim: Simulation, effect: 'cooking' | 'lodging' | 'piety'): number {
   const home = buildingOfType(sim, BUILDING_HOME_02);
   return home === null ? 0 : (sim.world.tryGet(home, HomeQuality)?.[effect] ?? 0);
 }
 
 function build(sim: Simulation): void {
-  const potteryEntity = placeBuiltSandboxBuilding(sim, BUILDING_POTTERY_01, POTTERY.x, POTTERY.y);
+  const potteryEntity = placeBuiltSandboxBuilding(sim, BUILDING_POTTERY_02, POTTERY.x, POTTERY.y);
   const joineryEntity = placeBuiltSandboxBuilding(sim, BUILDING_JOINERY_01, JOINERY.x, JOINERY.y);
   const druidEntity = placeBuiltSandboxBuilding(sim, BUILDING_DRUID_HUT, DRUID_HUT.x, DRUID_HUT.y);
   placeBuiltSandboxBuilding(sim, BUILDING_HOME_00, HOME_1.x, HOME_1.y);
@@ -57,12 +57,12 @@ function build(sim: Simulation): void {
     (entity) => sim.world.get(entity, components.JobAssignment).workplace === joineryEntity,
   );
   if (resident !== undefined) {
-    sim.world.add(resident, Residence, { home: homeEntity });
+    sim.world.add(resident, Residence, { home: homeEntity, since: 0 });
     sim.world.mut(resident, components.SettlerNeeds).piety = fx.div(fx.fromInt(95), fx.fromInt(100));
   }
 
   const homemaker = spawnSettlerDirect(sim, JOB_WOMAN, HOME_3.x - 2, HOME_3.y + 2);
-  sim.world.add(homemaker, Residence, { home: homeEntity });
+  sim.world.add(homemaker, Residence, { home: homeEntity, since: 0 });
   // Holy oil starts off; the scene shows it stocked and burning.
   sim.enqueueSetup({ kind: 'setHouseholdGoodUse', player: HUMAN_PLAYER, effect: 'piety', allowed: true });
 }
@@ -78,14 +78,14 @@ export const householdGoodsScene: SceneDefinition = {
   progression: false,
   checks: [
     {
-      label: 'the upgraded pottery fired crockery from clay and wood',
+      label: 'the top-level pottery fired crockery from clay and wood',
       predicate: (sim) =>
-        buildingStock(sim, BUILDING_POTTERY_01, 'crockery') > 0 || quality(sim, 'cooking') > 0,
+        buildingStock(sim, BUILDING_POTTERY_02, 'crockery') > 0 || quality(sim, 'cooking') > 0,
     },
     {
       label: 'the upgraded joinery made furniture from two wood',
       predicate: (sim) =>
-        buildingStock(sim, BUILDING_JOINERY_01, 'furniture') > 0 || quality(sim, 'rest') > 0,
+        buildingStock(sim, BUILDING_JOINERY_01, 'furniture') > 0 || quality(sim, 'lodging') > 0,
     },
     {
       label: 'the druid brewed holy oil from mushrooms',
@@ -94,7 +94,7 @@ export const householdGoodsScene: SceneDefinition = {
     {
       label: 'the homemaker stocked all three durable quality pools in the mature home',
       predicate: (sim) =>
-        quality(sim, 'cooking') > 0 && quality(sim, 'rest') > 0 && quality(sim, 'piety') > 0,
+        quality(sim, 'cooking') > 0 && quality(sim, 'lodging') > 0 && quality(sim, 'piety') > 0,
     },
   ],
 };

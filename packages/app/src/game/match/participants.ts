@@ -1,5 +1,5 @@
 import type { MapMultiplayerGoal, MapScript } from '@open-northland/data';
-import type { MatchGoal, MatchRulesView } from '@open-northland/sim';
+import type { MatchGoal, MatchOutcome, MatchRulesView } from '@open-northland/sim';
 
 const NEVER_DIES_KEY = 'playerneverdies';
 
@@ -41,6 +41,23 @@ export function scriptMatchParticipants(script: Pick<MapScript, 'players' | 'mis
     machineSeats: [],
     neverDies: neverDiesSeats(script),
   });
+}
+
+/** Whether a match is over for the people in it while the others play on: some seat of `people` has
+ *  its verdict, every one a person still `held` has one (a seat that cannot die, by a goal row), and
+ *  some participant has none. A seat its person left waits for no verdict. */
+export function playersDecidedBeforeEnd(
+  people: readonly number[],
+  participants: readonly number[],
+  outcomeOf: (player: number) => MatchOutcome,
+  held: (player: number) => boolean,
+): boolean {
+  const decided = (seat: number): boolean => outcomeOf(seat) !== 'undecided';
+  return (
+    people.some(decided) &&
+    people.every((seat) => decided(seat) || !held(seat)) &&
+    !participants.every(decided)
+  );
 }
 
 export function hasEliminationGoal(rules: MatchRulesView, player: number): boolean {

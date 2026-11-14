@@ -23,6 +23,8 @@ export function ctxOf(sim: Simulation): UnitPanelModelContext {
     livestockTribeOfGood: (goodType) => systems.livestockTribeOfGood(sim.content, goodType),
     edibleGoodForm: (goodType) => systems.edibleGoodFormOf(sim.content, goodType),
     isTraderJob: (jobType) => systems.isTraderJob(sim.content, jobType),
+    fightEffects: (settler, worn, experience) =>
+      systems.fightExperienceEffects(sim.content, settler, worn, experience),
   };
 }
 

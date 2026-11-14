@@ -1,5 +1,6 @@
 // Files inside this folder import their deps directly, not through this barrel.
 
+export { AmuletArcLayer } from './amulet-arc-layer.js';
 export {
   type SettlerBubble,
   type SettlerBubbleGfx,
@@ -25,6 +26,7 @@ export {
   SIGN_STEP,
   signRowAt,
 } from './building-signs/sign-gfx.js';
+export { DraughtGlowLayer } from './draught-glow-layer.js';
 export { CombatEffectsLayer } from './effects-layer.js';
 export {
   type ExperienceStar,
@@ -52,3 +54,6 @@ export {
 export { type RallyBanner, RallyBannerLayer } from './rally-banner-layer.js';
 export { ShipWakeLayer } from './ship-wake-layer.js';
 export { type ShotFrame, ShotLayer } from './shot-layer.js';
+export { StunStarLayer } from './stun-star-layer.js';
+export { type TempleGlowFrame, TempleGlowLayer } from './temple-glow-layer.js';
+export { WindTrailLayer } from './wind-trail-layer.js';

@@ -1,0 +1,18 @@
+{
+  "version": 1,
+  "map": "wyspa_lupiezcow",
+  "basis": {
+    "lang": "eng",
+    "digest": "246ed6f8349b75b3d82581e1eed18b65933ef3844624ecc77c85582aca846461"
+  },
+  "strings": {
+    "0": "ISOLA DEI PREDONI",
+    "1": "Gli abitanti di quest'isola sono evasi dal carcere. Non avendo nulla da perdere, si contendono il controllo dell'isola. Battaglia 1 contro 1.",
+    "50": "PREDONI DEL NORD",
+    "51": "PREDONI DEL SUD",
+    "101": "Sconfiggi i predoni avversari e prendi il controllo dell'isola."
+  },
+  "briefings": {
+    "500": "<font:$local$\\fonts\\fonthead16bld.fnt>\nISOLA DEI PREDONI\n<font:$local$\\fonts\\font12.fnt> \n\nAnche se queste isole sono bagnate da acque basse e tranquille, qui è difficile trovare pace.\nLa gente che abita quest'isola è evasa dal carcere:\nnon avendo nulla da perdere, combatte per il controllo dell'isola.\n\n~~ Ares ~~\n"
+  }
+}

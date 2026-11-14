@@ -1,0 +1,32 @@
+{
+  "version": 1,
+  "map": "smocza_kraina",
+  "basis": {
+    "lang": "eng",
+    "digest": "3120e334ff55f338332344bdeb8044741588eb3b41ff85d114c400e66510dc22"
+  },
+  "strings": {
+    "0": "TERRA DEI DRAGHI III",
+    "1": "Nostradamus comanda un esercito di draghi che semina il terrore nei villaggi e nelle città dei dintorni. Partecipa alla campagna per porre fine al suo dominio. Cooperazione per 3 giocatori.",
+    "30": "Sconfiggi i Bizantini guidati da Nostradamus",
+    "40": "20 guerrieri",
+    "50": "Vichinghi del Nord",
+    "51": "Vichinghi del Centro",
+    "52": "Vichinghi del Sud",
+    "53": "Bizantini",
+    "54": "Mercante Miguel",
+    "55": "Avamposto",
+    "60": "Nord",
+    "61": "Centro",
+    "62": "Sud",
+    "63": "Biz.",
+    "64": "Mig.",
+    "65": "Avamp.",
+    "250": "Nostradamus"
+  },
+  "briefings": {
+    "500": "<font:$local$\\fonts\\fonthead16bld.fnt>\nTERRA DEI DRAGHI\n\n<font:$local$\\fonts\\font12.fnt>\nNostradamus comanda un esercito di draghi che semina il terrore nei villaggi e nelle città dei dintorni. Partecipa alla campagna per porre fine al suo dominio.\n\nI draghi che si sono rifiutati di eseguire gli ordini di Nostradamus sono stati imprigionati tra le montagne a nord-est. Se li libererai, ti aiuteranno nella lotta contro il nemico.\n\n<usericon:1,278,18>\n\nDai anche un'occhiata alle offerte del mercante del posto: forse troverai qualcosa che fa al caso tuo.\n\n<usericon:1,129,109>\n\nBuona fortuna\n\ndi Ares & Jozenkow\n",
+    "501": "<font:$local$\\fonts\\fonthead16bld.fnt>\nVITTORIA\n\n<font:$local$\\fonts\\font12.fnt>\nHai sconfitto il tiranno. Pogchamp.\n\nUn minuto di silenzio per tutti i Vichinghi caduti durante questa spedizione [*]\n",
+    "502": "<font:$local$\\fonts\\fonthead16bld.fnt>\n2137\n<font:$local$\\fonts\\font12.fnt>\n\n21:37\n\n<picture:$local$\\graphics\\pop.pcx>"
+  }
+}

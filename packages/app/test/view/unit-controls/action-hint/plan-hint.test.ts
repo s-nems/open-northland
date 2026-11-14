@@ -1,8 +1,9 @@
 import { ONE, systems } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
-import { JOB_IDLE } from '../../../../src/catalog/jobs.js';
+import { JOB_IDLE, JOB_SOLDIER_UNARMED } from '../../../../src/catalog/jobs.js';
 import { HUMAN_PLAYER } from '../../../../src/game/rules.js';
 import {
+  BUILDING_BARRACKS,
   BUILDING_HOME_00,
   sandboxContent,
   VEHICLE_HANDCART,
@@ -195,6 +196,12 @@ describe('the right-click hint', () => {
     // A woman takes no post.
     const woman = settler(1, JOB_IDLE, { Female: { female: true } });
     expect(hintOf([woman, house(SMITHY)], [1], ON_BUILDING)).toEqual(cannot);
+    // A soldier at a barracks with no coin is refused the training there.
+    const soldier = settler(1, JOB_SOLDIER_UNARMED, { Settler: { tribe: 1, jobType: JOB_SOLDIER_UNARMED } });
+    expect(hintOf([soldier, house(BUILDING_BARRACKS)], [1], ON_BUILDING)).toEqual({
+      tone: 'refusal',
+      refusal: 'cannotTrainHere',
+    });
   });
 
   it('refuses a route stop every asked trader was refused, and a vehicle with no seat free', () => {
