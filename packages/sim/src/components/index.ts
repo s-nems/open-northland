@@ -36,6 +36,7 @@ export * from './missions/tributes.js';
 export * from './movement.js';
 export * from './needs.js';
 export * from './palisade.js';
+export * from './players/barracks-coin.js';
 export * from './players/ownership.js';
 export * from './players/papers.js';
 export * from './players/placement.js';

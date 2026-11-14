@@ -56,7 +56,7 @@ import { pullsHaulingCart } from '../vehicles/hauling-cart.js';
 import { recordAiOrder } from './ai-lifecycle.js';
 import { moveAnchor } from './combat.js';
 import { deferOrderDuringAtomic, supersedeStandingOrders } from './guards.js';
-import { breaksForMeal, suspendWalkForMeal } from './meal-break.js';
+import { breaksForMeal, suspendWalkForMeal, suspendWalkToDrink } from './meal-break.js';
 
 /**
  * Direct player control over owned units. Faithful to *Cultures*, a move order never seizes a unit
@@ -194,13 +194,9 @@ function startPlayerWalk(
     confined && command.kind === 'moveUnit'
       ? walkerSideMoveGoal(world, ctx, terrain, clicked, entityNode(world, terrain, e))
       : reachableMoveGoal(world, ctx, terrain, clicked);
-  // Signpost confinement: a civilian ordered beyond its allowed area doesn't know the way, so the
-  // order is refused and the unit stays put. Approximation: the original starts the walk and lets its
-  // guided pathfinder fail it, raising the same "lost" note. A goal on another island is judged at the
-  // crossing's landing place instead of the far spot: the posts must lead the settler to the shore
-  // where they board or wait for the ship, and whether they could walk the far island themselves is
-  // the ferryman's business - the scout at the helm knows it. Still refused before the ferry hold is
-  // considered: a landing place the signposts forbid is refused whatever the ships could do for it.
+  // Signpost confinement: a civilian ordered beyond its allowed area doesn't know the way, so the order is
+  // refused and the unit stays put. Approximation: the original starts the walk and lets its guided
+  // pathfinder fail it, raising the same "lost" note.
   if (confined) {
     const limit = navigationLimitFor(world, ctx.content, terrain, e);
     if (limit !== null && !limit.allowsNode(goal)) {
@@ -217,12 +213,9 @@ function startPlayerWalk(
       }
     }
   }
-  // A goal across open water is no walk, the route dying at the sea. With the owner's idle ship
-  // moored at a shore of this island with a scout aboard, the order becomes a crossing instead: the
-  // settler boards, the ship docks at the target island, the walk on resumes there. No ship takes the
-  // booking, the order stands as a hold and the ferry system retries it until a ship comes free. A
-  // settler held by an atomic waits for the parked order the
-  // same way a walk does.
+  // A goal across open water is no walk, the route dying at the sea. A ferryman-led ship can take it:
+  // the settler boards, the ship docks at the target island, and the walk resumes on the far shore.
+  // When no ship is free, the order stands as a hold and retries until a suitable ship comes free.
   if (
     confined &&
     command.kind === 'moveUnit' &&
@@ -246,14 +239,14 @@ function startPlayerWalk(
     !world.has(e, AttackOrder) &&
     !world.has(e, Fleeing)
   ) {
-    supersedeStandingOrders(world, e); // the same walk, but now the player's own, not a sweep's leg
+    supersedeStandingOrders(world, ctx, e); // the same walk, but now the player's own, not a sweep's leg
     const scripted = confined ? undefined : true;
     if (existingOrder.scripted !== scripted) world.mut(e, PlayerOrder).scripted = scripted;
     return true;
   }
   // Gated after the refusals above, so a refused click neither parks an order nor displaces a parked one.
   if (deferOrderDuringAtomic(world, ctx, e, command, { scripted: !confined })) return true;
-  supersedeStandingOrders(world, e);
+  supersedeStandingOrders(world, ctx, e);
   // A live PathFollow is deliberately kept: the planner re-routes the same tick, and the routing splice
   // carries the walker's momentum through the turn.
   removeCurrentAtomic(world, e);
@@ -359,9 +352,11 @@ export const playerOrderSystem: System = (world, ctx) => {
       continue;
     }
     if (isTravelling(world, e)) {
-      // Still walking the order out, unless hunger takes it off a player's walk at a node it reaches.
-      if (order.scripted !== true && breaksForMeal(world, ctx, e) && onNodeCentre(world, e)) {
-        suspendWalkForMeal(world, ctx.terrain, e);
+      // Still walking the order out, unless hunger takes it off a player's walk at a node it reaches, or
+      // it stops there for its mead.
+      if (order.scripted !== true && onNodeCentre(world, e)) {
+        if (breaksForMeal(world, ctx, e)) suspendWalkForMeal(world, ctx.terrain, e);
+        else suspendWalkToDrink(world, ctx, ctx.terrain, e);
       }
       continue;
     }

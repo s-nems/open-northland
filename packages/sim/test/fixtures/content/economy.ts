@@ -92,7 +92,13 @@ export const economyContent = {
       typeId: 13,
       id: 'mead',
       weight: 1,
-      equip: { category: 'misc', wears: true, uses: 2, restorePct: { hunger: 50, fatigue: 50 } },
+      equip: {
+        category: 'misc',
+        wears: true,
+        uses: 2,
+        restorePct: { hunger: 50, fatigue: 50 },
+        stopsToDrink: true,
+      },
     },
     {
       typeId: 14,
@@ -165,8 +171,7 @@ export const economyContent = {
     { typeId: 27, id: 'scout', allowedAtomics: [43] },
     // The ferryman - this project's own ferry trade, which no `jobtypes.ini` record carries - at the
     // first free id past the original's job band: the crew the ferry dispatch requires aboard a booked
-    // ship (`jobRoleOfId` reads the trade off the slug, so the fixture row must carry the real
-    // vocabulary).
+    // ship (`jobRoleOfId` reads the trade off the slug, so the fixture row must carry the real vocabulary).
     { typeId: 56, id: 'ferryman' },
     // The fighter trades, at their real `jobtypes.ini` ids and slugs - the role is read off the slug
     // (`core/content-index/jobs.ts`), so a fixture soldier/hero must carry the real vocabulary.

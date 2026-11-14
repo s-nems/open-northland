@@ -23,7 +23,7 @@ import { growthSystem } from './lifecycle/ageclass.js';
 import { cleanupSystem } from './lifecycle/cleanup.js';
 import { needsSystem } from './lifecycle/needs/index.js';
 import { ruinSystem } from './lifecycle/ruins.js';
-import { templeAuraSystem } from './lifecycle/temple-aura.js';
+import { templeAuraSystem } from './lifecycle/temple/index.js';
 import {
   livestockAssignmentSystem,
   livestockCaptureSystem,
@@ -58,6 +58,7 @@ import { signpostLinksSystem } from './signposts/links.js';
 import { gossipSystem } from './social/index.js';
 import { tradePartnerStockSystem, traderTakesUpCartSystem, tradeVoyageSystem } from './trade/index.js';
 import { ferrySystem } from './vehicles/ferry.js';
+import { hullFireSystem } from './vehicles/hull-fire.js';
 import {
   cargoHandDisembarkSystem,
   draughtAnimalSystem,
@@ -152,9 +153,7 @@ export const SYSTEM_ORDER: readonly ScheduledSystem[] = [
   // After the drives advance and before combat, so a queued drive starts the tick the one ahead arrives and
   // no stance scan sees the vehicle standing idle between two legs.
   { name: 'vehicleOrderQueue', system: vehicleOrderQueueSystem },
-  // After the movement pass, so a voyage reads the mooring this tick's drive laid down and any dock it
-  // starts advances from the next pass, and before the next rider pass, which carries a leaving the sail
-  // sets out the moment the ship moors.
+  // The crossing reads the mooring laid down by this tick's movement pass and advances its dock next tick.
   { name: 'ferry', system: ferrySystem },
   { name: 'separation', system: separationSystem },
   // After the walk settles, so a scout's claim uses this tick's final nodes; the herd then re-anchors
@@ -181,6 +180,8 @@ export const SYSTEM_ORDER: readonly ScheduledSystem[] = [
   { name: 'vision', system: visionSystem },
   { name: 'combat', system: combatSystem },
   { name: 'projectile', system: projectileSystem },
+  // After this tick's blows and before cleanup, so a hull the fire ends sinks this tick.
+  { name: 'hullFire', system: hullFireSystem },
   // After this tick's blows, so an arrow in the temple stops its blessing at once.
   { name: 'templeAura', system: templeAuraSystem },
   { name: 'growth', system: growthSystem },

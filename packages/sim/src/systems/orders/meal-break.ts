@@ -25,7 +25,9 @@ import type { Entity, World } from '../../ecs/world.js';
 import type { TerrainGraph } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
 import {
+  beginDrink,
   carriesNeeds,
+  drinkDueOnTheWay,
   NEED_CRITICAL_THRESHOLD,
   NEED_DRIVE_THRESHOLD,
   needLevel,
@@ -33,28 +35,39 @@ import {
 import { clearNavState } from '../movement/nav-state.js';
 import { isFighterJob } from '../readviews/index.js';
 
-// Hunger takes a settler off its player orders at the level the HUD marks it, the last stretch before
-// it costs hitpoints, so a scout sent along a long run of signposts eats instead of starving on it.
+// Hunger takes a settler off its player orders, and out of a fight, at the level the HUD marks it, the
+// last stretch before it costs hitpoints, so a scout sent along a long run of signposts eats instead of
+// starving on it.
 // Fatigue costs nothing and waits for the orders to run out. Named addition: the original checks no
 // need while a player's command runs.
 
-/** How long hunger leaves a settler's orders alone after a meal break found nothing to eat, or after the
- *  player ordered it on regardless. Approximation: one failed food search per stretch of a long walk,
+/** How long hunger leaves a settler's orders and its fight alone after a meal break or an ordered meal
+ *  found nothing to eat, or after the player ordered it on regardless. Approximation: one failed food search per stretch of a long walk,
  *  not per node. */
 export const MEAL_BREAK_RETRY_TICKS = 20 * TICKS_PER_SECOND;
 
 /**
- * Whether hunger takes `e` off its player orders now. Carried draughts were drunk at the node it walked
- * onto. A soldier whose regeneration the player prohibited keeps going, as it never leaves what it does
- * to look for food; a computer seat's fighter is left to its seat's refill, so a march holds together;
- * and a unit a script controls keeps to the script's walk. Drops a {@link MealBreakRetry} that has run out.
+ * Whether hunger takes `e` off its player orders or its fight now. Carried draughts were drunk at the nodes
+ * it walked onto or between its blows, mead on a stop of the way. A rider keeps to its vehicle; a moored
+ * ship lands its own (`vehicles/shipboard-needs.ts`).
  */
 export function breaksForMeal(world: World, ctx: SystemContext, e: Entity): boolean {
-  const jobType = world.tryGet(e, Settler)?.jobType ?? null;
-  // A jobless settler never starves and the planner never visits it, so nothing would end its break.
-  if (jobType === null || world.has(e, Rider) || world.has(e, NoRegeneration)) return false;
+  if (world.has(e, Rider)) return false;
   const needs = world.tryGet(e, SettlerNeeds);
   if (needs === undefined || needLevel(needs, 'hunger', ctx.tick) < NEED_CRITICAL_THRESHOLD) return false;
+  return mayLeaveForMeal(world, ctx, e);
+}
+
+/**
+ * Whether a hungry `e` may leave what it does to look for food. A soldier whose regeneration the player
+ * prohibited keeps going, as it never leaves what it does to look for food; a computer seat's fighter is
+ * left to its seat's refill, so a march holds together; and a unit a script controls keeps to the
+ * script's walk. Drops a {@link MealBreakRetry} that has run out.
+ */
+export function mayLeaveForMeal(world: World, ctx: SystemContext, e: Entity): boolean {
+  const jobType = world.tryGet(e, Settler)?.jobType ?? null;
+  // A jobless settler never starves and the planner never visits it, so nothing would end its break.
+  if (jobType === null || world.has(e, NoRegeneration)) return false;
   const retry = world.tryGet(e, MealBreakRetry);
   if (retry !== undefined) {
     if (ctx.tick < retry.retryAt) return false;
@@ -90,14 +103,39 @@ export function startMealBreak(world: World, e: Entity): void {
 }
 
 /**
- * Take `e`, walking an order and standing on a node, off it for a meal: the order goes back to the head
+ * Take `e`, on an order and standing on a node, off it for a meal: the order goes back to the head
  * of its queue, to start afresh once it has eaten, and an explore sweep keeps its own marker and picks
- * its next leg then. The route goes too, so the planner sees the settler free and plans the meal. The
- * queued command is the walking order `resumableOrder` reads back, unless the caller names one itself -
- * a hold's walk aims at the berth its booking reads, and it is the move order behind the hold that must
- * come back, not that spot.
+ * its next leg then. The route goes too, so the planner sees the settler free and plans the meal.
  */
 export function suspendWalkForMeal(
+  world: World,
+  terrain: TerrainGraph,
+  e: Entity,
+  resume: QueueableOrderCommand | null = resumableOrder(world, terrain, e),
+): void {
+  suspendWalk(world, terrain, e, resume);
+  startMealBreak(world, e);
+}
+
+/**
+ * Stop `e`, on an order and standing on a stop of its walk, to drink its mead there ({@link drinkDueOnTheWay});
+ * false when none is due. The order goes back to the head of its queue as for a meal, and starts afresh
+ * once the clip ends: a walk order parks behind it.
+ */
+export function suspendWalkToDrink(
+  world: World,
+  ctx: SystemContext,
+  terrain: TerrainGraph,
+  e: Entity,
+): boolean {
+  const draught = drinkDueOnTheWay(world, ctx, e);
+  if (draught === null) return false;
+  suspendWalk(world, terrain, e);
+  beginDrink(world, ctx, e, draught);
+  return true;
+}
+
+function suspendWalk(
   world: World,
   terrain: TerrainGraph,
   e: Entity,
@@ -117,7 +155,6 @@ export function suspendWalkForMeal(
   world.remove(e, OpenChestOrder);
   world.remove(e, ClaimAnimalOrder);
   clearNavState(world, e);
-  startMealBreak(world, e);
 }
 
 /** The command that starts `e`'s walking order over again, or null for an explore leg. */
@@ -138,6 +175,16 @@ function resumableOrder(world: World, terrain: TerrainGraph, e: Entity): Queueab
   if (goal === undefined) return null;
   const at = terrain.coordsOf(goal);
   return { kind: march === undefined ? 'moveUnit' : 'attackMoveUnit', entity: e, x: at.x, y: at.y };
+}
+
+/**
+ * Note that nothing in reach answered the meal the player ordered `e`, so the fight it was called out of
+ * has it back for {@link MEAL_BREAK_RETRY_TICKS} before the order is tried again.
+ */
+export function noteOrderedMealUnserved(world: World, ctx: SystemContext, e: Entity): void {
+  const retry = world.tryGet(e, MealBreakRetry);
+  if (retry !== undefined && ctx.tick < retry.retryAt) return;
+  world.add(e, MealBreakRetry, { retryAt: ctx.tick + MEAL_BREAK_RETRY_TICKS });
 }
 
 /** End `e`'s meal break, its orders resuming next tick. One that left it hungry, with nothing in reach

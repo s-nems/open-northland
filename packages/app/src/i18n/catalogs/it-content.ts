@@ -21,6 +21,7 @@ export const itContent = {
     herbalist: 'Erborista',
     druid: 'Druido',
     scout: 'Esploratore',
+    ferryman: 'Traghettatore',
     trader: 'Mercante',
     trader_sea: 'Mercante di mare',
     soldier: 'Soldato',
