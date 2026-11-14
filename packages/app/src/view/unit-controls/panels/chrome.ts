@@ -12,7 +12,7 @@ import { diag } from '../../../diag/index.js';
 import { isRenamable, namedSettlerOf } from '../../../game/character-names/index.js';
 import { petNames } from '../../../game/character-names/pet-names.js';
 import { nodeOfId } from '../../../game/node-id.js';
-import { postFlagTradeOf } from '../../../game/snapshot/index.js';
+import { postFlagTradeOf, type SnapshotEntity } from '../../../game/snapshot/index.js';
 import { discoveryProgressOf, technologyReason } from '../../../game/technology.js';
 import type { ActionOrderId } from '../../../hud/action-ring/index.js';
 import {
@@ -21,6 +21,10 @@ import {
   type UnitPanel,
   type UnitPanelModelContext,
 } from '../../../hud/details-panel/index.js';
+import {
+  createProductionModelCache,
+  type SettlerProductionModel,
+} from '../../../hud/details-panel/model/settler-work.js';
 import { createBuildingPanel } from '../../../hud/dom/building-panel/view.js';
 import { createGoodIconPainter } from '../../../hud/dom/good-art.js';
 import { createGroupPanel } from '../../../hud/dom/group-panel/view.js';
@@ -424,6 +428,11 @@ export async function createUnitChrome(
   };
 
   const traderView = opts.traderView;
+  // What each worker is set to make, cached per settler the way the residents panel reads its workers;
+  // the cache needs this context, so it stands behind the context's own seam.
+  let productionCache:
+    | ((snapshot: WorldSnapshot, ent: SnapshotEntity) => SettlerProductionModel | null)
+    | undefined;
   const modelContext: UnitPanelModelContext = {
     viewer: opts.viewer,
     technologyReason:
@@ -449,6 +458,7 @@ export async function createUnitChrome(
     armor: opts.content.armor,
     isLivestockWorkplace: (typeId) => systems.isLivestockWorkplaceType(opts.content, typeId),
     usesWorkFlag: (jobType) => systems.jobUsesWorkFlag({ content: opts.content }, jobType),
+    gatherGoods: (jobType) => systems.jobGatherGoods({ content: opts.content }, jobType),
     postFlagTrade: (snapshot, ent) => postFlagTradeOf(opts.content, snapshot, ent),
     livestockTribeOfGood: (goodType) => systems.livestockTribeOfGood(opts.content, goodType),
     edibleGoodForm: (goodType) => systems.edibleGoodFormOf(opts.content, goodType),
@@ -462,8 +472,10 @@ export async function createUnitChrome(
       : {}),
     ...(opts.tradeOffersAt !== undefined ? { tradeOffersAt: opts.tradeOffersAt } : {}),
     ...(opts.workStatus !== undefined ? { workStatus: opts.workStatus } : {}),
+    productionOf: (snapshot, ent) => productionCache?.(snapshot, ent) ?? null,
     ...(opts.diplomacyStance !== undefined ? { diplomacyStance: opts.diplomacyStance } : {}),
   };
+  productionCache = createProductionModelCache(modelContext, opts.technologyVersion ?? (() => 0));
 
   const panel = createUnitPanel({
     ...modelContext,

@@ -95,25 +95,25 @@ function selectionInputs(snapshot: WorldSnapshot, ent: SnapshotEntity): unknown[
   ];
 }
 
-interface HeldSelection {
+interface HeldSelection<T> {
   readonly inputs: readonly unknown[];
   readonly version: number;
-  readonly value: ProductSelection | null;
+  readonly value: T;
 }
 
 /**
- * `settlerProductSelection` for a list read every tick: a settler's answer is kept while each input
- * is the same object as before and `version` (the technology answers it gates on) holds. A walking
- * worker's entity is new every tick, but the snapshot keeps every component nobody wrote. Settlers
- * missing from a pass are dropped at the next one.
+ * A per-tick cached read of one settler's answer: the value is kept while every input is the same
+ * object as before and `version` (the technology answers it gates on) holds. A walking worker's
+ * entity is new every tick, but the snapshot keeps every component nobody wrote. Settlers missing
+ * from a pass are dropped at the next one.
  */
-export function createProductSelectionCache(
-  ctx: UnitPanelModelContext,
+function createCachedRead<T>(
+  compute: (snapshot: WorldSnapshot, ent: SnapshotEntity) => T,
   version: () => number,
-): (snapshot: WorldSnapshot, ent: SnapshotEntity) => ProductSelection | null {
+): (snapshot: WorldSnapshot, ent: SnapshotEntity) => T {
   let pass: WorldSnapshot | null = null;
-  let current = new Map<number, HeldSelection>();
-  let previous = new Map<number, HeldSelection>();
+  let current = new Map<number, HeldSelection<T>>();
+  let previous = new Map<number, HeldSelection<T>>();
   return (snapshot, ent) => {
     if (snapshot !== pass) {
       pass = snapshot;
@@ -127,10 +127,33 @@ export function createProductSelectionCache(
       held !== undefined &&
       held.version === at &&
       held.inputs.every((input, index) => input === inputs[index]);
-    const value = kept ? held.value : settlerProductSelection(ctx, snapshot, ent);
+    const value = kept ? held.value : compute(snapshot, ent);
     current.set(ent.id, kept ? held : { inputs, version: at, value });
     return value;
   };
+}
+
+export function createProductSelectionCache(
+  ctx: UnitPanelModelContext,
+  version: () => number,
+): (snapshot: WorldSnapshot, ent: SnapshotEntity) => ProductSelection | null {
+  return createCachedRead((snapshot, ent) => settlerProductSelection(ctx, snapshot, ent), version);
+}
+
+/**
+ * `settlerWork`'s production section per settler, cached like the selection: what the worker's own
+ * panel lists, counters included, so a building's staff wells can name each worker's running set
+ * without recomputing it every tick.
+ */
+export function createProductionModelCache(
+  ctx: UnitPanelModelContext,
+  version: () => number,
+): (snapshot: WorldSnapshot, ent: SnapshotEntity) => SettlerProductionModel | null {
+  return createCachedRead(
+    (snapshot, ent) =>
+      settlerWork(ctx, snapshot, ent.components, progressionGatesSettler(snapshot, ent)).production,
+    version,
+  );
 }
 
 export interface SettlerWorkModel {
