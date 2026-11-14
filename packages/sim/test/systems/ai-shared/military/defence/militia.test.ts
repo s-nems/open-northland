@@ -28,7 +28,7 @@ import {
 } from '../../../../../src/index.js';
 import { hexDistanceBetween, nodeOfPosition } from '../../../../../src/nav/halfcell.js';
 import {
-  ALARM_EARLY_MARGIN_NODES,
+  ALARM_MARGIN_NODES,
   MILITIA_HOLD_TICKS,
   MILITIA_PER_ZONE_MAX,
   SCOUT_CHASE_HOLD_TICKS,
@@ -208,7 +208,7 @@ function militia(sim: Simulation): Entity[] {
 }
 
 function band(sim: Simulation): number {
-  return threatWatchNodes(ctxOf(sim), VIKING) + ALARM_EARLY_MARGIN_NODES;
+  return threatWatchNodes(ctxOf(sim), VIKING) + ALARM_MARGIN_NODES;
 }
 
 describe('computer defence - desperate militia', () => {

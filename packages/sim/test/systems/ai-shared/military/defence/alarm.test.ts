@@ -5,9 +5,8 @@ import type { Entity } from '../../../../../src/ecs/world.js';
 import { Simulation, type TerrainMap } from '../../../../../src/index.js';
 import { hexDistanceBetween } from '../../../../../src/nav/halfcell.js';
 import {
-  ALARM_EARLY_MARGIN_NODES,
-  SIEGE_ALARM_MARGIN_NODES,
-  THREAT_STAND_DOWN_MARGIN_NODES,
+  ALARM_MARGIN_NODES,
+  ALARM_STAND_DOWN_MARGIN_NODES,
   threatWatchNodes,
 } from '../../../../../src/systems/ai-shared/military/defence/index.js';
 import { planSettlementDefence } from '../../../../../src/systems/ai-shared/military/settlement-defence.js';
@@ -17,8 +16,8 @@ import { boardRider, createVehicle } from '../../../../../src/systems/vehicles/i
 import { aiContent } from '../../../../fixtures/ai-content.js';
 import { ctxOf } from '../../../../fixtures/context.js';
 
-// The alarm rings with room to spare before a raider ashore can strike, takes cover from an enemy warship
-// with a bowman on its deck as from a bowman ashore, and meets a crewed catapult earlier still.
+// The alarm rings one map point past the house bow's reach for a raider ashore and a crewed catapult alike,
+// and takes cover from an enemy warship with a bowman on its deck as from a bowman ashore.
 
 const VIKING = 1;
 const SEAT = 2;
@@ -39,8 +38,9 @@ const HQ = { x: 72, y: 20 };
 const SHORE_OFFSET = 8;
 /** How far inside the watch band the ship anchors. */
 const INSIDE_BAND = 2;
-/** How far past the plain watch, yet inside the stand-down margin a raider ashore holds, the ship rides. */
-const PAST_WATCH = 3;
+/** How far past the plain watch, yet inside the band a raider ashore holds a raised alarm from, the ship
+ *  rides. */
+const PAST_WATCH = ALARM_MARGIN_NODES + ALARM_STAND_DOWN_MARGIN_NODES;
 
 const SHIPS = [
   {
@@ -64,8 +64,8 @@ const SHIPS = [
   },
 ];
 
-/** The catapult's far reach: under the house bow's, as in the real `weapons.ini`, so the siege margin and
- *  not the reach decides its band. */
+/** The catapult's far reach: under the house bow's, as in the real `weapons.ini`, so the bow's reach and
+ *  not the catapult's decides its band. */
 const CATAPULT_REACH = 26;
 
 function content() {
@@ -204,16 +204,15 @@ describe('ai defence alarm - armed ships', () => {
     sim.step();
     shipOff(sim, BOWMAN, PAST_WATCH);
 
-    expect(PAST_WATCH).toBeLessThan(THREAT_STAND_DOWN_MARGIN_NODES);
     expect(alarms(sim)).toEqual([{ building: hq, enabled: false }]);
   });
 });
 
-describe('ai defence alarm - early warning', () => {
-  it('rings before a raider ashore reaches the house bow, within the early margin', () => {
+describe('ai defence alarm - margin', () => {
+  it('rings for a raider ashore one map point past the house bow', () => {
     const { sim, hq } = setup();
     const watch = threatWatchNodes(ctxOf(sim), VIKING);
-    const spot = westBetween(sim, hq, watch, watch + ALARM_EARLY_MARGIN_NODES);
+    const spot = westBetween(sim, hq, watch, watch + ALARM_MARGIN_NODES);
     const man = foeOf(sim, SPEARMAN, spot);
     const terrain = sim.terrain;
     if (terrain === undefined) throw new Error('setup: no terrain graph');
@@ -222,22 +221,24 @@ describe('ai defence alarm - early warning', () => {
     expect(alarms(sim)).toEqual([{ building: hq, enabled: true }]);
   });
 
-  it('rings for a crewed catapult past the raider band, inside the siege margin', () => {
-    const { sim, hq } = setup();
-    const watch = threatWatchNodes(ctxOf(sim), VIKING);
-    catapultAt(sim, westBetween(sim, hq, watch + ALARM_EARLY_MARGIN_NODES, watch + SIEGE_ALARM_MARGIN_NODES));
+  it('rings for a crewed catapult inside the margin and not a point past it', () => {
+    const watch = threatWatchNodes(ctxOf(setup().sim), VIKING);
+    const band = watch + ALARM_MARGIN_NODES;
+    for (const [lo, rings] of [
+      [watch, true],
+      [band, false],
+    ] as const) {
+      const { sim, hq } = setup();
+      catapultAt(sim, westBetween(sim, hq, lo, lo + 1));
 
-    expect(alarms(sim)).toEqual([{ building: hq, enabled: true }]);
+      expect(alarms(sim)).toEqual(rings ? [{ building: hq, enabled: true }] : []);
+    }
   });
 
-  it('ignores an empty catapult at the same place', () => {
+  it('ignores an empty catapult inside the margin', () => {
     const { sim, hq } = setup();
     const watch = threatWatchNodes(ctxOf(sim), VIKING);
-    catapultAt(
-      sim,
-      westBetween(sim, hq, watch + ALARM_EARLY_MARGIN_NODES, watch + SIEGE_ALARM_MARGIN_NODES),
-      false,
-    );
+    catapultAt(sim, westBetween(sim, hq, watch, watch + ALARM_MARGIN_NODES), false);
 
     expect(alarms(sim)).toEqual([]);
   });

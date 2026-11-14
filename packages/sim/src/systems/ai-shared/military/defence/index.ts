@@ -43,13 +43,13 @@ export {
 } from './posts.js';
 export { sortieOrders } from './sortie.js';
 export {
-  ALARM_EARLY_MARGIN_NODES,
+  ALARM_MARGIN_NODES,
+  ALARM_STAND_DOWN_MARGIN_NODES,
   type EnemyFire,
   enemyFire,
   enemyPosts,
   raidOnTheSettlement,
   type Shooter,
-  SIEGE_ALARM_MARGIN_NODES,
   seatRaiders,
   seatVehicleThreats,
   THREAT_STAND_DOWN_MARGIN_NODES,

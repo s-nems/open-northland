@@ -8,12 +8,12 @@ import { shelterCapacityOf } from '../../../readviews/index.js';
 import { entityNode } from '../../../spatial/nodes.js';
 import { isBuilt } from '../../seat-roster.js';
 import {
+  ALARM_MARGIN_NODES,
+  ALARM_STAND_DOWN_MARGIN_NODES,
   nearestRaiderWithin,
   type Raider,
   raidersNearAny,
   type Shooter,
-  SIEGE_ALARM_MARGIN_NODES,
-  THREAT_STAND_DOWN_MARGIN_NODES,
   threatWatchNodes,
   type VehicleThreats,
   watchBandOf,
@@ -80,9 +80,8 @@ function shipOff(
 
 /**
  * Whether a crewed catapult lies inside `shelter`'s siege band: the farther of the house bow's reach and
- * the catapult's own, plus {@link SIEGE_ALARM_MARGIN_NODES}, widened by
- * {@link THREAT_STAND_DOWN_MARGIN_NODES} while the alarm stands so a catapult on the rim does not flick
- * the town in and out of cover.
+ * the catapult's own, plus {@link ALARM_MARGIN_NODES}, widened by {@link ALARM_STAND_DOWN_MARGIN_NODES}
+ * while the alarm stands.
  */
 function siegeOff(
   world: World,
@@ -94,7 +93,7 @@ function siegeOff(
   if (siege.length === 0) return false;
   const at = terrain.coordsOf(entityNode(world, terrain, shelter));
   const watch = threatWatchNodes(ctx, world.get(shelter, Building).tribe);
-  const standDown = world.has(shelter, DefenceMode) ? THREAT_STAND_DOWN_MARGIN_NODES : 0;
+  const standDown = world.has(shelter, DefenceMode) ? ALARM_STAND_DOWN_MARGIN_NODES : 0;
   return siege.some(
     (catapult) =>
       hexDistanceBetween(catapult.x, catapult.y, at.x, at.y) <=
@@ -104,5 +103,5 @@ function siegeOff(
 
 /** How close a catapult of `reach` comes before a shelter watching `watch` nodes rings. */
 function siegeBandOf(watch: number, reach: number): number {
-  return Math.max(watch, reach) + SIEGE_ALARM_MARGIN_NODES;
+  return Math.max(watch, reach) + ALARM_MARGIN_NODES;
 }

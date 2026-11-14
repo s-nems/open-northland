@@ -18,7 +18,8 @@ import type { Entity } from '../../../../src/ecs/world.js';
 import { fx, positionOfNode, Simulation, type TerrainMap } from '../../../../src/index.js';
 import { hexDistanceBetween } from '../../../../src/nav/halfcell.js';
 import {
-  ALARM_EARLY_MARGIN_NODES,
+  ALARM_MARGIN_NODES,
+  ALARM_STAND_DOWN_MARGIN_NODES,
   seatRaiders,
 } from '../../../../src/systems/ai-shared/military/defence/index.js';
 import { AI_PROFILES } from '../../../../src/systems/computer-player/difficulty.js';
@@ -28,7 +29,6 @@ import {
   enemyFire,
   REBUILD_DELAY_TICKS,
   sitePace,
-  THREAT_STAND_DOWN_MARGIN_NODES,
   threatWatchNodes,
 } from '../../../../src/systems/computer-player/index.js';
 import { SIGHT_RADIUS_NODES } from '../../../../src/systems/conflict/targeting.js';
@@ -199,7 +199,7 @@ describe('build-order module - rebuilding under the enemy', () => {
     const sim = razedBakerySim(grassNodeMap(DEEP_MAP.width, DEEP_MAP.height));
     const home = placementOf(decide(sim));
     expect(home?.buildingType).toBe(BAKERY_TOP_TYPE);
-    const watch = threatWatchNodes(ctxOf(sim), VIKING) + ALARM_EARLY_MARGIN_NODES;
+    const watch = threatWatchNodes(ctxOf(sim), VIKING) + ALARM_MARGIN_NODES;
 
     const raider = onlyOne(spawnAt(sim, offTheHq(sim, watch), SPEARMAN));
     standAt(sim, raider, offTheHq(sim, watch));
@@ -211,11 +211,11 @@ describe('build-order module - rebuilding under the enemy', () => {
     sim.enqueueSetup({ kind: 'setDefenceMode', building: hq, enabled: true });
     sim.step();
     expect(sim.world.has(hq, DefenceMode)).toBe(true);
-    const inMargin = offTheHq(sim, watch + THREAT_STAND_DOWN_MARGIN_NODES);
+    const inMargin = offTheHq(sim, watch + ALARM_STAND_DOWN_MARGIN_NODES);
     standAt(sim, raider, inMargin);
     expect(decide(sim)).toEqual([]);
 
-    const clear = offTheHq(sim, watch + THREAT_STAND_DOWN_MARGIN_NODES + 1);
+    const clear = offTheHq(sim, watch + ALARM_STAND_DOWN_MARGIN_NODES + 1);
     standAt(sim, raider, clear);
     expect(placementOf(decide(sim))).toEqual(home);
   });

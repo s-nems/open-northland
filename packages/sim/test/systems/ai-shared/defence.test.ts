@@ -36,7 +36,10 @@ import {
   type TerrainMap,
 } from '../../../src/index.js';
 import type { TerrainGraph } from '../../../src/nav/terrain/index.js';
-import { ALARM_EARLY_MARGIN_NODES } from '../../../src/systems/ai-shared/military/defence/index.js';
+import {
+  ALARM_MARGIN_NODES,
+  ALARM_STAND_DOWN_MARGIN_NODES,
+} from '../../../src/systems/ai-shared/military/defence/index.js';
 import { mapDefenceLeashSystem } from '../../../src/systems/ai-shared/military/map-defence-leash.js';
 import {
   BIG_ATTACK_FIGHTERS,
@@ -51,7 +54,6 @@ import {
   MAP_AI_SEAT_SLOT_STEP_TICKS,
   MILITARY_DECISION_PHASE,
   militaryModule,
-  THREAT_STAND_DOWN_MARGIN_NODES,
   TOWER_GARRISON_ARCHERS,
   takeCensus,
   threatWatchNodes,
@@ -198,7 +200,7 @@ function placeSite(
 /** The watch band every case measures against - the house bow's reach in the fixture content, plus the
  *  alarm's early margin. */
 function watchOf(sim: Simulation): number {
-  return threatWatchNodes(ctxOf(sim), VIKING) + ALARM_EARLY_MARGIN_NODES;
+  return threatWatchNodes(ctxOf(sim), VIKING) + ALARM_MARGIN_NODES;
 }
 
 /** A settler of `owner` standing `distance` nodes due east of `building`. */
@@ -355,7 +357,7 @@ describe('ai defence - the alarm', () => {
 
     // Out of the band he raised it from, but not yet past the margin: the town stays in cover instead of
     // pouring back out to be caught in the open.
-    drawOff(sim, raider, THREAT_STAND_DOWN_MARGIN_NODES);
+    drawOff(sim, raider, ALARM_STAND_DOWN_MARGIN_NODES);
     expect(alarms(run(sim))).toEqual([]);
   });
 
@@ -375,7 +377,7 @@ describe('ai defence - the alarm', () => {
 
     // Inside the margin, outside the reach a sheltering civilian answers with. Held there he shuts the
     // town down for nothing, so the band that answers has to reach as far as the alarm holds.
-    drawOff(sim, raider, THREAT_STAND_DOWN_MARGIN_NODES);
+    drawOff(sim, raider, ALARM_STAND_DOWN_MARGIN_NODES);
     const commands = run(sim);
     const at = nodeOf(sim, raider);
     expect(alarms(commands)).toEqual([]);
@@ -388,7 +390,7 @@ describe('ai defence - the alarm', () => {
     const raider = standOff(sim, hq, watchOf(sim), SPEARMAN);
     apply(sim, run(sim));
 
-    drawOff(sim, raider, THREAT_STAND_DOWN_MARGIN_NODES + 1);
+    drawOff(sim, raider, ALARM_STAND_DOWN_MARGIN_NODES + 1);
     expect(alarms(run(sim))).toEqual([{ building: hq, enabled: false }]);
   });
 

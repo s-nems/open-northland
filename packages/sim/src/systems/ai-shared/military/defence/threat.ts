@@ -68,18 +68,20 @@ export interface EnemyFire {
   around(x: number, y: number, radius: number, span: number): EnemyFire;
 }
 
-/** How far past its watch band ({@link threatWatchNodes}) a raider must draw off before the seat stands
- *  down. Without the margin a fighter pacing the rim would flick the town's economy in and out of cover
- *  every decision. */
+/** How far past a watch band a tower's extra posts stay manned and a defender's chase runs, so a fighter
+ *  pacing the rim does not pull them out and back every decision. The alarm holds by the narrower
+ *  {@link ALARM_STAND_DOWN_MARGIN_NODES}. */
 export const THREAT_STAND_DOWN_MARGIN_NODES = 6;
 
-/** How far past the house bow's reach a raider is still seen coming: the alarm rings early enough for the
- *  people to be indoors before he can strike, instead of at the rim of the bow. Owner rule. */
-export const ALARM_EARLY_MARGIN_NODES = 6;
+/** How far past the reach that matters - the house bow's for a raider, the farther of it and its own for a
+ *  crewed catapult - the alarm rings: one map point, so the town goes in as the threat steps up to that
+ *  reach, not while it is still far out. Owner rule. */
+export const ALARM_MARGIN_NODES = 1;
 
-/** The wider early margin a crewed enemy catapult is met with, past the farther of the house bow's reach
- *  and its own: a stone thrown from out of bow range still lands in the street. Owner rule. */
-export const SIEGE_ALARM_MARGIN_NODES = 12;
+/** How far past its ringing band the threat has to draw off before a raised alarm comes down. One map
+ *  point stops a man stepping across the rim from flicking the town in and out of cover; the narrow hold
+ *  keeps a lone man parked out of bow reach from shutting the town down while nobody comes out at him. */
+export const ALARM_STAND_DOWN_MARGIN_NODES = 1;
 
 /** The house bow's extracted `maximumrange` (`weapons.ini` type 20), for content that declares no wall bow
  *  and whose shelters therefore take their people in unarmed - they still have to be indoors in time. */
@@ -93,17 +95,16 @@ export function threatWatchNodes(ctx: SystemContext, tribe: number): number {
 }
 
 /**
- * The band `building` watches this decision: its {@link threatWatchNodes} plus
- * {@link ALARM_EARLY_MARGIN_NODES}, widened by {@link THREAT_STAND_DOWN_MARGIN_NODES} while its alarm
- * already stands.
+ * The band `building` watches this decision: its {@link threatWatchNodes} plus {@link ALARM_MARGIN_NODES},
+ * widened by {@link ALARM_STAND_DOWN_MARGIN_NODES} while its alarm already stands.
  *
- * The alarm and the sortie read the same band on purpose. A raider inside the margin but outside the plain
+ * The alarm and the sortie read the same band on purpose. A raider inside the margins but outside the plain
  * reach holds the town in cover while standing where nothing indoors can shoot him, so he has to be
  * somebody the seat comes out at - otherwise one man shuts a settlement down for good.
  */
 export function watchBandOf(world: World, ctx: SystemContext, building: Entity): number {
-  const watch = threatWatchNodes(ctx, world.get(building, Building).tribe) + ALARM_EARLY_MARGIN_NODES;
-  return world.has(building, DefenceMode) ? watch + THREAT_STAND_DOWN_MARGIN_NODES : watch;
+  const watch = threatWatchNodes(ctx, world.get(building, Building).tribe) + ALARM_MARGIN_NODES;
+  return world.has(building, DefenceMode) ? watch + ALARM_STAND_DOWN_MARGIN_NODES : watch;
 }
 
 /**
