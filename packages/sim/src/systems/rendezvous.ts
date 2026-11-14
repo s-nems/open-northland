@@ -96,6 +96,27 @@ function haltMidRoute(world: World, terrain: TerrainGraph, walker: Entity): Half
 }
 
 /**
+ * Pause a pair while a player order, flight or fight owns either half's walk: that owner keeps its walk and
+ * its route's failure signal, and a free half halts at its next node instead of chasing a partner that is
+ * walking elsewhere. Returns whether the pair is paused; it resumes once both halves are free again.
+ */
+export function pauseForOwnedWalks(
+  world: World,
+  terrain: TerrainGraph | undefined,
+  a: Entity,
+  b: Entity,
+): boolean {
+  const ownedA = walkOwnedElsewhere(world, a);
+  const ownedB = walkOwnedElsewhere(world, b);
+  if (!ownedA && !ownedB) return false;
+  if (terrain !== undefined) {
+    if (!ownedA) stopAtNextNode(world, a);
+    if (!ownedB) stopAtNextNode(world, b);
+  }
+  return true;
+}
+
+/**
  * Close the distance for a pair not yet {@link standsBeside} each other: a failed route on either half
  * means the partner is unreachable, so halt both and `onUnreachable`; otherwise the awaited `b` halts and
  * the driving `a` walks to a node beside `target`, `b`'s node. No terrain (a mapless fixture) simply
@@ -123,15 +144,12 @@ export function approachPartner(
   }
   if (terrain === undefined) return;
   if (stopAtNextNode(world, b)) return;
-  // A walk aimed beside the partner, one a player order, flight or fight owns, and a step finishing without
-  // a goal all go on. Any other walk, such as one to work taken up before the pair met, is re-aimed now.
-  // Approximation: how the original treats a walk under way when a pair is matched is unconfirmed.
+  // A walk aimed beside the partner and a step finishing without a goal go on. Any other walk, such as one
+  // to work taken up before the pair met, is re-aimed now. Callers pause first for an owned walk
+  // ({@link pauseForOwnedWalks}). Approximation: how the original treats a walk under way when a pair is
+  // matched is unconfirmed.
   const walkingTo = world.tryGet(a, MoveGoal)?.cell;
-  if (
-    isTravelling(world, a) &&
-    (walkingTo === undefined || walkOwnedElsewhere(world, a) || aimsBeside(terrain, walkingTo, target))
-  )
-    return;
+  if (isTravelling(world, a) && (walkingTo === undefined || aimsBeside(terrain, walkingTo, target))) return;
   const position = world.get(a, Position);
   const from = routeStartCell(terrain, position.x, position.y);
   const blocked = dynamicBlockOverlay(world, ctx, terrain);
