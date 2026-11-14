@@ -1,16 +1,13 @@
 import { Building, DefenceMode } from '../../../../components/index.js';
 import type { PlayerCommand } from '../../../../core/commands/index.js';
 import type { Entity, World } from '../../../../ecs/world.js';
-import { hexDistanceBetween } from '../../../../nav/halfcell.js';
 import type { TerrainGraph } from '../../../../nav/terrain/index.js';
 import type { SystemContext } from '../../../context.js';
 import { shelterCapacityOf } from '../../../readviews/index.js';
-import { entityNode } from '../../../spatial/nodes.js';
 import { isBuilt } from '../../seat-roster.js';
 import {
   ALARM_MARGIN_NODES,
   ALARM_STAND_DOWN_MARGIN_NODES,
-  nearestRaiderWithin,
   type Raider,
   raidersNearAny,
   type Shooter,
@@ -18,10 +15,11 @@ import {
   type VehicleThreats,
   watchBandOf,
 } from './threat.js';
+import { wallDistanceWithin } from './walls.js';
 
 /** Ring and unring the seat's shelters: defence mode goes up on every standing shelter a raider has closed
  *  inside its {@link watchBandOf}, an armed ship inside its plain watch or a crewed catapult inside its
- *  {@link siegeBandOf}, and comes down once the last one is out of it. */
+ *  {@link siegeBandOf}, each measured from the shelter's walls, and comes down once the last one is out. */
 export function alarmOrders(
   world: World,
   ctx: SystemContext,
@@ -55,15 +53,17 @@ function closedOn(
   shelter: Entity,
   raiders: readonly Raider[],
 ): boolean {
-  const at = terrain.coordsOf(entityNode(world, terrain, shelter));
+  const band = watchBandOf(world, ctx, shelter);
   // Reachability is not asked: a bow across a river still puts arrows in the street.
-  return nearestRaiderWithin(raiders, at.x, at.y, watchBandOf(world, ctx, shelter), null) !== null;
+  return raiders.some(
+    (raider) => wallDistanceWithin(world, ctx, terrain, shelter, band, raider.x, raider.y) !== null,
+  );
 }
 
 /**
- * Whether an armed ship lies inside `shelter`'s plain watch. No sortie can answer a ship, so the
- * stand-down margin of {@link watchBandOf} would hold the town in cover for as long as one rode at anchor
- * past its own reach.
+ * Whether an armed ship lies inside `shelter`'s plain watch, out from its walls. No sortie can answer a
+ * ship, so the stand-down margin of {@link watchBandOf} would hold the town in cover for as long as one
+ * rode at anchor past its own reach.
  */
 function shipOff(
   world: World,
@@ -73,15 +73,16 @@ function shipOff(
   ships: readonly Shooter[],
 ): boolean {
   if (ships.length === 0) return false;
-  const at = terrain.coordsOf(entityNode(world, terrain, shelter));
   const watch = threatWatchNodes(ctx, world.get(shelter, Building).tribe);
-  return ships.some((ship) => hexDistanceBetween(ship.x, ship.y, at.x, at.y) <= watch);
+  return ships.some(
+    (ship) => wallDistanceWithin(world, ctx, terrain, shelter, watch, ship.x, ship.y) !== null,
+  );
 }
 
 /**
- * Whether a crewed catapult lies inside `shelter`'s siege band: the farther of the house bow's reach and
- * the catapult's own, plus {@link ALARM_MARGIN_NODES}, widened by {@link ALARM_STAND_DOWN_MARGIN_NODES}
- * while the alarm stands.
+ * Whether a crewed catapult lies inside `shelter`'s siege band, out from its walls, which the catapult
+ * aims at: the farther of the house bow's reach and the catapult's own, plus {@link ALARM_MARGIN_NODES},
+ * widened by {@link ALARM_STAND_DOWN_MARGIN_NODES} while the alarm stands.
  */
 function siegeOff(
   world: World,
@@ -91,13 +92,19 @@ function siegeOff(
   siege: readonly Shooter[],
 ): boolean {
   if (siege.length === 0) return false;
-  const at = terrain.coordsOf(entityNode(world, terrain, shelter));
   const watch = threatWatchNodes(ctx, world.get(shelter, Building).tribe);
   const standDown = world.has(shelter, DefenceMode) ? ALARM_STAND_DOWN_MARGIN_NODES : 0;
   return siege.some(
     (catapult) =>
-      hexDistanceBetween(catapult.x, catapult.y, at.x, at.y) <=
-      siegeBandOf(watch, catapult.reach) + standDown,
+      wallDistanceWithin(
+        world,
+        ctx,
+        terrain,
+        shelter,
+        siegeBandOf(watch, catapult.reach) + standDown,
+        catapult.x,
+        catapult.y,
+      ) !== null,
   );
 }
 

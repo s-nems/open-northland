@@ -15,6 +15,7 @@ import { entityNode } from '../../../../../src/systems/spatial/nodes.js';
 import { boardRider, createVehicle } from '../../../../../src/systems/vehicles/index.js';
 import { aiContent } from '../../../../fixtures/ai-content.js';
 import { ctxOf } from '../../../../fixtures/context.js';
+import { distanceFromWalls } from '../../../../fixtures/walls.js';
 
 // The alarm rings one map point past the house bow's reach for a raider ashore and a crewed catapult alike,
 // and takes cover from an enemy warship with a bowman on its deck as from a bowman ashore.
@@ -110,13 +111,17 @@ function setup(): { sim: Simulation; hq: Entity } {
   return { sim, hq };
 }
 
-/** An enemy warship `offset` points off the headquarters' watch band (negative inside it) with one man of
- *  `crew`'s job seated aboard. */
+/** An enemy warship east of the headquarters, `offset` points off its watch band from the walls (negative
+ *  inside it), with one man of `crew`'s job seated aboard. */
 function shipOff(sim: Simulation, crew: number, offset = -INSIDE_BAND): Entity {
+  const hq = [...sim.world.query(Building)][0];
+  if (hq === undefined) throw new Error('setup: no headquarters');
   const watch = threatWatchNodes(ctxOf(sim), VIKING);
+  let x = HQ.x;
+  while (distanceFromWalls(sim, hq, x, HQ.y) < watch + offset) x++;
   const ship = createVehicle(sim.world, ctxOf(sim), {
     vehicleType: WARSHIP,
-    x: HQ.x + watch + offset,
+    x,
     y: HQ.y,
     tribe: VIKING,
     owner: FOE,
@@ -145,13 +150,13 @@ function foeOf(sim: Simulation, job: number, at = AWAY): Entity {
   return man;
 }
 
-/** The first node west of the headquarters, on its row, whose distance from it lies in `(lo, hi]`. */
+/** The first node west of the headquarters, on its row, whose distance from its walls lies in `(lo, hi]`. */
 function westBetween(sim: Simulation, hq: Entity, lo: number, hi: number): { x: number; y: number } {
   const terrain = sim.terrain;
   if (terrain === undefined) throw new Error('setup: no terrain graph');
   const at = terrain.coordsOf(entityNode(sim.world, terrain, hq));
   for (let x = at.x; x >= 0; x--) {
-    const d = hexDistanceBetween(x, at.y, at.x, at.y);
+    const d = distanceFromWalls(sim, hq, x, at.y);
     if (d > lo && d <= hi) return { x, y: at.y };
   }
   throw new Error('setup: no node in the band');
@@ -221,6 +226,26 @@ describe('ai defence alarm - margin', () => {
     expect(alarms(sim)).toEqual([{ building: hq, enabled: true }]);
   });
 
+  it("reads the band off the nearest wall off the building's row too, where a diagonal comes free", () => {
+    const ROWS = 10;
+    for (const [pastBand, rings] of [
+      [0, true],
+      [1, false],
+    ] as const) {
+      const { sim, hq } = setup();
+      const terrain = sim.terrain;
+      if (terrain === undefined) throw new Error('setup: no terrain graph');
+      const band = threatWatchNodes(ctxOf(sim), VIKING) + ALARM_MARGIN_NODES;
+      const at = terrain.coordsOf(entityNode(sim.world, terrain, hq));
+      const y = at.y + ROWS;
+      let x = at.x;
+      while (distanceFromWalls(sim, hq, x, y) < band + pastBand) x--;
+      foeOf(sim, SPEARMAN, { x, y });
+
+      expect(alarms(sim)).toEqual(rings ? [{ building: hq, enabled: true }] : []);
+    }
+  });
+
   it('rings for a crewed catapult inside the margin and not a point past it', () => {
     const watch = threatWatchNodes(ctxOf(setup().sim), VIKING);
     const band = watch + ALARM_MARGIN_NODES;
@@ -233,6 +258,19 @@ describe('ai defence alarm - margin', () => {
 
       expect(alarms(sim)).toEqual(rings ? [{ building: hq, enabled: true }] : []);
     }
+  });
+
+  it('measures from the walls the catapult aims at, not from the anchor', () => {
+    const { sim, hq } = setup();
+    const terrain = sim.terrain;
+    if (terrain === undefined) throw new Error('setup: no terrain graph');
+    const band = threatWatchNodes(ctxOf(sim), VIKING) + ALARM_MARGIN_NODES;
+    const spot = westBetween(sim, hq, band - 1, band);
+    const anchor = terrain.coordsOf(entityNode(sim.world, terrain, hq));
+    expect(hexDistanceBetween(spot.x, spot.y, anchor.x, anchor.y)).toBeGreaterThan(band);
+    catapultAt(sim, spot);
+
+    expect(alarms(sim)).toEqual([{ building: hq, enabled: true }]);
   });
 
   it('ignores an empty catapult inside the margin', () => {

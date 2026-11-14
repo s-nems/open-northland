@@ -31,6 +31,7 @@ import { entityNode } from '../../../spatial/nodes.js';
 import { fogHides, playerSeesNode } from '../../../vision/gates.js';
 import type { FogState } from '../../../vision/state.js';
 import { type FireCover, fireCover } from './fire-cover.js';
+import { wallDistanceWithin, wallSpanOf } from './walls.js';
 
 /** An enemy fighter, at the node he stands on this decision, with the walkable component that node
  *  belongs to - the seat can shelter from a man it cannot reach, but it cannot march out at him - and
@@ -95,8 +96,9 @@ export function threatWatchNodes(ctx: SystemContext, tribe: number): number {
 }
 
 /**
- * The band `building` watches this decision: its {@link threatWatchNodes} plus {@link ALARM_MARGIN_NODES},
- * widened by {@link ALARM_STAND_DOWN_MARGIN_NODES} while its alarm already stands.
+ * The band `building` watches this decision, out from its walls (`walls.ts`): its {@link threatWatchNodes}
+ * plus {@link ALARM_MARGIN_NODES}, widened by {@link ALARM_STAND_DOWN_MARGIN_NODES} while its alarm already
+ * stands.
  *
  * The alarm and the sortie read the same band on purpose. A raider inside the margins but outside the plain
  * reach holds the town in cover while standing where nothing indoors can shoot him, so he has to be
@@ -675,31 +677,31 @@ export function raidOnTheSettlement(
 ): Raider | null {
   const near = raidersNearAny(world, ctx, terrain, owned, raiders);
   if (near.length === 0) return null;
-  let best: { raider: Raider; distance: number } | null = null;
+  let best: Raider | null = null;
+  let bestDistance = 0;
   for (const e of owned) {
-    const at = entityNode(world, terrain, e);
     const door = terrain.componentOf(interactionCell(world, ctx, terrain, e));
-    const found = nearestRaiderWithin(
-      near,
-      terrain.xOf(at),
-      terrain.yOf(at),
-      watchBandOf(world, ctx, e),
-      door,
-    );
-    if (found === null) continue;
-    if (
-      best === null ||
-      found.distance < best.distance ||
-      (found.distance === best.distance && found.raider.entity < best.raider.entity)
-    ) {
-      best = found;
+    const band = watchBandOf(world, ctx, e);
+    for (const raider of near) {
+      if (raider.component !== door) continue;
+      const distance = wallDistanceWithin(world, ctx, terrain, e, band, raider.x, raider.y);
+      if (distance === null) continue;
+      if (
+        best === null ||
+        distance < bestDistance ||
+        (distance === bestDistance && raider.entity < best.entity)
+      ) {
+        best = raider;
+        bestDistance = distance;
+      }
     }
   }
-  return best?.raider ?? null;
+  return best;
 }
 
-/** The box round a seat's buildings widened by their widest watch band: a man outside it lies past every
- *  building's band, since a hex distance is never under the row span nor under the column span less one. */
+/** The box round a seat's buildings widened by their widest watch band and wall span: a man outside it
+ *  lies past every building's band, since a hex distance is never under the row span nor under the column
+ *  span less one. */
 export interface SettlementBox {
   readonly minX: number;
   readonly maxX: number;
@@ -728,7 +730,7 @@ export function settlementBox(
     if (x > maxX) maxX = x;
     if (y < minY) minY = y;
     if (y > maxY) maxY = y;
-    band = Math.max(band, watchBandOf(world, ctx, e));
+    band = Math.max(band, watchBandOf(world, ctx, e) + wallSpanOf(world, ctx, terrain, e));
   }
   return { minX: minX - band - 1, maxX: maxX + band + 1, minY: minY - band, maxY: maxY + band };
 }

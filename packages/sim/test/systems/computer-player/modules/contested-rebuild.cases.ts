@@ -39,6 +39,7 @@ import { razeBuilding } from '../../../../src/systems/lifecycle/cleanup.js';
 import { entityNode } from '../../../../src/systems/spatial/nodes.js';
 import { aiContent } from '../../../fixtures/ai-content.js';
 import { grassNodeMap, waterColumnMap } from '../../../fixtures/terrain.js';
+import { distanceFromWalls } from '../../../fixtures/walls.js';
 import {
   aiSim,
   BAKERY_TOP_TYPE,
@@ -180,15 +181,15 @@ function standAt(sim: Simulation, e: Entity, at: Spot): void {
   sim.world.add(e, Position, positionOfNode(at.x, at.y));
 }
 
-/** A node `distance` map points from the HQ, west first and then south on {@link DEEP_MAP}: away from
- *  the mill. */
+/** A node `distance` map points from the HQ's nearest wall, west first and then south on {@link DEEP_MAP}:
+ *  away from the mill. */
 function offTheHq(sim: Simulation, distance: number): Spot {
-  const hq = nodeOf(sim, entityOfBuilding(sim, HQ_TYPE));
-  const x = hq.x - Math.min(distance, hq.x);
-  for (let y = hq.y; y < DEEP_MAP.height; y++) {
-    if (hexDistanceBetween(hq.x, hq.y, x, y) === distance) return { x, y };
-  }
-  throw new Error(`setup: no node ${distance} map points west and south of the HQ`);
+  const hq = entityOfBuilding(sim, HQ_TYPE);
+  const at = nodeOf(sim, hq);
+  const x = at.x - Math.min(distance, at.x);
+  for (let y = at.y; y < DEEP_MAP.height; y++)
+    if (distanceFromWalls(sim, hq, x, y) === distance) return { x, y };
+  throw new Error(`setup: no node ${distance} map points west and south of the HQ's walls`);
 }
 
 describe('build-order module - rebuilding under the enemy', () => {

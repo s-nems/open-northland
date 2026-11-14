@@ -66,6 +66,7 @@ import { MILITARY_MODE } from '../../../src/systems/readviews/index.js';
 import { entityNode } from '../../../src/systems/spatial/nodes.js';
 import { aiContent } from '../../fixtures/ai-content.js';
 import { grassNodeMap } from '../../fixtures/terrain.js';
+import { distanceFromWalls } from '../../fixtures/walls.js';
 
 /**
  * The strategic AI defending its own ground: the alarm it rings over its townspeople when enemy fighters
@@ -197,16 +198,19 @@ function placeSite(
   return site;
 }
 
-/** The watch band every case measures against - the house bow's reach in the fixture content, plus the
- *  alarm's early margin. */
+/** The watch band every case measures against, out from the walls - the house bow's reach in the fixture
+ *  content, plus the alarm's margin. */
 function watchOf(sim: Simulation): number {
   return threatWatchNodes(ctxOf(sim), VIKING) + ALARM_MARGIN_NODES;
 }
 
-/** A settler of `owner` standing `distance` nodes due east of `building`. */
+/** A settler of `owner` standing `distance` nodes due east of `building`'s nearest wall, where the bands
+ *  are measured from. */
 function standOff(sim: Simulation, building: Entity, distance: number, jobType: number, owner = FOE): Entity {
   const at = nodeOf(sim, building);
-  const spawned = spawn(sim, 1, { x: at.x + distance, y: at.y }, jobType, owner);
+  let x = at.x;
+  while (distanceFromWalls(sim, building, x, at.y) < distance) x++;
+  const spawned = spawn(sim, 1, { x, y: at.y }, jobType, owner);
   const raider = spawned[0];
   if (raider === undefined) throw new Error('setup: the stand-off spawn was refused');
   return raider;
@@ -329,23 +333,6 @@ describe('ai defence - the alarm', () => {
     standOff(sim, hq, watchOf(sim) + 1, SPEARMAN);
 
     expect(alarms(run(sim))).toEqual([]);
-  });
-
-  it('counts the band in map points, where a diagonal half as wide as it is tall comes free', () => {
-    const ROWS = 10; // an even row span, so no half-node lean applies
-    const FREE_COLUMNS = ROWS / 2;
-    for (const [pastBand, rings] of [
-      [0, true],
-      [1, false],
-    ] as const) {
-      const sim = aiSim();
-      const hq = place(sim, HQ_TYPE, SEAT_HQ);
-      const at = nodeOf(sim, hq);
-      const columns = watchOf(sim) - ROWS + FREE_COLUMNS + pastBand;
-      spawn(sim, 1, { x: at.x + columns, y: at.y + ROWS }, SPEARMAN, FOE);
-
-      expect(alarms(run(sim))).toEqual(rings ? [{ building: hq, enabled: true }] : []);
-    }
   });
 
   it('holds a raised alarm while the raider hangs inside the stand-down margin', () => {

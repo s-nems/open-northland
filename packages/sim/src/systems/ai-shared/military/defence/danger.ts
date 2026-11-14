@@ -38,6 +38,7 @@ import {
   THREAT_STAND_DOWN_MARGIN_NODES,
   watchBandOf,
 } from './threat.js';
+import { wallDistanceWithin, wallSpanOf } from './walls.js';
 
 // A computer seat weighing the enemies inside its settlement against what it can answer them with. The
 // weights are the original's per-unit danger values; the zones are an approximation of its per-position
@@ -174,7 +175,9 @@ export function assessSeatThreat(
   for (const anchor of owned) {
     const at = terrain.coordsOf(entityNode(world, terrain, anchor));
     const band = watchBandOf(world, ctx, anchor);
-    const inside = intruders.filter((i) => hexDistanceBetween(i.x, i.y, at.x, at.y) <= band);
+    const inside = intruders.filter(
+      (i) => wallDistanceWithin(world, ctx, terrain, anchor, band, i.x, i.y) !== null,
+    );
     if (inside.length === 0) continue;
     let danger = 0;
     let armedDanger = 0;
@@ -188,7 +191,7 @@ export function assessSeatThreat(
       anchor,
       x: at.x,
       y: at.y,
-      radius: band + THREAT_STAND_DOWN_MARGIN_NODES,
+      radius: band + wallSpanOf(world, ctx, terrain, anchor) + THREAT_STAND_DOWN_MARGIN_NODES,
       intruders: inside,
       danger,
       armedDanger,

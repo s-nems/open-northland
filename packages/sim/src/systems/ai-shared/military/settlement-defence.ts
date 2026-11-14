@@ -51,9 +51,9 @@ import {
   type Raider,
   raidersNearAny,
   THREAT_STAND_DOWN_MARGIN_NODES,
-  threatWatchNodes,
   watchBandOf,
 } from './defence/threat.js';
+import { wallDistanceWithin, wallSpanOf } from './defence/walls.js';
 import { mapAiSoldierClaims } from './ownership.js';
 
 export interface SettlementDefence {
@@ -178,11 +178,15 @@ function deriveSettlementDefence(
       ? []
       : owned.filter(
           (building) =>
-            hexNodeDistance(
+            wallDistanceWithin(
+              world,
+              ctx,
               terrain,
-              entityNode(world, terrain, building),
-              terrain.nodeAtClamped(raid.x, raid.y),
-            ) <= watchBandOf(world, ctx, building),
+              building,
+              watchBandOf(world, ctx, building),
+              raid.x,
+              raid.y,
+            ) !== null,
         );
   const responders = autonomous
     ? free
@@ -220,7 +224,10 @@ function deriveSettlementDefence(
           player,
           centre: { hx: centre.x, hy: centre.y },
           home: { hx: home.x, hy: home.y },
-          radius: threatWatchNodes(ctx, world.get(camp, Building).tribe) + THREAT_STAND_DOWN_MARGIN_NODES,
+          radius:
+            watchBandOf(world, ctx, camp) +
+            wallSpanOf(world, ctx, terrain, camp) +
+            THREAT_STAND_DOWN_MARGIN_NODES,
           threat: raid.entity,
           returning: false,
         },

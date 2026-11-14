@@ -26,7 +26,7 @@ import {
   Simulation,
   serializeSaveGame,
 } from '../../../../../src/index.js';
-import { hexDistanceBetween, nodeOfPosition } from '../../../../../src/nav/halfcell.js';
+import { nodeOfPosition } from '../../../../../src/nav/halfcell.js';
 import {
   ALARM_MARGIN_NODES,
   MILITIA_HOLD_TICKS,
@@ -36,6 +36,7 @@ import {
   THREAT_STAND_DOWN_MARGIN_NODES,
   threatWatchNodes,
 } from '../../../../../src/systems/ai-shared/military/defence/index.js';
+import { wallSpanOf } from '../../../../../src/systems/ai-shared/military/defence/walls.js';
 import { settlementDefenceSystem } from '../../../../../src/systems/ai-shared/military/settlement-defence.js';
 import {
   COMPUTER_DECISION_INTERVAL_TICKS,
@@ -52,6 +53,7 @@ import { boardRider, createVehicle } from '../../../../../src/systems/vehicles/i
 import { aiContent } from '../../../../fixtures/ai-content.js';
 import { ctxOf } from '../../../../fixtures/context.js';
 import { grassNodeMap } from '../../../../fixtures/terrain.js';
+import { distanceFromWalls } from '../../../../fixtures/walls.js';
 
 const VIKING = 1;
 const SEAT = 2;
@@ -173,13 +175,14 @@ function scoutAt(sim: Simulation, hq: Entity, distance: number): Entity {
   return scout;
 }
 
-/** Stand `e` on the headquarters' row, `distance` east of it. */
+/** Stand `e` on the headquarters' row, `distance` east of its nearest wall, where the bands are measured
+ *  from. */
 function standAt(sim: Simulation, hq: Entity, e: Entity, distance: number): void {
   const terrain = sim.terrain;
   if (terrain === undefined) throw new Error('setup: no terrain');
   const at = terrain.coordsOf(entityNode(sim.world, terrain, hq));
   let x = at.x;
-  while (hexDistanceBetween(x, at.y, at.x, at.y) < distance) x++;
+  while (distanceFromWalls(sim, hq, x, at.y) < distance) x++;
   sim.world.add(e, Position, positionOfNode(x, at.y));
 }
 
@@ -421,11 +424,16 @@ describe('computer defence - scout chasers', () => {
 
     const chasers = militia(sim);
     expect(chasers).toHaveLength(SCOUT_CHASERS_PER_SCOUT);
+    const terrain = sim.terrain;
+    if (terrain === undefined) throw new Error('setup: no terrain');
+    const span = wallSpanOf(sim.world, ctxOf(sim), terrain, hq);
     for (const e of chasers) {
       expect(sim.world.get(e, Settler).jobType).toBe(HUNTER);
       expect(sim.world.get(e, Militia).quarry).toBe(scout);
       expect(sim.world.get(e, AttackOrder).target).toBe(scout);
-      expect(sim.world.get(e, AttackOrder).leash?.radius).toBe(band(sim) + THREAT_STAND_DOWN_MARGIN_NODES);
+      expect(sim.world.get(e, AttackOrder).leash?.radius).toBe(
+        band(sim) + span + THREAT_STAND_DOWN_MARGIN_NODES,
+      );
     }
     decide(sim, DEFENCE_TICK + COMPUTER_DECISION_INTERVAL_TICKS);
     expect(militia(sim)).toEqual(chasers);
