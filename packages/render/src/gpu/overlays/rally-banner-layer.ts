@@ -27,6 +27,11 @@ const HANG_ROW = 14;
 
 /** The cloth's sway: its hem swings this many px either way, a wave running down the cloth. */
 const SWAY_PX = 2.2;
+/** The sway's clock steps at this rate rather than running continuously: the cloth is a warped quad
+ *  over nearest-sampled pixel art, and continuous sub-pixel vertex drift resamples its texel
+ *  boundaries every frame, which reads as flicker. Stepping at the sails' 12 Hz base rate
+ *  (cloth-wind.ts) and rastering the shift to whole art px keeps the wave on the pixel grid. */
+const SWAY_HZ = 12;
 const SWAY_SECONDS_PER_RADIAN = 0.26;
 /** Radians of phase between the hang row and the hem, so the cloth bends instead of swinging stiff. */
 const SWAY_PHASE_SPAN = 2.4;
@@ -111,15 +116,20 @@ function retire(node: BannerNode): void {
   node.root.destroy({ children: true });
 }
 
-/** Bend the cloth for wall-clock `seconds`: every mesh row below the hang row shifts sideways, further toward the hem. */
+/** Bend the cloth for wall-clock `seconds`: every mesh row below the hang row shifts sideways, further
+ *  toward the hem. The wave steps at {@link SWAY_HZ} and rasters to whole art px, so the cloth holds
+ *  its texel boundaries between steps instead of crawling them every frame. */
 function sway(node: BannerNode, seconds: number): void {
+  const stepped = Math.floor(seconds * SWAY_HZ) / SWAY_HZ;
   for (const { mesh, restX } of node.cloths) {
     const positions = mesh.geometry.positions;
     const height = mesh.texture.frame.height;
     for (let vertex = 0; vertex < restX.length; vertex++) {
       const y = positions[2 * vertex + 1] ?? 0;
       const hang = Math.max(0, (y - HANG_ROW) / (height - HANG_ROW));
-      const shift = SWAY_PX * hang * Math.sin(seconds / SWAY_SECONDS_PER_RADIAN - hang * SWAY_PHASE_SPAN);
+      const shift = Math.round(
+        SWAY_PX * hang * Math.sin(stepped / SWAY_SECONDS_PER_RADIAN - hang * SWAY_PHASE_SPAN),
+      );
       positions[2 * vertex] = (restX[vertex] ?? 0) + shift;
     }
     mesh.geometry.getBuffer('aPosition').update();
@@ -159,7 +169,9 @@ export class RallyBannerLayer {
         this.container.addChild(node.root);
         this.nodes.set(banner.id, node);
       }
-      node.root.position.set(spot.x, spot.y);
+      // The banner never moves, so hold its anchor on whole art px: a fractional one puts the pole's
+      // foot between texels and the whole flag resamples every frame under a fractional zoom.
+      node.root.position.set(Math.round(spot.x), Math.round(spot.y));
       if (node.tinted !== undefined) node.tinted.tint = banner.colour;
       sway(node, seconds);
       this.seen.add(banner.id);
