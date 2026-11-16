@@ -122,7 +122,7 @@ export async function synthesizeEvents(
         maxBufferSize: SYNTH_QUANTUM,
       });
       synth.soundBankManager.addSoundBank(dls.bank, 'main');
-      await synth.processorInitialized;
+      await synth.ready;
       pool.push(synth);
       processors.push(synth);
     }
