@@ -429,6 +429,18 @@ export const itSurfaces = {
       },
       invertDragScroll: 'Inverti il trascinamento',
       invertDragScrollTip: 'Se attivo, trascinando a destra la mappa si sposta a sinistra, e viceversa.',
+      cameraHeading: 'Visuale',
+      debugHeading: 'Debug',
+      noticesHeading: 'Notifiche',
+      noticeNewSoldier: 'Nuovo soldato',
+      noticeNewSoldierTip:
+        "Avvisa quando un uomo termina l'addestramento in caserma e prende le armi. Se disattivato, la notifica non compare nell'elenco e il suo jingle non suona.",
+      noticeAdultMan: 'Uomo adulto',
+      noticeAdultManTip:
+        "Avvisa quando un bambino diventa un uomo adulto, che può imparare un mestiere e sposarsi. Se disattivato, la notifica non compare nell'elenco e il suo jingle non suona.",
+      noticeAdultWoman: 'Donna adulta',
+      noticeAdultWomanTip:
+        "Avvisa quando una bambina diventa una donna adulta, che può sposarsi. Se disattivato, la notifica non compare nell'elenco e il suo jingle non suona.",
       originalGame: 'Gioco originale',
       originalGameTip:
         'Il gioco Cultures installato trovato dal controllo. La versione per browser ricorda solo quale gioco era.',
