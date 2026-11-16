@@ -21,13 +21,8 @@ import {
   supplyRunsTo,
 } from '../../../game/snapshot/index.js';
 import { messages } from '../../../i18n/index.js';
-import {
-  type BuildingDef,
-  goodLabel,
-  isCarrierJob,
-  jobDisplayName,
-  type UnitPanelModelContext,
-} from './context.js';
+import { type BuildingDef, goodLabel, jobDisplayName, type UnitPanelModelContext } from './context.js';
+import { craftedGoodTypes, gatheredGoodFilter, operatesCraft } from './settler-work.js';
 
 /** The figure a person's well shows: a soldier in steel, a woman, a man, or a smaller child. */
 export type PersonLook = 'man' | 'woman' | 'soldier' | 'child';
@@ -184,7 +179,7 @@ function workerGroups(
 
 /**
  * A worker line's goods, as `StaffGroup.makes` carries them: what this trade works on at this house, as
- * localized good names. A gathering trade names the goods the house stocks — the same narrowing the sim
+ * localized good names. A gathering trade names the goods the house stocks, the same narrowing the sim
  * applies to a building-employed roamer; a craft operator names one entry per recipe, in recipe order, the
  * rotation pool the sim's craft loop walks. A trade that neither gathers nor operates the craft here (a
  * posted carrier, the sheltering crowd) leaves the field out.
@@ -217,12 +212,8 @@ function makesForPerson(
   return { makes: rows.filter((row) => row.locked === null && row.count > 0).map((row) => row.label) };
 }
 
-/**
- * The goods a gathering trade works on here, or null when the trade gathers nothing off the map: the
- * trade's goods this house stocks, the same narrowing the sim applies to a building-employed roamer (an
- * employed gatherer forages only what its workplace stocks, a dish banked in its edible form included).
- * A type declaring no stock slots leaves its gatherer unfiltered, so the whole trade's goods stand.
- */
+/** The goods a gathering trade works on at this house, or null when the trade gathers nothing off the
+ *  map. */
 function gatheredGoodsOf(
   ctx: UnitPanelModelContext,
   def: BuildingDef | undefined,
@@ -230,46 +221,18 @@ function gatheredGoodsOf(
 ): readonly string[] | null {
   const trade = ctx.gatherGoods?.(jobType) ?? [];
   if (trade.length === 0) return null;
-  const stored = def?.stock ?? [];
-  // The sim's `storedGoodsByBuilding` is absent for a slot-less type, which leaves its roamer unfiltered.
-  const slots = stored.length === 0 ? null : new Set(stored.map((slot) => slot.goodType));
-  const stocked =
-    slots === null
-      ? trade
-      : trade.filter(
-          (goodType) => slots.has(goodType) || slots.has(ctx.edibleGoodForm?.(goodType) ?? goodType),
-        );
-  return stocked.map((goodType) => goodLabel(ctx, goodType));
+  return trade.filter(gatheredGoodFilter(ctx, def)).map((goodType) => goodLabel(ctx, goodType));
 }
 
-/**
- * The products a craft operator of this house turns out, in recipe order, or null when the trade runs no
- * craft here. Each recipe contributes its first output, the product the sim's cycle names, and the
- * operator slots follow the sim's rule: any slot trade but a carrier or a gatherer, else every slot,
- * since a type with none of those has its lone carrier run the craft.
- */
+/** The products a craft operator of this house turns out, in recipe order, or null when the trade runs
+ *  no craft here. */
 function craftedGoodsOf(
   ctx: UnitPanelModelContext,
   def: BuildingDef | undefined,
   jobType: number,
 ): readonly string[] | null {
-  if (def === undefined || def.recipes.length === 0) return null;
-  if (!operatorSlotsOf(ctx, def).some((slot) => slot.jobType === jobType)) return null;
-  return def.recipes
-    .flatMap((recipe) => recipe.outputs[0]?.goodType ?? [])
-    .map((goodType) => goodLabel(ctx, goodType));
-}
-
-/** The sim's operator-slot rule over a type's worker slots: the trades that are neither carriers nor
- *  gatherers, or all of them when that leaves nothing. */
-function operatorSlotsOf(
-  ctx: UnitPanelModelContext,
-  def: BuildingDef,
-): readonly { readonly jobType: number; readonly count: number }[] {
-  const operators = def.workers.filter(
-    (slot) => !isCarrierJob(ctx, slot.jobType) && (ctx.gatherGoods?.(slot.jobType) ?? []).length === 0,
-  );
-  return operators.length > 0 ? operators : def.workers;
+  if (def === undefined || def.recipes.length === 0 || !operatesCraft(ctx, def, jobType)) return null;
+  return craftedGoodTypes(def).map((goodType) => goodLabel(ctx, goodType));
 }
 
 /** The owner's traders whose route stops at the house, one line per trade. A route takes no seat, so

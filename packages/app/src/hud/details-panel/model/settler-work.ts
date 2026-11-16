@@ -3,6 +3,7 @@ import { num, progressionGatesSettler, type SnapshotEntity } from '../../../game
 import { technologyLabel } from '../../../game/technology.js';
 import { formatMessage, messages } from '../../../i18n/index.js';
 import {
+  type BuildingDef,
   buildingDef,
   buildingTitle,
   type Comp,
@@ -241,10 +242,8 @@ export function settlerWork(
   // loop.
   const harvestable = harvestableGoodsFor(ctx, jobType);
   if (harvestable.length > 0) {
-    const stored = new Set((def?.stock ?? []).map((slot) => slot.goodType));
-    const stocked = harvestable.filter(
-      (good) => stored.has(good.typeId) || stored.has(ctx.edibleGoodForm?.(good.typeId) ?? good.typeId),
-    );
+    const stocks = gatheredGoodFilter(ctx, def);
+    const stocked = harvestable.filter((good) => stocks(good.typeId));
     const production = gatherProduction(ctx, stocked, experienceGate, counters);
     if (production !== null) return { place, production, lesson: null };
   }
@@ -290,10 +289,38 @@ function gatherProduction(
 }
 
 /**
- * A craft operator's products with their counters, or null when there is nothing to choose. Operator
- * slots follow the sim's `operatorJobsOf`: worker slots minus the carrier transport slot, unless every
- * slot is a carrier one, when the carrier does choose. A product missing from `ProductionCounters`
- * never stops, as does every product of an operator without the component.
+ * The sim's forage filter for a gatherer employed at a house of this type: a good the house stocks, a
+ * dish through its edible form. A type without stock slots leaves its gatherer unrestricted.
+ */
+export function gatheredGoodFilter(
+  ctx: UnitPanelModelContext,
+  def: BuildingDef | undefined,
+): (goodType: number) => boolean {
+  const slots = def?.stock ?? [];
+  if (slots.length === 0) return () => true;
+  const stored = new Set(slots.map((slot) => slot.goodType));
+  return (goodType) => stored.has(goodType) || stored.has(ctx.edibleGoodForm?.(goodType) ?? goodType);
+}
+
+/** Whether `jobType` runs the craft at a house of this type, by the sim's `operatorJobSets`: a slot
+ *  trade that is neither a carrier nor a gatherer, or any slot trade when that leaves none. */
+export function operatesCraft(ctx: UnitPanelModelContext, def: BuildingDef, jobType: number): boolean {
+  const operators = def.workers.filter(
+    (slot) => !isCarrierJob(ctx, slot.jobType) && harvestableGoodsFor(ctx, slot.jobType).length === 0,
+  );
+  return (operators.length > 0 ? operators : def.workers).some((slot) => slot.jobType === jobType);
+}
+
+/** The products of a house's recipes in recipe order: each recipe's first output, the one the sim's
+ *  production cycle names. */
+export function craftedGoodTypes(def: BuildingDef): number[] {
+  return def.recipes.flatMap((recipe) => recipe.outputs[0]?.goodType ?? []);
+}
+
+/**
+ * A craft operator's products with their counters, or null when there is nothing to choose. A product
+ * missing from `ProductionCounters` never stops, as does every product of an operator without the
+ * component.
  */
 function craftProduction(
   ctx: UnitPanelModelContext,
@@ -302,13 +329,8 @@ function craftProduction(
   counters: ReadonlyMap<number, number>,
   gate: GoodGate,
 ): SettlerProductionModel | null {
-  if (def === undefined || def.recipes.length === 0 || jobType === undefined) return null;
-  const operatorSlots = def.workers.filter((slot) => !isCarrierJob(ctx, slot.jobType));
-  const operators = operatorSlots.length > 0 ? operatorSlots : def.workers;
-  if (!operators.some((slot) => slot.jobType === jobType)) return null;
-  const rows = def.recipes.flatMap((recipe) => {
-    const goodType = recipe.outputs[0]?.goodType;
-    if (goodType === undefined) return [];
+  if (def === undefined || jobType === undefined || !operatesCraft(ctx, def, jobType)) return null;
+  const rows = craftedGoodTypes(def).flatMap((goodType) => {
     const locked = gate(goodType);
     if (locked === HIDDEN) return [];
     return [productRow(ctx, goodType, locked, counters.get(goodType) ?? PRODUCTION_UNLIMITED)];
