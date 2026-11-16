@@ -9,6 +9,8 @@ import {
   CHILD_FOOD_UNITS,
   ChildOrder,
   CurrentAtomic,
+  Engagement,
+  engagementRecord,
   FamilyDuty,
   Female,
   Fleeing,
@@ -262,6 +264,9 @@ function approachingPair(): { sim: Simulation; woman: Entity; man: Entity } {
   expect(sim.world.get(man, Wedding).partner).toBe(woman);
   return { sim, woman, man };
 }
+
+/** Ticks a hand-held fight on a wedding partner lasts in the pause test. */
+const FIGHT_TICKS = 30;
 
 function hxOfSettler(sim: Simulation, e: Entity): number {
   const p = sim.world.get(e, Position);
@@ -715,21 +720,9 @@ describe('e2e: marriage → household → child (full step schedule)', () => {
   });
 
   it('lets a player move order take the walking partner off the approach, then resumes the wedding', () => {
-    const sim = new Simulation({ seed: 3, content: familyContent(), map: grassMap(60, 4) });
-    sim.enqueueSetup({ kind: 'spawnSettler', jobType: WOMAN, x: 20, y: 0, tribe: VIKING, owner: PLAYER });
-    sim.enqueueSetup({ kind: 'spawnSettler', jobType: CIVILIST, x: 40, y: 0, tribe: VIKING, owner: PLAYER });
-    sim.step();
-    const [woman, man] = [...sim.world.query(Settler)].sort((a, b) => a - b);
-    if (woman === undefined || man === undefined) throw new Error('setup: settlers missing');
-    sim.enqueueSetup({ kind: 'marry', entity: woman });
-    for (let i = 0; i < 4; i++) sim.step();
-    const hxOf = (e: Entity): number => {
-      const p = sim.world.get(e, Position);
-      return nodeOfPosition(p.x, p.y).hx;
-    };
-
+    const { sim, woman, man } = approachingPair();
     sim.enqueue(playerCommand(PLAYER, { kind: 'moveUnit', entity: woman, x: 0, y: 0 }));
-    runUntil(sim, () => hxOf(woman) <= 1, 400, 'the ordered walk west');
+    runUntil(sim, () => hxOfSettler(sim, woman) <= 1, 400, 'the ordered walk west');
     runUntil(sim, () => sim.world.has(woman, Marriage), 600, 'wedding');
     expect(sim.world.get(woman, Marriage).spouse).toBe(man);
   });
@@ -756,11 +749,36 @@ describe('e2e: marriage → household → child (full step schedule)', () => {
     const { sim, woman, man } = approachingPair();
     const terrain = sim.terrain;
     if (terrain === undefined) throw new Error('mapped sim expected');
-    runFromBlow(sim.world, ctxOf(sim), terrain, man, terrain.nodeAt(hxOfSettler(sim, man) - 1, 0));
-    expect(sim.world.has(man, MoveGoal)).toBe(true);
+    const hxAtBlow = hxOfSettler(sim, man);
+    runFromBlow(sim.world, ctxOf(sim), terrain, man, terrain.nodeAt(hxAtBlow - 1, 0));
     sim.step();
     expect(sim.world.has(man, Fleeing)).toBe(true);
+    runUntil(
+      sim,
+      () => {
+        // The walker stands for the flight, as it does for an order.
+        if (sim.world.has(man, Fleeing)) expect(sim.world.has(woman, MoveGoal)).toBe(false);
+        return !sim.world.has(man, Fleeing);
+      },
+      200,
+      'the run from the blow',
+    );
+    expect(hxOfSettler(sim, man)).toBeGreaterThan(hxAtBlow);
     expect(sim.world.has(woman, Wedding)).toBe(true);
+    runUntil(sim, () => sim.world.has(woman, Marriage), 600, 'wedding');
+    expect(sim.world.get(woman, Marriage).spouse).toBe(man);
+  });
+
+  it('holds the walker while the waiting partner is in a fight, then resumes the wedding', () => {
+    const { sim, woman, man } = approachingPair();
+    for (let i = 0; i < FIGHT_TICKS; i++) {
+      // Combat lets go of a fighter with no enemy, so the marker is held by hand for the fight's length.
+      if (!sim.world.has(man, Engagement)) sim.world.add(man, Engagement, engagementRecord(sim.tick));
+      sim.step();
+      expect(sim.world.has(woman, MoveGoal)).toBe(false);
+      expect(sim.world.has(woman, Wedding)).toBe(true);
+    }
+    sim.world.remove(man, Engagement);
     runUntil(sim, () => sim.world.has(woman, Marriage), 600, 'wedding');
     expect(sim.world.get(woman, Marriage).spouse).toBe(man);
   });
