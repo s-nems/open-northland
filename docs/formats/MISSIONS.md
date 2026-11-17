@@ -257,7 +257,7 @@ writes.
 | 5 | `GoodsInHouses` | 14, 6, 7 | houses with the id hold at least `amount` of the good in total | 10 |
 | 6 | `GoodsGlobal` | 1, 6, 7 | the player's houses hold at least `amount` of the good as their own stock: everything a storage or a home shelves, of a workplace only what it makes, never its inputs | 11 |
 | 7 | `FindPos` | 1, 16, 17 | the map point has been explored by the player (player 16 or more: always) | 23 |
-| 8 | `FindHumans` | 1, 10 | any human with the id stands on a point explored by the player | 0 |
+| 8 | `FindHumans` | 1, 10 | any human with the id stands on a point explored by the player, a human aboard a vehicle counting where the vehicle stands | 0 |
 | 9 | `FindVehicles` | 1, 12 | as above for vehicles | 6 |
 | 10 | `FindHouses` | 1, 14 | as above for houses | 0 |
 | 11 | `FindPosByHumans` | 10, 16, 17, 9 | any human with the id is within `range` of the point, a human aboard a vehicle counting where the vehicle stands; id 0 names every human carrying no id, of any player, since the original's id lookup has no exception for 0 (reading) | 589 |
