@@ -309,7 +309,7 @@ describe('FindHumans, FindHouses and FindAnimals', () => {
   });
 
   it('keeps a none-rule hero watchdog quiet while its human rides', () => {
-    // The shape of ZIMNA WOJNA's "Bjarni tot": rule none over `FindHumans`, so the mission fires the
+    // The shape of ZIMNA WOJNA's "Bjarni dead": rule none over `FindHumans`, so the mission fires the
     // moment the id's human stops standing on an explored point - aboard his own position is gone.
     const goal: MissionGoalOp = { opcode: 'FindHumans', player: OWNER, humanId: MARK };
     const watchdog = { ...goalMission(goal), successfullIf: SUCCESSFUL_IF.none };
