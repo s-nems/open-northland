@@ -41,3 +41,18 @@ describe('grounded tall objects', () => {
     expect(drawn.map((s) => s.texture)).toHaveLength(1 + shades.length + covers.length);
   });
 });
+
+describe('tall objects as occlusion ghost occluders', () => {
+  it('lists each visible tall object once per update, however many frames ran', () => {
+    const layer = new MapObjectLayer(new Container(), new TextureCache());
+    layer.set([
+      { x: 0, y: 0, source: Texture.WHITE.source, frames: [FRAME_0], scale: 1, decor: false, phase: 0 },
+    ]);
+    for (let tick = 0; tick < 5; tick++)
+      layer.update(WIDE, tick, undefined, undefined, tick, undefined, true);
+    expect(layer.tallOccluders).toHaveLength(1);
+    // Off, the scan reads an empty list.
+    layer.update(WIDE, 5, undefined, undefined, 5, undefined, false);
+    expect(layer.tallOccluders).toHaveLength(0);
+  });
+});

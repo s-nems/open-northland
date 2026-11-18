@@ -197,6 +197,36 @@ describe('SpritePool - a unit a standing sprite hides shows as an occlusion ghos
     pool.destroy();
   });
 
+  it('keeps the occluder grid to the frame occluders while trees are replaced and leave the view', () => {
+    const layer = new Container();
+    const pool = new SpritePool(layer, new TextureCache(), undefined);
+    const ghosts = pool.occlusionGhosts;
+    // A tree in front of the settler, replaced by a fresh entity every frame - a felled tree, then its
+    // regrowth - must not leave its earlier registrations in the cells the settler probes.
+    pool.reconcile({ ...frame(snapshotOf([settler(1, 0, 0), tree(100, 0, 0.3)])), tick: 0 });
+    const oneTree = ghosts.gridEntries;
+    expect(oneTree).toBeGreaterThan(0);
+    for (let t = 1; t <= 50; t++) {
+      pool.reconcile({ ...frame(snapshotOf([settler(1, 0, 0), tree(100 + t, 0, 0.3)])), tick: t });
+      expect(ghosts.container.children[0]?.alpha).toBe(1);
+    }
+    expect(ghosts.gridEntries).toBe(oneTree);
+    // A static candidate minted per frame stays bounded the same way, and leaves with the view.
+    const unit = pool.boundsOf(1);
+    if (unit === undefined) throw new Error('the unit drew no bounds');
+    const crown = (): GhostOccluder => ({ depth: 1e9, bounds: () => unit, hit: () => true });
+    pool.reconcile({ ...frame(snapshotOf([settler(1, 0, 0)])), tick: 51, staticOccluders: [crown()] });
+    const oneCrown = ghosts.gridEntries;
+    expect(oneCrown).toBeGreaterThan(0);
+    for (let t = 52; t <= 60; t++)
+      pool.reconcile({ ...frame(snapshotOf([settler(1, 0, 0)])), tick: t, staticOccluders: [crown()] });
+    expect(ghosts.gridEntries).toBe(oneCrown);
+    pool.reconcile({ ...frame(snapshotOf([settler(1, 0, 0)])), tick: 61 });
+    expect(ghosts.gridEntries).toBe(0);
+    expect(ghosts.container.children[0]?.alpha).toBe(0);
+    pool.destroy();
+  });
+
   it('draws nothing while the setting is off, and clears what it drew when it turns off', () => {
     const layer = new Container();
     const pool = new SpritePool(layer, new TextureCache(), undefined);
