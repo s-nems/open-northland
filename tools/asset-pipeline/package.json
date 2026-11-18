@@ -24,7 +24,7 @@
     "@open-northland/render": "*",
     "@open-northland/translations": "*",
     "sharp": "^0.35.5",
-    "spessasynth_core": "4.4.9",
+    "spessasynth_core": "4.4.10",
     "wasm-media-encoders": "0.7.0",
     "zod": "^4.6.7"
   },
