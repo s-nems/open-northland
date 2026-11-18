@@ -354,6 +354,7 @@ export class TallObjectLayer {
     const motionAdvanced = motionTime !== this.lastMotionTime || wind !== this.lastWind;
     const motionSwitched = environmentMotion !== this.lastEnvironmentMotion;
     const texturesChanged = this.lastTextureRevision !== this.textures.retryRevision;
+    this.occluderCount = 0;
     for (const block of this.blocks.values()) {
       if (!aabbIntersects(vp, block)) {
         if (block.attachedCount > 0) {
@@ -436,7 +437,6 @@ export class TallObjectLayer {
         }
       }
     }
-    if (!collectOccluders) this.occluderCount = 0;
     this.occluders.length = this.occluderCount;
     this.lastAnimTick = tick;
     this.lastMotionTime = motionTime;
