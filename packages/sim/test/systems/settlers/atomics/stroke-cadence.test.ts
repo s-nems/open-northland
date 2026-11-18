@@ -24,7 +24,7 @@ import {
   atomicSystem,
   stampResourceFootprintData,
 } from '../../../../src/systems/index.js';
-import { STROKE_REST_ATOMIC_IDS } from '../../../../src/systems/settlers/atomics/stroke-cadence.js';
+import { IDLE_SHORT_ATOMIC_IDS } from '../../../../src/systems/settlers/atomics/start.js';
 import { testContent } from '../../../fixtures/content.js';
 import { ctxOf, fixtureTick, nextTickCtxOf } from '../../../fixtures/context.js';
 import { settlerAt } from '../../../fixtures/settler.js';
@@ -147,7 +147,7 @@ describe('stroke cadence - what follows a counted stroke that leaves the node st
 
     const rest = sim.world.get(cutter, CurrentAtomic);
     expect(rest.effect.kind).toBe('idle');
-    expect(STROKE_REST_ATOMIC_IDS).toContain(rest.atomicId);
+    expect(IDLE_SHORT_ATOMIC_IDS).toContain(rest.atomicId);
     const bound = REST_CLIPS.find((c) => c.atomicId === rest.atomicId);
     expect(rest.duration).toBe(bound?.length);
     expect(rest.targetEntity).toBeNull();
@@ -165,7 +165,7 @@ describe('stroke cadence - what follows a counted stroke that leaves the node st
       run(sim, 2 * clip);
       slots.add(sim.world.get(cutter, CurrentAtomic).atomicId);
     }
-    expect([...slots].every((id) => STROKE_REST_ATOMIC_IDS.includes(id))).toBe(true);
+    expect([...slots].every((id) => IDLE_SHORT_ATOMIC_IDS.includes(id))).toBe(true);
     expect(slots.size).toBeGreaterThan(1);
   });
 

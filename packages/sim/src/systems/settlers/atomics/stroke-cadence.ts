@@ -10,6 +10,7 @@ import type { Entity, World } from '../../../ecs/world.js';
 import { nodeOfPosition } from '../../../nav/halfcell.js';
 import type { SystemContext } from '../../context.js';
 import { atomicDuration, isTransformAtomic } from '../../readviews/animations.js';
+import { IDLE_SHORT_ATOMIC_IDS } from './start.js';
 
 // What follows a counted stroke that leaves its node standing. Original behavior: a collector keeps its
 // target across strokes, so after a transform stroke on a standing node (tree) the same clip plays once
@@ -34,9 +35,6 @@ export function strokeTakeUp(
     ? 'followThrough'
     : 'inPlace';
 }
-
-/** The three short idle slots (`setatomic <job> 2..4`) a stroke's rest is drawn from. */
-export const STROKE_REST_ATOMIC_IDS: readonly number[] = [2, 3, 4];
 
 /** Remember the part-worked node on the settler, dropping any stance, so its next plan returns to the
  *  node from a fresh stance. */
@@ -71,7 +69,7 @@ export function armStrokeRest(
   atomic: CurrentAtomicState,
 ): void {
   const identity: SettlerIdentity = world.get(settler, Settler);
-  const atomicId = STROKE_REST_ATOMIC_IDS[ctx.rng.int(STROKE_REST_ATOMIC_IDS.length)];
+  const atomicId = IDLE_SHORT_ATOMIC_IDS[ctx.rng.int(IDLE_SHORT_ATOMIC_IDS.length)];
   if (atomicId === undefined) throw new Error('the stroke rest slots are never empty');
   atomic.atomicId = atomicId;
   atomic.duration = atomicDuration(ctx.content, identity, atomicId);

@@ -3,6 +3,7 @@ export {
   endChat,
   GossipCandidates,
   gossipSystem,
+  idleChatWarmupTicks,
   planGossipIdle,
   planGossipSeek,
 } from './gossip/index.js';

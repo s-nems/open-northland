@@ -33,6 +33,12 @@ import { atomicHoldsSettler } from './busy.js';
 // An atomic id is only a content cross-reference and animation join key, pinned to the original's
 // `setatomic` bindings; the typed {@link AtomicEffect} carries the behavior the AtomicSystem applies.
 
+/** The three short idle slots (`setatomic <job> 2..4`, `logicdefines.inc` `IDLE_SHORT_A` to `IDLE_SHORT_C`). */
+export const IDLE_SHORT_ATOMIC_IDS: readonly number[] = [2, 3, 4];
+
+/** The medium idle slot (`setatomic <job> 5`, `logicdefines.inc` `IDLE_MEDIUM`). */
+export const IDLE_MEDIUM_ATOMIC_ID = 5;
+
 /**
  * The eat slot across every tribe's `setatomic <job> 10 "..._eat_slot_food"` bindings.
  */

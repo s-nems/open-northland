@@ -138,7 +138,7 @@ export function buildSandboxTribes(
       { jobType: JOB_CIVILIST, atomicId: KISSED_ATOMIC, animation: 'viking_civilist_kissed' },
       { jobType: JOB_CIVILIST, atomicId: MAKE_LOVE_ATOMIC, animation: 'viking_civilist_make_love' },
       // The stroke rest slots; every gathering trade resolves them through the sim's civilist fallback.
-      ...systems.STROKE_REST_ATOMIC_IDS.flatMap((atomicId, slot) => {
+      ...systems.IDLE_SHORT_ATOMIC_IDS.flatMap((atomicId, slot) => {
         const animation = CIVILIST_IDLE_SHORT_ANIMATIONS[slot];
         return animation === undefined ? [] : [{ jobType: JOB_CIVILIST, atomicId, animation }];
       }),

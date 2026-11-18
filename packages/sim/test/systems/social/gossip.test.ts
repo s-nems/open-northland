@@ -4,6 +4,7 @@ import {
   Chat,
   ChatCooldown,
   CurrentAtomic,
+  IdleSince,
   MISSION_BEHAVIOUR,
   MoveGoal,
   NeedOrder,
@@ -11,6 +12,7 @@ import {
   PlayerOrder,
   Position,
   removeCurrentAtomic,
+  Settler,
   setMissionBehaviour,
   setNeedsEnabled,
   setSettlerJob,
@@ -18,7 +20,13 @@ import {
 import type { Entity } from '../../../src/ecs/world.js';
 import { type Fixed, fx, ONE, Simulation } from '../../../src/index.js';
 import { nodeOfPosition, nodesAdjacent, positionOfNode } from '../../../src/nav/halfcell.js';
-import { CHAT_COOLDOWN_TICKS, gossipSystem, plannerSystem } from '../../../src/systems/index.js';
+import {
+  CHAT_COOLDOWN_TICKS,
+  gossipSystem,
+  idleChatWarmupTicks,
+  plannerSystem,
+} from '../../../src/systems/index.js';
+import { IDLE_REPLAN_PERIOD_TICKS } from '../../../src/systems/settlers/planner/idle-replan.js';
 import type { ChatCandidates } from '../../../src/systems/social/gossip/candidates.js';
 import { GossipCandidates } from '../../../src/systems/social/index.js';
 import { testContent } from '../../fixtures/content.js';
@@ -53,7 +61,16 @@ function owned(sim: Simulation, e: Entity): Entity {
   return e;
 }
 
+/** An owned settler that has already stood idle long enough to chat. */
 function gossiper(sim: Simulation, x: number, y: number, enjoyment: Fixed): Entity {
+  const e = freshIdler(sim, x, y, enjoyment);
+  const warmup = idleChatWarmupTicks(sim.content, sim.world.get(e, Settler));
+  sim.world.add(e, IdleSince, { since: sim.tick - warmup });
+  return e;
+}
+
+/** An owned settler that has only just fallen idle. */
+function freshIdler(sim: Simulation, x: number, y: number, enjoyment: Fixed): Entity {
   return owned(sim, needsSettlerAt(sim, x, y, { enjoyment }));
 }
 
@@ -120,9 +137,43 @@ describe('gossip initiation (planner rungs)', () => {
 
     plannerSystem(sim.world, ctxOf(sim));
 
-    // Mild deficit: the tree wins (no chat), the settler heads to work.
+    // Mild deficit: the tree wins (no chat), the settler heads to work, which restarts its idle count.
     expect(sim.world.has(worker, Chat)).toBe(false);
     expect(sim.world.has(worker, MoveGoal)).toBe(true);
+    expect(sim.world.has(worker, IdleSince)).toBe(false);
+  });
+
+  it('a walk restarts the idle count, which runs again from where the walker stands', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(8, 1) });
+    const a = gossiper(sim, 1, 0, fx.fromInt(0));
+    sim.enqueueSetup({ kind: 'moveUnit', entity: a, x: 12, y: 0 });
+    sim.step();
+    expect(sim.world.has(a, MoveGoal)).toBe(true);
+    expect(sim.world.has(a, IdleSince)).toBe(false);
+
+    let arrivedAt: number | undefined;
+    for (let i = 0; i < 300 && !sim.world.has(a, IdleSince); i++) {
+      sim.step();
+      if (arrivedAt === undefined && !sim.world.has(a, MoveGoal)) arrivedAt = sim.tick;
+    }
+    expect(arrivedAt).toBeDefined();
+    expect(sim.world.get(a, IdleSince).since).toBeGreaterThanOrEqual(arrivedAt ?? Number.POSITIVE_INFINITY);
+  });
+
+  it('a settler that has just fallen idle stands through the idle rounds before it chats', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(8, 1) });
+    const a = freshIdler(sim, 1, 0, fx.fromInt(0));
+    const b = freshIdler(sim, 1, 0, fx.fromInt(0));
+    sim.world.mut(b, Position).x = fx.add(fx.fromInt(1), fx.div(ONE, fx.fromInt(2)));
+    const warmup = idleChatWarmupTicks(sim.content, sim.world.get(a, Settler));
+
+    let chatAt: number | undefined;
+    for (let i = 0; i < warmup + 2 * IDLE_REPLAN_PERIOD_TICKS && chatAt === undefined; i++) {
+      sim.step();
+      if (sim.world.has(a, Chat)) chatAt = sim.tick;
+    }
+    expect(chatAt).toBeGreaterThanOrEqual(warmup);
+    expect(chatAt).toBeLessThanOrEqual(warmup + IDLE_REPLAN_PERIOD_TICKS + 1);
   });
 
   it('idle settlers standing beside each other pair up spontaneously', () => {

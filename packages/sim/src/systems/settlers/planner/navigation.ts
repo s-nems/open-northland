@@ -1,4 +1,11 @@
-import { MoveGoal, PathFollow, PathRequest, PathRoute, Position } from '../../../components/index.js';
+import {
+  endIdleStreak,
+  MoveGoal,
+  PathFollow,
+  PathRequest,
+  PathRoute,
+  Position,
+} from '../../../components/index.js';
 import { includesSortedId, insertSortedById, removeSortedById } from '../../../core/sorted-id.js';
 import type { ChangeFeed, Entity, World } from '../../../ecs/world.js';
 import { positionOfNode } from '../../../nav/halfcell.js';
@@ -113,5 +120,6 @@ export function navigationPlanner(world: World, terrain: TerrainGraph): void {
       goal: goalNode,
       failed: false,
     });
+    endIdleStreak(world, e);
   }
 }

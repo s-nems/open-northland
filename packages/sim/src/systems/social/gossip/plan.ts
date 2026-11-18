@@ -1,3 +1,4 @@
+import type { ContentSet } from '@open-northland/data';
 import {
   Carrying,
   Chat,
@@ -7,6 +8,7 @@ import {
   Engagement,
   FamilyDuty,
   Fleeing,
+  IdleSince,
   inPastimeChat,
   LostWay,
   ownerOf,
@@ -22,7 +24,9 @@ import { nodeHxOfPosition, nodeHyOfPosition, type nodesAdjacent } from '../../..
 import type { SystemContext } from '../../context.js';
 import { carriesNeeds, NEED_DRIVE_THRESHOLD, needLevel } from '../../lifecycle/needs/index.js';
 import { isTravelling } from '../../movement/nav-state.js';
+import { atomicDuration } from '../../readviews/animations.js';
 import { isFighterJob } from '../../readviews/index.js';
+import { IDLE_MEDIUM_ATOMIC_ID, IDLE_SHORT_ATOMIC_IDS } from '../../settlers/atomics/start.js';
 import type { GossipCandidates } from './candidates.js';
 import { endChat } from './drive.js';
 
@@ -48,6 +52,36 @@ const CHAT_IDLE_WALK_RADIUS_NODES = 12;
  *  call scaled to the caller's cadence so idle chatter never herds standing crowds into one heap.
  *  Authored value, ~20 s at the 12 Hz tick. */
 const CHAT_IDLE_WALK_MEAN_WAIT_TICKS = 240;
+
+/** Original behavior: an idle settler's first four idle rounds play a random short clip and the next five
+ *  the medium one; only from its tenth round on may it chat, and any task besides idling or chatting
+ *  restarts the count. */
+const IDLE_SHORT_ROUNDS = 4;
+const IDLE_MEDIUM_ROUNDS = 5;
+
+/**
+ * Ticks a settler stands idle before its first idle chat: the expected length of the idle rounds the
+ * original plays first, from the settler's own clips. Approximation: the original counts rounds of the
+ * clips it plays; this waits out their mean length.
+ */
+export function idleChatWarmupTicks(content: ContentSet, settler: SettlerIdentity): number {
+  let short = 0;
+  for (const id of IDLE_SHORT_ATOMIC_IDS) short += atomicDuration(content, settler, id);
+  return (
+    Math.floor((IDLE_SHORT_ROUNDS * short) / IDLE_SHORT_ATOMIC_IDS.length) +
+    IDLE_MEDIUM_ROUNDS * atomicDuration(content, settler, IDLE_MEDIUM_ATOMIC_ID)
+  );
+}
+
+/** Whether `e` has stood idle long enough to chat; its first try starts the count. */
+function idleLongEnough(world: World, ctx: SystemContext, e: Entity, settler: SettlerIdentity): boolean {
+  const idle = world.tryGet(e, IdleSince);
+  if (idle === undefined) {
+    world.add(e, IdleSince, { since: ctx.tick });
+    return false;
+  }
+  return ctx.tick - idle.since >= idleChatWarmupTicks(ctx.content, settler);
+}
 
 /** Whether `e` is still inside its post-chat breather at `tick`. Expired stamps sit until the next chat
  *  overwrites them, so reading is pure. */
@@ -192,12 +226,12 @@ function seekPartner(
 }
 
 /**
- * The idle-settler chat rung at the bottom of the drive ladder: an idle settler chats even on a full company
- * bar, since the original's settlements visibly chatter. An adjacent partner is chatted up in place at once,
- * while a partner within {@link CHAT_IDLE_WALK_RADIUS_NODES} is only walked to once the
- * {@link CHAT_IDLE_WALK_MEAN_WAIT_TICKS} roll fires, so idlers stand around between chats. Approximation:
- * the original's idle talk is one clip that yields to the next command once it ends; this chat yields to
- * work at once.
+ * The idle-settler chat rung at the bottom of the drive ladder: a settler that has stood idle for
+ * {@link idleChatWarmupTicks} chats even on a full company bar, since the original's settlements visibly
+ * chatter. An adjacent partner is chatted up in place at once, while a partner within
+ * {@link CHAT_IDLE_WALK_RADIUS_NODES} is only walked to once the {@link CHAT_IDLE_WALK_MEAN_WAIT_TICKS}
+ * roll fires, so idlers stand around between chats. Approximation: the original's idle talk is one clip
+ * that yields to the next command once it ends; this chat yields to work at once.
  */
 export function planGossipIdle(
   world: World,
@@ -219,6 +253,7 @@ export function planGossipIdle(
   // byte-identical.
   const owner = ownerOf(world, e);
   if (owner === undefined) return false;
+  if (!idleLongEnough(world, ctx, e, settler)) return false;
   const idle = idlePartnerFilter(world, ctx.tick, e, owner);
   // Adjacency first: it reads only the position, while `idle` reads several stores.
   const idleBeside = (cand: Entity): boolean => {

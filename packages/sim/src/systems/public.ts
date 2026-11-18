@@ -375,12 +375,12 @@ export {
   EAT_ATOMIC_ID,
   EAT_CANDY_ATOMIC_ID,
   EXERCISE_ATOMIC_ID,
+  IDLE_SHORT_ATOMIC_IDS,
   jobCanBuild,
   PICKUP_ATOMIC_ID,
   PRAY_ATOMIC_ID,
   SLEEP_ATOMIC_ID,
 } from './settlers/atomics/start.js';
-export { STROKE_REST_ATOMIC_IDS } from './settlers/atomics/stroke-cadence.js';
 export { CART_TOP_UP_REACH } from './settlers/drives/economy/cart-round.js';
 export { REPAIR_CALM_TICKS } from './settlers/drives/economy/repair.js';
 export { VEHICLE_CARGO_SEARCH_RADIUS } from './settlers/drives/economy/vehicle-cargo.js';

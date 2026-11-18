@@ -22,7 +22,7 @@ describe.runIf(hasRealIr())('the stroke rest slots across the civilizations', ()
       for (const job of [JOB_COLLECTOR, JOB_FARMER]) {
         const look = table?.byJob[job] ?? table?.default;
         expect(look, `tribe ${tribe} job ${job}`).toBeDefined();
-        for (const atomicId of systems.STROKE_REST_ATOMIC_IDS) {
+        for (const atomicId of systems.IDLE_SHORT_ATOMIC_IDS) {
           expect(
             look?.binding.byAtomic?.[atomicId],
             `tribe ${tribe} job ${job} slot ${atomicId}`,

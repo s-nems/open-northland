@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   Building,
   Health,
+  Rider,
   Settler,
   TRADE_LIMIT_NONE,
   TradeRoute,
@@ -84,7 +85,9 @@ describe('a colony trade route', () => {
     const trader = standingTrader(sim);
     expect(colonyState(sim)?.route?.ship).toBe(ship);
     expect(isTraderJob(ctxOf(sim).content, sim.world.get(trader, Settler).jobType)).toBe(true);
-    expect(homeSettlers(sim.world, ctxOf(sim), SEAT)).toContain(trader);
+    // Drawn from home: still ashore there, or already aboard the route's ship, where no land holds it.
+    const aboard = sim.world.tryGet(trader, Rider)?.vehicle === ship;
+    expect(aboard || homeSettlers(sim.world, ctxOf(sim), SEAT).includes(trader)).toBe(true);
     const stops = sim.world.get(trader, TradeRoute).stops;
     const [home, colony] = stops;
     expect(homeBuildings(sim.world, ctxOf(sim), SEAT)).toContain(home?.house);

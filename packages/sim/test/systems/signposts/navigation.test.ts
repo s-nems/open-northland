@@ -145,7 +145,8 @@ describe('setSignpostNavigation + moveUnit - the confinement rule', () => {
     const a = ownedUnit(sim, 6, 4, CIVILIST);
     const b = ownedUnit(sim, 6, 4, CIVILIST);
     sim.world.mut(b, Position).x = fx.add(fx.fromInt(6), fx.div(ONE, fx.fromInt(2)));
-    for (let t = 0; t < 10 && !sim.world.has(a, Chat); t++) sim.step();
+    // The pair stands through its idle rounds first.
+    for (let t = 0; t < 100 && !sim.world.has(a, Chat); t++) sim.step();
     expect(sim.world.has(a, Chat)).toBe(true);
     sim.enqueueSetup({ kind: 'moveUnit', entity: a, x: 4 + 2 * WALK_RANGE_NODES, y: 4 });
     sim.step();

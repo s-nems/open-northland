@@ -4,6 +4,7 @@ import {
   CoinDrillOrder,
   CurrentAtomic,
   DeferredOrder,
+  endIdleStreak,
   HarvestFocus,
   needsEnabled,
   Resting,
@@ -49,6 +50,7 @@ export const atomicSystem: System = (world, ctx) => {
     if ('pendingElapsed' in clock) {
       clock = { startedAt: ctx.tick - 1 - clock.pendingElapsed };
       world.add(e, AtomicClock, clock);
+      endIdleStreak(world, e);
     }
     const elapsed = atomicElapsed(clock, ctx.tick);
     const running = world.get(e, CurrentAtomic);

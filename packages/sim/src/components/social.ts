@@ -45,3 +45,15 @@ export function chatAtomicRunning(world: World, e: Entity): boolean {
  * chat rather than removed.
  */
 export const ChatCooldown = defineComponent<{ until: number }>('ChatCooldown', 'settlers', { simOnly: true });
+
+/**
+ * The tick from which a settler has done nothing but stand idle or chat, which the idle-chat rung waits
+ * out before its first chat. Stamped on the settler's first idle-chat try, removed by {@link endIdleStreak}.
+ */
+export const IdleSince = defineComponent<{ since: number }>('IdleSince', 'settlers', { simOnly: true });
+
+/** Restart `e`'s idle count as a walk or clip starts. A chat keeps it, as the original's talk task keeps
+ *  its idle count. */
+export function endIdleStreak(world: World, e: Entity): void {
+  if (world.has(e, IdleSince) && !world.has(e, Chat)) world.remove(e, IdleSince);
+}
