@@ -116,6 +116,8 @@ export interface UnitChromeHandle {
   browse(step: 1 | -1): boolean;
   /** The upgrade key: raise the shown building's tier; false when no building is shown or it refuses. */
   upgradeBuilding(): boolean;
+  /** The priority key: toggle the shown site's build priority; false when no site of the seat is shown. */
+  prioritizeSite(): boolean;
   /** The alarm key on the shown building; false when no building with an alarm is shown. */
   buildingAlarm(): boolean;
   /** Escape: close the trade window or the vehicle hold's picker; false when neither was open. */
@@ -558,6 +560,7 @@ export async function createUnitChrome(
     ),
     browse: (step) => settlerPanel.browse(step) || vehiclePanel.browse(step) || buildingPanel.browse(step),
     upgradeBuilding: () => buildingPanel.upgrade(),
+    prioritizeSite: () => buildingPanel.prioritize(),
     buildingAlarm: () => buildingPanel.alarm(),
     closeWindow: () => {
       if (tradeWindow.isOpen()) {

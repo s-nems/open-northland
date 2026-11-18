@@ -428,6 +428,7 @@ export const chtSurfaces = {
         assignHome: '指派住所',
         gateTool: '柵門工具',
         upgradeBuilding: '升級選取的建築',
+        prioritizeSite: '開啟或關閉選取工地的優先建造',
         defenceOn: '所有建築開啟防禦模式',
         defenceOff: '所有建築關閉防禦模式',
         buildingAlarm: '在選取的建築啟動或解除防禦模式',

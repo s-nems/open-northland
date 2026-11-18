@@ -447,6 +447,7 @@ export const enSurfaces = {
         assignHome: 'Assign home',
         gateTool: 'Gate tool',
         upgradeBuilding: 'Upgrade the selected building',
+        prioritizeSite: 'Give or take away priority on the selected building site',
         defenceOn: 'Defence mode on in every building',
         defenceOff: 'Defence mode off in every building',
         buildingAlarm: 'Start or stop defence mode in the selected building',

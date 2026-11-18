@@ -446,6 +446,7 @@ export const plSurfaces = {
         assignHome: 'Przydziel dom',
         gateTool: 'Narzędzie bramy',
         upgradeBuilding: 'Rozbuduj zaznaczony budynek',
+        prioritizeSite: 'Włącz lub wyłącz priorytet zaznaczonego placu budowy',
         defenceOn: 'Włącz tryb obrony we wszystkich budynkach',
         defenceOff: 'Wyłącz tryb obrony we wszystkich budynkach',
         buildingAlarm: 'Bij na alarm lub odwołaj alarm w zaznaczonym budynku',

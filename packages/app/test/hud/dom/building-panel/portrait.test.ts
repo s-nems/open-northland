@@ -9,6 +9,7 @@ import {
   orderViews,
 } from '../../../../src/hud/dom/building-panel/portrait.js';
 import { warmBuildingModel } from '../../../../src/hud/dom/building-panel/warm-model.js';
+import { TIP_ATTRIBUTE } from '../../../../src/hud/dom/parts/dom.js';
 import { messages } from '../../../../src/i18n/index.js';
 
 const BUILDING = 7;
@@ -25,6 +26,7 @@ function setup(model: BuildingPanelModel) {
         setConstructionPriority,
       },
       windows: { residentsFor: vi.fn(), knowledge: vi.fn() },
+      keyLabel: (action: string) => `<${action}>`,
     } as unknown as BuildingPanelDeps,
     () => current,
     document.createElement('button'),
@@ -87,5 +89,20 @@ describe('building panel Prioritize order', () => {
 
     prioritizeButton()?.click();
     expect(setConstructionPriority).toHaveBeenNthCalledWith(2, BUILDING, true);
+  });
+
+  it('answers the priority key on a site, names it in the tip and refuses it on a finished building', () => {
+    const { section, setConstructionPriority, update } = setup(site);
+    const tip = [...section.element.querySelectorAll('.on-order--tile')]
+      .map((tile) => tile.getAttribute(TIP_ATTRIBUTE))
+      .find((text) => text?.startsWith(messages().hud.buildingPanel.buildPriorityTooltip));
+    expect(tip).toContain('<prioritizeSite>');
+
+    expect(section.press('prioritize')).toBe(true);
+    expect(setConstructionPriority).toHaveBeenCalledWith(BUILDING, false);
+
+    update({ ...site, construction: null });
+    expect(section.press('prioritize')).toBe(false);
+    expect(setConstructionPriority).toHaveBeenCalledTimes(1);
   });
 });

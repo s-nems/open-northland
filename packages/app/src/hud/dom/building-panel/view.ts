@@ -30,6 +30,8 @@ export interface BuildingPanel {
   browse(step: 1 | -1): boolean;
   /** The upgrade key: press the shown building's Upgrade tile; false when none is shown or it refuses. */
   upgrade(): boolean;
+  /** The priority key: press the shown site's Priority tile; false when no site is shown or it refuses. */
+  prioritize(): boolean;
   /** The alarm key: toggle the shown building's alarm; false when none is shown or it has none. */
   alarm(): boolean;
   /** The HUD scale changed: the portrait's box is measured again. */
@@ -204,6 +206,7 @@ export function createBuildingPanel(deps: BuildingPanelDeps): BuildingPanel {
     claims: (clientX, clientY) => frame.claims(clientX, clientY),
     browse,
     upgrade: () => portrait.press('upgrade'),
+    prioritize: () => portrait.press('prioritize'),
     alarm: () => alarm.press(),
     invalidate: () => frame.invalidate(),
     dispose(): void {

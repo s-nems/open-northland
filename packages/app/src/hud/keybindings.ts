@@ -85,6 +85,7 @@ export const KEYBINDING_ACTIONS = [
   'upgradeGround',
   'gateTool',
   'upgradeBuilding',
+  'prioritizeSite',
   'defenceOn',
   'defenceOff',
   'buildingAlarm',
@@ -134,8 +135,9 @@ export const DEFAULT_KEY_BINDINGS: KeyBindings = {
   // original's help), F2 the subjects (the original's F7), F7 the knowledge (the original's technology
   // tree on F8), F8 the HUD, N the network panel of a relayed game (a letter: Mac keyboards give F9 to
   // media keys), O the diplomacy map, Q for the original's A (Assign Work Place), so A stays
-  // attack-move, R the shown building's Upgrade, Alt+V the shown building's alarm beside the original's
-  // V, I the selection's equipment window (the common inventory key), Z the selected ships' dock order,
+  // attack-move, R the shown building's Upgrade, U the shown site's build priority (the original has
+  // no such order), Alt+V the shown building's alarm beside the original's V, I the selection's
+  // equipment window (the common inventory key), Z the selected ships' dock order,
   // Shift with . , / and F adding everyone the key picks, as the original's Shift+M adds the soldiers.
   pauseToggle: 'KeyP',
   speedCycle: 'KeyL',
@@ -173,6 +175,7 @@ export const DEFAULT_KEY_BINDINGS: KeyBindings = {
   upgradeGround: 'KeyG',
   gateTool: 'Shift+KeyD',
   upgradeBuilding: 'KeyR',
+  prioritizeSite: 'KeyU',
   defenceOn: 'KeyV',
   defenceOff: 'Shift+KeyV',
   buildingAlarm: 'Alt+KeyV',

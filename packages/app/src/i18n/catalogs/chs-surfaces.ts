@@ -428,6 +428,7 @@ export const chsSurfaces = {
         assignHome: '分配住所',
         gateTool: '栅门工具',
         upgradeBuilding: '升级选中的建筑',
+        prioritizeSite: '开启或关闭选中工地的优先建造',
         defenceOn: '所有建筑开启防御模式',
         defenceOff: '所有建筑关闭防御模式',
         buildingAlarm: '在选中的建筑开启或关闭防御模式',

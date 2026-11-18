@@ -247,7 +247,10 @@ export function createPortraitSection(
       const label = node?.lastElementChild;
       if (node === undefined || label == null) return;
       write(label, view.label);
-      setTip(node, view.tooltip);
+      setTip(
+        node,
+        view.order === 'prioritize' ? `${view.tooltip} · ${deps.keyLabel('prioritizeSite')}` : view.tooltip,
+      );
       setDisabled(node, !view.enabled);
       if (view.pressed === undefined) removeAttribute(node, 'aria-pressed');
       else setAttribute(node, 'aria-pressed', String(view.pressed));

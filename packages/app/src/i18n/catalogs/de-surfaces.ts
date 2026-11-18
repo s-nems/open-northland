@@ -487,6 +487,7 @@ export const deSurfaces = {
         assignHome: 'Wohnhaus zuweisen',
         gateTool: 'Torwerkzeug',
         upgradeBuilding: 'Ausgewähltes Gebäude ausbauen',
+        prioritizeSite: 'Priorität der gewählten Baustelle setzen oder aufheben',
         defenceOn: 'Verteidigungsmodus in allen Gebäuden einschalten',
         defenceOff: 'Verteidigungsmodus in allen Gebäuden ausschalten',
         buildingAlarm: 'Verteidigungsmodus im gewählten Gebäude starten oder beenden',

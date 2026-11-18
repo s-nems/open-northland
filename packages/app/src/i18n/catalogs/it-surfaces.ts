@@ -489,6 +489,7 @@ export const itSurfaces = {
         assignHome: 'Assegna la casa',
         gateTool: 'Strumento cancello',
         upgradeBuilding: "Migliora l'edificio selezionato",
+        prioritizeSite: 'Dai o togli la priorità al cantiere selezionato',
         defenceOn: 'Modalità difensiva attiva in ogni edificio',
         defenceOff: 'Modalità difensiva disattiva in ogni edificio',
         buildingAlarm: "Avvia o ferma la modalità difensiva nell'edificio selezionato",

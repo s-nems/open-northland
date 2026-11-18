@@ -762,6 +762,9 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
       // The owned-order gate cues a sent or refused press; a selection without an upgrade tile is
       // told here, an empty one stays silent like the other order keys.
       if (!chrome.upgradeBuilding() && selection.ids().size > 0) cue('fail');
+    } else if (isActionHotkey(e, opts.bindings, 'prioritizeSite')) {
+      e.preventDefault();
+      if (!chrome.prioritizeSite() && selection.ids().size > 0) cue('fail');
     } else if (isActionHotkey(e, opts.bindings, 'buildingAlarm')) {
       e.preventDefault();
       if (!chrome.buildingAlarm() && selection.ids().size > 0) cue('fail');
