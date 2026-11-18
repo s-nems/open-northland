@@ -44,7 +44,6 @@ export class CollapseLayer {
   /** One node per live collapse, keyed by {@link collapseKey}. */
   private readonly nodes = new Map<string, CollapseNode>();
   private readonly seen = new Set<string>();
-  private readonly covers: Viewport[] = [];
   private collapses: readonly BuildingCollapse[] = [];
   private readonly masks = new DamageAtlas();
   private readonly revealBox = createLayerDrawBox();
@@ -86,7 +85,6 @@ export class CollapseLayer {
   /** Interpolated sim time keeps debris smooth, pausable and reproducible. */
   draw(elevation: ElevationField, viewport: Viewport, tick: number): void {
     this.seen.clear();
-    this.covers.length = 0;
     for (const c of this.collapses) {
       const age = tick - c.spawnTick;
       if (age >= COLLAPSE_LIFETIME_TICKS) continue;
@@ -111,13 +109,6 @@ export class CollapseLayer {
       node.zIndex = anchor?.zIndex ?? screenDepth(p.x, p.y, 'building');
       for (const body of node.bodies) body.pose(collapseProgress(c, tick));
       node.debris.draw(age, node.ground);
-      const bounds = node.getLocalBounds();
-      const cover = node.cover;
-      cover.minX = p.x + bounds.minX;
-      cover.minY = p.y + bounds.minY;
-      cover.maxX = p.x + bounds.maxX;
-      cover.maxY = p.y + bounds.maxY;
-      this.covers.push(cover);
       this.seen.add(key);
     }
     this.masks.flush(false);
@@ -129,11 +120,6 @@ export class CollapseLayer {
       this.fallen.delete(key);
       this.anchors.delete(key);
     }
-  }
-
-  /** Visible body and dust bounds in world pixels, valid until the next draw. */
-  groundCover(): readonly Viewport[] {
-    return this.covers;
   }
 
   destroy(): void {
@@ -169,7 +155,6 @@ export class CollapseLayer {
     if (plan.length === 0) return null;
     const node = new Container() as CollapseNode;
     node.bodies = [];
-    node.cover = { minX: 0, minY: 0, maxX: 0, maxY: 0 };
     node.debris = new DismantleDebris();
     this.dustArt ??= new DamageEffectTextures(false);
     if (this.scratch === undefined) this.scratch = readable2dContext(1024, 1024);
@@ -295,7 +280,6 @@ interface CollapseNode extends Container {
   bodies: DismantleBody[];
   debris: DismantleDebris;
   ground: number;
-  cover: { -readonly [K in keyof Viewport]: Viewport[K] };
 }
 
 /** Frozen pixels of a visible layer, before construction is reversed. */

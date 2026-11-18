@@ -40,27 +40,14 @@ const MAX_MAP_TILE_COLS = 1024;
 const MAX_MAP_SCREEN_X = (2 * MAX_MAP_TILE_COLS + 1) * TILE_HALF_W;
 
 describe('same-anchor depth keys', () => {
-  it('orders every kind pair (and the delivery flag) identically in the oracle and the live painter', () => {
-    const variants: readonly { kind: DrawKind; isFlag: boolean }[] = [
-      ...ALL_KINDS.map((kind) => ({ kind, isFlag: false })),
-      { kind: 'stockpile', isFlag: true },
-    ];
-    for (const a of variants) {
-      for (const b of variants) {
-        const oracle = Math.sign(spriteDepth(5, 7, a.kind, a.isFlag) - spriteDepth(5, 7, b.kind, b.isFlag));
-        const live = Math.sign(
-          screenDepth(340, 133, a.kind, a.isFlag) - screenDepth(340, 133, b.kind, b.isFlag),
-        );
-        expect(live, `${a.kind}${a.isFlag ? '+flag' : ''} vs ${b.kind}${b.isFlag ? '+flag' : ''}`).toBe(
-          oracle,
-        );
+  it('orders every kind pair identically in the oracle and the live painter', () => {
+    for (const a of ALL_KINDS) {
+      for (const b of ALL_KINDS) {
+        const oracle = Math.sign(spriteDepth(5, 7, a) - spriteDepth(5, 7, b));
+        const live = Math.sign(screenDepth(340, 133, a) - screenDepth(340, 133, b));
+        expect(live, `${a} vs ${b}`).toBe(oracle);
       }
     }
-  });
-
-  it('keeps the flagged stockpile below a settler at the same anchor in both keys', () => {
-    expect(spriteDepth(5, 7, 'stockpile', true)).toBeLessThan(spriteDepth(5, 7, 'settler'));
-    expect(screenDepth(340, 133, 'stockpile', true)).toBeLessThan(screenDepth(340, 133, 'settler'));
   });
 
   it('keeps the whole kind bias under one tile column (oracle) and one row step (live painter)', () => {
@@ -81,7 +68,7 @@ describe('same-anchor depth keys', () => {
 
   it('sizes the sign epsilon to clear a building yet stay under the next kind up', () => {
     // A door-badge chain keys off its own building, so it must clear both the house and the x-tiebreak
-    // that could tie them, while staying under 'stockpile' so heaps, flags and settlers paint over it.
+    // that could tie them, while staying under 'stockpile' so flags and settlers paint over it.
     const worstTiebreak = depthKey(MAX_MAP_SCREEN_X, 0) - depthKey(0, 0);
     const oneKindStep = screenDepth(0, 0, 'stockpile') - screenDepth(0, 0, 'building');
     expect(SIGN_DEPTH_EPS).toBeGreaterThan(worstTiebreak);
@@ -106,10 +93,11 @@ describe('draw passes', () => {
     expect(screenDepth(340, 133, 'fish')).toBeLessThan(screenDepth(340, 134, 'fish'));
   });
 
-  it('stacks the passes ground, fish, sorted, all above the tile band', () => {
+  it('stacks the passes ground, goods, fish, sorted, all above the tile band', () => {
     const farthestKey = spriteDepth(MAX_MAP_TILE_COLS, MAX_MAP_TILE_ROWS - 1, 'projectile');
     expect(UNDER_EVERY_PASS + farthestKey).toBeLessThan(drawPassDepth('ground'));
-    expect(drawPassDepth('ground') + farthestKey).toBeLessThan(drawPassDepth('fish'));
+    expect(drawPassDepth('ground') + farthestKey).toBeLessThan(drawPassDepth('goods'));
+    expect(drawPassDepth('goods') + farthestKey).toBeLessThan(drawPassDepth('fish'));
     expect(drawPassDepth('fish') + farthestKey).toBeLessThan(drawPassDepth('sorted'));
   });
 });
@@ -118,7 +106,7 @@ describe('road site plots', () => {
   it('paint an unclaimed plot under a settler standing a row behind it, and a claimed one in the sort', () => {
     const ROW_BEHIND_PX = -TILE_HALF_H;
     const settler = screenDepth(0, ROW_BEHIND_PX, 'settler');
-    expect(screenDepth(0, 0, 'roadsite', false, true)).toBeLessThan(settler);
+    expect(screenDepth(0, 0, 'roadsite', 'ground')).toBeLessThan(settler);
     expect(screenDepth(0, 0, 'roadsite')).toBeGreaterThan(settler);
     expect(screenDepth(0, 0, 'roadsite')).toBeLessThan(screenDepth(0, 0, 'settler'));
   });

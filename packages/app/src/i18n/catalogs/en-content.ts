@@ -860,6 +860,11 @@ export const enContent = {
       summary:
         'A potter hired into a pottery makes only bricks, its first product, and keeps to bricks after the pottery is upgraded.',
     },
+    'door-sign-heaps': {
+      title: 'Signs beside heaps',
+      summary:
+        "A saracen pottery with its potter, its sign post standing far out beside the door, and full wood heaps lying around the post. The potter's sign stays in view over every heap: goods on the ground paint under everything that stands.",
+    },
     signposts: {
       title: 'Signposts',
       summary: 'A scout erects a signpost; settlers work only within the connected signpost network.',

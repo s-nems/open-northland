@@ -2,7 +2,7 @@ import type { WorldSnapshot } from '@open-northland/sim';
 import type { FogGhost, GhostSource } from '../../fog/index.js';
 import { isVisible, ONE, tileToScreen, type Viewport } from '../../projection/index.js';
 import { type ElevationField, terrainLiftAt } from '../../terrain/index.js';
-import { spriteDepth } from '../depth.js';
+import { drawPassOf, spriteDepth } from '../depth.js';
 import { type MutableDrawItem, type MutableSpriteDrawItem, newDrawItem } from '../draw-item.js';
 import type { InHouseOverlay } from '../in-house.js';
 import { COVER_LAUNCH_HEIGHT_PX, projectileArc } from '../projectiles/arc.js';
@@ -155,7 +155,7 @@ export function pushSignpostItems(
       boardRef,
       item.x,
       item.y,
-      spriteDepth(tileX, tileY, 'signpost', false, false, signpostBoardSteps(bucket)),
+      spriteDepth(tileX, tileY, 'signpost', 'sorted', signpostBoardSteps(bucket)),
       'idle',
     );
     board.boardIndex = bucket;
@@ -253,10 +253,10 @@ export function pushGhostItems(
     const screen = tileToScreen(g.tileX, g.tileY);
     if (viewport !== undefined && !isVisible(viewport, screen.x, screen.y)) continue;
     const lift = terrainLiftAt(elevation, g.tileX, g.tileY);
-    const depth = spriteDepth(g.tileX, g.tileY, g.kind);
-    const item = newDrawItem(g.kind, g.ref, screen.x + (g.shiftX ?? 0), screen.y, depth, 'idle');
+    const item = newDrawItem(g.kind, g.ref, screen.x + (g.shiftX ?? 0), screen.y, 0, 'idle');
     item.ghost = true;
     copyStaticFields(item, g);
+    item.depth = spriteDepth(g.tileX, g.tileY, g.kind, drawPassOf(item));
     if (playerColourOf !== undefined && item.player !== undefined) item.player = playerColourOf(item.player);
     if (lift !== 0) item.lift = lift;
     list.push(item);

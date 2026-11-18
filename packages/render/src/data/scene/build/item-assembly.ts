@@ -1,6 +1,6 @@
 import { type EntitySnapshot, systems, type WorldSnapshot } from '@open-northland/sim';
 import { type ElevationField, terrainLiftAt } from '../../terrain/index.js';
-import { spriteDepth } from '../depth.js';
+import { drawPassOf, spriteDepth } from '../depth.js';
 import { type EntityKind, type MutableSpriteDrawItem, newDrawItem } from '../draw-item.js';
 import { flagOwnerOf } from '../flag-owner.js';
 import { assignPalisadeFields, type PalisadeLayout } from '../palisades/connections.js';
@@ -43,14 +43,11 @@ export function assembleItem(
   pose: SettlerPose,
 ): MutableSpriteDrawItem {
   const { components } = entity;
-  // Read here, not in the stockpile branch below, so it folds into the depth key.
-  const isFlag = 'DeliveryFlag' in components;
   const lift = terrainLiftAt(build.elevation, tileX, tileY);
   // A projectile's ballistic height rides the same lift channel as terrain lift: a draw offset the
   // depth key never sees, so neither can reshuffle occlusion.
   let arcLift = 0;
-  const depth = spriteDepth(tileX, tileY, kind, isFlag);
-  const item = newDrawItem(kind, entity.id, screen.x, screen.y, depth, pose.state);
+  const item = newDrawItem(kind, entity.id, screen.x, screen.y, 0, pose.state);
   switch (kind) {
     case 'settler':
       assignSettlerFields(item, components, pose.actingAtomic, pose.targetFacing, build.snapshot.tick);
@@ -70,7 +67,6 @@ export function assembleItem(
       const player = readOwnerPlayer(components);
       if (player !== undefined) item.player = player;
       item.roadSite = readRoadSiteClaimed(components) ? 'claimed' : 'unclaimed';
-      if (item.roadSite === 'unclaimed') item.depth = spriteDepth(tileX, tileY, kind, false, true);
       break;
     }
     case 'resource':
@@ -101,18 +97,21 @@ export function assembleItem(
       arcLift = assignProjectileArc(item, components, { x: tileX, y: tileY });
       break;
     case 'stockpile':
-    case 'grounddrop':
+    case 'grounddrop': {
+      const isFlag = 'DeliveryFlag' in components;
       assignStockpileFields(item, components, isFlag);
       if (isFlag) {
         const player = flagOwnerOf(build.snapshot, entity.id);
         if (player !== undefined) item.player = player;
       }
       break;
+    }
     default: {
       const _exhaustive: never = kind;
       void _exhaustive;
     }
   }
+  item.depth = spriteDepth(tileX, tileY, kind, drawPassOf(item));
   const drawLift = lift + arcLift;
   if (drawLift !== 0) item.lift = drawLift;
   if (build.playerColourOf !== undefined && item.player !== undefined) {

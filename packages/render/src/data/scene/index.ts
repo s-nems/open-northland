@@ -9,7 +9,14 @@ export {
   type LiveRefs,
   type SpriteScene,
 } from './build/sprite-scene.js';
-export { drawPassDepth, rowOfDepth, SHADOW_DEPTH_EPS, SIGN_DEPTH_EPS, screenDepth } from './depth.js';
+export {
+  drawPassDepth,
+  drawPassOf,
+  rowOfDepth,
+  SHADOW_DEPTH_EPS,
+  SIGN_DEPTH_EPS,
+  screenDepth,
+} from './depth.js';
 export type {
   DrawItem,
   DrawKind,

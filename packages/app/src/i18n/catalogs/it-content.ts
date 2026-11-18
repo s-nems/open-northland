@@ -869,6 +869,11 @@ export const itContent = {
       summary:
         'Un vasaio assunto in una bottega del vasaio produce solo mattoni, il suo primo prodotto, e continua con i mattoni anche dopo il miglioramento della bottega.',
     },
+    'door-sign-heaps': {
+      title: 'Insegne accanto ai mucchi',
+      summary:
+        "Una bottega del vasaio saracena con il suo vasaio, il palo dell'insegna piantato lontano accanto alla porta e mucchi di legna pieni tutt'intorno al palo. L'insegna del vasaio resta visibile sopra ogni mucchio: le merci a terra si disegnano sotto tutto ciò che sta in piedi.",
+    },
     signposts: {
       title: 'Cartelli',
       summary:

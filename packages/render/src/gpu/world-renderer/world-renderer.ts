@@ -718,7 +718,6 @@ export class WorldRenderer {
       experienceStars,
       groupNumbers: this.groupNumbersShown ? groupNumbers : NO_GROUP_NUMBERS,
     });
-    this.pool.coverGroundPiles(this.marks.collapseGroundCover());
     this.chrome.resize(this.app.screen.width, this.app.screen.height);
     this.hud.draw(hud);
     gpuTimer?.begin();

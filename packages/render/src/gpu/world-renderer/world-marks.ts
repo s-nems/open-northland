@@ -388,10 +388,6 @@ export class WorldMarks {
     );
   }
 
-  collapseGroundCover(): readonly Viewport[] {
-    return this.collapses.groundCover();
-  }
-
   destroy(): void {
     this.wakes.destroy();
     this.templeGlow.destroy();

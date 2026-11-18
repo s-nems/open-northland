@@ -53,7 +53,6 @@ import { hullDamageSeed, LayerBinder } from './bind-layers.js';
 import { FrameEpoch } from './bind-stamp.js';
 import { coatBody } from './blood-coats.js';
 import { cullBox, type KindReach, type KindReaches, kindReaches } from './cull-reach.js';
-import { GroundPileCover } from './ground-pile-cover.js';
 import { damageScaffoldLayers } from './layers/building.js';
 import { resolvesWithoutClock } from './layers/resolve.js';
 import type { ResolvedLayer } from './layers/resolved-layer.js';
@@ -293,7 +292,6 @@ export class SpritePool {
     return flat === true ? this.groundContainer : this.spriteLayer;
   }
   private readonly pool = new Map<number, PooledEntity>();
-  private readonly groundPileCover = new GroundPileCover();
   /** The pooled entities currently attached to either draw layer, kept in sync with each entity's
    *  `attached` flag. */
   private readonly attached = new Set<PooledEntity>();
@@ -1211,11 +1209,6 @@ export class SpritePool {
     }
   }
 
-  /** Apply after reconciliation and collapse drawing, before the world renders. */
-  coverGroundPiles(covers: readonly Viewport[]): void {
-    this.groundPileCover.apply(this.lastItems, this.pool, covers);
-  }
-
   /** Only a drawn building: a culled one keeps the textures of its last bind, which the reveal cache
    *  may since have evicted and destroyed. Its collapse resolves the normal appearance instead. */
   captureBuildingDamage(ref: number): readonly FallenBody[] | undefined {
@@ -1430,7 +1423,6 @@ export class SpritePool {
    * the sprite layer can't reach.
    */
   destroy(): void {
-    this.groundPileCover.clear();
     this.bloodCoats.setEnabled(false);
     this.buildingDamage.destroy();
     this.shipDamage.destroy();

@@ -866,6 +866,11 @@ export const deContent = {
       summary:
         'Ein in einer Töpferei angestellter Töpfer stellt nur Backsteine her, ihr erstes Produkt. Auch nach dem Ausbau der Töpferei bleibt er bei Backsteinen.',
     },
+    'door-sign-heaps': {
+      title: 'Schilder neben Haufen',
+      summary:
+        'Eine sarazenische Töpferei mit ihrem Töpfer, deren Schildpfahl weit neben der Tür steht, und volle Holzhaufen rund um den Pfahl. Das Schild des Töpfers bleibt über jedem Haufen sichtbar: Waren am Boden werden unter allem gezeichnet, was steht.',
+    },
     signposts: {
       title: 'Wegweiser',
       summary:

@@ -1,5 +1,5 @@
 import { depthKey } from '../projection/index.js';
-import type { DrawKind } from './draw-item.js';
+import type { DrawItem, DrawKind } from './draw-item.js';
 
 /**
  * Same-feet-anchor paint priority per drawable kind - a higher value draws in front when two sprites
@@ -19,7 +19,7 @@ const SPRITE_PAINT_ORDER: Readonly<Record<DrawKind, number>> = {
   roadsite: 0, // a plot on the ground, under the builder paving it
   grounddrop: 1,
   signpost: 1, // the post occludes like a small building
-  stockpile: 2,
+  stockpile: 2, // a delivery flag over the drops around it; a heap of goods paints in the goods pass
   // A staged effect (the cauldron's fire and smoke, the forge's flame) sits on the house and its piles but
   // behind the worker tending it: every extracted program lists its overlays before its first walk, and
   // the schema reads that file order as depth.
@@ -30,36 +30,31 @@ const SPRITE_PAINT_ORDER: Readonly<Record<DrawKind, number>> = {
 };
 
 /**
- * Extra paint-order step lifting a delivery flag above a heap on the same tile. Both are `stockpile`
- * kind, so the kind bias ties them and the id tiebreak would bury the earlier-created flag under the
- * later heap. Half a step stays below `settler`'s `3`, so a worker on the tile still draws in front.
- */
-const FLAG_PAINT_STEP = 0.5;
-
-function paintOrderBias(kind: DrawKind, isFlag: boolean): number {
-  return SPRITE_PAINT_ORDER[kind] + (isFlag ? FLAG_PAINT_STEP : 0);
-}
-
-/**
  * The original paints a frame in passes, each finished before the next begins: the still landscape
  * (`GfxStatic` records), then the fish, then one row-sorted pass of everything else. So a fish never
  * shows over a hull, and nothing standing on a bridge deck is buried by it. Basis: the `GfxStatic` key
  * of the readable landscape table, whose records all keep their sprite inside their own blocked area,
  * so nothing can stand behind one. The pass order itself is original behavior not checked against the
  * running original. The waves' pass between the two is not modelled: they draw
- * with the flat decor, under all three.
+ * with the flat decor, under all of them.
+ *
+ * Goods on the ground take a pass of their own over the still landscape: their records are `GfxStatic`
+ * too (see {@link drawPassOf}), but a heap may lie on a bridge deck, and in the still pass the deck
+ * would paint over it. Approximation: how the original paints goods on a deck is unverified.
  */
-export type DrawPass = 'ground' | 'fish' | 'sorted';
+export type DrawPass = 'ground' | 'goods' | 'fish' | 'sorted';
 
 /** Wider than any map's depth range in either key (the oracle's tops out at `ROW_STRIDE` squared), so a
  *  pass keeps its own row order and never interleaves with the next. */
 const PASS_BAND = 2 ** 25;
 
 const PASS_DEPTH: Readonly<Record<DrawPass, number>> = {
-  ground: -2 * PASS_BAND,
+  ground: -3 * PASS_BAND,
+  goods: -2 * PASS_BAND,
   fish: -PASS_BAND,
   sorted: 0,
 };
+const PASS_OFFSETS: ReadonlySet<number> = new Set(Object.values(PASS_DEPTH));
 
 /** The depth offset that files a key into `pass`. */
 export function drawPassDepth(pass: DrawPass): number {
@@ -70,18 +65,24 @@ export function drawPassDepth(pass: DrawPass): number {
  *  its pass, or null for a depth no pass files, such as a key pinned above every row. */
 export function rowOfDepth(depth: number): number | null {
   const offset = Math.round(depth / PASS_BAND) * PASS_BAND;
-  return offset === PASS_DEPTH.ground || offset === PASS_DEPTH.fish || offset === PASS_DEPTH.sorted
-    ? depth - offset
-    : null;
+  return PASS_OFFSETS.has(offset) ? depth - offset : null;
 }
 
 /** A depth under every pass, for the ground tiles' own band. */
-export const UNDER_EVERY_PASS = -3 * PASS_BAND;
+export const UNDER_EVERY_PASS = -4 * PASS_BAND;
 
-/** A flat ground marker (an unclaimed road plot) paints with the still landscape, under everything that
- *  stands, so a settler crossing it never sinks into it. */
-function kindPassDepth(kind: DrawKind, groundMarker: boolean): number {
-  return PASS_DEPTH[groundMarker ? 'ground' : kind === 'fish' ? 'fish' : 'sorted'];
+/**
+ * The pass an entity paints in. An unclaimed road plot paints with the still landscape, so a settler
+ * crossing it never sinks into it. Goods on the ground, a heap or a dropped harvest, paint under
+ * everything that stands, so none buries the sign chain of the house it lies beside: every pile and
+ * pickup record is `GfxStatic` save the mushrooms, which rise under one row. Goods block no walking, but
+ * their art rises at most 32 px (CnMod 1.3.2), so a settler standing a row behind covers only its top.
+ */
+export function drawPassOf(item: Pick<DrawItem, 'kind' | 'goodType' | 'roadSite'>): DrawPass {
+  if (item.roadSite === 'unclaimed') return 'ground';
+  if (item.kind === 'grounddrop' || (item.kind === 'stockpile' && item.goodType !== undefined))
+    return 'goods';
+  return item.kind === 'fish' ? 'fish' : 'sorted';
 }
 
 /** Row stride of the oracle sort key `tileY * ROW_STRIDE + tileX`, valid only while
@@ -96,15 +97,11 @@ export function spriteDepth(
   tileX: number,
   tileY: number,
   kind: DrawKind,
-  isFlag = false,
-  groundMarker = false,
+  pass: DrawPass = drawPassOf({ kind }),
   extraSteps = 0,
 ): number {
   return (
-    kindPassDepth(kind, groundMarker) +
-    tileY * ROW_STRIDE +
-    tileX +
-    (paintOrderBias(kind, isFlag) + extraSteps) * PAINT_ORDER_EPS
+    PASS_DEPTH[pass] + tileY * ROW_STRIDE + tileX + (SPRITE_PAINT_ORDER[kind] + extraSteps) * PAINT_ORDER_EPS
   );
 }
 
@@ -117,15 +114,10 @@ export function screenDepth(
   x: number,
   y: number,
   kind: DrawKind,
-  isFlag = false,
-  groundMarker = false,
+  pass: DrawPass = drawPassOf({ kind }),
   extraSteps = 0,
 ): number {
-  return (
-    kindPassDepth(kind, groundMarker) +
-    depthKey(x, y) +
-    (paintOrderBias(kind, isFlag) + extraSteps) * SCREEN_PAINT_EPS
-  );
+  return PASS_DEPTH[pass] + depthKey(x, y) + (SPRITE_PAINT_ORDER[kind] + extraSteps) * SCREEN_PAINT_EPS;
 }
 
 /**

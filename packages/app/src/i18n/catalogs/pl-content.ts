@@ -857,6 +857,11 @@ export const plContent = {
       summary:
         'Garncarz zatrudniony w warsztacie garncarskim robi tylko cegły, jego pierwszy produkt, i zostaje przy cegłach po rozbudowie warsztatu.',
     },
+    'door-sign-heaps': {
+      title: 'Tarcze przy stosach',
+      summary:
+        'Saraceński warsztat garncarski ze swoim garncarzem, słupek z tarczą stoi daleko obok drzwi, a wokół słupka leżą pełne stosy drewna. Tarcza garncarza zostaje widoczna nad każdym stosem: towary na ziemi rysują się pod wszystkim, co stoi.',
+    },
     signposts: {
       title: 'Drogowskazy',
       summary: 'Zwiadowca stawia drogowskaz; osadnicy pracują tylko w zasięgu połączonej sieci drogowskazów.',
