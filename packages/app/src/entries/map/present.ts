@@ -20,12 +20,13 @@ import { loadFellingClips } from '../../content/object-gfx/felling-clips.js';
 import { mapFootfallGround } from '../../content/object-gfx/footfall.js';
 import { petNamesOf } from '../../game/character-names/pet-names.js';
 import { briefingMatchObjectives, briefingPage, mapBriefFallback } from '../../game/map/mission-brief.js';
-import { playerNameMap, playerTribe } from '../../game/map/roster.js';
+import { playerTribe } from '../../game/map/roster.js';
 import { mapStartFocus } from '../../game/map/start.js';
 import { mapStringLookup } from '../../game/map/strings.js';
 import { sessionMapVariant } from '../../game/map/variant.js';
 import { observerSeats } from '../../game/match/observer-seats.js';
 import { hasEliminationGoal, playersDecidedBeforeEnd } from '../../game/match/participants.js';
+import { seatNameMap } from '../../game/match/seat-names.js';
 import { sessionSearch } from '../../game/match/session-url.js';
 import { harvestablePlacementOrdinals } from '../../game/sandbox/index.js';
 import { displayViewOf, startWorldZoomFor } from '../../hud/ui-scale.js';
@@ -280,7 +281,7 @@ export async function presentMapWorld(
     playerColourOf,
     seatTribeOf: (player) => playerTribe({ players: world.seatedPlayers }, player),
     tribes: world.tribes,
-    seatNameOf: playerNameMap(script, currentLocale()),
+    seatNameOf: seatNameMap(session, script, currentLocale()),
     rosterPlayers: script?.players.map((p) => p.player) ?? [],
     relationFlags: script?.relationFlags ?? [],
     ...terrainColourOption(world.terrain),

@@ -1,11 +1,14 @@
 import { type MapScript, type MapTextLanguage, mapLobbySlots } from '@open-northland/data';
-import { type GameSession, orderedSeats } from '@open-northland/lockstep';
+import { type ComputerDifficulty, type GameSession, orderedSeats } from '@open-northland/lockstep';
 import { playerNameMap } from '../map/roster.js';
+import { computerLevelsOf } from './session-roles.js';
 
 export interface ObserverSeatEntry {
   readonly player: number;
   /** The map's authored seat name; absent, the HUD numbers the seat. */
   readonly name?: string;
+  /** A computer seat's lobby level. */
+  readonly level?: ComputerDifficulty;
 }
 
 /**
@@ -21,12 +24,18 @@ export function observerSeats(
 ): ObserverSeatEntry[] {
   const authored = new Map(script === null ? [] : mapLobbySlots(script).map((slot) => [slot.player, slot]));
   const nameOf = playerNameMap(script, lang);
+  const levels = computerLevelsOf(session);
   const out: ObserverSeatEntry[] = [];
   for (const seat of orderedSeats(session.seats)) {
     if (seat.mode === 'idle' || seat.mode === 'absent' || authored.get(seat.player)?.claimable === false)
       continue;
     const name = nameOf(seat.player);
-    out.push(name === undefined ? { player: seat.player } : { player: seat.player, name });
+    const level = levels.get(seat.player);
+    out.push({
+      player: seat.player,
+      ...(name === undefined ? {} : { name }),
+      ...(level === undefined ? {} : { level }),
+    });
   }
   return out;
 }

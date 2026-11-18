@@ -1,4 +1,9 @@
-import { type GameSession, humanSeatsOf, machineSeatsOf } from '@open-northland/lockstep';
+import {
+  type ComputerDifficulty,
+  type GameSession,
+  humanSeatsOf,
+  machineSeatsOf,
+} from '@open-northland/lockstep';
 import { matchParticipants } from './participants.js';
 
 /** The seat lists world assembly enqueues setup for, decided from the descriptor alone. */
@@ -22,4 +27,14 @@ export function sessionRoles(session: GameSession, neverDies: readonly number[])
       neverDies,
     }),
   };
+}
+
+/** Each computer seat's lobby level. The session names a level only for a seat the computer plays,
+ *  never for a person's seat or a map's scripted village. */
+export function computerLevelsOf(
+  session: Pick<GameSession, 'seats'>,
+): ReadonlyMap<number, ComputerDifficulty> {
+  return new Map(
+    session.seats.flatMap((seat) => (seat.difficulty === undefined ? [] : [[seat.player, seat.difficulty]])),
+  );
 }

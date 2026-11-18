@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it } from 'vitest';
+import { withComputerLevel } from '../../../../src/game/match/seat-names.js';
 import { PLAYERS_SIGHT, switchableViewerSeat, type WatchTarget } from '../../../../src/game/viewer-seat.js';
 import { createObserverPicker } from '../../../../src/hud/dom/system/observer-picker.js';
 import { DEFAULT_KEY_BINDINGS } from '../../../../src/hud/keybindings.js';
@@ -18,7 +19,7 @@ function mount() {
   const picker = createObserverPicker({
     seats: [
       { player: FIRST_SEAT, name: 'Duchy' },
-      { player: SECOND_SEAT, name: 'Duchy' },
+      { player: SECOND_SEAT, name: 'Duchy', level: 'hard' },
     ],
     viewer,
     bindings: DEFAULT_KEY_BINDINGS,
@@ -44,7 +45,7 @@ describe('observer picker', () => {
       copy.playersSight,
       copy.wholeMap,
       'Duchy 1',
-      'Duchy 3',
+      withComputerLevel('Duchy 3', 'hard'),
     ]);
     const [sight, revealed] = options;
     expect(sight?.parentElement?.classList.contains('on-picker__modes')).toBe(true);
