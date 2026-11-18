@@ -32,6 +32,7 @@ import {
   boardRider,
   isShipAtSea,
   landingOf,
+  landPassenger,
   landRider,
   passengerJobAllowed,
   pinnedTraderAshore,
@@ -199,7 +200,7 @@ export const riderSystem: System = (world, ctx) => {
     if (!seated) {
       if (!world.has(e, Position)) {
         const landing = landingOf(world, ctx, rider.vehicle) ?? vehicleAnchor(world, rider.vehicle);
-        if (landing !== null) landRider(world, ctx, e, landing);
+        if (landing !== null) landPassenger(world, ctx, e, landing);
       }
       releaseRider(world, e, rider.vehicle); // gives any cargo booking back too
       continue;
@@ -208,7 +209,9 @@ export const riderSystem: System = (world, ctx) => {
       const landing = landingOf(world, ctx, rider.vehicle);
       if (landing === null) continue; // still at sea: the order waits for the mooring
       const walkOn = rider.leaving.to;
-      landRider(world, ctx, e, landing);
+      // A rider with a march to walk on starts it from the landing; one without leaves as a passenger.
+      if (walkOn === null) landPassenger(world, ctx, e, landing);
+      else landRider(world, ctx, e, landing);
       releaseRider(world, e, rider.vehicle);
       if (walkOn !== null) {
         const attackMove = isFighterJob(ctx.content, world.tryGet(e, Settler)?.jobType ?? null);

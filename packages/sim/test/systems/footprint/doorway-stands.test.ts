@@ -168,8 +168,8 @@ describe('doorway stands', () => {
     ['sealed', SEALED_HOME],
     ['gapped', GAPPED_HOME],
   ])('never offers a doorway cell of the %s home as the nearest free stand', (_label, type) => {
-    const { sim, door, spacing, doorways } = fixture(type);
-    const stand = nearestFreeCell(terrainOf(sim), door, spacing);
+    const { sim, woman, door, spacing, doorways } = fixture(type);
+    const stand = nearestFreeCell(terrainOf(sim), door, spacing, woman);
     expect(stand).not.toBeNull();
     if (stand !== null) expect(doorways.has(stand)).toBe(false);
   });

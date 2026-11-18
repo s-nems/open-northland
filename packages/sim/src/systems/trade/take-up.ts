@@ -2,7 +2,7 @@ import { Rider, TRADE_ROUTE_HOUSES, TradeRoute, Vehicle } from '../../components
 import { contentIndex } from '../../core/content-index.js';
 import type { System } from '../context.js';
 import { commandedVehicleOf } from '../vehicles/commander.js';
-import { detachFromVehicle } from '../vehicles/crew.js';
+import { detachBeforeOrder } from '../vehicles/crew.js';
 import { isCartType } from '../vehicles/drag.js';
 import { canTakeHaulingCart, orderAttachToVehicle } from '../vehicles/hauling-cart.js';
 
@@ -20,7 +20,7 @@ export const traderTakesUpCartSystem: System = (world, ctx) => {
     if (vehicle === null) continue;
     const type = contentIndex(ctx.content).vehicles.get(world.get(vehicle, Vehicle).vehicleType);
     if (type === undefined || !isCartType(type)) continue;
-    if (!detachFromVehicle(world, ctx, { kind: 'detachFromVehicle', entity: e })) continue;
+    if (!detachBeforeOrder(world, ctx, e)) continue;
     // A cart that refuses the trader as its puller is left standing, and the trader works on foot.
     if (canTakeHaulingCart(world, ctx, e, vehicle)) {
       orderAttachToVehicle(world, ctx, { kind: 'attachToVehicle', entity: e, vehicle });

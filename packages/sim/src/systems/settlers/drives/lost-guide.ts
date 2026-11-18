@@ -37,7 +37,7 @@ export function guideLostSettler(pass: PlannerPass, e: Entity, limit: Navigation
   const target =
     strandedWorkplaceDoor(world, ctx, terrain, e, limit) ??
     homewardTarget(pass, owner, component, hx, hy, limit);
-  const stand = target === null ? null : nearestFreeCell(terrain, target, pass.spacing);
+  const stand = target === null ? null : nearestFreeCell(terrain, target, pass.spacing, e);
   if (stand === null || isUnreachableGoal(unreachableGoals(world, ctx, e), stand)) return false;
   if (routeRegions(world, ctx, terrain).unroutable(here, stand)) return false;
   pass.spacing.claim(stand);

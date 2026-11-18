@@ -89,7 +89,7 @@ describe('stands keep an exit', () => {
   it('never offers the nook as the nearest free cell, though the ring reaches it first', () => {
     const f = fixture();
     expect(f.terrain.neighbours(f.from)[0]).toBe(f.nook);
-    const stand = nearestFreeCell(f.terrain, f.from, spacingOf(f, []));
+    const stand = nearestFreeCell(f.terrain, f.from, spacingOf(f, []), ownedAt(f.sim, S.x, S.y));
     expect(stand).not.toBeNull();
     expect(stand).not.toBe(f.nook);
     if (stand !== null) expect(hasOpenSide(f.terrain, stand, f.blocked)).toBe(true);
@@ -101,9 +101,10 @@ describe('stands keep an exit', () => {
     const spacing = spacingOf(f, stack);
     const [keeper, ...movers] = stack;
     if (keeper === undefined) throw new Error('setup: empty stack');
-    expect(deStackIdle(f.sim.world, f.terrain, keeper, S.x, S.y, spacing)).toBeNull();
+    const ctx = ctxOf(f.sim);
+    expect(deStackIdle(f.sim.world, ctx, f.terrain, keeper, S.x, S.y, spacing)).toBeNull();
     const stands = movers.map((e) => {
-      const sent = deStackIdle(f.sim.world, f.terrain, e, S.x, S.y, spacing);
+      const sent = deStackIdle(f.sim.world, ctx, f.terrain, e, S.x, S.y, spacing);
       expect(sent).toBe(f.sim.world.get(e, MoveGoal).cell);
       return f.sim.world.get(e, MoveGoal).cell;
     });
@@ -112,6 +113,24 @@ describe('stands keep an exit', () => {
       expect(stand).not.toBe(f.nook);
       expect(hasOpenSide(f.terrain, stand, f.blocked)).toBe(true);
     }
+  });
+
+  it('steps off beside the crowd when no node clear of it is in reach', () => {
+    const f = fixture();
+    const [keeper, mover] = [ownedAt(f.sim, S.x, S.y), ownedAt(f.sim, S.x, S.y)];
+    if (keeper === undefined || mover === undefined) throw new Error('setup: no stack');
+    // Only the stack's own ring stays open, and every node of it lies beside the keeper.
+    const ring = new Set(f.terrain.neighbours(f.from));
+    const blocked = everyNodeBut(f.terrain, ring);
+    const spacing = PlannerSpacing.overExplicit(
+      f.sim.world,
+      ctxOf(f.sim),
+      f.terrain,
+      new NodeBuckets(f.sim.world, [keeper, mover]),
+      blocked,
+    );
+    const sent = deStackIdle(f.sim.world, ctxOf(f.sim), f.terrain, mover, S.x, S.y, spacing);
+    expect(sent === null ? false : ring.has(sent)).toBe(true);
   });
 
   it('moves a loiterer already alone in the nook off it', () => {

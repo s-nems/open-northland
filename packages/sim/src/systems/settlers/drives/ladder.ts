@@ -531,7 +531,7 @@ function standIdle(
   const lost = world.has(e, LostWay);
   if (!lost && planGraduateWait(world, ctx, terrain, e, plan.here, pass.spacing, plan.limit)) return;
   if (!lost && stepOffHomeDoor(world, ctx, terrain, e, plan.here, pass.spacing)) return;
-  if (lost || deStackIdle(world, terrain, e, hx, hy, pass.spacing) === null) {
+  if (lost || deStackIdle(world, ctx, terrain, e, hx, hy, pass.spacing) === null) {
     planGossipIdle(
       world,
       ctx,

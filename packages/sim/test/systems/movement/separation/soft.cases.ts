@@ -11,7 +11,7 @@ import {
   Position,
 } from '../../../../src/components/index.js';
 import { fx } from '../../../../src/core/fixed.js';
-import { positionOfNode } from '../../../../src/index.js';
+import { hexDistanceBetween, positionOfNode } from '../../../../src/index.js';
 import { positionXOfWorld } from '../../../../src/nav/halfcell.js';
 import { HALF_ROW, worldDistance, worldX } from '../../../../src/nav/world-metric.js';
 import { separationSystem } from '../../../../src/systems/movement/collision/separation.js';
@@ -30,6 +30,10 @@ import {
   walkStraightTo,
   wallAt,
 } from './support.js';
+
+/** How far from a shared goal two arrivals stand once the idle-spacing drive parks one a node clear of
+ *  the other. */
+const SPACED_ARRIVAL = 2;
 
 describe('unit body collision - soft and civilian traffic', () => {
   it.each(['shared-goal', 'first-engaged', 'second-engaged'] as const)(
@@ -202,12 +206,12 @@ describe('unit body collision - soft and civilian traffic', () => {
       expect(pa.x === pb.x && pa.y === pb.y).toBe(false);
     }
     expect(bothWalkedTicks).toBeGreaterThan(20); // the walk was long enough to prove anything
-    // ...and the nudge never prevented the arrivals (both stood down at/next to the shared goal -
-    // the idle-spacing drive legitimately parks one beside it).
+    // ...and the nudge never prevented the arrivals (both stood down at or near the shared goal - the
+    // idle-spacing drive legitimately parks one a node clear of the other).
     expect(s.world.has(a, PathFollow)).toBe(false);
     expect(s.world.has(b, PathFollow)).toBe(false);
-    expect(Math.abs(nodeOf(s, a).x - 20) + Math.abs(nodeOf(s, a).y - 6)).toBeLessThanOrEqual(1);
-    expect(Math.abs(nodeOf(s, b).x - 20) + Math.abs(nodeOf(s, b).y - 6)).toBeLessThanOrEqual(1);
+    expect(hexDistanceBetween(nodeOf(s, a).x, nodeOf(s, a).y, 20, 6)).toBeLessThanOrEqual(SPACED_ARRIVAL);
+    expect(hexDistanceBetween(nodeOf(s, b).x, nodeOf(s, b).y, 20, 6)).toBeLessThanOrEqual(SPACED_ARRIVAL);
     expect(s.world.has(a, Obstructed)).toBe(false); // soft-only movers never grind
     expect(s.world.has(b, Obstructed)).toBe(false);
   });
@@ -271,11 +275,11 @@ describe('unit body collision - soft and civilian traffic', () => {
     }
     expect(bothWalkedTicks).toBeGreaterThan(20);
     expect(order).not.toBeNull();
-    // The nudge still never prevents the arrivals (idle spacing may park one beside the goal).
+    // The nudge still never prevents the arrivals (idle spacing may park one a node clear of the goal).
     expect(s.world.has(a, PathFollow)).toBe(false);
     expect(s.world.has(b, PathFollow)).toBe(false);
-    expect(Math.abs(nodeOf(s, a).x - 20) + Math.abs(nodeOf(s, a).y - 6)).toBeLessThanOrEqual(1);
-    expect(Math.abs(nodeOf(s, b).x - 20) + Math.abs(nodeOf(s, b).y - 6)).toBeLessThanOrEqual(1);
+    expect(hexDistanceBetween(nodeOf(s, a).x, nodeOf(s, a).y, 20, 6)).toBeLessThanOrEqual(SPACED_ARRIVAL);
+    expect(hexDistanceBetween(nodeOf(s, b).x, nodeOf(s, b).y, 20, 6)).toBeLessThanOrEqual(SPACED_ARRIVAL);
   });
 
   it('UNOWNED civilians walking together stay exactly merged - the Owner gate holds for the soft tier', () => {

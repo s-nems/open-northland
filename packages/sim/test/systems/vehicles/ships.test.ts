@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   Building,
+  MoveGoal,
   Position,
   ResourceFootprint,
   Rider,
@@ -90,6 +91,12 @@ const WOOD = 1;
 /** The units a ship lands in the unloading test, and time enough for a trip a unit at the door. */
 const CARGO = 3;
 const UNLOAD_TICKS = 300;
+/** Long enough for a landed rider's walk of a few nodes off the landing. */
+const STEP_OFF_TICKS = 40;
+/** The farthest a landed rider stands from the landing once the crew has stepped apart. */
+const STEP_OFF_REACH = 3;
+/** The fewest nodes between two landed riders' stands: neither on one node nor on neighbouring ones. */
+const STAND_GAP = 2;
 /** Long enough for a scout's walk to the mooring and the ship's crossing. */
 const SAIL_TICKS = 400;
 
@@ -419,7 +426,7 @@ describe('dockVehicle', () => {
     expect(distanceTo(anchorOf(s, ship), point)).toBe(DOOR_DISTANCE); // moored at the shore, not mid-strait
   });
 
-  it('unloads the crew onto the far shore once moored there', () => {
+  it('unloads the crew onto the far shore, each walking off the landing to a stand of its own', () => {
     const s = sim();
     const { ship, riders } = crewedShip(s, 20, MID_ROW, 3);
     const point = { hx: EAST_SHORE_X + 1, hy: MID_ROW };
@@ -427,12 +434,20 @@ describe('dockVehicle', () => {
     sailOut(s, ship);
     s.enqueue(playerCommand(P0, { kind: 'unloadPeople', vehicle: ship }));
     s.step();
-    for (const rider of riders) {
-      // All three land on the mooring point; the crowd then spreads by a node at most.
-      expect(distanceTo(anchorOf(s, rider), point)).toBeLessThanOrEqual(1);
-      expect(s.world.has(rider, Rider)).toBe(false);
-    }
+    expect(riders.every((rider) => !s.world.has(rider, Rider))).toBe(true);
     expect(vehiclePassengers(s.world.get(ship, Vehicle))).toEqual([]);
+    // They set off as they land, before any idle beat would spread them: all but one, each to its own stand.
+    const goals = riders.flatMap((rider) => s.world.tryGet(rider, MoveGoal)?.cell ?? []);
+    expect(goals).toHaveLength(riders.length - 1);
+    expect(new Set(goals).size).toBe(goals.length);
+    s.run(STEP_OFF_TICKS);
+    const stands = riders.map((rider) => anchorOf(s, rider));
+    expect(stands.filter((at) => distanceTo(at, point) === 0)).toHaveLength(1); // one keeps the landing
+    for (const at of stands) expect(distanceTo(at, point)).toBeLessThanOrEqual(STEP_OFF_REACH);
+    for (const [i, at] of stands.entries()) {
+      for (const other of stands.slice(i + 1))
+        expect(distanceTo(at, other)).toBeGreaterThanOrEqual(STAND_GAP);
+    }
   });
 
   it('keeps the commander aboard when the unload says so, the ship free to sail off', () => {

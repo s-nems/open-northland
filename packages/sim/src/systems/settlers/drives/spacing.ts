@@ -7,22 +7,27 @@ import type { SystemContext } from '../../context.js';
 import { builtHomeType } from '../../family/households.js';
 import { moveAnchor } from '../../orders/combat.js';
 import { nearestCell } from '../../spatial/metric.js';
-import type { PlannerSpacing } from '../planner/spacing.js';
+import { entityNode } from '../../spatial/nodes.js';
+import { PlannerSpacing } from '../planner/spacing.js';
 import { interactionCell } from '../targets/index.js';
 
-// The spacing drives, the two consumers of the planner-tick occupancy state: idle units step off a shared
-// tile so a crowd spreads out, and construction workers claim distinct perimeter cells. Body collision can
-// do neither: civilians are deliberate pass-through, and only walking movers are ever displaced.
+// The spacing drives, the two consumers of the planner-tick occupancy state: idle units and riders set down
+// together step off a shared tile so a crowd spreads out, and construction workers claim distinct perimeter
+// cells. Body collision can do neither: civilians are deliberate pass-through, and only walking movers are
+// ever displaced.
 
 /**
  * The idle-spacing drive: a resting owned settler sharing its node with a lower-id resting owned settler is
- * sent to the nearest free node. The lowest-id occupant keeps the tile, and a unit boxed in stays.
+ * sent to the nearest free node ({@link nearestFreeCell}). The lowest-id occupant keeps the tile, and a unit
+ * boxed in stays. One standing on its own anchor takes the post along, or the combat walk-back would lead it
+ * straight back onto the stack.
  *
  * Transit is never blocked; only a unit that has arrived with nothing to do relocates. Returns the node it
  * sent the unit to, or null when it stays.
  */
 export function deStackIdle(
   world: World,
+  ctx: SystemContext,
   terrain: TerrainGraph,
   e: Entity,
   tileX: number,
@@ -37,18 +42,13 @@ export function deStackIdle(
   // Never aim at a cell under a standing building: A* refuses a blocked goal, and a MoveGoal whose route
   // cannot resolve would freeze the unit.
   const from = terrain.nodeAtClamped(tileX, tileY);
-  const free = nearestFreeCell(terrain, from, spacing);
-  if (free === null) return null;
-  spacing.claim(free);
-  world.add(e, MoveGoal, { cell: free });
-  return free;
+  return stepAside(world, ctx, terrain, e, from, spacing);
 }
 
 /**
- * {@link deStackIdle} for a DEFEND guard, whose hold ends the ladder before the idle tail: a guard standing
- * on its own anchor moves the post to the free node it steps to, or the combat walk-back would lead it
- * straight back onto the stack. Recruits leaving one barracks door fan out this way. A guard off its
- * anchor is left to that walk-back. Source basis: authored.
+ * {@link deStackIdle} for a DEFEND guard, whose hold ends the ladder before the idle tail. Recruits leaving
+ * one barracks door fan out this way. A guard off its anchor is left to the combat walk-back. Source basis:
+ * authored.
  */
 export function deStackGuard(
   world: World,
@@ -61,8 +61,38 @@ export function deStackGuard(
 ): void {
   const here = terrain.nodeAtClamped(hx, hy);
   if ((world.tryGet(e, Stance)?.anchorCell ?? here) !== here) return;
-  const free = deStackIdle(world, terrain, e, hx, hy, spacing);
-  if (free !== null) moveAnchor(world, ctx.content, e, free);
+  deStackIdle(world, ctx, terrain, e, hx, hy, spacing);
+}
+
+/**
+ * A rider set down on a vehicle's landing where another owned settler already stands walks off to a free
+ * stand of its own, so a party leaving a ship spreads as it steps ashore instead of waiting out its idle
+ * beat on one node; the first one down keeps the landing. Our rule: the original sets every rider down on
+ * the door.
+ */
+export function stepOffLanding(world: World, ctx: SystemContext, terrain: TerrainGraph, e: Entity): void {
+  if (!world.has(e, Owner)) return;
+  const spacing = PlannerSpacing.forTick(world, ctx, terrain);
+  const here = entityNode(world, terrain, e);
+  if (!spacing.occupancy.at(terrain.xOf(here), terrain.yOf(here)).some((other) => other !== e)) return;
+  stepAside(world, ctx, terrain, e, here, spacing);
+}
+
+/** Send `e` from `here` to {@link nearestFreeCell}, its anchor along when it stands on it. */
+function stepAside(
+  world: World,
+  ctx: SystemContext,
+  terrain: TerrainGraph,
+  e: Entity,
+  here: NodeId,
+  spacing: PlannerSpacing,
+): NodeId | null {
+  const free = nearestFreeCell(terrain, here, spacing, e);
+  if (free === null) return null;
+  spacing.claim(free);
+  world.add(e, MoveGoal, { cell: free });
+  if (world.tryGet(e, Stance)?.anchorCell === here) moveAnchor(world, ctx.content, e, free);
+  return free;
 }
 
 /** A resident with no current errand leaves the door clear for incoming deliveries and sleepers.
@@ -81,7 +111,7 @@ export function stepOffHomeDoor(
   const door = interactionCell(world, ctx, terrain, home, here);
   if (here !== door) return false;
   const nearby = loiterCell(world, terrain, e, here, door, spacing);
-  const stand = nearby === here ? nearestFreeCell(terrain, here, spacing) : nearby;
+  const stand = nearby === here ? nearestFreeCell(terrain, here, spacing, e) : nearby;
   if (stand === null || stand === here) return false;
   if (nearby === here) spacing.claim(stand);
   world.add(e, MoveGoal, { cell: stand });
@@ -157,20 +187,30 @@ export function loiterCell(
 }
 
 /**
- * The nearest cell to `from` that is walkable, unblocked, off every doorway, keeps an open side, holds no
- * resting occupant, and is unclaimed this tick, or null when nothing free is reachable within the search
- * cap. Blocked cells are neither entered nor traversed, mirroring the pathfinder that will carry the move
- * out.
+ * The nearest cell to `from` that `self` may stand on: walkable, unblocked, off every doorway, with an open
+ * side, and free of another resting occupant, a settler walking there and this tick's claims. A cell with
+ * none of those on its neighbours either wins over a nearer one beside another settler, which is taken
+ * only when no clear cell is in reach. Null when nothing free is reachable within the search cap. Blocked
+ * cells are neither entered nor traversed, mirroring the pathfinder that will carry the move out.
  */
-export function nearestFreeCell(terrain: TerrainGraph, from: NodeId, spacing: PlannerSpacing): NodeId | null {
+export function nearestFreeCell(
+  terrain: TerrainGraph,
+  from: NodeId,
+  spacing: PlannerSpacing,
+  self: Entity,
+): NodeId | null {
   const blocked = spacing.blockedCells();
   const doorways = spacing.doorways();
-  return ringSearch(terrain, from, STAND_SEARCH_CAP, {
+  // The first free cell beside another settler in ring order, kept while the search looks for a clear one.
+  let beside: NodeId | null = null;
+  const clear = ringSearch(terrain, from, STAND_SEARCH_CAP, {
     traverse: (n) => !blocked.has(n),
     accept: (n) => {
-      if (spacing.isClaimed(n) || doorways.has(n)) return false;
-      if (spacing.occupancy.at(terrain.xOf(n), terrain.yOf(n)).length > 0) return false;
-      return hasOpenSide(terrain, n, blocked);
+      if (doorways.has(n) || spacing.standTaken(n, self) || !hasOpenSide(terrain, n, blocked)) return false;
+      if (!spacing.crowds(n, self)) return true;
+      beside ??= n;
+      return false;
     },
   });
+  return clear ?? beside;
 }

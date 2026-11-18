@@ -21,12 +21,12 @@ export function planSiteStaff(
   hx: number,
   hy: number,
 ): boolean {
-  const { world, terrain, entity: e, here } = plan;
+  const { world, ctx, terrain, entity: e, here } = plan;
   const site = boundConstructionSite(plan);
   if (site === null) return false;
   if (fetchNeededMaterial(plan, spacing, site)) return true;
   const stand = claimWorkCell(world, terrain, e, here, site, spacing);
-  if (stand === null) deStackIdle(world, terrain, e, hx, hy, spacing);
+  if (stand === null) deStackIdle(world, ctx, terrain, e, hx, hy, spacing);
   else atOrWalk(world, e, here, stand, () => {});
   return true;
 }

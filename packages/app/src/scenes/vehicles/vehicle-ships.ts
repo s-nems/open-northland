@@ -2,6 +2,7 @@ import {
   type CellTerrainMap,
   cellAnchorNode,
   components,
+  type HalfCellNode,
   hexDistanceBetween,
   nodeOfPosition,
   playerCommand,
@@ -49,8 +50,12 @@ const DOCK_ORDER_TICK = 4;
 const UNLOAD_TICK = 260;
 /** Claims a position no session transport hands out for that tick. */
 const ORDER_SEQUENCE = 1_000_000;
-/** The party spreads by a node or so once it stands on the landing. */
-const LANDED_SPREAD = 2;
+/** Ticks after the unload for the landed men's walk of a few nodes off the landing. */
+const STEP_OFF_TICKS = 40;
+/** The landed men stand within this many nodes of the landing point. */
+const LANDED_SPREAD = 3;
+/** The fewest nodes between two landed men: neither on one node nor on neighbouring ones. */
+const LANDED_GAP = 2;
 
 function straitTerrain(): CellTerrainMap {
   const typeIds = new Array<number>(MAP_W * MAP_H);
@@ -87,17 +92,32 @@ function theShip(sim: Simulation): VehicleView | undefined {
   return sim.vehiclesOf(HUMAN_PLAYER).find((v) => v.vehicleType === VEHICLE_SHIP_SMALL);
 }
 
-/** Every soldier of the party stands free on the east island beside the landing point. */
-function partyLanded(sim: Simulation): boolean {
-  const landing = cellAnchorNode(LANDING.x, LANDING.y);
-  let landed = 0;
+/** The nodes the soldiers stand on off the ship. */
+function partyNodes(sim: Simulation): HalfCellNode[] {
+  const nodes: HalfCellNode[] = [];
   for (const e of sim.world.query(Settler, Position)) {
     if (sim.world.has(e, Rider)) continue;
     const p = sim.world.get(e, Position);
-    const at = nodeOfPosition(p.x, p.y);
-    if (hexDistanceBetween(at.hx, at.hy, landing.hx, landing.hy) <= LANDED_SPREAD) landed++;
+    nodes.push(nodeOfPosition(p.x, p.y));
   }
-  return landed === PARTY_AT.length;
+  return nodes;
+}
+
+/** Every soldier of the party stands free on the east island beside the landing point. */
+function partyLanded(sim: Simulation): boolean {
+  const landing = cellAnchorNode(LANDING.x, LANDING.y);
+  const near = partyNodes(sim).filter(
+    (at) => hexDistanceBetween(at.hx, at.hy, landing.hx, landing.hy) <= LANDED_SPREAD,
+  );
+  return near.length === PARTY_AT.length;
+}
+
+/** No two landed soldiers stand on one node or side by side. */
+function partySpread(sim: Simulation): boolean {
+  const nodes = partyNodes(sim);
+  return nodes.every((at, i) =>
+    nodes.slice(i + 1).every((other) => hexDistanceBetween(at.hx, at.hy, other.hx, other.hy) >= LANDED_GAP),
+  );
 }
 
 export const vehicleShipsScene: SceneDefinition = {
@@ -105,7 +125,7 @@ export const vehicleShipsScene: SceneDefinition = {
   seed: 17,
   terrain: straitTerrain(),
   build,
-  runTicks: UNLOAD_TICK + 2,
+  runTicks: UNLOAD_TICK + STEP_OFF_TICKS,
   initialZoom: 0.9,
   checks: [
     {
@@ -122,6 +142,10 @@ export const vehicleShipsScene: SceneDefinition = {
     {
       label: 'the party crossed the strait and stands on the east island, off the ship',
       predicate: (sim) => partyLanded(sim) && theShip(sim)?.passengers.length === 0,
+    },
+    {
+      label: 'the landed party spreads out, no two men on one node or side by side',
+      predicate: partySpread,
     },
   ],
 };

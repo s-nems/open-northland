@@ -17,6 +17,7 @@ import type { Entity } from '../../../../src/ecs/world.js';
 import {
   fx,
   halfCellMapFromCells,
+  hexDistanceBetween,
   nodeOfPosition,
   positionOfNode,
   Simulation,
@@ -36,9 +37,9 @@ import { grassCellMap as grassMap } from '../../../fixtures/terrain.js';
  * Tests for the IDLE-SPACING (de-stack) drive: owned settlers don't HARD-collide (a walker passes freely
  * through any half-cell node) but they won't come to REST stacked on top of one another - a unit that has
  * arrived with nothing to do and shares its node with a lower-id resting owned unit steps off to the
- * nearest free NODE (half a cell - a 34 or 19 px hop). Faithful in spirit to the original's per-cell
- * valency (source basis). Gated on Owner, so the unowned golden/economy fixtures never de-stack (their
- * planner output stays byte-identical). All scenario coordinates here are node coords.
+ * nearest node with no other settler on it or beside it. Gated on Owner, so the unowned golden/economy
+ * fixtures never de-stack (their planner output stays byte-identical). All scenario coordinates here are
+ * node coords.
  */
 
 const GRASS = 0;
@@ -96,8 +97,8 @@ describe('idle-spacing (de-stack) drive', () => {
 
     expect(tileOf(s, keeper)).toEqual({ x: 4, y: 3 }); // the keeper never moved
     const m = tileOf(s, mover);
-    expect(m.x === 4 && m.y === 3).toBe(false); // the mover left the shared node
-    expect(Math.abs(m.x - 4) + Math.abs(m.y - 3)).toBe(1); // to an adjacent free node (half a cell away)
+    // Past the keeper's neighbours, so the two do not stand shoulder to shoulder.
+    expect(hexDistanceBetween(m.x, m.y, 4, 3)).toBe(2);
   });
 
   it('settles to a stable, non-stacked configuration (no endless churn)', () => {
@@ -159,9 +160,21 @@ describe('idle-spacing (de-stack) drive', () => {
 
     expect(tileOf(s, keeper)).toEqual({ x: 4, y: 3 });
     const m = tileOf(s, mover);
-    expect(Math.abs(m.x - 4) + Math.abs(m.y - 3)).toBe(1);
+    expect(hexDistanceBetween(m.x, m.y, 4, 3)).toBe(2);
     expect(anchorOf(s, keeper)).toEqual({ x: 4, y: 3 });
     expect(anchorOf(s, mover)).toEqual(m);
+  });
+
+  it('moves the post with any fighter that steps off a stack on its own anchor, not only a DEFEND guard', () => {
+    const s = sim();
+    const keeper = guardAt(s, 4, 3, { x: 4, y: 3 });
+    const mover = guardAt(s, 4, 3, { x: 4, y: 3 });
+    s.world.mut(mover, Stance).mode = MILITARY_MODE.IGNORE;
+    s.run(40);
+
+    expect(tileOf(s, mover)).not.toEqual(tileOf(s, keeper));
+    // A post left on the stack would call him back onto it after his next fight.
+    expect(anchorOf(s, mover)).toEqual(tileOf(s, mover));
   });
 
   it('keeps the post of a DEFEND guard stacked away from it: walking back there is the combat pass', () => {
@@ -175,6 +188,19 @@ describe('idle-spacing (de-stack) drive', () => {
 });
 
 describe('planner-pass occupancy', () => {
+  it('takes a stand another settler is walking to, so the next one stepping off a stack goes elsewhere', () => {
+    const s = sim();
+    const terrain = s.terrain;
+    if (terrain === undefined) throw new Error('setup: terrain missing');
+    const [walker, idler] = [idleWoodcutter(s, 2, 3), idleWoodcutter(s, 8, 3)];
+    const stand = terrain.nodeAt(5, 3);
+    s.world.add(walker, MoveGoal, { cell: stand });
+    const spacing = PlannerSpacing.forTick(s.world, ctxOf(s), terrain);
+
+    expect(spacing.standTaken(stand, idler)).toBe(true);
+    expect(spacing.standTaken(stand, walker)).toBe(false); // its own goal does not bar it
+  });
+
   it('follows two walkers through more writes than its feed has entries', () => {
     const s = sim();
     const terrain = s.terrain;

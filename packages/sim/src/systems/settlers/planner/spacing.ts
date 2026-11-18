@@ -10,7 +10,13 @@ import {
 } from '../../../components/index.js';
 import type { ChangeFeed, Entity, World } from '../../../ecs/world.js';
 import type { BlockOverlay } from '../../../nav/block-overlay.js';
-import { nodeHxOfPosition, nodeHyOfPosition } from '../../../nav/halfcell.js';
+import {
+  hexRingHx,
+  hexRingHy,
+  hexRingLength,
+  nodeHxOfPosition,
+  nodeHyOfPosition,
+} from '../../../nav/halfcell.js';
 import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
 import type { SystemContext } from '../../context.js';
 import { translatedCells } from '../../footprint/geometry.js';
@@ -18,6 +24,7 @@ import { buildingDoorwayNodes } from '../../footprint/index.js';
 import { isTravelling } from '../../movement/nav-state.js';
 import { type NodeMoveFeed, watchNodeMoves } from '../../spatial/node-moves.js';
 import { NodeBuckets } from '../../spatial/nodes.js';
+import { type InboundGoals, inboundGoals } from './inbound-goals.js';
 import { HeldWorkCells, openWorkCells } from './work-cells.js';
 
 /**
@@ -25,6 +32,13 @@ import { HeldWorkCells, openWorkCells } from './work-cells.js';
  * Approximation: a presentation tuning value, not extracted data.
  */
 const WORKPLACE_YARD_RADIUS_NODES = 4;
+
+/**
+ * The lattice steps around a free stand that hold no other settler, so a crowd stepping apart leaves a
+ * node between its men rather than standing shoulder to shoulder on neighbouring nodes. Our rule: the
+ * stands end up two nodes apart, as a formation's ranks do (`MILITARY_ROW_SPACING`).
+ */
+const STAND_CLEARANCE_NODES = 1;
 
 /**
  * The spacing state shared by every drive that parks a settler on a node, for one planner tick.
@@ -44,6 +58,8 @@ export class PlannerSpacing {
     private readonly terrain: TerrainGraph,
     /** Stationary owned settlers bucketed by integer tile, as of the moment this pass began. */
     readonly occupancy: NodeBuckets,
+    /** The nodes owned settlers walk to, as of the moment this pass began. */
+    private readonly inbound: InboundGoals,
     private readonly buildBlockedCells: () => BlockOverlay,
     /** The building work cells kept across passes over the live walk-block mask; undefined over a
      *  fixture's pinned overlay. */
@@ -53,7 +69,15 @@ export class PlannerSpacing {
   /** Gated on {@link Owner}, so an unowned fixture buckets nothing. */
   static forTick(world: World, ctx: SystemContext, terrain: TerrainGraph): PlannerSpacing {
     const held = HeldWorkCells.of(world, ctx, terrain);
-    return new PlannerSpacing(world, ctx, terrain, stationaryOwnedSettlers(world), () => held.mask, held);
+    return new PlannerSpacing(
+      world,
+      ctx,
+      terrain,
+      stationaryOwnedSettlers(world),
+      inboundGoals(world),
+      () => held.mask,
+      held,
+    );
   }
 
   /** Spacing over an occupancy and a walk-block overlay the caller already holds, for a fixture that
@@ -65,7 +89,7 @@ export class PlannerSpacing {
     occupancy: NodeBuckets,
     blocked: BlockOverlay,
   ): PlannerSpacing {
-    return new PlannerSpacing(world, ctx, terrain, occupancy, () => blocked, undefined);
+    return new PlannerSpacing(world, ctx, terrain, occupancy, inboundGoals(world), () => blocked, undefined);
   }
 
   /** The building/resource walk-block overlay: cells a drive may neither aim at nor route through. */
@@ -87,6 +111,30 @@ export class PlannerSpacing {
 
   claim(cell: NodeId): void {
     this.claims.add(cell);
+  }
+
+  /** Whether `node` is taken for `self` to stand on: another stationary owned settler stands there,
+   *  another walks there, or a drive claimed it this pass. */
+  standTaken(node: NodeId, self: Entity): boolean {
+    if (this.claims.has(node) || this.inbound.heads(node, self)) return true;
+    const bucket = this.occupancy.at(this.terrain.xOf(node), this.terrain.yOf(node));
+    return bucket.length > (bucket.includes(self) ? 1 : 0);
+  }
+
+  /** Whether `self` parked on `node` would stand beside another settler: {@link standTaken} on a node
+   *  within {@link STAND_CLEARANCE_NODES} lattice steps of it, `node` itself left to the caller's own test. */
+  crowds(node: NodeId, self: Entity): boolean {
+    const { terrain } = this;
+    const x = terrain.xOf(node);
+    const y = terrain.yOf(node);
+    for (let radius = 1; radius <= STAND_CLEARANCE_NODES; radius++) {
+      for (let i = 0; i < hexRingLength(radius); i++) {
+        const hx = hexRingHx(x, y, radius, i);
+        const hy = hexRingHy(y, radius, i);
+        if (terrain.inBounds(hx, hy) && this.standTaken(terrain.nodeAt(hx, hy), self)) return true;
+      }
+    }
+    return false;
   }
 
   /** A site's stand cells ({@link openWorkCells}), where its builders stand and its material lands. */

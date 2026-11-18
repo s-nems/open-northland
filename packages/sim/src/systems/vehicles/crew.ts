@@ -43,6 +43,7 @@ import { isOrderableSettler } from '../orders/guards.js';
 import { sendUnit } from '../orders/movement.js';
 import { isShipVehicle } from '../readviews/vehicles.js';
 import { atomicHoldsSettler } from '../settlers/atomics/busy.js';
+import { stepOffLanding } from '../settlers/drives/spacing.js';
 import { releaseTowerPost } from '../settlers/drives/tower-post.js';
 import { stepOut } from '../settlers/indoors.js';
 import { wakeIdle } from '../settlers/planner/idle-replan.js';
@@ -195,9 +196,7 @@ export function attachToVehicle(
   if (state === undefined || ownerOf(world, vehicle) !== ownerOf(world, e)) return false;
   const current = world.tryGet(e, Rider);
   if (current?.vehicle === vehicle) return true;
-  if (current !== undefined && !detachFromVehicle(world, ctx, { kind: 'detachFromVehicle', entity: e })) {
-    return false;
-  }
+  if (current !== undefined && !detachBeforeOrder(world, ctx, e)) return false;
   const type = contentIndex(ctx.content).vehicles.get(state.vehicleType);
   if (type === undefined || !passengerJobAllowed(type, world.get(e, Settler).jobType)) {
     refuseRider(world, ctx, e, 'cannotEnter');
@@ -224,14 +223,24 @@ export function attachToVehicle(
 /**
  * The detach order - see the command doc. Returns whether the settler is now free of any vehicle. A
  * rider inside a ship at sea stays aboard with `cannotLeave` (approximation: the original refuses this
- * silently); a rider of a vehicle riding a carrier steps out onto the carrier's door.
+ * silently); a rider of a vehicle riding a carrier steps out onto the carrier's door. It leaves with no
+ * errand of its own, so it lands as a passenger ({@link landPassenger}).
  */
 export function detachFromVehicle(
   world: World,
   ctx: SystemContext,
   command: Extract<Command, { kind: 'detachFromVehicle' }>,
 ): boolean {
-  const e = command.entity;
+  return leaveVehicle(world, ctx, command.entity, landPassenger);
+}
+
+/** {@link detachFromVehicle}'s body, setting an inside rider down with `land`. */
+function leaveVehicle(
+  world: World,
+  ctx: SystemContext,
+  e: Entity,
+  land: (world: World, ctx: SystemContext, rider: Entity, point: HalfCellNode) => void,
+): boolean {
   const rider = world.tryGet(e, Rider);
   if (rider === undefined) return true;
   const vehicle = rider.vehicle;
@@ -246,7 +255,7 @@ export function detachFromVehicle(
       refuseRider(world, ctx, e, 'cannotLeave');
       return false;
     }
-    landRider(world, ctx, e, landing);
+    land(world, ctx, e, landing);
   }
   releaseRider(world, e, vehicle);
   return true;
@@ -363,6 +372,13 @@ export function landRider(world: World, ctx: SystemContext, rider: Entity, point
   releaseCarried(world, vehicle, cart);
 }
 
+/** {@link landRider} for a rider leaving with no errand of its own: one set down beside another steps off
+ *  the landing ({@link stepOffLanding}). */
+export function landPassenger(world: World, ctx: SystemContext, rider: Entity, point: HalfCellNode): void {
+  landRider(world, ctx, rider, point);
+  if (ctx.terrain !== undefined) stepOffLanding(world, ctx, ctx.terrain, rider);
+}
+
 /** Put a rider back on the map at `point`, its seat now outside. */
 function setDownRider(world: World, rider: Entity, point: HalfCellNode): void {
   placeOnNode(world, rider, point);
@@ -432,7 +448,7 @@ export function unloadPeople(
   const kept = command.keepCommander === true ? vehicleCommander(state) : null;
   for (const seat of vehiclePassengers(state)) {
     if (!world.isAlive(seat.entity) || seat.entity === kept) continue;
-    if (seat.inside) landRider(world, ctx, seat.entity, landing);
+    if (seat.inside) landPassenger(world, ctx, seat.entity, landing);
     releaseRider(world, seat.entity, vehicle);
   }
   dropHeldGoal(world, vehicle);
@@ -443,12 +459,12 @@ export function unloadPeople(
 
 /**
  * Detach `e` ahead of an ordinary order that takes it elsewhere - the original's forced detach before a
- * work, walk or attack command. False when the rider may not leave, in which case the order is dropped
- * (`riderRefused` already told the player).
+ * work, walk or attack command. It lands on the door, the order's walk starting there. False when the
+ * rider may not leave, in which case the order is dropped (`riderRefused` already told the player).
  */
 export function detachBeforeOrder(world: World, ctx: SystemContext, e: Entity): boolean {
   if (!world.has(e, Rider)) return true;
-  return detachFromVehicle(world, ctx, { kind: 'detachFromVehicle', entity: e });
+  return leaveVehicle(world, ctx, e, landRider);
 }
 
 /** The player commands that take a settler away from its vehicle first. Approximation: the original's
