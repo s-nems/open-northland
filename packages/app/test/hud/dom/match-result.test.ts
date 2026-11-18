@@ -143,7 +143,7 @@ it('lets a script that ends won missions exit after a victory, but not after a d
   expect(keepsPlayingAfterResult('undecided', true, SCRIPT_ENDS_VICTORY)).toBe(true);
 });
 
-it('lists the goal table ranking in verdict order, naming the roster seat and numbering the rest', () => {
+it('lists the goal table ranking, naming the roster seat and numbering the rest', () => {
   const h = setup(false, () => [
     { player: 1, outcome: 'defeat' },
     { player: 0, outcome: 'victory' },
@@ -239,40 +239,19 @@ it('waits for server confirmation before showing shared victory', () => {
   expect(h.pause).not.toHaveBeenCalled();
 });
 
-it.each(['playerWon', 'playerDefeated'] as const)(
-  'shows an immediate scripted %s in a shared game without pausing it',
-  (kind) => {
-    const h = setup(true);
-    h.overlay.onEvents([{ kind, player: 0, scripted: true }]);
-    expect(h.body.children).toHaveLength(1);
-    expect(h.body.buttons()).toHaveLength(2);
-    expect(h.pause).not.toHaveBeenCalled();
-    h.body.buttons()[0]?.dispatchEvent(new Event('click'));
-    h.overlay.onEvents([{ kind, player: 0 }]);
-    expect(h.body.children).toHaveLength(0);
-    h.overlay.finish(kind === 'playerWon' ? 'victory' : 'defeat');
-    expect(h.body.buttons()).toHaveLength(2);
-  },
-);
-
-it('does not let a suppressed shared victory hide a later scripted notice in the same frame', () => {
-  const h = setup(true);
-  h.overlay.onEvents([
-    { kind: 'playerWon', player: 0 },
-    { kind: 'playerWon', player: 0, scripted: true },
-  ]);
-  expect(h.body.children).toHaveLength(1);
-  expect(h.body.buttons()).toHaveLength(2);
-  expect(h.pause).not.toHaveBeenCalled();
-});
-
-it.each(['playerWon', 'playerDefeated'] as const)(
-  'does not redisplay a previously announced %s after loading a save',
-  (kind) => {
-    const h = setup(false);
-    h.overlay.onEvents([{ kind, player: 0, notificationAlreadySent: true }]);
-    expect(h.body.children).toHaveLength(0);
-    expect(h.pause).not.toHaveBeenCalled();
+it.each([false, true])(
+  'opens on the goal table verdict rather than the script announcement (shared clock: %s)',
+  (sharedClock) => {
+    for (const kind of ['playerWon', 'playerDefeated'] as const) {
+      const h = setup(sharedClock);
+      h.overlay.onEvents([{ kind, player: 0, scripted: true }]);
+      expect(h.body.children).toHaveLength(0);
+      h.overlay.onEvents([{ kind, player: 0, notificationAlreadySent: true }]);
+      // A shared victory still waits for every person's verdict or the match end.
+      const opens = kind === 'playerDefeated' || !sharedClock;
+      expect(h.body.children).toHaveLength(opens ? 1 : 0);
+      h.overlay.dispose();
+    }
   },
 );
 

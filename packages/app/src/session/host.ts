@@ -159,7 +159,7 @@ export interface SessionHost {
   needsEnabled(): boolean;
   fogMode(): FogMode;
   matchOutcome(player: number): MatchOutcome;
-  /** A goal table's verdicts in the order they landed; empty under any other rule. */
+  /** A goal table's ranking, winners first; empty under any other rule. */
   matchRanking(): readonly MatchRank[];
   missionStatus(): readonly MissionStatus[];
   /** A map variant's siege schedule as it stands; null on a map without one. */

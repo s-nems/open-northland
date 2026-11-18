@@ -799,7 +799,7 @@ export class Simulation {
     return matchOutcome(this.world, player);
   }
 
-  /** A goal table's verdicts in the order they landed; empty under any other rule. */
+  /** A goal table's ranking, winners first; empty under any other rule. */
   matchRanking(): readonly MatchRank[] {
     return matchRanking(this.world);
   }

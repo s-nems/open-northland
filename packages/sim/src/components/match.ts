@@ -71,7 +71,7 @@ interface MatchGoalTable {
   /** Participants the table decided, never both: a decided seat is not checked again. */
   won: number;
   lost: number;
-  /** The decided seats in the order their verdicts landed: the end-of-match ranking. */
+  /** The decided seats in the order their verdicts landed, which the ranking sorts. */
   decided: number[];
   /** Seats of `lost` whose world the check after their verdict took off the map. */
   tornDown: number;
@@ -345,16 +345,22 @@ export interface MatchRank {
 }
 
 /**
- * The goal table's verdicts in the order they landed, first decided first: the original numbers each
- * verdict as it lands and its end-of-game ranking sorts by that number. Empty under any other rule.
+ * The goal table's ranking: the winners in the order they won, then the losers from the last to lose to
+ * the first. Original behavior (read from the owned copy): wins and losses are numbered on separate
+ * counters, and the ranking sorts winners by theirs and losers by theirs reversed. Empty under any
+ * other rule.
  */
 export function matchRanking(world: World): readonly MatchRank[] {
   const table = matchGoals.read(world);
   if (!table.enabled) return [];
-  return table.decided.map((player) => ({
-    player,
-    outcome: (table.won & playerBit(player)) !== 0 ? 'victory' : 'defeat',
-  }));
+  const won = (player: number): boolean => (table.won & playerBit(player)) !== 0;
+  return [
+    ...table.decided.filter(won).map((player) => ({ player, outcome: 'victory' as const })),
+    ...table.decided
+      .filter((player) => !won(player))
+      .reverse()
+      .map((player) => ({ player, outcome: 'defeat' as const })),
+  ];
 }
 
 export interface MatchRulesView {

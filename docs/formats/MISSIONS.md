@@ -346,7 +346,7 @@ reports `missionUnsupported` once; the same tickets carry them.
 | 9 | `PlayCutscene` | 34, 33 | open briefing page `NNNN.hlt` in the mission window and add it to the shown-page history; with the replay flag the page is also stored as the map's current briefing, which the window opens on from the tool button; raises the pass's stop flag; plays the briefing pop-up sound (reading). Here: the `missionCutscene` event, the `MissionBriefing` page, and the pass ends after this mission; the pop-up sound is not in the decoded bank | both | 1450 |
 | 10 | `ActivateMission` | 21 | set the active flag (records the activation counter on the transition) | sim | 4665 |
 | 11 | `DeactivateMission` | 21 | clear the active flag | sim | 1905 |
-| 12 | `MissionWon` | 1 | set the map's won flag, send the "won" message and the notification with the player; in multiplayer also notify the multiplayer goals. Here: the player's script verdict, announced like the skirmish rule's; on a multiplayer map it also raises the goal table's rows, announcing immediately without repeating the same verdict at the next goal check | both | 120 |
+| 12 | `MissionWon` | 1 | set the map's won flag, send the "won" message and the notification with the player; in multiplayer also notify the multiplayer goals. Here: the player's script verdict, announced like the skirmish rule's; on a multiplayer map it also raises the goal table's rows and plays its jingle at once, while the result window waits for the table's verdict at the next goal check, which does not repeat the jingle | both | 120 |
 | 13 | `MissionFailed` | 1 | as above for "lost"; the player's dead flag stays clear and, here, its commands stay accepted (approximation) | both | 110 |
 | 14 | `AllowMap` | 31, 22 | retain a campaign/map unlock and emit `missionCampaignUnlock` once per pair | both | 0 |
 | 15 | `CloseMap` | 31, 22 | lock a campaign map | sim | 0 \* |
@@ -1253,8 +1253,9 @@ behavior (a reading, the same in the owned 2001 copy; not timed against the runn
   rows in table order, and the first that holds decides the player. A decided player is never checked
   again, so a winner that later dies stays a winner. Each player's verdict is its own: no team,
   alliance or "last one standing" rule exists, and one player winning ends nothing for the others.
-- Each verdict is announced with the player and numbered in order of winning or losing, which the
-  end-of-game ranking sorts by. A player that lost has every house, human, vehicle and signpost removed
+- Each verdict is announced with the player and numbered, wins and losses on separate counters. The
+  ranking lists the winners by their number, then the losers from the last to lose to the first
+  (checked against the owned copy). A player that lost has every house, human, vehicle and signpost removed
   on the next check, a wild chicken left in place of each removed human that stood on land, and its
   animals turned wild; a winner keeps playing.
 - The goods and inhabitants rows also show their progress (`have/need`) in the on-screen info lines.

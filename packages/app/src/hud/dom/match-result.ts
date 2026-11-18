@@ -12,7 +12,7 @@ export interface MatchResultDeps {
   readonly sharedClock?: boolean;
   /** Defer victory until `finish`, after the script's unlocks have persisted. */
   readonly scriptedEnding?: boolean;
-  /** A goal table's verdicts in the order they landed, read when the window opens; empty shows no list. */
+  /** A goal table's ranking, winners first, read when the window opens; empty shows no list. */
   readonly ranking?: () => readonly MatchRank[];
   /** The roster's authored seat name; absent, the list numbers the seat. */
   readonly seatNameOf?: ((player: number) => string | undefined) | undefined;
@@ -316,8 +316,8 @@ export function createMatchResultOverlay(deps: MatchResultDeps): MatchResultOver
     resume.focus();
   };
 
-  const announce = (outcome: MatchOutcome, scripted = false): void => {
-    if (deps.sharedClock && outcome === 'victory' && !scripted) return;
+  const announce = (outcome: MatchOutcome): void => {
+    if (deps.sharedClock && outcome === 'victory') return;
     if (deps.scriptedEnding === true && outcome === 'victory') return;
     if (state.announce(outcome)) show(outcome);
   };
@@ -325,10 +325,12 @@ export function createMatchResultOverlay(deps: MatchResultDeps): MatchResultOver
     onEvents(events): void {
       for (const event of events) {
         if (event.kind !== 'playerWon' && event.kind !== 'playerDefeated') continue;
-        if (event.player !== deps.localPlayer || event.notificationAlreadySent === true) continue;
+        // A script's announcement before a goal table decides is its jingle alone: the window waits
+        // for the table's verdict, whose check also decides the seats the ranking lists beside it.
+        if (event.player !== deps.localPlayer || event.scripted === true) continue;
         const won = event.kind === 'playerWon';
-        if (deps.sharedClock && won && event.scripted !== true) continue;
-        announce(won ? 'victory' : 'defeat', event.scripted === true);
+        if (deps.sharedClock && won) continue;
+        announce(won ? 'victory' : 'defeat');
         return;
       }
     },

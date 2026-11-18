@@ -40,6 +40,7 @@ const SECOND_CHECK = 2 * MATCH_GOAL_CHECK_TICKS;
 const THIRD_CHECK = 3 * MATCH_GOAL_CHECK_TICKS;
 const LOSER = 1;
 const RIVAL = 0;
+const OTHER = 2;
 /** The fixture's catchable species, a claimed one carrying `Livestock`. */
 const COW = 13;
 /** The teardown's chicken, declared here since no other fixture needs the species. */
@@ -67,7 +68,7 @@ function matchSim(goals: readonly MatchGoal[]): Simulation {
     content: aftermathContent(),
     map: waterColumnMap(MAP_CELLS, MAP_CELLS, WATER_COLUMN),
   });
-  sim.enqueueSetup({ kind: 'setMatchParticipants', players: [RIVAL, LOSER], victory: 'goals', goals });
+  sim.enqueueSetup({ kind: 'setMatchParticipants', players: [RIVAL, LOSER, OTHER], victory: 'goals', goals });
   sim.step();
   return sim;
 }
@@ -174,15 +175,17 @@ describe('multiplayer goal aftermath', () => {
     expect(chickens(sim)).toEqual([LAND]);
   });
 
-  it('ranks the seats in the order their verdicts land, across a save', () => {
+  it('ranks the winners first, then the losers from the last to lose, across a save', () => {
     const sim = matchSim([{ kind: 'lostByMission' }, { kind: 'wonByMission' }]);
     raiseMissionGoal(sim.world, LOSER, 'lost');
     check(sim, FIRST_CHECK);
     raiseMissionGoal(sim.world, RIVAL, 'won');
+    raiseMissionGoal(sim.world, OTHER, 'lost');
     check(sim, SECOND_CHECK);
     expect(sim.matchRanking()).toEqual([
-      { player: LOSER, outcome: 'defeat' },
       { player: RIVAL, outcome: 'victory' },
+      { player: OTHER, outcome: 'defeat' },
+      { player: LOSER, outcome: 'defeat' },
     ]);
     expect(roundTrip(sim).matchRanking()).toEqual(sim.matchRanking());
   });
