@@ -1,4 +1,4 @@
-import { Container, Matrix, Texture } from 'pixi.js';
+import { Container, Matrix, type Texture } from 'pixi.js';
 import type { SpriteDrawItem } from '../../data/scene/index.js';
 import { PalettedSprite } from '../paletted-sprite/index.js';
 import { SelectionGraphics, SelectionSprite } from '../selection/sprite-effect.js';
@@ -424,13 +424,14 @@ function quadAt(stamp: GhostStamp, index: number): SelectionSprite {
   return quad;
 }
 
-/** Retire a stamp quad in place: zero alpha repacks without rebuilding the batch's instructions. */
+/** Retire a stamp quad in place: zero alpha repacks without rebuilding the batch's instructions. The
+ *  quad keeps its texture: swapping to {@link Texture.EMPTY} names a page the batch does not hold, so
+ *  a full batch would rebuild the render group's whole instruction set on every hide and re-show. */
 function hideQuad(quad: SelectionSprite): void {
   quad.alpha = 0;
-  if (quad.texture !== Texture.EMPTY) quad.texture = Texture.EMPTY;
 }
 
-/** Hide a whole stamp set the same way; its quads let go of textures a bake may want to free. */
+/** Hide a whole stamp set the same way. */
 function hideStamp(stamp: GhostStamp): void {
   stamp.container.alpha = 0;
   for (const quad of stamp.quads) if (quad !== undefined) hideQuad(quad);
