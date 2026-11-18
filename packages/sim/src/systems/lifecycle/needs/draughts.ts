@@ -5,6 +5,7 @@ import {
   Frightened,
   NeedOrder,
   NoRegeneration,
+  Owner,
   PathFollow,
   PathRoute,
   Settler,
@@ -15,6 +16,8 @@ import {
 import { contentIndex } from '../../../core/content-index.js';
 import { type Fixed, fx, ONE } from '../../../core/fixed.js';
 import type { Entity, World } from '../../../ecs/world.js';
+import type { HalfCellNode } from '../../../nav/halfcell.js';
+import type { BattleFront } from '../../conflict/battle-alert.js';
 import type { SystemContext } from '../../context.js';
 import { type CarriedDraught, draughtFor, spendSip } from '../../equipment/index.js';
 import { startDrink } from '../../settlers/atomics/start.js';
@@ -74,35 +77,54 @@ export function drinkPressingDraughts(world: World, ctx: SystemContext, e: Entit
 }
 
 /**
- * {@link drinkPressingDraughts} for a settler nobody sees, a rider inside a ship: the draught it would stop
- * for on land is sipped at once too, as there is no clip to play. Owner's rule kept: not by a soldier whose
- * regeneration is prohibited ({@link stoppingDraughtFor}).
+ * {@link drinkPressingDraughts} for a settler nobody sees, a rider inside a ship standing at `at`: the
+ * draught it would stop for on land is sipped at once too, as there is no clip to play, under the same
+ * rule for a soldier whose regeneration is prohibited ({@link stoppingDraughtFor}).
  */
-export function drinkPressingDraughtsUnseen(world: World, ctx: SystemContext, e: Entity): void {
+export function drinkPressingDraughtsUnseen(
+  world: World,
+  ctx: SystemContext,
+  front: BattleFront,
+  e: Entity,
+  at: HalfCellNode,
+): void {
   drinkPressingDraughts(world, ctx, e);
   if (!world.has(e, SettlerNeeds)) return;
   for (const need of DRAUGHT_BARS) {
     if (!pressing(needLevel(world.get(e, SettlerNeeds), need, ctx.tick))) continue;
-    const draught = stoppingDraughtFor(world, ctx, e, need);
+    const draught = stoppingDraughtFor(world, ctx, front, e, need, at);
     if (draught !== null) sip(world, ctx, e, draught);
   }
 }
 
 /**
- * The draught `e` would stop to drink for `need` (mead), or null. Owner's rule: never for a soldier whose
- * regeneration the player prohibited, who would stand drinking in the line, and, like every draught, never
- * while a player's need order is pending.
+ * The draught `e`, standing at `at` (its own node unless given), would stop to drink for `need` (mead), or
+ * null. Owner's rule: a soldier whose regeneration the player prohibited drinks it only while the battle
+ * alert does not hold it, with no fight and no enemy it sees near, so it never stands drinking in the line;
+ * and, like every draught, never while a player's need order is pending. A caller that will not stop for
+ * the draught passes no `front`, and such a soldier is held without asking it.
  */
 export function stoppingDraughtFor(
   world: World,
   ctx: SystemContext,
+  front: BattleFront | null,
   e: Entity,
   need: DraughtBar,
+  at?: HalfCellNode,
 ): CarriedDraught | null {
-  if (world.has(e, NoRegeneration) || world.has(e, NeedOrder) || !carriesNeeds(world, ctx.content, e)) {
-    return null;
-  }
-  return draughtFor(world, ctx, e, need, 'stopping');
+  if (world.has(e, NeedOrder) || !carriesNeeds(world, ctx.content, e)) return null;
+  const draught = draughtFor(world, ctx, e, need, 'stopping');
+  // Asked last: the alert may sweep the settlers.
+  if (draught === null || !world.has(e, NoRegeneration)) return draught;
+  return front === null || battleHolds(world, front, e, at) ? null : draught;
+}
+
+/** Whether the battle alert holds `e` at `at`, or where it stands; an unowned settler has no side to read
+ *  it for, so it is held. */
+function battleHolds(world: World, front: BattleFront, e: Entity, at: HalfCellNode | undefined): boolean {
+  const player = world.tryGet(e, Owner)?.player;
+  if (player === undefined) return true;
+  return at === undefined ? front.holdsRest(e, player) : front.holdsRestAt(e, player, at);
 }
 
 /**
@@ -112,11 +134,12 @@ export function stoppingDraughtFor(
 export function stopToDrink(
   world: World,
   ctx: SystemContext,
+  front: BattleFront,
   e: Entity,
   level: Fixed,
   bars: readonly DraughtBar[] = DRAUGHT_BARS,
 ): boolean {
-  const draught = drinkDue(world, ctx, e, level, bars);
+  const draught = drinkDue(world, ctx, front, e, level, bars);
   if (draught === null) return false;
   beginDrink(world, ctx, e, draught);
   return true;
@@ -129,7 +152,12 @@ export function stopToDrink(
  * would hide: such a walker stops once the bar reaches {@link DRINK_IN_PLACE_LEVEL}. Owner's rule: mead is
  * drunk on the way, not on arrival. The caller drops or parks the walk before {@link beginDrink}.
  */
-export function drinkDueOnTheWay(world: World, ctx: SystemContext, e: Entity): CarriedDraught | null {
+export function drinkDueOnTheWay(
+  world: World,
+  ctx: SystemContext,
+  front: BattleFront | null,
+  e: Entity,
+): CarriedDraught | null {
   // Asked at every stop of every walk, so the bars answer first: few walkers are at the drive level.
   const needs = world.tryGet(e, SettlerNeeds);
   if (needs === undefined || !anyAtOrPast(needs, DRAUGHT_BARS, NEED_DRIVE_THRESHOLD, ctx.tick)) return null;
@@ -140,7 +168,7 @@ export function drinkDueOnTheWay(world: World, ctx: SystemContext, e: Entity): C
   const at = (world.tryGet(e, PathFollow)?.index ?? 0) - 1;
   const stops = world.tryGet(e, PathRoute)?.waypoints.length ?? 0;
   if (at < DRINK_STOP_CLEARANCE_LEGS || stops - 1 - at < DRINK_STOP_CLEARANCE_LEGS) return null;
-  return drinkDue(world, ctx, e, level, DRAUGHT_BARS);
+  return drinkDue(world, ctx, front, e, level, DRAUGHT_BARS);
 }
 
 /** Start drinking `draught` on the eat clip where `e` stands. */
@@ -151,6 +179,7 @@ export function beginDrink(world: World, ctx: SystemContext, e: Entity, draught:
 function drinkDue(
   world: World,
   ctx: SystemContext,
+  front: BattleFront | null,
   e: Entity,
   level: Fixed,
   bars: readonly DraughtBar[],
@@ -160,7 +189,7 @@ function drinkDue(
   drinkPressingDraughts(world, ctx, e);
   for (const need of bars) {
     if (needLevel(world.get(e, SettlerNeeds), need, ctx.tick) < level) continue;
-    const draught = stoppingDraughtFor(world, ctx, e, need);
+    const draught = stoppingDraughtFor(world, ctx, front, e, need);
     if (draught !== null) return draught;
   }
   return null;

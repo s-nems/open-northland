@@ -3,6 +3,7 @@ import { CurrentAtomic, MoveGoal, Owner, Settler } from '../../../../src/compone
 import type { Entity } from '../../../../src/ecs/world.js';
 import { cellAnchorNode, type Fixed, type NodeId, Simulation } from '../../../../src/index.js';
 import type { TerrainGraph } from '../../../../src/nav/terrain/index.js';
+import { BattleFront } from '../../../../src/systems/conflict/battle-alert.js';
 import { planNeeds } from '../../../../src/systems/settlers/drives/needs.js';
 import { restingCell } from '../../../../src/systems/settlers/drives/rest-spot.js';
 import { PlannerSpacing } from '../../../../src/systems/settlers/planner/spacing.js';
@@ -183,6 +184,7 @@ describe('sleep drive - walking aside before bedding down', () => {
       collectSupplyTally(sim.world),
       null,
       spacing,
+      new BattleFront(sim.world, ctx),
       () => false,
     );
   }

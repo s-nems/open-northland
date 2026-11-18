@@ -34,6 +34,7 @@ import type { Entity, World } from '../../ecs/world.js';
 import { nearestUnblockedNode } from '../../nav/nearest.js';
 import { ringSearch } from '../../nav/ring-search.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
+import { BattleFront } from '../conflict/battle-alert.js';
 import type { System, SystemContext } from '../context.js';
 import {
   buildingDoorwayNodes,
@@ -289,6 +290,7 @@ function startPlayerWalk(
  */
 export const playerOrderSystem: System = (world, ctx) => {
   if (ctx.terrain === undefined) return; // mapless sim: no orders were issuable
+  const front = new BattleFront(world, ctx); // for a walker forbidden to regenerate that stops for mead
   for (const e of world.query(Settler, PlayerOrder)) {
     const order = world.get(e, PlayerOrder);
     const march = order.attackMove;
@@ -339,7 +341,7 @@ export const playerOrderSystem: System = (world, ctx) => {
       // it stops there for its mead.
       if (order.scripted !== true && onNodeCentre(world, e)) {
         if (breaksForMeal(world, ctx, e)) suspendWalkForMeal(world, ctx.terrain, e);
-        else suspendWalkToDrink(world, ctx, ctx.terrain, e);
+        else suspendWalkToDrink(world, ctx, ctx.terrain, front, e);
       }
       continue;
     }

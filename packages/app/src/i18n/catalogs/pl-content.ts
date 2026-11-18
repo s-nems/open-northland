@@ -747,7 +747,7 @@ export const plContent = {
     'mead-drink': {
       title: 'Picie miodu pitnego',
       summary:
-        'Trzech osadników idzie na wschód i po kilku krokach robi się głodnych. Cywil i żołnierz zatrzymują się na drodze, piją miód pitny z animacją jedzenia i idą dalej. Żołnierz z zakazaną regeneracją nie otwiera miodu, tylko w marszu pije miksturę odżywczą.',
+        'Czterech osadników idzie na wschód i po kilku krokach robi się głodnych. Cywil, żołnierz i żołnierz z zakazaną regeneracją zatrzymują się na drodze, piją miód pitny z animacją jedzenia i idą dalej. Drugi żołnierz z zakazaną regeneracją mija wrogiego żołnierza, nie otwiera miodu i maszeruje dalej głodny.',
     },
     'scout-claim': {
       title: 'Zwiadowca zajmuje zwierzę',

@@ -12,6 +12,7 @@ import {
   MoveGoal,
   NeedOrder,
   NoRegeneration,
+  Owner,
   PathFollow,
   Position,
   Resting,
@@ -23,6 +24,7 @@ import {
 } from '../../../../src/components/index.js';
 import type { Entity } from '../../../../src/ecs/world.js';
 import { cellAnchorNode, type Fixed, fx, ONE, Simulation } from '../../../../src/index.js';
+import { BattleFront } from '../../../../src/systems/conflict/battle-alert.js';
 import {
   atomicSystem,
   HUMAN_HITPOINTS,
@@ -39,6 +41,7 @@ import { testContent } from '../../../fixtures/content.js';
 import { nextTickCtxOf } from '../../../fixtures/context.js';
 import { ctxOf, grassMap, justAbove, NEED_DRIVE_THRESHOLD, needsSettlerAt } from '../../../fixtures/needs.js';
 import { needsOf, setNeeds } from '../../../fixtures/settler.js';
+import { fighterAt, P0, P1, WOODCUTTER } from '../../conflict/engagement/support.js';
 
 /** The fixture's attack swing (`setatomic 1 81 "viking_attack"`, length 4) at its landing frame - the
  *  shape `resolveAttackHit` reads to decide whether the clip announces the swing itself. */
@@ -222,17 +225,26 @@ describe('drink drive - hunger and fatigue draughts', () => {
     expect(stopOf(DRINK_IN_PLACE_LEVEL, true)).not.toBeNull();
   });
 
-  it('a fighter drinks its mead in place, unless its regeneration is prohibited; potions serve either way', () => {
-    for (const prohibited of [false, true]) {
+  it('a fighter forbidden to regenerate drinks its mead in place only with no enemy near; potions serve either way', () => {
+    for (const { prohibited, enemyNear } of [
+      { prohibited: false, enemyNear: true },
+      { prohibited: true, enemyNear: false },
+      { prohibited: true, enemyNear: true },
+    ]) {
       const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(4, 1) });
       const settler = needsSettlerAt(sim, 0, 0, { hunger: PRESSING, fatigue: PRESSING });
+      sim.world.add(settler, Owner, { player: P0 });
       carryDraughts(sim, settler, [fresh(MEAD), fresh(POTION_FOOD)]);
       if (prohibited) sim.world.add(settler, NoRegeneration, { prohibited: true });
+      if (enemyNear) fighterAt(sim, 3, 0, VIKING, WOODCUTTER, { owner: P1 });
 
-      const started = answerNeedInPlace(sim.world, ctxOf(sim), settler, sim.world.get(settler, Settler));
+      const ctx = ctxOf(sim);
+      const front = new BattleFront(sim.world, ctx);
+      const started = answerNeedInPlace(sim.world, ctx, front, settler, sim.world.get(settler, Settler));
       expect(needsOf(sim, settler).hunger).toBe(fx.sub(PRESSING, ONE)); // the potion, on the spot
-      expect(started).toBe(!prohibited);
-      expect(drinkingSlot(sim, settler)).toBe(prohibited ? null : 0); // mead for the fatigue
+      const drinks = !(prohibited && enemyNear);
+      expect(started).toBe(drinks);
+      expect(drinkingSlot(sim, settler)).toBe(drinks ? 0 : null); // mead for the fatigue
     }
   });
 

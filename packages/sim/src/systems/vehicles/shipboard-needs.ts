@@ -12,6 +12,7 @@ import {
   vehicleStockEntries,
 } from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
+import { nodeOfPosition } from '../../nav/halfcell.js';
 import { BattleFront } from '../conflict/battle-alert.js';
 import type { System, SystemContext } from '../context.js';
 import {
@@ -65,9 +66,11 @@ export const shipboardNeedsSystem: System = (world, ctx) => {
   }
   for (const vehicle of canonicalById([...aboard.keys()])) {
     const riders = canonicalById(aboard.get(vehicle) ?? []);
+    const hull = world.get(vehicle, Position);
+    const deck = nodeOfPosition(hull.x, hull.y);
     for (const e of riders) {
       if (!carriesNeeds(world, ctx.content, e)) continue;
-      drinkPressingDraughtsUnseen(world, ctx, e);
+      drinkPressingDraughtsUnseen(world, ctx, front, e, deck);
       eatAshore(world, ctx, front, e, vehicle) ||
         eatAboard(world, ctx, e, vehicle) ||
         sleepAboard(world, ctx, e) ||

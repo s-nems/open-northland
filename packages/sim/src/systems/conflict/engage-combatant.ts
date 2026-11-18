@@ -149,7 +149,7 @@ export function engageCombatant(
     return;
   }
   if (breaksHuntForNeed(world, ctx, e, ordered)) return;
-  if (owned && hungerKeepsFromFight(world, ctx, terrain, e)) return;
+  if (owned && hungerKeepsFromFight(world, ctx, terrain, pass.front, e)) return;
 
   const travelling = isTravelling(world, e);
   if (walksUnderAnotherDrive(world, e, travelling, ordered || marching)) return;

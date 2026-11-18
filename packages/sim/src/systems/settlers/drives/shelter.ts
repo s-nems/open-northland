@@ -2,6 +2,7 @@ import { MoveGoal, ownerOf, Position, type SettlerIdentity, Sheltering } from '.
 import type { Entity, World } from '../../../ecs/world.js';
 import { positionOfNode } from '../../../nav/halfcell.js';
 import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
+import type { BattleFront } from '../../conflict/battle-alert.js';
 import type { SystemContext } from '../../context.js';
 import { releaseShelter, type ShelterSite, type ShelterSites } from '../../defence/index.js';
 import { sheltersOnAlarm } from '../../readviews/index.js';
@@ -34,9 +35,10 @@ export function planShelter(
   fromHy: number,
   limit: NavigationLimit | null,
   shelters: ShelterSites,
+  front: BattleFront,
 ): boolean {
   const held = world.tryGet(e, Sheltering)?.shelter;
-  if (held !== undefined) return walkInto(world, ctx, terrain, e, settler, held, here, limit);
+  if (held !== undefined) return walkInto(world, ctx, terrain, front, e, settler, held, here, limit);
   if (shelters.size === 0 || !sheltersOnAlarm(ctx.content, settler.jobType)) return false;
   const owner = ownerOf(world, e);
   if (owner === undefined) return false;
@@ -55,7 +57,7 @@ export function planShelter(
   if (shelter === null) return false;
   shelter.free--;
   world.add(e, Sheltering, { shelter: shelter.entity });
-  return walkInto(world, ctx, terrain, e, settler, shelter.entity, here, limit);
+  return walkInto(world, ctx, terrain, front, e, settler, shelter.entity, here, limit);
 }
 
 const NO_SHELTERS: readonly ShelterSite[] = [];
@@ -114,6 +116,7 @@ function walkInto(
   world: World,
   ctx: SystemContext,
   terrain: TerrainGraph,
+  front: BattleFront,
   e: Entity,
   settler: SettlerIdentity,
   shelter: Entity,
@@ -121,7 +124,7 @@ function walkInto(
   limit: NavigationLimit | null,
 ): boolean {
   if (isInside(world, e, shelter)) {
-    answerNeedInPlace(world, ctx, e, settler, shelter);
+    answerNeedInPlace(world, ctx, front, e, settler, shelter);
     return true;
   }
   const door = interactionCell(world, ctx, terrain, shelter, here);

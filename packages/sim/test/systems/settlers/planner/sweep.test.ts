@@ -38,6 +38,7 @@ import { ZERO } from '../../../../src/core/fixed.js';
 import { type Entity, World } from '../../../../src/ecs/world.js';
 import { positionOfNode, Simulation } from '../../../../src/index.js';
 import type { NodeId } from '../../../../src/nav/terrain/index.js';
+import { BattleFront } from '../../../../src/systems/conflict/battle-alert.js';
 import type { ShelterSites } from '../../../../src/systems/defence/index.js';
 import { CUT_OFF_CHECK_TICKS } from '../../../../src/systems/settlers/drives/cut-off.js';
 import { collectFarmClaims } from '../../../../src/systems/settlers/drives/farming/index.js';
@@ -418,6 +419,7 @@ describe('idle release contract', () => {
               collectFarmClaims(world),
               collectSupplyTally(world),
               shelters,
+              new BattleFront(world, ctx),
             );
             if (!planned) wakeIdle(world, e);
             expect({

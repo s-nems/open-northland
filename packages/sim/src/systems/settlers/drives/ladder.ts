@@ -111,7 +111,8 @@ export function planShelterRung(pass: PlannerPass, e: Entity, settler: SettlerVi
   const hy = nodeHyOfPosition(p.x, p.y);
   const here = terrain.nodeAtClamped(hx, hy);
   const limit = navigationLimitFor(world, ctx.content, terrain, e);
-  if (!planShelter(world, ctx, terrain, e, settler, here, hx, hy, limit, pass.shelters)) return false;
+  if (!planShelter(world, ctx, terrain, e, settler, here, hx, hy, limit, pass.shelters, pass.front))
+    return false;
   parkHaulingCart(world, ctx, e); // an idle carrier with its cart in hand leaves it for the shelter
   return true;
 }
@@ -202,7 +203,7 @@ function planBreak(
 ): boolean {
   const { world, ctx, terrain, entity: e, here, limit, jobType } = plan;
   // The alarm outranks every other drive: hunger, the ownership gate, and a live equip errand alike.
-  if (planShelter(world, ctx, terrain, e, settler, here, hx, hy, limit, pass.shelters)) {
+  if (planShelter(world, ctx, terrain, e, settler, here, hx, hy, limit, pass.shelters, pass.front)) {
     standIfInside(pass, e, world.get(e, Sheltering).shelter);
     // The need rungs wait out the alarm, so orders queued behind a need order do not.
     dropUnservedNeedOrder(world, e);
@@ -216,7 +217,7 @@ function planBreak(
   // here on a meal break. A need the player ordered breaks the fight off too, and the full ladder below runs.
   if (combatOwnsFeet(world, e)) {
     if (orderedNeed(world, e) === undefined) {
-      answerNeedInPlace(world, ctx, e, settler);
+      answerNeedInPlace(world, ctx, pass.front, e, settler);
       return true;
     }
     // Breaking off here rather than in the CombatSystem, which runs later in the tick, so the rungs below
@@ -291,6 +292,7 @@ function planBreak(
       pass.supply,
       limit,
       pass.spacing,
+      pass.front,
       alert,
     )
   ) {

@@ -5,6 +5,7 @@ import {
   isWildlife,
   MoveSpeed,
   MoveStepPeriod,
+  NoRegeneration,
   PathFollow,
   PathRoute,
   Position,
@@ -18,6 +19,7 @@ import type { Entity, World } from '../../ecs/world.js';
 import { DEFAULT_NODE_ROUGHNESS, type NodeId, type TerrainGraph } from '../../nav/terrain/index.js';
 import { HALF_COLUMN, HALF_ROW, ROW_STEP, worldDistance } from '../../nav/world-metric.js';
 import { trafficCounter } from '../computer-player/traffic.js';
+import { BattleFront } from '../conflict/battle-alert.js';
 import type { System, SystemContext } from '../context.js';
 import { wearWornBoots } from '../equipment/index.js';
 import {
@@ -88,6 +90,8 @@ export const movementSystem: System = (world, ctx) => {
     if (!world.has(e, PathFollow)) world.remove(e, AnimalRunning);
   }
   const countTraffic = trafficCounter(world, ctx);
+  // Asked only by a walker forbidden to regenerate that stops for its mead, so it costs nothing otherwise.
+  const front = new BattleFront(world, ctx);
   // Each walker steps this point and writes Position back only when it moved, so a held turn or a
   // finished route does not log a write.
   const p = { x: ZERO, y: ZERO };
@@ -123,7 +127,7 @@ export const movementSystem: System = (world, ctx) => {
       const arrived = paced
         ? stepAlongLeg(p, target, leg, budget)
         : period === undefined
-          ? walkHumanLeg(world, ctx, e, pf, write, stops, p, target, facing, onFirstStop)
+          ? walkHumanLeg(world, ctx, front, e, pf, write, stops, p, target, facing, onFirstStop)
           : walkPeriodicLeg(world, ctx, e, pf, write, stops, p, target, period);
       if (p.x !== stored.x || p.y !== stored.y) {
         const moved = world.mut(e, Position);
@@ -246,6 +250,7 @@ function departureResistance(
 function walkHumanLeg(
   world: World,
   ctx: SystemContext,
+  front: BattleFront,
   e: Entity,
   pf: Readonly<FollowState>,
   write: FollowWrite,
@@ -260,7 +265,7 @@ function walkHumanLeg(
   if (onTarget) return true;
   let turn = facing;
   if (pf.legCost === 0) {
-    if (stopsToDrink(world, ctx, e, pf)) return false;
+    if (stopsToDrink(world, ctx, front, e, pf)) return false;
     const resistance = departureResistance(ctx.terrain, pf, stops);
     const follow = writableFollow(world, e, write);
     const modifiers = walkStepModifiersOf(world, e, ctx.content, ctx.tick, stepModifiers);
@@ -293,9 +298,17 @@ function walkHumanLeg(
  * ({@link drinkDueOnTheWay}): its walk is dropped and the planner takes it up again once the clip ends.
  * A walk another system owns pauses through its owner instead (`orders/meal-break.ts`, the fight).
  */
-function stopsToDrink(world: World, ctx: SystemContext, e: Entity, pf: Readonly<FollowState>): boolean {
+function stopsToDrink(
+  world: World,
+  ctx: SystemContext,
+  front: BattleFront,
+  e: Entity,
+  pf: Readonly<FollowState>,
+): boolean {
   if (pf.departureCharged === true) return false;
-  const draught = drinkDueOnTheWay(world, ctx, e);
+  // A walker another system owns stops through that owner, which asks the battle alert itself.
+  const alert = world.has(e, NoRegeneration) && anotherSystemOwns(world, e) ? null : front;
+  const draught = drinkDueOnTheWay(world, ctx, alert, e);
   if (draught === null || anotherSystemOwns(world, e)) return false;
   clearNavState(world, e);
   beginDrink(world, ctx, e, draught);

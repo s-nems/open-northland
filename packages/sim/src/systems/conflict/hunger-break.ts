@@ -14,6 +14,7 @@ import type { SystemContext } from '../context.js';
 import { drinkPressingDraughts, NEED_DRIVE_THRESHOLD, stopToDrink } from '../lifecycle/needs/index.js';
 import { clearNavState, isTravelling, onNodeCentre } from '../movement/nav-state.js';
 import { breaksForMeal, startMealBreak, suspendWalkForMeal } from '../orders/meal-break.js';
+import type { BattleFront } from './battle-alert.js';
 
 /**
  * Whether hunger keeps `e` out of the fight this tick, asked between blows, where the planner never sees a
@@ -29,6 +30,7 @@ export function hungerKeepsFromFight(
   world: World,
   ctx: SystemContext,
   terrain: TerrainGraph,
+  front: BattleFront,
   e: Entity,
 ): boolean {
   if (world.has(e, HuntFocus)) return false;
@@ -37,7 +39,7 @@ export function hungerKeepsFromFight(
     if (isTravelling(world, e) && !onNodeCentre(world, e)) return false;
     drinkPressingDraughts(world, ctx, e);
     // Mead is drunk on the eat clip where the unit stands, the fight waiting out the clip.
-    if (stopToDrink(world, ctx, e, NEED_DRIVE_THRESHOLD)) {
+    if (stopToDrink(world, ctx, front, e, NEED_DRIVE_THRESHOLD)) {
       clearNavState(world, e);
       return true;
     }

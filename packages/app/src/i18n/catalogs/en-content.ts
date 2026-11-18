@@ -750,7 +750,7 @@ export const enContent = {
     'mead-drink': {
       title: 'Drinking mead',
       summary:
-        'Three settlers walk east and turn hungry a few steps out. A civilian and a soldier stop on the road, drink their mead with the eating animation and walk on. A soldier whose regeneration is prohibited keeps his mead corked and drinks a nourishing potion on the spot instead.',
+        'Four settlers walk east and turn hungry a few steps out. A civilian, a soldier and a soldier whose regeneration is prohibited stop on the road, drink their mead with the eating animation and walk on. A second soldier with regeneration prohibited walks past an enemy soldier, keeps his mead corked and marches on hungry.',
     },
     'scout-claim': {
       title: 'A scout claims an animal',

@@ -757,7 +757,7 @@ export const itContent = {
     'mead-drink': {
       title: 'Bere idromele',
       summary:
-        "Tre coloni camminano verso est e dopo pochi passi hanno fame. Un civile e un soldato si fermano lungo la strada, bevono l'idromele come quando mangiano e ripartono. Un soldato a cui è vietata la rigenerazione lascia chiuso l'idromele e beve sul posto una pozione nutriente.",
+        "Quattro coloni camminano verso est e dopo pochi passi hanno fame. Un civile, un soldato e un soldato a cui è vietata la rigenerazione si fermano lungo la strada, bevono l'idromele come quando mangiano e ripartono. Un secondo soldato con la rigenerazione vietata passa accanto a un soldato nemico, lascia chiuso l'idromele e prosegue affamato.",
     },
     'scout-claim': {
       title: 'Un esploratore reclama un animale',

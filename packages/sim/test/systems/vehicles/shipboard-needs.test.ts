@@ -146,17 +146,28 @@ describe('needs aboard a ship', () => {
     expect(needsOf(s, rider).hunger).toBe(ONE);
   });
 
-  it('has a hungry passenger drink the mead it carries', () => {
-    const s = sim();
-    const ship = vehicle(s, SHIP_SMALL, SHIP_X);
-    const [rider] = passengers(s, ship, 1);
-    if (rider === undefined) throw new Error('no rider');
-    ensureEquipment(s.world, rider);
-    writeEquipSlot(s.world, rider, 'misc', 0, { goodType: MEAD, degreeOfUse: ZERO });
-    setBars(s, rider, { hunger: ONE });
-    s.run(VOYAGE_TICKS);
-    expect(needsOf(s, rider).hunger).toBeLessThan(NEED_DRIVE_THRESHOLD);
-    expect(s.world.has(rider, Position)).toBe(false);
+  it('has a hungry passenger drink the mead it carries, one forbidden to regenerate only with no enemy near', () => {
+    for (const { prohibited, enemyNear } of [
+      { prohibited: false, enemyNear: true },
+      { prohibited: true, enemyNear: false },
+      { prohibited: true, enemyNear: true },
+    ]) {
+      const s = sim();
+      const ship = vehicle(s, SHIP_SMALL, SHIP_X);
+      const [rider] = passengers(s, ship, 1);
+      if (rider === undefined) throw new Error('no rider');
+      ensureEquipment(s.world, rider);
+      writeEquipSlot(s.world, rider, 'misc', 0, { goodType: MEAD, degreeOfUse: ZERO });
+      if (prohibited) s.world.add(rider, NoRegeneration, { prohibited: true });
+      if (enemyNear) {
+        fighterAt(s, ENEMY_TILE.x, ENEMY_TILE.y, FRANK, WOODCUTTER, { owner: P1 });
+        s.step(); // the crew's seat sees the enemy from the next vision pass
+      }
+      setBars(s, rider, { hunger: ONE });
+      s.run(VOYAGE_TICKS);
+      expect(needsOf(s, rider).hunger < NEED_DRIVE_THRESHOLD).toBe(!(prohibited && enemyNear));
+      expect(s.world.has(rider, Position)).toBe(false);
+    }
   });
 
   it('lands a hungry passenger of a moored ship for a meal ashore and takes it back, the hold untouched', () => {

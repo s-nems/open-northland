@@ -755,7 +755,7 @@ export const deContent = {
     'mead-drink': {
       title: 'Met trinken',
       summary:
-        'Drei Siedler gehen nach Osten und werden nach ein paar Schritten hungrig. Ein Zivilist und ein Soldat halten auf dem Weg an, trinken ihren Met wie beim Essen und gehen weiter. Ein Soldat, dem Regeneration verboten ist, lässt seinen Met zu und trinkt im Gehen einen Nahrungstrank.',
+        'Vier Siedler gehen nach Osten und werden nach ein paar Schritten hungrig. Ein Zivilist, ein Soldat und ein Soldat, dem Regeneration verboten ist, halten auf dem Weg an, trinken ihren Met wie beim Essen und gehen weiter. Ein zweiter Soldat mit verbotener Regeneration geht an einem feindlichen Soldaten vorbei, lässt seinen Met zu und marschiert hungrig weiter.',
     },
     'scout-claim': {
       title: 'Ein Kundschafter fängt ein Tier',

@@ -16,6 +16,7 @@ import {
 import type { Fixed } from '../../../core/fixed.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
+import type { BattleFront } from '../../conflict/battle-alert.js';
 import type { SystemContext } from '../../context.js';
 import { wearLodging } from '../../family/lodging.js';
 import {
@@ -113,8 +114,14 @@ function needsAfterDraughts(world: World, ctx: SystemContext, e: Entity): Settle
 
 /** Whether `need` waits for the draught the settler stops to drink on its way rather than send it off to
  *  food or a bed. */
-function waitsForDraught(world: World, ctx: SystemContext, e: Entity, need: 'hunger' | 'fatigue'): boolean {
-  return stoppingDraughtFor(world, ctx, e, need) !== null;
+function waitsForDraught(
+  world: World,
+  ctx: SystemContext,
+  front: BattleFront,
+  e: Entity,
+  need: 'hunger' | 'fatigue',
+): boolean {
+  return stoppingDraughtFor(world, ctx, front, e, need) !== null;
 }
 
 /**
@@ -131,6 +138,7 @@ function waitsForDraught(world: World, ctx: SystemContext, e: Entity, need: 'hun
 export function answerNeedInPlace(
   world: World,
   ctx: SystemContext,
+  front: BattleFront,
   e: Entity,
   settler: SettlerIdentity,
   /** The building `e` is held inside, whose own stock it may eat from. */
@@ -141,7 +149,7 @@ export function answerNeedInPlace(
     world.remove(e, NeedOrder);
   const ordered = orderedNeed(world, e);
   const needs = needsAfterDraughts(world, ctx, e);
-  if (stopToDrink(world, ctx, e, NEED_DRIVE_THRESHOLD)) return true;
+  if (stopToDrink(world, ctx, front, e, NEED_DRIVE_THRESHOLD)) return true;
   const fatigue = needLevel(needs, 'fatigue', ctx.tick);
   if (pressing(needLevel(needs, 'hunger', ctx.tick), ordered, 'hunger')) {
     const seek = maySeek(world, e, ordered, 'hunger');
@@ -195,6 +203,7 @@ export function planNeeds(
   limit: NavigationLimit | null,
   /** The planner-tick occupancy state the sleep rung picks a resting spot out of. */
   spacing: PlannerSpacing,
+  front: BattleFront,
   /** Memoized by the caller: the answer costs a presence sweep. */
   onAlert: () => boolean,
 ): boolean {
@@ -208,12 +217,12 @@ export function planNeeds(
     world.remove(e, NeedOrder);
   const ordered = orderedNeed(world, e);
   const needs = needsAfterDraughts(world, ctx, e);
-  if (stopToDrink(world, ctx, e, DRINK_IN_PLACE_LEVEL)) return true;
+  if (stopToDrink(world, ctx, front, e, DRINK_IN_PLACE_LEVEL)) return true;
   const hunger = needLevel(needs, 'hunger', ctx.tick);
   const fatigue = needLevel(needs, 'fatigue', ctx.tick);
   if (
     pressing(hunger, ordered, 'hunger') &&
-    !waitsForDraught(world, ctx, e, 'hunger') &&
+    !waitsForDraught(world, ctx, front, e, 'hunger') &&
     seekMeal(
       world,
       ctx,
@@ -227,7 +236,7 @@ export function planNeeds(
   }
   if (ordered === 'hunger') noteOrderedMealUnserved(world, ctx, e);
 
-  if (pressing(fatigue, ordered, 'fatigue') && !waitsForDraught(world, ctx, e, 'fatigue')) {
+  if (pressing(fatigue, ordered, 'fatigue') && !waitsForDraught(world, ctx, front, e, 'fatigue')) {
     if (maySeek(world, e, ordered, 'fatigue') && !onAlert()) {
       if (sleepAtPost(world, ctx, e, settler)) return true;
       if (sleepAtHome(world, ctx, terrain, e, settler, here, limit)) return true;

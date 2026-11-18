@@ -37,6 +37,7 @@ import {
 import { TICKS_PER_SECOND } from '../../../core/loop.js';
 import type { Component, Entity, World } from '../../../ecs/world.js';
 import { nodeHxOfPosition, nodeHyOfPosition } from '../../../nav/halfcell.js';
+import type { BattleFront } from '../../conflict/battle-alert.js';
 import { isManningPost } from '../../conflict/tower-post.js';
 import { pruneUnreachableTargets } from '../../conflict/unreachable-targets.js';
 import type { SystemContext } from '../../context.js';
@@ -96,10 +97,16 @@ export function combatOwnsFeet(world: World, e: Entity): boolean {
  * waiting for the end of a leg keeps the eater on the lattice. A draught drunk on the spot needs no stop.
  * A failed route is left alone so the chase still reads its flag.
  */
-function feedOnTheMarch(world: World, ctx: SystemContext, e: Entity, routeFailed: boolean): void {
+function feedOnTheMarch(
+  world: World,
+  ctx: SystemContext,
+  front: BattleFront,
+  e: Entity,
+  routeFailed: boolean,
+): void {
   if (routeFailed || !combatOwnsFeet(world, e) || !onNodeCentre(world, e)) return;
   const settler = world.tryGet(e, Settler);
-  if (settler === undefined || !answerNeedInPlace(world, ctx, e, settler)) return;
+  if (settler === undefined || !answerNeedInPlace(world, ctx, front, e, settler)) return;
   clearNavState(world, e);
 }
 
@@ -107,7 +114,13 @@ function feedOnTheMarch(world: World, ctx: SystemContext, e: Entity, routeFailed
  * Whether travelling or fleeing `e` of a trade that takes cover claims a door of its owner's buildings on
  * alarm, which only a player order, an existing shelter or buildings with no place left keep it from.
  */
-function seeksShelterEnRoute(world: World, ctx: SystemContext, e: Entity, shelters: ShelterSites): boolean {
+function seeksShelterEnRoute(
+  world: World,
+  ctx: SystemContext,
+  e: Entity,
+  shelters: ShelterSites,
+  front: BattleFront,
+): boolean {
   // The owner's room first: it refuses nearly every walker, and it implies the owner has shelters.
   if (ctx.terrain === undefined || world.has(e, Sheltering) || !shelterHasRoom(shelters, ownerOf(world, e))) {
     return false;
@@ -135,6 +148,7 @@ function seeksShelterEnRoute(world: World, ctx: SystemContext, e: Entity, shelte
     hy,
     navigationLimitFor(world, ctx.content, ctx.terrain, e),
     shelters,
+    front,
   );
 }
 
@@ -357,6 +371,7 @@ export function releaseStaleIntent(
   farmClaims: FarmClaims,
   supply: SupplyTally,
   shelters: ShelterSites,
+  front: BattleFront,
 ): boolean {
   reconcileYardRoute(world, e);
   pruneUnreachableGoals(world, ctx, e);
@@ -366,7 +381,7 @@ export function releaseStaleIntent(
   // settler across the map.
   if (world.has(e, Garrison) && !isManningPost(world, ctx, e)) stepOut(world, e);
   if (atomicHoldsSettler(world, e)) return false;
-  const seekShelter = shelters.size > 0 && seeksShelterEnRoute(world, ctx, e, shelters);
+  const seekShelter = shelters.size > 0 && seeksShelterEnRoute(world, ctx, e, shelters, front);
   // An alarm outranks an autonomous economy route. Let the shelter rung select a real door this pass;
   // only a successful claim may displace flight. The old PathFollow remains for a continuous mid-leg
   // splice, but an old request cannot block the new goal.
@@ -396,7 +411,7 @@ export function releaseStaleIntent(
     if (noteUnreachableGoal(world, ctx, e, request.goal)) markLostWay(world, ctx, e, request.goal);
     clearNavState(world, e); // sheds Stranded with the route - fall through and re-plan this tick
   } else if (isTravelling(world, e) && !seekShelter) {
-    feedOnTheMarch(world, ctx, e, request?.failed === true);
+    feedOnTheMarch(world, ctx, front, e, request?.failed === true);
     return false;
   }
   releaseFarmTask(world, e, farmClaims);
@@ -413,7 +428,7 @@ export function releaseStaleIntent(
     !coinDrillGoesOnInside(world, ctx, e)
   ) {
     // Mead is drunk inside, out of sight, rather than in the doorway the settler would step out to.
-    if (stopToDrink(world, ctx, e, NEED_DRIVE_THRESHOLD)) return false;
+    if (stopToDrink(world, ctx, front, e, NEED_DRIVE_THRESHOLD)) return false;
     stepOut(world, e);
   }
   // The guard above returned for anything the atomic holds, so what is left is safe to shed: the producer

@@ -23,6 +23,7 @@ import {
 import { TICKS_PER_SECOND } from '../../core/loop.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { TerrainGraph } from '../../nav/terrain/index.js';
+import type { BattleFront } from '../conflict/battle-alert.js';
 import type { SystemContext } from '../context.js';
 import {
   beginDrink,
@@ -121,9 +122,10 @@ export function suspendWalkToDrink(
   world: World,
   ctx: SystemContext,
   terrain: TerrainGraph,
+  front: BattleFront,
   e: Entity,
 ): boolean {
-  const draught = drinkDueOnTheWay(world, ctx, e);
+  const draught = drinkDueOnTheWay(world, ctx, front, e);
   if (draught === null) return false;
   suspendWalk(world, terrain, e);
   beginDrink(world, ctx, e, draught);
