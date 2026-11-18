@@ -4,7 +4,7 @@
    (network.css): HUD tokens, the bronze primary and deep-green bronze-ruled panels. It fills the
    space the map list leaves under the screen head. */
 .campaign-screen {
-  --u: clamp(1px, calc(100vh / 1080), 1.4px);
+  --u: calc(clamp(1px, 100vh / 1080, 1.4px) * var(--ui-factor));
   --accent: var(--bronze);
   --accent-bright: var(--bronze-hi);
   --accent-rgb: 201 162 98;

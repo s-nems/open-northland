@@ -103,8 +103,8 @@ export interface MenuSettings {
    *  pixel, fewer texels upscaled, or `auto` (upscaled from 1.5 device pixels per CSS pixel); applies
    *  from the next game. */
   readonly backingDensity: BackingDensitySetting;
-  /** Relative factor over the display-derived HUD base scale (`uiScaleFor`); the menu's own
-   *  scale follows the viewport. */
+  /** Relative factor over the display-derived HUD base scale (`uiScaleFor`) and over the menu's
+   *  viewport-derived one. */
   readonly uiScaleFactor: number;
   /** The world post pass: a warm-graded vignette over the world, under the HUD. */
   readonly postFxEnabled: boolean;

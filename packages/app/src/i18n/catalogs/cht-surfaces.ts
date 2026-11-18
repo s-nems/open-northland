@@ -321,8 +321,8 @@ export const chtSurfaces = {
       dayNight: '晝夜循環',
       dayNightTip:
         '在地圖或遊戲規則執行晝夜的地方顯示：太陽、黃昏，以及篝火、房屋與居民照亮地圖的夜晚。晝夜循環不會改變遊戲本身。關閉後始終是白天，圖形負擔更輕；黑暗地圖與夜襲則均勻變暗。',
-      uiScale: '遊戲內介面比例',
-      uiScaleTip: '遊戲中面板與按鈕的大小；不會改變世界的清晰度。',
+      uiScale: '介面比例',
+      uiScaleTip: '選單與遊戲中面板、按鈕和文字的大小；不會改變世界的清晰度。',
       uiScalePinnedTip: '此工作階段使用固定的診斷用 ?uiscale 值。',
       uiScaleApplyFailed: '無法套用介面比例。仍沿用先前的比例。',
       soundEnabled: '遊戲音效',

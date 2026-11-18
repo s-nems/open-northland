@@ -9,6 +9,7 @@ import { servedByBrowser } from '../../view/platform/host.js';
 import { originalGameCheckOwed } from '../../view/platform/original-game-check.js';
 import { clearPendingLoad } from '../../view/runtime/save-load/pending-store.js';
 import { initialSettingsMemory } from '../../view/settings/page.js';
+import type { MenuSettings } from '../../view/settings/store.js';
 import { startBackdropRotation } from './backdrops.js';
 import { catalogueScreen } from './catalogue/screen.js';
 import { initialCatalogueMemory } from './catalogue/view.js';
@@ -126,6 +127,11 @@ export async function renderMainMenu(canvas: HTMLCanvasElement, params: URLSearc
   content.className = 'main-menu__content';
   root.append(content);
   document.body.append(root);
+  const applyUiFactor = (settings: MenuSettings): void => {
+    root.style.setProperty('--ui-factor', String(settings.uiScaleFactor));
+  };
+  applyUiFactor(menuSettings());
+  onSettingsChange(applyUiFactor, scope.signal);
   void startBackdropRotation(sceneLayer, scope.signal);
   const sound = startMenuMusic(scope.signal);
   const fullscreenPrompt = mountFullscreenPrompt(root, params, scope.signal);

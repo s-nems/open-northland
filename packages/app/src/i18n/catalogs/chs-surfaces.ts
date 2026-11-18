@@ -321,8 +321,8 @@ export const chsSurfaces = {
       dayNight: '昼夜循环',
       dayNightTip:
         '在地图或游戏规则运行昼夜的地方显示：太阳、黄昏，以及篝火、房屋和居民照亮地图的夜晚。昼夜循环不会改变游戏本身。关闭后始终是白天，图形负担更轻；黑暗地图和夜袭则均匀变暗。',
-      uiScale: '游戏内界面缩放',
-      uiScaleTip: '游戏内面板和按钮的大小；不影响世界画面的清晰度。',
+      uiScale: '界面缩放',
+      uiScaleTip: '菜单和游戏内面板、按钮和文字的大小；不影响世界画面的清晰度。',
       uiScalePinnedTip: '本次会话使用了固定的诊断参数 ?uiscale。',
       uiScaleApplyFailed: '无法应用界面缩放。仍在使用之前的缩放。',
       soundEnabled: '游戏声音',

@@ -364,8 +364,9 @@ export const itSurfaces = {
       dayNight: 'Ciclo giorno e notte',
       dayNightTip:
         "Giorno e notte dove la mappa o la regola di gioco li prevedono: sole, crepuscolo e una notte in cui fuochi, case e coloni illuminano la mappa. Il ciclo non cambia mai il gioco in sé. Disattivato resta sempre giorno con meno lavoro grafico; le mappe buie e le notti d'attacco vengono allora scurite in modo uniforme.",
-      uiScale: "Scala dell'interfaccia in partita",
-      uiScaleTip: 'Dimensione di pannelli e pulsanti in partita; non cambia la nitidezza del mondo.',
+      uiScale: "Scala dell'interfaccia",
+      uiScaleTip:
+        'Dimensione di pannelli, pulsanti e testi nel menu e in partita; non cambia la nitidezza del mondo.',
       uiScalePinnedTip: 'Questa sessione ha un valore diagnostico ?uiscale fisso.',
       uiScaleApplyFailed:
         "Impossibile applicare la scala dell'interfaccia. La scala precedente è ancora attiva.",

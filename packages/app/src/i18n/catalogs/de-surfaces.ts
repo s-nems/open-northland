@@ -370,8 +370,9 @@ export const deSurfaces = {
       dayNight: 'Tag-und-Nacht-Zyklus',
       dayNightTip:
         'Tag und Nacht, wo die Karte oder die Spielregel sie vorgibt: Sonne, Dämmerung und eine Nacht, in der Feuer, Häuser und Siedler die Karte erhellen. Der Zyklus ändert nie das Spiel selbst. Ausgeschaltet bleibt es Tag und die Grafiklast sinkt; dunkle Karten und Angriffsnächte sind dann gleichmäßig abgedunkelt.',
-      uiScale: 'Größe der Spieloberfläche',
-      uiScaleTip: 'Größe der Fenster und Schaltflächen im Spiel. Ändert nicht die Schärfe der Weltgrafik.',
+      uiScale: 'Größe der Oberfläche',
+      uiScaleTip:
+        'Größe der Fenster, Schaltflächen und Texte im Menü und im Spiel. Ändert nicht die Schärfe der Weltgrafik.',
       uiScalePinnedTip: 'In dieser Sitzung ist ein fester Diagnosewert für ?uiscale gesetzt.',
       uiScaleApplyFailed:
         'Die Oberflächenskalierung konnte nicht geändert werden. Die bisherige Größe bleibt aktiv.',

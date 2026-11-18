@@ -1,14 +1,16 @@
 /* The menu's "polar night" look. Sizes marked with --u are
-   design pixels at the 1920x1080 reference frame, scaling with viewport height.
+   design pixels at the 1920x1080 reference frame, scaling with viewport height times the player's
+   interface scale (--ui-factor, set by the menu from its settings).
    This file holds the tokens, background layers, the main screen and the controls every sub-screen
    shares; each sub-screen adds its own sheet (map-select.css, lobby.css, settings.css, credits.css).
    The typefaces and their tokens come from fonts.css. */
 
 .main-menu {
-  /* Design tokens; --u converts design px to viewport-scaled px. --u-base never changes;
-     sub-screens override --u with a denser scale below. The accent is the logo's sail oxblood,
+  /* Design tokens; --u converts design px to viewport-scaled px. Sub-screens override --u with a
+     denser scale below, each keeping the --ui-factor term. The accent is the logo's sail oxblood,
      warmed for a cold ground; --accent-rgb feeds its translucent uses as `rgb(var(--accent-rgb) / a)`. */
-  --u-base: calc(100vh / 1080);
+  --ui-factor: 1;
+  --u-base: calc(100vh / 1080 * var(--ui-factor));
   --u: var(--u-base);
   --bg-base: #0c1420;
   --accent-rgb: 201 114 90;

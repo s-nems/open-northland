@@ -331,8 +331,8 @@ export const plSurfaces = {
       dayNight: 'Cykl dnia i nocy',
       dayNightTip:
         'Dzień i noc tam, gdzie prowadzi je mapa lub reguła gry: słońce, zmierzch i noc, w której ogniska, domy i osadnicy rozświetlają mapę. Cykl nigdy nie zmienia samej rozgrywki. Po wyłączeniu zawsze jest dzień, a grafika ma mniej pracy; mroczne mapy i nocne ataki są wtedy równomiernie przyciemnione.',
-      uiScale: 'Skala interfejsu w grze',
-      uiScaleTip: 'Wielkość paneli i przycisków w grze; nie zmienia ostrości świata.',
+      uiScale: 'Skala interfejsu',
+      uiScaleTip: 'Wielkość paneli, przycisków i napisów w menu i w grze; nie zmienia ostrości świata.',
       uiScalePinnedTip: 'Ta sesja ma stałą wartość diagnostyczną ?uiscale.',
       uiScaleApplyFailed: 'Nie udało się zastosować skali interfejsu. Poprzednia skala pozostaje aktywna.',
       soundEnabled: 'Dźwięk w grze',

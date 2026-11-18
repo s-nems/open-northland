@@ -330,8 +330,9 @@ export const enSurfaces = {
       dayNight: 'Day and night cycle',
       dayNightTip:
         'Day and night where the map or the game rule runs them: sun, dusk and a night when fires, houses and settlers light the map. The cycle never changes the game itself. Off keeps it daytime with less graphics work; dark maps and attack nights are then evenly darkened.',
-      uiScale: 'In-game interface scale',
-      uiScaleTip: 'Size of in-game panels and buttons; does not change world sharpness.',
+      uiScale: 'Interface scale',
+      uiScaleTip:
+        'Size of panels, buttons and text in the menu and in game; does not change world sharpness.',
       uiScalePinnedTip: 'This session has a fixed diagnostic ?uiscale value.',
       uiScaleApplyFailed: 'The interface scale could not be applied. The previous scale is still active.',
       soundEnabled: 'In-game sound',
