@@ -39,6 +39,7 @@ import { gearTalliesOf } from '../assistant/shortages.js';
 import { flagHoldingsOf } from '../foreign-flags.js';
 import { ownRoadSiteAt } from '../runtime/own-road-sites.js';
 import { builderSitesOf } from '../unit-controls/highlights/own-building-picks.js';
+import { buildingsIn } from './building-buckets.js';
 import { SEASONED_FIGHTERS } from './experience-stars.js';
 import { computeSettlerBubbles } from './settler-bubbles.js';
 
@@ -110,6 +111,8 @@ export const FRAME_INDEX_READERS: readonly AppFrameIndexReader[] = [
   { name: 'settler bubbles', read: (snapshot) => computeSettlerBubbles(snapshot, NO_SEAT) },
   { name: 'star wearers', read: (snapshot) => indexesOf(snapshot).get(SEASONED_FIGHTERS) },
   { name: 'position buckets', read: (snapshot) => positionedWithin(snapshot, NO_TILES) },
+  // The door badges read it every frame, the road tool's entrances while the tool is held.
+  { name: 'building position buckets', read: (snapshot) => buildingsIn(snapshot, NO_TILES) },
   // The object ambience reads it on every frame that advanced a tick.
   { name: 'landscape sound sectors', read: (snapshot) => landscapeSectorsOf(snapshot) },
   { name: 'staff', read: (snapshot) => staffOf(snapshot, NO_ENTITY) },

@@ -5,6 +5,7 @@ import {
   type DrawItem,
   type HudModel,
   type MapPing,
+  type PlacementOverlayCell,
   SPRITE_CULL_MARGIN,
   type Viewport,
 } from '@open-northland/render';
@@ -118,6 +119,12 @@ export interface FrameLoopDeps {
     snap: WorldSnapshot,
     viewport?: Viewport,
   ) => ReturnType<typeof computeExperienceStars>;
+  /** Memoized by snapshot identity, the side and the screen, and fog-filtered. */
+  readonly roadEntrancesFor: (
+    snap: WorldSnapshot,
+    owner: number,
+    viewport?: Viewport,
+  ) => readonly PlacementOverlayCell[];
   readonly canPlaceAt: (
     typeId: number,
     tribe: number,
@@ -235,6 +242,7 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
     settlerBubblesFor,
     lifeHeartsFor,
     experienceStarsFor,
+    roadEntrancesFor,
     canPlaceAt,
     ghostPlotAt,
     defenceRangeAt,
@@ -551,6 +559,8 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
     const doorBadges = doorBadgesFor(snap, markViewport);
     const lifeHearts = lifeHeartsFor(snap, markViewport);
     const experienceStars = experienceStarsFor(snap, markViewport);
+    const roadOwner = toolPanel.controller.roadOwner();
+    renderer.updateRoadEntrances(roadOwner === null ? null : roadEntrancesFor(snap, roadOwner, markViewport));
     const world0 = performance.now();
     if (!loop.worldHeld())
       renderer.update({

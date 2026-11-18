@@ -347,6 +347,8 @@ export interface ToolPanelController {
   palisadeOwner(): number | null;
   /** The road tool is held. */
   roadActive(): boolean;
+  /** The seat the held road tool lays for; null while it is not held. */
+  roadOwner(): number | null;
   /** The wall brush's doomed mark on the wall under `pointer`; null while the brush is not held. */
   wallDemolishHighlight(pointer: ClientPoint | null): readonly TargetMark[] | null;
   roadPreview(tile: LineNode | null): RoadPreview | null;
@@ -1007,7 +1009,8 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
       palisadeGfxIndex: () => placement.activePalisade(),
       palisadeMode: () => placement.activePalisadeMode(),
       palisadeOwner: () => placement.activePalisadeOwner(),
-      roadActive: () => placement.activeRoad(),
+      roadActive: () => placement.activeRoadOwner() !== null,
+      roadOwner: () => placement.activeRoadOwner(),
       wallDemolishHighlight: (pointer) => wallBrush.highlight(pointer),
       roadPreview: (tile) => placement.roadPreview(tile),
       enterStanding: (structure, owner, tribe): boolean => {

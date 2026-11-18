@@ -16,6 +16,7 @@ export * from './hud-labels.js';
 export * from './life-hearts.js';
 export * from './rally-banners.js';
 export * from './range-rings.js';
+export * from './road-entrances.js';
 export * from './selected-flags.js';
 export * from './settler-bubbles.js';
 export * from './snapshot-projections.js';

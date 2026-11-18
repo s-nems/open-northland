@@ -209,8 +209,8 @@ export interface PlacementController {
   activePalisade(): number | null;
   activePalisadeMode(): PalisadePlacementMode | null;
   activePalisadeOwner(): number | null;
-  /** The road tool is held. */
-  activeRoad(): boolean;
+  /** The seat the held road tool lays for; null while it is not held. */
+  activeRoadOwner(): number | null;
   /** The held placement is the admin tool's: a finished building, road or wall line. */
   activeStanding(): boolean;
   /** Hold a building for placement; its paper rides the placement command and buys it finished. */
@@ -552,7 +552,7 @@ export function createPlacementController(deps: PlacementDeps): PlacementControl
     activePalisade: () => palisade?.gfxIndex ?? null,
     activePalisadeMode: () => palisade?.mode ?? null,
     activePalisadeOwner: () => palisade?.side.owner ?? null,
-    activeRoad: () => road !== null,
+    activeRoadOwner: () => road?.side.owner ?? null,
     activeStanding: () =>
       building?.standing !== undefined || road?.standing === true || palisade?.mode === 'standingWall',
     enter,

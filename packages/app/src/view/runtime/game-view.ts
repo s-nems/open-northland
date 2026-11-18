@@ -1310,6 +1310,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       settlerBubblesFor,
       lifeHeartsFor,
       experienceStarsFor,
+      roadEntrancesFor,
     } = await createViewReadModels({
       authoredBuildings:
         typeof deps.sheet?.bindings.building === 'object' ? deps.sheet.bindings.building.byEntity : undefined,
@@ -1675,6 +1676,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       settlerBubblesFor,
       lifeHeartsFor,
       experienceStarsFor,
+      roadEntrancesFor,
       canPlaceAt,
       shipWaterAt: placementGates.shipWaterAt,
       onShipWaterHint: (at) => {

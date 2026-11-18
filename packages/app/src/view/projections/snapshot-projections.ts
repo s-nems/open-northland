@@ -1,4 +1,11 @@
-import { buildHud, emptyHud, fogTileVisible, type HudModel, ONE } from '@open-northland/render';
+import {
+  buildHud,
+  emptyHud,
+  fogTileVisible,
+  type HudModel,
+  ONE,
+  type PlacementOverlayCell,
+} from '@open-northland/render';
 import { anchorTileBox, type Viewport } from '@open-northland/render/data';
 import type { SignpostReachView } from '@open-northland/sim';
 import { TILE_BUCKET_SIZE, type TileBox, type WorldSnapshot } from '@open-northland/sim';
@@ -10,6 +17,7 @@ import { type BuildingDoorInfoOf, computeDoorBadges, type DoorBadgeCache } from 
 import { computeExperienceStars, type ExperienceStarInputs } from './experience-stars.js';
 import type { FogGates } from './fog-gates.js';
 import { computeLifeHearts, type LifeHeartInputs } from './life-hearts.js';
+import { computeRoadEntrances } from './road-entrances.js';
 import { computeSettlerBubbles } from './settler-bubbles.js';
 
 /**
@@ -126,6 +134,12 @@ export function createSnapshotProjections(
     snapshot: WorldSnapshot,
     viewport?: Viewport,
   ) => ReturnType<typeof computeExperienceStars>;
+  /** The entrances of `owner`'s buildings the road tool lights, under the sprites' cull `viewport`. */
+  readonly roadEntrancesFor: (
+    snapshot: WorldSnapshot,
+    owner: number,
+    viewport?: Viewport,
+  ) => readonly PlacementOverlayCell[];
 } {
   // Keyed on the viewer too: a spectator switching seats under a paused sim holds one snapshot, and
   // the fog is the viewer's, so every fog-filtered memo keys on it as well.
@@ -187,6 +201,27 @@ export function createSnapshotProjections(
       ? badges
       : badges.filter((badge) => fogTileVisible(fog, badge.x / ONE, badge.y / ONE));
   }, viewerVersion);
+  // One memo per side the road tool lays for: the player's own, or another the admin tool picks.
+  const roadEntrances = new Map<number, ScreenMemo<readonly PlacementOverlayCell[]>>();
+  const roadEntrancesFor = (
+    snapshot: WorldSnapshot,
+    owner: number,
+    viewport?: Viewport,
+  ): readonly PlacementOverlayCell[] => {
+    let memo = roadEntrances.get(owner);
+    if (memo === undefined) {
+      // The road tool's wash refuses fogged ground, so a fogged door is not lit.
+      memo = memoByScreen(
+        (snap, box) =>
+          computeRoadEntrances(snap, buildingInfoOf, owner, box).filter((door) =>
+            fogGates.seesNode(door.col, door.row),
+          ),
+        () => viewerVersion() + fogGates.revision(),
+      );
+      roadEntrances.set(owner, memo);
+    }
+    return memo(snapshot, viewport);
+  };
   return {
     hudModelFor,
     doorBadgesFor,
@@ -207,5 +242,6 @@ export function createSnapshotProjections(
       }
       return lifeHearts(snapshot, viewport);
     },
+    roadEntrancesFor,
   };
 }

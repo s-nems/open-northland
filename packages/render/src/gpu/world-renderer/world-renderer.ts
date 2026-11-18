@@ -58,8 +58,13 @@ import { PagePrescaler, type PrescaleStats } from '../pixel-art/page-prescaler.j
 import { prescaledScalerOf, setPixelArtMagnification, setWorldShadowStyle } from '../pixel-art/registry.js';
 import { worldUpscaleOf } from '../pixi-app/pixi-app.js';
 import { ConstructionPlotLayer } from '../placement/construction-plot.js';
+import { EntranceMarkLayer } from '../placement/entrance-marks.js';
 import { type PlacementGhost, PlacementGhostLayer } from '../placement/ghost.js';
-import { type PlacementOverlayFrame, PlacementOverlayLayer } from '../placement/overlay.js';
+import {
+  type PlacementOverlayCell,
+  type PlacementOverlayFrame,
+  PlacementOverlayLayer,
+} from '../placement/overlay.js';
 import { PLOT_BOUNDS } from '../placement/plan-road.js';
 import { DEFAULT_SELECTION_STYLE, type SelectionStyle, type TargetTone } from '../selection/style.js';
 import { worldShaderSettings } from '../shaders/warmup.js';
@@ -141,6 +146,7 @@ export class WorldRenderer {
   private readonly rememberedPlots: ConstructionPlotLayer;
   private readonly sites = new WorldSites();
   private readonly placementGhost: PlacementGhostLayer;
+  private readonly entranceMarks = new EntranceMarkLayer();
   private readonly marks: WorldMarks;
   private targetMarks: ReadonlyMap<number, TargetTone> | undefined;
   private readonly flagErasures = new FlagErasures();
@@ -230,7 +236,7 @@ export class WorldRenderer {
       opts?.planRoads,
       opts?.berthPost,
     );
-    this.spriteLayer.addChild(this.placementGhost.container);
+    this.spriteLayer.addChild(this.placementGhost.container, this.entranceMarks.graphics);
     mountPainterOrder(this.worldLayer, {
       terrain: this.terrain.container,
       decorShadows: this.mapObjects.decorShadowContainer,
@@ -812,6 +818,11 @@ export class WorldRenderer {
     this.placementOverlay.set(frame, this.elevation);
   }
 
+  /** The door nodes the road tool lights; null while it is not held. */
+  updateRoadEntrances(doors: readonly PlacementOverlayCell[] | null): void {
+    this.entranceMarks.set(doors, this.elevation);
+  }
+
   /** Every live construction site's foundation; the fog decides which of them draw. Call after
    *  {@link updateFog}. */
   updateConstructionPlots(plots: readonly ConstructionPlot[]): void {
@@ -888,6 +899,7 @@ export class WorldRenderer {
     this.constructionPlots.destroy();
     this.rememberedPlots.destroy();
     this.placementGhost.destroy();
+    this.entranceMarks.destroy();
     this.hud.destroy();
     this.chrome.destroy();
     this.offscreen.destroy();

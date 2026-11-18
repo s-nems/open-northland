@@ -551,7 +551,7 @@ describe('placement controller', () => {
     );
 
     placement.enterRoad();
-    expect(placement.activeRoad()).toBe(true);
+    expect(placement.activeRoadOwner()).toBe(0);
     expect(strip.shown).toEqual({
       label: messages().hud.construction.road,
       hint: messages().hud.construction.placeRoadHint,
@@ -575,7 +575,7 @@ describe('placement controller', () => {
       [4, 5, 7, 8].map((x) => ({ kind: 'placeRoadSite', x, y: 2, tribe: 1, owner: 0 })),
     );
     expect(cues).toEqual(['confirm']);
-    expect(placement.activeRoad()).toBe(true);
+    expect(placement.activeRoadOwner()).toBe(0);
     expect(placement.activeLine()).toBeNull();
     expect(strip.shown?.hint).toBe(messages().hud.construction.placeRoadHint);
   });
@@ -690,7 +690,7 @@ describe('placement controller', () => {
       { kind: 'cancelRoadSite', roadSite: 107 },
     ]);
     expect(cues).toEqual(['confirm']);
-    expect(placement.activeRoad()).toBe(true);
+    expect(placement.activeRoadOwner()).toBe(0);
 
     // A line over no site of the seat's fails, and letting go of Alt lays road again.
     tile = { col: 4, row: 6 };
@@ -803,8 +803,10 @@ describe('placement controller', () => {
     expect(placement.activeStanding()).toBe(false);
     placement.enterRoad({ owner: 3, tribe: 2 });
     expect(placement.activeStanding()).toBe(true);
+    expect(placement.activeRoadOwner()).toBe(3);
     placement.enterRoad();
     expect(placement.activeStanding()).toBe(false);
+    expect(placement.activeRoadOwner()).toBe(0);
   });
 
   it('steps back from a started line to the armed tool, then leaves it for the map, not the window', () => {
