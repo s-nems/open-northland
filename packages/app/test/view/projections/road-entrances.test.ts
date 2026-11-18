@@ -57,7 +57,9 @@ describe('takesSettlersIn', () => {
       ['school', type({ kind: BUILDING_KIND.training, schoolSize: 5 }), true],
       ['shelter', type({ shelterCapacity: 4 }), true],
       ['temple', type({ prayerSite: 'temple' }), true],
+      ['manned tower', type({ kind: BUILDING_KIND.tower, workers: [{ jobType: 1, count: 3 }] }), true],
       ['wall piece', type({ kind: BUILDING_KIND.tower }), false],
+      ['crewless workplace', type({}), false],
       ['wonder', type({ kind: BUILDING_KIND.wonder }), false],
       ['vehicle yard', type({ kind: BUILDING_KIND.vehicle, workers: [{ jobType: 1, count: 3 }] }), false],
     ];

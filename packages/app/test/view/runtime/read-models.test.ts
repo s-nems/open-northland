@@ -66,14 +66,16 @@ describe('view building models', () => {
   it('carries the extracted sign-post anchor of the drawing tribe', () => {
     const SMITHY = 23;
     const FARM = 31;
+    const crewed = { ...building(FARM, 'farm'), workers: [{ jobType: 1, count: 4 }] };
     const { infoOf } = buildingModels(
-      [building(SMITHY, 'smithy'), building(FARM, 'farm')],
+      [building(SMITHY, 'smithy'), crewed],
       ir([{ tribeId: VIKING, typeId: SMITHY, x: 12, y: -4 }]),
       [VIKING],
     );
     expect(infoOf(SMITHY, VIKING)?.flagPoint).toEqual({ x: 12, y: -4 });
-    // A type with no flag-point row still resolves - the sign chain just has nothing to anchor on.
-    expect(infoOf(FARM, VIKING)).toEqual({ id: 'farm', footprint: FOOTPRINT, entered: false });
+    // A type with no flag-point row still resolves - the sign chain just has nothing to anchor on. Its
+    // crew enters at the door, which the road tool lights.
+    expect(infoOf(FARM, VIKING)).toEqual({ id: 'farm', footprint: FOOTPRINT, entered: true });
   });
 
   it("resolves each tribe's own footprint for the same type, the base one for a tribe without a variant", () => {

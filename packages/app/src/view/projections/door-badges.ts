@@ -42,9 +42,9 @@ import { type DoorFootprint, workerIconNode } from './building-points.js';
  * flies one flag from its mast, a star per man.
  */
 
-/** The slice of a building type this projection needs: the half-cell door offset from the placed anchor,
- *  the stable `id` used as the worker-icon override key, the extracted `GfxFlagPoint`, and the mast
- *  point a garrison flag flies from. */
+/** The slice of a building type the door projections need: the half-cell door offset from the placed
+ *  anchor, the stable `id` used as the worker-icon override key, the extracted `GfxFlagPoint`, the mast
+ *  point a garrison flag flies from, and whether settlers enter it, which only the road tool reads. */
 export interface BuildingDoorInfo {
   readonly id?: string | undefined;
   readonly footprint?: DoorFootprint | undefined;

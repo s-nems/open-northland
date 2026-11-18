@@ -87,7 +87,7 @@ export class EntranceMarkLayer {
     this.drawnOn = elevation;
   }
 
-  /** The instances leave the shared mark alone, so it goes last. */
+  /** The instances leave the shared mark alone, so it is destroyed here. */
   destroy(): void {
     this.container.destroy({ children: true });
     this.mark.destroy();

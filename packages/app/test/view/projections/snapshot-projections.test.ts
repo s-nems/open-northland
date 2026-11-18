@@ -16,15 +16,15 @@ import {
   visitCountingSnapshot,
 } from '../../support/snapshot.js';
 
+/** A map wide enough for every fixture building, in cells. */
+const MAP_SIZE = { width: 64, height: 64 } as const;
+
 /**
  * The identity memo behind the frame loop's per-tick projections: an O(entities) read must run once per
  * SNAPSHOT, not once per RAF frame (the loop calls these every frame while the fixed timestep may not
  * have stepped). Pinned here because nothing else fails when the memo silently stops hitting - the cost
  * is invisible to every other test.
  */
-/** A map wide enough for every fixture building, in cells. */
-const MAP_SIZE = { width: 64, height: 64 } as const;
-
 describe('createSnapshotProjections - memoized by snapshot identity', () => {
   const HOME_TYPE = 2;
   const PLAYER = 0;
