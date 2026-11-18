@@ -35,11 +35,12 @@ const LONELY_WHOLE: Fixed = ONE;
 const ALMOST_LONELY: Fixed = fx.sub(systems.NEED_DRIVE_THRESHOLD, fx.div(ONE, fx.fromInt(20)));
 /** Over the eat and sleep thresholds. */
 const PRESSING: Fixed = fx.div(fx.fromInt(19), fx.fromInt(20));
-/** End-of-run bound proving a settler chatted: without a chat the bar would sit pinned at ONE. */
-const REFILLED: Fixed = fx.div(ONE, fx.fromInt(4));
+/** End-of-run bound proving a settler chatted: without a chat the bar would sit pinned at ONE, and one
+ *  chat lifts it out of the drive band for the rest of the run. */
+const REFILLED: Fixed = systems.NEED_DRIVE_THRESHOLD;
 
-/** Covers the woodcutter's chopping, his walk, and the several 247-tick rounds the circle needs: one
- *  exchange is worth 40% of a company bar, so a settler that starts fully lonely takes three of them. */
+/** Covers the woodcutter's chopping, his walk, and the chats of the circle, whose third member waits
+ *  out the first pair's two 247-tick rounds. */
 const RUN_TICKS = 2400;
 const INITIAL_ZOOM = 0.9;
 

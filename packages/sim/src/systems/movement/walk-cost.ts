@@ -77,6 +77,9 @@ export interface WalkStepModifiers {
 
 const ROUGHNESS_TICKS_PER_LEVEL = 2;
 const BASE_STEP_TICKS = 2;
+/** Ticks of the reference human step: a rested, barefoot, unladen walker crossing land (roughness 2),
+ *  one half-column. */
+export const REFERENCE_STEP_TICKS = 8;
 const BAREFOOT_STEP_TICKS = 2;
 const CARRYING_STEP_TICKS = 1;
 const TIRED_STEP_TICKS = 2;

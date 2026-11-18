@@ -134,6 +134,9 @@ export const SETTLERS: ArticleGroup = {
             num: [1],
           },
         },
+        {
+          p: 'A lonely settler picks the partner that costs the settlement the least work: best someone close who stands idle or needs a talk too. The lower its Social Motivation, the further it walks and the more readily it pulls someone who needs no talk away from work.',
+        },
       ],
       see: [
         'article:food',

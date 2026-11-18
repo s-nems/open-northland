@@ -18,7 +18,7 @@ import {
 import type { Entity, World } from '../../ecs/world.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
-import { REFERENCE_STEP_TICKS } from '../movement/system.js';
+import { REFERENCE_STEP_TICKS } from '../movement/walk-cost.js';
 import {
   isAnimalTribe,
   isFighterJob,

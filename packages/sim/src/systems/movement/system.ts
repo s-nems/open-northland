@@ -39,6 +39,7 @@ import {
   isCarryingGood,
   MAX_STEP_TICKS,
   MIN_STEP_TICKS,
+  REFERENCE_STEP_TICKS,
   walkStepModifiersOf,
   walkStepTicks,
 } from './walk-cost.js';
@@ -52,11 +53,7 @@ import {
  */
 export const MAX_STEP_PER_TICK: Fixed = fx.divCeil(ROW_STEP, fx.fromInt(MIN_STEP_TICKS));
 
-/**
- * The reference human pace the separation approximations scale their caps by: a rested, barefoot,
- * unladen walker crossing land (roughness 2), 8 ticks a half-column step.
- */
-export const REFERENCE_STEP_TICKS = 8;
+/** The reference human pace the separation approximations scale their caps by. */
 export const REFERENCE_PACE_PER_TICK: Fixed = fx.div(HALF_COLUMN, fx.fromInt(REFERENCE_STEP_TICKS));
 
 /** The pre-existing fallback for an animal whose row explicitly sets `movespeed` to 0. Rows that omit

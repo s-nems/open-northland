@@ -14,6 +14,9 @@ const BLOCK_SHIFT = 3;
 const BLOCK_KEY_STRIDE = 1 << 16;
 const BLOCK_KEY_BIAS = 1 << 15;
 
+/** {@link ChatCandidates.cheapest}'s price for a candidate that is no partner at all. */
+export const NO_PARTNER = Number.POSITIVE_INFINITY;
+
 function blockKey(hx: number, hy: number): number {
   return ((hx >> BLOCK_SHIFT) + BLOCK_KEY_BIAS) * BLOCK_KEY_STRIDE + ((hy >> BLOCK_SHIFT) + BLOCK_KEY_BIAS);
 }
@@ -89,6 +92,44 @@ export class ChatCandidates {
             best = e;
             bestDist = d;
           }
+        }
+      }
+    }
+    return best;
+  }
+
+  /**
+   * The candidate within `minDist..maxDist` Manhattan nodes of `(fromX, fromY)` that `priceOf` prices lowest
+   * and no higher than `budget`, the lower entity id on a tie, or null. `priceOf` gets the distance and the
+   * price to beat, returns {@link NO_PARTNER} for a candidate it rejects, and must be a pure read: the
+   * candidates come in no fixed order.
+   */
+  cheapest(
+    fromX: number,
+    fromY: number,
+    minDist: number,
+    maxDist: number,
+    budget: number,
+    priceOf: (e: Entity, dist: number, toBeat: number) => number,
+  ): Entity | null {
+    const { nodes } = this;
+    let best: Entity | null = null;
+    let bestPrice = budget;
+    const maxBx = (fromX + maxDist) >> BLOCK_SHIFT;
+    const minBy = (fromY - maxDist) >> BLOCK_SHIFT;
+    const maxBy = (fromY + maxDist) >> BLOCK_SHIFT;
+    for (let bx = (fromX - maxDist) >> BLOCK_SHIFT; bx <= maxBx; bx++) {
+      for (let by = minBy; by <= maxBy; by++) {
+        const list = this.blocks.get((bx + BLOCK_KEY_BIAS) * BLOCK_KEY_STRIDE + (by + BLOCK_KEY_BIAS));
+        if (list === undefined) continue;
+        for (let i = 0; i < list.length; i++) {
+          const e = list[i] as Entity;
+          const d = Math.abs(nodes.hx(e) - fromX) + Math.abs(nodes.hy(e) - fromY);
+          if (d < minDist || d > maxDist) continue;
+          const price = priceOf(e, d, bestPrice);
+          if (price > bestPrice || (price === bestPrice && best !== null && e > best)) continue;
+          best = e;
+          bestPrice = price;
         }
       }
     }

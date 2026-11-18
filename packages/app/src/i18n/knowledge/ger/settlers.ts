@@ -143,6 +143,9 @@ export const SETTLERS: ArticleGroup = {
             num: [1],
           },
         },
+        {
+          p: 'Ein einsamer Siedler wählt den Gesprächspartner, der die Siedlung am wenigsten Arbeit kostet: am liebsten jemanden in der Nähe, der untätig steht oder selbst ein Gespräch braucht. Je niedriger seine Soziale Motivation, desto weiter geht er und desto eher holt er jemanden von der Arbeit, der kein Gespräch braucht.',
+        },
       ],
       see: [
         'article:food',

@@ -143,6 +143,9 @@ export const SETTLERS: ArticleGroup = {
             num: [1],
           },
         },
+        {
+          p: 'Un colono solo sceglie il compagno che costa meno lavoro al villaggio: di preferenza qualcuno vicino che sta in ozio o che ha bisogno di parlare a sua volta. Più bassa è la sua socialità, più lontano va e più facilmente distoglie dal lavoro chi non ha bisogno di parlare.',
+        },
       ],
       see: [
         'article:food',

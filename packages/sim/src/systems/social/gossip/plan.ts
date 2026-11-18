@@ -10,28 +10,42 @@ import {
   Fleeing,
   IdleSince,
   inPastimeChat,
+  LISTEN_ATOMIC_ID,
   LostWay,
   ownerOf,
   PlayerOrder,
   Position,
   Resting,
+  Settler,
   type SettlerIdentity,
   SettlerNeeds,
+  TALK_ATOMIC_ID,
   Wedding,
 } from '../../../components/index.js';
+import { type Fixed, fx, ONE, ZERO } from '../../../core/fixed.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import { nodeHxOfPosition, nodeHyOfPosition, type nodesAdjacent } from '../../../nav/halfcell.js';
 import type { SystemContext } from '../../context.js';
 import { carriesNeeds, NEED_DRIVE_THRESHOLD, needLevel } from '../../lifecycle/needs/index.js';
 import { isTravelling } from '../../movement/nav-state.js';
+import { REFERENCE_STEP_TICKS } from '../../movement/walk-cost.js';
 import { atomicDuration } from '../../readviews/animations.js';
 import { isFighterJob } from '../../readviews/index.js';
 import { IDLE_MEDIUM_ATOMIC_ID, IDLE_SHORT_ATOMIC_IDS } from '../../settlers/atomics/start.js';
-import type { GossipCandidates } from './candidates.js';
+import { type GossipCandidates, NO_PARTNER } from './candidates.js';
 import { endChat } from './drive.js';
 
-/** How far in half-cell nodes a lonely working settler searches. Authored: a bounded ring search. */
-const CHAT_SEEK_RADIUS_NODES = 32;
+/** How far in half-cell nodes a settler whose company bar has run empty walks for a partner, the cap of
+ *  every company search. Authored value, about 12 cells. */
+const CHAT_SEEK_RADIUS_NODES = 24;
+
+/** How far a settler that has only just grown lonely walks, and then only to a partner the chat costs
+ *  nothing. Authored value, about 4 cells. */
+const CHAT_SEEK_FIRST_REACH_NODES = 8;
+
+/** Ticks of the seeker's work one node of distance costs: the walk there and the walk back.
+ *  Approximation: the reference pace over the straight distance, not the seeker's own path. */
+const SEEK_TICKS_PER_NODE = 2 * REFERENCE_STEP_TICKS;
 
 /** Partner searches start at ring 1: a candidate stacked on the seeker's own node is skipped, since a pair
  *  chatting from one node stands inside each other. */
@@ -55,7 +69,8 @@ const CHAT_IDLE_WALK_MEAN_WAIT_TICKS = 240;
 
 /** Original behavior: an idle settler's first four idle rounds play a random short clip and the next five
  *  the medium one; only from its tenth round on may it chat, and any task besides idling or chatting
- *  restarts the count. */
+ *  restarts the count. Approximation: the original also walks an idler back to its place of work before it
+ *  counts; this counts wherever it stands. */
 const IDLE_SHORT_ROUNDS = 4;
 const IDLE_MEDIUM_ROUNDS = 5;
 
@@ -139,8 +154,7 @@ function startChat(world: World, seeker: Entity, partner: Entity, kind: ChatKind
   world.add(partner, Chat, { partner: seeker, seeker: false, talking: false, speaks: false, kind });
 }
 
-/** The seek and idle rungs' shared partner predicate: a same-owner settler standing free and not walking
- *  anywhere. One home, so partner eligibility cannot drift between the two rungs. */
+/** The idle rung's partner predicate: a same-owner settler standing free and not walking anywhere. */
 function idlePartnerFilter(
   world: World,
   tick: number,
@@ -156,9 +170,10 @@ function idlePartnerFilter(
 
 /**
  * The working settler's company rung: at or above {@link NEED_DRIVE_THRESHOLD} it leaves its work and claims
- * the nearest same-owner settler: an idle one first, then one in idle chatter, then one mid-errand. Only
- * partners are gated on {@link Carrying}: a grabbed half needs its hands free, a desperate seeker chats with
- * its load still in hand.
+ * the same-owner settler whose chat costs the settlement least, the lonelier it is the further and the
+ * busier. Authored rule: the original takes an idle settler in a fixed range. Only partners are
+ * gated on {@link Carrying}: a grabbed half needs its hands free, a desperate seeker chats with its load
+ * still in hand.
  */
 export function planGossipSeek(
   world: World,
@@ -191,34 +206,95 @@ export function planGossipSeek(
   // the owner.
   const owner = ownerOf(world, e);
   if (owner === undefined) return false;
-  return seekPartner(world, ctx, e, owner, hx, hy, candidates);
+  return seekPartner(world, ctx, e, settler, owner, hx, hy, candidates, ordered);
 }
 
-/** {@link planGossipSeek}'s search and claim, apart from its bar tests: the partner filters close over
- *  the seeker, and a function holding closures allocates their scope on every call, taken or not. */
+/** Ticks of work a company chat takes from each half: its two rounds, the seeker's speaking turn and the
+ *  partner's, each as long as the longer of the talker's and the listener's clips. */
+function companyChatTicks(content: ContentSet, seeker: SettlerIdentity, partner: SettlerIdentity): number {
+  return (
+    Math.max(
+      atomicDuration(content, seeker, TALK_ATOMIC_ID),
+      atomicDuration(content, partner, LISTEN_ATOMIC_ID),
+    ) +
+    Math.max(
+      atomicDuration(content, partner, TALK_ATOMIC_ID),
+      atomicDuration(content, seeker, LISTEN_ATOMIC_ID),
+    )
+  );
+}
+
+/** How pressing a seeker's need is, from nothing at the drive threshold to {@link ONE} on an empty bar. A
+ *  player's order is as pressing as it gets. */
+function seekUrgency(deficit: Fixed, ordered: boolean): Fixed {
+  if (ordered || deficit >= ONE) return ONE;
+  if (deficit <= NEED_DRIVE_THRESHOLD) return ZERO;
+  return fx.div(fx.sub(deficit, NEED_DRIVE_THRESHOLD), fx.sub(ONE, NEED_DRIVE_THRESHOLD));
+}
+
+/** The most ticks of lost work a seeker accepts for its chat, growing with its urgency from the walk to
+ *  {@link CHAT_SEEK_FIRST_REACH_NODES} to the walk to {@link CHAT_SEEK_RADIUS_NODES}. */
+function seekBudgetTicks(urgency: Fixed): number {
+  const least = CHAT_SEEK_FIRST_REACH_NODES * SEEK_TICKS_PER_NODE;
+  const most = CHAT_SEEK_RADIUS_NODES * SEEK_TICKS_PER_NODE;
+  return least + fx.toInt(fx.mulInt(urgency, most - least));
+}
+
+/** The ticks of a chat a working partner loses for nothing: the share of them its own bar does not need,
+ *  none for one as lonely as a seeker and all for one with a full bar, less the share the seeker's urgency
+ *  excuses. On an empty bar any partner in reach will do. */
+function wastedChatTicks(
+  world: World,
+  tick: number,
+  partner: Entity,
+  chatTicks: number,
+  urgency: Fixed,
+): number {
+  const deficit = needLevel(world.get(partner, SettlerNeeds), 'enjoyment', tick);
+  if (deficit >= NEED_DRIVE_THRESHOLD) return 0;
+  const spare = deficit <= ZERO ? ONE : fx.div(fx.sub(NEED_DRIVE_THRESHOLD, deficit), NEED_DRIVE_THRESHOLD);
+  if (spare <= urgency) return 0;
+  return fx.toInt(fx.mulInt(fx.sub(spare, urgency), chatTicks));
+}
+
+/**
+ * {@link planGossipSeek}'s search and claim. Every partner is priced in ticks of lost work: the seeker's
+ * walk there and back, plus what the chat takes from a working partner for nothing. An idler or a pastime
+ * chatter loses nothing. The cheapest partner inside the seeker's {@link seekBudgetTicks} is claimed, so a
+ * lonely worker nearby beats a busy one with a full bar, and distance is weighed against both.
+ * Approximation: only a settler the idle rung has counted ({@link IdleSince}) is an idler, so one a script
+ * or an earlier rung parks is priced as at work.
+ */
 function seekPartner(
   world: World,
   ctx: SystemContext,
   e: Entity,
+  settler: SettlerIdentity,
   owner: number,
   hx: number,
   hy: number,
   candidates: GossipCandidates,
+  ordered: boolean,
 ): boolean {
-  const buckets = candidates.ensure();
-  const idle = idlePartnerFilter(world, ctx.tick, e, owner);
-  const chatting = (cand: Entity): boolean =>
-    cand !== e && ownerOf(world, cand) === owner && mayLeavePastimeChat(world, ctx.tick, cand);
-  const grabbable = (cand: Entity): boolean =>
-    cand !== e && ownerOf(world, cand) === owner && mayJoinChat(world, ctx.tick, cand);
-  const found =
-    buckets.nearest(hx, hy, CHAT_PARTNER_MIN_DIST_NODES, CHAT_SEEK_RADIUS_NODES, idle) ??
-    buckets.nearest(hx, hy, CHAT_PARTNER_MIN_DIST_NODES, CHAT_SEEK_RADIUS_NODES, chatting) ??
-    buckets.nearest(hx, hy, CHAT_PARTNER_MIN_DIST_NODES, CHAT_SEEK_RADIUS_NODES, grabbable);
+  const { tick } = ctx;
+  const urgency = seekUrgency(needLevel(world.get(e, SettlerNeeds), 'enjoyment', tick), ordered);
+  const budget = seekBudgetTicks(urgency);
+  const reach = Math.floor(budget / SEEK_TICKS_PER_NODE);
+  const priceOf = (cand: Entity, dist: number, toBeat: number): number => {
+    const walk = dist * SEEK_TICKS_PER_NODE;
+    if (walk > toBeat || cand === e || ownerOf(world, cand) !== owner) return NO_PARTNER;
+    if (world.has(cand, Chat)) return mayLeavePastimeChat(world, tick, cand) ? walk : NO_PARTNER;
+    if (!mayJoinChat(world, tick, cand)) return NO_PARTNER;
+    // An idler a lower id has just sent off keeps its idle count until the walk is issued.
+    if (world.has(cand, IdleSince) && !isTravelling(world, cand)) return walk;
+    const chatTicks = companyChatTicks(ctx.content, settler, world.get(cand, Settler));
+    return walk + wastedChatTicks(world, tick, cand, chatTicks, urgency);
+  };
+  const found = candidates.ensure().cheapest(hx, hy, CHAT_PARTNER_MIN_DIST_NODES, reach, budget, priceOf);
   if (found === null) return false;
   if (world.has(found, Chat)) {
     // Its old partner goes into the breather; it goes straight into company.
-    endChat(world, ctx.tick, found);
+    endChat(world, tick, found);
     world.remove(found, ChatCooldown);
   }
   startChat(world, e, found, 'company');

@@ -54,6 +54,12 @@ const LISTEN = 15;
 const PLAYER = 1;
 const SOLDIER_JOB = 31; // soldier_unarmed - isFighterJob band start
 const LONELY: Fixed = justAbove(NEED_DRIVE_THRESHOLD); // over the drive threshold every need fires at
+const EMPTY: Fixed = ONE; // a company bar run dry
+/** Halfway from the drive threshold to an empty bar. */
+const VERY_LONELY: Fixed = fx.div(fx.fromInt(9), fx.fromInt(10));
+const FULL: Fixed = fx.fromInt(0);
+/** A quarter of a bar left: not yet seeking, and a chat is nearly all gain. */
+const NEARLY_LONELY: Fixed = fx.sub(NEED_DRIVE_THRESHOLD, fx.div(ONE, fx.fromInt(20)));
 const MILD: Fixed = fx.div(ONE, fx.fromInt(2)); // half a bar - idle-chat eligible, seek-quiet
 
 function owned(sim: Simulation, e: Entity): Entity {
@@ -128,6 +134,57 @@ describe('gossip initiation (planner rungs)', () => {
     expect(sim.world.has(b, ChatCooldown)).toBe(false);
     expect(sim.world.has(a, Chat)).toBe(false);
     expect(sim.world.has(a, ChatCooldown)).toBe(true);
+  });
+
+  it.each([
+    ['just grown lonely, it leaves a far idler be', LONELY, false],
+    ['on an empty bar it crosses the distance', EMPTY, true],
+  ])('a seeker walks further the lonelier it is: %s', (_case, enjoyment, chats) => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(12, 1) });
+    const lonely = gossiper(sim, 1, 0, enjoyment);
+    gossiper(sim, 8, 0, FULL);
+
+    plannerSystem(sim.world, ctxOf(sim));
+
+    expect(sim.world.has(lonely, Chat)).toBe(chats);
+  });
+
+  it.each([
+    ['at work with a full bar it is left alone', false, false],
+    ['standing idle it loses nothing and is taken', true, true],
+  ])('a partner at the edge of the first reach: %s', (_case, idle, chats) => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(8, 1) });
+    const lonely = gossiper(sim, 1, 0, LONELY);
+    // Without an idle streak a settler counts as at work.
+    if (idle) gossiper(sim, 5, 0, FULL);
+    else freshIdler(sim, 5, 0, FULL);
+
+    plannerSystem(sim.world, ctxOf(sim));
+
+    expect(sim.world.has(lonely, Chat)).toBe(chats);
+  });
+
+  it('a player talk order spends the whole budget: a far, busy settler with a full bar is taken', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(12, 1) });
+    const ordered = gossiper(sim, 1, 0, FULL);
+    const busy = freshIdler(sim, 8, 0, FULL);
+    sim.world.add(ordered, NeedOrder, { need: 'enjoyment' });
+
+    plannerSystem(sim.world, ctxOf(sim));
+
+    expect(sim.world.get(ordered, Chat)).toMatchObject({ partner: busy, seeker: true });
+  });
+
+  it('a busy settler short of company itself is chosen over one as near with a full bar', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(8, 1) });
+    const lonely = gossiper(sim, 3, 0, VERY_LONELY);
+    freshIdler(sim, 1, 0, FULL);
+    const alsoLonely = freshIdler(sim, 5, 0, NEARLY_LONELY);
+
+    plannerSystem(sim.world, ctxOf(sim));
+
+    // The chat serves both bars, so the higher entity id wins against the tie-break.
+    expect(sim.world.get(lonely, Chat)).toMatchObject({ partner: alsoLonely, seeker: true });
   });
 
   it('below the seek threshold the worker works; two idle neighbours still chat', () => {
@@ -478,7 +535,7 @@ describe('gossip chat rounds (GossipSystem)', () => {
   it('the seeker walks to a distant partner, then the pair talks', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(12, 1) });
     const seeker = gossiper(sim, 1, 0, LONELY);
-    const partner = gossiper(sim, 8, 0, fx.fromInt(0));
+    const partner = gossiper(sim, 4, 0, fx.fromInt(0));
 
     plannerSystem(sim.world, ctxOf(sim)); // pair up (out of talk range)
     expect(sim.world.get(seeker, Chat).partner).toBe(partner);
@@ -517,7 +574,7 @@ describe('gossip chat rounds (GossipSystem)', () => {
   it('a pair standing on one node steps apart before it talks', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(12, 3) });
     const seeker = gossiper(sim, 1, 1, LONELY);
-    const partner = gossiper(sim, 8, 1, fx.fromInt(0));
+    const partner = gossiper(sim, 4, 1, fx.fromInt(0));
     plannerSystem(sim.world, ctxOf(sim));
     expect(sim.world.get(seeker, Chat).partner).toBe(partner);
     // As a grabbed partner finishing its step onto the seeker's node leaves them.

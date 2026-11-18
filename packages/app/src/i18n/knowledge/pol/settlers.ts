@@ -133,6 +133,9 @@ export const SETTLERS: ArticleGroup = {
             num: [1],
           },
         },
+        {
+          p: 'Samotny osadnik wybiera rozmówcę tak, żeby osada straciła jak najmniej pracy: najchętniej kogoś blisko, kto stoi bezczynnie albo sam potrzebuje rozmowy. Im niższe Towarzystwo, tym dalej pójdzie i tym chętniej oderwie od pracy kogoś, komu rozmowa nie jest potrzebna.',
+        },
       ],
       see: [
         'article:food',
