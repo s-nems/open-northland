@@ -29,6 +29,15 @@ export type BuildingOrder =
 /** The tiles the two-column order grid holds beside the portrait without growing a third row. */
 export const MAX_ORDER_TILES = 4;
 
+/** Plays the star's pop on the Prioritize tile, from the mark being set until the animation ends. */
+export const MARK_SET_CLASS = 'on-order--mark-set';
+
+/** A site's build-priority mark as the Prioritize tile shows it. */
+interface SiteMark {
+  readonly building: number;
+  readonly prioritized: boolean;
+}
+
 /** One order tile as drawn: its face, words, and whether the press is refused. */
 export interface BuildingOrderView {
   readonly order: BuildingOrder;
@@ -182,6 +191,16 @@ export function createPortraitSection(
   const levels = createUpgradeLevels(deps, current);
   let shape = '';
   let tiles: { order: BuildingOrder; element: HTMLButtonElement }[] = [];
+  /** A Prioritize press the sim has not answered yet. The tile shows the mark it asked for meanwhile, so it
+   *  stays pushed in from the press until the answer lands. */
+  let awaitedMark: SiteMark | null = null;
+  /** The mark the Prioritize tile showed last: only a mark set on that same site pops its star. */
+  let paintedMark: SiteMark | null = null;
+  const shownMark = (model: BuildingPanelModel): boolean | null => {
+    const site = model.construction;
+    if (site === null) return null;
+    return awaitedMark?.building === model.entityId ? awaitedMark.prioritized : site.prioritized;
+  };
 
   const press = (order: BuildingOrder): boolean => {
     const shown = current();
@@ -206,9 +225,11 @@ export function createPortraitSection(
         deps.building.demolish(id, shown.name);
         return true;
       case 'prioritize': {
-        const site = shown.construction;
-        if (site === null) return false;
-        deps.building.setConstructionPriority(id, !site.prioritized);
+        const mark = shownMark(shown);
+        if (mark === null) return false;
+        deps.building.setConstructionPriority(id, !mark);
+        awaitedMark = { building: id, prioritized: !mark };
+        paintOrders(shown);
         return true;
       }
       case 'templeFire': {
@@ -224,16 +245,27 @@ export function createPortraitSection(
     }
   };
   const paintOrders = (model: BuildingPanelModel): void => {
+    const site = model.construction;
+    if (
+      awaitedMark !== null &&
+      (awaitedMark.building !== model.entityId ||
+        site === null ||
+        site.prioritized === awaitedMark.prioritized)
+    ) {
+      awaitedMark = null;
+    }
     const views = orderViews(model);
     const next = views.map((view) => view.order).join();
     if (next !== shape) {
       shape = next;
       tiles = views.map((view) => {
+        const toggle = view.pressed !== undefined;
         const node = button(
-          `on-order on-order--tile${view.danger ? ' on-order--attack' : ''}`,
+          `on-order on-order--tile${view.danger ? ' on-order--attack' : ''}${toggle ? ' on-order--toggle' : ''}`,
           `${view.glyph}<span></span>`,
         );
         node.addEventListener('click', () => press(view.order));
+        if (toggle) node.addEventListener('animationend', () => setClass(node, MARK_SET_CLASS, false));
         return { order: view.order, element: node };
       });
       const nodes = tiles.flatMap((entry) => {
@@ -252,8 +284,15 @@ export function createPortraitSection(
         view.order === 'prioritize' ? `${view.tooltip} · ${deps.keyLabel('prioritizeSite')}` : view.tooltip,
       );
       setDisabled(node, !view.enabled);
-      if (view.pressed === undefined) removeAttribute(node, 'aria-pressed');
-      else setAttribute(node, 'aria-pressed', String(view.pressed));
+      const pressed = view.order === 'prioritize' ? (shownMark(model) ?? undefined) : view.pressed;
+      if (pressed === undefined) removeAttribute(node, 'aria-pressed');
+      else setAttribute(node, 'aria-pressed', String(pressed));
+      if (view.order === 'prioritize' && pressed !== undefined) {
+        if (!pressed) setClass(node, MARK_SET_CLASS, false);
+        else if (paintedMark?.building === model.entityId && !paintedMark.prioritized)
+          setClass(node, MARK_SET_CLASS, true);
+        paintedMark = { building: model.entityId, prioritized: pressed };
+      }
     });
     levels.update(model);
   };

@@ -5,6 +5,7 @@ import type { BuildingPanelModel } from '../../../../src/hud/details-panel/model
 import type { BuildingPanelDeps } from '../../../../src/hud/dom/building-panel/actions.js';
 import {
   createPortraitSection,
+  MARK_SET_CLASS,
   MAX_ORDER_TILES,
   orderViews,
 } from '../../../../src/hud/dom/building-panel/portrait.js';
@@ -104,5 +105,24 @@ describe('building panel Prioritize order', () => {
     update({ ...site, construction: null });
     expect(section.press('prioritize')).toBe(false);
     expect(setConstructionPriority).toHaveBeenCalledTimes(1);
+  });
+
+  it('shows the asked-for mark until the sim answers, and pops the star only for a mark set on the shown site', () => {
+    const construction = site.construction;
+    if (construction === null) throw new Error('warm model has no construction site');
+    const unmarked = { ...site, construction: { ...construction, prioritized: false } };
+    const { section, update } = setup(site);
+    const tile = (): Element | null => section.element.querySelector('.on-order--toggle');
+    expect(tile()?.classList.contains(MARK_SET_CLASS)).toBe(false);
+
+    section.press('prioritize');
+    expect(tile()?.getAttribute('aria-pressed')).toBe('false');
+    update(site);
+    expect(tile()?.getAttribute('aria-pressed')).toBe('false');
+
+    update(unmarked);
+    section.press('prioritize');
+    expect(tile()?.getAttribute('aria-pressed')).toBe('true');
+    expect(tile()?.classList.contains(MARK_SET_CLASS)).toBe(true);
   });
 });

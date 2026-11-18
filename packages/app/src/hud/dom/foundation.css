@@ -6953,14 +6953,6 @@ body.on-drag-scroll.on-drag-scroll-free * {
   overflow: hidden;
   text-overflow: ellipsis;
 }
-/* A selected Prioritize order keeps its state visible after the press. */
-.on-hud .on-order--tile[aria-pressed="true"] {
-  border-color: var(--active);
-  box-shadow:
-    0 0 0 1px var(--active),
-    0 0 8px #e3b86888;
-  color: #fff6de;
-}
 /* The Upgrade tile's grid place, which also holds the level rail. A corner notch on the tile tells that
    the rail is there. */
 .on-hud .on-order-slot {
@@ -7079,8 +7071,9 @@ body.on-drag-scroll.on-drag-scroll-free * {
   width: 14px;
   height: 14px;
 }
-/* A flag stands: an amber apart from the alarm's red. */
-.on-hud .on-rally--on {
+/* A flag stands, or a toggle tile is on: an amber apart from the alarm's red. */
+.on-hud .on-rally--on,
+.on-hud .on-order--toggle[aria-pressed="true"] {
   border-color: #7a5c22;
   background: radial-gradient(circle at 45% 35%, #6e5322, #4d3a17 60%, #2a1f0c 95%);
   box-shadow:
@@ -7088,8 +7081,47 @@ body.on-drag-scroll.on-drag-scroll-free * {
     0 0 6px #c2a53b55;
   color: #f3e6c4;
 }
-.on-hud .on-rally--on .on-glyph {
+.on-hud .on-rally--on .on-glyph,
+.on-hud .on-order--toggle[aria-pressed="true"] .on-glyph {
   color: #ffc020;
+}
+/* A toggle tile (Prioritize) that is on stays pushed in; the press sinks it at once, and the panel shows
+   the asked-for mark until the sim answers. Its glyph pops when the mark is set on the shown site. */
+.on-hud .on-order--toggle {
+  transition:
+    transform 80ms ease-out,
+    background 120ms ease-out,
+    box-shadow 120ms ease-out;
+}
+.on-hud .on-order--toggle:active:not([aria-disabled="true"]),
+.on-hud .on-order--toggle[aria-pressed="true"],
+.on-hud .on-order--toggle[aria-pressed="true"]:hover:not([aria-disabled="true"]) {
+  transform: translateY(1px);
+  box-shadow:
+    inset 0 2px 4px #000a,
+    inset 0 -1px #fff1;
+}
+.on-hud .on-order--toggle[aria-pressed="true"]:hover:not([aria-disabled="true"]) {
+  border-color: #a07a2e;
+}
+.on-hud .on-order--toggle.on-order--mark-set .on-glyph {
+  animation: on-toggle-set 0.35s ease-out;
+}
+@keyframes on-toggle-set {
+  0% {
+    transform: scale(0.6);
+  }
+  60% {
+    transform: scale(1.3);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .on-hud .on-order--toggle {
+    transition: none;
+  }
+  .on-hud .on-order--toggle.on-order--mark-set .on-glyph {
+    animation: none;
+  }
 }
 .on-hud .on-alarm--on {
   border-color: #9a3f2c;
