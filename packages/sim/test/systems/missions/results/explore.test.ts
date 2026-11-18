@@ -1,15 +1,18 @@
 import { describe, expect, it } from 'vitest';
-import { FOG_MODE, type FogMode } from '../../../../src/components/index.js';
+import { FOG_MODE, type FogMode, Position, Rider } from '../../../../src/components/index.js';
 import type { Simulation } from '../../../../src/index.js';
 import type { HalfCellNode } from '../../../../src/nav/halfcell.js';
-import type {
-  MissionDefinition,
-  MissionGoalOp,
-  MissionResultOp,
+import {
+  type MissionDefinition,
+  type MissionGoalOp,
+  type MissionResultOp,
+  SUCCESSFUL_IF,
 } from '../../../../src/systems/missions/index.js';
+import { boardRider, createVehicle } from '../../../../src/systems/vehicles/index.js';
 import { FOG_STATE, VISION_CADENCE_TICKS } from '../../../../src/systems/vision/index.js';
 import { allyVision } from '../../../fixtures/allies.js';
 import { testContent } from '../../../fixtures/content.js';
+import { ctxOf } from '../../../fixtures/context.js';
 import { grassNodeMap } from '../../../fixtures/terrain.js';
 import {
   failedResultsNow,
@@ -22,11 +25,14 @@ import {
   LOAD_PASS,
   loadPassAfter,
   MAP_NODES,
+  missionSim,
   PASS_TICKS,
   POINT,
   roundTrip,
+  runLoadPass,
   scriptedSim,
   spawn,
+  stamped,
   VIKING,
   WILD,
   WOLF,
@@ -44,6 +50,9 @@ const MARK = 7;
 const RANGE = 4;
 /** A slot above the sim's players: the original explores nothing for it and holds its goals outright. */
 const BEYOND_SLOTS = 16;
+/** The fixture handcart and the idle scout job the embark tests ride. */
+const HANDCART = 1;
+const SCOUT = 27;
 const LAST_NODE = MAP_NODES - 1;
 /** Beyond a civilian's eye and beyond the scripted reveal alike. */
 const FAR_EAST = { hx: POINT.hx + 24, hy: POINT.hy };
@@ -274,6 +283,53 @@ describe('FindHumans, FindHouses and FindAnimals', () => {
     const sim = goalSim({ opcode: 'FindHumans', player: BEYOND_SLOTS, humanId: MARK });
     sim.run(LOAD_PASS);
     expect(holds(sim)).toBe(false);
+  });
+
+  it('finds an embarked human where its carrier stands', () => {
+    // Boarded before the script's first pass, so the aboard state itself is what the pass judges.
+    const sim = scriptedSim([goalMission({ opcode: 'FindHumans', player: OWNER, humanId: MARK })]);
+    const vehicle = createVehicle(sim.world, ctxOf(sim), {
+      vehicleType: HANDCART,
+      x: POINT.hx,
+      y: POINT.hy,
+      tribe: VIKING,
+      owner: OWNER,
+    });
+    if (vehicle === null) throw new Error('fixture cart missing');
+    spawn(sim, { player: OWNER, job: SCOUT, missionId: MARK });
+    sim.step();
+    const human = stamped(sim, MARK);
+    sim.enqueueSetup({ kind: 'attachToVehicle', entity: human, vehicle });
+    sim.step();
+    expect(sim.world.has(human, Rider)).toBe(true);
+    boardRider(sim.world, human, vehicle);
+    expect(sim.world.has(human, Position)).toBe(false); // aboard: no own position any more
+    runLoadPass(sim);
+    expect(holds(sim)).toBe(true); // the carrier's stand keeps the goal alive
+  });
+
+  it('keeps a none-rule hero watchdog quiet while its human rides', () => {
+    // The shape of ZIMNA WOJNA's "Bjarni dead": rule none over `FindHumans`, so the mission fires the
+    // moment the id's human stops standing on an explored point - aboard his own position is gone.
+    const goal: MissionGoalOp = { opcode: 'FindHumans', player: OWNER, humanId: MARK };
+    const watchdog = { ...goalMission(goal), successfullIf: SUCCESSFUL_IF.none };
+    const sim = missionSim([watchdog]);
+    const vehicle = createVehicle(sim.world, ctxOf(sim), {
+      vehicleType: HANDCART,
+      x: POINT.hx,
+      y: POINT.hy,
+      tribe: VIKING,
+      owner: OWNER,
+    });
+    if (vehicle === null) throw new Error('fixture cart missing');
+    spawn(sim, { player: OWNER, job: SCOUT, missionId: MARK });
+    sim.run(LOAD_PASS);
+    expect(holds(sim)).toBe(false); // standing: the goal holds, so the none-rule does not
+    sim.enqueueSetup({ kind: 'attachToVehicle', entity: stamped(sim, MARK), vehicle });
+    sim.step();
+    boardRider(sim.world, stamped(sim, MARK), vehicle);
+    sim.run(PASS_TICKS);
+    expect(holds(sim)).toBe(false); // riding: still found at the carrier, the mission stays quiet
   });
 });
 

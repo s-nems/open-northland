@@ -4,9 +4,11 @@ import {
   addPerson,
   Building,
   BuildMode,
+  Carrying,
   CurrentAtomic,
   Damaged,
   Health,
+  LostWay,
   MoveGoal,
   Owner,
   Palisade,
@@ -575,5 +577,46 @@ describe('idle builders beside waiting walls', () => {
     for (let tick = 0; tick < 1000 && sim.world.has(stocked, UnderConstruction); tick++) sim.step();
     expect(sim.world.has(stocked, UnderConstruction)).toBe(false);
     for (const wall of waiting) expect(sim.world.has(wall, UnderConstruction)).toBe(true);
+  });
+});
+
+describe('walled-off segments', () => {
+  it('take the wood for a segment finished walls seal off to an open segment', () => {
+    const sim = wallSim();
+    const terrain = sim.terrain;
+    if (terrain === undefined) throw new Error('expected a mapped simulation');
+    const store = [...sim.world.query(Building)][0];
+    if (store === undefined) throw new Error('expected the store');
+    setStockAmount(sim.world, store, WOOD, 0);
+    // Two unfinished segments ringed by finished wall: each one's only stand is the other's node, which
+    // no route reaches.
+    const pocket = [terrain.nodeAt(24, ROW), terrain.nodeAt(25, ROW)];
+    const ring = new Set(pocket.flatMap((node) => terrain.walkableNeighbours(node)));
+    for (const node of pocket) ring.delete(node);
+    for (const node of ring) {
+      sim.enqueueSetup({
+        kind: 'placePalisade',
+        gfxIndex: WALL.typeId,
+        x: terrain.xOf(node),
+        y: terrain.yOf(node),
+        tribe: VIKING,
+        owner: HUMAN,
+      });
+    }
+    const sealed = wallSite(sim, 24);
+    wallSite(sim, 25);
+    const open = wallSite(sim, 36);
+    const builder = builderAt(sim, 8);
+    sim.world.add(builder, Carrying, { goodType: WOOD, amount: 1 });
+    sim.world.add(builder, SiteAssignment, { site: sealed, pinned: false });
+    sim.world.add(builder, SupplyRun, { site: sealed, goodType: WOOD, amount: 1 });
+    expect(claimSite(sim.world, sealed, builder)).toBe(true);
+
+    for (let tick = 0; tick < 2000 && sim.world.has(open, UnderConstruction); tick++) {
+      sim.step();
+      expect(sim.world.has(builder, LostWay), `tick ${tick}`).toBe(false);
+    }
+    expect(sim.world.has(open, UnderConstruction)).toBe(false);
+    expect(sim.world.get(sealed, Palisade).reservation).toBeNull();
   });
 });

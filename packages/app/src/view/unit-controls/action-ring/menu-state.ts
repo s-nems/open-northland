@@ -71,9 +71,11 @@ function tradeChangeable(content: ContentSet, e: SnapshotEntity, job: number | n
   return tradeAssignable(content, e, job) && !isJobLocked(e);
 }
 
-/** A married woman may order a child while her husband lives and no child of hers is still growing. */
+/** A married woman with a home may order a child while her husband lives and no child of hers is still
+ *  growing. Original behavior: a woman without a home is not offered the child orders. */
 function canOrderChild(snapshot: WorldSnapshot, e: SnapshotEntity): boolean {
   if (!isAdult(e) || !isFemale(e) || childOrderOf(e) !== undefined) return false;
+  if (residenceHomeOf(e) === undefined) return false;
   const marriage = marriageOf(e);
   if (marriage === undefined || entityById(snapshot, marriage.spouse) === undefined) return false;
   const child = marriage.child !== null ? entityById(snapshot, marriage.child) : undefined;

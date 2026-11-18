@@ -19,7 +19,7 @@ import type { SpatialGate } from '../../../../nav/node-circle.js';
 import type { NodeId } from '../../../../nav/terrain/index.js';
 import type { SystemContext } from '../../../context.js';
 import { holdsSiteClaim, isSoloSite } from '../../../economy/site-claim.js';
-import { constructionWorkCell } from '../../../footprint/index.js';
+import { constructionWorkCells, routeRegions } from '../../../footprint/index.js';
 import { templeFuelGoods } from '../../../readviews/index.js';
 import { landReachAt } from '../../../signposts/index.js';
 import {
@@ -189,7 +189,15 @@ function toOwnCrewSite(plan: PlannerContext, goodType: number): DeliveryVerdict 
   const crew = world.tryGet(entity, SiteAssignment)?.site ?? boundWorkplace(plan);
   if (crew === undefined) return null;
   if (!constructionSiteNeeds(world, ctx, crew, owner, goodType, supply, entity)) return null;
-  return constructionSiteCanReceive(plan, crew) ? crew : 'no-sink';
+  switch (constructionSiteReceipt(plan, crew)) {
+    case 'receives':
+      return crew;
+    case 'no-stand':
+      return 'no-sink';
+    // A crew site walled off from the carrier sends the load on down the ladder, to another site or a store.
+    case 'sealed':
+      return null;
+  }
 }
 
 /** Construction material flows to the nearest site of the settler's own player that still has room in its
@@ -231,10 +239,20 @@ function toTempleShortOfFuel(
   return templeShortOf(plan, (fuel) => fuel === goodType, gate, area.avoid)?.temple ?? null;
 }
 
-/** Whether a site's material can physically land on a legal perimeter cell. */
-function constructionSiteCanReceive(plan: PlannerContext, site: Entity): boolean {
+/** Whether a site's material can land on a legal perimeter cell (`receives`), the site has none
+ *  (`no-stand`), or every one lies in a pocket finished structures seal off from the carrier (`sealed`). */
+type SiteReceipt = 'receives' | 'no-stand' | 'sealed';
+
+function constructionSiteReceipt(plan: PlannerContext, site: Entity): SiteReceipt {
   const { world, ctx, terrain, here, targets } = plan;
-  return constructionWorkCell(world, ctx, terrain, site, targets.yard.blocked, here) !== null;
+  const cells = constructionWorkCells(world, ctx, terrain, site, targets.yard.blocked);
+  if (cells.length === 0) return 'no-stand';
+  const regions = routeRegions(world, ctx, terrain);
+  return cells.some((cell) => !regions.unroutable(here, cell)) ? 'receives' : 'sealed';
+}
+
+function constructionSiteCanReceive(plan: PlannerContext, site: Entity): boolean {
+  return constructionSiteReceipt(plan, site) === 'receives';
 }
 
 /**

@@ -327,10 +327,10 @@ describe('allowedActions - family orders', () => {
     expect(allowedActions(content, snapshot, [1]).has('marry')).toBe(false);
   });
 
-  it('offers a wife both children while her husband lives and none of hers is growing', () => {
+  it('offers a wife with a home both children while her husband lives and none of hers is growing', () => {
     const couple = [
-      settler(1, JOB_WOMAN, { female: true, spouse: 2 }),
-      settler(2, JOB_COLLECTOR, { spouse: 1 }),
+      settler(1, JOB_WOMAN, { female: true, spouse: 2, home: true }),
+      settler(2, JOB_COLLECTOR, { spouse: 1, home: true }),
     ];
     const wife = allowedActions(content, snapshotOf(couple), [1]);
     expect(wife.has('haveBoy')).toBe(true);
@@ -339,11 +339,21 @@ describe('allowedActions - family orders', () => {
     // The husband gets no child order, and a growing child blocks the next one.
     expect(allowedActions(content, snapshotOf(couple), [2]).has('haveBoy')).toBe(false);
     const raising = snapshotOf([
-      settler(1, JOB_WOMAN, { female: true, spouse: 2, growingChild: 3 }),
-      settler(2, JOB_COLLECTOR, { spouse: 1 }),
+      settler(1, JOB_WOMAN, { female: true, spouse: 2, growingChild: 3, home: true }),
+      settler(2, JOB_COLLECTOR, { spouse: 1, home: true }),
       settler(3, JOB_CHILD_MALE, { child: true }),
     ]);
     expect(allowedActions(content, raising, [1]).has('haveGirl')).toBe(false);
+  });
+
+  it('offers a homeless wife no child, as the sim would block the order', () => {
+    const homeless = snapshotOf([
+      settler(1, JOB_WOMAN, { female: true, spouse: 2 }),
+      settler(2, JOB_COLLECTOR, { spouse: 1 }),
+    ]);
+    const wife = allowedActions(content, homeless, [1]);
+    expect(wife.has('haveBoy')).toBe(false);
+    expect(wife.has('haveGirl')).toBe(false);
   });
 });
 
