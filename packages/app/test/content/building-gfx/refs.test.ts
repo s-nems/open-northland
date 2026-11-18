@@ -8,7 +8,6 @@ import {
   buildingOverlayRefsByType,
   constructionRefsByType,
   DEFAULT_BUILDING_FAMILY,
-  OVERLAY_TICKS_PER_FRAME,
   skinSlotCount,
 } from '../../../src/content/building-gfx/index.js';
 import type { BuildingBobRow } from '../../../src/content/ir/rows.js';
@@ -335,8 +334,9 @@ describe('buildingOverlayRefsByType - the type-4 GfxOverlay join (the mill rotor
   const millRows = [row({}), row({ state: 1, frames: SPIN })];
 
   it('joins the idle + working state rows of one type into a layer-qualified overlay ref', () => {
+    // The working row's `step` is its ticks per frame.
     expect(buildingOverlayRefsByType(millRows, scope(1, MILLER_FAMILIES))).toEqual({
-      13: { layer: MILLER_LAYER, idle: 76, working: SPIN, ticksPerFrame: OVERLAY_TICKS_PER_FRAME },
+      13: { layer: MILLER_LAYER, idle: 76, working: SPIN, ticksPerFrame: 1 },
     });
   });
 

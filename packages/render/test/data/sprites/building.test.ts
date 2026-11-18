@@ -358,7 +358,8 @@ describe('resolveBuildingOverlayDraw - the animated state overlay (the mill roto
       ...(opts.builtPct !== undefined ? { builtPct: opts.builtPct } : {}),
     });
   }
-  // The viking mill shape: bladeless body 70, still blade 76, a 3-frame spin at 2 ticks per frame.
+  // The viking mill shape: bladeless body 70, still blade 76, a 3-frame spin; 2 ticks per frame shows the
+  // cadence (the real rows step one frame per tick).
   const binding: BuildingTypeBinding = {
     byType: { 13: { layer: 'miller', bob: 70 } },
     default: 11,

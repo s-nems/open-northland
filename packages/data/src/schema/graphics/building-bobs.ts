@@ -101,7 +101,7 @@ export const BuildingOverlay = BuildingBobBase.extend({
   /** Pixel offsets of the overlay (the 4th/5th ints; observed `0 0` on every type-4 row). */
   x: z.number().int(),
   y: z.number().int(),
-  /** The 6th int (observed `1` on every type-4 row; playback-step semantics undecoded, kept raw). */
+  /** The 6th int: game ticks per frame. Original behavior: the frame is `tick / step % frames`. */
   step: z.number().int(),
   /** The state's frame list, in file order. */
   frames: z.array(z.number().int().nonnegative()).min(1),

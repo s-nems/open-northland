@@ -8,13 +8,6 @@ const OVERLAY_STATE_IDLE = 0;
 const OVERLAY_STATE_WORKING = 1;
 
 /**
- * Sim ticks per spin frame for a working building overlay (the mill's rotor). The source's `step` field is
- * `1` on every type-4 row and its unit is undecoded, so the pace is a named approximation tuned by eye
- * against the original (13 spin frames × 2 ticks ≈ a 1.3 s revolution at ×1 speed).
- */
-export const OVERLAY_TICKS_PER_FRAME = 2;
-
-/**
  * Reduce the decoded `buildingOverlays` IR (the `[GfxHouse]` type-4 `GfxOverlay` rows) to the render's
  * per-type animated-state-overlay binding for one tribe. Shares the bob binding's family rules and the
  * construction reduction's one-source-record stance, here the lowest `level` group.
@@ -44,13 +37,12 @@ export function buildingOverlayRefsByType(
     const layer = familyLayerFor(anchor.bmd, anchor.paletteName, scope.defaultFamily, scope.families);
     if (layer === null) continue; // family not loaded → no overlay (never a wrong-bob borrow)
     const idle = idleRow?.frames[0];
-    const working = workingRow !== undefined && workingRow.frames.length > 0 ? workingRow.frames : undefined;
+    const working = workingRow !== undefined && workingRow.frames.length > 0 ? workingRow : undefined;
     if (idle === undefined && working === undefined) continue;
     out[typeId] = {
       ...(layer.layer !== undefined ? { layer: layer.layer } : {}),
       ...(idle !== undefined ? { idle } : {}),
-      ...(working !== undefined ? { working } : {}),
-      ticksPerFrame: OVERLAY_TICKS_PER_FRAME,
+      ...(working !== undefined ? { working: working.frames, ticksPerFrame: working.step } : {}),
     };
   }
   return out;
