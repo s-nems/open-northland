@@ -2,14 +2,13 @@ import { element } from '../../../hud/dom/parts/dom.js';
 import { attachTipLayer } from '../../../hud/dom/parts/tip-layer.js';
 import { createHudPlane } from '../../../hud/dom/root.js';
 import { createSaveBrowser, type SaveBrowser } from '../../../hud/dom/save-window/browser.js';
-import { displayViewOf, uiScaleFor } from '../../../hud/ui-scale.js';
 import { formatMessage, messages } from '../../../i18n/index.js';
 import { type FlowRunner, flowRunner } from '../../../view/runtime/save-load/flow-runner.js';
 import type { SaveSlotInfo, SaveStore } from '../../../view/runtime/save-load/store.js';
 import { browserSaveStore } from '../../../view/runtime/save-load/store-browser.js';
 import { createTooltip } from '../../../view/tooltip.js';
 import { menuConfirm } from '../confirm.js';
-import { menuSettings } from '../settings/state.js';
+import { menuHudScale } from '../hud-scale.js';
 import './saves.css';
 
 export interface MenuSavesPanelOptions {
@@ -38,12 +37,6 @@ export interface MenuSavesPanel {
   dispose(): void;
 }
 
-/** The game's HUD scale for this display and window, with the player's own factor, so the list reads at
- *  the size the in-game window does. */
-function hudScale(): number {
-  return uiScaleFor(displayViewOf(window.innerWidth, window.innerHeight), menuSettings().uiScaleFactor);
-}
-
 /** The in-game load window's search, parchment list and footer on a menu screen: the same rows, groups,
  *  thumbnails and keys, over the browser's save store, on a HUD plane scaled as the game's. Deleting asks
  *  in the menu's own dialog. */
@@ -52,8 +45,8 @@ export function menuSavesPanel(opts: MenuSavesPanelOptions): MenuSavesPanel {
   const scope = new AbortController();
   const store = browserSaveStore();
   const host = element('div', 'main-menu__saves');
-  const plane = createHudPlane(hudScale());
-  window.addEventListener('resize', () => void plane.setUiScale(hudScale()), { signal: scope.signal });
+  const plane = createHudPlane(menuHudScale());
+  window.addEventListener('resize', () => void plane.setUiScale(menuHudScale()), { signal: scope.signal });
   const panel = element('div', 'on-panel on-saves main-menu__saves-panel');
   const body = element('div', 'main-menu__saves-body');
   const status = element('p', 'on-saves__status');

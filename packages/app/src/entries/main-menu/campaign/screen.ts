@@ -16,14 +16,13 @@ import {
 import { movieSubtitles } from '../../../campaign/subtitles.js';
 import { createHudPlane } from '../../../hud/dom/root.js';
 import { createSystemConfirm, type SystemConfirmCopy } from '../../../hud/dom/system/confirm.js';
-import { displayViewOf, uiScaleFor } from '../../../hud/ui-scale.js';
 import { currentLocale, mapTextLanguage, messages } from '../../../i18n/index.js';
 import type { LaunchEntry } from '../../../launch.js';
 import { replaceEntryUrl } from '../../../view/platform/navigation-guard.js';
 import { missionTargetSearch } from '../../../view/target-search.js';
 import { node } from '../dom.js';
+import { menuHudScale } from '../hud-scale.js';
 import type { MountedScreen } from '../model.js';
-import { menuSettings } from '../settings/state.js';
 import { campaignMap } from './map.js';
 import {
   campaignFilms,
@@ -120,9 +119,7 @@ function campaignTab(campaign: Campaign, language: MapTextLanguage): HTMLButtonE
 /** A question over the whole menu in the HUD's own confirm window; Esc and the shade decline. */
 async function askInHud(copy: SystemConfirmCopy, signal: AbortSignal): Promise<boolean> {
   const backdrop = node('div', 'on-system-backdrop');
-  const plane = createHudPlane(
-    uiScaleFor(displayViewOf(window.innerWidth, window.innerHeight), menuSettings().uiScaleFactor),
-  );
+  const plane = createHudPlane(menuHudScale());
   plane.element.classList.add('on-system-plane');
   backdrop.append(plane.element);
   const confirm = createSystemConfirm(plane.element);

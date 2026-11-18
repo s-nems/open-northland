@@ -7,20 +7,21 @@
   margin-bottom: calc(var(--u) * 16);
 }
 
-.main-menu__knowledge-body.on-hud {
+.main-menu__knowledge-body {
   position: relative;
   flex: 1;
-  width: 100%;
-  height: auto;
   min-height: 0;
   display: flex;
+}
+
+.main-menu__knowledge-body > .on-hud {
+  display: flex;
   flex-direction: column;
-  transform: none;
   pointer-events: auto;
 }
 
 /* No window head to sit in here: the bar is a row of its own and wraps when short. */
-.main-menu__knowledge-body.on-hud .kn-head {
+.main-menu__knowledge-body > .on-hud .kn-head {
   flex: none;
   flex-wrap: wrap;
   margin: 0;

@@ -10,7 +10,21 @@
      denser scale below, each keeping the --ui-factor term. The accent is the logo's sail oxblood,
      warmed for a cold ground; --accent-rgb feeds its translucent uses as `rgb(var(--accent-rgb) / a)`. */
   --ui-factor: 1;
-  --u-base: calc(100vh / 1080 * var(--ui-factor));
+  /* The factor cannot shrink a unit below these: under them the smallest labels drop below about
+     8 px. A unit a small window already holds lower keeps its size. */
+  --u-base-floor: 0.5px;
+  --u-dense-floor: 0.75px;
+  /* Nor can it raise one above what the window's width holds: the screens lay out down to a frame
+     1280 design px wide, 960 at the denser scale. */
+  --u-base-width-cap: calc(100vw / 1280);
+  --u-dense-width-cap: calc(100vw / 960);
+  --u-frame: calc(100vh / 1080);
+  --u-base: clamp(
+    min(var(--u-base-floor), var(--u-frame)),
+    var(--u-frame) *
+    var(--ui-factor),
+    max(var(--u-base-width-cap), var(--u-frame))
+  );
   --u: var(--u-base);
   --bg-base: #0c1420;
   --accent-rgb: 201 114 90;

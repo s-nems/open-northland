@@ -1,6 +1,8 @@
 import type { KnowledgeView } from '../../hud/dom/knowledge/context.js';
+import { createHudPlane } from '../../hud/dom/root.js';
 import { currentLocale, installNameOverlay, messages, type NameOverlay } from '../../i18n/index.js';
 import { node } from './dom.js';
+import { menuHudScale } from './hud-scale.js';
 import type { MenuScreen, MountedScreen } from './model.js';
 import { screenHead } from './screen-head.js';
 import './knowledge.css';
@@ -50,12 +52,15 @@ async function loadView(wanted: () => boolean): Promise<LoadedView | null> {
   }
 }
 
-/** Knowledge with no game running: fills the view, reads the served content when it opens, and hands the
- *  shell's Esc to the view first. */
+/** Knowledge with no game running: fills the view on a HUD plane scaled as the game's, reads the served
+ *  content when it opens, and hands the shell's Esc to the view first. */
 export function knowledgeScreen(open: (screen: MenuScreen) => void): MountedScreen {
   const copy = messages().knowledge.menuScreen;
   const element = node('section', 'main-menu__screen main-menu__knowledge');
-  const body = node('div', 'main-menu__knowledge-body on-hud');
+  const body = node('div', 'main-menu__knowledge-body');
+  const plane = createHudPlane(menuHudScale());
+  const scope = new AbortController();
+  window.addEventListener('resize', () => void plane.setUiScale(menuHudScale()), { signal: scope.signal });
   const status = node('p', 'main-menu__knowledge-status', copy.loading);
   status.setAttribute('role', 'status');
   body.append(status);
@@ -71,7 +76,8 @@ export function knowledgeScreen(open: (screen: MenuScreen) => void): MountedScre
         return;
       }
       loaded = made;
-      body.replaceChildren(made.view.element);
+      plane.element.append(made.view.element);
+      body.replaceChildren(plane.element);
       made.view.open();
     })
     .catch((error: unknown) => {
@@ -83,6 +89,7 @@ export function knowledgeScreen(open: (screen: MenuScreen) => void): MountedScre
     escape: () => loaded?.view.escape() === true,
     dispose: () => {
       left = true;
+      scope.abort();
       loaded?.view.close();
       loaded?.view.dispose();
       if (loaded !== null) installNameOverlay(currentLocale(), loaded.menuNames);

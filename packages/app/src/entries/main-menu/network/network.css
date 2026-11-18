@@ -2,7 +2,13 @@
 
 /* A bounded workspace; large displays gain breathing room instead of longer fields. */
 .main-menu__screen.network-menu {
-  --u: calc(clamp(1px, 100vh / 1440, 1.3px) * var(--ui-factor));
+  --u-unscaled: clamp(1px, 100vh / 1440, 1.3px);
+  --u: clamp(
+    var(--u-dense-floor),
+    var(--u-unscaled) *
+    var(--ui-factor),
+    max(var(--u-dense-width-cap), var(--u-unscaled))
+  );
   --accent: var(--bronze);
   --accent-bright: var(--bronze-hi);
   --accent-rgb: 201 162 98;
