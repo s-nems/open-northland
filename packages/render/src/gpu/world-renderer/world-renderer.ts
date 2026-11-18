@@ -233,6 +233,7 @@ export class WorldRenderer {
       placementWash: this.placementOverlay.container,
       placementGround: this.placementGhost.groundContainer,
       sprites: this.spriteLayer,
+      occlusionGhosts: pool.occlusionGhosts.container,
       ...this.marks.slots,
     });
     app.stage.addChild(this.scene);
@@ -620,7 +621,15 @@ export class WorldRenderer {
     // The fog first: the sky reads the band it just drew.
     const fogFrame = this.fog.update(snapshot, vp, this.elevation);
     this.weatherSky.update(this.weather, weatherView, gameSeconds);
-    this.mapObjects.update(vp, tick, this.fog.cellStateAt, fogFrame.fogEpoch, tick + alpha, this.wind);
+    this.mapObjects.update(
+      vp,
+      tick,
+      this.fog.cellStateAt,
+      fogFrame.fogEpoch,
+      tick + alpha,
+      this.wind,
+      this.enhancements.occlusionGhosts,
+    );
     const portrait = this.portrait.subjects();
     const erased = this.flagErasures.update(doorBadges);
     this.pool.reconcile({
@@ -644,6 +653,10 @@ export class WorldRenderer {
       environmentMotion,
       detail,
       buildingDamage: this.enhancements.buildingDamage,
+      occlusionGhosts: this.enhancements.occlusionGhosts,
+      // The frame's tall map objects, in the poses the update above just bound: the ghost scan's
+      // occluders beyond the pool's own draw list, so a virgin tree covers a settler behind it too.
+      staticOccluders: this.mapObjects.tallOccluders,
       wind: this.wind,
       sailWind: this.enhancements.environmentMotion,
       shadowStyle: this.enhancements.softShadows ? DEFAULT_SHADOW_STYLE : undefined,

@@ -16,7 +16,13 @@ describe('graphics enhancement choices', () => {
       groundedBuildings: false,
       buildingDamage: true,
       dayNight: true,
+      occlusionGhosts: false,
     });
+  });
+
+  it('defaults the hidden-unit outlines off and persists an enabled choice', () => {
+    expect(defaultSettings().occlusionGhosts).toBe(false);
+    expect(enhancementsOf(parseStoredSettings('{"occlusionGhosts":true}')).occlusionGhosts).toBe(true);
   });
 
   it('defaults structural damage on and persists a disabled choice', () => {

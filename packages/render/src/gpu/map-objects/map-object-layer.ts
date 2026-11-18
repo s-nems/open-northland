@@ -6,6 +6,7 @@ import type { WindSway } from '../../data/weather/climate.js';
 import { WEATHER_SECTOR_NODES } from '../../data/weather/field.js';
 import { destroyMeshChildren } from '../mesh-teardown.js';
 import { worldShadowStyle } from '../pixel-art/registry.js';
+import type { GhostOccluder } from '../sprite-pool/occlusion.js';
 import { TERRAIN_CHUNK_TILES } from '../terrain/index.js';
 import type { TextureCache } from '../textures/texture-cache.js';
 import { makeDecorCoverUniforms, makeGroundCoverTexture } from '../weather/ground-cover-shading.js';
@@ -262,6 +263,7 @@ export class MapObjectLayer {
     fogEpoch?: number,
     timeTicks: number = tick,
     weatherWind?: WindSway,
+    collectOccluders: boolean = false,
   ): void {
     if (tick >= this.nextClipEnd) this.finishClips(tick);
     // The GPU-played decor reads the clock and the fog switch of whichever view draws next.
@@ -312,7 +314,22 @@ export class MapObjectLayer {
       chunk.shadowContainer.visible = visible && this.detail.landscapeShadows;
       if (visible) animateDecorChunk(chunk, vp, tick, fogStateOfCell, fogEpoch);
     }
-    this.tall.update(vp, tick, fogStateOfCell, motionTime, this.environmentMotion, wind, this.detail);
+    this.tall.update(
+      vp,
+      tick,
+      fogStateOfCell,
+      motionTime,
+      this.environmentMotion,
+      wind,
+      this.detail,
+      collectOccluders,
+    );
+  }
+
+  /** The visible tall objects of the last {@link update} as the occlusion ghost scan's static
+   *  occluder candidates, in the poses they bound this frame; empty before the first update. */
+  get tallOccluders(): readonly GhostOccluder[] {
+    return this.tall.occluders;
   }
 
   private rebindCover(sectorsX: number, sectorsY: number): BufferImageSource {

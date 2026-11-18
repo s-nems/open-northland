@@ -121,6 +121,11 @@ export function graphicsSettingsRows(
   });
   postFx.setAttribute('aria-label', text.postFx);
   postFx.dataset.settingsFocus = 'post-fx';
+  const occlusionGhosts = togglePill(settings.occlusionGhosts, (enabled) => {
+    void store.update({ occlusionGhosts: enabled });
+  });
+  occlusionGhosts.setAttribute('aria-label', text.occlusionGhosts);
+  occlusionGhosts.dataset.settingsFocus = 'occlusionGhosts';
   const smoothing = togglePill(settings.spriteSmoothing, (enabled) => {
     void store.update({ spriteSmoothing: enabled });
   });
@@ -273,6 +278,7 @@ export function graphicsSettingsRows(
     ...enhancementToggles,
     settingRow(text.spriteSmoothing, smoothing, { tip: deferredTip(text.spriteSmoothingTip) }),
     settingRow(text.postFx, postFx, { tip: deferredTip(text.postFxTip) }),
+    settingRow(text.occlusionGhosts, occlusionGhosts, { tip: liveTip(text.occlusionGhostsTip) }),
     settingsHeading(text.accessibilityHeading),
     settingRow(text.teamColorStrength, teamColours, { tip: liveTip(text.teamColorStrengthTip) }),
     settingRow(text.colorBlindFilter, colorBlindFilter.root, { tip: liveTip(text.colorBlindFilterTip) }),

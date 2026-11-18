@@ -256,6 +256,9 @@ export const itSurfaces = {
         'Smussa i bordi dei personaggi propri e gli sprite del mondo visti da lontano. Non cambia la resa del testo.',
       postFx: 'Post-elaborazione',
       postFxTip: 'Una vignettatura e una correzione cromatica calda sopra il mondo.',
+      occlusionGhosts: 'Profili delle unità nascoste',
+      occlusionGhostsTip:
+        "Disegna un'unità dietro un edificio, un muro o un albero come profilo semitrasparente su ciò che la nasconde.",
       integerScaling: 'Scala intera',
       integerScalingTip:
         "Ingrandisce solo a passi interi (½×, 1×, 2×, 3×…), così ogni pixel della grafica copre un numero intero di pixel dello schermo e non viene mai ricampionato da una scala frazionaria. La vista salta da un passo all'altro invece di scorrere.",

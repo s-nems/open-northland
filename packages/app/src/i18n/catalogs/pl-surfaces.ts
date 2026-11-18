@@ -224,6 +224,9 @@ export const plSurfaces = {
         'Wygładza krawędzie własnych postaci i pomniejszanych sprite’ów świata. Nie zmienia renderowania napisów.',
       postFx: 'Postprocessing',
       postFxTip: 'Winieta i ocieplenie barw nakładane na obraz świata.',
+      occlusionGhosts: 'Kontury zasłoniętych jednostek',
+      occlusionGhostsTip:
+        'Rysuje jednostkę stojącą za budynkiem, murem lub drzewem jako półprzezroczysty kontur na tym, co ją zasłania.',
       integerScaling: 'Skalowanie całkowite',
       integerScalingTip:
         'Przybliża tylko pełnymi krokami (½×, 1×, 2×, 3×…), więc każdy piksel grafiki zajmuje całą liczbę pikseli ekranu i nigdy nie jest przeskalowany ułamkowo. Widok przeskakuje między krokami zamiast płynnie się zmieniać.',

@@ -261,6 +261,9 @@ export const deSurfaces = {
         'Glättet die Kanten eigener Figurengrafiken und verkleinerter Weltgrafiken. Die Textdarstellung bleibt unverändert.',
       postFx: 'Nachbearbeitung',
       postFxTip: 'Legt eine Vignette und warme Farbtöne über die Spielwelt.',
+      occlusionGhosts: 'Umrisse verdeckter Einheiten',
+      occlusionGhostsTip:
+        'Zeigt eine Einheit, die hinter einem Gebäude, einer Mauer oder einem Baum steht, als halbtransparenten Umriss über dem Verdeckenden.',
       integerScaling: 'Ganzzahlige Skalierung',
       integerScalingTip:
         'Zoomt nur in ganzen Stufen (½×, 1×, 2×, 3×…), sodass jedes Pixel der Grafik eine ganze Zahl von Bildschirmpixeln abdeckt und nie durch einen gebrochenen Maßstab neu abgetastet wird. Die Ansicht springt zwischen den Stufen, statt zu gleiten.',

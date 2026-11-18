@@ -48,6 +48,7 @@ describe('parseStoredSettings', () => {
       buildingDamage: false,
       distantDetail: true,
       dayNight: false,
+      occlusionGhosts: true,
       weather: false,
       blood: false,
       bonesFade: false,

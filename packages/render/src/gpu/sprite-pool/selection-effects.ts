@@ -265,8 +265,14 @@ function outlineQuadAt(outline: Container<OutlineSprite | SelectionGraphics>, in
   return quad;
 }
 
-/** `out` set to `local`'s placement of `texture`'s frame texels, from the quad Pixi lays a sprite on. */
-function frameTransform(out: Matrix, local: Matrix, anchor: ObservablePoint, texture: Texture): Matrix {
+/** `out` set to `local`'s placement of `texture`'s frame texels, from the quad Pixi lays a sprite on.
+ *  Shared with the occlusion ghost stamps, which copy body layers the same way. */
+export function frameTransform(
+  out: Matrix,
+  local: Matrix,
+  anchor: ObservablePoint,
+  texture: Texture,
+): Matrix {
   const { orig, trim, frame } = texture;
   const width = trim?.width ?? orig.width;
   const height = trim?.height ?? orig.height;

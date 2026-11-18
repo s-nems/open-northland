@@ -10,6 +10,7 @@ const ENHANCEMENT_FIELDS: Readonly<Record<keyof WorldEnhancements, true>> = {
   groundedBuildings: true,
   buildingDamage: true,
   dayNight: true,
+  occlusionGhosts: true,
 };
 
 /** Every enhancement the Graphics settings own. */
@@ -26,6 +27,7 @@ export function enhancementsOf(settings: WorldEnhancements): WorldEnhancements {
     groundedBuildings: settings.groundedBuildings,
     buildingDamage: settings.buildingDamage,
     dayNight: settings.dayNight,
+    occlusionGhosts: settings.occlusionGhosts,
   };
 }
 
