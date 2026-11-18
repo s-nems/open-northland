@@ -11,6 +11,7 @@ import {
   Position,
   Settler,
   Stance,
+  TrainingOrder,
   Weapon,
 } from '../../../../src/components/index.js';
 import { fx, ONE } from '../../../../src/core/fixed.js';
@@ -223,6 +224,26 @@ describe('ATTACK - a fighter walks back to its own place once the fight is over'
     sim.world.add(soldier, Engagement, { repathAt: 0 });
 
     combatSystem(sim.world, ctxOf(sim));
+    expect(sim.world.has(soldier, MoveGoal)).toBe(false);
+  });
+
+  it('leaves a soldier sent to school on his way to the lesson', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(40, 1) });
+    const soldier = soldierAt(sim, 30);
+    sim.world.mut(soldier, Stance).anchorCell = cell(sim, 10, 0);
+    const lesson = { kind: 'job', typeId: WOODCUTTER } as const;
+    const school = sim.world.create();
+    sim.world.add(soldier, TrainingOrder, {
+      house: school,
+      drillTicksLeft: 1,
+      lesson,
+      enrolled: 0,
+      seated: true,
+    });
+    sim.world.add(soldier, Engagement, { repathAt: 0 });
+
+    combatSystem(sim.world, ctxOf(sim));
+    expect(sim.world.has(soldier, Engagement)).toBe(false);
     expect(sim.world.has(soldier, MoveGoal)).toBe(false);
   });
 
