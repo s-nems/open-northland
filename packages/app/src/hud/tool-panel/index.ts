@@ -62,7 +62,12 @@ import { LiveFigures } from '../figures/live-figures.js';
 import { type KeyBindings, keyDisplayLabel } from '../keybindings.js';
 import type { NetPanelSource } from '../network/model.js';
 import type { SeatArmy, SeatStanding } from '../summary/standings.js';
-import { CONSTRUCTION_TOOLS, type ConstructionTool, type MenuBuildingEntry } from './building-menu.js';
+import {
+  type CatalogueView,
+  CONSTRUCTION_TOOLS,
+  type ConstructionTool,
+  type MenuBuildingEntry,
+} from './building-menu.js';
 import type { PanelContext } from './context.js';
 import type { GameSpeedChangeCause, GameSpeedControl, GameSpeedStateSpec } from './game-speed.js';
 import { createHeldPaperController } from './held-paper.js';
@@ -154,6 +159,10 @@ export interface ToolPanelOptions {
   readonly buildTribes: () => readonly number[];
   /** Bumped when an answer the construction window reads changes: availability, nations or papers. */
   readonly constructionAnswersVersion: () => number;
+  /** The construction window's stored grid or list view; a pick persists through
+   *  `onConstructionViewChange`. */
+  readonly constructionView: CatalogueView;
+  readonly onConstructionViewChange: (view: CatalogueView) => void;
   /** The building whose body stands for a nation on the construction window's switch. */
   readonly nationEmblemType?: number;
   /** The player slot a placed building is owned by. */
@@ -661,6 +670,8 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
           },
           onPickPaper: seam.onPickPaper,
           onHelp: seam.onHelp,
+          view: opts.constructionView,
+          onViewChange: opts.onConstructionViewChange,
           cue: ctx.cue,
         });
         window.onDismiss(() => focusOwner?.('build'));

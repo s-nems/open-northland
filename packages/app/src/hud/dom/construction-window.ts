@@ -6,6 +6,7 @@ import type { PresentationPack } from '../../presentation/pack.js';
 import {
   BUILDING_CATEGORIES,
   type BuildingCategory,
+  CATALOGUE_VIEWS,
   type CatalogueView,
   CONSTRUCTION_TOOLS,
   type ConstructionPage,
@@ -45,7 +46,6 @@ const THUMB_BOX_PX = 72;
 const COST_ICON_BOX_PX = 16;
 /** Raster size of the nation switch's emblem. */
 const NATION_ART_PX = 28;
-const VIEWS: readonly CatalogueView[] = ['grid', 'list'];
 const VIEW_GLYPH: Readonly<Record<CatalogueView, string>> = { grid: GLYPH.grid, list: GLYPH.list };
 const TOOL_GLYPH: Readonly<Record<ConstructionTool, string>> = {
   road: GLYPH.road,
@@ -90,6 +90,9 @@ export interface ConstructionWindowDeps {
   readonly onPickPaper: (paper: Paper, tribe: number) => void;
   /** A card's "?": the building's Knowledge entry. */
   readonly onHelp: (typeId: number) => void;
+  /** The grid or list view the window opens with; a toggle reports the new one to `onViewChange`. */
+  readonly view?: CatalogueView;
+  readonly onViewChange?: (view: CatalogueView) => void;
   readonly cue: (cue: UiCue) => void;
 }
 
@@ -198,7 +201,10 @@ export function createConstructionWindow(deps: ConstructionWindowDeps): Construc
   window.element.classList.add('on-window--construction');
   window.body.classList.add('on-window__body--column');
   let disposed = false;
-  let state: ConstructionWindowState = INITIAL_CONSTRUCTION_STATE;
+  let state: ConstructionWindowState = {
+    ...INITIAL_CONSTRUCTION_STATE,
+    view: deps.view ?? INITIAL_CONSTRUCTION_STATE.view,
+  };
 
   // The quick row: search, the available line and gate tools, nations and papers.
   const quick = document.createElement('div');
@@ -355,13 +361,14 @@ export function createConstructionWindow(deps: ConstructionWindowDeps): Construc
   const legend = viewToggle.querySelector('legend');
   if (legend !== null) legend.textContent = copy.viewLabel;
   const viewButtons = new Map<CatalogueView, HTMLButtonElement>();
-  for (const view of VIEWS) {
+  for (const view of CATALOGUE_VIEWS) {
     const control = button('on-view__button', VIEW_GLYPH[view]);
     control.setAttribute('aria-pressed', 'false');
     control.title = view === 'grid' ? copy.gridView : copy.listView;
     control.addEventListener('click', () => {
       deps.cue('confirm');
       showView(view);
+      deps.onViewChange?.(view);
     });
     viewButtons.set(view, control);
     viewToggle.append(control);

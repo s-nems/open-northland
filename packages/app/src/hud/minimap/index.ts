@@ -29,6 +29,7 @@ import type { MinimapFrame } from './frames.js';
 import { createGoalMarks, type GoalNode } from './goal-marks.js';
 import { createMinimapInput } from './input.js';
 import {
+  DEFAULT_MINIMAP_SIZE,
   type MinimapLayout,
   type MinimapSize,
   minimapLayout,
@@ -78,6 +79,9 @@ export interface MinimapOptions {
   /** The stored layer, owner, marker and ground choices; they persist through `onFiltersChange`. */
   readonly filters?: MinimapFilters | undefined;
   readonly onFiltersChange?: ((filters: MinimapFilters) => void) | undefined;
+  /** The corner map's stored size; a pick persists through `onSizeChange`. */
+  readonly size?: MinimapSize | undefined;
+  readonly onSizeChange?: ((size: MinimapSize) => void) | undefined;
   readonly isFighterJob: (jobType: number) => boolean;
   readonly isHeroJob: (jobType: number) => boolean;
   /** The world view's remembered buildings and vehicles on explored ground. */
@@ -244,7 +248,7 @@ function mountMinimapView(
   const { app, terrain, plane } = opts;
   const bounds = terrainWorldBounds(terrain.width, terrain.height);
   let uiScale = opts.uiscale;
-  let size: MinimapSize = 'm';
+  let size: MinimapSize = place === 'corner' ? (opts.size ?? DEFAULT_MINIMAP_SIZE) : DEFAULT_MINIMAP_SIZE;
   let zoom = 1;
   let center = { x: bounds.minX + bounds.width / 2, y: bounds.minY + bounds.height / 2 };
   let zoomFocus = center;
@@ -360,6 +364,7 @@ function mountMinimapView(
         size = nextMinimapSize(size, bounds, app.screen.height, uiScale, app.screen.width);
         dirtyDots = true;
         refreshLayout();
+        if (place === 'corner') opts.onSizeChange?.(size);
       },
       onLayer: (layer) => setFilters(toggleMinimapLayer(filters, layer)),
       onAllLayers: (shown) => setFilters(withAllMinimapLayers(filters, shown)),

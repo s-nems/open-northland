@@ -82,6 +82,8 @@ describe('parseStoredSettings', () => {
         markerSize: 'small',
         colours: 'stance',
       },
+      minimapSize: 'l',
+      constructionView: 'list',
       soundEnabled: false,
       volumes: { master: 65, music: 40, responses: 90, world: 100, ambient: 0, ui: 75 },
       soundInBackground: true,
@@ -120,7 +122,7 @@ describe('parseStoredSettings', () => {
 
   it('falls back per field, not per blob', () => {
     const parsed = parseStoredSettings(
-      '{"language":"eng","uiScaleFactor":"big","displayMode":"borderless","renderScale":"max","backingDensity":"half","postFxEnabled":1,"fpsLimit":45}',
+      '{"language":"eng","uiScaleFactor":"big","displayMode":"borderless","renderScale":"max","backingDensity":"half","postFxEnabled":1,"fpsLimit":45,"minimapSize":"huge","constructionView":"tiles"}',
     );
     expect(parsed.language).toBe('eng');
     expect(parsed.uiScaleFactor).toBe(defaultSettings().uiScaleFactor);
@@ -131,6 +133,8 @@ describe('parseStoredSettings', () => {
     expect(parsed.fpsLimit).toBe(defaultSettings().fpsLimit);
     expect(parsed.soundEnabled).toBe(defaultSettings().soundEnabled);
     expect(parsed.keyBindings).toEqual(DEFAULT_KEY_BINDINGS);
+    expect(parsed.minimapSize).toBe(defaultSettings().minimapSize);
+    expect(parsed.constructionView).toBe(defaultSettings().constructionView);
   });
 
   it('keeps the display-rate frame cap and defaults a missing one', () => {

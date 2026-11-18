@@ -72,15 +72,21 @@ export function categoryOfKind(kind: string): BuildingCategory {
   return KIND_TO_CATEGORY[kind] ?? 'work';
 }
 
-export type CatalogueView = 'grid' | 'list';
+export const CATALOGUE_VIEWS = ['grid', 'list'] as const;
+export type CatalogueView = (typeof CATALOGUE_VIEWS)[number];
+export const DEFAULT_CATALOGUE_VIEW: CatalogueView = 'grid';
+
+export function parseCatalogueView(value: unknown): CatalogueView {
+  return CATALOGUE_VIEWS.find((view) => view === value) ?? DEFAULT_CATALOGUE_VIEW;
+}
 
 /** The window's two pages: the catalogue, or the papers (the plans a pick spends), which the quick
  *  row's Papers button toggles and a back tab leaves. */
 export type ConstructionPage = 'catalog' | 'papers';
 
 /** The construction window's state for the game. Fresh openings show the catalogue, while placement
- *  resumes keep the page. The grid or list view and the nation remain a per-game choice, never
- *  browser storage. */
+ *  resumes keep the page. The nation is a per-game choice; the grid or list view opens as the player
+ *  last left it in any game. */
 export interface ConstructionWindowState {
   readonly page: ConstructionPage;
   /** The nation both pages list houses of; null for the seat's own. */
@@ -98,7 +104,7 @@ export const INITIAL_CONSTRUCTION_STATE: ConstructionWindowState = {
   tribe: null,
   category: 'all',
   query: '',
-  view: 'grid',
+  view: DEFAULT_CATALOGUE_VIEW,
   scrollTop: 0,
   picked: null,
   suspended: false,

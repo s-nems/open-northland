@@ -37,6 +37,12 @@ import {
   parseMinimapFilters,
 } from '../../hud/minimap/filters.js';
 import { DEFAULT_MINIMAP_FRAME, type MinimapFrame, parseMinimapFrame } from '../../hud/minimap/frames.js';
+import { DEFAULT_MINIMAP_SIZE, type MinimapSize, parseMinimapSize } from '../../hud/minimap/model.js';
+import {
+  type CatalogueView,
+  DEFAULT_CATALOGUE_VIEW,
+  parseCatalogueView,
+} from '../../hud/tool-panel/building-menu.js';
 import { clampUiScaleFactor, DEFAULT_UI_SCALE_FACTOR } from '../../hud/ui-scale.js';
 import { defaultLocale, isLocale, type Locale } from '../../i18n/index.js';
 import {
@@ -148,6 +154,10 @@ export interface MenuSettings {
   readonly minimapFrame: MinimapFrame;
   /** The minimap's marker layers and owner scope, set from its filters popover. */
   readonly minimapFilters: MinimapFilters;
+  /** The corner minimap's size, cycled by its size button. */
+  readonly minimapSize: MinimapSize;
+  /** The construction window's grid or list view. */
+  readonly constructionView: CatalogueView;
   /** Mirrors the `?sound` param: `false` starts the game's audio driver muted. */
   readonly soundEnabled: boolean;
   /** Mixer slider positions, 0..100 per channel. */
@@ -254,6 +264,8 @@ export function defaultSettings(): MenuSettings {
     colorBlindFilter: 'off',
     minimapFrame: DEFAULT_MINIMAP_FRAME,
     minimapFilters: DEFAULT_MINIMAP_FILTERS,
+    minimapSize: DEFAULT_MINIMAP_SIZE,
+    constructionView: DEFAULT_CATALOGUE_VIEW,
     soundEnabled: true,
     volumes: DEFAULT_VOLUMES,
     soundInBackground: defaultSoundInBackground(),
@@ -448,6 +460,8 @@ export function parseStoredSettings(raw: string | null): MenuSettings {
       COLOR_BLIND_FILTERS.find((filter) => filter === record.colorBlindFilter) ?? defaults.colorBlindFilter,
     minimapFrame: parseMinimapFrame(record.minimapFrame),
     minimapFilters: parseMinimapFilters(record.minimapFilters),
+    minimapSize: parseMinimapSize(record.minimapSize),
+    constructionView: parseCatalogueView(record.constructionView),
     soundEnabled: typeof record.soundEnabled === 'boolean' ? record.soundEnabled : defaults.soundEnabled,
     volumes: parseVolumes(record.volumes),
     soundInBackground:

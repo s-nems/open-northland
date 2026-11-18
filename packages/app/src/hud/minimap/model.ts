@@ -19,6 +19,11 @@ import { MIN_UI_SCALE } from '../ui-scale.js';
 export const ATLAS_WIDTHS = { s: 224, m: 280, l: 344, xl: 416, xxl: 496 } as const;
 export type MinimapSize = keyof typeof ATLAS_WIDTHS;
 const SIZES = Object.keys(ATLAS_WIDTHS) as readonly MinimapSize[];
+export const DEFAULT_MINIMAP_SIZE: MinimapSize = 'm';
+
+export function parseMinimapSize(value: unknown): MinimapSize {
+  return SIZES.find((size) => size === value) ?? DEFAULT_MINIMAP_SIZE;
+}
 
 const BORDER = 20;
 const MIN_PANEL_SIDE = 124;
@@ -94,7 +99,7 @@ export function minimapLayout(
   bounds: WorldBounds,
   screenH: number,
   uiscale: number,
-  size: MinimapSize = 'm',
+  size: MinimapSize = DEFAULT_MINIMAP_SIZE,
   screenW: number = Number.POSITIVE_INFINITY,
 ): MinimapLayout {
   const artScale = Math.max(MIN_UI_SCALE, uiscale);
