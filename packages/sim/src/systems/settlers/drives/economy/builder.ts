@@ -24,6 +24,7 @@ import {
   releaseSiteClaim,
   siteClaimHolder,
 } from '../../../economy/site-claim.js';
+import { type RouteRegions, routeRegions } from '../../../footprint/route-regions.js';
 import { atomicDuration } from '../../../readviews/animations.js';
 import { type RoadSitePlan, type RoadSiteRole, roadSitePlan } from '../../../roads/site-plan.js';
 import type { NavigationLimit } from '../../../signposts/index.js';
@@ -685,21 +686,25 @@ function onOwnSide(plan: PlannerContext, site: Entity): boolean {
   return ownersCompatible(plan.owner, ownerOf(plan.world, site));
 }
 
-/** Ownership, confinement to `limit` and an actual routeable perimeter cell for an assignment. */
+/** Ownership, confinement to `limit` and a perimeter cell on the builder's landmass that no structure
+ *  seals off from it, such as a wall segment left in a pocket between finished walls and the shore. */
 function builderCanReach(
   plan: PlannerContext,
   spacing: PlannerSpacing,
   site: Entity,
   limit: NavigationLimit | null = plan.limit,
 ): boolean {
-  const { terrain, here } = plan;
+  const { world, ctx, terrain, here } = plan;
   if (!onOwnSide(plan, site)) return false;
   const component = terrain.componentOf(here);
   const cells = spacing.workCells(site);
+  let regions: RouteRegions | undefined;
   // A plain loop: an idle builder asks this of every site, and a closure per ask adds up.
   for (let i = 0; i < cells.length; i++) {
     const cell = cells[i] as NodeId;
-    if (terrain.componentOf(cell) === component && (limit === null || limit.allowsNode(cell))) return true;
+    if (terrain.componentOf(cell) !== component || (limit !== null && !limit.allowsNode(cell))) continue;
+    regions ??= routeRegions(world, ctx, terrain);
+    if (!regions.unroutable(here, cell)) return true;
   }
   return false;
 }
