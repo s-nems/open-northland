@@ -123,7 +123,7 @@ export interface FrameLoopDeps {
   readonly roadEntrancesFor: (
     snap: WorldSnapshot,
     owner: number,
-    viewport?: Viewport,
+    viewport: Viewport,
   ) => readonly PlacementOverlayCell[];
   readonly canPlaceAt: (
     typeId: number,

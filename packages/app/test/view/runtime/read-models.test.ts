@@ -73,7 +73,7 @@ describe('view building models', () => {
     );
     expect(infoOf(SMITHY, VIKING)?.flagPoint).toEqual({ x: 12, y: -4 });
     // A type with no flag-point row still resolves - the sign chain just has nothing to anchor on.
-    expect(infoOf(FARM, VIKING)).toEqual({ id: 'farm', footprint: FOOTPRINT });
+    expect(infoOf(FARM, VIKING)).toEqual({ id: 'farm', footprint: FOOTPRINT, entered: false });
   });
 
   it("resolves each tribe's own footprint for the same type, the base one for a tribe without a variant", () => {

@@ -14,7 +14,8 @@ export interface DoorFootprint {
 
 /**
  * The node settlers enter a building at, mirroring the sim's `interactionNode` so a UI marker and the
- * walk target cannot disagree.
+ * walk target cannot disagree. A door past the map's edge, which only a map-placed house hugging it can
+ * have, is answered here too, where the sim falls back to the anchor.
  */
 export function doorNode(footprint: DoorFootprint | undefined, anchor: HalfCellNode): HalfCellNode {
   const door = footprint?.door;

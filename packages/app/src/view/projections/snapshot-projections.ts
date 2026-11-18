@@ -110,6 +110,7 @@ export function createSnapshotProjections(
   buildingInfoOf: BuildingDoorInfoOf,
   roleOf: (jobType: number) => WorkerRole,
   fogGates: FogGates,
+  mapSize: { readonly width: number; readonly height: number },
   hearts: HeartProjectionInputs,
   signpostReach?: (player: number) => SignpostReachView | null,
   inventoryVersion?: () => number,
@@ -138,7 +139,7 @@ export function createSnapshotProjections(
   readonly roadEntrancesFor: (
     snapshot: WorldSnapshot,
     owner: number,
-    viewport?: Viewport,
+    viewport: Viewport,
   ) => readonly PlacementOverlayCell[];
 } {
   // Keyed on the viewer too: a spectator switching seats under a paused sim holds one snapshot, and
@@ -206,16 +207,19 @@ export function createSnapshotProjections(
   const roadEntrancesFor = (
     snapshot: WorldSnapshot,
     owner: number,
-    viewport?: Viewport,
+    viewport: Viewport,
   ): readonly PlacementOverlayCell[] => {
     let memo = roadEntrances.get(owner);
     if (memo === undefined) {
-      // The road tool's wash refuses fogged ground, so a fogged door is not lit.
+      // The road tool's wash refuses fogged ground, so a fogged door is not lit. A viewport always
+      // brings a box.
       memo = memoByScreen(
         (snap, box) =>
-          computeRoadEntrances(snap, buildingInfoOf, owner, box).filter((door) =>
-            fogGates.seesNode(door.col, door.row),
-          ),
+          box === undefined
+            ? []
+            : computeRoadEntrances(snap, buildingInfoOf, owner, box, mapSize).filter((door) =>
+                fogGates.seesNode(door.col, door.row),
+              ),
         () => viewerVersion() + fogGates.revision(),
       );
       roadEntrances.set(owner, memo);

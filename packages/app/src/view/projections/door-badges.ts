@@ -48,6 +48,8 @@ import { type DoorFootprint, workerIconNode } from './building-points.js';
 export interface BuildingDoorInfo {
   readonly id?: string | undefined;
   readonly footprint?: DoorFootprint | undefined;
+  /** Settlers walk in at the door once the building stands, as `takesSettlersIn` decides. */
+  readonly entered?: boolean | undefined;
   readonly flagPoint?: { readonly x: number; readonly y: number } | undefined;
   readonly mastPoint?:
     | {

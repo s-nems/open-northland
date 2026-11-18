@@ -236,7 +236,7 @@ export class WorldRenderer {
       opts?.planRoads,
       opts?.berthPost,
     );
-    this.spriteLayer.addChild(this.placementGhost.container, this.entranceMarks.graphics);
+    this.spriteLayer.addChild(this.placementGhost.container, this.entranceMarks.container);
     mountPainterOrder(this.worldLayer, {
       terrain: this.terrain.container,
       decorShadows: this.mapObjects.decorShadowContainer,

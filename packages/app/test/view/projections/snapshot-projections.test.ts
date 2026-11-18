@@ -22,13 +22,23 @@ import {
  * have stepped). Pinned here because nothing else fails when the memo silently stops hitting - the cost
  * is invisible to every other test.
  */
+/** A map wide enough for every fixture building, in cells. */
+const MAP_SIZE = { width: 64, height: 64 } as const;
+
 describe('createSnapshotProjections - memoized by snapshot identity', () => {
   const HOME_TYPE = 2;
   const PLAYER = 0;
   const projectionsFor = () =>
-    createSnapshotProjections(fixedViewerSeat(PLAYER), () => undefined, workerRoleOf, createFogGates(), {
-      isLivestockTribe: () => false,
-    });
+    createSnapshotProjections(
+      fixedViewerSeat(PLAYER),
+      () => undefined,
+      workerRoleOf,
+      createFogGates(),
+      MAP_SIZE,
+      {
+        isLivestockTribe: () => false,
+      },
+    );
   const snap = snapshotOf([building(10, HOME_TYPE, 1, 1), settler(1, 0, 10)]);
 
   it('returns the identical reference for the same snapshot, a fresh one for the next', () => {
@@ -69,6 +79,7 @@ describe('createSnapshotProjections - memoized by snapshot identity', () => {
       () => undefined,
       workerRoleOf,
       createFogGates(),
+      MAP_SIZE,
       { isLivestockTribe: () => false },
     );
     const person = (id: number, player: number): Ent => ({
@@ -101,6 +112,7 @@ describe('createSnapshotProjections - memoized by snapshot identity', () => {
       () => undefined,
       workerRoleOf,
       gates,
+      MAP_SIZE,
       { isLivestockTribe: () => false, selection: { ids: () => selected, version: () => 0 } },
     );
     const home = building(10, HOME_TYPE, 1, 1);
@@ -134,6 +146,38 @@ describe('createSnapshotProjections - memoized by snapshot identity', () => {
     expect(lifeHeartsFor(world)).toHaveLength(0);
   });
 
+  it("lights each road side's own doors, and none under the viewer's fog, for one held snapshot", () => {
+    const gates = createFogGates();
+    const entered = { footprint: { door: { dx: 0, dy: 2 } }, entered: true };
+    const { roadEntrancesFor } = createSnapshotProjections(
+      fixedViewerSeat(PLAYER),
+      () => entered,
+      workerRoleOf,
+      gates,
+      MAP_SIZE,
+      { isLivestockTribe: () => false },
+    );
+    const ownedBy = (player: number, id: number, x: number): Ent => {
+      const home = building(id, HOME_TYPE, x, 2);
+      return { ...home, components: { ...home.components, Owner: { player } } };
+    };
+    const world = snapshotOf([ownedBy(0, 10, 1), ownedBy(1, 11, 3)]);
+    const screen: Viewport = { minX: 0, minY: 0, maxX: 800, maxY: 600 };
+
+    // Tile (x, 2) anchors at node (2x, 4); the door stands two rows in front of it.
+    expect(roadEntrancesFor(world, 0, screen)).toEqual([{ col: 2, row: 6 }]);
+    expect(roadEntrancesFor(world, 1, screen)).toEqual([{ col: 6, row: 6 }]);
+    gates.setFrame({
+      player: 0,
+      mode: FOG_MODE.CLASSIC_FOG_OF_WAR,
+      cellsWide: 8,
+      cellsHigh: 8,
+      generation: 1,
+      stateAt: () => FOG_STATE.UNEXPLORED,
+    });
+    expect(roadEntrancesFor(world, 0, screen)).toEqual([]);
+  });
+
   it('re-reads the hearts when the selection moves under a held snapshot (a paused pick)', () => {
     const selected = new Set<number>();
     let version = 0;
@@ -142,6 +186,7 @@ describe('createSnapshotProjections - memoized by snapshot identity', () => {
       () => undefined,
       workerRoleOf,
       createFogGates(),
+      MAP_SIZE,
       {
         isLivestockTribe: () => false,
         selection: { ids: () => selected, version: () => version },
@@ -196,6 +241,7 @@ describe('per-tick projections - one walk of the map between them', () => {
         () => undefined,
         workerRoleOf,
         createFogGates(),
+        MAP_SIZE,
         { isLivestockTribe: () => false },
       );
       doorBadgesFor(snapshot, SCREEN);
@@ -252,6 +298,7 @@ describe('per-tick projections - one walk of the map between them', () => {
       () => undefined,
       workerRoleOf,
       createFogGates(),
+      MAP_SIZE,
       heartInputs,
     );
     expect(first.lifeHeartsFor(snapshot, SCREEN)).toHaveLength(0); // hidden indoors
@@ -262,6 +309,7 @@ describe('per-tick projections - one walk of the map between them', () => {
       () => undefined,
       workerRoleOf,
       createFogGates(),
+      MAP_SIZE,
       heartInputs,
     );
     second.lifeHeartsFor(snapshot, SCREEN);

@@ -1,4 +1,4 @@
-import { Graphics } from 'pixi.js';
+import { Container, Graphics, GraphicsContext } from 'pixi.js';
 import { halfCellToScreen } from '../../data/projection/index.js';
 import { type ElevationField, terrainLiftAtNode } from '../../data/terrain/index.js';
 import type { PlacementOverlayCell } from './overlay.js';
@@ -23,6 +23,19 @@ const RING_SHADOW = { color: 0x000000, width: 4, alpha: 0.35 } as const;
  *  (`Number.MAX_SAFE_INTEGER`), whose plot on a door reads over the ring. */
 const ENTRANCE_Z = Number.MAX_SAFE_INTEGER - 1;
 
+/** One mark about its ground point, built once and shared by every door's instance. */
+function mintMark(): GraphicsContext {
+  return new GraphicsContext()
+    .ellipse(0, 0, HALO_RADIUS.x, HALO_RADIUS.y)
+    .fill(HALO)
+    .ellipse(0, 0, MARK_RADIUS.x, MARK_RADIUS.y)
+    .fill(GLOW)
+    .ellipse(0, 0, MARK_RADIUS.x, MARK_RADIUS.y)
+    .stroke(RING_SHADOW)
+    .ellipse(0, 0, MARK_RADIUS.x, MARK_RADIUS.y)
+    .stroke(RING);
+}
+
 function sameDoors(a: readonly PlacementOverlayCell[], b: readonly PlacementOverlayCell[]): boolean {
   if (a.length !== b.length) return false;
   for (let i = 0; i < a.length; i++) {
@@ -34,38 +47,49 @@ function sameDoors(a: readonly PlacementOverlayCell[], b: readonly PlacementOver
 }
 
 export class EntranceMarkLayer {
-  readonly graphics = new Graphics();
+  readonly container = new Container();
+  private readonly mark = mintMark();
+  /** One instance per door shown, kept past a smaller list for the next one: a pan only moves them. */
+  private readonly instances: Graphics[] = [];
   private drawn: readonly PlacementOverlayCell[] = [];
   private drawnOn: ElevationField | null = null;
 
   constructor() {
-    this.graphics.zIndex = ENTRANCE_Z;
-    this.graphics.visible = false;
+    this.container.zIndex = ENTRANCE_Z;
+    this.container.visible = false;
   }
 
   /** Mark `doors`, half-cell nodes lifted onto the ground; null or none hides the marks. The app hands a
-   *  new list every tick, so it is compared by value and redrawn only when a door came or went. */
+   *  new list every tick, so it is compared by value and the marks are placed again only when it differs. */
   set(doors: readonly PlacementOverlayCell[] | null, elevation: ElevationField): void {
     if (doors === null || doors.length === 0) {
-      this.graphics.visible = false;
+      this.container.visible = false;
       return;
     }
-    this.graphics.visible = true;
+    this.container.visible = true;
     if (this.drawnOn === elevation && sameDoors(doors, this.drawn)) return;
-    const g = this.graphics.clear();
-    for (const door of doors) {
+    doors.forEach((door, i) => {
+      let instance = this.instances[i];
+      if (instance === undefined) {
+        instance = new Graphics(this.mark);
+        this.instances.push(instance);
+        this.container.addChild(instance);
+      }
       const p = halfCellToScreen(door.col, door.row);
-      const y = p.y - terrainLiftAtNode(elevation, door.col, door.row);
-      g.ellipse(p.x, y, HALO_RADIUS.x, HALO_RADIUS.y).fill(HALO);
-      g.ellipse(p.x, y, MARK_RADIUS.x, MARK_RADIUS.y).fill(GLOW);
-      g.ellipse(p.x, y, MARK_RADIUS.x, MARK_RADIUS.y).stroke(RING_SHADOW);
-      g.ellipse(p.x, y, MARK_RADIUS.x, MARK_RADIUS.y).stroke(RING);
+      instance.position.set(p.x, p.y - terrainLiftAtNode(elevation, door.col, door.row));
+      instance.visible = true;
+    });
+    for (let i = doors.length; i < this.instances.length; i++) {
+      const spare = this.instances[i];
+      if (spare !== undefined) spare.visible = false;
     }
     this.drawn = doors;
     this.drawnOn = elevation;
   }
 
+  /** The instances leave the shared mark alone, so it goes last. */
   destroy(): void {
-    this.graphics.destroy();
+    this.container.destroy({ children: true });
+    this.mark.destroy();
   }
 }

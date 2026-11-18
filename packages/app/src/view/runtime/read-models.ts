@@ -27,6 +27,7 @@ import {
   type GeometryBuildingInfo,
   type GeometryBuildingInfoOf,
   type HeartSelection,
+  takesSettlersIn,
 } from '../projections/index.js';
 
 export interface ViewReadModelDeps {
@@ -80,8 +81,12 @@ export function buildingModels(
     const key = `${typeId}:${tribe ?? tribes[0]}:${record ?? ''}`;
     const held = cache.get(key);
     if (held !== undefined || cache.has(key)) return held;
+    const type = byType.get(typeId);
     const geometry = geometryOf(typeId, tribe, record);
-    const info = geometry === undefined ? undefined : { ...geometry, ...anchorsOf(typeId, tribe) };
+    const info =
+      type === undefined || geometry === undefined
+        ? undefined
+        : { ...geometry, ...anchorsOf(typeId, tribe), entered: takesSettlersIn(type) };
     cache.set(key, info);
     return info;
   };
@@ -146,6 +151,7 @@ export async function createViewReadModels(deps: ViewReadModelDeps): Promise<Vie
       buildings.infoOf,
       workerRoleOf,
       fogGates,
+      mapSize,
       {
         // The same content read the sim's capture drive keys on.
         isLivestockTribe: (tribe) => systems.isCatchableAnimal(host.content, tribe),
