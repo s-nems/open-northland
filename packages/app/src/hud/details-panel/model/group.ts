@@ -1,6 +1,5 @@
 import type { VehicleType } from '@open-northland/data';
 import { components, systems, type WorldSnapshot } from '@open-northland/sim';
-import { professionDefForJob } from '../../../catalog/professions.js';
 import { SOLDIER_CLASS_OF_JOB, SOLDIER_FAMILY_OF_MAIN_TYPE } from '../../../catalog/soldier-classes.js';
 import { settlerName } from '../../../game/character-names/index.js';
 import {
@@ -28,6 +27,7 @@ import {
   goodDef,
   goodLabel,
   jobDisplayName,
+  jobPluralName,
   type UnitPanelModelContext,
   vehicleTitle,
 } from './context.js';
@@ -250,7 +250,6 @@ function settlerFacts(
   const jobType = settlerJobType(ent);
   const fighter = role === 'soldier' || role === 'hero';
   const soldierClass = jobType === undefined ? undefined : SOLDIER_CLASS_OF_JOB.get(jobType)?.soldierClass;
-  const profession = professionDefForJob(jobType)?.key;
   let kind: string;
   let plural: string;
   let singular: string;
@@ -270,7 +269,7 @@ function settlerFacts(
     }
     case 'worker':
       kind = `job:${jobType ?? ''}`;
-      plural = profession === undefined ? jobDisplayName(ctx, jobType) : copy.professions[profession];
+      plural = jobPluralName(ctx, jobType);
       singular = jobDisplayName(ctx, jobType);
       break;
     default:

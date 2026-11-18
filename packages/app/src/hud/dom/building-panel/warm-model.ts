@@ -70,6 +70,7 @@ export function warmBuildingModel(goodIds: readonly string[]): BuildingPanelMode
     },
     staff: {
       kind: 'workers',
+      title: 'Warm',
       groups: [
         {
           key: 'a',
@@ -91,6 +92,7 @@ export function warmBuildingModel(goodIds: readonly string[]): BuildingPanelMode
     },
     crew: {
       kind: 'crew',
+      title: 'Warm',
       groups: [{ key: 'crew', label: '', people: [person(5, 'man')], capacity: null, jobType: null }],
       count: null,
       garrison: null,

@@ -150,9 +150,7 @@ export function createStaffSection(
       write(release, copy.releaseGarrison);
       setDisabled(release, garrison === null || garrison.length === 0);
       setTip(release, copy.releaseGarrisonTooltip);
-      title.update(
-        staff.kind === 'residents' ? copy.residents : staff.kind === 'crew' ? copy.crew : copy.workers,
-      );
+      title.update(staff.title);
       setHidden(count, staff.count === null);
       if (staff.count !== null) {
         write(count, `${staff.count.filled} / ${staff.count.capacity}`);

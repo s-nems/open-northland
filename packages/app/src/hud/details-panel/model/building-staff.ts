@@ -21,7 +21,13 @@ import {
   supplyRunsTo,
 } from '../../../game/snapshot/index.js';
 import { messages } from '../../../i18n/index.js';
-import { type BuildingDef, goodLabel, jobDisplayName, type UnitPanelModelContext } from './context.js';
+import {
+  type BuildingDef,
+  goodLabel,
+  jobDisplayName,
+  jobPluralName,
+  type UnitPanelModelContext,
+} from './context.js';
 import { craftedGoodTypes, gatheredGoodFilter, operatesCraft } from './settler-work.js';
 
 /** The figure a person's well shows: a soldier in steel, a woman, a man, or a smaller child. */
@@ -62,6 +68,7 @@ export interface StaffGroup {
  */
 export interface BuildingStaffModel {
   readonly kind: 'workers' | 'residents' | 'crew';
+  readonly title: string;
   readonly groups: readonly StaffGroup[];
   readonly count: { readonly filled: number; readonly capacity: number } | null;
   /** The fighters posted at a house with tower seats, which "Release the garrison" sends out; null for
@@ -252,14 +259,33 @@ function routeGroups(ctx: UnitPanelModelContext, snapshot: WorldSnapshot, ent: S
   }));
 }
 
-/** The crew raising `site`: its builders, the ones hammering at it and the ones supplying it. */
+/** The trade raising a vehicle site: the craft operator of a workshop whose recipe turns out the site's
+ *  vehicle. Builders never serve such a site (`docs/formats/VEHICLES.md` "Construction"). Undefined for a
+ *  house site. */
+function vehicleSiteTrade(ctx: UnitPanelModelContext, def: BuildingDef | undefined): number | undefined {
+  if (def === undefined) return undefined;
+  const vehicles = new Set(ctx.goods.filter((g) => g.vehicleHouse === def.typeId).map((g) => g.typeId));
+  if (vehicles.size === 0) return undefined;
+  for (const workshop of ctx.buildings) {
+    if (!craftedGoodTypes(workshop).some((goodType) => vehicles.has(goodType))) continue;
+    const operator = workshop.workers.find((slot) => operatesCraft(ctx, workshop, slot.jobType));
+    if (operator !== undefined) return operator.jobType;
+  }
+  return undefined;
+}
+
+/** The crew raising `site`: its builders, the ones hammering at it and the ones supplying it, headed by
+ *  the trade that builds a vehicle site. */
 export function siteCrew(
   ctx: UnitPanelModelContext,
   snapshot: WorldSnapshot,
+  def: BuildingDef | undefined,
   site: number,
 ): BuildingStaffModel {
+  const trade = vehicleSiteTrade(ctx, def);
   return {
     kind: 'crew',
+    title: trade === undefined ? messages().hud.buildingPanel.crew : jobPluralName(ctx, trade),
     groups: [
       {
         key: 'crew',
@@ -304,6 +330,7 @@ export function buildingStaff(
     });
     return {
       kind: 'residents',
+      title: copy.residents,
       groups,
       count: { filled: families.length, capacity: homeFamilyCapacityView(snapshot, ent.id, def, ctx.goods) },
       garrison: null,
@@ -354,6 +381,7 @@ export function buildingStaff(
   const slots = (def?.workers ?? []).reduce((sum, slot) => sum + slot.count, 0);
   return {
     kind: 'workers',
+    title: copy.workers,
     groups,
     count: slots > 0 ? { filled: posted, capacity: slots } : null,
     garrison,

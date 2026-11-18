@@ -553,7 +553,7 @@ export function buildingPanelModel(
   const sheltered = shelterClaimCount(snapshot, ent.id);
   const alarm = ent.components.DefenceMode !== undefined ? { sheltered, capacity: shelterCapacity } : null;
   const staff = foreign ? null : buildingStaff(ctx, snapshot, def, ent);
-  const crew = foreign || !site ? null : siteCrew(ctx, snapshot, ent.id);
+  const crew = foreign || !site ? null : siteCrew(ctx, snapshot, def, ent.id);
   const seats = !site && staff?.kind === 'workers' && staff.count !== null ? staff.count.filled : null;
   const work = foreign || site ? undefined : firstWorkerStatus(ctx, snapshot, ent.id);
   const health = healthOf(ent);

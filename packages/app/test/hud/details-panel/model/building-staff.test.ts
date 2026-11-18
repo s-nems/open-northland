@@ -20,11 +20,13 @@ import {
   BUILDING_BARRACKS,
   BUILDING_DRUID_HUT_01,
   BUILDING_FARM,
+  BUILDING_HANDCART_YARD,
   BUILDING_HEADQUARTERS,
   BUILDING_HOME_00,
   BUILDING_HOME_04,
   BUILDING_JOINERY,
   BUILDING_MILL,
+  BUILDING_SHIP_SMALL_YARD,
   BUILDING_WATCHTOWER,
   BUILDING_WELL,
   GOOD_FLOUR,
@@ -495,6 +497,15 @@ describe('building panel model', () => {
     expect(model.staff).toBeNull();
     expect(model.production).toBeNull();
     expect(model.stock).toEqual([]);
+  });
+
+  it('heads a vehicle site crew with the trade that builds the vehicle, a house site with builders', () => {
+    const site = { built: ONE / 4, components: { UnderConstruction: { labor: ONE / 4 } } };
+    const heading = (buildingType: number): string | undefined =>
+      buildingModel([buildingEntity(1, buildingType, site)], 1).crew?.title;
+    expect(heading(BUILDING_SHIP_SMALL_YARD)).toBe(messages().hud.groupPanel.professions.joiner);
+    expect(heading(BUILDING_HANDCART_YARD)).toBe(messages().hud.groupPanel.professions.joiner);
+    expect(heading(BUILDING_FARM)).toBe(messages().hud.buildingPanel.crew);
   });
 
   it("reads another seat's home as lived in while a family lives there", () => {

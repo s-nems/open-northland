@@ -13,6 +13,7 @@ import {
 import { localizedBuildingName } from '../../../catalog/building-i18n.js';
 import { vikingBuildingByTypeId } from '../../../catalog/buildings.js';
 import { professionDefForJob } from '../../../catalog/professions.js';
+import { canonicalJobType } from '../../../game/sandbox/ids/index.js';
 import type { PostFlagTrade, SnapshotEntity } from '../../../game/snapshot/index.js';
 import { vehicleLabel } from '../../../game/technology.js';
 import type { ViewerSeat } from '../../../game/viewer-seat.js';
@@ -255,6 +256,15 @@ export function jobDisplayName(
   const hero =
     job !== undefined && systems.isHeroJobRow(job) ? messages().hud.groupPanel.role.hero : undefined;
   return role ?? hero ?? job?.name ?? jobLabel(jobType);
+}
+
+/** A trade's plural, as a row of its people is headed: the profession's plural, also for a sandbox
+ *  workshop's rebased slot trade, else the job's name. */
+export function jobPluralName(ctx: Pick<UnitPanelModelContext, 'jobs'>, jobType: number | undefined): string {
+  const profession = professionDefForJob(jobType === undefined ? undefined : canonicalJobType(jobType))?.key;
+  return profession === undefined
+    ? jobDisplayName(ctx, jobType)
+    : messages().hud.groupPanel.professions[profession];
 }
 
 /** Whether a job slot is the transport trade, decided by the sim's own carrier rule over the panel's
