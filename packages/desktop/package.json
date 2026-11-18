@@ -17,7 +17,7 @@
     "@open-northland/map-import": "*",
     "@open-northland/ownership": "*",
     "@types/node": "^26.6.6",
-    "electron": "^45.2.3",
+    "electron": "^45.3.0",
     "electron-builder": "^26.18.0",
     "esbuild": "^0.28.2"
   },
