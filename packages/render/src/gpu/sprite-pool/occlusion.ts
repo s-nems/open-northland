@@ -76,12 +76,15 @@ const CELL = 128;
 const cellKey = (gx: number, gy: number): number => gx * 1000003 + gy;
 
 /**
- * One occluder's persistent registration. Slots live as long as their occluder object does - the map
- * layer mints one candidate per member and the pool keeps its entities - so a scan only restamps depth
- * and box and re-registers into the grid when the box actually moved, instead of refilling the cells
- * every frame. Cells hold slots of any age; a probe skips the ones not marked in its own run.
+ * One occluder's registration, kept while its occluder is marked on consecutive probing scans: a scan
+ * only restamps depth and box and re-registers into the grid when the box actually moved, instead of
+ * refilling the cells every frame. A slot its scan leaves unmarked - an occluder that left the view, or
+ * a pooled entity the pool replaced or freed - leaves the grid, so the cells hold the visible occluders,
+ * not every one the session has seen.
  */
 interface OccluderSlot {
+  /** The occluder object the slot is registered by in {@link OcclusionGhosts.slots}. */
+  readonly key: object;
   /** The static candidate, whose own `hit` answers the pixel probes; absent for a pool occluder. */
   readonly occ: GhostOccluder | undefined;
   /** The pooled entity behind the slot, whose `pixelHit` answers instead of `occ.hit`. */
@@ -123,11 +126,18 @@ export class OcclusionGhosts {
 
   private readonly stamps = new Map<number, GhostStamp>();
   /** The occluder slots by their occluder object - the pool's entities for its own standing sprites,
-   *  the map layer's candidates for the landscape. Persistent like the objects themselves. */
-  private readonly slots = new WeakMap<object, OccluderSlot>();
-  /** The grid cells holding occluder slots. Persistent: a slot stays registered until its box moves,
-   *  and a probe filters out the slots of older runs instead of the cells being emptied per frame. */
+   *  the map layer's candidates for the landscape. */
+  private slots = new WeakMap<object, OccluderSlot>();
+  /** The grid cells holding the registered slots; a cell left empty is dropped. */
   private readonly cellSlots = new Map<number, OccluderSlot[]>();
+  /** The slots this probing scan marked, and the ones the last probing scan did: every registered slot
+   *  is in the latter, so the eviction walks the previous view's occluders, not the grid. */
+  private marked: OccluderSlot[] = [];
+  private previouslyMarked: OccluderSlot[] = [];
+  /** The scan's pool occluders, flat, marked only once a unit drew and the grid is probed. */
+  private readonly occluderPe: PooledEntity[] = [];
+  private readonly occluderDepth: number[] = [];
+  private occluderCount = 0;
   /** The current scan run, stamped on every slot marked this frame. */
   private run = 0;
   /** The running unit walk, stamped on every slot it visited. */
@@ -166,6 +176,7 @@ export class OcclusionGhosts {
   ): void {
     this.run++;
     this.unitCount = 0;
+    this.occluderCount = 0;
     this.drawnUnits.clear();
     this.ghostedUnits.clear();
     for (const item of items) {
@@ -182,16 +193,23 @@ export class OcclusionGhosts {
         this.unitPe[at] = pe;
         this.unitDepth[at] = pooledDepth(pe, item);
       } else if (OCCLUDER_KINDS.has(item.kind) && pe.boundsFrame === frameOf(pe)) {
-        this.mark(pe, undefined, pe, pooledDepth(pe, item), pe.bounds);
+        const at = this.occluderCount++;
+        this.occluderPe[at] = pe;
+        this.occluderDepth[at] = pooledDepth(pe, item);
       }
     }
-    // No unit drew: nothing probes the grid, so neither the pool's occluders nor the frame's statics
-    // mark this frame; the sweep alone frees the stamps of the units that vanished.
+    // No unit drew: nothing probes the grid, so it stays as the last probing scan left it, to be
+    // marked and evicted against that scan next time; the sweep alone frees the vanished units' stamps.
     if (this.unitCount === 0) {
       this.sweepStamps();
       return;
     }
+    for (let o = 0; o < this.occluderCount; o++) {
+      const pe = this.occluderPe[o];
+      if (pe !== undefined) this.mark(pe, undefined, pe, this.occluderDepth[o] ?? 0, pe.bounds);
+    }
     for (const occ of staticOccluders) this.mark(occ, occ, undefined, occ.depth, occ.bounds());
+    this.evictUnmarked();
     for (let u = 0; u < this.unitCount; u++) {
       const pe = this.unitPe[u];
       if (pe === undefined) continue;
@@ -214,19 +232,47 @@ export class OcclusionGhosts {
     }
   }
 
-  /** Free every stamp; the overlay stays mounted. The pool calls this in the scan's place while the
-   *  setting is off, and once it has cleared, each call walks an empty map. */
+  /** Take the slots the last probing scan marked and this one did not out of the grid, then make this
+   *  scan's marks the ones the next eviction checks. */
+  private evictUnmarked(): void {
+    for (const slot of this.previouslyMarked) {
+      if (slot.run === this.run) continue;
+      this.unregisterSlot(slot);
+      this.slots.delete(slot.key);
+    }
+    const evicted = this.previouslyMarked;
+    evicted.length = 0;
+    this.previouslyMarked = this.marked;
+    this.marked = evicted;
+  }
+
+  /** The slot entries across the grid's cells: the registered occluders, once per cell each touches. */
+  get gridEntries(): number {
+    let entries = 0;
+    for (const cell of this.cellSlots.values()) entries += cell.length;
+    return entries;
+  }
+
+  /** Free every stamp and the occluder grid; the overlay stays mounted. The pool calls this in the
+   *  scan's place while the setting is off, and once it has cleared, each call walks empty maps. */
   reset(): void {
     for (const stamp of this.stamps.values()) stamp.container.destroy({ children: true });
     this.stamps.clear();
+    this.clearGrid();
   }
 
   /** Free every stamp and cell; the pool calls this on its own teardown. */
   destroy(): void {
-    for (const stamp of this.stamps.values()) stamp.container.destroy({ children: true });
-    this.stamps.clear();
-    this.cellSlots.clear();
+    this.reset();
     this.container.destroy({ children: true });
+  }
+
+  private clearGrid(): void {
+    if (this.cellSlots.size === 0) return;
+    this.cellSlots.clear();
+    this.slots = new WeakMap();
+    this.marked.length = 0;
+    this.previouslyMarked.length = 0;
   }
 
   /** Mark `key`'s occluder for the running scan at `depth`, registering its box into the grid when it
@@ -244,6 +290,7 @@ export class OcclusionGhosts {
     let slot = this.slots.get(key);
     if (slot === undefined) {
       slot = {
+        key,
         occ,
         pe,
         depth,
@@ -253,9 +300,11 @@ export class OcclusionGhosts {
         visited: -1,
       };
       this.slots.set(key, slot);
+      this.marked.push(slot);
       this.registerSlot(slot, bounds);
       return;
     }
+    if (slot.run !== this.run) this.marked.push(slot);
     slot.run = this.run;
     slot.depth = depth;
     const b = slot.bounds;
@@ -293,7 +342,7 @@ export class OcclusionGhosts {
     }
   }
 
-  /** Take `slot` out of every cell it sits in, before a moved box registers the new extent. */
+  /** Take `slot` out of every cell it sits in, for a moved box or an evicted slot. */
   private unregisterSlot(slot: OccluderSlot): void {
     for (const key of slot.cells) {
       const cell = this.cellSlots.get(key);
@@ -303,7 +352,8 @@ export class OcclusionGhosts {
         const held = cell[i];
         if (held !== undefined && held !== slot) cell[w++] = held;
       }
-      cell.length = w;
+      if (w === 0) this.cellSlots.delete(key);
+      else cell.length = w;
     }
     slot.cells.length = 0;
   }
