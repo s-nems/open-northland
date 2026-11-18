@@ -124,13 +124,19 @@ export function defendAgainstWildlife(
 }
 
 /**
- * The adult animals of an `aggressive` type no stronger than {@link HUNTERS_PREY_MAX_HITPOINTS}, alive and
- * attackable, ownerless or owned by a player `player` fights, that `player` sees now and that either stand
- * within {@link WILD_THREAT_REACH_NODES} of one of its buildings or are attacking one of its people
- * wherever he works, ascending id. A provoked animal of a passive type is the hunt's own business and is
- * left out, and so is a friend's or a peace partner's herd.
+ * The adult animals of an `aggressive` type no stronger than `strongest` hitpoints, by default
+ * {@link HUNTERS_PREY_MAX_HITPOINTS}, alive and attackable, ownerless or owned by a player `player`
+ * fights, that `player` sees now and that either stand within {@link WILD_THREAT_REACH_NODES} of one of
+ * its buildings or are attacking one of its people wherever he works, ascending id. A provoked animal of
+ * a passive type is the hunt's own business and is left out, and so is a friend's or a peace partner's
+ * herd.
  */
-export function seatWildThreats(world: World, ctx: SystemContext, player: number): Entity[] {
+export function seatWildThreats(
+  world: World,
+  ctx: SystemContext,
+  player: number,
+  strongest = HUNTERS_PREY_MAX_HITPOINTS,
+): Entity[] {
   const threats: Entity[] = [];
   // Wildlife is the StayPoint carrier set, run on the workforce beat: 428-459 animals among 23-37
   // thousand positioned entities on mroczny_las and magiczny_las at game minute 5, 0.10-0.12 ms a seat.
@@ -140,7 +146,7 @@ export function seatWildThreats(world: World, ctx: SystemContext, player: number
     if (keeper !== undefined && !fightsPlayer(world, player, keeper)) continue;
     const tribe = world.get(e, Settler).tribe;
     if (!isAggressiveAnimal(ctx.content, tribe) || animalCannotBeAttacked(ctx.content, tribe)) continue;
-    if ((animalHitpoints(ctx.content, tribe) ?? 0) > HUNTERS_PREY_MAX_HITPOINTS) continue;
+    if ((animalHitpoints(ctx.content, tribe) ?? 0) > strongest) continue;
     if ((world.tryGet(e, Health)?.hitpoints ?? 0) <= 0) continue;
     if (!playerSeesEntity(world, ctx.fog, player, e)) continue;
     const victim = world.tryGet(e, Engagement)?.target;

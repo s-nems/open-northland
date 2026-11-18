@@ -425,6 +425,7 @@ export function blankColony(land: number, overrides: Partial<ColonyState> = {}):
     rest: [],
     garrison: [],
     threat: null,
+    wild: null,
     failures: 0,
     delivered: null,
     builds: [],

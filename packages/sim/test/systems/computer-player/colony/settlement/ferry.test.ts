@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
+  aiControlEntity,
+  ComputerColony,
   Health,
   JobAssignment,
   Resource,
@@ -19,19 +21,22 @@ import { SHIP_SAIL_TIMEOUT_TICKS } from '../../../../../src/systems/computer-pla
 import { attachToVehicle, boardRider } from '../../../../../src/systems/vehicles/crew.js';
 import { mooringSpotsOf } from '../../../../../src/systems/vehicles/dock.js';
 import {
+  ARMORY_TYPE,
   blankColony,
   colonySettlersOf,
   colonyState,
   colonyWorld,
+  editColony,
   looseColonyEnv,
   mooredShip,
+  overflowContent,
   SHIP_AT,
   SMALL_SHIP,
   stepUntil,
 } from '../../../../fixtures/colony-islands.js';
 import { idleBuilders, routedWorld, runningWorld } from '../../../../fixtures/colony-scenarios.js';
 import { ctxOf } from '../../../../fixtures/context.js';
-import { BUILDER, CIVILIST, SEAT, VIKING } from '../../support.js';
+import { BUILDER, CIVILIST, SEAT, STOCK_TYPE, VIKING } from '../../support.js';
 
 const HOME_DUE_TICKS = minutesToTicks(45);
 
@@ -46,6 +51,9 @@ const ROUND_DUE_TICKS = minutesToTicks(30);
 const BUILDERS_KEPT = 2;
 /** Off the colony's shore: a ship made here lies moored on the east island. */
 const COLONY_SHORE_AT = { x: 138, y: 60 };
+/** A store of the seat's on the east island, and an armory with its armorer's seat open. */
+const COLONY_STORE_AT = { x: 180, y: 60 };
+const COLONY_ARMORY_AT = { x: 180, y: 80 };
 /** Where a man of home stands before he is seated on the ship. */
 const HOME_MAN_AT = { x: 40, y: 60 };
 /** How far apart, in half-cell nodes, the shores a refused ship tries lie at the least. */
@@ -91,6 +99,75 @@ describe('a colony ferry with no helm', () => {
     expect(colony.ferry).toBeNull();
     expect(orders.map((order) => order.kind)).toContain('unloadPeople');
     expect(colony.garrison).toEqual([rider]);
+  });
+});
+
+describe('a colony ferry under wild attack', () => {
+  it('takes neither hands nor craftsmen over while wild animals keep attacking the colony, and does once they stop', () => {
+    const sim = colonyWorld(undefined, overflowContent());
+    for (const [buildingType, at] of [
+      [STOCK_TYPE, COLONY_STORE_AT],
+      [ARMORY_TYPE, COLONY_ARMORY_AT],
+    ] as const)
+      sim.enqueueSetup({
+        kind: 'placeBuilding',
+        buildingType,
+        ...at,
+        tribe: VIKING,
+        owner: SEAT,
+        force: true,
+        underConstruction: false,
+      });
+    sim.step();
+    mooredShip(sim);
+    const terrain = sim.terrain;
+    if (terrain === undefined) throw new Error('setup: no terrain');
+    const carrier = aiControlEntity(sim.world, SEAT);
+    if (carrier === null) throw new Error('setup: no carrier');
+    // Held by the seat, so the store and the armory count as the colony's and the armorer's seat is owed.
+    const land = terrain.componentOf(terrain.nodeAt(COLONY_STORE_AT.x, COLONY_STORE_AT.y));
+    const held = blankColony(land, {
+      shore: { hx: COLONY_SHORE_AT.x, hy: COLONY_SHORE_AT.y },
+      berth: { hx: SHIP_AT.x, hy: SHIP_AT.y },
+      wild: { since: sim.tick, seen: sim.tick },
+    });
+    sim.world.add(carrier, ComputerColony, { colonies: [held], rejected: [], retryAt: 0 });
+    const colony = editColony(sim);
+    const env = looseColonyEnv(sim, colony);
+
+    runFerry(env, colony);
+    expect(colony.ferry).toBeNull();
+    colony.wild = null;
+    runFerry(env, colony);
+    expect(colony.ferry).not.toBeNull();
+  });
+});
+
+describe('a colony ferry reaching a colony given up meanwhile', () => {
+  it('sets nobody ashore there and keeps its riders aboard for home', () => {
+    const sim = colonyWorld();
+    const { ship, rider: helm } = shipWithRider(sim, COLONY_SHORE_AT);
+    const before = new Set(everySettlerOf(sim.world, SEAT));
+    sim.enqueueSetup({ kind: 'spawnSettler', jobType: CIVILIST, ...HOME_MAN_AT, tribe: VIKING, owner: SEAT });
+    sim.step();
+    const rider = everySettlerOf(sim.world, SEAT).find((e) => !before.has(e));
+    const ctx = ctxOf(sim);
+    const mooring = sim.world.get(ship, Vehicle).mooring;
+    if (rider === undefined || ctx.terrain === undefined || mooring === null) throw new Error('setup');
+    attachToVehicle(sim.world, ctx, { kind: 'attachToVehicle', entity: rider, vehicle: ship });
+    boardRider(sim.world, rider, ship);
+    const land = ctx.terrain.componentOf(ctx.terrain.nodeAt(mooring.hx, mooring.hy));
+    const hull = sim.world.get(ship, Health).hitpoints;
+    const colony = blankColony(land, {
+      phase: 'abandoned',
+      garrison: [rider],
+      ferry: { ship, side: 'colony', leg: 'sail', since: 0, helm, hull, tried: [] },
+    });
+
+    const orders = runFerry(looseColonyEnv(sim, colony), colony);
+
+    expect(orders.map((order) => order.kind)).not.toContain('detachFromVehicle');
+    expect(colony.ferry?.leg).toBe('board');
   });
 });
 

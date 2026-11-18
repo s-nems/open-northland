@@ -14,6 +14,7 @@ import { setAiControl } from '../../../../src/systems/orders/ai.js';
 import { aiContent } from '../../../fixtures/ai-content.js';
 import { grassNodeMap } from '../../../fixtures/terrain.js';
 import {
+  COW_TRIBE,
   ctxOf,
   HQ_TYPE,
   makeAiSeat,
@@ -23,8 +24,10 @@ import {
   SEAT,
   spawnMen,
   VIKING,
+  WOLF_TRIBE,
   WOOD,
   WOOD_HARVEST,
+  withWolves,
 } from '../support.js';
 
 /** Two zones side by side: the map is two 32-node zones wide and one high. */
@@ -32,6 +35,12 @@ const MAP_W = 64;
 const MAP_H = 32;
 const EAST_ZONE = 1;
 const BLOCKER_TYPE = 1;
+const KEEPER = SEAT + 1;
+/** The row the herds stand on, and the column of each: the wild pack, the kept pack and the cows. */
+const HERD_ROW = 10;
+const WILD_PACK_X = 10;
+const KEPT_PACK_X = 30;
+const COWS_X = 50;
 
 /** Grass with one build-blocking landscape (a script's `blocker`, which no player removes) per node. */
 function briefMap(blockers: readonly { hx: number; hy: number }[]): TerrainMap {
@@ -84,6 +93,30 @@ describe('map brief', () => {
     expect(brief.clearable[EAST_ZONE]).toBe(2);
     expect(brief.free[EAST_ZONE]).toBe(zoneNodes - 4);
     expect(brief.plantable[EAST_ZONE]).toBe(brief.free[EAST_ZONE]);
+  });
+
+  it('keeps the start spots of the ownerless packs and leaves out a passive herd and a kept pack', () => {
+    const sim = new Simulation({ seed: 1, content: withWolves(aiContent()), map: briefMap([]) });
+    makeAiSeat(sim, SEAT);
+    const herd = (tribe: number, x: number, owner?: number): void =>
+      sim.enqueueSetup({
+        kind: 'spawnAnimalHerd',
+        tribe,
+        x,
+        y: HERD_ROW,
+        count: 1,
+        ...(owner === undefined ? {} : { owner }),
+      });
+    herd(WOLF_TRIBE, WILD_PACK_X);
+    herd(WOLF_TRIBE, KEPT_PACK_X, KEEPER);
+    herd(COW_TRIBE, COWS_X);
+    sim.step();
+    const terrain = sim.terrain;
+    if (terrain === undefined) throw new Error('setup: no terrain');
+    const [spot] = briefOf(sim).predators;
+    expect(briefOf(sim).predators).toHaveLength(1);
+    expect(spot?.hx).toBeLessThan((WILD_PACK_X + KEPT_PACK_X) / 2);
+    expect(spot?.component).toBe(terrain.componentOf(terrain.nodeAt(WILD_PACK_X, HERD_ROW)));
   });
 
   it('sums each deposit into the zone its node lies in', () => {

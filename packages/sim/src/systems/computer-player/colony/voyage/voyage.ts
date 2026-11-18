@@ -116,6 +116,7 @@ function settledOn(
     rest: [],
     garrison: [],
     threat: null,
+    wild: null,
     failures,
     delivered: null,
     builds: [],

@@ -11,8 +11,8 @@ import type { SystemContext } from '../../../context.js';
 import { coastsOf } from '../../sea-route.js';
 import { scanDeposits } from './deposits.js';
 import { scanGround, zoneGridOf } from './ground.js';
-import { scanLivestock } from './livestock.js';
 import { scanSeatStarts } from './seats.js';
+import { scanLivestock, scanPredators } from './wildlife.js';
 
 export { BRIEF_GOOD_IDS } from './deposits.js';
 
@@ -22,9 +22,9 @@ export const BRIEF_ZONE_NODES = 32;
 
 /**
  * Take the map brief the first time a computer controller runs on a mapped world: one scan of the
- * ground, the deposits, the seat starts and the wild livestock as they stand then. A world where no seat's computer
- * controller runs never pays for it. Approximation: a first controller enabled mid-game scans then, so
- * the buildings and deposits standing at that moment count as its start layout.
+ * ground, the deposits, the seat starts, the wild livestock and the packs as they stand then. A world
+ * where no seat's computer controller runs never pays for it. Approximation: a first controller enabled
+ * mid-game scans then, so the buildings and deposits standing at that moment count as its start layout.
  */
 export function ensureMapBrief(world: World, ctx: SystemContext): void {
   const terrain = ctx.terrain;
@@ -68,6 +68,7 @@ function scanMapBrief(world: World, ctx: SystemContext, terrain: TerrainGraph, c
     landComponents,
     seats,
     livestock: scanLivestock(world, terrain),
+    predators: scanPredators(world, ctx.content, terrain),
     entityCeiling: world.nextEntityId,
   });
 }

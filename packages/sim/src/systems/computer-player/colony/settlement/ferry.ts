@@ -32,6 +32,7 @@ import { boardOrders, homeMaySpare, sparePartyMen, topUpParty } from '../party.j
 import { colonists, colonyBuildings, standsOn } from '../roster.js';
 import { lyingStill, mooredOn, unloadAt } from '../sea/moorings.js';
 import { lineWayClear, sailOrders, withDanger, withoutLapsed } from '../sea/sea-danger.js';
+import { underWildAttack } from '../wild.js';
 import { atWorkshop, fitsTrade, openCraftSeats } from './craft.js';
 import { garrisonOwed } from './garrison.js';
 import { handsWanted, menPastWork } from './posts.js';
@@ -121,6 +122,8 @@ function colonyMenRoom(env: ColonyEnv): number {
   return shareOf(home, COLONY_MEN_SHARE) - away;
 }
 
+const NO_TRADESMEN = { sailing: [], lessons: [] } as const;
+
 /** Who home owes the colony now, in `seats`: the craftsmen no colonist can stand in for, the garrison and the
  *  hands it lacks; listed as the colony's, with the lessons that make the next craftsman. */
 function outward(
@@ -137,9 +140,13 @@ function outward(
   const room = colonyMenRoom(env);
   // Women sail for the colony's free home slots past the men's share, a wife with her husband: the share
   // keeps home's hands, a married man is the last home drafts, and a roomy colony grows people (owner
-  // ruling).
-  const lacking = { men: Math.min(wanted.men - men, room), women: wanted.women - women };
-  const trades = tradesmenFor(env, people, home, seats);
+  // ruling). While wild animals keep attacking the colony only its garrison sails: anyone else would feed
+  // the pack.
+  const harried = underWildAttack(colony, ctx.tick);
+  const lacking = harried
+    ? { men: 0, women: 0 }
+    : { men: Math.min(wanted.men - men, room), women: wanted.women - women };
+  const trades = harried ? NO_TRADESMEN : tradesmenFor(env, people, home, seats);
   const tradesmen = [...trades.sailing];
   const garrison = garrisonOwed(env, colony).slice(0, Math.max(0, seats - tradesmen.length));
   const party = topUpParty(
@@ -219,15 +226,18 @@ function turnBack(env: ColonyEnv, colony: ColonyView, ferry: FerryView): PlayerC
   return sailOrders(env, colony, ferry.ship, colony.berth);
 }
 
-/** Arrived at the colony: everyone but the helm steps ashore and the homeward men board; with no helm the
- *  crossing ends there. */
+/** Arrived at the colony: everyone but the helm steps ashore, nobody at one given up meanwhile, who sails home
+ *  with its survivors, and the homeward men board; with no helm the crossing ends there. */
 function landAtColony(env: ColonyEnv, colony: ColonyView, ferry: FerryView): PlayerCommand[] {
   const { world } = env;
   const helm = ferry.helm !== null && world.isAlive(ferry.helm) ? ferry.helm : null;
   if (helm === null) return releaseFerry(env, colony, ferry.ship, true);
-  const off = ridersOf(world, ferry.ship)
-    .filter((e) => e !== helm)
-    .map((entity): PlayerCommand => ({ kind: 'detachFromVehicle', entity }));
+  const off =
+    colony.phase === 'abandoned'
+      ? []
+      : ridersOf(world, ferry.ship)
+          .filter((e) => e !== helm)
+          .map((entity): PlayerCommand => ({ kind: 'detachFromVehicle', entity }));
   const seats = freeSeats(env, colony, ferry.ship) + off.length;
   const back = homeward(env, colony, ferry.ship).slice(0, Math.max(0, seats));
   enterLeg(env, 'board', 'colony');

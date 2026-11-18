@@ -10,6 +10,7 @@ import type { World } from '../../../../ecs/world.js';
 import { type HalfCellNode, hexDistance } from '../../../../nav/halfcell.js';
 import { NO_COMPONENT, type TerrainGraph } from '../../../../nav/terrain/index.js';
 import { anchorNodeOf } from '../../../ai-shared/node-geometry.js';
+import { ANIMAL_ACQUIRE_RANGE_NODES } from '../../../conflict/targeting.js';
 import type { SystemContext } from '../../../context.js';
 import { placementProbe } from '../../../footprint/placement/building.js';
 import { believedBuildings } from '../../knowledge/intel/index.js';
@@ -62,6 +63,11 @@ const LAND_ROOM_CANDIDATES = 8;
  *  block's half width, where its shores lie), and the homes past which more room gains nothing. */
 const BLOCK_HOMES_REACH_NODES = 48;
 const BLOCK_HOMES_FULL = 16;
+
+/** How near a site's centre, in hex nodes, a pack's start spot on its land puts the colony in the pack's way
+ *  (authored approximation): the block's half width the colony works round its centre, a Manhattan reach,
+ *  and the reach in map points a pack leader walks out from its stay point after a victim. */
+const PACK_REACH_NODES = BLOCK_HOMES_REACH_NODES + ANIMAL_ACQUIRE_RANGE_NODES;
 
 /** Owner ruling: a colony keeps clear of every seat it does not call friend. The figure is authored from the
  *  survey: hex nodes between a site's centre and the nearest start or believed building. */
@@ -119,6 +125,9 @@ export interface ColonySite {
   readonly contested: boolean;
   /** An earlier seat's first pick lies in range of it: this seat looks there last. */
   readonly crowded: boolean;
+  /** A pack stood within {@link PACK_REACH_NODES} of it on its land at the start: it would feed on the
+   *  colony's people, so every site clear of one goes first. */
+  readonly wild: boolean;
 }
 
 const candidatesByBrief = new WeakMap<MapBriefView, ReadonlyMap<number, readonly ColonySite[]>>();
@@ -270,12 +279,16 @@ function scanCandidates(brief: MapBriefView, seat: number): readonly ColonySite[
     const use = siteUse(tally);
     if (use === null) continue;
     const contested = rivals.some((rival) => hexDistance(rival, centre) < hexDistance(home, centre));
-    sites.push({ zone, land, centre, score: siteScore(tally), use, contested, crowded: false });
+    const wild = brief.predators.some(
+      (pack) => pack.component === land && hexDistance(pack, centre) <= PACK_REACH_NODES,
+    );
+    sites.push({ zone, land, centre, score: siteScore(tally), use, contested, crowded: false, wild });
   }
   return sites;
 }
 
 const ranked = (a: ColonySite, b: ColonySite): number =>
+  Number(a.wild) - Number(b.wild) ||
   Number(a.use === 'people') - Number(b.use === 'people') ||
   Number(a.crowded) - Number(b.crowded) ||
   Number(a.contested) - Number(b.contested) ||
@@ -302,10 +315,11 @@ function spreadSeats(brief: MapBriefView): Map<number, readonly ColonySite[]> {
   return bySeat;
 }
 
-/** The sites the static map offers `seat`, blocks on a land sharing water with home: every site with
- *  resources ahead of every site for people, then those nearer it than any other seat's start and clear of
- *  the earlier seats' picks first, so seats spread by what they all know, then best first, the lowest zone on
- *  a tie. Scanned once per brief, and a pure function of it. */
+/** The sites the static map offers `seat`, blocks on a land sharing water with home: every site clear of the
+ *  packs ahead of a wild one, then every site with resources ahead of every site for people, then those
+ *  nearer it than any other seat's start and clear of the earlier seats' picks first, so seats spread by
+ *  what they all know, then best first, the lowest zone on a tie. Scanned once per brief, and a pure
+ *  function of it. */
 export function colonySiteCandidates(brief: MapBriefView, seat: number): readonly ColonySite[] {
   let bySeat = candidatesByBrief.get(brief);
   if (bySeat === undefined) {
@@ -406,6 +420,7 @@ export function surveyColonySite(
     .filter(
       (site) =>
         site.land === first.land &&
+        site.wild === first.wild &&
         site.use === first.use &&
         site.crowded === first.crowded &&
         site.contested === first.contested,

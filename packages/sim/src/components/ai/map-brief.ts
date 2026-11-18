@@ -32,10 +32,16 @@ export interface BriefLandComponent {
   waters: number[];
 }
 
-/** Where a wild livestock animal stood at the scan, its anchor node. */
-export interface BriefLivestockSpot {
+/** Where a wild animal stood at the scan, its anchor node. */
+export interface BriefAnimalSpot {
   hx: number;
   hy: number;
+}
+
+/** Where an animal that attacks people unprovoked stood at the scan, and the static land component under
+ *  it. */
+export interface BriefPredatorSpot extends BriefAnimalSpot {
+  component: number;
 }
 
 /**
@@ -77,7 +83,11 @@ export interface MapBriefState {
   seats: BriefSeatStart[];
   /** The wild livestock's spots at the scan, ascending entity id: the start layout a computer seat may
    *  know, never where an animal moved since. */
-  livestock: BriefLivestockSpot[];
+  livestock: BriefAnimalSpot[];
+  /** The ownerless adult `aggressive` animals' spots at the scan, ascending entity id: the packs (wolves,
+   *  ibexes, lions and the like in the base data) a seat may know from the start layout. A pack a map hands
+   *  to a player is left out. */
+  predators: BriefPredatorSpot[];
   /** The world's next entity id at the scan: an entity below it stood then, since ids are never reused.
    *  A deposit below it is part of the static start layout every computer seat may know. */
   entityCeiling: number;
@@ -103,6 +113,7 @@ const mapBrief = defineWorldSingleton<MapBriefState>('MapBrief', 'players', () =
   landComponents: [],
   seats: [],
   livestock: [],
+  predators: [],
   entityCeiling: 0,
 }));
 

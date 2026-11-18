@@ -83,6 +83,12 @@ export interface ColonyThreat {
   since: number;
 }
 
+/** A run of wild animals' attacks on a colony: the tick the first was seen and the latest. */
+export interface ColonyWildRun {
+  since: number;
+  seen: number;
+}
+
 /** Where a colony's ship took fire, and the tick of the latest hit there. */
 export interface SeaDanger {
   at: HalfCellNode;
@@ -109,6 +115,8 @@ export interface ColonyState {
   /** The fighters home sent to hold it: aboard its ferry or on its land. */
   garrison: Entity[];
   threat: ColonyThreat | null;
+  /** The wild animals' attacks on it, null while none has been seen lately. */
+  wild: ColonyWildRun | null;
   failures: number;
   /** The tick its trader last unloaded at either stop, null until then. */
   delivered: number | null;

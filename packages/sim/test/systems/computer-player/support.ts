@@ -99,6 +99,9 @@ export const WALL_TYPE = 16;
 export const VEHICLE_YARD_TYPE = 77;
 /** An animal tribe id no fixture civilization uses - the round-up's claimable creatures. */
 export const COW_TRIBE = 13;
+/** A free fixture tribe for the wolf {@link withWolves} adds, and a real wolf's adult hitpoints. */
+export const WOLF_TRIBE = 20;
+const WOLF_HITPOINTS = 1000;
 /** The animal farm and its trade - added by {@link husbandryContent} on free fixture slots. */
 export const ANIMAL_FARM_TYPE = 17;
 export const BREEDER = 22;
@@ -320,6 +323,18 @@ export function doorHqContent(): ContentSet {
 
 export function plantPostAtHq(sim: Simulation): void {
   plantPost(sim, sim.world.get(entityOfBuilding(sim, HQ_TYPE), Position));
+}
+
+/** `base` with a wolf: an `aggressive` animal of {@link WOLF_TRIBE}. */
+export function withWolves(base: ContentSet): ContentSet {
+  return parseContentSet({
+    ...base,
+    tribes: [...base.tribes, { typeId: WOLF_TRIBE, id: 'wolves' }],
+    animals: [
+      ...base.animals,
+      { id: 'wolves', tribeType: WOLF_TRIBE, aggressive: true, hitpointsAdult: WOLF_HITPOINTS },
+    ],
+  });
 }
 
 /** Content whose headquarters offers the hunter slot the opening hunt is posted on - the base

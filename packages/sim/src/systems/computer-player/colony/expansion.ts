@@ -155,8 +155,7 @@ function lackedGoods(env: SeatEnv, colonies: readonly ColonyEnv[]): LandGood[] {
 /**
  * The minute's look past the colonies a seat holds. It opens one more once {@link mayLookFurther} holds, the
  * home can spare a party, and a site on a land of no colony of its gives home a good it lacks or room for
- * homes, whose people sail home to fight (owner ruling); the survey ranks a site for people alone after every
- * site with resources.
+ * homes, whose people sail home to fight (owner ruling); the survey ranks the sites it offers.
  */
 export function openNextColony(env: SeatEnv): void {
   const { world, ctx, seat, carrier } = env;

@@ -90,6 +90,7 @@ function briefOf(zones: readonly ZoneFill[]): MapBriefView {
     ],
     seats: [{ player: SEAT, hx: 0, hy: 48, component: HOME_LAND, buildings: [] }],
     livestock: [],
+    predators: [],
     entityCeiling: 0,
   };
 }
@@ -182,6 +183,15 @@ describe('the static colony candidates', () => {
     ['too little room', { free: 300, wood: 0, stone: 0, fish: PEOPLE_FISH }],
   ])('passes over a block with no resources and %s', (_why, fill) => {
     expect(colonySiteCandidates(briefOf(pair(2, NEAR_LAND, fill)), SEAT)).toEqual([]);
+  });
+
+  it('looks at a block a pack stood near at the start only after every clear one, whatever its score', () => {
+    const brief = briefOf([...pair(2, NEAR_LAND), ...pair(6, NEAR_LAND, { free: 900 })]);
+    const pack = { hx: 7 * ZONE_NODES, hy: ROW * ZONE_NODES + ZONE_NODES / 2, component: NEAR_LAND };
+    const sites = colonySiteCandidates({ ...brief, predators: [pack] }, SEAT);
+    expect(sites[0]?.wild).toBe(false);
+    expect(sites.at(-1)?.wild).toBe(true);
+    expect(sites.at(-1)?.score).toBeGreaterThan(sites[0]?.score ?? 0);
   });
 
   it('looks last at a block another start lies nearer, whatever its score', () => {

@@ -26,6 +26,7 @@ import {
   sailing,
   scouting,
 } from './voyage/voyage.js';
+import { harried } from './wild.js';
 
 /** Every how many decisions a seat surveys for a colony, its next or its first (authored): the survey's cost
  *  once a game minute. */
@@ -64,7 +65,7 @@ function runOneColony(env: ColonyEnv): readonly PlayerCommand[] {
         ...defendColony(env, env.colony),
       ];
       if (!moduleBeatDue(ctx.tick - POPULATION_PHASE, seat, WORKFORCE_EVERY_DECISIONS)) return ships;
-      if (!overrun(env, colony))
+      if (!overrun(env, colony) && !harried(env, colony))
         return [...ships, ...recoverStrayShips(env, colony), ...foundColony(env, colony)];
       abandonColony(env);
       return ships;
