@@ -77,8 +77,9 @@ the operator's craft rotation treats a vehicle good as a turn taken outside on t
 cycle, and moves past it once the site launched; the site is a `SiteAssignment` crew membership like a
 builder's, the yard's bill is fetched from the worker's own workshop first, its recipe inputs included,
 then through the ordinary site-supply rungs, and builders and haulers
-never serve a vehicle site. Approximations: which product a worker "currently" makes is the rotation
-cursor (the original's scheduling is not decoded); a land site is worked from its door, a ship site
+never serve a vehicle site, nor does a player's order pin a builder to one (owner ruling).
+Approximations: which product a worker "currently" makes is the rotation cursor (the original's
+scheduling is not decoded); a land site is worked from its door, a ship site
 from its first work-area cell on the worker's continent that no walk block covers (the original reads
 a per-cell flag there, approximated by the walk block); a ship site's material lands on its perimeter,
 and on its work-area cells on each shore the perimeter does not reach, so a hull off its crew's shore

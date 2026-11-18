@@ -639,6 +639,17 @@ describe("the action ring's site pick", () => {
     expect(sitePick.assignableAt(sim.snapshot(), foundation, builder, byType)).toBe(true);
   });
 
+  it('offers no vehicle yard to a builder', () => {
+    const sim = new Simulation({ seed: 1, content: sandboxContent() });
+    const yard = sim.content.buildings.find((row) => row.kind === 'vehicle');
+    if (yard === undefined) throw new Error('the sandbox has no vehicle yard');
+    const site = siteAt(sim, yard.typeId);
+    const builder = settlerAt(sim, JOB_BUILDER);
+    const byType = lastByTypeId(sim.content.buildings);
+    expect(sitePick.assignableAt(sim.snapshot(), site, builder, byType)).toBe(false);
+    expect(sitePick.highlight(sim.snapshot(), [builder], byType)).toEqual([]);
+  });
+
   it("offers its seat's barracks of another tribe to the drill pick", () => {
     const sim = new Simulation({ seed: 1, content: sandboxContent() });
     const barracks = siteAt(sim, BUILDING_BARRACKS);

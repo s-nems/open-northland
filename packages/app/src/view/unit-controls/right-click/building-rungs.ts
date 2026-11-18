@@ -73,6 +73,17 @@ function definitionOf(ctx: BuildingContext, building: number) {
   return type !== undefined ? contentLookups(ctx.content).buildings.get(type) : undefined;
 }
 
+/** A vehicle's yard site, which only the workshop worker raising it builds (owner ruling). */
+function isVehicleYard(ctx: BuildingContext, building: number): boolean {
+  return definitionOf(ctx, building)?.kind === 'vehicle';
+}
+
+function isBuilder(ctx: BuildingContext, unit: FormationUnit): boolean {
+  const self = entityById(ctx.snapshot, unit.ref);
+  const job = self !== undefined ? settlerJobType(self) : undefined;
+  return job !== undefined && systems.jobCanBuild(ctx.content, job);
+}
+
 /**
  * The builders among `units` that join `building`'s crew: a foundation or damaged building takes a
  * builder before anything else, as in the original, while a standing building's repair crew has room.
@@ -82,7 +93,7 @@ function definitionOf(ctx: BuildingContext, building: number) {
 function crewAmong(ctx: BuildingContext, units: readonly FormationUnit[], building: number): FormationUnit[] {
   const { snapshot, content } = ctx;
   const entity = entityById(snapshot, building);
-  if (entity === undefined) return [];
+  if (entity === undefined || isVehicleYard(ctx, building)) return [];
   const underConstruction = entity.components.UnderConstruction !== undefined;
   if (!underConstruction && entity.components.Damaged === undefined) return [];
   const slots = definitionOf(ctx, building)?.workers;
@@ -116,8 +127,13 @@ export function atBuilding(
   const { snapshot } = ctx;
   const def = definitionOf(ctx, building);
   const crew = crewAmong(ctx, units, building);
+  // A builder takes no post at a vehicle yard either: its hauler slots would make him a carrier there.
+  const yard = isVehicleYard(ctx, building);
   const rest = units.filter(
-    (target) => !crew.includes(target) && takesBuilding(ctx, entityById(snapshot, target.ref)),
+    (target) =>
+      !crew.includes(target) &&
+      takesBuilding(ctx, entityById(snapshot, target.ref)) &&
+      !(yard && isBuilder(ctx, target)),
   );
   if (def !== undefined && systems.isSchoolType(def))
     return { kind: 'school', building, crew, learners: rest };
@@ -192,11 +208,7 @@ export function atSite(
   site: number,
   tile: Tile,
 ): BuildingIntent {
-  const builders = units.filter((unit) => {
-    const self = entityById(ctx.snapshot, unit.ref);
-    const job = self !== undefined ? settlerJobType(self) : undefined;
-    return job !== undefined && systems.jobCanBuild(ctx.content, job);
-  });
+  const builders = units.filter((unit) => isBuilder(ctx, unit));
   const walkers = units.filter((unit) => !builders.includes(unit));
   return { kind: 'site', site, builders, walkers, tile };
 }

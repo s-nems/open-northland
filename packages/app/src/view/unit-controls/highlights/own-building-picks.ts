@@ -114,11 +114,17 @@ export function builderSitesOf(snapshot: WorldSnapshot, owner: number): readonly
   return entitiesUnder(snapshot, BUILDER_SITES_BY_OWNER, owner);
 }
 
+/** A vehicle's yard site, which only the workshop worker raising it builds (owner ruling). */
+function isVehicleYard(site: SnapshotEntity, byType: ReadonlyMap<number, BuildingInfo>): boolean {
+  const typeId = buildingTypeOf(site);
+  return typeId !== undefined && byType.get(typeId)?.kind === 'vehicle';
+}
+
 /** The foundations, damaged buildings, wall sites and road sites a builder may be pinned to; a full
  *  repair crew refuses more. */
 export const sitePick: OwnBuildingPick = ownBuildingPick({
   ownedBy: builderSitesOf,
-  candidate: isBuilderSite,
+  candidate: (site, byType) => isBuilderSite(site) && !isVehicleYard(site, byType),
   accepts: (building, settler, snapshot) => builderCrewHasRoom(snapshot, building, settler),
 });
 

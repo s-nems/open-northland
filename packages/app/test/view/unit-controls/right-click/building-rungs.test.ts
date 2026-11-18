@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   JOB_ARCHER,
   JOB_BUILDER,
+  JOB_CARRIER,
   JOB_COLLECTOR,
   JOB_SOLDIER_SWORD,
   JOB_SOLDIER_UNARMED,
@@ -26,6 +27,12 @@ const SCHOOL = ((): number => {
   if (school === undefined) throw new Error('the sandbox has no school');
   return school.typeId;
 })();
+const VEHICLE_YARD = ((): number => {
+  const yard = CONTENT.buildings.find((row) => row.kind === 'vehicle');
+  if (yard === undefined) throw new Error('the sandbox has no vehicle yard');
+  return yard.typeId;
+})();
+const YARD_CARRIERS = 3;
 const BUILDING = 100;
 const SITE = 101;
 const TILE = { col: 6, row: 8 };
@@ -97,6 +104,26 @@ describe('the building rungs', () => {
       systems.REPAIR_CREW_LIMIT - 1,
     );
     expect(crewOf('standing')).toEqual([]);
+  });
+
+  it('give a builder neither the crew nor a post at a vehicle yard, and walk him there under Shift', () => {
+    const [builder] = units(1);
+    if (builder === undefined) throw new Error('setup: one builder');
+    // Real content's yards carry `logicworker 24 3`, a hauler post a builder would fall through to.
+    const content = {
+      ...CONTENT,
+      buildings: CONTENT.buildings.map((row) =>
+        row.typeId === VEHICLE_YARD
+          ? { ...row, workers: [{ jobType: JOB_CARRIER, count: YARD_CARRIERS }] }
+          : row,
+      ),
+    };
+    const ctx = {
+      snapshot: snapshotOf([settler(builder.ref, JOB_BUILDER), building(VEHICLE_YARD, 'foundation')]),
+      content,
+    };
+    expect(atBuilding(ctx, [builder], BUILDING)).toMatchObject({ kind: 'building', crew: [], workers: [] });
+    expect(queueAtBuilding(ctx, [builder], BUILDING, TILE)).toMatchObject({ crew: [], walkers: [builder] });
   });
 
   it('house the rest at a home, drill them at a barracks and offer them the lessons at a school', () => {

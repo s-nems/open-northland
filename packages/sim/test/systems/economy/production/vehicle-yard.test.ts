@@ -35,6 +35,7 @@ import {
 import { plannerSystem } from '../../../../src/systems/index.js';
 import { setBuildForbidden } from '../../../../src/systems/landscape/edits.js';
 import { setProductionGoods } from '../../../../src/systems/orders/index.js';
+import { BUILD_HOUSE_ATOMIC_ID } from '../../../../src/systems/settlers/atomics/start.js';
 import { UNREACHABLE_GOAL_MEMO_TICKS } from '../../../../src/systems/settlers/unreachable-goals.js';
 import { createVehicle } from '../../../../src/systems/vehicles/index.js';
 import { testContent } from '../../../fixtures/content.js';
@@ -64,6 +65,8 @@ const SHIP_YARD = 51;
 const WAINWRIGHT = 52;
 const HEADQUARTERS = 1;
 const CARPENTER = 2;
+/** A builder trade, free in the shared fixture's job ids. */
+const BUILDER = 8;
 /** The fixture's civilian job, one its small ship seats. */
 const CIVILIAN = 6;
 /** The fixture's tech enabler: a plank is producible once a woodcutter lives in the tribe. */
@@ -107,6 +110,7 @@ function yardContent(): ContentSet {
   const base = testContent();
   return parseContentSet({
     ...base,
+    jobs: [...base.jobs, { typeId: BUILDER, id: 'builder', allowedAtomics: [BUILD_HOUSE_ATOMIC_ID] }],
     // Each vehicle good pairs with the yard house that builds it (the real `vehicleHouse` shape).
     goods: [
       ...base.goods,
@@ -178,6 +182,8 @@ function yardContent(): ContentSet {
         id: 'wainwright',
         kind: 'workplace',
         workers: [{ jobType: CARPENTER, count: 1 }],
+        // A bill, so its foundation stands open for a builder's pin.
+        construction: [{ goodType: WOOD, amount: 1 }],
         stock: [
           { goodType: WOOD, capacity: 20, initial: 0 },
           { goodType: PLANK, capacity: 20, initial: 0 },
@@ -622,6 +628,21 @@ describe('a yard site’s ground plot', () => {
 });
 
 describe('building the vehicle', () => {
+  it('pins no builder to a yard on the player’s order, though it pins one to a house site', () => {
+    const s = sim();
+    const yard = siteAt(s, HANDCART_YARD, 4, 4);
+    const house = siteAt(s, WAINWRIGHT, 18, 12);
+    const builder = personAt(s, { x: fx.fromInt(10), y: fx.fromInt(10) }, BUILDER);
+    s.enqueue(playerCommand(P0, { kind: 'assignBuilder', entity: builder, site: yard }));
+    s.step();
+    // The drive may crew the open house on its own, never the yard, and the order pinned nothing.
+    expect(s.world.tryGet(builder, SiteAssignment)?.site).not.toBe(yard);
+    expect(s.world.tryGet(builder, SiteAssignment)?.pinned ?? false).toBe(false);
+    s.enqueue(playerCommand(P0, { kind: 'assignBuilder', entity: builder, site: house }));
+    s.step();
+    expect(s.world.get(builder, SiteAssignment)).toEqual({ site: house, pinned: true });
+  });
+
   it('fetches the bill through the site, launches the cart on it, and never shelves the good', () => {
     const s = sim();
     const { shop, store, worker } = yardWorld(s);

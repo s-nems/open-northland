@@ -1,3 +1,4 @@
+import { BUILDING_KIND } from '@open-northland/data';
 import {
   Age,
   Building,
@@ -195,7 +196,8 @@ export function unassignWorker(
  * builder on a foundation" and its repair twin - see the command doc. {@link jobCanBuild} admits only a
  * settler already holding a builder job, which is also why this order needs no women-take-no-trade gate.
  * A standing structure's repair crew takes no more than {@link repairCrewLimit}; a building's cap is the
- * original's.
+ * original's. A vehicle's site is refused: only the workshop worker raising it builds a vehicle (owner
+ * ruling).
  *
  * Unlike a worker posted beyond its signpost reach, who stands lost, a pinned builder walks to its site: a
  * pinned site is how the player extends the network's frontier, and the builder drive treats it as a bound
@@ -212,6 +214,7 @@ export function assignBuilder(
   const site = command.site;
   if (!world.isAlive(site)) return;
   if (!world.has(site, UnderConstruction) && !needsRepair(world, site)) return;
+  if (isVehicleYard(world, ctx, site)) return;
   const settler = world.get(e, Settler);
   if (!sameSide(world, e, site)) return; // another player's foundation - not this side's
   if (settler.jobType === null || !jobCanBuild(ctx.content, settler.jobType)) return;
@@ -230,6 +233,14 @@ export function assignBuilder(
   world.add(e, SiteAssignment, { site, pinned: true });
   const mode = buildModeOf(world, site);
   if (mode !== undefined) world.add(e, BuildMode, { kind: mode });
+}
+
+function isVehicleYard(world: World, ctx: SystemContext, site: Entity): boolean {
+  const building = world.tryGet(site, Building);
+  return (
+    building !== undefined &&
+    contentIndex(ctx.content).buildings.get(building.buildingType)?.kind === BUILDING_KIND.vehicle
+  );
 }
 
 /** The run a hand-assigned site starts: every road site, or every wall segment still to raise. */
