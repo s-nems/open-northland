@@ -328,6 +328,8 @@ function slayTarget(plan: PlannerContext, farm: Entity, good: number, door: Node
     if (summoner !== null) continue;
     if (world.has(animal, DraughtAnimal)) continue; // walking to the cart that recruited it
     if (acrossWater(world, terrain, animal, door)) continue;
+    // One beyond the breeder's walk is left alone like one across water.
+    if (plan.limit !== null && !plan.limit.allowsNode(entityNode(world, terrain, animal))) continue;
     spare += 1;
     const range = hexRange(plan, door, entityNode(world, terrain, animal));
     if (range < bestRange || (range === bestRange && best !== null && animal < best)) {

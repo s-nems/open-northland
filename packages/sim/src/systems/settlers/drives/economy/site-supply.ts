@@ -2,7 +2,7 @@ import { CARRY_CAPACITY } from '../../../../components/index.js';
 import type { Entity, World } from '../../../../ecs/world.js';
 import type { NodeId, TerrainGraph } from '../../../../nav/terrain/index.js';
 import type { SystemContext } from '../../../context.js';
-import { type NavigationLimit, spotsReaching } from '../../../signposts/index.js';
+import { jobLimitAt, type NavigationLimit, spotsReaching } from '../../../signposts/index.js';
 import { neededConstructionGoods } from '../../../stores/index.js';
 import { atOrWalk, startPickup } from '../../atomics/start.js';
 import type { PlannerContext } from '../../planner/context.js';
@@ -250,10 +250,20 @@ export class SiteSupplyReach {
     if (lift.spots === null) return true;
     let lifts = lift.liftsByCell.get(cell);
     if (lifts === undefined) {
-      lifts = lift.spots(this.terrain.xOf(cell), this.terrain.yOf(cell));
+      const x = this.terrain.xOf(cell);
+      const y = this.terrain.yOf(cell);
+      lifts = lift.spots(x, y) && this.walkReaches(owner, jobType, site, x, y);
       lift.liftsByCell.set(cell, lifts);
     }
     return lifts;
+  }
+
+  /** Whether the confinement a builder carries standing on `(hx, hy)` allows one of `site`'s work cells:
+   *  the lift spots judge by distance, and a river may lie between. */
+  private walkReaches(owner: number, jobType: number, site: Entity, hx: number, hy: number): boolean {
+    const { world, ctx, terrain } = this;
+    const limit = jobLimitAt(world, ctx.content, terrain, jobType, owner, hx, hy);
+    return limit === null || this.spacing.workCells(site).some((goal) => limit.allowsNode(goal));
   }
 
   /** Whether some store of `owner`'s side holding `goodType` may stand at such a spot, and within the

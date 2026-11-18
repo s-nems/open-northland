@@ -7,7 +7,7 @@ import type { SystemContext } from '../context.js';
 import { buildingBlockedCells } from '../footprint/building-blocked-cache.js';
 import { interactionNodeId } from '../footprint/interaction.js';
 import { FetchableStock, storageLendable, strandedPile } from '../settlers/targets/stores/index.js';
-import { spotsReaching } from '../signposts/index.js';
+import { jobLimitAt, spotsReaching } from '../signposts/index.js';
 import { collectSupplyTally, constructionBillOf } from '../stores/index.js';
 
 /** Own stores of a good one diagnosis tests for reach before it calls the good held. */
@@ -85,7 +85,14 @@ function builderReachTo(
   const goal = interactionNodeId(world, ctx, terrain, site) ?? ownNode(world, terrain, site);
   if (goal === null) return null;
   const spots = spotsReaching(world, ctx.content, terrain, builderJob, owner, [goal]);
-  return spots === null ? null : (cell) => spots(terrain.xOf(cell), terrain.yOf(cell));
+  if (spots === null) return null;
+  // The spots judge by distance; the walk a builder is confined to at the store settles it.
+  return (cell) => {
+    const x = terrain.xOf(cell);
+    const y = terrain.yOf(cell);
+    if (!spots(x, y)) return false;
+    return jobLimitAt(world, ctx.content, terrain, builderJob, owner, x, y)?.allowsNode(goal) ?? true;
+  };
 }
 
 /** The content's builder trade, whose walk range sets a site's reach; undefined without one. */

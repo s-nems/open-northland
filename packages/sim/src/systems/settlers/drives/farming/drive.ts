@@ -111,6 +111,7 @@ export function planFarmer(plan: PlannerContext, claims: FarmClaims, idle?: Idle
     blocked: dynamicBlockOverlay(world, ctx, terrain),
     memo: unreachableGoals(world, ctx, e),
     regions: routeRegions(world, ctx, terrain),
+    limit: plan.limit,
   };
 
   // One pass over this farm's fields serves the plot cap and both picks over the canonical list: the

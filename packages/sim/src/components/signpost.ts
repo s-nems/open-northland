@@ -51,6 +51,16 @@ export const WALK_RANGE_NODES = 50;
 export const CARRIER_WALK_RANGE_NODES = 63;
 
 /**
+ * The longest walk that reaches a goal or a signpost inside the walk range, in steps whatever the ground:
+ * one and a half times the range, so the long way round a river or a lake is out of reach. Project rule:
+ * the original plans a leg with a directed search of four times the range that charges a sideways step
+ * five, which gives out on such a detour too. The factor is authored: a search reads every node within
+ * its steps, so a longer walk costs the square of its length.
+ */
+export const WALK_ROUTE_STEPS = Math.floor((3 * WALK_RANGE_NODES) / 2);
+export const CARRIER_WALK_ROUTE_STEPS = Math.floor((3 * CARRIER_WALK_RANGE_NODES) / 2);
+
+/**
  * Two same-player signposts link strictly inside this hex distance when a walk of at most
  * {@link SIGNPOST_LINK_STEPS} joins them, whatever the ground's resistance. Project rule: the original's
  * guide connection radius without its resistance budget, which cuts a link to about 26 nodes on sand and

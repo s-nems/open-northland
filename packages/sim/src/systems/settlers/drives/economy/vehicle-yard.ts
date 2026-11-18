@@ -158,10 +158,13 @@ function siteFor(plan: PlannerContext, workplace: Entity, houseType: number): En
   const house = contentIndex(ctx.content).commandBuildings.get(houseType);
   if (house === undefined) return null;
   const rings = vehicleSiteRings(house);
-  // A yard across the water or on another shore is out of this crew's walk, however near it stands.
+  // A yard across the water, on another shore or beyond the worker's walk is out of this crew's reach,
+  // however near it stands.
   const shore = terrain.componentOf(here);
-  const onShore = (candidate: Entity): boolean =>
-    vehicleSiteWorkPoint(world, ctx, terrain, candidate, shore) !== null;
+  const onShore = (candidate: Entity): boolean => {
+    const point = vehicleSiteWorkPoint(world, ctx, terrain, candidate, shore);
+    return point !== null && (plan.limit === null || plan.limit.allowsNode(point));
+  };
   const reused = reusableVehicleSite(
     world,
     targets.vehicleSites,
@@ -173,7 +176,7 @@ function siteFor(plan: PlannerContext, workplace: Entity, houseType: number): En
   );
   if (reused !== null) return reused;
   if (yardRefused(world, workplace, houseType)) return null;
-  const verdict = findVehicleSite(world, ctx, terrain, houseType, plan.tribe, centre, here);
+  const verdict = findVehicleSite(world, ctx, terrain, houseType, plan.tribe, centre, here, plan.limit);
   if (verdict.kind !== 'site') {
     noteYardRefused(world, ctx.tick, workplace, houseType);
     ctx.events.emit({ kind: 'vehicleSiteRefused', entity: e, reason: verdict.kind });

@@ -640,6 +640,9 @@ export const ECONOMY: ArticleGroup = {
           p: '沒有路標時，居民最遠能走到{{reach.walk}}格外的目標，[[job:carrier|搬運工]]是{{reach.carrier}}格。更遠就要靠路標：只要這個距離內有路標，居民就能用與它相連的整個網路，目標則要在該網路某個路標的同樣距離內。',
         },
         {
+          p: '算的是實際路程，不是直線距離：到目標或路標的路最長{{reach.walkRoute}}格，搬運工是{{reach.carrierRoute}}格。隔著河而渡口很遠的目標走不到，除非路標一路通到渡口。',
+        },
+        {
           list: [
             '兩個路標相距小於{{reach.link}}格、之間步行路線不超過{{reach.linkRoute}}格時相連。',
             '你的新路標要離別的路標至少{{reach.spacing}}格。',

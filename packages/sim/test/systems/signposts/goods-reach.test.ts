@@ -18,6 +18,7 @@ import { GroupCoverage } from '../../../src/systems/signposts/group-coverage.js'
 import { signpostLinksSystem } from '../../../src/systems/signposts/links.js';
 import { createSignpost, razeSignpost } from '../../../src/systems/signposts/placement.js';
 import { goodsReachAt, goodsSearchLimitAt } from '../../../src/systems/signposts/reach.js';
+import { GOODS_SEARCH_SPAN } from '../../../src/systems/signposts/terrain-reach.js';
 import { collectSupplyTally } from '../../../src/systems/stores/index.js';
 import { testContent } from '../../fixtures/content.js';
 import { ctxOf } from '../../fixtures/context.js';
@@ -189,13 +190,13 @@ describe('terrain-aware goods reach', () => {
       sim.world.add(entity, Signpost, { links: [] });
       return { entity, hx, hy: 30, group: 0 };
     });
-    const coverage = new GroupCoverage(sim.world, sim.content, terrain, posts);
+    const coverage = new GroupCoverage(sim.world, sim.content, terrain, posts, GOODS_SEARCH_SPAN);
     expect(coverage.covers(100, 30, 0)).toBe(true);
     const block = sim.world.create();
     sim.world.add(block, Position, positionOfNode(145, 30));
     sim.world.add(block, ResourceFootprint, { walk: [{ dx: 0, dy: 0 }], build: [], work: [] });
     expect(coverage.covers(100, 30, 1)).toBe(true);
-    const fresh = new GroupCoverage(sim.world, sim.content, terrain, posts);
+    const fresh = new GroupCoverage(sim.world, sim.content, terrain, posts, GOODS_SEARCH_SPAN);
     for (let hx = 90; hx < 160; hx++) expect(coverage.covers(hx, 30, 1)).toBe(fresh.covers(hx, 30, 1));
     expect(coverage.covers(145, 30, 1)).toBe(false);
   });

@@ -75,7 +75,7 @@ export class ExternalFoodIndex {
     // The area test goes before the stock read: on islands most of a side's stores stand on other land.
     const usable = (e: Entity, only: number | undefined): boolean =>
       ownersCompatible(owner, ownerOf(this.world, e)) &&
-      this.inArea(e, gate) &&
+      this.inArea(e, from, gate) &&
       this.liftableFood(e, roomy, only) !== null &&
       !this.standRetired(e, from, avoid);
     const meat = meatGoodOf(this.ctx.content);
@@ -151,15 +151,14 @@ export class ExternalFoodIndex {
     return cell !== here && avoid(cell);
   }
 
-  /** Whether the store's own node lies inside the seeker's allowed area (no gate/terrain = everywhere).
-   *  A pile displaced mid-pass has no Position and reads as outside, as its missing stock would reject it. */
-  private inArea(e: Entity, gate: SpatialGate | null): boolean {
+  /** Whether the cell the seeker would lift at lies inside her allowed area (no gate/terrain =
+   *  everywhere): a store's own node is buried in its body, where no walk is measured. A pile displaced
+   *  mid-pass has no Position and reads as outside, as its missing stock would reject it. */
+  private inArea(e: Entity, from: { hx: number; hy: number }, gate: SpatialGate | null): boolean {
     if (gate === null || this.terrain === undefined) return true;
-    const p = this.world.tryGet(e, Position);
-    if (p === undefined) return false;
-    return gate.allowsNode(
-      this.terrain.nodeAtClamped(nodeHxOfPosition(p.x, p.y), nodeHyOfPosition(p.x, p.y)),
-    );
+    if (!this.world.has(e, Position)) return false;
+    const here = this.terrain.nodeAtClamped(from.hx, from.hy);
+    return gate.allowsNode(interactionCell(this.world, this.ctx, this.terrain, e, here));
   }
 
   /** The strictly-nearer pick over the ascending-id candidates beyond Manhattan distance `swept`. The

@@ -130,7 +130,7 @@ export function beginPlannerPass(world: World, ctx: SystemContext, terrain: Terr
     siteSupply: new SiteSupplyReach(world, ctx, terrain, spacing, targets),
     repairCrews: new RepairCrews(world, ctx, front),
     seatDoors,
-    homeward: new HomewardPosts(world, terrain, seatDoors),
+    homeward: new HomewardPosts(world, ctx.content, terrain, seatDoors),
     shelters,
     shelterRoom,
     idle: new IdleStands(),

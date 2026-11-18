@@ -5,14 +5,18 @@ import {
   JobAssignment,
   MISSION_BEHAVIOUR,
   MoveGoal,
+  Owner,
   Position,
+  ResourceFootprint,
   Stockpile,
   setMissionBehaviour,
   setStockAmount,
 } from '../../../../src/components/index.js';
 import type { Entity } from '../../../../src/ecs/world.js';
 import { cellAnchorNode, fx, type NodeId, ONE, Simulation } from '../../../../src/index.js';
+import { positionOfNode } from '../../../../src/nav/halfcell.js';
 import { bindHaulFlag } from '../../../../src/systems/economy/work-flag.js';
+import { unstampResourceFootprint } from '../../../../src/systems/footprint/resources.js';
 import { plannerSystem } from '../../../../src/systems/index.js';
 import { removeLandscapes } from '../../../../src/systems/landscape/edits.js';
 import {
@@ -25,6 +29,7 @@ import {
   noteUnreachableGoal,
   UNREACHABLE_GOAL_MEMO_TICKS,
 } from '../../../../src/systems/settlers/unreachable-goals.js';
+import { navigationLimitFor } from '../../../../src/systems/signposts/index.js';
 import { GossipCandidates } from '../../../../src/systems/social/index.js';
 import { collectSupplyTally } from '../../../../src/systems/stores/index.js';
 import { testContent } from '../../../fixtures/content.js';
@@ -159,6 +164,40 @@ describe('porter dormancy', () => {
     markPorterDormant(plan);
     expect(porterDormant(plan)).toBe(true);
     bindHaulFlag(sim.world, ctxOf(sim), porter, { x: fx.fromInt(5), y: fx.fromInt(0) }); // a position write only
+    expect(porterDormant(plan)).toBe(false);
+  });
+
+  it('invalidates a confined dormant scan when a block leaves the ground its reach searched', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(6, 1) });
+    sim.enqueueSetup({ kind: 'setSignpostNavigation', enabled: true });
+    sim.step();
+    const hq = hqAt(sim, 5, 0);
+    sim.world.add(hq, Owner, { player: 0 });
+    const porter = porterAt(sim, 0, 0, hq);
+    sim.world.add(porter, Owner, { player: 0 });
+    const trunk = sim.world.create();
+    sim.world.add(trunk, Position, positionOfNode(4, 0));
+    sim.world.add(trunk, ResourceFootprint, { walk: [{ dx: 0, dy: 0 }], build: [], work: [] });
+    if (sim.terrain === undefined) throw new Error('mapped fixture');
+    const ctx = ctxOf(sim);
+    const plan: PlannerContext = {
+      world: sim.world,
+      ctx,
+      terrain: sim.terrain,
+      entity: porter,
+      here: anchorCell(sim, 0, 0),
+      tribe: VIKING,
+      jobType: CARRIER,
+      experience: new Map(),
+      owner: 0,
+      limit: navigationLimitFor(sim.world, sim.content, sim.terrain, porter),
+      targets: collectTargets(sim.world, ctx, sim.terrain),
+      supply: collectSupplyTally(sim.world),
+      gossipCandidates: new GossipCandidates(sim.world, sim.content),
+    };
+    markPorterDormant(plan);
+    expect(porterDormant(plan)).toBe(true);
+    unstampResourceFootprint(sim.world, trunk);
     expect(porterDormant(plan)).toBe(false);
   });
 

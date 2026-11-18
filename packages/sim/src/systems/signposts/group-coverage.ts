@@ -5,7 +5,7 @@ import { type ReachArea, reachBox } from '../../nav/range-search.js';
 import type { TerrainGraph } from '../../nav/terrain/index.js';
 import type { WalkBlockMask } from '../footprint/walk-block-mask.js';
 import type { SignpostSite } from './network.js';
-import { ChangedNodeList, GOODS_SEARCH_SPAN, postTerrainReach, signpostMask } from './terrain-reach.js';
+import { ChangedNodeList, postTerrainReach, type ReachSpan, signpostMask } from './terrain-reach.js';
 
 /** Nodes per side of the blocks a coverage re-checks its posts by. */
 const COVERAGE_BLOCK_NODES = 16;
@@ -28,7 +28,7 @@ const scanArea = { minHx: 0, maxHx: 0, minHy: 0, maxHy: 0 };
 const scanChanges = new ChangedNodeList();
 
 /**
- * A signpost group's goods coverage: the nodes some post's goods search marks. It keeps each post's
+ * A signpost group's coverage under one span: the nodes some post's search of that span marks. It keeps each post's
  * search and, per node, how many of those searches mark it. Asked about a node, it re-checks only the
  * posts whose search box meets that node's block, once per reach epoch, so a node's count is exact
  * whatever the other posts hold, and a post whose search changed costs its own area, not a new union.
@@ -60,8 +60,9 @@ export class GroupCoverage {
     private readonly content: ContentSet,
     private readonly terrain: TerrainGraph,
     readonly posts: readonly SignpostSite[],
+    private readonly span: ReachSpan,
   ) {
-    const range = GOODS_SEARCH_SPAN.range;
+    const range = span.range;
     const boxes = posts.map((p) => reachBox(terrain, p.hx, p.hy, range));
     this.bounds = unionNodeBoxes(boxes);
     const { minX, maxX, minY, maxY } = this.bounds;
@@ -90,7 +91,7 @@ export class GroupCoverage {
     });
   }
 
-  /** Whether some post's goods search marks `(x, y)`, with the posts' searches current as of reach
+  /** Whether some post's search marks `(x, y)`, with the posts' searches current as of reach
    *  `epoch`, a reading that moves with every mask or road change. */
   covers(x: number, y: number, epoch: number): boolean {
     const { minX, maxX, minY, maxY } = this.bounds;
@@ -171,8 +172,8 @@ export class GroupCoverage {
     const held = this.held[i];
     if (held !== undefined && this.stale[i] === 0) return;
     const post = this.posts[i] as SignpostSite;
-    const { world, content, terrain } = this;
-    const found = postTerrainReach(world, content, terrain, post.entity, post.hx, post.hy, GOODS_SEARCH_SPAN);
+    const { world, content, terrain, span } = this;
+    const found = postTerrainReach(world, content, terrain, post.entity, post.hx, post.hy, span);
     this.stale[i] = 0;
     const at = BOX_FIELDS * i;
     this.readBoxes[at + MIN_X] = found.searched.minHx;

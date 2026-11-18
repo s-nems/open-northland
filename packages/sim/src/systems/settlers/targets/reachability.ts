@@ -1,6 +1,7 @@
 import type { UnreachableGoal } from '../../../components/index.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import type { BlockOverlay } from '../../../nav/block-overlay.js';
+import type { SpatialGate } from '../../../nav/node-circle.js';
 import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
 import type { SystemContext } from '../../context.js';
 import { constructionWorkCell, dynamicBlockOverlay, routeRegions } from '../../footprint/index.js';
@@ -13,23 +14,26 @@ export interface WorkCellGates {
   readonly blocked: BlockOverlay;
   readonly memo: readonly UnreachableGoal[] | null;
   readonly regions?: RouteRegions;
+  /** The seeker's confinement, for a pick no other rule bounds by the walk there. */
+  readonly limit?: SpatialGate | null;
 }
 
 /**
  * Whether walking to `cell` to work it is provably doomed: the goal is unwalkable, dynamically blocked
- * (`findPath` rejects a blocked goal, only the start is exempt), in another static component, or one
- * this settler's own routes just failed on. Targeting it anyway strands the settler in a re-pick loop.
+ * (`findPath` rejects a blocked goal, only the start is exempt), in another static component, one this
+ * settler's own routes just failed on, or outside its confinement when the gates carry one. Targeting it anyway strands the settler in a re-pick loop.
  * Standing on the cell already needs no walk, so `here` is never doomed.
  */
 export function unreachableWorkCell(gates: WorkCellGates, here: NodeId, cell: NodeId): boolean {
   if (cell === here) return false;
-  const { terrain, blocked, memo, regions } = gates;
+  const { terrain, blocked, memo, regions, limit } = gates;
   return (
     !terrain.isWalkable(cell) ||
     blocked.has(cell) ||
     isUnreachableGoal(memo, cell) ||
     terrain.componentOf(here) !== terrain.componentOf(cell) ||
-    regions?.unroutable(here, cell) === true
+    regions?.unroutable(here, cell) === true ||
+    (limit != null && !limit.allowsNode(cell))
   );
 }
 

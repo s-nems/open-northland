@@ -8,12 +8,15 @@ import {
   LostWay,
   Owner,
   PickupClaim,
+  Position,
+  ResourceFootprint,
   SiteAssignment,
   Stockpile,
   SupplyRun,
 } from '../../../src/components/index.js';
 import type { Entity } from '../../../src/ecs/world.js';
 import { fx, Simulation } from '../../../src/index.js';
+import { positionOfNode } from '../../../src/nav/halfcell.js';
 import { dropGroundPile } from '../../../src/systems/settlers/atomics/effects/goods/piles.js';
 import { CUT_OFF_CHECK_TICKS } from '../../../src/systems/settlers/drives/cut-off.js';
 import {
@@ -146,6 +149,57 @@ describe('a builder whose site the signpost network keeps from its material', ()
     for (let t = 0; t < 40 * CUT_OFF_CHECK_TICKS && !delivered(); t++) sim.step();
     expect(delivered()).toBe(true);
     expect(sim.world.has(builder, LostWay)).toBe(false);
+  });
+});
+
+describe('a builder between a store and a site on the two banks of a river', () => {
+  it('fetches nothing across the water, and the site reads its material as out of reach', () => {
+    // The store and the site lie 12 tiles apart on the two banks, 20 tile rows above the ford the
+    // builder starts on: inside each other's range, but the walk between them is the long way round.
+    const RIVER_X = 20;
+    const FORD_ROW = 39;
+    const BANK_ROW = FORD_ROW - 20;
+    const map = grassCellMap(40, FORD_ROW + 1);
+    const sim = new Simulation({ seed: 3, content: constructionContent(), map });
+    sim.enqueueSetup({ kind: 'setSignpostNavigation', enabled: true });
+    sim.enqueueSetup({ kind: 'setNeedsEnabled', enabled: false });
+    sim.step();
+    // The river: a wall of rock three nodes wide down to the ford row.
+    for (let hy = 0; hy < 2 * FORD_ROW; hy++) {
+      const rock = sim.world.create();
+      sim.world.add(rock, Position, positionOfNode(2 * RIVER_X, hy));
+      sim.world.add(rock, ResourceFootprint, {
+        walk: [
+          { dx: -1, dy: 0 },
+          { dx: 0, dy: 0 },
+          { dx: 1, dy: 0 },
+        ],
+        build: [],
+        work: [],
+      });
+    }
+    const store = builtBuildingAt(sim, HEADQUARTERS, RIVER_X - 6, BANK_ROW, [
+      [STONE, 10],
+      [WOOD, 10],
+    ]);
+    sim.world.add(store, Owner, { player: P0 });
+    const builder = builderAt(sim, RIVER_X, FORD_ROW);
+    sim.world.add(builder, Owner, { player: P0 });
+    const site = siteAt(sim, HOUSE, RIVER_X + 6, BANK_ROW);
+    sim.world.add(site, Owner, { player: P0 });
+    let fetched = false;
+    for (let t = 0; t < WALK_THERE_TICKS; t++) {
+      sim.step();
+      fetched ||= fetching(sim, builder);
+    }
+    expect(fetched).toBe(false);
+    expect(sim.constructionSupply(site)).toMatchObject({
+      kind: 'short',
+      shortfalls: [
+        { goodType: STONE, held: false },
+        { goodType: WOOD, held: false },
+      ],
+    });
   });
 });
 

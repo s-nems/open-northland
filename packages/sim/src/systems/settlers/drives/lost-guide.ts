@@ -1,10 +1,11 @@
+import type { ContentSet } from '@open-northland/data';
 import { isMachinePlayer, LostWay, MoveGoal, ownerOf, Position } from '../../../components/index.js';
 import { TICKS_PER_SECOND } from '../../../core/loop.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import { nodeOfPosition } from '../../../nav/halfcell.js';
 import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
 import { routeRegions } from '../../footprint/index.js';
-import { type NavigationLimit, networkLimitAt, signpostNetwork } from '../../signposts/index.js';
+import { jobLimitAt, type NavigationLimit, signpostNetwork } from '../../signposts/index.js';
 import type { PlannerPass } from '../planner/pass.js';
 import { isUnreachableGoal, unreachableGoals } from '../unreachable-goals.js';
 import { nearestNodeTo, type SeatDoors, strandedWorkplaceDoor } from './cut-off.js';
@@ -74,6 +75,7 @@ export class HomewardPosts {
 
   constructor(
     private readonly world: World,
+    private readonly content: ContentSet,
     private readonly terrain: TerrainGraph,
     private readonly seatDoors: SeatDoors,
   ) {}
@@ -89,7 +91,7 @@ export class HomewardPosts {
   }
 
   private derive(seat: number, component: number): Homeward {
-    const { world, terrain } = this;
+    const { world, content, terrain } = this;
     const onComponent = (node: NodeId): boolean => terrain.componentOf(node) === component;
     const doors = this.seatDoors.of(seat).filter(onComponent);
     if (doors.length === 0) return { doors, posts: [] };
@@ -97,7 +99,8 @@ export class HomewardPosts {
       .map((s) => terrain.nodeAtClamped(s.hx, s.hy))
       .filter(onComponent)
       .filter((post) => {
-        const reach = networkLimitAt(world, terrain, seat, terrain.xOf(post), terrain.yOf(post));
+        // The walk a civilian led there would be confined to, whatever its trade.
+        const reach = jobLimitAt(world, content, terrain, null, seat, terrain.xOf(post), terrain.yOf(post));
         return reach === null || doors.some((door) => reach.allowsNode(door));
       });
     return { doors, posts };

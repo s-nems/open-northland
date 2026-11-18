@@ -1,5 +1,6 @@
 import {
   Building,
+  CARRIER_WALK_ROUTE_STEPS,
   DeliveryFlag,
   GroundDrop,
   HaulFlag,
@@ -26,12 +27,14 @@ import {
 } from '../../../../components/index.js';
 import { landscapeTopologyRevision } from '../../../../components/landscape.js';
 import type { Entity, World } from '../../../../ecs/world.js';
-import { nodeOfPosition } from '../../../../nav/halfcell.js';
+import { type NodeArea, nodeOfPosition } from '../../../../nav/halfcell.js';
 import type { NodeId, TerrainGraph } from '../../../../nav/terrain/index.js';
 import type { SystemContext } from '../../../context.js';
 import { liveHaulFlag } from '../../../economy/work-flag.js';
 import { roadRevision } from '../../../roads/index.js';
 import { navigationLimitFor } from '../../../signposts/index.js';
+import { goodsSearchLimitAt } from '../../../signposts/reach.js';
+import { GOODS_SEARCH_SPAN, signpostMask } from '../../../signposts/terrain-reach.js';
 import { GossipCandidates } from '../../../social/index.js';
 import { entityNode } from '../../../spatial/nodes.js';
 import { collectSupplyTally } from '../../../stores/index.js';
@@ -66,8 +69,53 @@ interface DormantEntry {
   readonly unlimitedRange: boolean;
 }
 
+/** A failed scan with what its reach searches may have read: the nodes, or null for a scan no signpost
+ *  reach bounds, and the walk-block mask version none of them flipped after. A flip among them may open
+ *  or close a walk. */
+interface DormantScan {
+  readonly seen: DormantEntry;
+  readonly searched: NodeArea | null;
+  maskVersion: number;
+}
+
+/** Nodes a reach search reads past the box it marks: no search steps further than its budget. */
+const SEARCH_READ_MARGIN = Math.max(GOODS_SEARCH_SPAN.budget, CARRIER_WALK_ROUTE_STEPS);
+
+function anyNode(): boolean {
+  return true;
+}
+
+/** The nodes the reach searches behind `plan`'s scan may read: the walk limit's box, which holds the goods
+ *  search's, widened by {@link SEARCH_READ_MARGIN}. */
+function searchedArea(plan: PlannerContext): NodeArea | null {
+  const { world, ctx, terrain, here, owner } = plan;
+  const gate =
+    plan.limit ??
+    goodsSearchLimitAt(world, ctx.content, terrain, owner, terrain.xOf(here), terrain.yOf(here));
+  if (gate === null) return null;
+  const { minX, maxX, minY, maxY } = gate.bounds;
+  return {
+    minHx: Math.max(0, minX - SEARCH_READ_MARGIN),
+    maxHx: Math.min(terrain.width - 1, maxX + SEARCH_READ_MARGIN),
+    minHy: Math.max(0, minY - SEARCH_READ_MARGIN),
+    maxHy: Math.min(terrain.height - 1, maxY + SEARCH_READ_MARGIN),
+  };
+}
+
+/** Whether no node the failed scan's searches may have read flipped on the walk-block mask since; a
+ *  clean check moves the scan's version up, so the next one reads only the flips after it. */
+function searchesHold(plan: PlannerContext, scan: DormantScan): boolean {
+  if (scan.searched === null) return true;
+  const mask = signpostMask(plan.world, plan.ctx.content, plan.terrain);
+  const version = mask.version;
+  if (version === scan.maskVersion) return true;
+  if (mask.flippedSince(scan.searched, scan.maskVersion, anyNode)) return false;
+  scan.maskVersion = version;
+  return true;
+}
+
 interface PorterDormancy {
-  readonly entries: Map<Entity, DormantEntry>;
+  readonly entries: Map<Entity, DormantScan>;
   /** The latest planner deps, read only by the coherence verifier. The stored `ctx` may be stale by then,
    *  which stays sound only while the verified scan path reads stable content and terrain, never
    *  `ctx.tick` or the RNG. */
@@ -144,7 +192,7 @@ function sameEntry(a: DormantEntry, b: DormantEntry): boolean {
 /** Whether `plan`'s porter scan is provably still null - true elides the scan for this tick. */
 export function porterDormant(plan: PlannerContext): boolean {
   const memo = dormancyByWorld.get(plan.world)?.entries.get(plan.entity);
-  return memo !== undefined && sameEntry(memo, entryFor(plan));
+  return memo !== undefined && sameEntry(memo.seen, entryFor(plan)) && searchesHold(plan, memo);
 }
 
 /** Record a failed porter scan so the identical re-scan is skipped until an input changes. */
@@ -161,7 +209,11 @@ export function markPorterDormant(plan: PlannerContext): void {
   }
   record.ctx = plan.ctx;
   record.terrain = plan.terrain;
-  record.entries.set(plan.entity, entryFor(plan));
+  record.entries.set(plan.entity, {
+    seen: entryFor(plan),
+    searched: searchedArea(plan),
+    maskVersion: signpostMask(plan.world, plan.ctx.content, plan.terrain).version,
+  });
 }
 
 /** Drop a porter's dormancy on a successful pick, so the memo only ever holds failed scans. */
@@ -209,7 +261,8 @@ function verifyDormancy(world: World): string[] {
       limit: navigationLimitFor(world, ctx.content, terrain, entity),
       gossipCandidates: new GossipCandidates(world, ctx.content),
     };
-    if (!sameEntry(entry, entryFor(plan))) continue; // the gate would re-scan - nothing elided
+    // The gate would re-scan - nothing elided.
+    if (!sameEntry(entry.seen, entryFor(plan)) || !searchesHold(plan, entry)) continue;
     if (porterPickupTarget(plan) !== null) {
       errors.push(
         `porter ${entity} is dormant but its pickup scan finds work - a scan input missed the version`,

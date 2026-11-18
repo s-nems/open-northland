@@ -11,6 +11,7 @@ import { type ContentIndex, contentIndex } from '../../../core/content-index.js'
 import type { Entity, World } from '../../../ecs/world.js';
 import type { BlockOverlay } from '../../../nav/block-overlay.js';
 import { type HalfCellNode, hexagonRing, hexDistance, nodeOfPosition } from '../../../nav/halfcell.js';
+import type { SpatialGate } from '../../../nav/node-circle.js';
 import { NO_COMPONENT, type NodeId, type TerrainGraph } from '../../../nav/terrain/index.js';
 import type { MapContext, SystemContext } from '../../context.js';
 import { vehicleIndex } from '../../vehicles/registry.js';
@@ -463,6 +464,8 @@ export function findVehicleSite(
   tribe: number,
   centre: HalfCellNode,
   workerNode: NodeId,
+  /** The worker's confinement: a point outside it is passed over. */
+  within?: SpatialGate | null,
 ): VehicleSiteVerdict {
   const index = contentIndex(ctx.content);
   const house = index.buildings.get(houseType);
@@ -476,6 +479,7 @@ export function findVehicleSite(
   for (let r = 0, rings = vehicleSiteRings(house); r < rings; r++) {
     for (const { point } of hexagonRing(centre, r)) {
       if (!terrain.inBounds(point.hx, point.hy)) continue;
+      if (within != null && !within.allowsNode(terrain.nodeAt(point.hx, point.hy))) continue;
       const objection = house.ignoreContinents
         ? waterObjection(
             world,

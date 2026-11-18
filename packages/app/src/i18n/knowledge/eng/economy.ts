@@ -693,6 +693,9 @@ export const ECONOMY: ArticleGroup = {
           p: 'Without signposts a settler reaches a target at most {{reach.walk}} hexes away, a [[job:carrier|Carrier]] {{reach.carrier}}. Further out signposts lead the way: if one stands within that reach, the settler can use its whole linked network, and the target must lie within the same reach of one of its signposts.',
         },
         {
+          p: 'The way there counts, not the straight line: the walk to a target or a signpost may be at most {{reach.walkRoute}} hexes long, {{reach.carrierRoute}} for a Carrier. A target across a river with a far crossing is out of reach until signposts lead to the crossing.',
+        },
+        {
           list: [
             'Two signposts link when they stand closer than {{reach.link}} hexes and the walk between them is at most {{reach.linkRoute}} hexes.',
             'Your new signpost has to stand at least {{reach.spacing}} hexes from another one.',

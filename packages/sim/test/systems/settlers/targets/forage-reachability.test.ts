@@ -152,6 +152,11 @@ it.each(['bush', 'store'] as const)(
       sim.world.add(berry, Building, { buildingType: 1, tribe: 1, built: ONE, level: 0 });
       sim.world.add(berry, Stockpile, { amounts: new Map([[3, 5]]) });
       sim.world.add(berry, Owner, { player: 0 });
+      // A door the eater can walk to: with every door of its seat walled in it would be cut off.
+      const open = sim.world.create();
+      sim.world.add(open, Position, positionOfNode(20, 14));
+      sim.world.add(open, Building, { buildingType: 1, tribe: 1, built: ONE, level: 0 });
+      sim.world.add(open, Owner, { player: 0 });
     }
     for (const { point } of hexagonRing({ hx: 10, hy: 6 }, 2)) {
       sim.enqueueSetup({

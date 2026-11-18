@@ -343,6 +343,29 @@ describe('setSignpostNavigation + moveUnit - the confinement rule', () => {
       expect(limit?.allowsNode(cellNode(terrain, STRAIT_CELL))).toBe(true);
     });
 
+    it('ON: the far bank of a river is in reach by a ford nearby, not by one a long walk away', () => {
+      const FORD_ROWS = 2;
+      const bankReached = (heightCells: number): boolean | undefined => {
+        const sim = new Simulation({
+          seed: 5,
+          content: testContent(),
+          map: waterColumnMap(40, heightCells, STRAIT_CELL_COLUMN, FORD_ROWS),
+        });
+        sim.enqueueSetup({ kind: 'setSignpostNavigation', enabled: true });
+        sim.step();
+        const terrain = sim.terrain;
+        if (terrain === undefined) throw new Error('mapped sim');
+        const u = unitOnCell(sim, EAST_CELL, WOODCUTTER);
+        return navigationLimitFor(sim.world, sim.content, terrain, u)?.allowsNode(
+          cellNode(terrain, WEST_CELL),
+        );
+      };
+      // The ford lies a few rows below the settler, then some seventy: the walk there and back up the
+      // other bank is longer than WALK_ROUTE_STEPS.
+      expect(bankReached(12)).toBe(true);
+      expect(bankReached(80)).toBe(false);
+    });
+
     it('ON: a settler standing on the water is confined by range alone', () => {
       const { sim, terrain } = islandsSim();
       const u = unitOnCell(sim, STRAIT_CELL, WOODCUTTER);
@@ -641,6 +664,25 @@ describe('a computer seat leads its lost settlers back', () => {
     expect(tileX(sim, stranded)).toBeLessThanOrEqual(31);
   });
 
+  it('passes over a post whose walk reaches no door, though one lies in range across a river', () => {
+    const RIVER_COLUMN = 20;
+    const sim = new Simulation({
+      seed: 5,
+      content: testContent(),
+      map: waterColumnMap(40, 80, RIVER_COLUMN, 2),
+    });
+    sim.enqueueSetup({ kind: 'setSignpostNavigation', enabled: true });
+    sim.step();
+    computerSeat(sim);
+    building(sim, 17, 5);
+    stampPost(sim, 23, 5); // on the settler's bank, the door across the water
+    const stranded = ownedUnit(sim, 28, 5, WOODCUTTER);
+    // The way round by the ford at the map's foot is some 150 tiles.
+    run(sim, LEAD_TICKS + 4000);
+    expect(tileX(sim, stranded)).toBeLessThan(RIVER_COLUMN);
+    expect(sim.world.has(stranded, LostWay)).toBe(false);
+  });
+
   it('with no post at all, heads for the nearest door', () => {
     const sim = confinedSim();
     computerSeat(sim);
@@ -709,7 +751,7 @@ describe('a computer seat leads its lost settlers back', () => {
   });
 });
 
-describe('navigationLimitFor, the per-settler memo', () => {
+describe('navigationLimitFor, the limit held per spot', () => {
   it('re-serves one limit object while inputs hold; a node crossing or job change recomputes', () => {
     const sim = confinedSim();
     const u = ownedUnit(sim, 2, 2, WOODCUTTER);
@@ -748,13 +790,13 @@ describe('navigationLimitFor, the per-settler memo', () => {
     const u = ownedUnit(sim, 2, 2, WOODCUTTER);
     const terrain = sim.terrain;
     if (terrain === undefined) throw new Error('mapped sim');
+    const farInPostRange = terrain.nodeAt(104, 4);
     const before = navigationLimitFor(sim.world, sim.content, terrain, u);
+    expect(before?.allowsNode(farInPostRange)).toBe(false);
     stampPost(sim, 12, 2);
     stampPost(sim, 30, 2);
     const after = navigationLimitFor(sim.world, sim.content, terrain, u);
     expect(after).not.toBe(before);
-    const farInPostRange = terrain.nodeAt(104, 4);
-    expect(before?.allowsNode(farInPostRange)).toBe(false);
     expect(after?.allowsNode(farInPostRange)).toBe(true);
   });
 
@@ -770,12 +812,13 @@ describe('navigationLimitFor, the per-settler memo', () => {
     ownedUnit(sim, 60, 2, WOODCUTTER);
     expect(navigationLimitFor(sim.world, sim.content, terrain, u)).toBe(held);
 
+    const farInPostRange = terrain.nodeAt(24 + WALK_RANGE_NODES - 2, 4);
+    expect(held?.allowsNode(farInPostRange)).toBe(true);
+
     // A post changing hands does, and the settler loses its range.
     stampOwner(sim.world, post, P0 + 1);
     const handed = navigationLimitFor(sim.world, sim.content, terrain, u);
     expect(handed).not.toBe(held);
-    const farInPostRange = terrain.nodeAt(24 + WALK_RANGE_NODES - 2, 4);
-    expect(held?.allowsNode(farInPostRange)).toBe(true);
     expect(handed?.allowsNode(farInPostRange)).toBe(false);
   });
 

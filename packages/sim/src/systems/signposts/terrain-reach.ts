@@ -1,10 +1,14 @@
 import type { ContentSet } from '@open-northland/data';
 import {
+  CARRIER_WALK_RANGE_NODES,
+  CARRIER_WALK_ROUTE_STEPS,
   GOODS_SEARCH_RANGE_NODES,
   Position,
   SIGNPOST_LINK_RANGE_NODES,
   SIGNPOST_LINK_STEPS,
   Signpost,
+  WALK_RANGE_NODES,
+  WALK_ROUTE_STEPS,
 } from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import { type NodeArea, nodeHxOfPosition, nodeHyOfPosition } from '../../nav/halfcell.js';
@@ -59,6 +63,40 @@ export const SIGNPOST_LINK_SPAN: ReachSpan = {
   groundCost: false,
   readOnce: true,
 };
+
+/** A walk's span over `range`, spending `steps` whatever the ground. */
+function walkSpan(range: number, steps: number): ReachSpan {
+  return { range, budget: steps, groundCost: false, readOnce: false };
+}
+
+/**
+ * A spot's goods search or walk reach in spans: the search from the spot itself, the one from each
+ * signpost, and the hex range a post is caught strictly inside. The two spans spend one budget the same
+ * way, so a walk from the spot to a post costs what the walk back does.
+ */
+export interface ReachShape {
+  /** Dense from zero: a cache key's lead. */
+  readonly id: number;
+  readonly own: ReachSpan;
+  readonly post: ReachSpan;
+  readonly catchRange: number;
+}
+
+export const GOODS_SEARCH_SHAPE: ReachShape = {
+  id: 0,
+  own: GOODS_SEARCH_SPAN,
+  post: GOODS_SEARCH_SPAN,
+  catchRange: GOODS_SEARCH_RANGE_NODES,
+};
+
+/** A goal may lie exactly the walk range away, a post is caught and covers only strictly inside it. */
+function walkShape(id: number, range: number, steps: number): ReachShape {
+  return { id, own: walkSpan(range + 1, steps), post: walkSpan(range, steps), catchRange: range };
+}
+
+export const WALK_REACH_SHAPE = walkShape(1, WALK_RANGE_NODES, WALK_ROUTE_STEPS);
+export const CARRIER_WALK_REACH_SHAPE = walkShape(2, CARRIER_WALK_RANGE_NODES, CARRIER_WALK_ROUTE_STEPS);
+export const REACH_SHAPE_COUNT = 3;
 
 export interface TerrainReach extends ReachSearch {
   readonly terrain: TerrainGraph;

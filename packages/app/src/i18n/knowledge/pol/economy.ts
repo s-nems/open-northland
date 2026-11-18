@@ -690,6 +690,9 @@ export const ECONOMY: ArticleGroup = {
           p: 'Bez drogowskazów osadnik dojdzie do celu oddalonego najwyżej o {{reach.walk}} hexów, [[job:carrier|Tragarz]] o {{reach.carrier}}. Dalej prowadzą drogowskazy: jeśli któryś stoi w tym zasięgu, osadnik korzysta z całej połączonej z nim sieci, a cel musi leżeć w tym samym zasięgu od któregoś jej drogowskazu.',
         },
         {
+          p: 'Liczy się droga, a nie odległość w linii prostej: dojście do celu albo drogowskazu może mieć najwyżej {{reach.walkRoute}} hexów, u tragarza {{reach.carrierRoute}}. Cel za rzeką, którą trzeba daleko obejść, jest poza zasięgiem, dopóki drogowskazy nie poprowadzą do przejścia.',
+        },
+        {
           list: [
             'Dwa drogowskazy łączą się, gdy stoją bliżej niż {{reach.link}} hexów, a dojście między nimi ma najwyżej {{reach.linkRoute}} hexów.',
             'Twój nowy drogowskaz musi stać co najmniej {{reach.spacing}} hexów od innego.',

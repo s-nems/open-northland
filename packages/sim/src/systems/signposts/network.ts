@@ -31,7 +31,7 @@ import {
 } from '../../nav/node-circle.js';
 import { NO_COMPONENT, type NodeId, type TerrainGraph } from '../../nav/terrain/index.js';
 import { isCarrierJobRow, isDruidJob, isFighterJob, isHunterJob, isScoutJob } from '../readviews/index.js';
-import { goodsSearchLimitAt } from './reach.js';
+import { floodMayEnter, GenerationalCache, goodsSearchLimitAt, walkReachLimitAt } from './reach.js';
 
 /**
  * The per-player signpost network: which signposts stand where and which belong to one connected group,
@@ -243,47 +243,17 @@ function verifyNetwork(world: World): string[] {
 }
 
 /**
- * One settler's navigation confinement as a {@link SpatialGate}: the hex range it may walk from where it
- * stands, plus the range around every post of each signpost group it catches. Every rule keys on
- * `allowsNode`; `bounds` lets searches shrink their scans.
- *
- * Source basis: the original's guided pathfinder: a leg is planned within the walk range of the current
- * position, or through a guide within that range of the start and one within it of the goal, both in one
- * link system. Approximations: the original floods walkable ground to catch a guide and to cover a goal,
- * and weighs only the two nearest guides on each side, where this gate tests hex distance and opens
- * every group with a post in range. Project rule, which keeps it closer to the flood: a caught post and
- * an allowed node lie on the spot's static land component when both stand on walkable land.
+ * A navigation confinement as a {@link SpatialGate}: where a walk may end from one spot, on its own or
+ * through the signpost groups it catches. Every rule keys on `allowsNode`; `bounds` lets searches shrink
+ * their scans. A settler's own is measured by the walk ({@link walkReachLimitAt}); {@link networkLimitAt}
+ * measures by distance.
  */
 export type NavigationLimit = SpatialGate;
-
-/** One settler's memoized limit plus every input it derives from. Each input is re-checked on read, so a
- *  stale entry can never be served and the memo needs no coherence verifier. `terrain` and `content` are
- *  per-world constants, so they need no slot. Rewritten in place when the settler moves. */
-interface LimitMemoEntry {
-  hx: number;
-  hy: number;
-  player: number;
-  jobType: number | null;
-  networkRevision: number;
-  limit: NavigationLimit | null;
-}
-
-interface LimitMemo {
-  readonly entries: Map<Entity, LimitMemoEntry>;
-  /** Entry count that triggers the next dead-entry sweep: entity ids are never reused, so without a sweep
-   *  the map would grow with every settler that ever lived. Doubled after each sweep. */
-  sweepAt: number;
-}
-
-const LIMIT_MEMO_SWEEP_MIN = 256;
-
-const limitMemo = new WeakMap<World, LimitMemo>();
 
 /**
  * The navigation limit confining settler `e`, or null when it is unlimited: signpost navigation off, a
  * mapless sim, a non-settler or unowned target, an exempt job, or a human whose script behaviour lifts the
- * walk range. The `signpostNavigationEnabled` toggle is read live on every call, since an in-place rules
- * flip bumps no generation, so it needs no memo slot.
+ * walk range.
  */
 export function navigationLimitFor(
   world: World,
@@ -299,44 +269,100 @@ export function navigationLimitFor(
   if (settler === undefined || owner === undefined || p === undefined) return null;
   const hx = nodeHxOfPosition(p.x, p.y);
   const hy = nodeHyOfPosition(p.x, p.y);
-  const networkRevision = signpostNetworkRevision(world);
-  let memo = limitMemo.get(world);
-  if (memo === undefined) {
-    memo = { entries: new Map(), sweepAt: LIMIT_MEMO_SWEEP_MIN };
-    limitMemo.set(world, memo);
-  }
-  const held = memo.entries.get(e);
-  if (
-    held !== undefined &&
-    held.hx === hx &&
-    held.hy === hy &&
-    held.player === owner.player &&
-    held.jobType === settler.jobType &&
-    held.networkRevision === networkRevision
-  ) {
-    return held.limit;
-  }
-  const limit = computeNavigationLimit(world, content, terrain, settler.jobType, owner.player, hx, hy);
-  if (held !== undefined) {
-    held.hx = hx;
-    held.hy = hy;
-    held.player = owner.player;
-    held.jobType = settler.jobType;
-    held.networkRevision = networkRevision;
-    held.limit = limit;
-    return limit;
-  }
-  if (memo.entries.size >= memo.sweepAt) sweepDeadEntries(world, memo);
-  memo.entries.set(e, {
-    hx,
-    hy,
-    player: owner.player,
-    jobType: settler.jobType,
-    networkRevision,
-    limit,
-  });
-  return limit;
+  return computeNavigationLimit(world, content, terrain, settler.jobType, owner.player, hx, hy);
 }
+
+/**
+ * A settler's confinement by the walks that reach a goal from its spot. It asks the spot's walk reach
+ * afresh on every call, so it answers for the ground as it lies now however long a caller holds it. A
+ * goal no walk can stand on (water, a trunk, a building's body) is allowed beside ground a walk reaches.
+ * Approximations: such a goal with no open ground beside it at all, and every goal while the spot itself
+ * is one no walk starts from, are judged by distance, as {@link networkLimitAt} does.
+ */
+class WalkConfinement implements NavigationLimit {
+  constructor(
+    private readonly world: World,
+    private readonly content: ContentSet,
+    readonly terrain: TerrainGraph,
+    private readonly player: number,
+    private readonly hx: number,
+    private readonly hy: number,
+    private readonly carrier: boolean,
+    /** The signpost network revision it was made under: a later one hands the settler a new object. */
+    readonly revision: number,
+  ) {}
+
+  private reach: SpatialGate | null = null;
+  private askedAt = -1;
+  private innerBounds: NodeBox = EMPTY_BOX;
+  private widened: NodeBox = EMPTY_BOX;
+
+  /** The spot's walk reach, asked again only after a world write: no reach moves without one. */
+  private walk(): SpatialGate | null {
+    const version = this.world.mutationVersion;
+    if (version !== this.askedAt) {
+      const { world, content, terrain, player, hx, hy, carrier } = this;
+      this.reach = walkReachLimitAt(world, content, terrain, player, hx, hy, carrier);
+      this.askedAt = version;
+    }
+    return this.reach;
+  }
+
+  private byDistance(): NavigationLimit | null {
+    const range = this.carrier ? CARRIER_WALK_RANGE_NODES : WALK_RANGE_NODES;
+    return networkLimitAt(this.world, this.terrain, this.player, this.hx, this.hy, range);
+  }
+
+  /** A goal no walk stands on is allowed beside reached ground, so the box holds one node more. */
+  get bounds(): NodeBox {
+    const inner = (this.walk() ?? this.byDistance())?.bounds ?? EMPTY_BOX;
+    if (inner !== this.innerBounds) {
+      this.innerBounds = inner;
+      this.widened = {
+        minX: inner.minX - 1,
+        maxX: inner.maxX + 1,
+        minY: inner.minY - 1,
+        maxY: inner.maxY + 1,
+      };
+    }
+    return this.widened;
+  }
+
+  allowsNode(node: NodeId): boolean {
+    const walk = this.walk();
+    if (walk === null) return this.byDistance()?.allowsNode(node) === true;
+    const { world, content, terrain } = this;
+    if (floodMayEnter(world, content, terrain, terrain.xOf(node), terrain.yOf(node)))
+      return walk.allowsNode(node);
+    const count = terrain.neighboursInto(node, neighbourScratch);
+    let open = false;
+    for (let i = 0; i < count; i++) {
+      const beside = neighbourScratch[i] as NodeId;
+      if (!floodMayEnter(world, content, terrain, terrain.xOf(beside), terrain.yOf(beside))) continue;
+      if (walk.allowsNode(beside)) return true;
+      open = true;
+    }
+    return !open && this.byDistance()?.allowsNode(node) === true;
+  }
+
+  mayAllowNear(x: number, y: number, radius: number): boolean {
+    return (this.walk() ?? this.byDistance())?.mayAllowNear?.(x, y, radius + 1) ?? true;
+  }
+}
+
+/** A box holding no node. */
+const EMPTY_BOX: NodeBox = { minX: 0, maxX: -1, minY: 0, maxY: -1 };
+
+/** Confinements per cache generation: about the distinct spots a late game's settlers plan from within a
+ *  few hundred ticks. Authored. */
+const WALK_CONFINEMENT_GENERATION_CAP = 4096;
+
+/** Each spot's confinement per player and walk range, so a settler asking from one spot is handed one
+ *  object while the network stands. */
+const walkConfinements = new WeakMap<World, GenerationalCache<WalkConfinement>>();
+
+/** Scratch for `TerrainGraph.neighboursInto`. */
+const neighbourScratch: NodeId[] = [];
 
 /**
  * The confinement an equip errand shops inside: the settler's own `limit`, or, for a job with none
@@ -377,13 +403,6 @@ export function equipFetchLimitFor(
   );
 }
 
-function sweepDeadEntries(world: World, memo: LimitMemo): void {
-  for (const entity of memo.entries.keys()) {
-    if (!world.has(entity, Settler)) memo.entries.delete(entity);
-  }
-  memo.sweepAt = Math.max(LIMIT_MEMO_SWEEP_MIN, memo.entries.size * 2);
-}
-
 /** The confinement a settler of `jobType` and `player` carries standing on `(hx, hy)`, as
  *  {@link navigationLimitFor} would give it there before a script lifts its walk range; null when nothing
  *  confines the trade. An errand judged from a post rather than the walker's feet asks this. */
@@ -410,13 +429,25 @@ function computeNavigationLimit(
   hy: number,
 ): NavigationLimit | null {
   if (!confinedJob(content, jobType)) return null;
-  return networkLimitAt(world, terrain, player, hx, hy, walkRangeOf(content, jobType));
+  const carrier = walkRangeOf(content, jobType) === CARRIER_WALK_RANGE_NODES;
+  const revision = signpostNetworkRevision(world);
+  let held = walkConfinements.get(world);
+  if (held === undefined) {
+    held = new GenerationalCache(WALK_CONFINEMENT_GENERATION_CAP);
+    walkConfinements.set(world, held);
+  }
+  const key = spotKey(terrain, 2 * player + (carrier ? 1 : 0), hx, hy);
+  const known = key === null ? undefined : held.get(key);
+  if (known?.revision === revision && known.terrain === terrain) return known;
+  const made = new WalkConfinement(world, content, terrain, player, hx, hy, carrier, revision);
+  if (key !== null) held.set(key, made);
+  return made;
 }
 
 /**
- * The spots from which a settler of `jobType` and `player` would be allowed one of `goals`: the reverse of
- * the confinement it carries standing there, within its walk range of a goal or catching a signpost group
- * whose posts cover one, on the goal's land. A search over many candidate spots tests each with a few
+ * The spots from which a settler of `jobType` and `player` may be allowed one of `goals`, by distance:
+ * within its walk range of a goal or catching a signpost group whose posts cover one, on the goal's land.
+ * A superset of the spots whose walk reaches a goal; {@link jobLimitAt} at a spot gives that answer. A search over many candidate spots tests each with a few
  * distance checks instead of deriving every spot's confinement. A `slack` widens both ranges and drops
  * the ground tests, so the answer also admits every spot within that many Manhattan nodes of one that
  * qualifies, hex distance never exceeding Manhattan. Null when nothing confines the job.
@@ -735,9 +766,17 @@ class SignpostConfinement implements NavigationLimit {
   }
 }
 
-/** The confinement a spot carries whoever stands on it: the walk range around `(hx, hy)` unioned with
- *  the range around every post of each signpost group it catches. {@link navigationLimitFor} adds the
- *  per-job exemptions and the carrier's longer range, which an errand does not inherit. */
+/**
+ * The confinement a spot carries whoever stands on it, by distance: the walk range around `(hx, hy)`
+ * unioned with the range around every post of each signpost group it catches.
+ *
+ * Source basis: the original's guided pathfinder: a leg is planned within the walk range of the current
+ * position, or through a guide within that range of the start and one within it of the goal, both in one
+ * link system. Approximations: the original floods walkable ground to catch a guide and to cover a goal,
+ * and weighs only the two nearest guides on each side, where this gate tests hex distance and opens
+ * every group with a post in range. Project rule, which keeps it closer to the flood: a caught post and
+ * an allowed node lie on the spot's static land component when both stand on walkable land.
+ */
 export function networkLimitAt(
   world: World,
   terrain: TerrainGraph,

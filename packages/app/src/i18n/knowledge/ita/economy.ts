@@ -726,6 +726,9 @@ export const ECONOMY: ArticleGroup = {
           p: "Senza cartelli un colono raggiunge un obiettivo al massimo a {{reach.walk}} esagoni, un [[job:carrier|trasportatore]] a {{reach.carrier}}. Più lontano la strada la indicano i cartelli: se uno si trova entro quella portata, il colono può usare tutta la sua rete collegata, e l'obiettivo deve trovarsi entro la stessa portata da uno dei suoi cartelli.",
         },
         {
+          p: "Conta il percorso, non la linea d'aria: la strada fino a un obiettivo o a un cartello può essere lunga al massimo {{reach.walkRoute}} esagoni, {{reach.carrierRoute}} per un trasportatore. Un obiettivo oltre un fiume con un guado lontano resta fuori portata finché i cartelli non conducono al guado.",
+        },
+        {
           list: [
             'Due cartelli si collegano quando sono a meno di {{reach.link}} esagoni e il cammino tra loro è al massimo di {{reach.linkRoute}} esagoni.',
             'Un tuo nuovo cartello deve stare ad almeno {{reach.spacing}} esagoni da un altro.',

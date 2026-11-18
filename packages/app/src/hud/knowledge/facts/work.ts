@@ -297,6 +297,8 @@ function goodsReach(base: KnowledgeBase, ground: string): FactValue {
 export const WALK_FACTS: Readonly<Record<string, Fact>> = {
   'reach.walk': whole(WALK_RANGE_NODES),
   'reach.carrier': whole(CARRIER_WALK_RANGE_NODES),
+  'reach.walkRoute': whole(components.WALK_ROUTE_STEPS),
+  'reach.carrierRoute': whole(components.CARRIER_WALK_ROUTE_STEPS),
   'reach.link': whole(SIGNPOST_LINK_RANGE_NODES),
   'reach.linkRoute': whole(components.SIGNPOST_LINK_STEPS),
   'reach.goods': whole(components.GOODS_SEARCH_RANGE_NODES),

@@ -696,6 +696,9 @@ export const ECONOMY: ArticleGroup = {
           p: 'Ohne Wegweiser erreicht ein Siedler ein Ziel höchstens {{reach.walk}} Hexfelder weit, ein [[job:carrier|Träger]] {{reach.carrier}}. Weiter führen Wegweiser: Steht einer in dieser Reichweite, kann der Siedler das ganze damit verbundene Netz nutzen, und das Ziel muss in derselben Reichweite von einem seiner Wegweiser liegen.',
         },
         {
+          p: 'Es zählt der Weg, nicht die Luftlinie: Der Weg zu einem Ziel oder Wegweiser darf höchstens {{reach.walkRoute}} Hexfelder lang sein, beim Träger {{reach.carrierRoute}}. Ein Ziel hinter einem Fluss mit weit entferntem Übergang liegt außer Reichweite, bis Wegweiser zum Übergang führen.',
+        },
+        {
           list: [
             'Zwei Wegweiser verbinden sich, wenn sie näher als {{reach.link}} Hexfelder stehen und der Fußweg zwischen ihnen höchstens {{reach.linkRoute}} Hexfelder lang ist.',
             'Dein neuer Wegweiser muss mindestens {{reach.spacing}} Hexfelder vom nächsten entfernt stehen.',
