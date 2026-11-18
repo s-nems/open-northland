@@ -353,8 +353,9 @@ function planBreak(
     if (guardWaitsOnBeat(world, e)) pass.idle.stand(e, false);
     return true;
   }
-  // The company rung: a lonely settler leaves its work to find a partner, above the economy rungs on
-  // purpose - the "worker downs tools to socialize" beat. Nobody walks off to chat while a battle is on
+  // The company rung, above the economy rungs on purpose: a settler short of company takes a round with
+  // a neighbour between two tasks, and a lonely one leaves its work to find a partner - the "worker
+  // downs tools to socialize" beat. Nobody walks off to chat while a battle is on
   // nearby: the fighting trades never reach this rung at all (`social/gossip/plan.ts` bars them), so the
   // alert passed down holds the civilian trade a player or a script put into a fighting stance. Its work
   // is left alone - the alert governs rest and company, not a settler's trade.

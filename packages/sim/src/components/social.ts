@@ -7,7 +7,8 @@ import { CurrentAtomic } from './settler.js';
  * driven from the `seeker` half - the settler whose company need started the chat. `speaks` marks the half
  * that talks next round and flips each round, so both bodies animate over a long chat. A `pastime` chat is
  * idle chatter, which yields to work the moment a drive finds either half some; a `company` chat holds
- * both halves, since the seeker left its work for it or was ordered to talk.
+ * both halves, since the seeker left its work for it or was ordered to talk. A `passing` chat holds them
+ * too, for the single round two neighbours short of company take between their tasks.
  */
 export const Chat = defineComponent<{
   partner: Entity;
@@ -17,14 +18,15 @@ export const Chat = defineComponent<{
   kind: ChatKind;
 }>('Chat', 'settlers');
 
-export type ChatKind = 'pastime' | 'company';
+export type ChatKind = 'pastime' | 'passing' | 'company';
 
 export function inPastimeChat(world: World, e: Entity): boolean {
   return world.tryGet(e, Chat)?.kind === 'pastime';
 }
 
 export function chatHoldsSettler(world: World, e: Entity): boolean {
-  return world.tryGet(e, Chat)?.kind === 'company';
+  const kind = world.tryGet(e, Chat)?.kind;
+  return kind === 'company' || kind === 'passing';
 }
 
 /** The paired talk/listen atomic ids - `logicdefines.inc` `MAP_MOVEABLES_ATOMIC_ACTION_TYPE_TALK = 14` /
@@ -45,6 +47,12 @@ export function chatAtomicRunning(world: World, e: Entity): boolean {
  * chat rather than removed.
  */
 export const ChatCooldown = defineComponent<{ until: number }>('ChatCooldown', 'settlers', { simOnly: true });
+
+/** Set after a search for a passing chat found nobody: until tick `until` the settler searches no
+ *  partner in passing again. Unlike {@link ChatCooldown} it leaves the settler free to be chatted up. */
+export const ChatSearchRest = defineComponent<{ until: number }>('ChatSearchRest', 'settlers', {
+  simOnly: true,
+});
 
 /**
  * The tick from which a settler has done nothing but stand idle or chat, which the idle-chat rung waits

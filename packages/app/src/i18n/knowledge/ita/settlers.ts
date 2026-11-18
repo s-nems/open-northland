@@ -144,7 +144,7 @@ export const SETTLERS: ArticleGroup = {
           },
         },
         {
-          p: 'Un colono solo sceglie il compagno che costa meno lavoro al villaggio: di preferenza qualcuno vicino che sta in ozio o che ha bisogno di parlare a sua volta. Più bassa è la sua socialità, più lontano va e più facilmente distoglie dal lavoro chi non ha bisogno di parlare.',
+          p: 'Un colono solo sceglie il compagno che costa meno lavoro al villaggio: di preferenza qualcuno vicino che sta in ozio o che ha bisogno di parlare a sua volta. Più bassa è la sua socialità, più lontano va e più facilmente distoglie dal lavoro chi non ha bisogno di parlare. Già prima, quando la socialità scende sotto il {{need.passingChatPct}}%, tra un compito e il successivo scambia due parole con un vicino che sta in ozio o che vuole parlare a sua volta: uno scambio breve, al massimo a pochi passi dal lavoro.',
         },
       ],
       see: [

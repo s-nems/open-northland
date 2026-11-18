@@ -255,7 +255,7 @@ function chatEligible(world: World, content: ContentSet): ChatCandidates {
 
 /**
  * One planner pass's view of the chat candidates: caught up on the pass's first partner search, so a tick
- * with nobody lonely pays nothing, and held as of that moment for the rest of the pass. The candidates are
+ * with nobody short of company pays nothing, and held as of that moment for the rest of the pass. The candidates are
  * shared per world, so a pass catches them up again when another one did last.
  */
 export class GossipCandidates {

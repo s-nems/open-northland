@@ -82,6 +82,7 @@ function oilBurnSeconds(base: KnowledgeBase): FactValue {
 
 export const NEED_FACTS: Readonly<Record<string, Fact>> = {
   'need.drivePct': whole(needPct(systems.NEED_DRIVE_UNITS)),
+  'need.passingChatPct': whole(needPct(systems.CHAT_PASSING_UNITS)),
   'need.criticalPct': whole(needPct(systems.NEED_CRITICAL_UNITS)),
   'need.satedPct': whole(needPct(systems.NEED_SATED_UNITS)),
   'need.overfillPct': whole(needPct(systems.NEED_RESERVE_UNITS + systems.NEED_OVERFILL_UNITS)),

@@ -4,6 +4,7 @@ import {
   Chat,
   ChatCooldown,
   type ChatKind,
+  ChatSearchRest,
   CurrentAtomic,
   Engagement,
   FamilyDuty,
@@ -12,6 +13,7 @@ import {
   inPastimeChat,
   LISTEN_ATOMIC_ID,
   LostWay,
+  needsEnabled,
   ownerOf,
   PlayerOrder,
   Position,
@@ -27,6 +29,7 @@ import type { Entity, World } from '../../../ecs/world.js';
 import { nodeHxOfPosition, nodeHyOfPosition, type nodesAdjacent } from '../../../nav/halfcell.js';
 import type { SystemContext } from '../../context.js';
 import { carriesNeeds, NEED_DRIVE_THRESHOLD, needLevel } from '../../lifecycle/needs/index.js';
+import { NEED_RESERVE_UNITS, needBar } from '../../lifecycle/needs/scale.js';
 import { isTravelling } from '../../movement/nav-state.js';
 import { REFERENCE_STEP_TICKS } from '../../movement/walk-cost.js';
 import { atomicDuration } from '../../readviews/animations.js';
@@ -42,6 +45,18 @@ const CHAT_SEEK_RADIUS_NODES = 24;
 /** How far a settler that has only just grown lonely walks, and then only to a partner the chat costs
  *  nothing. Authored value, about 4 cells. */
 const CHAT_SEEK_FIRST_REACH_NODES = 8;
+
+/** The company bar, in need units, under which a settler chats in passing and an idler skips its warm-up:
+ *  half a bar. Authored value. */
+export const CHAT_PASSING_UNITS = NEED_RESERVE_UNITS / 2;
+const CHAT_PASSING_DEFICIT: Fixed = needBar(NEED_RESERVE_UNITS - CHAT_PASSING_UNITS);
+
+/** Ticks a settler waits after a search for a passing chat found nobody, so one that plans every tick
+ *  between two tasks does not search every tick. Authored value, two seconds. */
+const CHAT_PASSING_RETRY_TICKS = 24;
+
+/** How far in half-cell nodes a settler steps for a passing chat. Authored value, two cells. */
+const CHAT_PASSING_REACH_NODES = 4;
 
 /** Ticks of the seeker's work one node of distance costs: the walk there and the walk back.
  *  Approximation: the reference pace over the straight distance, not the seeker's own path. */
@@ -169,7 +184,8 @@ function idlePartnerFilter(
 }
 
 /**
- * The working settler's company rung: at or above {@link NEED_DRIVE_THRESHOLD} it leaves its work and claims
+ * The working settler's company rung. Short of company it chats in passing ({@link passingPartner}). At or
+ * above {@link NEED_DRIVE_THRESHOLD} it leaves its work and claims
  * the same-owner settler whose chat costs the settlement least, the lonelier it is the further and the
  * busier. Authored rule: the original takes an idle settler in a fixed range. Only partners are
  * gated on {@link Carrying}: a grabbed half needs its hands free, a desperate seeker chats with its load
@@ -189,8 +205,13 @@ export function planGossipSeek(
    *  the cheap bars above, so a settlement at peace never pays for the answer. */
   holdsGround?: () => boolean,
 ): boolean {
-  if (!ordered && needLevel(world.get(e, SettlerNeeds), 'enjoyment', ctx.tick) < NEED_DRIVE_THRESHOLD)
-    return false;
+  const deficit = needLevel(world.get(e, SettlerNeeds), 'enjoyment', ctx.tick);
+  const lonely = ordered || deficit >= NEED_DRIVE_THRESHOLD;
+  if (!lonely && deficit < CHAT_PASSING_DEFICIT) return false;
+  // With needs off no chat refills a bar, so only a player's order starts one.
+  if (!ordered && !needsEnabled(world)) return false;
+  // A carrier walks on with its load, and an idler's chat is the idle rung's, which yields to work.
+  if (!lonely && (world.has(e, Carrying) || world.has(e, IdleSince))) return false;
   if (settler.jobType === null || isFighterJob(ctx.content, settler.jobType)) return false;
   // A bar that does not move, such as one a script froze, is one no chat could ever satisfy.
   if (!carriesNeeds(world, ctx.content, e)) return false;
@@ -198,6 +219,7 @@ export function planGossipSeek(
   // Already in company: the chat it stands in becomes the one it sought, held against work like any
   // company-need chat, rather than a second pair that would orphan the first.
   if (world.has(e, Chat)) {
+    if (!lonely) return false;
     holdChat(world, e);
     return true;
   }
@@ -206,7 +228,60 @@ export function planGossipSeek(
   // the owner.
   const owner = ownerOf(world, e);
   if (owner === undefined) return false;
-  return seekPartner(world, ctx, e, settler, owner, hx, hy, candidates, ordered);
+  return lonely
+    ? seekPartner(world, ctx, e, settler, owner, hx, hy, candidates, ordered)
+    : passingPartner(world, ctx, e, owner, hx, hy, candidates);
+}
+
+/** Whether `e` is short enough of company to chat in passing. */
+function wantsCompany(world: World, ctx: SystemContext, e: Entity): boolean {
+  return (
+    needsEnabled(world) &&
+    needLevel(world.get(e, SettlerNeeds), 'enjoyment', ctx.tick) >= CHAT_PASSING_DEFICIT &&
+    carriesNeeds(world, ctx.content, e)
+  );
+}
+
+/**
+ * The passing chat, an authored rule the original lacks: between two tasks a settler short of company
+ * takes one round with a settler within {@link CHAT_PASSING_REACH_NODES} who stands idle or is short of
+ * company too, so the round is wasted on neither and the bar seldom falls far enough to cost a walk.
+ * Approximation: the reach is the straight distance, so a partner behind a wall costs a longer step.
+ */
+function passingPartner(
+  world: World,
+  ctx: SystemContext,
+  e: Entity,
+  owner: number,
+  hx: number,
+  hy: number,
+  candidates: GossipCandidates,
+): boolean {
+  const { tick } = ctx;
+  const rest = world.tryGet(e, ChatSearchRest);
+  if (rest !== undefined && rest.until > tick) return false;
+  const priceOf = (cand: Entity, dist: number, toBeat: number): number => {
+    if (dist > toBeat || cand === e || ownerOf(world, cand) !== owner) return NO_PARTNER;
+    if (!mayJoinChat(world, tick, cand)) return NO_PARTNER;
+    const idle = world.has(cand, IdleSince) && !isTravelling(world, cand);
+    return idle || wantsCompany(world, ctx, cand) ? dist : NO_PARTNER;
+  };
+  const found = candidates
+    .ensure()
+    .cheapest(
+      hx,
+      hy,
+      CHAT_PARTNER_MIN_DIST_NODES,
+      CHAT_PASSING_REACH_NODES,
+      CHAT_PASSING_REACH_NODES,
+      priceOf,
+    );
+  if (found === null) {
+    world.add(e, ChatSearchRest, { until: tick + CHAT_PASSING_RETRY_TICKS });
+    return false;
+  }
+  startChat(world, e, found, 'passing');
+  return true;
 }
 
 /** Ticks of work a company chat takes from each half: its two rounds, the seeker's speaking turn and the
@@ -329,7 +404,8 @@ export function planGossipIdle(
   // byte-identical.
   const owner = ownerOf(world, e);
   if (owner === undefined) return false;
-  if (!idleLongEnough(world, ctx, e, settler)) return false;
+  // One short of company has no patience for the warm-up. The count still starts on its first try.
+  if (!idleLongEnough(world, ctx, e, settler) && !wantsCompany(world, ctx, e)) return false;
   const idle = idlePartnerFilter(world, ctx.tick, e, owner);
   // Adjacency first: it reads only the position, while `idle` reads several stores.
   const idleBeside = (cand: Entity): boolean => {

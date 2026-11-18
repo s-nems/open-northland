@@ -134,7 +134,7 @@ export const SETTLERS: ArticleGroup = {
           },
         },
         {
-          p: 'Samotny osadnik wybiera rozmówcę tak, żeby osada straciła jak najmniej pracy: najchętniej kogoś blisko, kto stoi bezczynnie albo sam potrzebuje rozmowy. Im niższe Towarzystwo, tym dalej pójdzie i tym chętniej oderwie od pracy kogoś, komu rozmowa nie jest potrzebna.',
+          p: 'Samotny osadnik wybiera rozmówcę tak, żeby osada straciła jak najmniej pracy: najchętniej kogoś blisko, kto stoi bezczynnie albo sam potrzebuje rozmowy. Im niższe Towarzystwo, tym dalej pójdzie i tym chętniej oderwie od pracy kogoś, komu rozmowa nie jest potrzebna. Wcześniej, gdy Towarzystwo spadnie poniżej {{need.passingChatPct}}%, zagaduje między zadaniami sąsiada, który stoi bezczynnie albo sam chce pogadać: to jedna krótka wymiana, najwyżej parę kroków od pracy.',
         },
       ],
       see: [

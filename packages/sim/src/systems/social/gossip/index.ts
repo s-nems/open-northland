@@ -9,4 +9,4 @@
 
 export { GossipCandidates } from './candidates.js';
 export { CHAT_COOLDOWN_TICKS, endChat, gossipSystem } from './drive.js';
-export { idleChatWarmupTicks, planGossipIdle, planGossipSeek } from './plan.js';
+export { CHAT_PASSING_UNITS, idleChatWarmupTicks, planGossipIdle, planGossipSeek } from './plan.js';

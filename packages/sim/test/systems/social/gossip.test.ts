@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import {
   Age,
+  Carrying,
   Chat,
   ChatCooldown,
+  ChatSearchRest,
   CurrentAtomic,
   IdleSince,
   MISSION_BEHAVIOUR,
@@ -52,9 +54,12 @@ import { needsOf, setNeeds } from '../../fixtures/settler.js';
 const TALK = 14;
 const LISTEN = 15;
 const PLAYER = 1;
+const CARRIED_GOOD = 1;
 const SOLDIER_JOB = 31; // soldier_unarmed - isFighterJob band start
 const LONELY: Fixed = justAbove(NEED_DRIVE_THRESHOLD); // over the drive threshold every need fires at
 const EMPTY: Fixed = ONE; // a company bar run dry
+/** Short of company, not yet lonely: the band of the passing chat. */
+const WANTING: Fixed = fx.div(fx.fromInt(6), fx.fromInt(10));
 /** Halfway from the drive threshold to an empty bar. */
 const VERY_LONELY: Fixed = fx.div(fx.fromInt(9), fx.fromInt(10));
 const FULL: Fixed = fx.fromInt(0);
@@ -185,6 +190,98 @@ describe('gossip initiation (planner rungs)', () => {
 
     // The chat serves both bars, so the higher entity id wins against the tie-break.
     expect(sim.world.get(lonely, Chat)).toMatchObject({ partner: alsoLonely, seeker: true });
+  });
+
+  it('two busy neighbours short of company take one round in passing, then part', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(8, 1) });
+    const a = freshIdler(sim, 2, 0, WANTING); // no idle streak: between two tasks
+    const b = freshIdler(sim, 3, 0, WANTING);
+
+    plannerSystem(sim.world, ctxOf(sim));
+    expect(sim.world.get(a, Chat)).toMatchObject({ partner: b, seeker: true, kind: 'passing' });
+
+    let partnerTalked = false;
+    for (let i = 0; i < 100 && sim.world.has(a, Chat); i++) {
+      sim.step();
+      partnerTalked ||= sim.world.tryGet(b, CurrentAtomic)?.atomicId === TALK;
+    }
+    expect(sim.world.has(a, Chat)).toBe(false);
+    expect(partnerTalked).toBe(false);
+    expect(needsOf(sim, a).enjoyment).toBeLessThan(WANTING);
+    expect(needsOf(sim, b).enjoyment).toBeLessThan(WANTING);
+  });
+
+  it.each([
+    ['a busy neighbour with a full bar is left alone', false, FULL, false],
+    ['an idle neighbour with a full bar is taken', true, FULL, true],
+  ])('a passing chat costs nobody work: %s', (_case, idle, enjoyment, chats) => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(8, 1) });
+    const a = freshIdler(sim, 2, 0, WANTING);
+    if (idle) gossiper(sim, 3, 0, enjoyment);
+    else freshIdler(sim, 3, 0, enjoyment);
+
+    plannerSystem(sim.world, ctxOf(sim));
+
+    expect(sim.world.tryGet(a, Chat)?.kind === 'passing').toBe(chats);
+  });
+
+  it('a talk order on a half of a passing chat keeps the pair for a full exchange', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(8, 1) });
+    const a = freshIdler(sim, 2, 0, WANTING);
+    const b = freshIdler(sim, 3, 0, WANTING);
+    plannerSystem(sim.world, ctxOf(sim));
+    expect(sim.world.get(a, Chat).kind).toBe('passing');
+
+    sim.world.add(b, NeedOrder, { need: 'enjoyment' });
+    plannerSystem(sim.world, ctxOf(sim));
+
+    expect(sim.world.get(a, Chat)).toMatchObject({ partner: b, kind: 'company' });
+    expect(sim.world.get(b, Chat)).toMatchObject({ partner: a, kind: 'company' });
+  });
+
+  it('a failed search for a passing chat rests the searcher but leaves it free to be chatted up', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(8, 1) });
+    const a = freshIdler(sim, 2, 0, WANTING);
+    plannerSystem(sim.world, ctxOf(sim));
+    expect(sim.world.has(a, ChatSearchRest)).toBe(true);
+
+    const b = freshIdler(sim, 3, 0, WANTING);
+    plannerSystem(sim.world, ctxOf(sim));
+
+    expect(sim.world.get(b, Chat)).toMatchObject({ partner: a, seeker: true, kind: 'passing' });
+  });
+
+  it('a settler with its hands full walks on instead of chatting in passing', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(8, 1) });
+    const a = freshIdler(sim, 2, 0, WANTING);
+    sim.world.add(a, Carrying, { goodType: CARRIED_GOOD, amount: 1 });
+    freshIdler(sim, 3, 0, WANTING);
+
+    plannerSystem(sim.world, ctxOf(sim));
+
+    expect(sim.world.has(a, Chat)).toBe(false);
+  });
+
+  it('with needs switched off nobody chats in passing', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(8, 1) });
+    const a = freshIdler(sim, 2, 0, WANTING);
+    freshIdler(sim, 3, 0, WANTING);
+    setNeedsEnabled(sim.world, false);
+
+    plannerSystem(sim.world, ctxOf(sim));
+
+    expect(sim.world.has(a, Chat)).toBe(false);
+  });
+
+  it('an idler short of company skips the warm-up and chats as a pastime', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(8, 1) });
+    const a = freshIdler(sim, 2, 0, WANTING);
+    sim.world.add(a, IdleSince, { since: sim.tick });
+    const b = gossiperBeside(sim, 2, 0, FULL);
+
+    plannerSystem(sim.world, ctxOf(sim));
+
+    expect(sim.world.get(a, Chat)).toMatchObject({ partner: b, seeker: true, kind: 'pastime' });
   });
 
   it('below the seek threshold the worker works; two idle neighbours still chat', () => {
