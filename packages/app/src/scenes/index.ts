@@ -51,6 +51,7 @@ import { buildingDamageScene, buildingDamageVariantsScene } from './construction
 import { buildingDemolitionScene } from './construction/building-demolition.js';
 import { constructionScene } from './construction/construction.js';
 import { farmConstructionScene } from './construction/farm-construction.js';
+import { fogSitesScene } from './construction/fog-sites.js';
 import { frankConstructionScene } from './construction/frank-construction.js';
 import { homeRoofsScene } from './construction/home-roofs.js';
 import { nationFootprintsScene } from './construction/nation-footprints.js';
@@ -219,6 +220,7 @@ export const SCENES: readonly SceneDefinition[] = [
   everydayGesturesScene,
   warehouseScene,
   constructionScene,
+  fogSitesScene,
   farmConstructionScene,
   upgradeScene,
   upgradeTribesScene,

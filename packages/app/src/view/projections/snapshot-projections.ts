@@ -191,11 +191,8 @@ export function createSnapshotProjections(
     hudModelFor,
     doorBadgesFor,
     drawnDoorBadgesFor: doorBadgesFor.latest,
-    constructionSignsFor: memoBySnapshot((snapshot) => {
-      const signs = computeConstructionSigns(snapshot, buildingInfoOf);
-      const fog = fogGates.current();
-      return fog === null ? signs : signs.filter((sign) => fogTileVisible(fog, sign.x / ONE, sign.y / ONE));
-    }, viewerVersion),
+    // Unfiltered: the renderer draws the signs in sight and remembers those it lost sight of.
+    constructionSignsFor: memoBySnapshot((snapshot) => computeConstructionSigns(snapshot, buildingInfoOf)),
     settlerBubblesFor: memoBySnapshot((snapshot) => {
       const bubbles = computeSettlerBubbles(snapshot, pickableSeat(viewer));
       const fog = fogGates.current();

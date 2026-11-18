@@ -816,6 +816,11 @@ export const deContent = {
       title: 'Lagerlogistik',
       summary: 'Träger sammeln herumliegende Waren ein, bis jedes Lagerhaus voll ist.',
     },
+    'fog-sites': {
+      title: 'Baustellen im Nebel',
+      summary:
+        'Ein Späher entfernt sich von drei Baustellen, zwei eigenen und einer des Rivalen. Unter dem Grau bleiben sie so, wie er sie zuletzt sah: Bauphase, Fundamenterde und Baustellenschild.',
+    },
     construction: {
       title: 'Gebäude errichten',
       summary:

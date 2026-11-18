@@ -20,6 +20,8 @@ export interface ConstructionPlot {
   /** Whether the site lays a foundation: a house does, a vehicle's yard builds on the ground or water as
    *  it lies. */
   readonly foundation: boolean;
+  /** The building's own node, whose sight the whole plot follows as the building's sprite does. */
+  readonly anchor: { readonly col: number; readonly row: number };
   readonly cells: readonly { readonly col: number; readonly row: number }[];
 }
 
@@ -68,6 +70,7 @@ export function constructionSitePlots(world: World, content: ContentSet): readon
     plots.push({
       ref: e,
       foundation: buildings.get(b.buildingType)?.kind !== BUILDING_KIND.vehicle,
+      anchor: { col: hx, row: hy },
       cells: body.map((c) => ({ col: hx + footprintCellDx(hy, c), row: hy + c.dy })),
     });
   }

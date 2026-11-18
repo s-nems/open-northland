@@ -4,7 +4,9 @@ import {
   FogMemories,
   fogTileExplored,
   fogTileVisible,
+  type LiveSites,
   type RememberedMarkers,
+  type RememberedSites,
   type SeenRoadNetwork,
   type Sight,
   type ViewerFogMemory,
@@ -15,6 +17,7 @@ import type { RoadChanges } from '../../data/scene/road-shards.js';
 import type { ElevationField } from '../../data/terrain/index.js';
 import { FogLayer, type FogWashMask } from '../overlays/index.js';
 import type { PoolFrame } from '../sprite-pool/index.js';
+import type { SiteFog } from './world-sites.js';
 
 /**
  * The viewer's fog as one owner: every consumer reads the same `FogView` within a frame, so they cannot
@@ -23,7 +26,7 @@ import type { PoolFrame } from '../sprite-pool/index.js';
 
 export type FogPoolFrame = Pick<PoolFrame, 'staticRefs' | 'fogVisible' | 'fogEpoch' | 'ghosts'>;
 
-export class WorldFog {
+export class WorldFog implements SiteFog {
   private readonly wash = new FogLayer();
   private view: FogView | null = null;
   private readonly drawnSight = new ViewSight();
@@ -39,6 +42,8 @@ export class WorldFog {
   /** Bound once: the pool's cull predicate reads the live view, so a frame allocates no closure. */
   private readonly visibleAt = (tileX: number, tileY: number): boolean =>
     this.view === null || fogTileVisible(this.view, tileX, tileY);
+
+  readonly seesTile = this.visibleAt;
 
   private readonly exploredAt = (tileX: number, tileY: number): boolean =>
     this.view === null || fogTileExplored(this.view, tileX, tileY);
@@ -60,6 +65,16 @@ export class WorldFog {
   /** The drawn view's sight, whichever seat it is. */
   get sight(): Sight {
     return this.drawnSight;
+  }
+
+  /** The drawn memory's remembered construction sites, as of the last {@link update}. */
+  get memory(): RememberedSites | null {
+    return this.memories.drawnGhosts;
+  }
+
+  /** This view for the construction sites, undefined while the fog is off. */
+  get siteFog(): SiteFog | undefined {
+    return this.view === null ? undefined : this;
   }
 
   /** The tall map-object gate: this view's per-cell state, `undefined` while fog is off. */
@@ -112,13 +127,14 @@ export class WorldFog {
     this.staticRefs = refs;
   }
 
-  /** Recomposite the wash for one frame and return the pool's fog inputs. Both passes cache on the mask
-   *  generation, so a steady frame does no work. */
-  update(snapshot: WorldSnapshot, vp: Viewport, elevation?: ElevationField): FogPoolFrame {
+  /** Recomposite the wash for one frame and return the pool's fog inputs; a capture freezes a site's
+   *  foundation and sign as `sites` shows them. Both passes cache on the mask generation, so a steady
+   *  frame does no work. */
+  update(snapshot: WorldSnapshot, vp: Viewport, elevation?: ElevationField, sites?: LiveSites): FogPoolFrame {
     const view = this.view;
     const staticRefs = this.staticRefs;
     this.wash.update(view, vp, elevation);
-    this.memories.updateGhosts(snapshot, staticRefs, elevation);
+    this.memories.updateGhosts(snapshot, staticRefs, elevation, sites);
     const ghosts = this.memories.drawnGhosts;
     if (view === null || ghosts === null) return staticRefs === undefined ? {} : { staticRefs };
     if (

@@ -819,6 +819,11 @@ export const itContent = {
       summary:
         'I trasportatori raccolgono le merci sparse finché ogni magazzino non raggiunge la sua capacità.',
     },
+    'fog-sites': {
+      title: 'Cantieri nella nebbia',
+      summary:
+        "Un esploratore si allontana da tre cantieri, due nostri e uno del rivale. Sotto il grigio restano come li ha visti l'ultima volta: lo stadio dei lavori, la terra delle fondamenta e il cartello.",
+    },
     construction: {
       title: 'Erigere edifici',
       summary:

@@ -1,4 +1,5 @@
 import {
+  type ConstructionPlot,
   type EntitySnapshot,
   entitiesWith,
   entityById,
@@ -22,15 +23,30 @@ import { fogCellOfTile } from './mask.js';
 /**
  * The viewer's remembered statics: a building, wall, resource node, stump, chest, goods heap or vehicle
  * that was once seen keeps drawing on explored ground, frozen at its last-seen state until the player
- * re-sees the cell (a vehicle stays where it was last seen, like a building). Render-side and per local
- * viewer only - the sim reads its own masks, so determinism is untouched. Authored approximation: the
- * original never un-sees ground (the classic map without fog of war), so it has no ghosts.
+ * re-sees the cell (a vehicle stays where it was last seen, like a building). A construction site keeps
+ * its foundation earth and its sign with it. Render-side and per local viewer only - the sim reads its
+ * own masks, so determinism is untouched. Authored approximation: the original never un-sees ground (the
+ * classic map without fog of war), so it has no ghosts.
  */
 
 type FogGhostKind = Extract<
   DrawKind,
   'building' | 'palisade' | 'resource' | 'stump' | 'chest' | 'stockpile' | 'vehicle'
 >;
+
+/** Where a construction site's sign stands: fixed-point `Position` units, then screen px from there. */
+export interface SiteSignPlace {
+  readonly x: number;
+  readonly y: number;
+  readonly dx?: number;
+  readonly dy?: number;
+}
+
+/** The live construction sites' foundations and signs by building ref, which a capture freezes. */
+export interface LiveSites {
+  plotOf(ref: number): ConstructionPlot | undefined;
+  signOf(ref: number): SiteSignPlace | undefined;
+}
 
 /** One remembered static, frozen at its last sighting. Tile coords are floats in tile units. */
 export type FogGhost = Readonly<StaticDrawFields> & {
@@ -42,7 +58,19 @@ export type FogGhost = Readonly<StaticDrawFields> & {
   readonly shiftX?: number;
   /** The `Owner.player` at the sighting, which the minimap colours the memory by. */
   readonly owner?: number;
+  /** A construction site's foundation: its half-cell body cells. A vehicle yard lays none. */
+  readonly plot?: ConstructionPlot['cells'];
+  /** A construction site's sign, drawn in its owner's colour. */
+  readonly sign?: SiteSignPlace;
 };
+
+/** The remembered construction sites a frame draws the foundations and signs of. */
+export interface RememberedSites {
+  /** Bumps whenever {@link sites} may answer differently. */
+  readonly version: number;
+  /** The drawable ghosts carrying a plot or a sign, appended to `out` in arbitrary order. */
+  sites(out: FogGhost[]): FogGhost[];
+}
 
 /** One seat's memory as plain data, for a save to carry across a restore. */
 export interface FogGhostMemory {
@@ -82,13 +110,15 @@ function isGhostKind(kind: EntityKind | null): kind is FogGhostKind {
 }
 
 /** A `stockpile` memory is a heap of goods; a delivery flag or an emptied pile names no good and is
- *  no static to remember. A wall keeps its posts and stagger as the snapshot's layout draws them. */
+ *  no static to remember. A wall keeps its posts and stagger as the snapshot's layout draws them, and a
+ *  building site its foundation and sign as `sites` shows them. */
 function capture(
   snapshot: WorldSnapshot,
   elevation: ElevationField | undefined,
   id: number,
   kind: FogGhostKind,
   components: Readonly<Record<string, unknown>>,
+  sites?: LiveSites,
 ): FogGhost | null {
   const pos = readPosition(components);
   if (pos === null) return null;
@@ -102,7 +132,21 @@ function capture(
   if (kind === 'stockpile' && ghost.goodType === undefined) return null;
   const owner = (components.Owner as { player?: unknown } | undefined)?.player;
   if (typeof owner === 'number') ghost.owner = owner;
+  if (kind === 'building' && sites !== undefined) {
+    const plot = sites.plotOf(id);
+    if (plot?.foundation === true) ghost.plot = plot.cells;
+    const sign = sites.signOf(id);
+    if (sign !== undefined) ghost.sign = signPlaceOf(sign);
+  }
   return ghost;
+}
+
+/** The place alone, so a memory keeps nothing else the live sign carries. */
+function signPlaceOf(sign: SiteSignPlace): SiteSignPlace {
+  const place: { -readonly [K in keyof SiteSignPlace]: SiteSignPlace[K] } = { x: sign.x, y: sign.y };
+  if (sign.dx !== undefined) place.dx = sign.dx;
+  if (sign.dy !== undefined) place.dy = sign.dy;
+  return place;
 }
 
 /** A known-terrain view's seeded kinds: the map's placed natural objects, never player intel. */
@@ -171,10 +215,12 @@ interface MutableTileBox {
  * vehicles stay intel the player has to see first-hand, save a multiplayer map's start buildings
  * ({@link knowStartBuildings}).
  */
-export class FogGhostStore implements GhostSource, RememberedMarkers {
+export class FogGhostStore implements GhostSource, RememberedMarkers, RememberedSites {
   private readonly records = new Map<number, GhostRecord>();
   /** The refs of {@link records} the minimap marks, so a replot never walks the remembered nature. */
   private readonly markerRefs = new Set<number>();
+  /** The refs of {@link records} carrying a site's plot or sign. */
+  private readonly siteRefs = new Set<number>();
   private buckets = new TileBuckets<GhostRecord>();
   private readonly refsByCell = new Map<number, Set<number>>();
   /** The last view's `FOG_STATE` per cell, row-major. */
@@ -248,6 +294,7 @@ export class FogGhostStore implements GhostSource, RememberedMarkers {
     if (this.records.size === 0) return;
     this.records.clear();
     this.markerRefs.clear();
+    this.siteRefs.clear();
     this.refsByCell.clear();
     this.buckets = new TileBuckets();
     this.contentVersion++;
@@ -257,13 +304,15 @@ export class FogGhostStore implements GhostSource, RememberedMarkers {
    * Advance the memory to `view`; a frame with no mask rebuild, seat switch or mode change is a field
    * compare. Refs in `staticRefs` never draw as ghosts - the retained map-object layer already draws
    * their last-seen state - and are not captured unless {@link recordStatics}. `elevation` is the
-   * scene's, so a remembered wall's posts follow the slope its live draw did.
+   * scene's, so a remembered wall's posts follow the slope its live draw did; `sites` the live building
+   * sites' foundations and signs.
    */
   update(
     snapshot: WorldSnapshot,
     view: FogView,
     staticRefs?: ReadonlySet<number>,
     elevation?: ElevationField,
+    sites?: LiveSites,
   ): void {
     const fresh =
       view.player !== this.lastPlayer ||
@@ -280,7 +329,7 @@ export class FogGhostStore implements GhostSource, RememberedMarkers {
         for (const ghost of restored.ghosts) this.keep(ghost);
         this.reconSeeded = restored.reconSeeded;
       }
-    } else if (remapped) this.diffCells(snapshot, view, staticRefs, elevation);
+    } else if (remapped) this.diffCells(snapshot, view, staticRefs, elevation, sites);
     this.lastCells = view.cells;
 
     const terrainKnown = fogSettings(view.mode)?.terrainKnown === true;
@@ -320,6 +369,14 @@ export class FogGhostStore implements GhostSource, RememberedMarkers {
     return out;
   }
 
+  sites(out: FogGhost[]): FogGhost[] {
+    for (const ref of this.siteRefs) {
+      const record = this.records.get(ref);
+      if (record !== undefined && this.drawable(record)) out.push(record.ghost);
+    }
+    return out;
+  }
+
   has(ref: number): boolean {
     const record = this.records.get(ref);
     return record !== undefined && this.drawable(record);
@@ -348,6 +405,7 @@ export class FogGhostStore implements GhostSource, RememberedMarkers {
     view: FogView,
     staticRefs: ReadonlySet<number> | undefined,
     elevation: ElevationField | undefined,
+    sites: LiveSites | undefined,
   ): void {
     const leaving = this.leavingCells;
     let changed = false;
@@ -375,7 +433,7 @@ export class FogGhostStore implements GhostSource, RememberedMarkers {
     }
     // A cell moving between EXPLORED and UNEXPLORED changes what draws without touching a record.
     if (changed) this.contentVersion++;
-    if (leaving.size > 0) this.captureCells(snapshot, staticRefs, elevation);
+    if (leaving.size > 0) this.captureCells(snapshot, staticRefs, elevation, sites);
     leaving.clear();
     this.forgetSightedVehicles(snapshot);
   }
@@ -399,6 +457,7 @@ export class FogGhostStore implements GhostSource, RememberedMarkers {
     snapshot: WorldSnapshot,
     staticRefs: ReadonlySet<number> | undefined,
     elevation: ElevationField | undefined,
+    sites: LiveSites | undefined,
   ): void {
     const boxes = new Map<number, MutableTileBox>();
     const bucketsWide = Math.ceil(this.cellsWide / TILE_BUCKET_SIZE);
@@ -426,7 +485,7 @@ export class FogGhostStore implements GhostSource, RememberedMarkers {
       const pos = readPosition(entity.components);
       if (pos === null || !this.leavingCells.has(this.cellOf(pos.x / ONE, pos.y / ONE))) continue;
       const kind = classify(entity.components);
-      if (isGhostKind(kind)) this.remember(snapshot, elevation, entity, kind, layer);
+      if (isGhostKind(kind)) this.remember(snapshot, elevation, entity, kind, layer, sites);
     }
     candidates.length = 0;
   }
@@ -452,8 +511,9 @@ export class FogGhostStore implements GhostSource, RememberedMarkers {
     entity: EntitySnapshot,
     kind: FogGhostKind,
     layer = false,
+    sites?: LiveSites,
   ): void {
-    const ghost = capture(snapshot, elevation, entity.id, kind, entity.components);
+    const ghost = capture(snapshot, elevation, entity.id, kind, entity.components, sites);
     if (ghost !== null) this.keep(ghost, layer);
   }
 
@@ -465,6 +525,7 @@ export class FogGhostStore implements GhostSource, RememberedMarkers {
     const record: GhostRecord = { ghost, cell, layer };
     this.records.set(ghost.ref, record);
     if (ghost.kind === 'building' || ghost.kind === 'vehicle') this.markerRefs.add(ghost.ref);
+    if (ghost.plot !== undefined || ghost.sign !== undefined) this.siteRefs.add(ghost.ref);
     this.buckets.set(ghost.ref, record, ghost.tileX, ghost.tileY);
     let refs = this.refsByCell.get(cell);
     if (refs === undefined) {
@@ -480,6 +541,7 @@ export class FogGhostStore implements GhostSource, RememberedMarkers {
     if (record === undefined) return;
     this.records.delete(ref);
     this.markerRefs.delete(ref);
+    this.siteRefs.delete(ref);
     this.buckets.delete(ref);
     const refs = this.refsByCell.get(record.cell);
     refs?.delete(ref);
@@ -494,6 +556,7 @@ export class FogGhostStore implements GhostSource, RememberedMarkers {
     for (const ref of refs) {
       this.records.delete(ref);
       this.markerRefs.delete(ref);
+      this.siteRefs.delete(ref);
       this.buckets.delete(ref);
     }
     this.contentVersion++;

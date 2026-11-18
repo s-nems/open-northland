@@ -1,7 +1,7 @@
 import { FOG_MODE, FOG_STATE, fogViewOfMask, positionOfNode } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import { startBuildingGhosts } from '../../../src/data/fog/ghosts.js';
-import { FogGhostStore } from '../../../src/data/fog/index.js';
+import { FogGhostStore, type LiveSites } from '../../../src/data/fog/index.js';
 import { fogCellOfTile } from '../../../src/data/fog/mask.js';
 import { isVisible } from '../../../src/data/projection/index.js';
 import { collectSpriteScene, type SpriteDrawItem } from '../../../src/data/scene/index.js';
@@ -82,6 +82,46 @@ describe('FogGhostStore', () => {
     store.update(snapshotOf([site(ONE / 2)]), viewOf(new Map([[HOUSE_CELL, FOG_STATE.VISIBLE]]), 4));
     store.update(snapshotOf([site(ONE / 2)]), viewOf(new Map([[HOUSE_CELL, FOG_STATE.EXPLORED]]), 5));
     expect(drawn(store)[0]?.builtPct).toBe(50);
+  });
+
+  it('remembers a site with its foundation and sign as they stood, a vehicle yard with its sign alone', () => {
+    const rising = { buildingType: 7, tribe: 1, built: 0, level: 0 };
+    const site = entity(1, 5, 4, { Building: rising, UnderConstruction: {}, Owner: { player: 2 } });
+    const yard = entity(2, 9, 4, { Building: { ...rising, buildingType: 8 }, UnderConstruction: {} });
+    const cells = [
+      { col: 10, row: 8 },
+      { col: 11, row: 8 },
+    ];
+    const sites: LiveSites = {
+      plotOf: (ref) => ({ ref, foundation: ref === site.id, anchor: { col: 10, row: 8 }, cells }),
+      signOf: (ref) => {
+        const live = { id: ref, x: ref * ONE, y: 4 * ONE, dx: 12, player: 2 };
+        return live;
+      },
+    };
+    const world = snapshotOf([site, yard]);
+    const both = (state: number, generation: number) =>
+      viewOf(
+        new Map([
+          [HOUSE_CELL, state],
+          [TREE_CELL, state],
+        ]),
+        generation,
+      );
+    const store = new FogGhostStore();
+    store.update(world, both(FOG_STATE.VISIBLE, 1), undefined, undefined, sites);
+    expect(store.sites([])).toEqual([]);
+    store.update(world, both(FOG_STATE.EXPLORED, 2), undefined, undefined, sites);
+    const [siteGhost, yardGhost] = store.sites([]).sort((a, b) => a.ref - b.ref);
+    expect(siteGhost).toMatchObject({ ref: site.id, plot: cells, sign: { x: ONE, y: 4 * ONE, dx: 12 } });
+    expect(siteGhost?.sign).not.toHaveProperty('player');
+    expect(yardGhost).toMatchObject({ ref: yard.id, sign: { x: 2 * ONE } });
+    expect(yardGhost?.plot).toBeUndefined();
+    // Finished out of sight: the memory still shows the site.
+    store.update(snapshotOf([]), both(FOG_STATE.EXPLORED, 3), undefined, undefined, sites);
+    expect(store.sites([])).toHaveLength(2);
+    store.update(snapshotOf([]), both(FOG_STATE.VISIBLE, 4), undefined, undefined, sites);
+    expect(store.sites([])).toEqual([]);
   });
 
   it('never draws a memory into UNEXPLORED black, and skips staticRefs (map-object-drawn) entities', () => {

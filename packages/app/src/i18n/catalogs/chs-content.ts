@@ -784,6 +784,11 @@ export const chsContent = {
       title: '仓库物流',
       summary: '搬运工收集散落的物资，直到各仓库达到容量上限。',
     },
+    'fog-sites': {
+      title: '迷雾中的工地',
+      summary:
+        '侦察兵离开三处工地，其中两处是我们的，一处属于对手。在灰色迷雾下，它们保持侦察兵最后看到的样子：建造阶段、地基泥土和工地标牌。',
+    },
     construction: {
       title: '建造建筑',
       summary:

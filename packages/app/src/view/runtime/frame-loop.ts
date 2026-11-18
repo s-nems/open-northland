@@ -62,7 +62,6 @@ import { presentCombatEffects, type TickEffects } from './combat-effects.js';
 import type { GameViewDeps } from './game-view.js';
 import type { PerfReadout } from './perf-readout.js';
 import { type RafLoop, startRafLoop } from './raf-loop.js';
-import { createVisiblePlots } from './visible-plots.js';
 
 /** Everything the per-frame loop reads, assembled once by the mount phase. */
 export interface FrameLoopDeps {
@@ -301,7 +300,6 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
       probeOwner(pick),
     );
   const signpostOverlay = () => signpostOverlayFrame(cameraCtl.camera(), app.screen.width, app.screen.height);
-  const visiblePlots = createVisiblePlots(() => host.constructionPlots(), fogGates.seesNode);
   // The sprite pool withholds both the felling presenter's refs and the flags other seats' settlers hold.
   const foreignFlags = createForeignFlags(loop.viewer);
   // Every version only grows, so their sum moves when any does.
@@ -514,7 +512,7 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
     // World cutouts centred on the selection and on the trade window's houses, rendered into their boxes
     // during `renderer.update`; the list is the same object while the boxes hold still.
     renderer.setPortraitInsets(controls.portraits());
-    renderer.updateConstructionPlots(visiblePlots(fogView));
+    renderer.updateConstructionPlots(host.constructionPlots());
     geometryDebug.update(snap);
     // The gate tool marks the walls it can cut into, the wall brush the wall it would tear down; otherwise
     // an armed pick marks its targets, and the one it aims at stands for the hovered target.

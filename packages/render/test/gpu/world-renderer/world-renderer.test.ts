@@ -1,7 +1,9 @@
+import { FOG_STATE, fx, nodeOfPosition } from '@open-northland/sim';
 import {
   type Application,
   BufferImageSource,
   Container,
+  Graphics,
   Mesh,
   Sprite,
   TextureSource,
@@ -18,7 +20,7 @@ import {
 } from '../../../src/gpu/pixel-art/registry.js';
 import { BASELINE_ENHANCEMENTS, WorldRenderer } from '../../../src/gpu/world-renderer/index.js';
 import { mountPainterOrder, type WorldSceneLayers } from '../../../src/gpu/world-renderer/painter-order.js';
-import { entity, snapshotOf } from '../../support/fixtures.js';
+import { entity, fogViewOf, snapshotOf } from '../../support/fixtures.js';
 import { useHeadlessShaderContext } from '../../support/shader-context.js';
 
 useHeadlessShaderContext();
@@ -64,6 +66,7 @@ const SLOTS = [
   'wakes',
   'weatherGround',
   'templeGlow',
+  'rememberedPlots',
   'fog',
   'constructionPlots',
   'placementWash',
@@ -285,6 +288,42 @@ describe('WorldRenderer scene graph', () => {
     renderer.setGroupNumbersShown(false);
     renderer.update(frame);
     expect(labels.children).toHaveLength(0);
+    renderer.dispose();
+  });
+
+  it('moves a site whose building leaves sight from the live foundation layer to the remembered one', () => {
+    const app = stubApp();
+    const renderer = new WorldRenderer(app);
+    const SITE = 1;
+    const SITE_TILE = { x: 5, y: 4 };
+    const site = entity(SITE, SITE_TILE.x, SITE_TILE.y, {
+      Building: { buildingType: 7, tribe: 1, built: 0, level: 0 },
+      UnderConstruction: {},
+      Owner: { player: 0 },
+    });
+    const { hx, hy } = nodeOfPosition(fx.fromInt(SITE_TILE.x), fx.fromInt(SITE_TILE.y));
+    const anchor = { col: hx, row: hy };
+    const plots = [{ ref: SITE, foundation: true, anchor, cells: [anchor, { col: hx + 2, row: hy }] }];
+    const snapshot = snapshotOf([site]);
+    const world = worldLayerOf(app) as Container;
+    /** Whether the plot layer in `slot` drew any foundation. */
+    const draws = (slot: keyof WorldSceneLayers): boolean => {
+      const plot = world.children[SLOTS.indexOf(slot)]?.children[0];
+      return plot instanceof Graphics && plot.context.instructions.length > 0;
+    };
+    // On an even row the stagger is 0, so the site's cell is its tile.
+    const frame = (state: number, generation: number): void => {
+      renderer.updateFog(fogViewOf(new Map([[`${SITE_TILE.x},${SITE_TILE.y}`, state]]), generation));
+      renderer.updateConstructionPlots(plots);
+      renderer.update({ snapshot, camera: { offsetX: 0, offsetY: 0, scale: 1 } });
+    };
+
+    frame(FOG_STATE.VISIBLE, 1);
+    expect([draws('constructionPlots'), draws('rememberedPlots')]).toEqual([true, false]);
+    frame(FOG_STATE.EXPLORED, 2);
+    expect([draws('constructionPlots'), draws('rememberedPlots')]).toEqual([false, true]);
+    frame(FOG_STATE.VISIBLE, 3);
+    expect([draws('constructionPlots'), draws('rememberedPlots')]).toEqual([true, false]);
     renderer.dispose();
   });
 

@@ -807,6 +807,11 @@ export const plContent = {
       title: 'Logistyka magazynu',
       summary: 'Tragarze zbierają luźne towary, dopóki magazyn nie osiągnie pojemności.',
     },
+    'fog-sites': {
+      title: 'Place budowy pod mgłą',
+      summary:
+        'Zwiadowca odchodzi od trzech placów budowy, dwóch naszych i jednego rywala. Pod szarą mgłą zostają takie, jakie widział ostatnio: etap budowy, ziemia pod fundamentem i chorągiewka.',
+    },
     construction: {
       title: 'Wznoszenie budynków',
       summary:

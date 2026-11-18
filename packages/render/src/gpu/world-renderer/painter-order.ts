@@ -9,6 +9,8 @@ export interface WorldSceneLayers {
   readonly wakes: Container;
   /** Rain splashes, water rings and ground wisps: over the ground, under the fog and every sprite. */
   readonly weatherGround: Container;
+  /** Remembered construction foundations: under the fog, which greys them like the ground. */
+  readonly rememberedPlots: Container;
   readonly fog: Container;
   readonly constructionPlots: Container;
   readonly placementWash: Container;
@@ -55,6 +57,7 @@ export function mountPainterOrder(world: Container, layers: WorldSceneLayers): v
     layers.wakes,
     layers.weatherGround,
     layers.templeGlow,
+    layers.rememberedPlots,
     layers.fog,
     layers.constructionPlots,
     layers.placementWash,

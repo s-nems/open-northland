@@ -67,6 +67,12 @@ const GHOST_KINDS: readonly string[] = [
   'vehicle',
 ] satisfies readonly FogGhost['kind'][];
 const SITE_STATES: readonly unknown[] = ['unclaimed', 'claimed'];
+const PLOT_CELL_KEYS = ['col', 'row'] as const satisfies readonly (keyof NonNullable<
+  FogGhost['plot']
+>[number])[];
+const SIGN_KEYS: readonly string[] = ['x', 'y', 'dx', 'dy'] satisfies readonly (keyof NonNullable<
+  FogGhost['sign']
+>)[];
 
 /** One check per {@link FogGhost} field, so a field the ghost gains must name how it reads back. */
 const GHOST_FIELDS: Readonly<Record<keyof FogGhost, (value: unknown) => boolean>> = {
@@ -93,6 +99,12 @@ const GHOST_FIELDS: Readonly<Record<keyof FogGhost, (value: unknown) => boolean>
   roadSite: (value) => SITE_STATES.includes(value),
   facing: isFiniteNumber,
   player: isFiniteNumber,
+  plot: (value) => Array.isArray(value) && value.every(isPlotCell),
+  sign: (value) =>
+    isRecord(value) &&
+    isFiniteNumber(value.x) &&
+    isFiniteNumber(value.y) &&
+    Object.entries(value).every(([key, field]) => SIGN_KEYS.includes(key) && isFiniteNumber(field)),
 };
 
 function isFogGhost(value: unknown): value is FogGhost {
@@ -101,6 +113,12 @@ function isFogGhost(value: unknown): value is FogGhost {
     const check = Object.hasOwn(GHOST_FIELDS, key) ? GHOST_FIELDS[key as keyof FogGhost] : undefined;
     return check?.(field) === true;
   });
+}
+
+/** A half-cell node, exactly `{ col, row }`. */
+function isPlotCell(value: unknown): boolean {
+  if (!isRecord(value) || Object.keys(value).length !== PLOT_CELL_KEYS.length) return false;
+  return PLOT_CELL_KEYS.every((key) => Number.isSafeInteger(value[key]));
 }
 
 function isHeldQuad(value: unknown): value is [number, number, HarvestState] {

@@ -15,7 +15,21 @@ const MEMORY: FogMemory = {
         player: 0,
         reconSeeded: true,
         ghosts: [
-          { ref: 4, kind: 'building', tileX: 5, tileY: 4, typeId: 7, tribe: 1, builtPct: 40, owner: 2 },
+          {
+            ref: 4,
+            kind: 'building',
+            tileX: 5,
+            tileY: 4,
+            typeId: 7,
+            tribe: 1,
+            builtPct: 40,
+            owner: 2,
+            plot: [
+              { col: 10, row: 8 },
+              { col: 11, row: 8 },
+            ],
+            sign: { x: 81920, y: 65536, dx: 12, dy: -30 },
+          },
           {
             ref: 9,
             kind: 'palisade',
@@ -76,6 +90,9 @@ describe('client memory in a save', () => {
     expect(withFog(ghost({ kind: 'settler' })).fog).toBeNull();
     expect(withFog(ghost({ typeId: 'house' })).fog).toBeNull();
     expect(withFog(ghost({ unknownField: 1 })).fog).toBeNull();
+    expect(withFog(ghost({ plot: [{ col: 10.5, row: 8 }] })).fog).toBeNull();
+    expect(withFog(ghost({ plot: [{ col: 10, row: 8, x: 1 }] })).fog).toBeNull();
+    expect(withFog(ghost({ sign: { x: 1, y: 2, id: 4 } })).fog).toBeNull();
     expect(withFog({ ...raw.fog, layer: { ...raw.fog.layer, held: [[40, 3]] } }).fog).toBeNull();
   });
 

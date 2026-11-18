@@ -786,6 +786,11 @@ export const chtContent = {
       title: '倉庫物流',
       summary: '搬運工收集散落的貨物，直到每座倉庫的容量達到上限。',
     },
+    'fog-sites': {
+      title: '迷霧中的工地',
+      summary:
+        '偵察兵離開三處工地，其中兩處是我們的，一處屬於對手。在灰色迷霧下，它們保持偵察兵最後看到的樣子：建造階段、地基泥土和工地標牌。',
+    },
     construction: {
       title: '興建建築',
       summary:

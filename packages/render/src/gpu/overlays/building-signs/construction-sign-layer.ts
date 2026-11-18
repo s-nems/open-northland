@@ -1,4 +1,5 @@
 import { Container, Sprite } from 'pixi.js';
+import { FOG_GHOST_TINT } from '../../../data/fog/index.js';
 import { isVisible, ONE, tileToScreen, type Viewport } from '../../../data/projection/index.js';
 import { type ElevationField, terrainLiftAt } from '../../../data/terrain/index.js';
 import { retainOffscreen, retireUndrawn } from '../retained-pool.js';
@@ -20,7 +21,11 @@ export interface ConstructionSign {
   readonly dy?: number;
   /** The owning player slot (0-based `Owner.player`) - selects the sign recolour. */
   readonly player?: number;
+  /** A fog memory of the sign, dimmed like the remembered building it stands at. */
+  readonly remembered?: boolean;
 }
+
+const LIVE_TINT = 0xffffff;
 
 interface SignNode {
   readonly node: Sprite;
@@ -78,6 +83,7 @@ export class ConstructionSignLayer {
           this.signs.set(sign.id, entry);
         }
         entry.node.visible = true;
+        entry.node.tint = sign.remembered === true ? FOG_GHOST_TINT : LIVE_TINT;
         entry.node.position.set(
           p.x + (sign.dx ?? 0) + CONSTRUCTION_SIGN_DX,
           p.y + (sign.dy ?? 0) - terrainLiftAt(elevation, tileX, tileY),

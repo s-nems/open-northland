@@ -810,6 +810,11 @@ export const enContent = {
       title: 'Warehouse logistics',
       summary: 'Carriers collect loose goods until each warehouse capacity is reached.',
     },
+    'fog-sites': {
+      title: 'Building sites under the fog',
+      summary:
+        "A scout walks away from three building sites, two of ours and a rival's. Under the grey they stay as it last saw them: the stage, the foundation earth and the sign.",
+    },
     construction: {
       title: 'Raising buildings',
       summary:

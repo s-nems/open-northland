@@ -1,4 +1,10 @@
-import { type FogView, type SimEvent, TICKS_PER_SECOND, type WorldSnapshot } from '@open-northland/sim';
+import {
+  type ConstructionPlot,
+  type FogView,
+  type SimEvent,
+  TICKS_PER_SECOND,
+  type WorldSnapshot,
+} from '@open-northland/sim';
 import { type Application, Container, type ICanvas } from 'pixi.js';
 import type { FootfallGround } from '../../data/effects/index.js';
 import type { RememberedMarkers, SeenRoadNetwork, Sight, ViewerFogMemory } from '../../data/fog/index.js';
@@ -51,7 +57,7 @@ import {
 import { PagePrescaler, type PrescaleStats } from '../pixel-art/page-prescaler.js';
 import { prescaledScalerOf, setPixelArtMagnification, setWorldShadowStyle } from '../pixel-art/registry.js';
 import { worldUpscaleOf } from '../pixi-app/pixi-app.js';
-import { type ConstructionPlotFrame, ConstructionPlotLayer } from '../placement/construction-plot.js';
+import { ConstructionPlotLayer } from '../placement/construction-plot.js';
 import { type PlacementGhost, PlacementGhostLayer } from '../placement/ghost.js';
 import { type PlacementOverlayFrame, PlacementOverlayLayer } from '../placement/overlay.js';
 import { PLOT_BOUNDS } from '../placement/plan-road.js';
@@ -95,6 +101,7 @@ import { mountPainterOrder } from './painter-order.js';
 import { WorldChrome } from './world-chrome.js';
 import { WorldFog } from './world-fog.js';
 import { WorldMarks } from './world-marks.js';
+import { WorldSites } from './world-sites.js';
 
 export class WorldRenderer {
   private readonly app: Application;
@@ -131,6 +138,8 @@ export class WorldRenderer {
   private readonly fog = new WorldFog();
   private readonly placementOverlay: PlacementOverlayLayer;
   private readonly constructionPlots: ConstructionPlotLayer;
+  private readonly rememberedPlots: ConstructionPlotLayer;
+  private readonly sites = new WorldSites();
   private readonly placementGhost: PlacementGhostLayer;
   private readonly marks: WorldMarks;
   private targetMarks: ReadonlyMap<number, TargetTone> | undefined;
@@ -212,6 +221,7 @@ export class WorldRenderer {
     this.mapViews = new MapViewLayer(app, this.worldLayer, this.pool);
     this.placementOverlay = new PlacementOverlayLayer(app.renderer);
     this.constructionPlots = new ConstructionPlotLayer(opts?.siteEarth);
+    this.rememberedPlots = new ConstructionPlotLayer(opts?.siteEarth);
     // The ghost joins the depth-sorted sprite layer so it occludes like the real house would.
     this.placementGhost = new PlacementGhostLayer(
       opts?.sheet,
@@ -228,6 +238,7 @@ export class WorldRenderer {
       groundResources: this.pool.groundContainer,
       roads: this.terrain.roadContainer,
       weatherGround: this.weatherGround.container,
+      rememberedPlots: this.rememberedPlots.container,
       fog: this.fog.container,
       constructionPlots: this.constructionPlots.container,
       placementWash: this.placementOverlay.container,
@@ -619,7 +630,10 @@ export class WorldRenderer {
     if (!sameWindSway(wind, this.wind)) this.wind = wind;
     this.weatherGround.update(this.weather, weatherView, gameSeconds);
     // The fog first: the sky reads the band it just drew.
-    const fogFrame = this.fog.update(snapshot, vp, this.elevation);
+    this.sites.setSigns(signItems);
+    const fogFrame = this.fog.update(snapshot, vp, this.elevation, this.sites);
+    const siteFog = this.fog.siteFog;
+    this.rememberedPlots.set(this.sites.rememberedPlots(siteFog), this.elevation);
     this.weatherSky.update(this.weather, weatherView, gameSeconds);
     this.mapObjects.update(
       vp,
@@ -712,7 +726,7 @@ export class WorldRenderer {
       lostGoals,
       lostGoalPulse,
       doorBadges,
-      constructionSigns: signItems,
+      constructionSigns: this.sites.signsDrawn(siteFog),
       settlerBubbles,
       lifeHearts,
       experienceStars,
@@ -798,8 +812,11 @@ export class WorldRenderer {
     this.placementOverlay.set(frame, this.elevation);
   }
 
-  updateConstructionPlots(plots: readonly ConstructionPlotFrame[]): void {
-    this.constructionPlots.set(plots, this.elevation);
+  /** Every live construction site's foundation; the fog decides which of them draw. Call after
+   *  {@link updateFog}. */
+  updateConstructionPlots(plots: readonly ConstructionPlot[]): void {
+    this.sites.setPlots(plots);
+    this.constructionPlots.set(this.sites.livePlots(this.fog.siteFog), this.elevation);
   }
 
   /**
@@ -869,6 +886,7 @@ export class WorldRenderer {
     this.fog.destroy();
     this.placementOverlay.destroy();
     this.constructionPlots.destroy();
+    this.rememberedPlots.destroy();
     this.placementGhost.destroy();
     this.hud.destroy();
     this.chrome.destroy();

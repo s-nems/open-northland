@@ -5,6 +5,7 @@ import {
   type FogGhost,
   type FogGhostMemory,
   FogGhostStore,
+  type LiveSites,
   type RememberedMarkers,
   startBuildingGhosts,
 } from './ghosts.js';
@@ -152,6 +153,7 @@ export class FogMemories implements SeenRoadNetwork {
     snapshot: WorldSnapshot,
     staticRefs: ReadonlySet<number> | undefined,
     elevation: ElevationField | undefined,
+    sites?: LiveSites,
   ): void {
     if (this.startBuildingsPending) {
       this.startBuildingsPending = false;
@@ -159,7 +161,7 @@ export class FogMemories implements SeenRoadNetwork {
       for (const memory of this.bySeat.values()) memory.ghosts.knowStartBuildings(this.startBuildings);
     }
     for (const memory of this.bySeat.values())
-      memory.ghosts.update(snapshot, memory.view, staticRefs, elevation);
+      memory.ghosts.update(snapshot, memory.view, staticRefs, elevation, sites);
   }
 
   /** Take the live network's `changes` into every memory; answers what the drawn network gains and

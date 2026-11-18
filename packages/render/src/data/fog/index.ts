@@ -3,7 +3,10 @@ export {
   type FogGhostMemory,
   FogGhostStore,
   type GhostSource,
+  type LiveSites,
   type RememberedMarkers,
+  type RememberedSites,
+  type SiteSignPlace,
 } from './ghosts.js';
 export {
   FOG_EXPLORED_ALPHA,
