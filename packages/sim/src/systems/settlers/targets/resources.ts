@@ -44,8 +44,10 @@ export type HarvestSearchContext = Pick<
 };
 
 /**
- * The nearest {@link Resource} this settler may harvest, by {@link rankLength} from `opts.rank` with an
- * ascending-cell-id tie-break, or null when none qualifies. The stance at a resource is the one nearest
+ * The nearest {@link Resource} this settler may harvest, by {@link rankLength} from `rank` with an
+ * ascending-cell-id tie-break, or null when none qualifies. `rank` is the settler's own spot, by distance
+ * or as its walk ({@link rankFromSpot}), or a flag, so a flag-bound gatherer sweeps outward from its flag
+ * rather than from wherever it stands. The stance at a resource is the one nearest
  * the settler, whatever the resources are ranked from.
  *
  * Approximation: a deposit a building was legally placed over is left un-mined when its work cell lands
@@ -53,11 +55,8 @@ export type HarvestSearchContext = Pick<
  */
 export function nearestHarvestableFor(
   plan: HarvestSearchContext,
+  rank: RankFrom,
   opts: {
-    /** What the resources are ranked from: the settler's own spot by distance unless given, as its walk
-     *  ({@link rankFromSpot}) or as a flag, so a flag-bound gatherer sweeps outward from its flag rather
-     *  than from wherever it stands. */
-    readonly rank?: RankFrom | undefined;
     /** Bound the scan to this circle, whatever it is ranked from. */
     readonly bound?: WorkBound | undefined;
     readonly goodFilter?: ReadonlySet<number> | undefined;
@@ -82,7 +81,6 @@ export function nearestHarvestableFor(
   // every candidate would fail the `allowed.has` check below, so the whole scan is provably null. The
   // probe set comes from the actual resources, so a node carrying an out-of-content atomic still gates.
   if (!anyHarvestAtomicPresent(world, allowed)) return null;
-  const rank = opts.rank ?? here;
   const origin = rankOrigin(rank);
   // A stance is walked to from where the settler stands.
   const stanceRank = origin === here ? rank : rankFromSpot(plan.limit, here);

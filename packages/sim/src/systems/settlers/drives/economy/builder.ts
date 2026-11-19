@@ -149,11 +149,11 @@ export function planBuilder(
       sites,
       world,
       here,
+      planRank(plan),
       settler.owner,
       limit ?? undefined,
       avoidSite,
       accepts,
-      planRank(plan),
     );
 
   // A road site's stone paves its pending neighbours too, so a builder takes its own claim or the nearest
@@ -242,10 +242,9 @@ export function planBuilder(
             sites,
             sites.length,
             here,
+            planRank(plan),
             (site) => (avoidSite?.(site) !== true && accepts(site) ? QUALIFIES : null),
             plan.limit ?? undefined,
-            undefined,
-            planRank(plan),
           )?.entity ?? null,
       );
     }
@@ -455,7 +454,7 @@ function anyTaskSite(
   const { world, here, targets, owner, limit } = plan;
   const hasTask = siteHasTask(claims, materials, standableSite(plan, spacing, limit));
   const found = (sites: InteractionCellIndex): Entity | null =>
-    nearestBuilderSite(sites, world, here, owner, limit ?? undefined, avoidSite, hasTask, planRank(plan));
+    nearestBuilderSite(sites, world, here, planRank(plan), owner, limit ?? undefined, avoidSite, hasTask);
   return (
     found(targets.constructionSiteCells) ??
     (claims.wallMayHaveTask(materials.canSource) ? found(targets.wallSiteCells) : null) ??
@@ -564,11 +563,11 @@ function repairNearest(
       repairSitesOf(targets, kind),
       world,
       here,
+      planRank(plan),
       plan.owner,
       plan.limit ?? undefined,
       avoidSite,
       qualifies,
-      planRank(plan),
     );
   if (site === null || !startRepair(plan, spacing, site)) return false;
   repairs.join(site, e);

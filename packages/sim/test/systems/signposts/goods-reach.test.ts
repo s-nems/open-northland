@@ -333,6 +333,7 @@ describe('terrain-aware goods reach', () => {
         targets.bands,
         sim.world,
         terrain.nodeAt(35, 30),
+        terrain.nodeAt(35, 30),
         1,
         0,
         collectSupplyTally(sim.world),
@@ -347,6 +348,7 @@ describe('terrain-aware goods reach', () => {
       nearestStoreHolding(
         collectTargets(sim.world, ctxOf(sim), terrain).bands,
         sim.world,
+        terrain.nodeAt(35, 30),
         terrain.nodeAt(35, 30),
         1,
         0,

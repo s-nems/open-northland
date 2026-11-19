@@ -42,7 +42,7 @@ function fixture() {
     return e;
   };
   const index = () => mealCells(sim.world, content, terrain);
-  const nearest = () => index().nearest(terrain.nodeAt(2, 6), ACCEPT_ALL);
+  const nearest = () => index().nearest(terrain.nodeAt(2, 6), terrain.nodeAt(2, 6), ACCEPT_ALL);
   return { sim, terrain, add, index, nearest };
 }
 
@@ -53,7 +53,7 @@ describe('meal index maintenance', () => {
     const ripening = add('bare', 6);
     let visits = 0;
     const search = () =>
-      index().nearest(terrain.nodeAt(2, 6), () => {
+      index().nearest(terrain.nodeAt(2, 6), terrain.nodeAt(2, 6), () => {
         visits++;
         return { payload: null };
       });
@@ -90,7 +90,9 @@ describe('meal index maintenance', () => {
       expect(nearest()?.entity).toBe(ripeningBush);
       const current = index();
       const find = (entity: Entity) =>
-        current.nearest(terrain.nodeAt(2, 6), (e) => (e === entity ? { payload: null } : null));
+        current.nearest(terrain.nodeAt(2, 6), terrain.nodeAt(2, 6), (e) =>
+          e === entity ? { payload: null } : null,
+        );
       expect(find(stock)?.cell).toBe(terrain.nodeAt(journal === 'membership' ? 20 : 10, 6));
       expect(find(fresh)?.entity).toBe(fresh);
       expect(find(eatenBush)).toBeNull();

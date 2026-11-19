@@ -47,9 +47,9 @@ export class ExternalQualityIndex {
     owner: number | undefined,
     demanded: ReadonlySet<number>,
     gate: SpatialGate | null,
+    /** A walk from `from` ranks by its steps to the cell she lifts at; undefined ranks by distance. */
+    rank: RankFrom | undefined,
     avoid?: (cell: NodeId) => boolean,
-    /** A walk from `from` ranks by its steps to the cell she lifts at, not by distance. */
-    rank?: RankFrom,
   ): HaulSource | null {
     const walk = rank === undefined ? undefined : rankWalk(rank);
     const here = this.terrain?.nodeAtClamped(from.hx, from.hy);

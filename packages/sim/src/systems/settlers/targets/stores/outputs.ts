@@ -49,6 +49,8 @@ export function nearestWorkplaceOutput(
   world: World,
   ctx: SystemContext,
   here: NodeId,
+  /** What the workplaces are ranked from: `here`, by distance, or the carrier's walk from it. */
+  rank: RankFrom,
   /** The carrier's owning player. It never hauls another player's workplace output. */
   owner: number | undefined,
   /** Live pickup claims: an output whose every unit is promised to a walker is passed over. */
@@ -57,8 +59,6 @@ export function nearestWorkplaceOutput(
   gate?: SpatialGate,
   /** The carrier's failed-goal veto. */
   avoid?: (cell: NodeId) => boolean,
-  /** What the workplaces are ranked from. */
-  rank: RankFrom = here,
 ): { workplace: Entity; goodType: number } | null {
   // The good that qualified the winner is the good it hauls.
   const terrain = ctx.terrain;
@@ -69,11 +69,11 @@ export function nearestWorkplaceOutput(
     );
   const winner = index.nearestDoor(
     here,
+    rank,
     (e) => qualifiedGood(haulableOutputGood(world, ctx, supply, deliverable, e)),
     gate,
     avoid,
     sameSideAs(world, owner),
-    rank,
   );
   return winner === null ? null : { workplace: winner.entity, goodType: winner.payload };
 }

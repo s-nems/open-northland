@@ -88,12 +88,11 @@ export function planGatherer(plan: PlannerContext, harvestClaims: HarvestClaims,
   const node =
     admits === null
       ? null
-      : nearestHarvestableFor(plan, {
+      : nearestHarvestableFor(plan, planRank(plan), {
           exclude: harvestClaims,
           goodFilter,
           admits,
           bound,
-          rank: planRank(plan),
           reserved,
         });
   const trunk = nearestCollectablePileFor(plan, { goodFilter, within: pileBound });
@@ -171,12 +170,11 @@ function planFlagGatherer(
   const node =
     admits === null
       ? null
-      : nearestHarvestableFor(plan, {
+      : nearestHarvestableFor(plan, planRank(plan, reach.center), {
           exclude: harvestClaims,
           reserved,
           admits,
           bound: reach,
-          rank: planRank(plan, reach.center),
         });
   if (node !== null && startHarvestFromNode(plan, node, harvestClaims, reach)) return true;
 

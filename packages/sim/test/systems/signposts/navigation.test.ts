@@ -408,9 +408,10 @@ describe('setSignpostNavigation + moveUnit - the confinement rule', () => {
       const lengths = rankWalk(rankFromSpot(limit, here));
       expect(lengths?.stepsTo(cellOf(upTheBank))).toBe(rangeBetween(EAST_CELL, UP_THE_BANK_CELL));
       expect(lengths?.stepsTo(cellOf(across))).toBeGreaterThan(rangeBetween(EAST_CELL, UP_THE_BANK_CELL));
-      expect(index.nearest(here, ACCEPT_ALL, limit, undefined, undefined, lengths)?.entity).toBe(upTheBank);
+      if (lengths === undefined) throw new Error('a walk starts here');
+      expect(index.nearest(here, lengths, ACCEPT_ALL, limit)?.entity).toBe(upTheBank);
       // Ranked from the node alone, the straight line decides.
-      expect(index.nearest(here, ACCEPT_ALL, limit)?.entity).toBe(across);
+      expect(index.nearest(here, here, ACCEPT_ALL, limit)?.entity).toBe(across);
     });
 
     it('ON: a walk length asked under a cap equals the full walk, or is none past the cap', () => {

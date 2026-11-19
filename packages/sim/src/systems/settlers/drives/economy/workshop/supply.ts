@@ -184,11 +184,11 @@ export function nearestMissingInputSource(
         : area !== undefined
           ? band.nearest(
               here,
+              planRank(plan, area.center),
               source,
               targets.bands.goodsGate(here, plan.owner, area.gate),
               avoid,
               sameSideAs(world, plan.owner),
-              planRank(plan, area.center),
             )
           : nearestFromDoor(plan, workplace, band, source, avoid);
     if (winner !== null) {
@@ -215,11 +215,11 @@ function nearestFromDoor(
   const door = interactionCell(world, ctx, terrain, workplace, here);
   return band.nearest(
     here,
+    planRank(plan, door),
     source,
     targets.bands.goodsGate(door, plan.owner, plan.limit ?? undefined),
     avoid,
     sameSideAs(world, plan.owner),
-    planRank(plan, door),
   );
 }
 

@@ -93,12 +93,12 @@ export function constructionMaterialResolver(
         plan.targets.bands,
         plan.world,
         plan.here,
+        planRank(plan),
         goodType,
         owner,
         plan.supply,
         plan.limit ?? undefined,
         fetcherAvoid(plan, rejectSource),
-        planRank(plan),
       );
       rankedByGood.set(goodType, ranked);
     }
@@ -362,12 +362,12 @@ function materialSource(
         targets.bands,
         world,
         here,
+        planRank(plan),
         goodType,
         plan.owner,
         plan.supply,
         plan.limit ?? undefined,
         avoid,
-        planRank(plan),
       );
   return source === null ? null : lendingSource(plan, source, goodType);
 }

@@ -175,7 +175,7 @@ describe('bounded harvest scan', () => {
     // Caught up before the watch: the resource index reads every node it files, not the scan.
     expect(plan.targets.resources).toHaveLength(trees.length + 1);
 
-    const found = nearestHarvestableFor(plan, { bound: { center: node(sim, 20, 10), radius: 8 } });
+    const found = nearestHarvestableFor(plan, plan.here, { bound: { center: node(sim, 20, 10), radius: 8 } });
     expect(found?.entity).toBe(carcass);
   });
 
@@ -192,7 +192,7 @@ describe('bounded harvest scan', () => {
     const plan = planFor(sim, WOODCUTTER, cx, cy);
 
     const flag = node(sim, cx, cy);
-    const found = nearestHarvestableFor(plan, { bound: { center: flag, radius }, rank: flag });
+    const found = nearestHarvestableFor(plan, flag, { bound: { center: flag, radius } });
     expect(found).toEqual({ entity: edge, cell: node(sim, cx + radius, cy), dist: radius });
   });
 });
@@ -210,12 +210,15 @@ describe('harvest scan by work cell', () => {
     // Its anchor lies beyond the nearest one, but its work cell reaches back to two nodes out.
     const reaching = resourceAt(sim, cx + offset + 2, cy, WOOD, CHOP, [{ dx: -offset, dy: 0 }]);
     const plan = planFor(sim, WOODCUTTER, cx, cy);
-    const area = { bound: { center: node(sim, cx, cy), radius: farReach + offset }, rank: node(sim, cx, cy) };
+    const flag = node(sim, cx, cy);
+    const area = { bound: { center: flag, radius: farReach + offset } };
 
-    const found = nearestHarvestableFor(plan, area);
+    const found = nearestHarvestableFor(plan, flag, area);
     expect(found).toEqual({ entity: reaching, cell: node(sim, cx + 2, cy), dist: 2 });
     // A diagnostic walks every candidate the old way and lands on the same node.
-    expect(nearestHarvestableFor(plan, { ...area, diagnostic: { eligibleInArea: false } })).toEqual(found);
+    expect(nearestHarvestableFor(plan, flag, { ...area, diagnostic: { eligibleInArea: false } })).toEqual(
+      found,
+    );
   });
 });
 
@@ -233,7 +236,7 @@ describe('collector signpost stance boundary', () => {
       limit: { allowsNode: (cell: NodeId) => cell === far, bounds: { minX: 8, maxX: 8, minY: 1, maxY: 1 } },
     };
     const rng = sim.rng.getState();
-    expect(nearestHarvestableFor(confined)).toEqual({ entity: tree, cell: far, dist: 7 });
+    expect(nearestHarvestableFor(confined, confined.here)).toEqual({ entity: tree, cell: far, dist: 7 });
     expect(sim.rng.getState()).toEqual(rng);
   });
 });
@@ -322,11 +325,12 @@ describe('harvest scan sources', () => {
         // Ranked from the seeker or from the area's centre, as a flag is, and every third query by a walk
         // from there, so the same searches also run under the walk's order.
         const origin = area !== undefined && roll(2) === 0 ? area.center : here;
-        const opts = { exclude, bound: area, rank: q % 3 === 0 ? walkFrom(origin) : origin };
-        const full = nearestHarvestableFor(plan, { ...opts, diagnostic: { eligibleInArea: false } });
-        expect(nearestHarvestableFor(plan, opts), `query ${q}`).toEqual(full);
+        const rank = q % 3 === 0 ? walkFrom(origin) : origin;
+        const opts = { exclude, bound: area };
+        const full = nearestHarvestableFor(plan, rank, { ...opts, diagnostic: { eligibleInArea: false } });
+        expect(nearestHarvestableFor(plan, rank, opts), `query ${q}`).toEqual(full);
         expect(
-          nearestHarvestableFor(plan, { ...opts, candidates: plan.targets.resources }),
+          nearestHarvestableFor(plan, rank, { ...opts, candidates: plan.targets.resources }),
           `listed query ${q}`,
         ).toEqual(full);
       }
@@ -349,7 +353,8 @@ describe('growing-box harvest search edges', () => {
       });
       resourceAt(sim, ox + k, oy, WOOD, CHOP);
       const nearer = resourceAt(sim, ox + k - 1 + offset, oy, WOOD, CHOP, [{ dx: -offset, dy: 0 }]);
-      if (nearestHarvestableFor(planFor(sim, WOODCUTTER, ox, oy))?.entity !== nearer) missed.push(k);
+      const plan = planFor(sim, WOODCUTTER, ox, oy);
+      if (nearestHarvestableFor(plan, plan.here)?.entity !== nearer) missed.push(k);
     }
     expect(missed).toEqual([]);
   });

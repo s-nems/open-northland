@@ -116,13 +116,14 @@ function fixture() {
     return e;
   };
   const supply = collectSupplyTally(sim.world);
-  const pick = (gate?: Parameters<typeof chooseMeal>[7]) =>
+  const pick = (gate?: Parameters<typeof chooseMeal>[8]) =>
     chooseMeal(
       collectTargets(sim.world, ctxOf(sim), terrain),
       sim.world,
       ctxOf(sim),
       supply,
       terrain,
+      terrain.nodeAt(EATER_X, 6),
       terrain.nodeAt(EATER_X, 6),
       eater,
       gate,
@@ -278,6 +279,7 @@ describe('the meal choice', () => {
       ctxOf(sim),
       supply,
       terrain,
+      terrain.nodeAt(20, 6),
       terrain.nodeAt(20, 6),
       eater,
     );

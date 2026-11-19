@@ -282,6 +282,7 @@ export function planNeeds(
       world,
       terrain,
       here,
+      rankFromSpot(limit, here),
       ownerOf(world, e),
       gate,
       undefined,
@@ -291,7 +292,6 @@ export function planNeeds(
         stands.set(candidate, stand);
         return true;
       },
-      rankFromSpot(limit, here),
     );
     if (site !== null) {
       const stand = stands.get(site);
@@ -356,7 +356,7 @@ function seekMeal(
   if (seek && eatAtPost(world, ctx, e, settler)) return true;
   const walks = seek && (hunger >= NEED_CRITICAL_THRESHOLD || !onAlert());
   const food = walks
-    ? chooseMeal(targets, world, ctx, supply, terrain, here, e, limit ?? undefined, rankFromSpot(limit, here))
+    ? chooseMeal(targets, world, ctx, supply, terrain, here, rankFromSpot(limit, here), e, limit ?? undefined)
     : null;
   if (food !== null) {
     // The claim covers the walk: an eater that has arrived takes the serving itself.

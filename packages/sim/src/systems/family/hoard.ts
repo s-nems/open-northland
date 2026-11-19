@@ -101,10 +101,10 @@ export function planWomanHoard(
   const rank =
     terrain === undefined ? undefined : rankFromSpot(limit, terrain.nodeAtClamped(hereNode.hx, hereNode.hy));
   const larderFull = storedFoodUnits(world, ctx, home) >= larderCapacity(ctx, homeType);
-  const foodSource = larderFull ? null : externalFood.nearest(hereNode, owner, home, reach, avoid, rank);
+  const foodSource = larderFull ? null : externalFood.nearest(hereNode, owner, home, reach, rank, avoid);
   const demanded = demandedHomeQualityGoods(world, ctx, e, home);
   const qualitySource =
-    demanded.size > 0 ? externalQuality.nearest(hereNode, owner, demanded, reach, avoid, rank) : null;
+    demanded.size > 0 ? externalQuality.nearest(hereNode, owner, demanded, reach, rank, avoid) : null;
   const source = nearerSource(foodSource, qualitySource);
   if (source === null) {
     // No walk is left for her to be lost on, unless the one she just failed is what hides her source.

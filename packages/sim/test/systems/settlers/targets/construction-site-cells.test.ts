@@ -81,14 +81,14 @@ describe('constructionSiteCells - the planner site index kept across ticks', () 
     expect(asYard.constructionSiteCells).toBe(first.constructionSiteCells);
     expect(asYard.constructionSites).toEqual([]);
     expect(asYard.vehicleSites).toEqual([site]);
-    expect(asYard.constructionSiteCells.nearest(here, any)).toBeNull();
+    expect(asYard.constructionSiteCells.nearest(here, here, any)).toBeNull();
     expect(sim.world.verifyCaches()).toEqual([]);
 
     sim.world.mut(site, Building).buildingType = HEADQUARTERS;
     const back = pass();
     expect(back.constructionSites).toEqual([site]);
     expect(back.vehicleSites).toEqual([]);
-    expect(back.constructionSiteCells.nearest(here, any)?.entity).toBe(site);
+    expect(back.constructionSiteCells.nearest(here, here, any)?.entity).toBe(site);
     expect(sim.world.verifyCaches()).toEqual([]);
   });
 });

@@ -122,10 +122,11 @@ describe('the narrowed equip store search', () => {
       for (let q = 0; q < QUERIES; q++) {
         const here = seeker();
         const g = gate();
-        const ring = holders.nearest(here, lends, g, undefined, sameSideAs(sim.world, PLAYER));
-        expect(nearestStoreHoldingWithin(bands, sim.world, here, GOOD, PLAYER, supply, g), `query ${q}`).toBe(
-          ring?.entity ?? null,
-        );
+        const ring = holders.nearest(here, here, lends, g, undefined, sameSideAs(sim.world, PLAYER));
+        expect(
+          nearestStoreHoldingWithin(bands, sim.world, here, here, GOOD, PLAYER, supply, g),
+          `query ${q}`,
+        ).toBe(ring?.entity ?? null);
         if (ring !== null) found++;
       }
       expect(found).toBeGreaterThan(0);
@@ -149,12 +150,12 @@ describe('the narrowed equip store search', () => {
         for (let q = 0; q < QUERIES; q++) {
           const here = seeker();
           const g = gate();
-          const ranked = storesHoldingRanked(bands, sim.world, here, GOOD, PLAYER, supply, g);
+          const ranked = storesHoldingRanked(bands, sim.world, here, here, GOOD, PLAYER, supply, g);
           // Vetoes of growing strength, the strongest passing only a few cells.
           for (const keep of [2, 4, 16]) {
             const salt = roll(keep);
             const avoid = (cell: NodeId): boolean => (cell + salt) % keep !== 0;
-            const fresh = nearestStoreHolding(bands, sim.world, here, GOOD, PLAYER, supply, g, avoid);
+            const fresh = nearestStoreHolding(bands, sim.world, here, here, GOOD, PLAYER, supply, g, avoid);
             expect(firstUnvetoed(ranked, here, avoid)?.entity ?? null, `query ${q} keep ${keep}`).toBe(fresh);
             if (fresh !== null) found++;
             if (fresh !== null && fresh !== ranked[0]?.entity) vetoedNearest++;

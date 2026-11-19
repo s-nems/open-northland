@@ -140,10 +140,10 @@ export function chooseMeal(
   supply: SupplyTally,
   terrain: TerrainGraph,
   here: NodeId,
+  /** What every search ranks its meals from: `here`, by distance, or the eater's walk from it. */
+  rank: RankFrom,
   eater: Entity,
   gate?: SpatialGate,
-  /** What every search ranks its meals from. */
-  rank: RankFrom = here,
 ): MealTarget | null {
   const memo = unreachableGoals(world, ctx, eater);
   const component = terrain.componentOf(here);
@@ -182,7 +182,7 @@ export function chooseMeal(
   const owner = ownerOf(world, eater);
   const onSide = sameSideAs(world, owner);
   const nearest = (accept: (e: Entity) => Qualified<Meal> | null, within?: SpatialGate) =>
-    targets.mealCells.nearest(here, accept, within, avoid, onSide, rank);
+    targets.mealCells.nearest(here, rank, accept, within, avoid, onSide);
   const reach =
     goodsSearchLimitAt(world, ctx.content, terrain, owner, terrain.xOf(here), terrain.yOf(here)) ??
     hexDisc(terrain, here, GOODS_SEARCH_RANGE_NODES);

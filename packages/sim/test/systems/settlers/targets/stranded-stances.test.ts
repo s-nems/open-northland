@@ -117,7 +117,15 @@ describe('stances no walk can enter', () => {
 
     const targets = collectTargets(sim.world, ctx, terrain);
     expect(
-      nearestStoreHolding(targets.bands, sim.world, here, STONE, undefined, collectSupplyTally(sim.world)),
+      nearestStoreHolding(
+        targets.bands,
+        sim.world,
+        here,
+        here,
+        STONE,
+        undefined,
+        collectSupplyTally(sim.world),
+      ),
     ).toBeNull();
   });
 
@@ -130,7 +138,15 @@ describe('stances no walk can enter', () => {
 
     const targets = collectTargets(sim.world, ctx, terrain);
     expect(
-      nearestStoreHolding(targets.bands, sim.world, here, STONE, undefined, collectSupplyTally(sim.world)),
+      nearestStoreHolding(
+        targets.bands,
+        sim.world,
+        here,
+        here,
+        STONE,
+        undefined,
+        collectSupplyTally(sim.world),
+      ),
     ).toBeNull();
   });
 

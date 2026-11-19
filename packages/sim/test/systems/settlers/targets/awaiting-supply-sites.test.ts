@@ -65,8 +65,8 @@ describe('soloSitesAwaitingSupply - the staging index kept across reads', () => 
         const here = terrain.nodeAt((probe * 13 + round) % terrain.width, (probe * 17) % terrain.height);
         const onSide = sameSideAs(sim.world, probe % PLAYERS);
         const accept = () => QUALIFIES;
-        expect(held.nearest(here, accept, undefined, undefined, onSide)?.entity).toBe(
-          fresh.nearest(here, accept, undefined, undefined, onSide)?.entity,
+        expect(held.nearest(here, here, accept, undefined, undefined, onSide)?.entity).toBe(
+          fresh.nearest(here, here, accept, undefined, undefined, onSide)?.entity,
         );
       }
     }

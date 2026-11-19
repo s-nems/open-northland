@@ -78,7 +78,7 @@ describe('nearestStoreHolding under storage minimums', () => {
         const sameSide = (e: Entity) => ownersCompatible(owner, ownerOf(sim.world, e));
         const ownOnly = (e: Entity) => ownerOf(sim.world, e) === owner;
         expect(
-          nearestStoreHolding(bands, sim.world, here, WATER, owner, supply),
+          nearestStoreHolding(bands, sim.world, here, here, WATER, owner, supply),
           `round ${round} owner ${owner}`,
         ).toBe(nearestByCell(terrain, stores, here, (e) => lends(e, sameSide))?.entity ?? null);
         expect(

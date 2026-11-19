@@ -63,23 +63,23 @@ describe('TargetBands', () => {
   it('shares one filtered index per question and picks the unshared winner', () => {
     const { sim, targets, supply, here, near } = fixture();
     expect(targets.bands.holding(WOOD)).toBe(targets.bands.holding(WOOD));
-    expect(nearestStoreHolding(targets.bands, sim.world, here, WOOD, undefined, supply)).toBe(near);
+    expect(nearestStoreHolding(targets.bands, sim.world, here, here, WOOD, undefined, supply)).toBe(near);
   });
 
   it('re-syncs the band on a tracked stock write instead of serving the stale winner', () => {
     const { sim, targets, supply, here, near, far } = fixture();
-    expect(nearestStoreHolding(targets.bands, sim.world, here, WOOD, undefined, supply)).toBe(near);
+    expect(nearestStoreHolding(targets.bands, sim.world, here, here, WOOD, undefined, supply)).toBe(near);
     setStockAmount(sim.world, near, WOOD, 0);
-    expect(nearestStoreHolding(targets.bands, sim.world, here, WOOD, undefined, supply)).toBe(far);
+    expect(nearestStoreHolding(targets.bands, sim.world, here, here, WOOD, undefined, supply)).toBe(far);
     expect(sim.world.verifyCaches()).toEqual([]);
   });
 
   it('re-syncs the band on a membership change that flips an answer', () => {
     const { sim, targets, supply, here, near, far } = fixture();
-    expect(nearestStoreHolding(targets.bands, sim.world, here, WOOD, undefined, supply)).toBe(near);
+    expect(nearestStoreHolding(targets.bands, sim.world, here, here, WOOD, undefined, supply)).toBe(near);
     // A store that becomes a construction site mid-tick is a sink, never a source to strip.
     sim.world.add(near, UnderConstruction, { labor: fx.fromInt(0) });
-    expect(nearestStoreHolding(targets.bands, sim.world, here, WOOD, undefined, supply)).toBe(far);
+    expect(nearestStoreHolding(targets.bands, sim.world, here, here, WOOD, undefined, supply)).toBe(far);
   });
 
   it('keeps the entity-id tie-break when a lower-id store comes to hold the good later', () => {
@@ -89,16 +89,16 @@ describe('TargetBands', () => {
     if (terrain === undefined) throw new Error('fixture map missing');
     const bandsNow = () => collectTargets(sim.world, ctxOf(sim), terrain).bands;
     const door = interactionCell(sim.world, ctxOf(sim), terrain, empty);
-    expect(nearestStoreHolding(bandsNow(), sim.world, door, WOOD, undefined, supply)).toBe(twin);
+    expect(nearestStoreHolding(bandsNow(), sim.world, door, door, WOOD, undefined, supply)).toBe(twin);
 
     setStockAmount(sim.world, empty, WOOD, 5); // held now, but entered the holder ledger after `twin`
-    expect(nearestStoreHolding(bandsNow(), sim.world, door, WOOD, undefined, supply)).toBe(empty);
+    expect(nearestStoreHolding(bandsNow(), sim.world, door, door, WOOD, undefined, supply)).toBe(empty);
   });
 });
 
 /** Whether `e` is in `band`, asked through the only query a band answers: a search accepting `e` alone. */
 function bandHas(band: InteractionCellIndex, e: Entity, here: NodeId): boolean {
-  return band.nearest(here, (c) => (c === e ? QUALIFIES : null)) !== null;
+  return band.nearest(here, here, (c) => (c === e ? QUALIFIES : null)) !== null;
 }
 
 /** Assert the holding band of each good admits exactly the `stores` {@link storeYieldsGood} accepts,
@@ -165,6 +165,7 @@ describe('TargetBands kept across passes', () => {
       nearestStoreHolding(
         collectTargets(sim.world, ctxOf(sim), terrain).bands,
         sim.world,
+        terrain.nodeAtClamped(x, y),
         terrain.nodeAtClamped(x, y),
         WOOD,
         undefined,

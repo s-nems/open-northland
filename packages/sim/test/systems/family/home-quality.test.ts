@@ -498,6 +498,7 @@ describe('household quality goods', () => {
         undefined,
         demanded,
         null,
+        undefined,
       )?.store;
 
     const [first, second] = stores;
@@ -522,7 +523,9 @@ describe('household quality goods', () => {
     const index = new ExternalQualityIndex(sim.world, ctxOf(sim), undefined, collectSupplyTally(sim.world));
     sim.world.destroy(stores[0] as Entity);
 
-    expect(index.nearest({ hx: 0, hy: 0 }, undefined, new Set([FURNITURE]), null)?.store).toBe(stores[1]);
+    expect(index.nearest({ hx: 0, hy: 0 }, undefined, new Set([FURNITURE]), null, undefined)?.store).toBe(
+      stores[1],
+    );
   });
 
   it("never offers a temple's oil, which its fire burns", () => {
@@ -533,7 +536,7 @@ describe('household quality goods', () => {
     sim.world.add(temple, Stockpile, { amounts: new Map([[OIL, TEMPLE_OIL_CAPACITY]]) });
     const index = new ExternalQualityIndex(sim.world, ctxOf(sim), undefined, collectSupplyTally(sim.world));
 
-    expect(index.nearest({ hx: 0, hy: 0 }, undefined, new Set([OIL]), null)).toBeNull();
+    expect(index.nearest({ hx: 0, hy: 0 }, undefined, new Set([OIL]), null, undefined)).toBeNull();
   });
 
   it('offers the lowest-id demanded quality good whatever order the store was stocked in', () => {
@@ -549,9 +552,13 @@ describe('household quality goods', () => {
       sim.world.add(store, Stockpile, { amounts: new Map(lines) });
       const index = new ExternalQualityIndex(sim.world, ctxOf(sim), undefined, collectSupplyTally(sim.world));
       const from = { hx: 0, hy: 0 };
-      expect(index.nearest(from, undefined, new Set([CROCKERY, FURNITURE]), null)?.goodType).toBe(CROCKERY);
-      expect(index.nearest(from, undefined, new Set([FURNITURE, OIL]), null)?.goodType).toBe(FURNITURE);
-      expect(index.nearest(from, undefined, new Set([OIL]), null)).toBeNull();
+      expect(index.nearest(from, undefined, new Set([CROCKERY, FURNITURE]), null, undefined)?.goodType).toBe(
+        CROCKERY,
+      );
+      expect(index.nearest(from, undefined, new Set([FURNITURE, OIL]), null, undefined)?.goodType).toBe(
+        FURNITURE,
+      );
+      expect(index.nearest(from, undefined, new Set([OIL]), null, undefined)).toBeNull();
     }
   });
 

@@ -353,6 +353,10 @@ export class InteractionCellIndex {
    */
   nearest<P>(
     here: NodeId,
+    /** What the candidates are ranked from: `here` itself, by distance, the seeker's walk from it, or
+     *  another node or the walk from there, as a flag centre for a carrier working outward from its flag.
+     *  `here` stays the route start the interaction cell, sealing and veto are judged from. */
+    rank: RankFrom,
     accept: (e: Entity) => Qualified<P> | null,
     /** Rejects whole interaction cells and bounds the sweep: every gate-passing cell lies in `gate.bounds`. */
     gate?: SpatialGate,
@@ -361,9 +365,6 @@ export class InteractionCellIndex {
     /** Rejects a candidate owned by another player. It must read nothing but the candidate's
      *  {@link Owner}, as {@link sameSideAs} does: a search asks it once per owner side. */
     onSide?: (e: Entity) => boolean,
-    /** What the candidates are ranked from, a flag centre for a carrier working outward from its flag;
-     *  `here` stays the route start the interaction cell, sealing and veto are judged from. */
-    rank: RankFrom = here,
   ): NearestByCell<P> | null {
     const sets = this.setsOn(onSide);
     const origin = rankOrigin(rank);
@@ -387,10 +388,10 @@ export class InteractionCellIndex {
     /** The leading entries of `field` that form it. */
     count: number,
     here: NodeId,
+    rank: RankFrom,
     accept: (e: Entity) => Qualified<P> | null,
     gate?: SpatialGate,
     avoid?: (cell: NodeId) => boolean,
-    rank: RankFrom = here,
   ): NearestByCell<P> | null {
     const unbounded = Number.POSITIVE_INFINITY;
     const walk = rankWalk(rank);
@@ -404,10 +405,10 @@ export class InteractionCellIndex {
     field: readonly Entity[],
     count: number,
     here: NodeId,
+    rank: RankFrom,
     accept: (e: Entity) => Qualified<P> | null,
     gate?: SpatialGate,
     avoid?: (cell: NodeId) => boolean,
-    rank: RankFrom = here,
   ): NearestByCell<P>[] {
     const { world, ctx, terrain } = this;
     const origin = rankOrigin(rank);
@@ -436,11 +437,11 @@ export class InteractionCellIndex {
    *  can pass. */
   nearestDoor<P>(
     here: NodeId,
+    rank: RankFrom,
     accept: (e: Entity) => Qualified<P> | null,
     gate?: SpatialGate,
     avoid?: (cell: NodeId) => boolean,
     onSide?: (e: Entity) => boolean,
-    rank: RankFrom = here,
   ): NearestByCell<P> | null {
     const origin = rankOrigin(rank);
     const walk = rankWalk(rank);
@@ -454,11 +455,11 @@ export class InteractionCellIndex {
   /** The {@link nearest} winner among the candidates without a door: the building-less ones. */
   nearestLoose<P>(
     here: NodeId,
+    rank: RankFrom,
     accept: (e: Entity) => Qualified<P> | null,
     gate?: SpatialGate,
     avoid?: (cell: NodeId) => boolean,
     onSide?: (e: Entity) => boolean,
-    rank: RankFrom = here,
   ): NearestByCell<P> | null {
     // Typed by assertion: reassigned in the loop, so flow narrowing must not pin it to null.
     let best = null as NearestByCell<P> | null;

@@ -28,19 +28,19 @@ export function nearestPrayerSite(
   world: World,
   terrain: TerrainGraph,
   here: NodeId,
+  /** What the sites are ranked from: `here`, by distance, or the settler's walk from it. */
+  rank: RankFrom,
   /** The settler's owning player. A settler prays only at its own player's sites. */
   owner: number | undefined,
   gate?: SpatialGate,
   /** The settler's failed-goal veto. */
   avoid?: (cell: NodeId) => boolean,
   acceptsSite?: (entity: Entity) => boolean,
-  /** What the sites are ranked from. */
-  rank: RankFrom = here,
 ): Entity | null {
   const onSide = sameSideAs(world, owner);
   const accepts =
     acceptsSite === undefined ? ACCEPT_ALL : (entity: Entity) => (acceptsSite(entity) ? QUALIFIES : null);
-  const temple = bands.prayerSites(PRAYER_SITE.temple).nearest(here, accepts, gate, avoid, onSide, rank);
+  const temple = bands.prayerSites(PRAYER_SITE.temple).nearest(here, rank, accepts, gate, avoid, onSide);
   // A walk's steps are map points along the ground.
   const pointsTo = (site: NearestByCell): number =>
     rankWalk(rank) === undefined ? mapPointsBetween(terrain, here, site.cell) : site.distance;
@@ -48,7 +48,7 @@ export function nearestPrayerSite(
   if (temple !== null && templePoints <= TEMPLE_PREFERRED_RANGE) return temple.entity;
   const headquarters = bands
     .prayerSites(PRAYER_SITE.headquarters)
-    .nearest(here, accepts, gate, avoid, onSide, rank);
+    .nearest(here, rank, accepts, gate, avoid, onSide);
   if (headquarters !== null && pointsTo(headquarters) <= templePoints) {
     return headquarters.entity;
   }
@@ -70,25 +70,25 @@ export function nearestBuilderSite(
   index: InteractionCellIndex,
   world: World,
   here: NodeId,
+  /** What the sites are ranked from: `here`, by distance, or the settler's walk from it. */
+  rank: RankFrom,
   owner: number | undefined,
   gate?: SpatialGate,
   /** The builder's failed-goal veto at the site's perimeter stand. */
   avoidSite?: (site: Entity) => boolean,
   /** Additional side-effect-free task qualification for builder allocation. */
   acceptsSite: (site: Entity) => boolean = () => true,
-  /** What the sites are ranked from. */
-  rank: RankFrom = here,
 ): Entity | null {
   // `gate` is the builder's signpost confinement: a site outside its allowed area is left unbuilt. Another
   // side's sites are skipped whole by the side split.
   return (
     index.nearest(
       here,
+      rank,
       (e) => (avoidSite?.(e) !== true && acceptsSite(e) ? QUALIFIES : null),
       gate,
       undefined,
       sameSideAs(world, owner),
-      rank,
     )?.entity ?? null
   );
 }

@@ -58,6 +58,7 @@ function food(sim: Simulation, eater: Entity, here?: NodeId) {
     collectSupplyTally(sim.world),
     terrain,
     here ?? terrain.nodeAt(2, 6),
+    here ?? terrain.nodeAt(2, 6),
     eater,
   );
 }
@@ -116,6 +117,7 @@ describe('forage target reachability', () => {
         ctx,
         collectSupplyTally(sim.world),
         terrain,
+        terrain.nodeAt(2, 6),
         terrain.nodeAt(2, 6),
         eater,
       ),

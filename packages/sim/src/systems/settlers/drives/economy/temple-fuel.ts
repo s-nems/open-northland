@@ -102,7 +102,7 @@ export function planTempleFuelRun(plan: PlannerContext, workplace: Entity): bool
     return true;
   }
   const rank = planRank(plan);
-  const store = nearestStoreHolding(targets.bands, world, here, goodType, owner, supply, gate, avoid, rank);
+  const store = nearestStoreHolding(targets.bands, world, here, rank, goodType, owner, supply, gate, avoid);
   if (store === null) return false;
   supply.stampSupplyRun(entity, { site: temple, goodType, amount: FUEL_RUN_UNITS });
   walkFetchInput(plan, store, goodType, false, FUEL_RUN_UNITS);

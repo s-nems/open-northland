@@ -167,12 +167,12 @@ function toStorageOffFarm(plan: PlannerContext, goodType: number, area: Delivery
     targets.bands,
     world,
     here,
+    area.rank,
     goodType,
     owner,
     /* excludeProducers */ true,
     area.gate,
     area.avoid,
-    area.rank,
   );
   return store ?? 'no-sink';
 }
@@ -217,6 +217,7 @@ function toNeedingConstructionSite(
   return (
     targets.constructionSiteCells.nearest(
       here,
+      area.rank,
       (e) =>
         constructionSiteNeeds(world, ctx, e, owner, goodType, supply, entity) &&
         constructionSiteCanReceive(plan, e) &&
@@ -227,7 +228,6 @@ function toNeedingConstructionSite(
       undefined,
       // Another player's sites are never in need of this load, so their side is skipped whole.
       sameSideAs(world, owner),
-      area.rank,
     )?.entity ?? null
   );
 }
@@ -286,7 +286,7 @@ function toStorageUnderMinimum(
   return (
     targets.bands
       .sinksFor(goodType, false)
-      .nearest(here, storage, area.gate, area.avoid, sameSideAs(world, owner), area.rank)?.entity ?? null
+      .nearest(here, area.rank, storage, area.gate, area.avoid, sameSideAs(world, owner))?.entity ?? null
   );
 }
 
@@ -309,6 +309,7 @@ function toNearbyRecipeConsumer(
     // Only a building carries a recipe, so the search skips the loose piles.
     targets.stockpileCells.nearestDoor(
       here,
+      area.rank,
       (e) => {
         if (world.has(e, UnderConstruction)) return null;
         const recipe = mergedRecipeOf(world, ctx, e);
@@ -318,7 +319,6 @@ function toNearbyRecipeConsumer(
       area.gate,
       area.avoid,
       sameSideAs(world, owner),
-      area.rank,
     )?.entity ?? null
   );
 }
@@ -334,12 +334,12 @@ function toNearestCapableStore(
     targets.bands,
     world,
     here,
+    area.rank,
     goodType,
     owner,
     false,
     area.gate,
     area.avoid,
-    area.rank,
   );
 }
 

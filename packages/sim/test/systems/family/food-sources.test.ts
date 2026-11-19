@@ -136,6 +136,7 @@ describe('foodSourcesOf', () => {
         undefined,
         home,
         null,
+        undefined,
       );
     expect(foodSourcesOf(sim.world, content).candidates).toEqual([warehouse]);
     expect(pick()).toMatchObject({ store: warehouse, goodType: FOOD });
@@ -229,7 +230,7 @@ describe('foodSourcesOf', () => {
           const d = Math.abs(hx - from.hx) + Math.abs(hy - from.hy);
           if (usable && (best === null || d < best.d || (d === best.d && e < best.e))) best = { e, d };
         }
-        expect(index.nearest(from, SEEKER, home, null)?.store).toBe(best?.e);
+        expect(index.nearest(from, SEEKER, home, null, undefined)?.store).toBe(best?.e);
       }
     }
   });
@@ -249,6 +250,7 @@ describe('foodSourcesOf', () => {
         SEEKER,
         home,
         null,
+        undefined,
       )?.store;
 
     expect(search()).toBe(neutral);
@@ -272,6 +274,7 @@ describe('foodSourcesOf', () => {
         undefined,
         home,
         null,
+        undefined,
       );
 
     expect(search()).toMatchObject({ store: far, goodType: FOOD_EXTRA });
@@ -296,6 +299,7 @@ describe('foodSourcesOf', () => {
         SEEKER,
         home,
         null,
+        undefined,
       );
 
     expect(search()).toMatchObject({ store: farm, goodType: MEAT });
@@ -324,7 +328,7 @@ describe('foodSourcesOf', () => {
     sim.world.destroy(pile);
     storeAt(sim, 3, FOOD, 3);
 
-    expect(index.nearest({ hx: 0, hy: 2 }, undefined, home, null)).toMatchObject({
+    expect(index.nearest({ hx: 0, hy: 2 }, undefined, home, null, undefined)).toMatchObject({
       store: far,
       goodType: FOOD,
     });
@@ -354,8 +358,8 @@ describe('foodSourcesOf', () => {
     };
     const index = new ExternalFoodIndex(sim.world, ctxOf(sim), terrain, collectSupplyTally(sim.world));
 
-    expect(index.nearest(from, undefined, home, null)?.store).toBe(near);
-    expect(index.nearest(from, undefined, home, null, undefined, walk)).toEqual({
+    expect(index.nearest(from, undefined, home, null, undefined)?.store).toBe(near);
+    expect(index.nearest(from, undefined, home, null, walk)).toEqual({
       store: far,
       goodType: FOOD,
       length: hexNodeDistance(terrain, here, cellOf(far)),

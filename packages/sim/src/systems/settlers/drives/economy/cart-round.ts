@@ -183,11 +183,11 @@ function storeCartPickup(
   };
   const found = targets.stockpileCells.nearest(
     here,
+    planRank(plan),
     closeBy,
     workAreaGate(terrain, here, CART_TOP_UP_REACH, plan.limit),
     unreachableGoalVeto(world, ctx, plan.entity),
     sameSideAs(world, plan.owner),
-    planRank(plan),
   );
   return found === null ? null : pickup(found.entity, found.payload);
 }

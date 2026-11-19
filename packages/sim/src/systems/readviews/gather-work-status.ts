@@ -143,9 +143,10 @@ export function gatherWorkStatus(
   const diagnostic = { eligibleInArea: false };
   const found = nearestHarvestableFor(
     { world, ctx, entity, terrain, here, limit, jobType, targets: { resources: inspected } },
+    // Ranked by distance: the answer read is only whether one qualifies.
+    area?.center ?? here,
     {
-      // Ranked by distance: the answer read is only whether one qualifies.
-      ...(area === undefined ? {} : { bound: area, rank: area.center }),
+      ...(area === undefined ? {} : { bound: area }),
       ...(stored === undefined
         ? {}
         : {

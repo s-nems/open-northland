@@ -729,7 +729,7 @@ function storeTaking(
   const storehouse = (e: Entity) => (takes(e) ? QUALIFIES : null);
   const rank = traderRankFrom(world, ctx, terrain, trader, player, door);
   const veto = (cell: NodeId): boolean => isUnreachableGoal(failed, cell);
-  const nearest = scope.sinks(good).nearest(door, storehouse, reach, veto, sameSideAs(world, player), rank);
+  const nearest = scope.sinks(good).nearest(door, rank, storehouse, reach, veto, sameSideAs(world, player));
   return nearest?.entity ?? null;
 }
 

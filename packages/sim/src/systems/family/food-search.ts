@@ -68,8 +68,9 @@ export class ExternalFoodIndex {
     owner: number | undefined,
     home: Entity,
     gate: SpatialGate | null,
+    /** Her walk from `from`, or undefined to rank by distance: a mapless sim, a seeker nothing confines. */
+    rank: RankFrom | undefined,
     avoid?: (cell: NodeId) => boolean,
-    rank?: RankFrom,
   ): HaulSource | null {
     const walk = rank === undefined ? undefined : rankWalk(rank);
     const { candidates, buckets } = this.sources;

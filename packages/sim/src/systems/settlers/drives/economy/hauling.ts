@@ -75,11 +75,11 @@ export function planCarrierHaul(plan: PlannerContext, anyHaulable: boolean): boo
         world,
         ctx,
         here,
+        planRank(plan),
         plan.owner,
         plan.supply,
         plan.limit ?? undefined,
         unreachableGoalVeto(world, ctx, e),
-        planRank(plan),
       )
     : null;
   if (haul === null) return false;

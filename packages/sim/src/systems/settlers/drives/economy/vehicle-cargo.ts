@@ -190,11 +190,11 @@ function nearestStorageFor(plan: PlannerContext, goodType: number, door: NodeId)
     .sinksFor(goodType, false)
     .nearest(
       door,
+      planRank(plan, door),
       accept,
       plan.limit ?? undefined,
       unreachableGoalVeto(world, ctx, e),
       sameSideAs(world, plan.owner),
-      planRank(plan, door),
     );
   return hit?.entity ?? null;
 }
@@ -277,7 +277,7 @@ function nearestCargoSource(
         phase.accept(e2) && unclaimedStockOf(world, ctx, plan.supply, e2, goodType) > 0;
       const hit = targets.bands
         .holding(goodType)
-        .nearest(phase.origin, (e2) => (accept(e2) ? QUALIFIES : null), goodsGate, avoid, onSide, rank);
+        .nearest(phase.origin, rank, (e2) => (accept(e2) ? QUALIFIES : null), goodsGate, avoid, onSide);
       if (hit !== null && (best === null || hit.distance < best.distance)) {
         best = { entity: hit.entity, goodType, distance: hit.distance };
       }

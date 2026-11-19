@@ -202,23 +202,24 @@ function checkQueries(
     const onSide = roll(2) === 0 ? sameSideAs(sim.world, roll(PLAYERS)) : undefined;
 
     const expected = linearWinner(sim, candidates, here, accept, gate, avoid, onSide);
-    expect(index.nearest(here, accept, gate, avoid, onSide), `query ${q}`).toEqual(expected);
+    expect(index.nearest(here, here, accept, gate, avoid, onSide), `query ${q}`).toEqual(expected);
     const field = candidates
       .filter((e) => (onSide === undefined || onSide(e)) && accept(e) !== null)
       .sort((a, b) => a - b);
-    expect(index.nearestAmong(field, field.length, here, accept, gate, avoid), `narrowed query ${q}`).toEqual(
-      expected,
-    );
+    expect(
+      index.nearestAmong(field, field.length, here, here, accept, gate, avoid),
+      `narrowed query ${q}`,
+    ).toEqual(expected);
     const rank = terrain.nodeAt(roll(nodesW), roll(nodesH));
-    expect(index.nearest(here, accept, gate, avoid, onSide, rank), `ranked query ${q}`).toEqual(
+    expect(index.nearest(here, rank, accept, gate, avoid, onSide), `ranked query ${q}`).toEqual(
       linearWinner(sim, candidates, here, accept, gate, avoid, onSide, rank),
     );
     const loose = candidates.filter((e) => !sim.world.has(e, Building));
-    expect(index.nearestLoose(here, accept, gate, avoid, onSide), `loose query ${q}`).toEqual(
+    expect(index.nearestLoose(here, here, accept, gate, avoid, onSide), `loose query ${q}`).toEqual(
       linearWinner(sim, loose, here, accept, gate, avoid, onSide),
     );
     const doors = candidates.filter((e) => sim.world.has(e, Building));
-    expect(index.nearestDoor(here, accept, gate, avoid, onSide), `door query ${q}`).toEqual(
+    expect(index.nearestDoor(here, here, accept, gate, avoid, onSide), `door query ${q}`).toEqual(
       linearWinner(sim, doors, here, accept, gate, avoid, onSide),
     );
 
@@ -227,21 +228,21 @@ function checkQueries(
     for (const walk of [madeUpWalk(here, xOf, yOf), madeUpWalk(rank, xOf, yOf)]) {
       const byWalk = (list: readonly Entity[]) =>
         linearWinner(sim, list, here, accept, gate, avoid, onSide, walk);
-      expect(index.nearest(here, accept, gate, avoid, onSide, walk), `walk query ${q}`).toEqual(
+      expect(index.nearest(here, walk, accept, gate, avoid, onSide), `walk query ${q}`).toEqual(
         byWalk(candidates),
       );
       expect(
-        index.nearestAmong(field, field.length, here, accept, gate, avoid, walk),
+        index.nearestAmong(field, field.length, here, walk, accept, gate, avoid),
         `narrowed walk query ${q}`,
       ).toEqual(byWalk(candidates));
-      expect(index.nearestLoose(here, accept, gate, avoid, onSide, walk), `loose walk query ${q}`).toEqual(
+      expect(index.nearestLoose(here, walk, accept, gate, avoid, onSide), `loose walk query ${q}`).toEqual(
         byWalk(loose),
       );
-      expect(index.nearestDoor(here, accept, gate, avoid, onSide, walk), `door walk query ${q}`).toEqual(
+      expect(index.nearestDoor(here, walk, accept, gate, avoid, onSide), `door walk query ${q}`).toEqual(
         byWalk(doors),
       );
       expect(
-        index.rankedAmong(field, field.length, here, accept, gate, avoid, walk)[0] ?? null,
+        index.rankedAmong(field, field.length, here, walk, accept, gate, avoid)[0] ?? null,
         `ranked walk query ${q}`,
       ).toEqual(byWalk(candidates));
     }
@@ -274,7 +275,7 @@ describe('InteractionCellIndex', () => {
       if (!terrain.inBounds(x, y)) continue;
       const here = terrain.nodeAt(x, y);
       const accept = (e: Entity): Qualified<number> | null => (e === target ? { payload: e } : null);
-      expect(index.nearest(here, accept), `query ${q}`).toEqual(
+      expect(index.nearest(here, here, accept), `query ${q}`).toEqual(
         linearWinner(sim, candidates, here, accept, undefined, undefined, undefined),
       );
     }
@@ -319,7 +320,7 @@ describe('InteractionCellIndex', () => {
     const order = [...candidates].sort((a, b) => ((a * 7919) % 101) - ((b * 7919) % 101));
     for (const [i, e] of order.entries()) {
       live.add(e);
-      if (i === order.length >> 1) live.nearest(terrain.nodeAt(0, 0), () => null);
+      if (i === order.length >> 1) live.nearest(terrain.nodeAt(0, 0), terrain.nodeAt(0, 0), () => null);
     }
     expect(live.divergence(built)).toEqual([]);
     const kept = candidates.filter(() => roll(3) !== 0);
@@ -403,7 +404,9 @@ describe('InteractionCellIndex', () => {
         ] as const) {
           asked.length = 0;
           const found =
-            kind === 'door' ? index.nearestDoor(here, accept, gate) : index.nearestLoose(here, accept, gate);
+            kind === 'door'
+              ? index.nearestDoor(here, here, accept, gate)
+              : index.nearestLoose(here, here, accept, gate);
           // Every gate passes, so each asked cell became the best: strictly nearer by (distance, cell).
           const order = asked.map((n) => [manhattan(terrain, here, n), n] as const);
           for (let i = 1; i < order.length; i++) {
@@ -454,7 +457,7 @@ describe('InteractionCellIndex', () => {
         area.minY + roll(area.maxY - area.minY),
       );
       resolved.length = 0;
-      expect(index.nearestLoose(here, accept, gate), `query ${q}`).toEqual(
+      expect(index.nearestLoose(here, here, accept, gate), `query ${q}`).toEqual(
         linearWinner(sim, loose, here, accept, inArea, undefined, undefined),
       );
       // Only piles whose own node lies near the area reach the per-seeker resolution.

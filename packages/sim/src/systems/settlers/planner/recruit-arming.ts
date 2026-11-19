@@ -38,9 +38,10 @@ import {
   weaponDamageVsMaterial,
   weaponGoodsByStrength,
 } from '../../readviews/index.js';
-import type { NavigationLimit } from '../../signposts/index.js';
+import { type NavigationLimit, navigationLimitFor, rankFromSpot } from '../../signposts/index.js';
 import { goodsSearchLimitAt } from '../../signposts/reach.js';
 import { entityNode } from '../../spatial/nodes.js';
+import type { RankFrom } from '../../spatial/walk-rank.js';
 import { mayFetchGoodFrom, type SupplyTally } from '../../stores/index.js';
 import { anotherSystemOwns } from '../action-owner.js';
 import { atomicHoldsSettler } from '../atomics/busy.js';
@@ -365,6 +366,7 @@ function pickReachableWeapon(
       targets.bands,
       world,
       route.here,
+      route.rank,
       goodType,
       owner,
       supply,
@@ -395,6 +397,7 @@ function dispatchArmorFetch(
     targets,
     pass.supply,
     route.here,
+    route.rank,
     owner,
     intent,
     route.limit,
@@ -447,6 +450,7 @@ export function chainRecruitArmor(
     targets,
     supply,
     here,
+    rankFromSpot(navigationLimitFor(world, ctx.content, terrain, e), here),
     owner,
     booking.intent,
     limit,
@@ -474,6 +478,7 @@ function pickReachableArmor(
   targets: TargetCandidates,
   supply: SupplyTally,
   here: NodeId,
+  rank: RankFrom,
   owner: number,
   intent: AssistantArmingIntent,
   limit: NavigationLimit | null,
@@ -489,6 +494,7 @@ function pickReachableArmor(
       targets.bands,
       world,
       here,
+      rank,
       goodType,
       owner,
       supply,
@@ -535,8 +541,20 @@ export function armRecruitInPlace(search: ArmingSearch, e: Entity, barracks: Ent
     if (weapon?.source === barracks) equipFromStore(world, ctx, e, barracks, weapon.goodType, 'weapon', 0);
   }
   if ((world.tryGet(e, Equipment)?.armor ?? null) === null) {
-    const { here, limit, veto } = routeOf();
-    const armor = pickReachableArmor(world, ctx, targets, supply, here, owner, intent, limit, veto, barracks);
+    const { here, rank, limit, veto } = routeOf();
+    const armor = pickReachableArmor(
+      world,
+      ctx,
+      targets,
+      supply,
+      here,
+      rank,
+      owner,
+      intent,
+      limit,
+      veto,
+      barracks,
+    );
     if (armor?.source === barracks) equipFromStore(world, ctx, e, barracks, armor.goodType, 'armor', 0);
   }
   // Both slots filled here: the booking has nothing left for the arming pass.
@@ -587,6 +605,8 @@ function releaseToPost(pass: PlannerPass, e: Entity, barracks: Entity): void {
  *  to every step of the walk. */
 interface FetchRoute {
   readonly here: NodeId;
+  /** What the stores are ranked from: the recruit's own walk, as its equip errand ranks them. */
+  readonly rank: RankFrom;
   readonly limit: NavigationLimit | null;
   readonly veto: ((cell: NodeId) => boolean) | undefined;
 }
@@ -595,8 +615,10 @@ function fetchRouteFor(search: ArmingSearch, e: Entity, owner: number): FetchRou
   const { world, ctx, terrain } = search;
   const p = world.get(e, Position);
   const n = nodeOfPosition(p.x, p.y);
+  const here = terrain.nodeAtClamped(n.hx, n.hy);
   return {
-    here: terrain.nodeAtClamped(n.hx, n.hy),
+    here,
+    rank: rankFromSpot(navigationLimitFor(world, ctx.content, terrain, e), here),
     limit: goodsSearchLimitAt(world, ctx.content, terrain, owner, n.hx, n.hy),
     veto: unreachableGoalVeto(world, ctx, e),
   };

@@ -57,6 +57,8 @@ export function nearestStoreFor(
   bands: TargetBands,
   world: World,
   here: NodeId,
+  /** What the stores are ranked from: `here`, by distance, or the fetcher's walk from it. */
+  rank: RankFrom,
   goodType: number,
   /** The hauler's owning player. It never delivers into another player's store. */
   owner: number | undefined,
@@ -68,13 +70,11 @@ export function nearestStoreFor(
   gate?: SpatialGate,
   /** The hauler's failed-goal veto. */
   avoid?: (cell: NodeId) => boolean,
-  /** What the stores are ranked from. */
-  rank: RankFrom = here,
 ): Entity | null {
   return (
     bands
       .sinksFor(goodType, excludeProducers)
-      .nearest(here, ACCEPT_ALL, gate, avoid, sameSideAs(world, owner), rank)?.entity ?? null
+      .nearest(here, rank, ACCEPT_ALL, gate, avoid, sameSideAs(world, owner))?.entity ?? null
   );
 }
 
@@ -253,6 +253,8 @@ export function nearestStoreHolding(
   bands: TargetBands,
   world: World,
   here: NodeId,
+  /** What the stores are ranked from: `here`, by distance, or the fetcher's walk from it. */
+  rank: RankFrom,
   goodType: number,
   /** The fetcher's owning player. It never fetches from another player's store. */
   owner: number | undefined,
@@ -262,8 +264,6 @@ export function nearestStoreHolding(
   gate?: SpatialGate,
   /** The fetcher's failed-goal veto. */
   avoid?: (cell: NodeId) => boolean,
-  /** What the stores are ranked from. */
-  rank: RankFrom = here,
 ): Entity | null {
   if (sideLendsNone(bands, world, owner, goodType)) return null;
   // An empty band answers null whatever the gate, so its goods limit is never asked.
@@ -272,12 +272,12 @@ export function nearestStoreHolding(
     bands,
     world,
     here,
+    rank,
     goodType,
     owner,
     supply,
     bands.goodsGate(here, owner, gate),
     avoid,
-    rank,
   );
 }
 
@@ -290,12 +290,13 @@ export function nearestStoreHoldingWithin(
   bands: TargetBands,
   world: World,
   here: NodeId,
+  /** What the stores are ranked from: `here`, by distance, or the fetcher's walk from it. */
+  rank: RankFrom,
   goodType: number,
   owner: number | undefined,
   supply: SupplyTally,
   goodsGate: SpatialGate | undefined,
   avoid?: (cell: NodeId) => boolean,
-  rank: RankFrom = here,
 ): Entity | null {
   if (sideLendsNone(bands, world, owner, goodType)) return null;
   const holders = bands.holding(goodType);
@@ -314,7 +315,7 @@ export function nearestStoreHoldingWithin(
     return nearestHolderIn(bands, holders, world, here, goodType, owner, supply, goodsGate, avoid, rank);
   }
   sortAscending(narrowedField, count);
-  return holders.nearestAmong(narrowedField, count, here, lends, goodsGate, avoid, rank)?.entity ?? null;
+  return holders.nearestAmong(narrowedField, count, here, rank, lends, goodsGate, avoid)?.entity ?? null;
 }
 
 /** The stores {@link nearestStoreHolding} weighs for an owned fetcher, ranked as {@link
@@ -324,12 +325,13 @@ export function storesHoldingRanked(
   bands: TargetBands,
   world: World,
   here: NodeId,
+  /** What the stores are ranked from: `here`, by distance, or the fetcher's walk from it. */
+  rank: RankFrom,
   goodType: number,
   owner: number,
   supply: SupplyTally,
   gate?: SpatialGate,
   avoid?: (cell: NodeId) => boolean,
-  rank: RankFrom = here,
 ): readonly NearestByCell[] {
   if (sideLendsNone(bands, world, owner, goodType)) return [];
   const holders = bands.holding(goodType);
@@ -340,7 +342,7 @@ export function storesHoldingRanked(
   const lends = holdsUnclaimed(world, bands.ctx, supply, goodType);
   const count = keepLenders(filed, lends);
   // The ranking orders by entity id too, so the field needs no sort.
-  return holders.rankedAmong(narrowedField, count, here, lends, goodsGate, avoid, rank);
+  return holders.rankedAmong(narrowedField, count, here, rank, lends, goodsGate, avoid);
 }
 
 /** Keep the first `count` stores of {@link narrowedField} that `lends` passes, in order, and return how
@@ -410,11 +412,11 @@ function nearestHolderIn(
   return (
     holders.nearest(
       here,
+      rank,
       holdsUnclaimed(world, bands.ctx, supply, goodType),
       goodsGate,
       avoid,
       sameSideAs(world, owner),
-      rank,
     )?.entity ?? null
   );
 }
@@ -468,6 +470,7 @@ export function nearestStoreHoldingAnywhere(
     bands
       .holding(goodType)
       .nearest(
+        here,
         here,
         holdsUnclaimed(world, bands.ctx, supply, goodType),
         undefined,

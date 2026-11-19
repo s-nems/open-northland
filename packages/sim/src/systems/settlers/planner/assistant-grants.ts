@@ -186,6 +186,7 @@ export function dispatchAssistantGrants(pass: PlannerPass): void {
         targets.bands,
         world,
         here,
+        here, // by distance: the grant reads only whether a store is found
         spec.goodType,
         owner,
         pass.supply,

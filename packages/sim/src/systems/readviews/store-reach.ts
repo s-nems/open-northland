@@ -83,7 +83,7 @@ export function inputReach(
   band.sync();
   const lender = (e: Entity) => (lends(e) ? QUALIFIES : null);
   // Ranked by distance: the answer read is only whether one lends.
-  if (band.index.nearest(here, lender, gate, undefined, sameSideAs(world, owner), door) !== null) {
+  if (band.index.nearest(here, door, lender, gate, undefined, sameSideAs(world, owner)) !== null) {
     return 'inReach';
   }
   const produced = reachAmong(world, operator, producers, (source) =>

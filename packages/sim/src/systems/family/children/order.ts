@@ -296,10 +296,10 @@ function haulFood(
     ownerOf(world, woman),
     home,
     limit,
+    here === undefined ? undefined : rankFromSpot(limit, here),
     terrain === undefined || here === undefined
       ? undefined
       : unreachableCellVeto(world, ctx, terrain, woman, here),
-    here === undefined ? undefined : rankFromSpot(limit, here),
   );
   if (source === null) {
     // No reachable food outside homes, so she waits and the order stands.

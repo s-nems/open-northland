@@ -92,11 +92,12 @@ export function nearestLoosePickup(
     const loose =
       collect === null
         ? null
-        : targets.stockpileCells.nearestLoose(here, groundPileGood, collect, avoid, onSide, planRank(plan));
+        : targets.stockpileCells.nearestLoose(here, planRank(plan), groundPileGood, collect, avoid, onSide);
     return loose === null ? null : { from: loose.entity, goodType: loose.payload };
   }
   const best = targets.stockpileCells.nearest(
     here,
+    planRank(plan, rankFrom ?? area.center),
     (e) =>
       world.has(e, Building)
         ? qualifiedGood(haulableOutputGood(world, ctx, supply, deliverable, e))
@@ -104,7 +105,6 @@ export function nearestLoosePickup(
     area.gate,
     avoid,
     onSide,
-    planRank(plan, rankFrom ?? area.center),
   );
   return best === null ? null : { from: best.entity, goodType: best.payload };
 }
@@ -146,7 +146,7 @@ function nearestMinimumRestock(
     if (!holders.hasCandidates()) return null;
     search ??= restockSearch(plan, owner);
     lifted = goodType;
-    return holders.nearest(here, accept, search.gate, search.avoid, sameSideAs(world, owner), search.rank);
+    return holders.nearest(here, search.rank, accept, search.gate, search.avoid, sameSideAs(world, owner));
   };
   let best: NearestByCell<number> | null = null;
   for (const minimumGood of storageMinimumGoods(world, owner)) {
@@ -225,11 +225,11 @@ function nearestPriorityRestock(
     lifted = goodType;
     const found = holders.nearest(
       here,
+      search.rank,
       accept,
       search.gate,
       search.avoid,
       sameSideAs(world, owner),
-      search.rank,
     );
     const nearer: NearestByCell<number> | null = nearerOf(best, found);
     if (nearer !== best) bestRoom = room;
