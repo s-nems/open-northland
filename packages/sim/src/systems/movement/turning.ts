@@ -51,6 +51,13 @@ export function hexHeadingOfWalk(direction: WalkDirection): HexHeading {
   return HEX_HEADING_OF_WALK[direction];
 }
 
+/** The walk facing of a map-point heading, indexed by {@link HEX_HEADING}. */
+const WALK_OF_HEX_HEADING: readonly WalkDirection[] = [E, SE, SW, W, NW, NE];
+
+export function walkOfHexHeading(heading: HexHeading): WalkDirection {
+  return WALK_OF_HEX_HEADING[heading] ?? E;
+}
+
 type Point = { readonly x: Fixed; readonly y: Fixed };
 
 type WalkFacingView = { readonly direction: WalkDirection; readonly target: WalkDirection };

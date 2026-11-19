@@ -891,6 +891,9 @@ export const ECONOMY: ArticleGroup = {
           },
         },
         {
+          p: 'Z wozem każda sztuka jest podnoszona przy wozie przez czas z tabeli i noszona między wozem a drzwiami budynku. Oddanie albo odebranie jej w środku trwa tyle, co rękami.',
+        },
+        {
           p: 'Gdy wóz jedzie pełny w jedną stronę i pusty z powrotem, oba wozy przewożą tyle samo na trasie około {{trade.cartParLand}} hexów po lądzie albo {{trade.cartParRoad}} hexów drogą. Na krótszej trasie lepszy jest Wózek Ręczny, na dłuższej Zaprzęg.',
         },
         {

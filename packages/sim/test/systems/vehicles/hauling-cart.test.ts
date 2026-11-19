@@ -32,6 +32,7 @@ import {
   Simulation,
   serializeSaveGame,
 } from '../../../src/index.js';
+import { hexDistance } from '../../../src/nav/halfcell.js';
 import { vehicleBlockedCells } from '../../../src/systems/footprint/index.js';
 import { reap } from '../../../src/systems/lifecycle/death.js';
 import { DRINK_IN_PLACE_LEVEL, mutNeeds } from '../../../src/systems/lifecycle/needs/index.js';
@@ -39,10 +40,10 @@ import { atomicDuration } from '../../../src/systems/readviews/animations.js';
 import { MEAL_UNITS } from '../../../src/systems/settlers/atomics/effects/goods/index.js';
 import { PICKUP_ATOMIC_ID, PILEUP_ATOMIC_ID } from '../../../src/systems/settlers/atomics/start.js';
 import { noteUnreachableGoal } from '../../../src/systems/settlers/unreachable-goals.js';
-import { boardingNode } from '../../../src/systems/vehicles/crew.js';
 import { cartLiftTicks, HANDCART_FULL_SPEED_LOSS_PERCENT } from '../../../src/systems/vehicles/drag.js';
 import {
   carryCapacityOf,
+  cartWorkNode,
   haulingCartGoods,
   haulingCartSpeedLossPercent,
   haulingCartUnits,
@@ -88,6 +89,7 @@ const MAP_NODES = 120;
 const HQ_AT = { hx: 30, hy: 20 };
 const CART_AT = { hx: 20, hy: 20 };
 const PORTER_AT = { hx: 22, hy: 20 };
+const SECOND_CART_AT = { hx: 20, hy: 24 };
 /** A ground pile holds at most five units, so a pile this size is one cart lift and five lifts by hand. */
 const PILE_UNITS = 5;
 const PILE_AT = { hx: 24, hy: 26 };
@@ -95,7 +97,7 @@ const PILE_AT = { hx: 24, hy: 26 };
 const SHIP_AT = { hx: 40, hy: 40 };
 /** Headroom over a porter's walk to its cart two nodes off and a round trip to the pile and back. */
 const TAKE_TICKS = 60;
-const TRIP_TICKS = 400;
+const TRIP_TICKS = 800;
 /** How far below its spawn a porter walks before a Shift-queued order starts. */
 const QUEUED_WALK_NODES = 4;
 /** The twin mill's wood slot takes ten units. */
@@ -119,7 +121,7 @@ const NEAR_PILE_AT = { hx: 28, hy: 26 };
 const FAR_PILE_AT = { hx: 46, hy: 34 };
 /** A one-unit well beside the store; a cart lift there waits out a refill a game second per unit. */
 const WELL_AT = { hx: 24, hy: 30 };
-const WELL_TRIP_TICKS = 2_000;
+const WELL_TRIP_TICKS = 4_000;
 /** Headroom over an ordered sleep: the walk off, the sleep clip and the walk back to the cart. */
 const BREAK_TICKS = 3_000;
 
@@ -316,7 +318,9 @@ describe('hauling with the cart', () => {
     s.world.mut(mill, Stockpile).amounts.set(WOOD, MILL_STOCKED_WOOD);
     const { porter } = postedPorterWithCart(s, mill, WORKSHOP_CARRIER);
     expect(runUntil(s, TAKE_TICKS, () => s.world.get(porter, HaulingCart).taken)).toBeGreaterThan(0);
-    expect(runUntil(s, TRIP_TICKS, () => s.world.has(porter, Carrying))).toBeGreaterThan(0);
+    // The lift carries the units out to the standing cart one by one; the take puts them in hand.
+    const loaded = (): boolean => s.world.has(porter, Carrying) && s.world.get(porter, HaulingCart).taken;
+    expect(runUntil(s, TRIP_TICKS, loaded)).toBeGreaterThan(0);
     const shortfall = MILL_WOOD_CAPACITY - MILL_STOCKED_WOOD;
     expect(s.world.get(porter, Carrying)).toEqual({ goodType: WOOD, amount: shortfall });
     expect(stockOf(s, hq, WOOD)).toBe(HQ_WOOD_FOR_MILL - shortfall);
@@ -363,7 +367,7 @@ describe('setting the cart down', () => {
     expect(s.canAttachToVehicle(porter, cart)).toBe(true);
   });
 
-  it('gives up a parked cart whose door a walk failed to reach, then hauls by hand', () => {
+  it('gives up a parked cart a walk failed to reach, then hauls by hand', () => {
     const s = sim();
     const hq = placeHouse(s, HQ_AT);
     const { porter, cart } = postedPorterWithCart(s, hq);
@@ -372,8 +376,8 @@ describe('setting the cart down', () => {
     if (ctx.terrain === undefined) throw new Error('mapless sim');
     parkHaulingCart(s.world, ctx, porter);
     const parkedAt = nodeOf(s, cart);
-    const door = boardingNode(s.world, ctx, ctx.terrain, cart);
-    if (door === null) throw new Error('cart door missing');
+    const door = cartWorkNode(s.world, ctx, ctx.terrain, cart);
+    if (door === null) throw new Error('cart stand missing');
     noteUnreachableGoal(s.world, ctx, porter, door);
     s.enqueue(
       playerCommand(P0, { kind: 'moveUnit', entity: porter, x: NEAR_PILE_AT.hx, y: NEAR_PILE_AT.hy }),
@@ -387,6 +391,39 @@ describe('setting the cart down', () => {
     expect(s.world.has(porter, HaulingCart)).toBe(false);
     expect(s.world.get(cart, Vehicle).hauler).toBeNull();
     expect(nodeOf(s, cart)).toEqual(parkedAt);
+  });
+
+  it('stands the cart where its puller stops, and the cart of a second puller there a node clear of it', () => {
+    const s = sim();
+    const hq = placeHouse(s, HQ_AT);
+    const first = postedPorterWithCart(s, hq);
+    const secondCart = spawnCart(s, SECOND_CART_AT);
+    const secondPorter = spawnCarrier(s, PORTER_AT);
+    s.world.add(secondPorter, JobAssignment, { workplace: hq });
+    s.enqueue(playerCommand(P0, { kind: 'attachToVehicle', entity: secondPorter, vehicle: secondCart }));
+    const bothTaken = () =>
+      s.world.get(first.porter, HaulingCart).taken && s.world.get(secondPorter, HaulingCart).taken;
+    expect(runUntil(s, TAKE_TICKS, bothTaken)).toBeGreaterThan(0);
+    const ctx = ctxOf(s);
+    const terrain = ctx.terrain;
+    if (terrain === undefined) throw new Error('mapless sim');
+    const stand = nodeOf(s, first.porter);
+    const where = s.world.get(first.porter, Position);
+    const moved = s.world.mut(secondPorter, Position);
+    moved.x = where.x;
+    moved.y = where.y;
+
+    parkHaulingCart(s.world, ctx, first.porter);
+    parkHaulingCart(s.world, ctx, secondPorter);
+
+    expect(nodeOf(s, first.cart)).toEqual(stand);
+    expect(hexDistance(nodeOf(s, secondCart), stand)).toBeGreaterThan(1);
+    // A handcart is worked from the node beside it.
+    for (const cart of [first.cart, secondCart]) {
+      const at = cartWorkNode(s.world, ctx, terrain, cart);
+      if (at === null) throw new Error('cart stand missing');
+      expect(hexDistance({ hx: terrain.xOf(at), hy: terrain.yOf(at) }, nodeOf(s, cart))).toBe(1);
+    }
   });
 
   it('the end of the post sets the cart down', () => {
@@ -529,7 +566,7 @@ describe('the cart as a work tool', () => {
     expect(carryCapacityOf(s.world, s.content, porter)).toBe(HANDCART_SLOTS);
   });
 
-  it('loads and unloads beside the standing cart, one handcart lift a unit, as a trader does', () => {
+  it('lifts a pile into the cart beside it, and carries each unit from the cart through the store door', () => {
     const s = sim();
     const hq = placeHouse(s, HQ_AT);
     const { porter, cart } = postedPorterWithCart(s, hq);
@@ -538,20 +575,33 @@ describe('the cart as a work tool', () => {
     const identity = s.world.get(porter, Settler);
     const cartType = contentIndex(s.content).vehicles.get(s.world.get(cart, Vehicle).vehicleType);
     if (cartType === undefined) throw new Error('cart type not in the fixture');
-    const clips = { haulLoad: 0, haulUnload: 0 };
+    const clip = (atomicId: number): number => atomicDuration(s.content, identity, atomicId);
+    const atCart = (atomicId: number): number => cartLiftTicks(s.content, cartType, clip(atomicId));
+    const clips = { haulLoad: 0, haulUnload: 0, cartFetch: 0 };
     let last: object | undefined;
+    let haltedInHand = false;
     const count = () => {
       const atomic = s.world.tryGet(porter, CurrentAtomic);
       if (atomic === undefined || atomic === last) return;
       last = atomic;
       const kind = atomic.effect.kind;
-      if (kind !== 'haulLoad' && kind !== 'haulUnload') return;
+      // Come to the store, it halts with the cart still in hand before it lets go of it.
+      if (kind === 'cartHalt') haltedInHand ||= s.world.get(porter, HaulingCart).taken;
+      if (kind !== 'haulLoad' && kind !== 'haulUnload' && kind !== 'cartFetch') return;
       clips[kind] += 1;
-      const atomicId = kind === 'haulLoad' ? PICKUP_ATOMIC_ID : PILEUP_ATOMIC_ID;
-      expect(atomic.duration).toBe(
-        cartLiftTicks(s.content, cartType, atomicDuration(s.content, identity, atomicId)),
-      );
-      // The cart stands beside the carrier through the lift, the carrier on foot, the heap's rest claimed.
+      // Beside the pile and at the cart a lift lasts what the cart's kind sets; inside the store, its clip.
+      if (kind === 'haulLoad') expect(atomic.duration).toBe(atCart(PICKUP_ATOMIC_ID));
+      if (kind === 'cartFetch') expect(atomic.duration).toBe(atCart(PICKUP_ATOMIC_ID));
+      if (kind === 'cartFetch') {
+        // It lifts from beside the handcart, which it stood beside the store's door, not on it.
+        expect(hexDistance(nodeOf(s, porter), nodeOf(s, cart))).toBe(1);
+        expect(hexDistance(nodeOf(s, cart), HQ_AT)).toBeGreaterThan(0);
+      }
+      if (kind === 'haulUnload') {
+        expect(atomic.duration).toBe(clip(PILEUP_ATOMIC_ID));
+        expect(s.world.get(porter, Carrying)).toEqual({ goodType: WOOD, amount: 1 });
+      }
+      // The cart stands through the lift, the carrier on foot, the heap's rest claimed.
       if (kind === 'haulLoad') expect(s.world.has(porter, PickupClaim)).toBe(true);
       expect(s.world.get(porter, HaulingCart).taken).toBe(false);
       expect(s.world.get(porter, HaulingCart).lift).not.toBeNull();
@@ -562,7 +612,9 @@ describe('the cart as a work tool', () => {
       count();
     }
     expect(stockOf(s, hq, WOOD)).toBe(HQ_INITIAL_WOOD + PILE_UNITS);
-    expect(clips).toEqual({ haulLoad: PILE_UNITS, haulUnload: PILE_UNITS });
+    // The carrier lets go of the cart at its stand and fetches every unit there for the door.
+    expect(clips).toEqual({ haulLoad: PILE_UNITS, haulUnload: PILE_UNITS, cartFetch: PILE_UNITS });
+    expect(haltedInHand).toBe(true);
     expect(runUntil(s, TAKE_TICKS, () => s.world.get(porter, HaulingCart).taken)).toBeGreaterThan(0);
     expect(checkInvariants(s.world, s.content)).toEqual([]);
   });
@@ -679,15 +731,19 @@ describe("a workshop carrier's cart round", () => {
     const full = (holder: (good: number) => number): boolean =>
       holder(WOOD) === BAKEHOUSE_INPUT_CAPACITY && holder(WHEAT) === BAKEHOUSE_INPUT_CAPACITY;
     // The handcart's fifteen slots hold the first input whole and half the second.
+    let stowsHoldingClaim = 0;
     expect(
-      runUntil(
-        s,
-        2 * TRIP_TICKS,
-        () =>
+      runUntil(s, 2 * TRIP_TICKS, () => {
+        const stowing = s.world.tryGet(porter, CurrentAtomic)?.effect.kind === 'cartStow';
+        if (stowing && s.world.has(porter, PickupClaim)) stowsHoldingClaim += 1;
+        return (
           haulingCartUnits(s.world, porter, WOOD) + haulingCartUnits(s.world, porter, WHEAT) ===
-          HANDCART_SLOTS,
-      ),
+          HANDCART_SLOTS
+        );
+      }),
     ).toBeGreaterThan(0);
+    // The shelf's rest stays claimed while a unit is carried out to the cart, so nobody lifts it meanwhile.
+    expect(stowsHoldingClaim).toBeGreaterThan(0);
     expect(stockOf(s, bakehouse, WOOD) + stockOf(s, bakehouse, WHEAT)).toBe(0);
     let takenBetween = false;
     const landed = runUntil(s, 2 * TRIP_TICKS, () => {
@@ -808,21 +864,41 @@ describe("a workshop carrier's cart round", () => {
     expect(s.world.has(cart, Position)).toBe(false);
   });
 
-  it('a store that refuses a unit ends the unload with the unit back aboard, a second good too', () => {
+  it('a store that refuses a unit ends the unload with the unit still in hand, a second good aboard', () => {
     const s = sim();
     placeHouse(s, HQ_AT);
     const mill = placeHouse(s, { hx: 20, hy: 30 }, TWIN_MILL);
     const { porter, cart } = postedPorterWithCart(s, mill, WORKSHOP_CARRIER);
     s.world.mut(mill, Stockpile).amounts.set(WOOD, MILL_WOOD_CAPACITY);
     s.world.mut(porter, HaulingCart).lift = { kind: 'unload', store: mill, goodType: WOOD, refused: false };
-    s.world.mut(cart, VehicleStock).lines.set(WOOD, { current: 2, wanted: 2, reserved: 2 });
+    s.world.mut(cart, VehicleStock).lines.set(WOOD, { current: 1, wanted: 1, reserved: 1 });
     s.world.mut(cart, VehicleStock).lines.set(FOOD, { current: 1, wanted: 1, reserved: 1 });
+    s.world.add(porter, Carrying, { goodType: WOOD, amount: 1 });
     expect(unloadHaulingCart(s.world, ctxOf(s), porter, mill, WOOD)).toBe(false);
     expect(s.world.get(porter, HaulingCart).lift).toMatchObject({ refused: true });
-    expect(s.world.has(porter, Carrying)).toBe(false);
-    expect(s.world.get(cart, VehicleStock).lines.get(WOOD)?.current).toBe(2);
+    expect(s.world.get(porter, Carrying)).toEqual({ goodType: WOOD, amount: 1 });
+    expect(s.world.get(cart, VehicleStock).lines.get(WOOD)?.current).toBe(1);
     expect(s.world.get(cart, VehicleStock).lines.get(FOOD)?.current).toBe(1);
     expect(stockOf(s, mill, WOOD)).toBe(MILL_WOOD_CAPACITY);
+  });
+
+  it('sets a unit left in its hands back into the cart it stood before it takes the cart up', () => {
+    const s = sim();
+    const hq = placeHouse(s, HQ_AT);
+    s.world.mut(hq, Stockpile).amounts.set(WOOD, HQ_WOOD_CAPACITY);
+    const { porter, cart } = postedPorterWithCart(s, hq);
+    expect(runUntil(s, TAKE_TICKS, () => s.world.get(porter, HaulingCart).taken)).toBeGreaterThan(0);
+    parkHaulingCart(s.world, ctxOf(s), porter);
+    s.world.add(porter, Carrying, { goodType: WOOD, amount: 1 });
+    let stowed = false;
+    const taken = runUntil(s, TAKE_TICKS, () => {
+      stowed ||= s.world.tryGet(porter, CurrentAtomic)?.effect.kind === 'cartStow';
+      return s.world.get(porter, HaulingCart).taken;
+    });
+    expect(taken).toBeGreaterThan(0);
+    expect(stowed).toBe(true);
+    expect(haulingCartUnits(s.world, porter, WOOD)).toBe(1);
+    expect(s.world.has(cart, Position)).toBe(false);
   });
 
   it('a walk order moves the loaded cart along, nothing set down on the spot', () => {

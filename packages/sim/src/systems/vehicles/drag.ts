@@ -65,7 +65,7 @@ export function cartDragTicks(ticks: number, percent: number): number {
 const animalDrawnTypeIds = new WeakMap<ContentSet, ReadonlySet<number>>();
 
 /** A cart an animal draws: the type a cart waiting for its draught animal turns into once harnessed. */
-function isAnimalDrawnType(content: ContentSet, type: VehicleType): boolean {
+export function isAnimalDrawnType(content: ContentSet, type: VehicleType): boolean {
   let drawn = animalDrawnTypeIds.get(content);
   if (drawn === undefined) {
     const ids = new Set<number>();

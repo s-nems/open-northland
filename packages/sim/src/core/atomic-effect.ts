@@ -1,5 +1,6 @@
 import type { EquipCategory } from '@open-northland/data';
 import type { WalkDirection } from '../components/movement.js';
+import type { HaulingLift } from '../components/vehicle.js';
 import type { Entity } from '../ecs/world.js';
 import type { NodeId } from '../nav/terrain/index.js';
 
@@ -30,10 +31,10 @@ export type AtomicEffect =
       readonly from: Entity | null;
     }
   | { readonly kind: 'pileup'; readonly store: Entity }
-  /** A trader lifts one unit of `goodType` off `from`'s shelf into its hold: its hauling cart or hands. */
+  /** A trader lifts one unit of `goodType` off `from`'s shelf: into its hands at a house its cart stands
+   *  by, else straight into its hold, the cart beside a ground pile or its hands. */
   | { readonly kind: 'tradeLoad'; readonly from: Entity; readonly goodType: number }
-  /** A trader sets one unit of `goodType` out of its hold onto `store`'s shelf, or onto the ground at
-   *  its feet with `store` null. */
+  /** A trader sets one unit of `goodType` onto `store`'s shelf, out of its hands or else its hold. */
   | { readonly kind: 'tradeUnload'; readonly store: Entity; readonly goodType: number }
   /** A trader moves one unit of `goodType` from its hauling cart or hands into `vehicle`, its pinned
    *  ship, at the door. */
@@ -41,10 +42,19 @@ export type AtomicEffect =
   /** A trader moves one unit of `goodType` out of `vehicle`, its pinned ship, into its hauling cart or
    *  hands at the door. */
   | { readonly kind: 'tradeShipFetch'; readonly vehicle: Entity; readonly goodType: number }
-  /** A posted carrier lifts one unit of `goodType` off `from` into the hauling cart standing beside it. */
+  /** A posted carrier with a standing hauling cart lifts one unit of `goodType` off `from`: into its hands
+   *  at a house, straight into the cart beside a ground pile. */
   | { readonly kind: 'haulLoad'; readonly from: Entity; readonly goodType: number }
-  /** A posted carrier sets one unit of `goodType` out of the hauling cart standing beside it into `store`. */
+  /** A posted carrier with a standing hauling cart sets one unit of `goodType` into `store`, out of its
+   *  hands or else the cart. */
   | { readonly kind: 'haulUnload'; readonly store: Entity; readonly goodType: number }
+  /** A puller come to a house with its hauling cart in hand halts a moment, then stands the cart down:
+   *  for `lift`, or parked with none. */
+  | { readonly kind: 'cartHalt'; readonly lift: HaulingLift | null }
+  /** A puller at its standing hauling cart `vehicle` sets what its hands hold into the hold. */
+  | { readonly kind: 'cartStow'; readonly vehicle: Entity }
+  /** A puller at its standing hauling cart `vehicle` lifts one unit of `goodType` out of the hold. */
+  | { readonly kind: 'cartFetch'; readonly vehicle: Entity; readonly goodType: number }
   /** A vehicle's carrier sets the unit on its back into `vehicle`'s hold at the door, the unit it booked
    *  there when it set out (`CargoRun`). A hold that stopped wanting it, or filled up, refuses the unit,
    *  which stays on the carrier's back with its booking dropped. */

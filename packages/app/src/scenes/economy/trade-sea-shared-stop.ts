@@ -36,8 +36,8 @@ const ROUTES = [
 ] as const;
 /** Two cart loads per route, within the small ship's fifty. */
 const ROUTE_WOOD = 30;
-/** Headroom over the run: seed 45 lands the last unit near tick 2110, which a sim change moves. */
-const RUN_TICKS = TICKS_PER_SECOND * 200;
+/** Headroom over the run: seed 45 lands the last unit near tick 6360, which a sim change moves. */
+const RUN_TICKS = TICKS_PER_SECOND * 630;
 
 const { Position, setStockAmount, Stockpile, Vehicle, WALK_DIRECTION } = components;
 

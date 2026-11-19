@@ -275,13 +275,20 @@ The cart is a work tool, not a harness:
   slot's whole shortfall up to that and no more (`HaulingLift.units`). In hand, one good of the load
   rides as the carrier's `Carrying`, the good the delivery rung routes, and the rest of a mixed load
   stays in the hold; a good the hold lists no line for rides in the hands alone and is never mixed.
-- **Lifts as the trader's.** At a heap, a shelf or a store's door the carrier stands the cart down on
-  the nearest open land beside it (`beginCartLift`, `HaulingCart.lift`) and moves the units one lift
+- **Lifts as the trader's.** At a heap or a shelf the carrier stands the cart down where it stops; bound
+  for a house it stops one to four nodes short of the door, the first carts nearest, on open land outside every doorway that no
+  other standing cart covers or stands beside, so carts at one door stand apart and the later ones
+  further out (`cartStandNear`, `beginCartLift`, `HaulingCart.lift`). It halts a third of a
+  second with the cart in hand before it lets go (`cartHalt`), and works the cart from the node
+  south-east of it, whichever way the cart faces (`cartWorkNode`),
+  and moves the units one lift
   each, the pick-up or pile-up clip of its trade stretched by cart kind (`cartLiftTicks`: 60% of the
   clip for a handcart, 130% for an ox cart, a named addition so the handcart wins the short haul and
   the ox cart the long one; `haulLoad` and `haulUnload` atomics, through the
   same pick-up and pile-up rules as on foot: claims, the dish alias, storage minimums, the crockery
-  bonus), then walks back to the cart's door and takes it up, the hold's load into its hands. The cart
+  bonus), then walks back to the cart and takes it up, the hold's load into its hands. At a house each unit
+  goes through the carrier's hands: lifted at the cart for the cart kind's ticks (`cartFetch`,
+  `cartStow`), carried to the door and handed over inside at the plain clip. The cart
   draws as itself meanwhile and the carrier as a man lifting; thirty units take thirty lifts, the
   trader's pace, whose cart lifts the same way. A break during a lift ends it (the cart is parked where it stands). At a well or a
   hive, whose shelf holds a unit or two and refills one a game second, a load waits out each refill

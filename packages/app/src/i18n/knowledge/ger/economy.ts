@@ -886,6 +886,9 @@ export const ECONOMY: ArticleGroup = {
           },
         },
         {
+          p: 'Mit einem Karren wird jedes Stück am Karren in der oben genannten Zeit gehoben und zwischen Karren und Gebäudetür getragen. Die Übergabe im Gebäude dauert so lange wie mit den Händen.',
+        },
+        {
           p: 'Fährt der Karren voll hin und leer zurück, bringen beide Karren gleich viel auf einer Strecke von etwa {{trade.cartParLand}} Hexfeldern über Land oder {{trade.cartParRoad}} Hexfeldern auf der Straße. Auf kürzeren Strecken ist der Handkarren besser, auf längeren der Ochsenkarren.',
         },
         {

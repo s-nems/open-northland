@@ -4,7 +4,9 @@ import {
   Building,
   Carrying,
   CurrentAtomic,
+  type HaulingLift,
   MoveGoal,
+  Position,
   Settler,
   type SettlerIdentity,
   StandIn,
@@ -17,18 +19,22 @@ import type { NodeId } from '../../../nav/terrain/index.js';
 import type { ContentContext, SystemContext } from '../../context.js';
 import { collectStandOf } from '../../footprint/index.js';
 import { clearNavState } from '../../movement/nav-state.js';
+import { faceToward } from '../../movement/turning.js';
 import { atomicClipName, atomicDuration } from '../../readviews/animations.js';
 import { isCandyMeal } from '../../readviews/food.js';
 import { accessibleStockAmounts, refillingGoodsOf } from '../../stores/index.js';
 import {
   beginCartLift,
+  carriesBetweenCartAndDoor,
   carryCapacityOf,
+  cartStandNear,
   haulingCartLiftTicks,
   liftsWithHaulingCart,
   pullsHaulingCart,
 } from '../../vehicles/hauling-cart.js';
 import type { PlannerContext } from '../planner/context.js';
 import { interactionCell, unclaimedStockOf } from '../targets/index.js';
+import { unreachableGoalVeto } from '../unreachable-goals.js';
 import { atomicHoldsSettler } from './busy.js';
 import { pickBerry, takeMealUnit } from './effects/goods/index.js';
 
@@ -246,10 +252,34 @@ export function startPickup(
   );
 }
 
+/** The ticks a hand-over at `at` takes a puller whose cart stands: the clip's own inside a house, the
+ *  cart kind's lift beside a ground pile, where the unit moves between pile and hold in one go. */
+function cartHandoverTicks(
+  world: World,
+  ctx: SystemContext,
+  e: Entity,
+  at: Entity,
+  clipTicks: number,
+): number {
+  return carriesBetweenCartAndDoor(world, at)
+    ? clipTicks
+    : haulingCartLiftTicks(world, ctx.content, e, clipTicks);
+}
+
+/** How long a puller come to a house stands with the cart in hand before it lets go of it (named
+ *  addition: without the beat the cart reads as dropped mid-stride). */
+const CART_HALT_TICKS = TICKS_PER_SECOND / 3;
+
+/** Halt at the cart's stand with the cart still in hand, then stand it down: for `lift`, or parked. */
+export function startCartHalt(world: World, e: Entity, lift: HaulingLift | null): void {
+  startAtomic(world, e, REFILL_WAIT_ATOMIC_ID, { kind: 'cartHalt', lift }, CART_HALT_TICKS, null);
+}
+
 /**
- * A carrier with its hauling cart lifts off the store or pile `from` beside the standing cart, one unit
- * a lift: the cart is stood down here if still in hand, and one `haulLoad` plays; the planner's
- * hauling-cart rung plays the next while the lift continues ({@link cartLiftContinues}).
+ * A carrier with its hauling cart lifts off the store or pile `from`, one unit a lift: the cart is stood
+ * down here if still in hand, which at a house is all this does, after a halt ({@link startCartHalt}), the
+ * carrier walking on to the door from its stand ({@link cartStandOrCell}); else one `haulLoad` plays; the planner's hauling-cart rung plays the next
+ * while the lift continues ({@link cartLiftContinues}).
  */
 export function startCartLoad(
   world: World,
@@ -260,20 +290,25 @@ export function startCartLoad(
   goodType: number,
   units: number,
 ): void {
-  beginCartLift(world, ctx, e, { kind: 'load', from, goodType, units });
+  const lift: HaulingLift = { kind: 'load', from, goodType, units };
+  if (pullsHaulingCart(world, e) && carriesBetweenCartAndDoor(world, from)) {
+    startCartHalt(world, e, lift);
+    return;
+  }
+  beginCartLift(world, ctx, e, lift);
   const atomicId = collectAtomicOf(world, ctx, from);
   startAtomic(
     world,
     e,
     atomicId,
     { kind: 'haulLoad', from, goodType },
-    haulingCartLiftTicks(world, ctx.content, e, atomicDuration(ctx.content, settler, atomicId)),
+    cartHandoverTicks(world, ctx, e, from, atomicDuration(ctx.content, settler, atomicId)),
     from,
   );
 }
 
-/** The unload twin of {@link startCartLoad}: one unit of `goodType`, as the hold books it, out of the
- *  standing cart into `store` a lift. */
+/** The unload twin of {@link startCartLoad}: one unit of `goodType`, as the hold books it, into `store`
+ *  a lift, out of the carrier's hands at a house or the standing cart beside a pile. */
 export function startCartUnload(
   world: World,
   ctx: SystemContext,
@@ -282,14 +317,66 @@ export function startCartUnload(
   store: Entity,
   goodType: number,
 ): void {
-  beginCartLift(world, ctx, e, { kind: 'unload', store, goodType, refused: false });
+  const lift: HaulingLift = { kind: 'unload', store, goodType, refused: false };
+  if (pullsHaulingCart(world, e) && carriesBetweenCartAndDoor(world, store)) {
+    startCartHalt(world, e, lift);
+    return;
+  }
+  beginCartLift(world, ctx, e, lift);
   startAtomic(
     world,
     e,
     PILEUP_ATOMIC_ID,
     { kind: 'haulUnload', store, goodType },
-    haulingCartLiftTicks(world, ctx.content, e, atomicDuration(ctx.content, settler, PILEUP_ATOMIC_ID)),
+    cartHandoverTicks(world, ctx, e, store, atomicDuration(ctx.content, settler, PILEUP_ATOMIC_ID)),
     store,
+  );
+}
+
+/** Turn the puller to its standing cart, which it lifts out of and sets into from the node beside it. */
+function faceCart(world: World, e: Entity, vehicle: Entity): void {
+  const from = world.tryGet(e, Position);
+  const to = world.tryGet(vehicle, Position);
+  if (from !== undefined && to !== undefined) faceToward(world, e, from, to);
+}
+
+/** Beside the standing cart: set what the hands hold into the hold, the lift lasting what the cart's
+ *  kind sets ({@link haulingCartLiftTicks}). */
+export function startCartStow(
+  world: World,
+  ctx: SystemContext,
+  e: Entity,
+  settler: SettlerIdentity,
+  vehicle: Entity,
+): void {
+  faceCart(world, e, vehicle);
+  startAtomic(
+    world,
+    e,
+    PILEUP_ATOMIC_ID,
+    { kind: 'cartStow', vehicle },
+    haulingCartLiftTicks(world, ctx.content, e, atomicDuration(ctx.content, settler, PILEUP_ATOMIC_ID)),
+    vehicle,
+  );
+}
+
+/** The fetch twin of {@link startCartStow}: one unit of `goodType` out of the hold into the hands. */
+export function startCartFetch(
+  world: World,
+  ctx: SystemContext,
+  e: Entity,
+  settler: SettlerIdentity,
+  vehicle: Entity,
+  goodType: number,
+): void {
+  faceCart(world, e, vehicle);
+  startAtomic(
+    world,
+    e,
+    PICKUP_ATOMIC_ID,
+    { kind: 'cartFetch', vehicle, goodType },
+    haulingCartLiftTicks(world, ctx.content, e, atomicDuration(ctx.content, settler, PICKUP_ATOMIC_ID)),
+    vehicle,
   );
 }
 
@@ -329,6 +416,17 @@ export function walkFetchInput(
   walkThenLift(plan, from, goodType, amount, refills);
 }
 
+/**
+ * Where a settler bound for `at` walks: `cell`, the node it works `at` from, or, pulling a hauling cart to
+ * a house, the cart's stand short of the door ({@link cartStandNear}), where it lets go of the cart and
+ * walks the rest on foot.
+ */
+export function cartStandOrCell(plan: PlannerContext, at: Entity, cell: NodeId): NodeId {
+  const { world, ctx, terrain, entity: e, here } = plan;
+  if (!pullsHaulingCart(world, e) || !carriesBetweenCartAndDoor(world, at)) return cell;
+  return cartStandNear(world, ctx, terrain, cell, here, unreachableGoalVeto(world, ctx, e)) ?? cell;
+}
+
 /** The first short idle slot (`setatomic <job> 2`), played by a fetcher waiting at an empty well or hive. */
 const REFILL_WAIT_ATOMIC_ID = 2;
 
@@ -349,9 +447,9 @@ function walkThenLift(
   cell?: NodeId,
 ): void {
   const { world, ctx, terrain, entity: e, here } = plan;
-  const stand =
+  const door =
     cell ?? collectStandOf(world, ctx, terrain, from) ?? interactionCell(world, ctx, terrain, from, here);
-  atOrWalk(world, e, here, stand, () => {
+  atOrWalk(world, e, here, cartStandOrCell(plan, from, door), () => {
     const empty = (accessibleStockAmounts(world, from)?.get(goodType) ?? 0) <= 0;
     if (empty && (refills ?? refillingGoodsOf(world, ctx, from).includes(goodType))) {
       startRefillWait(world, ctx, e);

@@ -22,7 +22,14 @@ import {
   pullsHaulingCart,
 } from '../../../vehicles/hauling-cart.js';
 import { dropCarryAtOwnTile } from '../../atomics/effects/goods/index.js';
-import { atOrWalk, PILEUP_ATOMIC_ID, startAtomic, startCartUnload, startDrop } from '../../atomics/start.js';
+import {
+  atOrWalk,
+  cartStandOrCell,
+  PILEUP_ATOMIC_ID,
+  startAtomic,
+  startCartUnload,
+  startDrop,
+} from '../../atomics/start.js';
 import { enterBuilding } from '../../indoors.js';
 import { type PlannerContext, planRank } from '../../planner/context.js';
 import type { PlannerSpacing } from '../../planner/spacing.js';
@@ -164,7 +171,7 @@ export function planDelivery(
   if (toFlag) {
     world.add(entity, YardDeliveryRoute, { flag: store, goodType: load.goodType, goal: cell, failed: false });
   }
-  atOrWalk(world, entity, here, cell, () => {
+  atOrWalk(world, entity, here, toFlag ? cell : cartStandOrCell(plan, store, cell), () => {
     world.remove(entity, YardDeliveryRoute);
     if (liftsWithHaulingCart(world, entity)) {
       const aboard = haulingCartHoldGood(world, ctx.content, entity, load.goodType);

@@ -30,12 +30,15 @@ import { accessibleStockAmounts, bankedSlot, setAccessibleStockAmount } from '..
 import { abandonCargoRun } from '../vehicles/cargo.js';
 import { pinnedTraderOf } from '../vehicles/crew.js';
 import { isCartType } from '../vehicles/drag.js';
+import { carriesBetweenCartAndDoor } from '../vehicles/hauling-cart.js';
 import { tradeVehicleStock, vehicleLineCap, vehicleStockGood } from '../vehicles/stock.js';
 import { activeAgreement } from './agreements.js';
 import { sameFoodClass } from './goods.js';
 
 // Where a trader's route goods ride: the hold of the hauling cart it pulls as its tool, else its own
 // hands, one unit a trip (owner's choice; the original's trader commands a cart and idles without one).
+// A trader whose cart stands by a house carries each unit between the cart and the door, so its hands
+// are part of the hold the decisions read.
 // A unit in the hands is a load like any other, so a hungry trader eats a food unit it carries. On a sea
 // crossing its pinned ship's hold counts too (`FerryHold`).
 
@@ -123,7 +126,21 @@ export function traderHoldOf(world: World, ctx: ContentContext, trader: Entity):
       helpers: NO_HELPERS,
     };
   }
-  return vehicleHoldOf(world, ctx, cart);
+  return withHands(vehicleHoldOf(world, ctx, cart), world.tryGet(trader, Carrying));
+}
+
+/** `hold`, a cart's, with the unit the trader carries to or from it counted in. */
+function withHands(hold: TraderHold, held: { goodType: number; amount: number } | undefined): TraderHold {
+  if (held === undefined || held.amount <= 0) return hold;
+  const units = new Map<number, number>(hold.entries);
+  units.set(held.goodType, (units.get(held.goodType) ?? 0) + held.amount);
+  return {
+    ...hold,
+    entries: [...units].sort(([a], [b]) => a - b),
+    load: hold.load + held.amount,
+    room: Math.max(0, hold.room - held.amount),
+    amount: (good) => units.get(good) ?? 0,
+  };
 }
 
 /** A detached read of `vehicle`'s own hold, as a hold of `cart` naming it. */
@@ -243,7 +260,15 @@ export function cartStands(world: World, hold: TraderHold): boolean {
   return hold.cart !== null && world.has(hold.cart, Position);
 }
 
-/** Move `units` of `good` into the trader's hold (negative: out of it); the units actually moved. */
+/** Whether a unit the trader moves at `house` passes through its hands: its cart stands and `house` has
+ *  a door to carry the unit through ({@link carriesBetweenCartAndDoor}). */
+function carriesToCart(world: World, ctx: ContentContext, trader: Entity, house: Entity): boolean {
+  const cart = haulingCartOf(world, ctx, trader);
+  return cart !== null && world.has(cart, Position) && carriesBetweenCartAndDoor(world, house);
+}
+
+/** Move `units` of `good` into the trader's hold (negative: out of it); the units actually moved. A
+ *  unit leaving comes out of the hands of a trader carrying it from its cart before the cart's hold. */
 function moveThroughHold(
   world: World,
   ctx: ContentContext,
@@ -252,8 +277,14 @@ function moveThroughHold(
   units: number,
 ): number {
   const cart = haulingCartOf(world, ctx, trader);
-  if (cart !== null) return tradeVehicleStock(world, cart, ctx.content, good, units);
   const held = world.tryGet(trader, Carrying);
+  if (cart !== null) {
+    if (units >= 0 || held === undefined || held.goodType !== good || held.amount < -units) {
+      return tradeVehicleStock(world, cart, ctx.content, good, units);
+    }
+    shrinkCarry(world, trader, held, -units);
+    return units;
+  }
   if (units > 0) {
     if (held !== undefined && (held.goodType !== good || held.amount + units > CARRY_CAPACITY)) return 0;
     addCarry(world, trader, good, units);
@@ -316,7 +347,8 @@ function atForeignStop(world: World, trader: Entity, house: Entity): boolean {
 /**
  * Resolve one completed `tradeLoad`: one unit of `goodType` leaves `from`'s shelf, or a ground pile that
  * goes once empty, for the trader's hold, in the form it takes outside the house (a dish becomes its
- * edible). At a foreign stop the unit counts toward the agreement's take and the player's trade tally with
+ * edible). Out of a house its cart stands by, the unit lands in the trader's hands for the walk to the
+ * cart. At a foreign stop the unit counts toward the agreement's take and the player's trade tally with
  * the house's owner. A full hold, a good the hold refuses or a shelf already empty moves nothing.
  */
 export function loadTraderHold(
@@ -332,7 +364,10 @@ export function loadTraderHold(
   const have = stock?.get(goodType) ?? 0;
   if (stock === undefined || cappedByStorageMinimum(world, ctx, from, goodType, have) <= 0) return;
   const carried = edibleGoodFormOf(ctx.content, goodType);
-  if (moveThroughHold(world, ctx, trader, carried, 1) !== 1) return;
+  if (carriesToCart(world, ctx, trader, from)) {
+    if (world.has(trader, Carrying)) return;
+    addCarry(world, trader, carried, 1);
+  } else if (moveThroughHold(world, ctx, trader, carried, 1) !== 1) return;
   setAccessibleStockAmount(world, from, goodType, have - 1);
   reapEmptyLoosePile(world, from);
   if (!atForeignStop(world, trader, from)) return;

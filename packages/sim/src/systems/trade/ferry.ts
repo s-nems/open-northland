@@ -15,7 +15,7 @@ import { vehicleAnchor } from '../footprint/index.js';
 import { atomicDuration } from '../readviews/animations.js';
 import { edibleGoodFormOf } from '../readviews/food.js';
 import { atOrWalk, PICKUP_ATOMIC_ID, PILEUP_ATOMIC_ID, startAtomic } from '../settlers/atomics/start.js';
-import { fetchHaulingCart } from '../settlers/drives/economy/hauling-cart.js';
+import { fetchHaulingCart, stowAtCart } from '../settlers/drives/economy/hauling-cart.js';
 import type { PlannerContext } from '../settlers/planner/context.js';
 import { isUnreachableGoal, unreachableGoals } from '../settlers/unreachable-goals.js';
 import { boardingNode, pinnedTraderAshore } from '../vehicles/crew.js';
@@ -137,7 +137,7 @@ export function planCrossing(plan: PlannerContext, leg: SeaLeg, near: TraderHold
   }
   if (!rules.setsOut(hold)) {
     setDeparture(world, e, null);
-    return false;
+    return stowAtCart(plan);
   }
   // Done with this stop: the call to sail stands while the helpers' last trips end.
   if (action.kind === 'next' && hold.helpersOnTrips) setDeparture(world, e, 'onward');
@@ -308,6 +308,8 @@ function goAboard(plan: PlannerContext, hold: FerryHold, flips: boolean, rules: 
   }
   const door = boardingNode(world, ctx, terrain, ship);
   if (door === null || failedToReachDoor(plan, door)) return stayAshore(plan, near, rules);
+  // A unit the trader was carrying to its cart goes into it before the cart moves.
+  if (stowAtCart(plan)) return true;
   if (cartStands(world, near) && !cartStandsAtShip(world, near, terrain, door)) return fetchHaulingCart(plan);
   atOrWalk(world, e, here, door, () => {
     if (flips) world.mut(e, TradeRoute).current = 1 - world.get(e, TradeRoute).current;
@@ -319,8 +321,8 @@ function goAboard(plan: PlannerContext, hold: FerryHold, flips: boolean, rules: 
 /**
  * An order held on the pinned ship calls its trader aboard ahead of everything the route would do, a
  * pin needing no route for it; the voyage takes the ship back up once the order is done. False while no
- * such order waits on the trader; a unit in the hands of a trader with a cart goes to the delivery rung
- * first, as on the route. A door the trader's walk failed to reach lapses the order, as a rider's lost
+ * such order waits on the trader; a unit in the hands of a trader with a cart goes into the standing
+ * cart first, else to the delivery rung, as on the route. A door the trader's walk failed to reach lapses the order, as a rider's lost
  * door drops the rider, rather than leave it held for good.
  */
 export function planShipOrder(
@@ -337,7 +339,7 @@ export function planShipOrder(
     return false;
   }
   const near = traderHoldOf(world, ctx, e);
-  if (near.cart !== null && world.has(e, Carrying)) return false;
+  if (near.cart !== null && world.has(e, Carrying)) return stowAtCart(plan);
   const hold = ferryHoldOf(world, ctx, near, ship);
   if (hold === null) return wait(plan, near);
   return goAboard(plan, hold, false, { wait: (held) => wait(plan, held) });

@@ -46,8 +46,8 @@ const TRADE_SEA_WOOD = 30;
 export const TRADE_SEA_ZOOM = 0.8;
 const TRADE_SEA_EAST_SLOT = 1;
 
-/** Headroom over the run: seed 45 lands the last unit near tick 1660, which a sim change moves. */
-const RUN_TICKS = TICKS_PER_SECOND * 160;
+/** Headroom over the run: seed 45 lands the last unit near tick 5580, which a sim change moves. */
+const RUN_TICKS = TICKS_PER_SECOND * 520;
 
 const { setStockAmount, Stockpile, WALK_DIRECTION } = components;
 

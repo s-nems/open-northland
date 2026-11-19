@@ -51,8 +51,8 @@ const IRON_STOCK_MARGIN = 2;
 const IRON_STOCKED = IRON_STOCK_MARGIN * IRON_BOUGHT;
 const WOOD_STOCKED = 30;
 
-/** Headroom over the run: seed 47 lands the last iron near tick 1730, which a sim change moves. */
-const RUN_TICKS = TICKS_PER_SECOND * 180;
+/** Headroom over the run: seed 47 lands the last iron near tick 6200, which a sim change moves. */
+const RUN_TICKS = TICKS_PER_SECOND * 600;
 
 const { setStockAmount, stampMissionId } = components;
 

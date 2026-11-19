@@ -931,6 +931,9 @@ export const ECONOMY: ArticleGroup = {
           },
         },
         {
+          p: "Con un carretto ogni pezzo viene sollevato al carretto nel tempo indicato sopra e portato tra il carretto e la porta dell'edificio. La consegna all'interno dura quanto a mani.",
+        },
+        {
           p: "Con il carretto pieno all'andata e vuoto al ritorno, i due carretti trasportano la stessa quantità su un percorso di circa {{trade.cartParLand}} esagoni sulla terra o {{trade.cartParRoad}} esagoni su strada. Su un percorso più corto conviene il carretto a mano, su uno più lungo il carro di buoi.",
         },
         {

@@ -48,7 +48,7 @@ export const TRADE_DOMESTIC_STOCK_B: ReadonlyMap<string, number> = new Map([['ar
 export const TRADE_DOMESTIC_STOCK_C: ReadonlyMap<string, number> = new Map([['spear_wooden', 9]]);
 
 /** Several round trips of the cart between the two warehouses. */
-const RUN_TICKS = TICKS_PER_SECOND * 120;
+const RUN_TICKS = TICKS_PER_SECOND * 180;
 
 const { setStockAmount, Stockpile } = components;
 

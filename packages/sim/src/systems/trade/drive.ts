@@ -31,12 +31,14 @@ import { edibleGoodFormOf } from '../readviews/food.js';
 import { isTraderJob } from '../readviews/jobs.js';
 import {
   atOrWalk,
+  cartStandOrCell,
   collectAtomicOf,
   PILEUP_ATOMIC_ID,
   startAtomic,
+  startCartHalt,
   startRefillWait,
 } from '../settlers/atomics/start.js';
-import { fetchHaulingCart } from '../settlers/drives/economy/hauling-cart.js';
+import { fetchAtCart, fetchHaulingCart, stowAtCart } from '../settlers/drives/economy/hauling-cart.js';
 import type { PlannerContext } from '../settlers/planner/context.js';
 import { QUALIFIES } from '../settlers/targets/cell-index.js';
 import { interactionCell, unclaimedStockOf } from '../settlers/targets/index.js';
@@ -46,7 +48,11 @@ import { navigationLimitFor, rankFromNode } from '../signposts/index.js';
 import { settlementReachAt } from '../signposts/settlement-reach.js';
 import type { RankFrom } from '../spatial/walk-rank.js';
 import { keepsOwnStock, lowestStockedGood, mayFetchGoodFrom, type SupplyTally } from '../stores/index.js';
-import { haulingCartLiftTicks, parkHaulingCart } from '../vehicles/hauling-cart.js';
+import {
+  carriesBetweenCartAndDoor,
+  haulingCartLiftTicks,
+  parkHaulingCart,
+} from '../vehicles/hauling-cart.js';
 import { activeAgreement } from './agreements.js';
 import { planCrossing, planShipOrder, seaLegOf, takeStopAtHand } from './ferry.js';
 import { sameFoodClass } from './goods.js';
@@ -102,9 +108,9 @@ interface LoadScope {
  * foreign stop with no valid agreement, or a seat on a vehicle is left to the rungs below; so is a unit in
  * its hands that neither own stop takes, which the delivery rung banks elsewhere. Original
  * behavior of the trader's job, except that the original's trader commands its cart and idles without
- * one (owner's choice). Approximation: the original's trader carries every unit between the house and
- * the cart's door; here the load and unload clips at the house move the unit straight into and out of
- * the standing cart. A route across the sea with a pinned ship goes by that ship (`ferry.ts`), and a
+ * one (owner's choice). The trader carries every unit between the house and the cart, lifting
+ * it at the cart and handing it over inside the house (original behavior; the lift at the cart lasts
+ * what the cart's kind sets, a named addition). A route across the sea with a pinned ship goes by that ship (`ferry.ts`), and a
  * pinned ship holding the player's order takes its trader off everything else.
  */
 export function planTrader(plan: PlannerContext): boolean {
@@ -120,8 +126,10 @@ export function planTrader(plan: PlannerContext): boolean {
   if (stop === undefined || other === undefined) return false;
 
   const hold = traderHoldOf(world, ctx, e);
-  // A unit in the hands of a trader with a cart, one the ground refused, goes to the delivery rung first.
-  if (hold.cart !== null && world.has(e, Carrying)) return false;
+  // A unit in the hands of a trader with a cart is on its way between the cart and a door; one the cart
+  // has no line for, or one held with the cart in hand, goes to the delivery rung first.
+  const inHand = hold.cart === null ? undefined : world.tryGet(e, Carrying);
+  if (inHand !== undefined && (!cartStands(world, hold) || !hold.carries(inHand.goodType))) return false;
   const leg = seaLegOf(plan, current);
   if (leg !== null) {
     const here = (held: TraderHold): LoadScope => loadScope(plan, held, stop, other);
@@ -137,7 +145,8 @@ export function planTrader(plan: PlannerContext): boolean {
     // No ship is pinned to the crossing: what the hold carries for this island's stop still lands, but
     // nothing is loaded for a stop no walk reaches, and the trader idles.
     const onIsland = stopContinent(world, ctx, plan.terrain, stop) === plan.terrain.componentOf(plan.here);
-    return onIsland && action.kind === 'unload' && workStop(plan, hold, action);
+    if (onIsland && action.kind === 'unload') return workStop(plan, hold, action);
+    return stowAtCart(plan);
   }
   switch (action.kind) {
     case 'wait':
@@ -152,12 +161,14 @@ export function planTrader(plan: PlannerContext): boolean {
     // Original behavior: an own stop with nothing to move hands the turn to the other one, and the trader
     // sets out only once that stop has a unit to load or unload.
     const there = decideDomestic(loadScope(plan, hold, other, stop), hold, stop);
-    if (there.kind === 'next') return false;
+    // With nothing to move at either stop, a unit still in its hands goes back into the cart.
+    if (there.kind === 'next') return stowAtCart(plan);
     world.mut(e, TradeRoute).current = 1 - current.current;
     return workStop(plan, hold, there);
   }
-  // The cart goes along: one standing at this stop is taken up before the trader sets out.
-  if (cartStands(world, hold)) return fetchHaulingCart(plan);
+  // The cart goes along: one standing at this stop is taken up before the trader sets out, a unit still
+  // in its hands set into it first.
+  if (cartStands(world, hold)) return stowAtCart(plan) || fetchHaulingCart(plan);
   if (failedToReach(plan, other.house)) return waitWithLoad(plan, hold);
   world.mut(e, TradeRoute).current = 1 - current.current;
   walkTo(plan, other.house, () => {});
@@ -229,12 +240,15 @@ function countsSettlement(
 }
 
 /** Move one unit at the house it moves at: a cart standing away from that house is taken up first, one
- *  in hand is stood beside it on arrival. */
+ *  in hand is stood beside it on arrival. With the cart at a house the unit goes through the trader's
+ *  hands ({@link carryToDoor}). */
 function workStop(plan: PlannerContext, hold: TraderHold, work: StopWork): boolean {
   const { world, ctx, entity: e } = plan;
   const house = work.kind === 'load' ? work.from : work.into;
   if (cartStands(world, hold) && !holdNearHouse(world, ctx, e, hold, house)) return fetchHaulingCart(plan);
   if (failedToReach(plan, house)) return waitWithLoad(plan, hold);
+  if (hold.cart !== null && carriesBetweenCartAndDoor(world, house))
+    return carryToDoor(plan, hold, work, house);
   walkTo(plan, house, () => {
     parkHaulingCart(world, ctx, e);
     if (work.kind === 'load') {
@@ -261,11 +275,57 @@ function workStop(plan: PlannerContext, hold: TraderHold, work: StopWork): boole
   return true;
 }
 
+/**
+ * One step of a unit's trip between the standing cart and `house`'s door. Unloading, the trader lifts the
+ * unit out of the cart, walks to the door and hands it over inside; loading, it takes the unit inside,
+ * walks to the cart and sets it in. A unit in its hands that this work does not unload goes into the
+ * cart first. The hand-over inside lasts its clip, the lift at the cart what the cart's kind sets.
+ */
+function carryToDoor(plan: PlannerContext, hold: TraderHold, work: StopWork, house: Entity): boolean {
+  const { world, ctx, entity: e } = plan;
+  if (!cartStands(world, hold)) {
+    const { terrain, here } = plan;
+    const stand = cartStandOrCell(plan, house, interactionCell(world, ctx, terrain, house, here));
+    atOrWalk(world, e, here, stand, () => startCartHalt(world, e, null));
+    return true;
+  }
+  const inHand = world.tryGet(e, Carrying);
+  if (work.kind === 'load') {
+    if (inHand !== undefined) return stowAtCart(plan);
+    const atomicId = collectAtomicOf(world, ctx, house);
+    walkTo(plan, house, () =>
+      startAtomic(
+        world,
+        e,
+        atomicId,
+        { kind: 'tradeLoad', from: house, goodType: work.good },
+        atomicDuration(ctx.content, plan, atomicId),
+        house,
+      ),
+    );
+    return true;
+  }
+  if (inHand === undefined) return fetchAtCart(plan, work.good);
+  if (inHand.goodType !== work.good) return stowAtCart(plan);
+  walkTo(plan, house, () =>
+    startAtomic(
+      world,
+      e,
+      PILEUP_ATOMIC_ID,
+      { kind: 'tradeUnload', store: house, goodType: work.good },
+      atomicDuration(ctx.content, plan, PILEUP_ATOMIC_ID),
+      house,
+    ),
+  );
+  return true;
+}
+
 /** A trader waiting at a stop with route goods in its hands keeps them there through the wait, which the
- *  delivery rung below would otherwise carry off to a store; one with free hands, or its goods in the
- *  cart, is left to the rungs below. */
+ *  delivery rung below would otherwise carry off to a store; one with a cart sets a unit it carries into
+ *  it, and with free hands, or its goods in the cart, is left to the rungs below. */
 function waitWithLoad(plan: PlannerContext, hold: TraderHold): boolean {
-  if (hold.cart !== null || hold.load <= 0) return false;
+  if (hold.cart !== null) return stowAtCart(plan);
+  if (hold.load <= 0) return false;
   startRefillWait(plan.world, plan.ctx, plan.entity);
   return true;
 }

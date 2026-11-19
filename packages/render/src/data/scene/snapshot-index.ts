@@ -14,7 +14,6 @@ import {
   readActingAtomic,
   readAtomicTargetEntity,
   readBuiltPct,
-  readCartLiftStoreRef,
   readCraftWorkplace,
   readPosition,
   readStoreExchangeRef,
@@ -250,15 +249,11 @@ export function indoorHouseOf(
   return acting === null || !OUTDOOR_EXCHANGE_ATOMIC_IDS.has(acting) ? store : null;
 }
 
-/** Whether the scene hides this settler: inside a building ({@link indoorHouseOf}), or on the store half
- *  of a lift beside its hauling cart, which changes within the lift and so frames no portrait. */
 export function isIndoorSettler(
   snapshot: WorldSnapshot,
   components: Readonly<Record<string, unknown>>,
 ): boolean {
-  if ('Resting' in components || indoorHouseOf(snapshot, components) !== null) return true;
-  const lift = readCartLiftStoreRef(components, snapshot.tick);
-  return lift !== null && enterableStoresOf(snapshot).has(lift);
+  return 'Resting' in components || indoorHouseOf(snapshot, components) !== null;
 }
 
 /**

@@ -28,7 +28,14 @@ import {
   stowIntoTradeShip,
   unloadTraderHold,
 } from '../../../trade/index.js';
-import { loadHaulingCart, unloadHaulingCart } from '../../../vehicles/hauling-cart.js';
+import {
+  beginCartLift,
+  fetchFromHaulingCart,
+  loadHaulingCart,
+  parkHaulingCart,
+  stowIntoHaulingCart,
+  unloadHaulingCart,
+} from '../../../vehicles/hauling-cart.js';
 import { serveCoinDrillRepetition } from '../../drives/coin-drill-coins.js';
 import { serveDrillRepetition } from '../../drives/training.js';
 import {
@@ -106,6 +113,16 @@ export function applyEffect(
     case 'haulUnload':
       if (unloadHaulingCart(world, ctx, settler, effect.store, effect.goodType))
         grantCarryExperience(world, ctx, settler);
+      return;
+    case 'cartHalt':
+      if (effect.lift === null) parkHaulingCart(world, ctx, settler);
+      else beginCartLift(world, ctx, settler, { ...effect.lift });
+      return;
+    case 'cartStow':
+      stowIntoHaulingCart(world, ctx.content, settler, effect.vehicle);
+      return;
+    case 'cartFetch':
+      fetchFromHaulingCart(world, ctx.content, settler, effect.vehicle, effect.goodType);
       return;
     case 'vehicleLoad':
       if (loadVehicleHold(world, ctx, settler, effect.vehicle)) grantCarryExperience(world, ctx, settler);

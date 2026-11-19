@@ -863,7 +863,7 @@ A reading of the original's trade agreements and trader work, which the goal `Nu
   commander, else it idles with the `noVehicleForWork` reason): it queues a goto on the cart to a move point found within radius 20 of
   the house whenever the cart stands more than 5 hexagon steps from the house's work point, and
   detaches the trader when no point exists; the goods ride in the cart's hold, booked and stowed one
-  unit at a time as the trader carries them between the house and the cart's door.
+  unit at a time as the trader carries them between the house and the cart.
 - The partner pays out of real stock: the trader's fetch fails at a shelf holding nothing, and he
   comes back for the goods he is owed without paying again (reading). A computer seat's houses of the
   storage main type hold it because its scripted handler writes 5 over every one of their stock
@@ -878,7 +878,7 @@ A reading of the original's trade agreements and trader work, which the goal `Nu
   carries it over several trips, where the original waits for room; a stop the trader cannot reach is
   waited out for its failed-goal memo's span. Approximations: the load and unload clips at the
   house move the unit straight between the shelf and the hold, where the original carries each unit
-  to the cart's door; the trader's hold write keeps the wanted amount on the actual one whatever crew
+  to the cart; the trader's hold write keeps the wanted amount on the actual one whatever crew
   is attached (`tradeVehicleStock`, see VEHICLES.md "Cargo"); a house's minimum
   stock is its recipe inputs; the request counters that rank the import-mark candidates are not kept,
   so the lowest good id goes first; nothing is handed over while the house holds fewer take goods than

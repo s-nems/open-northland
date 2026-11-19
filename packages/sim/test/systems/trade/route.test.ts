@@ -20,6 +20,7 @@ import {
   TradeRoute,
   UnderConstruction,
   Upgrading,
+  Vehicle,
   VehicleStock,
 } from '../../../src/components/index.js';
 import type { Entity } from '../../../src/ecs/world.js';
@@ -90,10 +91,13 @@ const FAR_X = 7;
 const MIDDLE_X = 4;
 const MAP_W = 10;
 const MAP_H = 3;
+/** A map with a water column at cell six, a house on its near shore and a cart just across it. */
+const CUT_OFF_MAP_W = 14;
+const CUT_OFF_WATER_X = 6;
 /** A map 240 nodes wide, four times the original's 60-node vehicle walk range. */
 const WIDE_MAP_CELLS = 120;
 /** Long enough for several round trips on the fixture's short map. */
-const RUN_TICKS = 900;
+const RUN_TICKS = 2000;
 /** The wide-map drive with ten wood in a handcart of fifteen: a two-thirds load costs the cart a third
  *  of its speed (`drag.ts`), so the run takes half as long again as an empty one. */
 const LADEN_WIDE_RUN_TICKS = 5 * RUN_TICKS;
@@ -565,7 +569,7 @@ describe('a trader between its own houses', () => {
     woodRoute(sim, trader, near, far);
     limit(sim, trader, far, WOOD, TRADE_LIMIT_NONE, WOOD_KEPT);
 
-    sim.run(RUN_TICKS);
+    sim.run(SHUTTLE_TICKS);
 
     expect(stockOf(sim, near, WOOD)).toBe(WOOD_KEPT);
     expect(stockOf(sim, far, WOOD)).toBe(PLENTY_OF_WOOD - WOOD_KEPT);
@@ -785,8 +789,8 @@ describe('a trader between its own houses', () => {
     expect(sim.traderView(trader)?.cart).toBeNull();
   });
 
-  it('lifts a unit into its handcart faster than into its hands', () => {
-    const liftTicks = (place: (sim: Simulation, x: number) => Entity): Set<number> => {
+  it('carries each unit between its handcart and the door, lifting faster at the cart than inside', () => {
+    const clipTicks = (place: (sim: Simulation, x: number) => Entity, atCart: boolean): Set<number> => {
       const sim = newSim();
       const near = houseAt(sim, NEAR_X, HUMAN, [[WOOD, 10]]);
       const far = houseAt(sim, FAR_X, HUMAN, []);
@@ -797,16 +801,20 @@ describe('a trader between its own houses', () => {
         sim.step();
         const atomic = sim.world.tryGet(trader, CurrentAtomic);
         const kind = atomic?.effect.kind;
-        if (atomic !== undefined && (kind === 'tradeLoad' || kind === 'tradeUnload'))
-          seen.add(atomic.duration);
+        const wanted = atCart
+          ? kind === 'cartStow' || kind === 'cartFetch'
+          : kind === 'tradeLoad' || kind === 'tradeUnload';
+        if (atomic !== undefined && wanted) seen.add(atomic.duration);
       }
       return seen;
     };
-    const byHand = [...liftTicks(traderOnFoot)];
-    const byCart = [...liftTicks(traderAt)];
+    const byHand = [...clipTicks(traderOnFoot, false)];
+    const inside = [...clipTicks(traderAt, false)];
+    const atCart = [...clipTicks(traderAt, true)];
     expect(byHand.length).toBeGreaterThan(0);
-    expect(byCart.length).toBeGreaterThan(0);
-    expect(Math.max(...byCart)).toBeLessThan(Math.min(...byHand));
+    expect(inside).toEqual(byHand);
+    expect(atCart.length).toBeGreaterThan(0);
+    expect(Math.max(...atCart)).toBeLessThan(Math.min(...byHand));
   });
 
   it('pulls its cart between the stops and stands it within five steps of the house it works', () => {
@@ -871,7 +879,9 @@ describe('a trader between its own houses', () => {
 
       expect(sim.world.has(trader, Rider)).toBe(false);
       expect(sim.world.get(trader, HaulingCart).vehicle).toBe(cart);
-      expect(stockOf(sim, far, WOOD)).toBe(10);
+      // The walk to the cart sets down a unit already in the trader's hands.
+      expect(stockOf(sim, far, WOOD) + groundUnits(sim, WOOD)).toBe(10);
+      expect(stockOf(sim, far, WOOD)).toBeGreaterThanOrEqual(9);
     },
   );
 
@@ -918,6 +928,52 @@ describe('a trader between its own houses', () => {
     expect(stockOf(sim, far, WOOD)).toBe(0);
   });
 
+  it('sets the unit it carries back into the cart when the stop stops taking it', () => {
+    const sim = newSim();
+    const near = houseAt(sim, NEAR_X, HUMAN, [[WOOD, 10]]);
+    const far = houseAt(sim, FAR_X, HUMAN, []);
+    const trader = traderAt(sim, NEAR_X);
+    woodRoute(sim, trader, near, far);
+    const carriesToFar = (): boolean => stockOf(sim, near, WOOD) === 0 && sim.world.has(trader, Carrying);
+    for (let tick = 0; tick < RUN_TICKS && !(stockOf(sim, far, WOOD) > 0 && carriesToFar()); tick++) {
+      sim.step();
+    }
+    expect(carriesToFar()).toBe(true);
+    setStockAmount(sim.world, far, WOOD, HEADQUARTERS_WOOD_ROOM);
+
+    sim.run(TRADE_START_TICKS);
+
+    expect(sim.world.has(trader, Carrying)).toBe(false);
+    expect(groundUnits(sim, WOOD)).toBe(0);
+    expect(stockOf(sim, near, WOOD)).toBe(0);
+    expect(stockOf(sim, far, WOOD)).toBe(HEADQUARTERS_WOOD_ROOM);
+    expect(sim.world.get(cartOfTrader(sim, trader), VehicleStock).lines.get(WOOD)?.current).toBeGreaterThan(
+      0,
+    );
+  });
+
+  it('gives up a standing cart whose door no walk reaches, and carries on by hand', () => {
+    // A water column between the near house and the cart, which still stands within reach of the stop.
+    const sim = new Simulation({
+      seed: 3,
+      content: testContent(),
+      map: waterColumnMap(CUT_OFF_MAP_W, MAP_H, CUT_OFF_WATER_X),
+    });
+    sim.enqueueSetup({ kind: 'setNeedsEnabled', enabled: false });
+    const near = houseAt(sim, CUT_OFF_WATER_X - 1, HUMAN, [[WOOD, 10]]);
+    const far = houseAt(sim, NEAR_X, HUMAN, []);
+    const trader = traderOnFoot(sim, CUT_OFF_WATER_X - 1);
+    const cart = cartAt(sim, CUT_OFF_WATER_X + 1);
+    sim.world.add(trader, HaulingCart, { vehicle: cart, taken: false, parked: true, lift: null });
+    sim.world.mut(cart, Vehicle).hauler = trader;
+    woodRoute(sim, trader, near, far);
+
+    sim.run(SHUTTLE_TICKS);
+
+    expect(sim.world.has(trader, HaulingCart)).toBe(false);
+    expect(stockOf(sim, far, WOOD)).toBe(10);
+  });
+
   it('walks where the player sends it mid-stop, then takes its cart up again and trades on', () => {
     const sim = newSim();
     const near = houseAt(sim, NEAR_X, HUMAN, [[WOOD, 10]]);
@@ -941,7 +997,9 @@ describe('a trader between its own houses', () => {
     expect(arrived).toBe(true);
 
     sim.run(RUN_TICKS); // the route resumes, the cart picked up where it was left
-    expect(stockOf(sim, far, WOOD)).toBe(10);
+    // The order sets down the unit the trader was carrying to its cart.
+    expect(stockOf(sim, far, WOOD) + groundUnits(sim, WOOD)).toBe(10);
+    expect(stockOf(sim, far, WOOD)).toBeGreaterThanOrEqual(9);
     expect(sim.world.has(trader, HaulingCart)).toBe(true);
   });
 

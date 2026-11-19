@@ -883,6 +883,9 @@ export const ECONOMY: ArticleGroup = {
           },
         },
         {
+          p: "With a cart, each piece is lifted at the cart for the time above and carried between the cart and the building's door. Handing it over inside takes as long as with hands.",
+        },
+        {
           p: 'With the cart full one way and empty on the way back, both carts move the same amount on a route of about {{trade.cartParLand}} hexes over land or {{trade.cartParRoad}} hexes by road. On a shorter route the Handcart is better, on a longer one the Ox Cart.',
         },
         {

@@ -26,6 +26,8 @@ function scalesClip(kind: AtomicEffect['kind'] | undefined): boolean {
     kind === 'produce' ||
     kind === 'haulLoad' ||
     kind === 'haulUnload' ||
+    kind === 'cartStow' ||
+    kind === 'cartFetch' ||
     kind === 'tradeLoad' ||
     kind === 'tradeUnload' ||
     kind === 'tradeShipStow' ||

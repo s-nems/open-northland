@@ -103,9 +103,9 @@ civilization in rows: viking, frank, byzantine, saracen, egyptian. Watch them fo
 fidget keeps the weapon in hand.
 
 `?scene=trade-on-foot` runs two traders carrying wood between own warehouses, the upper one on foot
-with a unit in its hands a trip, the lower one pulling a handcart it stands by each warehouse door
-while it loads and unloads. The view checks the walker's carry gait and the cart set down and taken
-up again.
+with a unit in its hands a trip, the lower one pulling a handcart it stands beside each warehouse door
+and carrying each unit between the cart and the door. The view checks the walker's carry gait, the lift
+at the cart and the cart set down and taken up again.
 
 `?scene=trade-sea` runs a trader with a handcart between warehouses on two islands on a small ship
 pinned to its route: it ferries the wood aboard in two cart loads, sails with the cart in the ship's
@@ -120,7 +120,7 @@ open the diplomacy window for both offers and how a stance other than friendly g
 
 `?scene=trade-sea-carriers` is the `trade-sea` route with 60 wood and three carriers assigned to the
 pinned ship. On both shores they carry a unit a trip between the warehouse and the ship's door beside the
-trader's cart and ride along in between, 48 wood across in the 2220 ticks the trader alone lands 15.
+trader's cart and ride along in between, well over a cart load across in the 4200 ticks the trader alone is still loading.
 Select the ship for their seats, the captain's well still the trader's, and Ctrl click a seat to step one out.
 
 `?scene=trade-sea-shared-stop` runs two traders, each with its own warehouse on the west island and a
@@ -131,7 +131,7 @@ both hulls lie there together while both carts ferry.
 `?scene=trade-sea-settlements` holds stock levels between two islands. Each island has two warehouses
 under one signpost, and both stops of the route stand for their whole settlement ("osada"). The east
 island is filled up to 20 bricks and 20 stone out of both west warehouses, and its wood goes west until 30
-are left over its two warehouses; the levels settle by tick 2806 and hold. Select the trader for both lit
+are left over its two warehouses; the levels settle by tick 7720 and hold. Select the trader for both lit
 "osada" chips.
 
 `?scene=cart-drivers` hands a handcart to a trader to pull and crews an ox cart with a carrier for

@@ -115,7 +115,7 @@ const COOLDOWNS = 2;
 const LOAD = 22;
 /** A voyage's worth of ticks, several ferry trips included. */
 const VOYAGE_TICKS = 2500;
-const LONG_TICKS = 6000;
+const LONG_TICKS = 14000;
 const TICK_STEP = 10;
 /** An agreement that hands over less than the near hold carries and pays out more than it. */
 const FEW_GIVEN = 5;
@@ -370,13 +370,17 @@ describe('a pinned ship on a route between two islands', () => {
     if (cart === null) throw new Error('no cart');
 
     let cartRodeTheSlot = false;
-    let riddenOut: number | undefined;
+    // The fullest crossing before any wood lands east: the trader may first sail the ship empty to its
+    // stop's mooring.
+    let riddenOut = 0;
     let fullestCart = 0;
     runUntil(sim, LONG_TICKS, () => {
       const seated = sim.world.tryGet(trader, Rider)?.vehicle === ship;
       if (seated && !sim.world.has(cart, Position)) {
         cartRodeTheSlot ||= sim.world.get(ship, Vehicle).vehicles.some((s) => s?.entity === cart);
-        riddenOut ??= aboard(sim, ship, WOOD) + aboard(sim, cart, WOOD);
+        if (stockOf(sim, east, WOOD) === 0) {
+          riddenOut = Math.max(riddenOut, aboard(sim, ship, WOOD) + aboard(sim, cart, WOOD));
+        }
       }
       const onEastIsland =
         sim.world.has(trader, Position) && continentOf(sim, trader) === continentOf(sim, east);

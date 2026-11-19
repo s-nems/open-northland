@@ -1,5 +1,6 @@
 import type { ContentSet, VehicleType } from '@open-northland/data';
 import {
+  Building,
   CARRY_CAPACITY,
   Carrying,
   fillCommanderSeat,
@@ -16,13 +17,31 @@ import {
   vehicleLoad,
   vehiclePassengers,
   vehicleStockEntries,
+  WalkFacing,
 } from '../../components/index.js';
 import type { Command } from '../../core/commands/index.js';
 import { contentIndex } from '../../core/content-index.js';
 import type { Entity, World } from '../../ecs/world.js';
-import { type HalfCellNode, hexagonRing, nodeOfPosition } from '../../nav/halfcell.js';
+import {
+  type HalfCellNode,
+  HEX_DIRECTIONS,
+  type HexDirection,
+  type HexHeading,
+  hexagonRing,
+  hexDistance,
+  nodeOfPosition,
+  stepHex,
+} from '../../nav/halfcell.js';
+import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { MapContext, SystemContext } from '../context.js';
-import { dynamicBlockOverlay, vehicleDoorNode } from '../footprint/index.js';
+import {
+  buildingDoorwayNodes,
+  dynamicBlockOverlay,
+  vehicleAnchor,
+  vehicleBlockedCells,
+  vehicleDoorNode,
+} from '../footprint/index.js';
+import { hexHeadingOfWalk, walkOfHexHeading } from '../movement/turning.js';
 import { groupPlacementOrder } from '../orders/group-placement.js';
 import { sendUnit } from '../orders/movement.js';
 import { isCarrierJobRow, isTrader } from '../readviews/jobs.js';
@@ -37,14 +56,24 @@ import {
   passengerJobAllowed,
   placeOnNode,
 } from './crew.js';
-import { cartLiftTicks, cartSpeedLossPercent, isCartType } from './drag.js';
+import { cartLiftTicks, cartSpeedLossPercent, isAnimalDrawnType, isCartType } from './drag.js';
 import { endDrive, isOpenLand } from './movement.js';
 import { tradeVehicleStock, vehicleLineCap, vehicleStockGood } from './stock.js';
 
 // A hauling cart (`HaulingCart` in `components/vehicle.ts`), the work tool of a posted carrier or a
-// trader: the take, the lifts beside the standing cart, the park for a break, the room it lends and the
+// trader: the take, the lifts with the standing cart, the park for a break, the room it lends and the
 // set-down. The planner's `planHaulingCart` rung walks the puller to the cart and runs a carrier's lifts;
 // a trader's route work stands and takes the cart up itself (`trade/drive.ts`).
+
+/**
+ * Whether a unit moving between a standing hauling cart and `at` goes through the puller's hands, a trip
+ * each: lifted at the cart, carried to the door and handed over inside, or the other way round. Original
+ * behavior for a house. A ground pile has no door: the cart stands beside it and a unit moves in one
+ * lift (named addition).
+ */
+export function carriesBetweenCartAndDoor(world: World, at: Entity): boolean {
+  return world.has(at, Building);
+}
 
 /** A carrier posted to a workplace: the trade and the post that a hauling cart serves. */
 export function isPostedCarrier(world: World, content: ContentSet, settler: Entity): boolean {
@@ -298,11 +327,10 @@ export function stowCartOnShip(world: World, settler: Entity, ship: Entity): voi
 }
 
 /**
- * Stand the cart beside the carrier for a lift: the carrier at a heap, a shelf or a store's door sets the
- * cart down on the nearest open land, its load stowed in the hold, and works units between the two one
- * lift each (`haulLoad` / `haulUnload` atomics timed by {@link haulingCartLiftTicks}, the planner's
- * hauling-cart rung) until the lift is done, then takes the cart up again. Original behavior of the
- * trader loading its cart, borrowed for the carrier (named addition).
+ * Stand the cart beside the carrier for a lift: the carrier at a heap, a shelf or its stand short of a
+ * store's door sets the cart down where it is ({@link setDownSpot}), its load stowed in the hold, and works units between the two a
+ * unit each (the planner's hauling-cart rung) until the lift is done, then takes the cart up again.
+ * Original behavior of the trader loading its cart, borrowed for the carrier (named addition).
  */
 export function beginCartLift(world: World, ctx: MapContext, settler: Entity, lift: HaulingLift): void {
   const held = world.tryGet(settler, HaulingCart);
@@ -323,10 +351,10 @@ export function endCartLift(world: World, settler: Entity): void {
 }
 
 /**
- * Whether the lift beside the standing cart has another unit to move: a load while units remain to lift,
+ * Whether the lift with the standing cart has another unit to move: a load while units remain to lift,
  * the source will part with one of the good (now, or on its next refill) and the cart has room, an unload
- * while the hold has a unit of its good and the store is there. The planner asks before each clip; the effects below
- * move the unit afterwards.
+ * while the hold or the carrier's hands have a unit of its good and the store is there. The planner asks
+ * before each clip; the effects below move the unit afterwards.
  */
 export function cartLiftContinues(
   world: World,
@@ -343,14 +371,15 @@ export function cartLiftContinues(
     return sourceSupplies(lift.from, lift.goodType);
   }
   if (lift.refused || !world.isAlive(lift.store)) return false;
-  return (world.tryGet(held.vehicle, VehicleStock)?.lines.get(lift.goodType)?.current ?? 0) > 0;
+  return haulingCartUnits(world, settler, lift.goodType) > 0;
 }
 
 /**
- * Resolve one completed `haulLoad`: one unit of `goodType` off `from` through the carrier's hands into
- * the standing cart's hold, the same move a pick-up makes ({@link pickupFromStore}: the claim ends, a dish
- * lands as its edible, the storage minimum holds). A unit the hold refuses stays in hand, and hands still
- * holding another good the hold refused end the lift with nothing taken.
+ * Resolve one completed `haulLoad`: one unit of `goodType` off `from` into the carrier's hands, the same
+ * move a pick-up makes ({@link pickupFromStore}: the claim ends, a dish lands as its edible, the storage
+ * minimum holds). Beside a ground pile the unit goes on into the standing cart's hold; from a house the
+ * carrier walks it to the cart ({@link carriesBetweenCartAndDoor}). A unit the hold refuses stays in hand,
+ * and hands still holding another good end the lift with nothing taken.
  */
 export function loadHaulingCart(
   world: World,
@@ -372,14 +401,15 @@ export function loadHaulingCart(
   if (lift?.kind === 'load' && (world.tryGet(settler, Carrying)?.amount ?? 0) > inHand) {
     world.mut(settler, HaulingCart).lift = { ...lift, units: lift.units - 1 };
   }
-  stowHands(world, ctx.content, settler, held.vehicle);
+  if (!carriesBetweenCartAndDoor(world, from)) stowHands(world, ctx.content, settler, held.vehicle);
 }
 
 /**
- * Resolve one completed `haulUnload`: one unit of `goodType` out of the standing cart's hold through the
- * carrier's hands onto `store`'s shelf, the same deposit a pile-up makes ({@link pileupIntoStore}). A unit
- * the store refuses goes back aboard and marks the lift refused, so the planner ends it and the carrier
- * finds another store for the rest of that good. True when the unit landed.
+ * Resolve one completed `haulUnload`: the unit of `goodType` in the carrier's hands, or one out of the
+ * standing cart's hold beside a ground pile, onto `store`'s shelf, the same deposit a pile-up makes
+ * ({@link pileupIntoStore}). A unit the store refuses marks the lift refused, so the planner ends it and
+ * the carrier finds another store for the rest of that good; it goes back aboard beside a pile and stays
+ * in hand at a house, whose cart stands a walk away. True when the unit landed.
  */
 export function unloadHaulingCart(
   world: World,
@@ -390,14 +420,55 @@ export function unloadHaulingCart(
 ): boolean {
   const held = world.tryGet(settler, HaulingCart);
   if (held === undefined || held.taken) return false;
-  if (liftOutOfHold(world, ctx.content, settler, held.vehicle, 1, goodType) <= 0) {
+  const inHand = world.tryGet(settler, Carrying);
+  const carried = inHand !== undefined && inHand.goodType === goodType && inHand.amount > 0;
+  if (!carried && liftOutOfHold(world, ctx.content, settler, held.vehicle, 1, goodType) <= 0) {
     endCartLift(world, settler);
     return false;
   }
   if (pileupIntoStore(world, ctx, settler, store) > 0) return true;
-  stowHands(world, ctx.content, settler, held.vehicle);
+  if (!carriesBetweenCartAndDoor(world, store)) stowHands(world, ctx.content, settler, held.vehicle);
   if (held.lift?.kind === 'unload') world.mut(settler, HaulingCart).lift = { ...held.lift, refused: true };
   return false;
+}
+
+/** Whether `settler` stands its hauling cart on the map, there to stow into or fetch out of. */
+function standsHaulingCart(world: World, settler: Entity, vehicle: Entity): boolean {
+  const held = world.tryGet(settler, HaulingCart);
+  return held !== undefined && held.vehicle === vehicle && !held.taken && world.has(vehicle, Position);
+}
+
+/** Resolve one completed `cartStow`: what the puller's hands hold goes into its standing cart's hold; a
+ *  unit the hold refuses stays in hand. */
+export function stowIntoHaulingCart(
+  world: World,
+  content: ContentSet,
+  settler: Entity,
+  vehicle: Entity,
+): void {
+  if (standsHaulingCart(world, settler, vehicle)) stowHands(world, content, settler, vehicle);
+}
+
+/** Resolve one completed `cartFetch`: one unit of `goodType` out of the puller's standing cart into its
+ *  hands; nothing moves with the hands holding another good or the line empty. */
+export function fetchFromHaulingCart(
+  world: World,
+  content: ContentSet,
+  settler: Entity,
+  vehicle: Entity,
+  goodType: number,
+): void {
+  if (standsHaulingCart(world, settler, vehicle))
+    liftOutOfHold(world, content, settler, vehicle, 1, goodType);
+}
+
+/** Whether the puller's hands hold a load its standing cart's hold has a line for. */
+export function handsStowInCart(world: World, content: ContentSet, settler: Entity): boolean {
+  const load = world.tryGet(settler, Carrying);
+  if (load === undefined || load.amount <= 0) return false;
+  const held = world.tryGet(settler, HaulingCart);
+  if (held === undefined || held.taken || !world.has(held.vehicle, Position)) return false;
+  return haulingCartTakes(world, content, settler, load.goodType);
 }
 
 /**
@@ -421,13 +492,15 @@ export function parkHaulingCart(world: World, ctx: MapContext, settler: Entity):
 /** How far around the carrier the set-down looks for open land before using its own node. */
 const SET_DOWN_RINGS = 3;
 
-/** A taken cart stands again beside the carrier (its own node when no land around is open, as a carried
- *  cart lands on a door), its hold taking what the carrier had on its hands; a unit the hold refuses
- *  stays in hand. */
+/** A taken cart stands again where the carrier is ({@link setDownSpot}), its
+ *  hold taking what the carrier had on its hands; a unit the hold refuses stays in hand. */
 function standCartBeside(world: World, ctx: MapContext, settler: Entity, vehicle: Entity): void {
   if (world.has(vehicle, Position)) return;
-  const at = setDownNode(world, ctx, settler);
-  if (at !== null) standCartOn(world, vehicle, at);
+  const spot = setDownSpot(world, ctx, settler);
+  if (spot !== null) {
+    standCartOn(world, vehicle, spot.at);
+    if (spot.front !== null) world.mut(vehicle, Vehicle).facing = walkOfHexHeading(spot.front);
+  }
   stowHands(world, ctx.content, settler, vehicle);
 }
 
@@ -454,21 +527,130 @@ export function releaseHaulingCart(world: World, ctx: MapContext, settler: Entit
   if (held.taken) standCartBeside(world, ctx, settler, vehicle);
 }
 
-/** The first open land node on the rings around the carrier, nearest first and never its own node while
- *  one is open, else its own node; null off the map. */
-function setDownNode(world: World, ctx: MapContext, settler: Entity): HalfCellNode | null {
+/** Where a cart set down stands and the heading its front faces, null to keep the one it has. */
+type SetDownSpot = { readonly at: HalfCellNode; readonly front: HexHeading | null };
+
+/** Which nodes a cart may be stood on: `free` is open land outside every doorway that no standing cart
+ *  covers, `apart` a node with no standing cart beside it, since a cart's art is wider than a node and
+ *  neighbours would draw as one. */
+type CartStandTest = {
+  readonly open: (point: HalfCellNode) => boolean;
+  readonly free: (point: HalfCellNode) => boolean;
+  readonly apart: (point: HalfCellNode) => boolean;
+};
+
+function cartStandTest(world: World, ctx: MapContext, terrain: TerrainGraph): CartStandTest {
+  const blocked = dynamicBlockOverlay(world, ctx, terrain);
+  const carts = vehicleBlockedCells(world, ctx, terrain);
+  const doorways = buildingDoorwayNodes(world, ctx, terrain);
+  const open = (point: HalfCellNode): boolean => isOpenLand(terrain, blocked, point);
+  return {
+    open,
+    free: (point) => {
+      if (!open(point)) return false;
+      const node = terrain.nodeAt(point.hx, point.hy);
+      return !carts.has(node) && !doorways.has(node);
+    },
+    apart: (point) =>
+      HEX_DIRECTIONS.every((direction) => {
+        const beside = stepHex(point, direction);
+        return !terrain.inBounds(beside.hx, beside.hy) || !carts.has(terrain.nodeAt(beside.hx, beside.hy));
+      }),
+  };
+}
+
+/**
+ * Where a taken cart is set down, its front the way the carrier faces: the carrier's own node, where the
+ * cart it pulls already draws. Where that node is a doorway or another cart stands on or beside it, the
+ * nearest ring node clear of both, so carts at one door stand apart and the later ones further out. With
+ * no such spot the first open land node, else the carrier's own node (as a carried cart lands on a door);
+ * null off the map.
+ */
+function setDownSpot(world: World, ctx: MapContext, settler: Entity): SetDownSpot | null {
   const pos = world.tryGet(settler, Position);
   if (pos === undefined) return null;
   const own = nodeOfPosition(pos.x, pos.y);
   const terrain = ctx.terrain;
-  if (terrain === undefined) return own;
-  const blocked = dynamicBlockOverlay(world, ctx, terrain);
+  if (terrain === undefined) return { at: own, front: null };
+  const facing = world.tryGet(settler, WalkFacing);
+  const front = facing === undefined ? null : hexHeadingOfWalk(facing.direction);
+  const { open, free, apart } = cartStandTest(world, ctx, terrain);
+  if (free(own) && apart(own)) return { at: own, front };
+  let fallback: HalfCellNode | null = null;
   for (let radius = 1; radius <= SET_DOWN_RINGS; radius++) {
     for (const { point } of hexagonRing(own, radius)) {
-      if (isOpenLand(terrain, blocked, point)) return point;
+      if (fallback === null && open(point)) fallback = point;
+      if (free(point) && apart(point)) return { at: point, front };
     }
   }
-  return own;
+  return { at: fallback ?? own, front };
+}
+
+/** The nearest and farthest ring around a house's door a cart bound for it is stood on: beside the
+ *  door for the first carts and further out for the later ones, never on it, so the puller stops, lets
+ *  go of the cart and walks the rest. */
+const CART_STAND_NEAREST_RING = 1;
+const CART_STAND_FARTHEST_RING = 4;
+
+/**
+ * The node a puller bound for the house door `door` stands its cart on: a node of the rings around the
+ * door a cart may stand on ({@link cartStandTest}), on the puller's continent and not `vetoed`: of the
+ * nearest ring that has one, the node nearest `from`, the first in ring order on a tie. Null with none.
+ */
+export function cartStandNear(
+  world: World,
+  ctx: MapContext,
+  terrain: TerrainGraph,
+  door: NodeId,
+  from: NodeId,
+  vetoed?: (node: NodeId) => boolean,
+): NodeId | null {
+  const { free, apart } = cartStandTest(world, ctx, terrain);
+  const centre = { hx: terrain.xOf(door), hy: terrain.yOf(door) };
+  const origin = { hx: terrain.xOf(from), hy: terrain.yOf(from) };
+  const continent = terrain.componentOf(from);
+  let best: NodeId | null = null;
+  let bestDistance = Number.POSITIVE_INFINITY;
+  for (let radius = CART_STAND_NEAREST_RING; radius <= CART_STAND_FARTHEST_RING; radius++) {
+    for (const { point } of hexagonRing(centre, radius)) {
+      const distance = hexDistance(point, origin);
+      if (distance >= bestDistance || !free(point) || !apart(point)) continue;
+      const node = terrain.nodeAt(point.hx, point.hy);
+      if (terrain.componentOf(node) !== continent || (node !== from && vetoed?.(node) === true)) continue;
+      best = node;
+      bestDistance = distance;
+    }
+    if (best !== null) return best;
+  }
+  return null;
+}
+
+/** The side of a standing cart its puller works it from, below and right of it whichever way the cart
+ *  faces (owner's choice, by how the lift reads against the cart's art). */
+const CART_WORK_SIDE: HexDirection = 'southEast';
+
+/**
+ * The node a puller works its standing cart from: the one on the cart's work side, where that is open
+ * ground. With that node closed a handcart is worked from its own node; null for an animal-drawn cart
+ * then, or one off the map, and the caller falls back to the cart's door.
+ */
+export function cartWorkNode(
+  world: World,
+  ctx: MapContext,
+  terrain: TerrainGraph,
+  vehicle: Entity,
+): NodeId | null {
+  const state = world.tryGet(vehicle, Vehicle);
+  const anchor = vehicleAnchor(world, vehicle);
+  if (state === undefined || anchor === null || !terrain.inBounds(anchor.hx, anchor.hy)) return null;
+  const type = contentIndex(ctx.content).vehicles.get(state.vehicleType);
+  if (type === undefined) return null;
+  const drawn = isAnimalDrawnType(ctx.content, type);
+  const stand = stepHex(anchor, CART_WORK_SIDE);
+  if (!isOpenLand(terrain, dynamicBlockOverlay(world, ctx, terrain), stand)) {
+    return drawn ? null : terrain.nodeAt(anchor.hx, anchor.hy);
+  }
+  return terrain.nodeAt(stand.hx, stand.hy);
 }
 
 /**
@@ -570,8 +752,8 @@ export function carryCapacityOf(world: World, content: ContentSet, settler: Enti
   return pullsHaulingCart(world, settler) ? haulingCartRoom(world, content, settler) : CARRY_CAPACITY;
 }
 
-/** The ticks `settler` takes to lift one unit into or out of its hauling cart ({@link cartLiftTicks}),
- *  the lifting clip lasting `clipTicks`; the clip unchanged without a cart. */
+/** The ticks `settler` takes to lift one unit into or out of its hauling cart at the cart
+ *  ({@link cartLiftTicks}), the lifting clip lasting `clipTicks`; the clip unchanged without a cart. */
 export function haulingCartLiftTicks(
   world: World,
   content: ContentSet,

@@ -50,9 +50,9 @@ const WEST_SLOT = 0;
 const EAST_SLOT = 1;
 const BUILDING_GOODS = ['brick', 'stone'] as const;
 
-/** Headroom over the measured run: seed 45 settles the last level by tick 2806, and the checks then
+/** Headroom over the measured run: seed 45 settles the last level by tick 7720, and the checks then
  *  hold to the end. */
-const RUN_TICKS = TICKS_PER_SECOND * 300;
+const RUN_TICKS = TICKS_PER_SECOND * 720;
 
 const { Building, Owner, setStockAmount, Stockpile, TRADE_LIMIT_NONE } = components;
 

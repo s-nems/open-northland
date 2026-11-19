@@ -36,7 +36,7 @@ const WOOD_STOCKED = 60;
 /** The carriers assigned to the ship, the first standing at {@link CARRIERS_AT}. */
 const HELPERS = 3;
 const CARRIERS_AT = { x: 4, y: 11 } as const;
-const RUN_SECONDS = 185;
+const RUN_SECONDS = 350;
 
 /** Short of the last unit, so the check compares two runs still under way. */
 const RUN_TICKS = TICKS_PER_SECOND * RUN_SECONDS;

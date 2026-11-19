@@ -31,13 +31,16 @@ export function readsStun(components: Readonly<Record<string, unknown>>): boolea
   );
 }
 
-/** Whether the running atomic lifts a unit into or out of a hold (`haulLoad`, `haulUnload`, `tradeLoad`,
- *  `tradeUnload`, `tradeShipStow`, `tradeShipFetch`), whose length a cart's kind sets; a trader on foot's lift lasts its clip. */
+/** Whether the running atomic lifts a unit into or out of a hold (`haulLoad`, `haulUnload`, `cartStow`,
+ *  `cartFetch`, `tradeLoad`, `tradeUnload`, `tradeShipStow`, `tradeShipFetch`), whose length a cart's kind
+ *  may set; a hand-over inside a house lasts its clip. */
 export function readsCartLift(components: Readonly<Record<string, unknown>>): boolean {
   const kind = (components.CurrentAtomic as { effect?: { kind?: unknown } } | undefined)?.effect?.kind;
   return (
     kind === 'haulLoad' ||
     kind === 'haulUnload' ||
+    kind === 'cartStow' ||
+    kind === 'cartFetch' ||
     kind === 'tradeLoad' ||
     kind === 'tradeUnload' ||
     kind === 'tradeShipStow' ||
@@ -56,8 +59,8 @@ export function readAtomicTargetEntity(components: Readonly<Record<string, unkno
 
 /**
  * The store a settler's running atomic exchanges goods or gear with by hand, or `null` for any other or
- * no atomic: a carried load, an item put on or taken off at a store, and a trader's unit lifted on foot.
- * A lift beside a standing hauling cart is none: the carrier stays at its cart.
+ * no atomic: a carried load, an item put on or taken off at a store, and a unit a trader or a carrier
+ * with a hauling cart hands over at the store. A lift at the cart itself is none.
  */
 export function readStoreExchangeRef(components: Readonly<Record<string, unknown>>): number | null {
   const a = components.CurrentAtomic as { effect?: unknown } | undefined;
@@ -72,36 +75,14 @@ export function readStoreExchangeRef(components: Readonly<Record<string, unknown
     case 'unequip':
       return typeof effect.sink === 'number' ? effect.sink : null;
     case 'tradeLoad':
-      return typeof effect.from === 'number' && !('HaulingCart' in components) ? effect.from : null;
+    case 'haulLoad':
+      return typeof effect.from === 'number' ? effect.from : null;
     case 'tradeUnload':
-      return typeof effect.store === 'number' && !('HaulingCart' in components) ? effect.store : null;
+    case 'haulUnload':
+      return typeof effect.store === 'number' ? effect.store : null;
     default:
       return null;
   }
-}
-
-/**
- * The store a carrier is inside while it lifts one unit beside its standing hauling cart, or `null`: a
- * lift out of a store spends its first half inside and its second at the cart, a lift into one the
- * reverse. Approximation: the lift is one sim action of the cart kind's length with the cart at the
- * door, shown as the walk between the two that the original's carrier makes for every unit.
- */
-export function readCartLiftStoreRef(
-  components: Readonly<Record<string, unknown>>,
-  tick: number,
-): number | null {
-  if (!('HaulingCart' in components)) return null;
-  const a = components.CurrentAtomic as { effect?: unknown; duration?: unknown } | undefined;
-  const effect = a?.effect as { kind?: unknown; store?: unknown; from?: unknown } | undefined;
-  if (effect === undefined || effect === null || typeof a?.duration !== 'number') return null;
-  const loads = effect.kind === 'haulLoad' || effect.kind === 'tradeLoad';
-  const unloads = effect.kind === 'haulUnload' || effect.kind === 'tradeUnload';
-  const store = loads ? effect.from : unloads ? effect.store : undefined;
-  if (typeof store !== 'number') return null;
-  const elapsed = readAtomicElapsed(components, tick);
-  if (elapsed === null) return null;
-  const inFirstHalf = elapsed * 2 < a.duration;
-  return inFirstHalf === loads ? store : null;
 }
 
 export interface CraftPerformance {

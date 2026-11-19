@@ -52,7 +52,7 @@ const IRON_STOCKED = 12;
 const IRON_TRADED_GOAL = 8;
 
 /** Several round trips across the map, with slack for the walk. */
-const RUN_TICKS = 60 * systems.MISSION_EVALUATION_TICKS;
+const RUN_TICKS = 80 * systems.MISSION_EVALUATION_TICKS;
 
 const { setStockAmount, stampMissionId, Building, Settler, Stockpile } = components;
 

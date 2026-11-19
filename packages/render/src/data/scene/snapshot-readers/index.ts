@@ -36,7 +36,6 @@ export {
   readBehaviourImported,
   readCarriesLiveGood,
   readCarrying,
-  readCartLiftStoreRef,
   readCraftPerformance,
   readCraftWorkplace,
   readEngaged,

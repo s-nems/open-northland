@@ -31,7 +31,7 @@ const TRADER_OFFSET = { x: 1, y: 2 } as const;
 const WOOD_STOCKED = 30;
 
 /** Long enough for the walker's few trips and the cart's full load over. */
-const RUN_TICKS = TICKS_PER_SECOND * 240;
+const RUN_TICKS = TICKS_PER_SECOND * 490;
 
 const { setStockAmount, Stockpile } = components;
 
