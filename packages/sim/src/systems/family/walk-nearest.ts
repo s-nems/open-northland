@@ -26,7 +26,8 @@ export interface HaulSource extends RankedSource {
  * those `accept` passes: the lower id wins a tie, and a source the walk does not reach ranks after every
  * one it does, by distance. `seed` is a candidate `accept` passed, the nearest by distance, whose walk
  * bounds every walk asked after it. `accept` is a pure read, asked only of a source that may come nearer
- * than the best so far.
+ * than the best so far. Every candidate costs its position, its held door and a hex distance; `accept` and
+ * a walk are paid only by one whose hex distance undercuts the best length.
  */
 export function nearestSourceByWalk(
   world: World,
