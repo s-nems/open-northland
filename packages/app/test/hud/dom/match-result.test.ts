@@ -25,12 +25,14 @@ function setup(
     scriptedEnding,
     localPlayer = 0,
     playerNickOf,
+    holdsSeat,
   }: {
     onLoad?: (back: () => void) => void;
     playAgain?: () => void;
     scriptedEnding?: boolean;
     localPlayer?: number | null;
     playerNickOf?: (player: number) => string | undefined;
+    holdsSeat?: () => boolean;
   } = {},
 ) {
   vi.stubGlobal(
@@ -62,6 +64,7 @@ function setup(
     setCameraSuspended: vi.fn(),
     ...(onLoad !== undefined ? { onLoad } : {}),
     ...(playAgain !== undefined ? { playAgain: { scope: 'thisMap', start: playAgain } } : {}),
+    ...(holdsSeat !== undefined ? { holdsSeat } : {}),
   });
   overlays.push(overlay);
   const body = {
@@ -229,6 +232,36 @@ it.each(['victory', 'defeat'] as const)(
     expect(h.body.children).toHaveLength(0);
   },
 );
+
+it('lets a seated player of a shared game keep playing with its seat, and a watcher only watch', () => {
+  const copy = messages().hud;
+  const h = setup(true, () => [], { holdsSeat: () => true });
+  h.overlay.finish('victory');
+  expect(h.body.buttons().map((button) => button.textContent)).toEqual([
+    copy.matchContinue,
+    copy.matchWatch,
+    copy.returnToMenu,
+  ]);
+  expect(document.activeElement).toBe(h.body.buttons()[0]);
+  h.body.buttons()[0]?.click();
+  expect(h.onContinue).not.toHaveBeenCalled();
+  expect(h.body.children).toHaveLength(0);
+
+  const watcher = setup(true, () => [], { holdsSeat: () => false });
+  watcher.overlay.finish('undecided');
+  expect(watcher.body.buttons().map((button) => button.textContent)).toEqual([
+    copy.matchWatch,
+    copy.returnToMenu,
+  ]);
+});
+
+it('keeps playing on Escape instead of giving the seat up to watch', () => {
+  const h = setup(true, () => [], { holdsSeat: () => true });
+  h.overlay.finish('defeat');
+  document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+  expect(h.onContinue).not.toHaveBeenCalled();
+  expect(h.body.children).toHaveLength(0);
+});
 
 it('waits for server confirmation before showing shared victory', () => {
   const h = setup(true);

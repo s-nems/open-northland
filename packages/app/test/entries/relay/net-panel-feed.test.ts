@@ -27,8 +27,6 @@ const REQUESTED_SPEED = 3;
 const GOVERNED_SPEED = 2;
 const VOTE_AFTER_MS = 5000;
 const SECOND_MS = 1000;
-/** Any tick: the verdict's tick plays no part in the hold. */
-const ENDED_TICK = 200;
 const BUDGET_MS = TICK_MS / GOVERNED_SPEED;
 
 const member = (nick: string, seat: number | null, extra: Partial<RoomMemberView> = {}): RoomMemberView => ({
@@ -275,14 +273,6 @@ describe('the relayed network panel feed', () => {
     send({ kind: 'waiting', for: [] });
     send({ kind: 'waiting', for: [{ nick: 'Bartek', reason: 'silent', voteAfterMs: 0 }] });
     expect(rowOf(feed, 'Bartek')?.vote).toMatchObject({ yes: 0 });
-  });
-
-  it('ends the hold at the match’s verdict, though no new wait list came', () => {
-    const { feed, send } = setup();
-    send({ kind: 'waiting', for: [{ nick: 'Bartek', reason: 'gone', voteAfterMs: VOTE_AFTER_MS }] });
-    expect(feed.model().clock.held).toBe(true);
-    send({ kind: 'ended', tick: ENDED_TICK, hash: 'verdict' });
-    expect(feed.model().clock.held).toBe(false);
   });
 
   it('names the governor and what bounds it, and the relay this client is linked to', () => {

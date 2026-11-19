@@ -122,9 +122,9 @@ describe('relay log', () => {
     s.advance(60 * SECOND_MS);
     for (const peer of [a, b]) peer.send({ kind: 'finish', tick: 1, world: 0, hash: '12345678' });
     s.advance(TICK_MS);
-    // The end closes the game's figures with a last room status.
-    expect(s.lines.slice(-2).map((line) => line.event)).toEqual(['room status', 'game ended']);
-    expect(s.events('game ended')).toEqual([{ ...room, tick: 1, playedSeconds: 60 }]);
+    // The game plays on past its result, so its figures go on too.
+    expect(s.lines.at(-1)?.event).toBe('match decided');
+    expect(s.events('match decided')).toEqual([{ ...room, tick: 1, playedSeconds: 60 }]);
 
     a.send({ kind: 'leaveRoom' });
     b.send({ kind: 'leaveRoom' });
@@ -132,9 +132,9 @@ describe('relay log', () => {
       { nick: 'Ania', cause: 'left', members: 1 },
       { nick: 'Bartek', cause: 'left', members: 0 },
     ]);
-    expect(s.lines.slice(-2).map((line) => line.event)).toEqual(['room left', 'room dropped']);
+    expect(s.lines.slice(-2).map((line) => line.event)).toEqual(['room status', 'room dropped']);
     expect(s.events('room dropped')).toEqual([
-      { ...room, state: 'ended', members: 0, ageSeconds: 110, playedSeconds: 60 },
+      { ...room, state: 'running', members: 0, ageSeconds: 110, playedSeconds: 60 },
     ]);
   });
 
@@ -414,13 +414,11 @@ describe('relay log', () => {
       { nick: 'Bartek', seat: 1, ...link, ...load, drops: 1, goneMs },
     ]);
 
-    play(s, 1, [a, back], []);
-    for (const peer of [a, back])
-      peer.send({ kind: 'finish', tick: acked.get(peer), world: 0, hash: '12345678' });
-    s.advance(TICK_MS);
+    while (s.events('room status').length < 2) play(s, 1, [a, back]);
+    const trips = { roundTripMeanMs: expect.any(Number), roundTripMaxMs: expect.any(Number) };
     expect(s.events('room status').at(-1)?.members).toEqual([
-      { nick: 'Ania', seat: 0, delayMaxTicks: expect.any(Number), ...load },
-      { nick: 'Bartek', seat: 1, delayMaxTicks: expect.any(Number), ...load },
+      { nick: 'Ania', seat: 0, ...trips, delayMaxTicks: expect.any(Number), ...load },
+      { nick: 'Bartek', seat: 1, ...trips, delayMaxTicks: expect.any(Number), ...load },
     ]);
   });
 
@@ -440,7 +438,7 @@ describe('relay log', () => {
     expect(s.events('status')).toEqual([
       {
         clients: 1,
-        rooms: { lobby: 0, running: 0, ended: 0 },
+        rooms: { lobby: 0, running: 0 },
         playing: 0,
         anonymous: 3,
         pollMaxMs: STATUS_LOG_INTERVAL_MS,
@@ -527,7 +525,7 @@ describe('relay log', () => {
     expect(s.events('status')).toEqual([
       {
         clients: 4,
-        rooms: { lobby: 0, running: 1, ended: 0 },
+        rooms: { lobby: 0, running: 1 },
         playing: 2,
         pollMaxMs: SECOND_MS,
         latePolls: polls,

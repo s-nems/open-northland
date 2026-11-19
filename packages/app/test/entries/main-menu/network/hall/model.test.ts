@@ -24,11 +24,10 @@ function room(id: string, name: string, state: RoomState = 'lobby'): RoomSummary
 }
 
 describe('server hall', () => {
-  it('splits joinable rooms from running games and leaves ended and abandoned ones out', () => {
+  it('splits joinable rooms from running games and leaves abandoned ones out', () => {
     const { open, running } = hallRooms([
       room('a', 'Lobby'),
       room('b', 'Game', 'running'),
-      room('c', 'Over', 'ended'),
       { ...room('d', 'Abandoned', 'running'), members: [] },
     ]);
     expect(open.map((entry) => entry.id)).toEqual(['a']);

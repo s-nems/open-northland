@@ -60,7 +60,6 @@ export type RelayReason =
   | { readonly code: 'ackOutOfOrder'; readonly expected: number }
   | { readonly code: 'tickNotEmitted'; readonly tick: number }
   | { readonly code: 'noWorldYet' }
-  | { readonly code: 'matchEnded' }
   | { readonly code: 'loadingTimedOut'; readonly nick: string }
   | { readonly code: 'leftBeforeStart'; readonly nick: string }
   | { readonly code: 'commandBudget' }

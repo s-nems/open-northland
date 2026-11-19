@@ -34,8 +34,7 @@ export function mountLobbyCard(): LobbyCard {
       inviteLink.style.display = invite === null ? 'none' : 'block';
       if (invite !== null) inviteLink.href = invite;
       if (view.state !== 'lobby') {
-        detail.textContent =
-          view.state === 'ended' ? messages().hud.matchFinishedTitle : messages().network.starting;
+        detail.textContent = messages().network.starting;
         return;
       }
       const seated = view.members.map(

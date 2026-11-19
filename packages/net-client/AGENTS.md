@@ -24,7 +24,7 @@ requests. The root [`AGENTS.md`](../../AGENTS.md) applies in full; the wire cont
   `RelayLinkEvents`.
 - `RelayClient` is the `SessionDriver` of the world it adopted: elapsed time in, paced a frame or two
   behind the relay to hold the jitter buffer; tempo and pause read as the relay last broadcast them,
-  a decided or confirmed match reading as paused, and a change is a request the relay applies for
+  a world standing at a result the room has not confirmed yet reading as paused, and a change is a request the relay applies for
   everyone. It numbers each adopted world (`worldId`, null while it holds none), so a host can tell
   whether a save or a request still belongs to the running world.
 - `RelayClientView` is what a display reads of the client and asks of it. `RelayState` turns relay

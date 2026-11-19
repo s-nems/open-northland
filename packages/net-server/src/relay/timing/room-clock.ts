@@ -95,18 +95,6 @@ export class RoomClock {
     return [...this.pending].sort(([a], [b]) => a - b).map(([tick, { commands }]) => ({ tick, commands }));
   }
 
-  finishAt(tick: number): void {
-    this.lastTick = tick;
-    this.pausedFlag = true;
-    this.governedClock = null;
-    this.accumulatorMs = 0;
-    this.pending.clear();
-    this.budgets.clear();
-    this.lastScheduled.clear();
-    this.pendingCounts.clear();
-    this.pendingHistoryBytes = 0;
-  }
-
   start(): void {
     this.started = true;
   }

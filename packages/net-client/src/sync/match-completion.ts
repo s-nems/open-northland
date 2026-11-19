@@ -1,8 +1,9 @@
 import type { ClientMessage } from '@open-northland/net-protocol';
 import type { Simulation } from '@open-northland/sim';
 
-/** The match's end as this client sees it: the tick its own world decided on, and the tick and full
- *  hash the relay confirmed for the room. */
+/** The match's result as this client sees it: the tick its own world decided on, and the tick and full
+ *  hash the relay confirmed for the room. The world stands at its result only until the room confirms
+ *  one, then plays on. */
 export class MatchCompletion {
   private confirmed: { readonly tick: number; readonly hash: string } | null = null;
   resultTick: number | null = null;
@@ -12,6 +13,11 @@ export class MatchCompletion {
 
   get confirmedTick(): number | null {
     return this.confirmed?.tick ?? null;
+  }
+
+  /** The world reached a result the room has not confirmed yet. */
+  get halted(): boolean {
+    return this.resultTick !== null && this.confirmed === null;
   }
 
   confirm(tick: number, hash: string): void {
@@ -36,8 +42,9 @@ export class MatchCompletion {
     return this.verified ? null : 'The restored world does not match the confirmed match result';
   }
 
+  /** Past a confirmed result the world stays decided, and reaching it again reports nothing. */
   detect(sim: Simulation | null): boolean {
-    if (sim?.matchEnded() !== true) return false;
+    if (this.confirmed !== null || sim?.matchEnded() !== true) return false;
     this.resultTick = sim.tick;
     return true;
   }

@@ -1,7 +1,7 @@
 import { prepareInitialSave } from '@open-northland/net-client';
 import type { RoomSettings } from '@open-northland/net-protocol';
 import { Relay } from '@open-northland/net-server';
-import { adminCommand, components, exportSaveGame, fx, Simulation } from '@open-northland/sim';
+import { adminCommand, components, exportSaveGame, fx, playerCommand, Simulation } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import { testContent } from '../../../../sim/test/fixtures/content.js';
 import { TEST_COMPATIBILITY } from '../../support/compatibility.js';
@@ -78,19 +78,30 @@ async function assembled(localDefeat = false) {
   return { s, a, b, links };
 }
 describe('terminal real relayed worlds', () => {
-  it('freezes both jittered clients at the same result tick despite frames already in flight', async () => {
+  it('agrees on the result tick despite frames already in flight, then plays on in step', async () => {
     const { s, a, b } = await assembled();
     await runFor(s, [a, b], 3000);
-    expect(a.tick).toBe(750);
-    expect(b.tick).toBe(750);
-    expect(a.sim?.hashState()).toBe(b.sim?.hashState());
-    expect(a.sim?.matchEnded()).toBe(true);
-    expect(a.room?.state).toBe('ended');
-    expect(b.room?.state).toBe('ended');
     expect(a.endedTick).toBe(750);
     expect(b.endedTick).toBe(750);
-    expect(a.rejections).toEqual([]);
-    expect(b.rejections).toEqual([]);
+    expect(a.sim?.matchEnded()).toBe(true);
+    a.submit(
+      playerCommand(0, {
+        kind: 'setAssistantCounter',
+        player: 0,
+        counter: 'extraMen',
+        value: 3,
+        infinite: false,
+      }),
+    );
+    await runFor(s, [a, b], 1000);
+    a.setPaused(true);
+    await runFor(s, [a, b], 1000);
+    expect(a.room?.state).toBe('running');
+    expect(a.tick).toBeGreaterThan(750);
+    expect(b.tick).toBe(a.tick);
+    expect(b.sim?.assistantCounters(0).extraMen).toMatchObject({ value: 3 });
+    expect(b.sim?.hashState()).toBe(a.sim?.hashState());
+    expect([...a.rejections, ...b.rejections, ...a.desyncs, ...b.desyncs]).toEqual([]);
   });
   it('does not finish when only the local player is defeated', async () => {
     const { s, a, b } = await assembled(true);
@@ -101,7 +112,7 @@ describe('terminal real relayed worlds', () => {
     expect(a.room?.state).toBe('running');
     expect(a.endedTick).toBeNull();
   });
-  it('reconnects a member dropped just before the result from a terminal snapshot', async () => {
+  it('confirms the result without a member dropped just before it, then plays on with it in step', async () => {
     const { s, a, b, links } = await assembled();
     for (let ms = 0; ms < 3000 && (a.tick ?? 0) < 750; ms += 5) {
       settle(s, 5);
@@ -112,20 +123,20 @@ describe('terminal real relayed worlds', () => {
       await Promise.all([a.settled(), b.settled()]);
     }
     await runFor(s, [a], 2000);
-    expect(a.room?.state).toBe('ended');
-    a.receive({ kind: 'snapshotRequest' });
-    await a.settled();
-    settle(s, SETTLE);
+    // The result needs no dropped member; the clock waits for it as in any running game.
+    expect(a.endedTick).toBe(750);
     const back = client('Bartek');
     relink(s, back, LINK);
     await runFor(s, [a, back], 2000);
-    expect(back.tick).toBe(750);
-    expect(back.endedTick).toBe(750);
-    expect(back.room?.state).toBe('ended');
+    a.setPaused(true);
+    await runFor(s, [a, back], 1000);
+    expect(a.tick).toBeGreaterThan(750);
+    expect(back.tick).toBe(a.tick);
+    expect(back.sim?.matchOutcome(0)).toBe('victory');
     expect(back.sim?.hashState()).toBe(a.sim?.hashState());
     expect(back.rejections).toEqual([]);
   });
-  it('accepts a save already at its terminal tick without needing an incremental digest', async () => {
+  it('accepts a save already at its result tick without needing an incremental digest', async () => {
     const sim = buildWorld();
     sim.step();
     const prepared = await prepareInitialSave(exportSaveGame(sim));
@@ -151,10 +162,9 @@ describe('terminal real relayed worlds', () => {
     settle(s, SETTLE);
     a.start();
     await runFor(s, [a, b], 3000);
-    expect(a.room?.state).toBe('ended');
-    expect(b.room?.state).toBe('ended');
-    expect(a.tick).toBe(750);
-    expect(b.tick).toBe(750);
+    expect(a.endedTick).toBe(750);
+    expect(b.endedTick).toBe(750);
+    expect(a.tick).toBeGreaterThan(750);
     expect(a.rejections).toEqual([]);
     expect(b.rejections).toEqual([]);
   });

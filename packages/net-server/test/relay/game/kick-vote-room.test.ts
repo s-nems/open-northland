@@ -26,15 +26,15 @@ function tick(s: MessageStage, peers: readonly Peer[], ms: number): void {
 
 const tokenOf = (i: number): string => `token-${i}-0123456789abcdef`;
 
-/** `count` seated members in a running room, member i in seat i; a vacated seat goes idle. */
-function roomOf(count: number) {
+/** `count` seated members in a running room, member i in seat i; a vacated seat goes `vacated`. */
+function roomOf(count: number, vacated: 'idle' | 'computer' = 'idle') {
   const s = stage();
   const peers = NICKS.slice(0, count).map((nick, i) => s.introduce(tokenOf(i), nick));
   const [a] = peers;
   if (a === undefined) throw new Error('no creator');
   a.send({
     kind: 'createRoom',
-    settings: { ...SETTINGS, kickedSeatMode: 'idle' },
+    settings: { ...SETTINGS, kickedSeatMode: vacated },
     seats: peers.map((_, player) => ({
       player,
       mode: 'idle',
@@ -310,13 +310,14 @@ describe('kick votes as members come and go', () => {
     expect(a.last('kicked')).toMatchObject({ player: 3, nick: 'Dorota', cause: 'vote' });
   });
 
-  it('neither recounts nor takes a vote once the match has ended', () => {
-    const s = roomOf(5);
+  it('keeps counting votes past the result, and the seat a vote empties then goes to nobody', () => {
+    const s = roomOf(5, 'computer');
     const [a, b, c, d, e] = [s.member(0), s.member(1), s.member(2), s.member(3), s.member(4)];
     s.relay.disconnect(e.handle);
     tick(s, [a, b, c, d], KICK_COUNTDOWN_MS + TICK_MS);
     s.kick(a, 4);
     s.kick(b, 4);
+    expect(a.of('kicked')).toEqual([]);
     const last = lastTick(a);
     for (const peer of [a, b, c, d]) {
       ackThrough(peer, 1, last);
@@ -324,12 +325,6 @@ describe('kick votes as members come and go', () => {
     }
     expect(a.last('ended')).toMatchObject({ tick: last });
     s.relay.disconnect(d.handle);
-    s.kick(c, 4);
-    expect(c.last('rejected')?.reason).toEqual({ code: 'matchEnded' });
-    expect(a.of('kicked')).toEqual([]);
-    const back = s.introduce(tokenOf(3), 'Dorota');
-    back.send({ kind: 'loaded', tick: last, world: 0 });
-    expect(back.last('ended')).toMatchObject({ tick: last });
-    expect(back.of('kickVote')).toEqual([]);
+    expect(a.last('kicked')).toMatchObject({ player: 4, nick: 'Edek', cause: 'vote', mode: 'idle' });
   });
 });

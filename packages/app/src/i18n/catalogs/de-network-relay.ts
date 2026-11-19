@@ -70,7 +70,6 @@ export const deNetworkRelay = {
     noWorldYet: 'es wurde noch keine Welt geladen',
     leftBeforeStart: '{nick} hat das Spiel vor dem Start verlassen',
     loadingTimedOut: '{nick} hat den Ladevorgang nicht rechtzeitig abgeschlossen; erstelle den Raum erneut',
-    matchEnded: 'die Partie ist beendet',
     commandBudget: 'zu viele Befehle auf einmal',
     envelopeTooLarge: 'der Befehl ist zu groß',
     seatEmpty: 'Spielerplatz {seat} ist nicht belegt',

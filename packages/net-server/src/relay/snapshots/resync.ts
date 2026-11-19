@@ -76,12 +76,6 @@ export class Resync {
     return this.catchUp.framesAfter(tick);
   }
 
-  finishAt(tick: number): void {
-    this.catchUp.finishAt(tick);
-    this.refreshing = true;
-    this.resetRequests();
-  }
-
   /** Start the refresh cadence from the clock's start. */
   restartCadence(now: number): void {
     this.lastRefreshAt = now;

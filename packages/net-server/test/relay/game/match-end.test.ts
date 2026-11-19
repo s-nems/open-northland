@@ -1,6 +1,5 @@
 import { TICK_MS } from '@open-northland/net-protocol';
 import { describe, expect, it } from 'vitest';
-import { SNAPSHOT_REFRESH_MS, SNAPSHOT_RETRY_MS } from '../../../src/index.js';
 import {
   digest,
   LOAD,
@@ -31,27 +30,7 @@ describe('terminal room consensus', () => {
     expect(s.a.handle.room).toBeNull();
     expect(s.b.handle.room).toBeNull();
   });
-  it('retains an ended room across repeated refresh periods without retaining future paced frames', () => {
-    const s = acknowledged();
-    s.advance(TICK_MS * 8);
-    s.a.send(finish(1));
-    s.b.send(finish(1));
-    const bytes = Buffer.from('terminal opaque snapshot').toString('base64');
-    for (let i = 0; i < 4; i++) {
-      s.advance(i === 0 ? 1 : SNAPSHOT_REFRESH_MS);
-      const donor = s.a.of('snapshotRequest').length > s.b.of('snapshotRequest').length ? s.a : s.b;
-      expect(donor.last('snapshotRequest')).toBeDefined();
-      donor.send({ kind: 'blob', type: 'snapshot', world: 0, tick: 1, to: null, bytes });
-      expect(s.relay.roomCount).toBe(1);
-      expect(s.a.last('room')?.room.state).toBe('ended');
-    }
-    s.relay.disconnect(s.b.handle);
-    const back = s.introduce(TOKEN_B, 'Bartek');
-    back.send({ kind: 'loaded', tick: null });
-    expect(back.last('blob')).toMatchObject({ type: 'snapshot', tick: 1, bytes });
-    expect(back.of('error')).toEqual([]);
-  });
-  it('sends no snapshot to a diverged member that left the ended room while it waited', () => {
+  it('sends no snapshot to a diverged member that left the room past its result while it waited', () => {
     const s = startedRoom();
     s.advance(TICK_MS);
     s.b.send({ kind: 'ack', load: LOAD, tick: 1, world: 0, digest: digest(2) });
@@ -67,44 +46,30 @@ describe('terminal room consensus', () => {
     expect(back.of('blob')).toEqual([]);
   });
 
-  it('retries unanswered terminal snapshot donors without advancing the game', () => {
-    const s = acknowledged();
-    s.a.send(finish(1));
-    s.b.send(finish(1));
-    s.advance(1);
-    expect(s.a.of('snapshotRequest')).toHaveLength(1);
-    s.advance(SNAPSHOT_RETRY_MS - TICK_MS);
-    // Only a donor the relay still hears is asked.
-    s.b.send({ kind: 'pong', t: s.b.last('ping')?.t ?? 0 });
-    s.advance(TICK_MS);
-    expect(s.b.of('snapshotRequest')).toHaveLength(1);
-    expect(s.a.of('frame')).toHaveLength(1);
-  });
-
-  it('ends only on a shared acknowledged result and permanently closes gameplay and joining', () => {
+  it('confirms only a shared acknowledged result, and the game runs on past it', () => {
     const s = acknowledged();
     s.a.send(finish(1));
     expect(s.a.last('ended')).toBeUndefined();
     s.b.send(finish(1));
     expect(s.a.last('ended')).toEqual({ kind: 'ended', tick: 1, hash });
-    expect(s.a.last('room')?.room.state).toBe('ended');
+    expect(s.a.last('room')?.room.state).toBe('running');
     const before = s.a.of('frame').length;
-    s.advance(TICK_MS * 20);
-    expect(s.a.of('frame')).toHaveLength(before);
-    for (const command of [
-      { kind: 'clock', paused: false },
-      seatCommand(0),
-      { kind: 'start' },
-      { kind: 'kick', player: 1, yes: true },
-    ])
-      s.a.send(command);
-    expect(s.a.of('rejected').slice(-4)).toHaveLength(4);
+    s.a.send(seatCommand(0, 7));
+    s.a.send({ kind: 'clock', speed: 2 });
+    s.advance(TICK_MS * 4);
+    expect(s.a.of('rejected')).toEqual([]);
+    expect(s.a.of('frame').length).toBeGreaterThan(before);
+    expect(s.a.of('frame').flatMap((frame) => frame.commands.map((command) => command.envelope))).toEqual([
+      expect.objectContaining({ command: expect.objectContaining({ value: 7 }) }),
+    ]);
+    // A world that catches up passes the decided result again; that is not a new one.
+    s.b.send(finish(1));
+    expect(s.b.of('rejected')).toEqual([]);
     const c = s.introduce(TOKEN_C, 'Cezary');
     c.send({ kind: 'joinRoom', roomId: s.roomId });
-    expect(c.last('rejected')).toBeDefined();
-    const kicks = s.b.of('kicked').length;
+    expect(c.last('rejected')?.reason).toEqual({ code: 'gameStarted' });
     s.a.send({ kind: 'leaveRoom' });
-    expect(s.b.of('kicked')).toHaveLength(kicks);
+    expect(s.b.last('kicked')).toMatchObject({ player: 0, nick: 'Ania', cause: 'left', mode: 'idle' });
     s.b.send({ kind: 'leaveRoom' });
     expect(s.relay.roomCount).toBe(0);
   });
@@ -139,18 +104,18 @@ describe('terminal room consensus', () => {
     s.b.send(finish(1));
     expect(s.a.last('ended')).toBeUndefined();
   });
-  it('skips a disconnected member and reconnects it to the ended room without reopening it', () => {
+  it('skips a disconnected member and gives it the result when it comes back', () => {
     const s = acknowledged();
     s.a.send(finish(1));
     s.relay.disconnect(s.b.handle);
     s.advance(1);
     expect(s.a.last('ended')).toEqual({ kind: 'ended', tick: 1, hash });
     const b = s.introduce('token-b-0123456789ab', 'Bartek');
-    expect(b.last('room')?.room.state).toBe('ended');
+    expect(b.last('room')?.room.state).toBe('running');
     expect(b.last('start')).toBeDefined();
     expect(b.last('ended')).toEqual({ kind: 'ended', tick: 1, hash });
     b.send({ kind: 'loaded', tick: 0, world: 0 });
-    expect(b.last('frame')?.tick).toBe(1);
+    expect(b.of('frame').map((frame) => frame.tick)).toEqual(s.a.of('frame').map((frame) => frame.tick));
     expect(b.last('ended')).toEqual({ kind: 'ended', tick: 1, hash });
     b.send({ kind: 'ack', load: LOAD, tick: 1, world: 0, digest: digest(1) });
     b.send(finish(1));

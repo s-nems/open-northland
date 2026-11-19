@@ -67,7 +67,6 @@ export const chtNetworkRelay = {
     noWorldYet: '尚未載入任何世界',
     leftBeforeStart: '{nick} 在遊戲開始前離開了',
     loadingTimedOut: '{nick} 未能及時完成載入；請重新開設房間',
-    matchEnded: '對戰已結束',
     commandBudget: '一次下達太多命令',
     envelopeTooLarge: '命令過大',
     seatEmpty: '第 {seat} 號席位上沒有人',

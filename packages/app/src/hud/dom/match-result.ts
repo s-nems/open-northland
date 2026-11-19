@@ -29,6 +29,8 @@ export interface MatchResultDeps {
   readonly onLoad?: (back: () => void) => void;
   /** Starts over from a defeat, as a new match. */
   readonly playAgain?: ReplayOffer;
+  /** Whether the viewer of a shared game still holds a seat: closing the window keeps playing with it. */
+  readonly holdsSeat?: () => boolean;
 }
 
 /** A fresh start, as a new match: of the map being played, or from a sub-mission of its main map. */
@@ -99,7 +101,8 @@ function matchResultActions(shared: boolean, terminal: boolean) {
   return { pause: !shared, confirmQuit: !terminal };
 }
 
-/** The result is permanent; dismissing its window returns to local play or a shared spectator view. */
+/** The result is permanent; dismissing its window returns to local play, to a shared game the viewer's seat
+ *  plays on in, or to a shared spectator view. */
 export function createMatchResultOverlay(deps: MatchResultDeps): MatchResultOverlay {
   const state = matchResultState();
   let close: (() => void) | null = null;
@@ -210,8 +213,13 @@ export function createMatchResultOverlay(deps: MatchResultDeps): MatchResultOver
       deps.onContinue();
       hide();
     };
-    const resume = button(watching ? copy.matchWatch : copy.matchContinue, GLYPH.next, dismiss);
-    resume.classList.add('on-result__continue');
+    const resume = watching
+      ? button(copy.matchWatch, GLYPH.eye, dismiss)
+      : button(copy.matchContinue, GLYPH.next, dismiss);
+    // A shared game runs on behind the window; its seat keeps playing, and only watching gives it up.
+    const keepPlaying = watching && deps.holdsSeat?.() === true ? hide : null;
+    const primary = keepPlaying === null ? resume : button(copy.matchContinue, GLYPH.next, keepPlaying);
+    primary.classList.add('on-result__continue');
     const leave = (ask: Omit<SystemConfirmCopy, 'cancel'>, go: () => void): void => {
       if (!actions.confirmQuit) {
         hide();
@@ -231,6 +239,7 @@ export function createMatchResultOverlay(deps: MatchResultDeps): MatchResultOver
       ),
     );
     const row = line('div', 'on-result__actions', '');
+    if (primary !== resume) row.append(primary);
     row.append(resume);
     const playAgain = deps.playAgain;
     if (playAgain !== undefined && verdict === 'defeat') {
@@ -288,7 +297,7 @@ export function createMatchResultOverlay(deps: MatchResultDeps): MatchResultOver
         if (event.key === 'Escape') {
           event.preventDefault();
           if (confirm.isOpen()) confirm.cancel();
-          else dismiss();
+          else (keepPlaying ?? dismiss)();
         } else if (event.key === 'Tab') {
           const panel =
             plane.element.querySelector('.on-system-confirm [role="alertdialog"]') ?? frame.element;
@@ -313,7 +322,7 @@ export function createMatchResultOverlay(deps: MatchResultDeps): MatchResultOver
       { signal: scope.signal },
     );
     frame.open();
-    resume.focus();
+    primary.focus();
   };
 
   const announce = (outcome: MatchOutcome): void => {

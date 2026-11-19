@@ -58,17 +58,13 @@ export class Game {
     private readonly deliver: Deliver,
     now: number,
     initialSave: CachedSnapshot | null,
-    onEnded: () => void,
     private readonly log: RelayLog,
     /** The room's response reserve: the frames each client holds back before it applies one. */
     private readonly reserveTicks: () => number,
   ) {
     this.initialSaveTick = initialSave?.tick ?? null;
     this.clock = new RoomClock(speed);
-    this.end = new MatchEnd(this.clock, members, deliver, (tick) => {
-      this.resync.finishAt(tick);
-      onEnded();
-    });
+    this.end = new MatchEnd(members, deliver);
     this.departures = new Departures(this.clock);
     this.clockLog = new ClockLog(members, log, now);
     this.resync = new Resync(members, deliver, now, log);
@@ -97,7 +93,7 @@ export class Game {
   }
 
   get bufferSpeed(): number | null {
-    return this.clock.running && !this.clock.paused && !this.waiting.active && this.endedTick === null
+    return this.clock.running && !this.clock.paused && !this.waiting.active
       ? (this.clock.governed?.speed ?? this.clock.speed)
       : null;
   }
@@ -116,10 +112,10 @@ export class Game {
     return this.clock.running ? this.clock.nextTick : null;
   }
 
-  /** Ticks the member's acknowledgements trail the clock; 0 while the relay does not follow its world,
-   *  before the clock runs and after the match ended. */
+  /** Ticks the member's acknowledgements trail the clock; 0 while the relay does not follow its world
+   *  and before the clock runs. */
   behindTicks(member: Member): number {
-    if (!this.clock.running || this.endedTick !== null || !isSynced(member)) return 0;
+    if (!this.clock.running || !isSynced(member)) return 0;
     return Math.max(0, this.clock.tick - member.ackedTick);
   }
 
@@ -149,7 +145,7 @@ export class Game {
       tick: this.clock.tick,
       speed: this.clock.speed,
       ...(this.speedBy === null ? {} : { speedBy: this.speedBy }),
-      ...(this.clock.paused && this.endedTick === null
+      ...(this.clock.paused
         ? { paused: true, ...(this.pausedBy === null ? {} : { pausedBy: this.pausedBy }) }
         : {}),
       ...(governed === null ? {} : { governed }),
@@ -181,14 +177,11 @@ export class Game {
     else if (this.clock.running) refusal = this.catchUp(member, world, now);
     else refusal = this.admitBeforeStart(member, world);
     if (refusal !== null) return refusal;
-    let told = this.startClockWhenLoaded(now);
+    const started = this.startClockWhenLoaded(now);
     this.settle(now);
-    if (this.endedTick === null) told = this.updateWaiting(now) || told;
+    const told = this.updateWaiting(now) || started;
     const ended = this.end.message;
-    if (ended !== null) {
-      this.deliver(member, ended);
-      return null;
-    }
+    if (ended !== null) this.deliver(member, ended);
     // A returning client rebuilt its view with no waited set; one broadcast just now already told it.
     if (!told) this.deliver(member, this.waiting.message(now));
     // A returning or reloaded client rebuilt its view with no tallies, and tallies are sent as they move.
@@ -219,7 +212,6 @@ export class Game {
   }
 
   submit(member: Member, envelope: PlayerWireEnvelope, fromTick: number): Refusal {
-    if (this.endedTick !== null) return { code: 'matchEnded' };
     if (this.builtTick === null) return { code: 'noWorldYet' };
     if (member.seat === null) return { code: 'seatRequired' };
     const stamped: PlayerWireEnvelope = { ...envelope, player: member.seat };
@@ -235,7 +227,6 @@ export class Game {
 
   setClock(member: Member, speed: number | undefined, paused: boolean | undefined): Refusal {
     if (member.seat === null) return { code: 'seatRequired' };
-    if (this.endedTick !== null) return { code: 'matchEnded' };
     if (speed !== undefined && speed !== this.clock.speed) this.speedBy = member.nick;
     if (paused !== undefined && paused !== this.clock.paused) this.pausedBy = paused ? member.nick : null;
     if (speed !== undefined) this.clock.setSpeed(speed);
@@ -246,7 +237,6 @@ export class Game {
   }
 
   kick(voter: Member, player: number, yes: boolean, now: number): KickOutcome {
-    if (this.endedTick !== null) return { refused: { code: 'matchEnded' } };
     const outcome = this.kickVotes.cast(this.members, this.waiting, voter, player, yes, now, (target) =>
       this.waitedNow(target, now),
     );
@@ -257,7 +247,6 @@ export class Game {
   /** Count the kick votes again after a member dropped, returned or left: broadcast each tally that
    *  moved, and return a vote that now passes for the room to carry out. */
   recountKickVotes(now: number): PassedKick | null {
-    if (this.endedTick !== null) return null;
     const { moved, passed } = this.kickVotes.recount(this.members, this.waiting, now, (target) =>
       this.waitedNow(target, now),
     );
@@ -288,7 +277,7 @@ export class Game {
     this.pacing.forget(member.token);
     this.waiting.forget(member.token);
     this.removed(now);
-    if (this.endedTick === null) this.updateWaiting(now);
+    this.updateWaiting(now);
   }
 
   /** The kicked member is out of the room: the rest may be complete now. */
@@ -346,13 +335,11 @@ export class Game {
   advance(elapsedMs: number, now: number): Refusal {
     this.end.settle();
     if (this.end.failure !== null) return this.end.failure;
-    if (this.endedTick !== null) return this.resync.advance(now);
     this.updateWaiting(now);
     if (!this.clock.running) return null;
     const refusal = this.resync.advance(now);
     if (refusal !== null) return refusal;
     for (const frame of this.clock.advance(elapsedMs)) {
-      if (this.endedTick !== null) break;
       if (!this.resync.record(frame, now)) return { code: 'historyBytes' };
       this.broadcast({ kind: 'frame', ...frame });
     }

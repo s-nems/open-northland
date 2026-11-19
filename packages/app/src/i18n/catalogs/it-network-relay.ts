@@ -67,7 +67,6 @@ export const itNetworkRelay = {
     noWorldYet: 'nessun mondo è ancora caricato',
     leftBeforeStart: "{nick} ha lasciato la stanza prima dell'inizio della partita",
     loadingTimedOut: '{nick} non ha finito di caricare in tempo; ospita di nuovo la stanza',
-    matchEnded: 'la partita è terminata',
     commandBudget: 'troppi ordini in una volta',
     envelopeTooLarge: "l'ordine è troppo grande",
     seatEmpty: 'nessuno occupa il posto {seat}',

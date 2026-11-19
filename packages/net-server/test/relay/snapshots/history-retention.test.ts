@@ -73,7 +73,7 @@ describe('catch-up retention budgets', () => {
     expect(store.framesAfter(tick - 1)).toEqual([last]);
   });
 
-  it('returns the exact replay tail at snapshot, frame and terminal boundaries', () => {
+  it('returns the exact replay tail at snapshot and frame boundaries', () => {
     const store = new CatchUpStore();
     store.cache({ tick: 10, from: 'Ania', bytes: BLOB });
     const frames = Array.from({ length: 5 }, (_, i) => ({ tick: i + 11, commands: [] }));
@@ -84,9 +84,6 @@ describe('catch-up retention budgets', () => {
     store.cache({ tick: 12, from: 'Ania', bytes: BLOB });
     expect(store.framesAfter(11)).toBeNull();
     expect(store.framesAfter(12)).toEqual(frames.slice(2));
-    store.finishAt(14);
-    expect(store.framesAfter(13)).toEqual([{ tick: 14, commands: [] }]);
-    expect(store.framesAfter(14)).toEqual([]);
   });
 
   it('preserves admitted army gestures and the room when recovery history fills, then admits after refresh', () => {

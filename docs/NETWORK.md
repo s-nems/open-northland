@@ -71,7 +71,7 @@ so a client can answer it immediately.
 `listRooms` returns `rooms { rooms: [{ id, name, state, members, seats, world, locked, playedMs }] }`:
 `members` holds the nicks of the members connected now, `world` is the room's `settings.world`, `locked`
 whether joining asks a password, and `playedMs` the wall milliseconds since the room's clock first ran,
-null before it runs and once the match ended. A client
+null before it runs. A client
 outside a room also gets the list unasked, see [The hall](#the-hall).
 `createRoom { settings, seats, password? }` makes a room with the sender in it as creator; a `password`
 (one printable line of at most `MAX_ROOM_PASSWORD_LENGTH`, trimmed) locks it. `joinRoom { roomId, password? }`
@@ -131,7 +131,7 @@ Every change to a room is broadcast to its members as `room { room }`, the whole
 | `loading` | Boot progress in whole percent last reported before its world loaded; 100 once loaded; null before its first report. |
 | `roundTripMs` | The relay's smoothed round trip to it in ms, 0 until its first pong; null while disconnected. |
 | `delayTicks` | Its assigned [input delay](#input-delay); null while disconnected. |
-| `behindTicks` | Ticks its acknowledgements trail the clock; 0 before the clock runs, after the match ended, and while the relay does not follow its world (disconnected, loading or out of sync). |
+| `behindTicks` | Ticks its acknowledgements trail the clock; 0 before the clock runs and while the relay does not follow its world (disconnected, loading or out of sync). |
 
 Once the room has started, loading included, a moved load, progress, round trip, delay or `behindTicks`
 alone sends a view at most once per `LOAD_VIEW_INTERVAL_MS` per room. Before `start` no figure alone sends
@@ -642,7 +642,7 @@ queue; on its return it asks with `loaded { tick: null }` and takes the cache, o
 none is cached or the cache is held back. Nothing is sent to it before it asks.
 
 A returning token gets `room`, `chatHistory`, its pending `desync` notice if any,
-`start { session, snapshotTick }`, `clock` while the game runs, and `ended` once it has ended.
+`start { session, snapshotTick }`, `clock` while the game runs, and `ended` once the match has a result.
 `snapshotTick` is the cached snapshot's tick, or null while the relay still holds every frame from the
 first. The client answers `loaded`, and must answer `{ tick: null }` when its world is out of sync:
 
@@ -658,7 +658,7 @@ first. The client answers `loaded`, and must answer `{ tick: null }` when its wo
 - `{ tick, world: 0 }`, a world freshly built from the descriptor, when `snapshotTick` was null.
 
 A snapshot blob always replaces the client's world, and the frames that follow are applied through the
-same transport. An accepted `loaded` is answered with `ended` once the match has ended, else with
+same transport. An accepted `loaded` is answered with `ended` once the match has a result, then with
 `waiting` for the current waited set and one `kickVote` per open vote. A token whose seat was taken while
 its link was down gets its `kicked` and `left` after `welcome` ([Kick votes](#kick-votes)); one whose room
 ended meanwhile gets `welcome` alone. So the client answers every `welcome` while it holds a started room
@@ -737,11 +737,11 @@ closes or the room ends). `RelayReason` holds each code's values.
 | `blob` after the start | `lobbyFilesFixed` (a map or initial save), `snapshotUnsynced`, `tickNotEmitted`, `seatRequired` (an observer's snapshot while players remain), `noRecipient` |
 | `loaded` | `gameNotStarted`, `alreadyLoaded`, `worldOutOfSync`, `noSnapshot`, `initialSaveGeneration`, `worldTickMismatch`, `worldBeforeStart`, `tickNotEmitted`; past the recovery burst it closes with `trafficLimit` |
 | `ack` | `gameNotStarted`, `notLoaded`, `ackOutOfOrder`, `tickNotEmitted` |
-| `command` | `envelopeTooLarge`, `gameNotStarted`, `matchEnded`, `noWorldYet`, `seatRequired`, `commandBudget`; a non-player origin is `malformed` |
-| `clock` | `gameNotStarted`, `seatRequired`, `matchEnded` |
-| `kick` | `gameNotStarted`, `matchEnded`, `seatRequired`, `seatEmpty`, `voteSelf`, `notWaitedFor`, `voteNotOpen`, `noVoteToWithdraw` |
+| `command` | `envelopeTooLarge`, `gameNotStarted`, `noWorldYet`, `seatRequired`, `commandBudget`; a non-player origin is `malformed` |
+| `clock` | `gameNotStarted`, `seatRequired` |
+| `kick` | `gameNotStarted`, `seatRequired`, `seatEmpty`, `voteSelf`, `notWaitedFor`, `voteNotOpen`, `noVoteToWithdraw` |
 | `saveOrders` | `gameNotStarted`, `saveUnsynced`, `saveOtherWorld`, `saveBeforeStart`, `saveUnacknowledged`, `saveExpired`, `saveTooLarge`, `retryTooSoon` |
-| `finish` | `gameNotStarted`, `notLoaded`, `resultTickUnacknowledged`, `matchEnded`, `resultAlreadyReported` |
+| `finish` | `gameNotStarted`, `notLoaded`, `resultTickUnacknowledged`, `resultAlreadyReported` |
 | room ended (`error`, `left`) | `historyBytes`, `historyAge`, `loadingTimedOut`, `leftBeforeStart`, `resultDisagreement`, `relayFault` |
 | banned from the lobby (`error`, `left`) | `banned` |
 | local `rejected { of: "command" }` | `commandBudget`, `envelopeTooLarge`, `notLoaded` ([The client](#the-client)) |
@@ -886,10 +886,10 @@ any other method a 405. The image, its environment and its sizing are in
 
 ## Match termination
 
-Room states are `lobby`, `running` and `ended`, with no reverse transition. Start closes the lobby for
-good, so new participants need a new room, optionally created from a save; reconnecting an existing
-participant is distinct from joining a running match. A local defeat does not pause the shared clock or
-end the match while other participants remain undecided.
+Room states are `lobby` and `running`, with no reverse transition. Start closes the lobby for good, so
+new participants need a new room, optionally created from a save; reconnecting an existing participant is
+distinct from joining a running match. A local defeat does not pause the shared clock while other
+participants remain undecided, and the match's result does not end the game: the room plays on past it.
 
 1. Once the simulation decides every declared participant, each client stops exactly at that tick and
    sends `finish { tick, hash, world }` after its tick acknowledgement. `hash` is the full simulation state
@@ -897,16 +897,17 @@ end the match while other participants remain undecided.
    reports its loaded tick.
 2. The relay compares result tick and hash from every connected participant with a loaded, synchronized
    world, and holds the result while a connected member is still loading or out of sync. Stale world
-   generations do not count, and disconnected identities do not block agreement.
-3. Once the reports agree, it stops its clock at the result tick, clears waiting notices, and broadcasts
-   the ended room view and `ended { tick, hash }`. Frames already emitted beyond that tick are never
-   simulated by clients that reached the shared result. If every connected participant reports but the
-   tick or hash differs, the relay ends the room with `resultDisagreement` rather than claim a result.
+   generations do not count, and disconnected identities do not block agreement. Its clock does not stop
+   meanwhile: the frames it paces wait in the clients' buffers.
+3. Once the reports agree, it broadcasts `ended { tick, hash }`. Each client verifies that hash when its
+   world stands at the result tick, shows the result, and runs on through the frames it holds. The world
+   stays decided and reports no `finish` again, and the relay ignores any `finish` after the result. If
+   every connected participant reports but the tick or hash differs, the relay ends the room with
+   `resultDisagreement` rather than claim a result.
 
-Reconnect keeps the result and permits restoration and replay up to the final tick without restarting the
-clock; a returning client verifies the final hash before it shows the result. Leaving an ended session
-releases membership without scheduling a seat handover. Commands, clock changes, kicks, lobby edits and
-Start cannot restart it.
+A client that comes back gets `ended` with the room and checks the hash when its world passes the result
+tick; a world restored past that tick shows no result. Past the result, a leave or a passed kick vote is
+announced as `kicked` and leaves the seat idle, whatever the room offers.
 
 ## Background windows
 

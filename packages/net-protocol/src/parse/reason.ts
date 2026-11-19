@@ -82,7 +82,6 @@ const REASON_PARAMS: { readonly [C in RelayReasonCode]: ParamsOf<Extract<RelayRe
   ackOutOfOrder: { expected: 'count' },
   tickNotEmitted: { tick: 'count' },
   noWorldYet: {},
-  matchEnded: {},
   loadingTimedOut: { nick: 'nick' },
   leftBeforeStart: { nick: 'nick' },
   commandBudget: {},

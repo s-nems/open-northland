@@ -87,7 +87,7 @@ export class Room {
   private readonly createdAt: number;
   private startedAt: number | null = null;
   private runningAt: number | null = null;
-  private endedAt: number | null = null;
+  private resultLogged = false;
   /** Where the interval the next room status line covers began. */
   private statusSince: number;
 
@@ -126,7 +126,7 @@ export class Room {
   }
 
   get state(): RoomState {
-    return this.game === null ? 'lobby' : this.game.endedTick === null ? 'running' : 'ended';
+    return this.game === null ? 'lobby' : 'running';
   }
 
   /** The rate that turns link time into future command ticks, including a governed clock. */
@@ -225,7 +225,7 @@ export class Room {
       this.remove(member, 'left');
       return null;
     }
-    if (this.game !== null && this.game.endedTick === null && member.seat !== null) {
+    if (this.game !== null && member.seat !== null) {
       this.kickOut(member, member.seat, now, 'left');
     } else {
       this.remove(member, 'left');
@@ -327,7 +327,6 @@ export class Room {
       this.hooks.deliver,
       now,
       this.transfers.initialSave,
-      () => this.broadcastView(),
       (event, fields) => this.log(event, fields),
       () => this.responsiveness.bufferTicks,
     );
@@ -522,16 +521,15 @@ export class Room {
   }
 
   summary(now: number): RoomSummary {
-    const state = this.state;
     return {
       id: this.id,
       name: this.lobby.settings.name,
-      state,
+      state: this.state,
       members: [...this.members.values()].flatMap((member) => (member.connected ? [member.nick] : [])),
       seats: this.seats.count,
       world: this.lobby.settings.world,
       locked: this.gate.locked,
-      playedMs: state === 'running' && this.runningAt !== null ? Math.round(now - this.runningAt) : null,
+      playedMs: this.runningAt === null ? null : Math.round(now - this.runningAt),
     };
   }
 
@@ -541,9 +539,7 @@ export class Room {
       state: this.state,
       members: this.members.size,
       ageSeconds: wholeSeconds(now - this.createdAt),
-      ...(this.runningAt === null
-        ? {}
-        : { playedSeconds: wholeSeconds((this.endedAt ?? now) - this.runningAt) }),
+      ...(this.runningAt === null ? {} : { playedSeconds: wholeSeconds(now - this.runningAt) }),
     };
   }
 
@@ -560,29 +556,27 @@ export class Room {
     for (const member of this.members.values()) member.figures = freshFigures(member);
   }
 
-  /** The clock's start and the match's end happen inside the game; each is logged once, on the first
-   *  poll after it or when the room is dropped. The end closes the game's log with a last room status. */
+  /** The clock's start and the match's result happen inside the game; each is logged once, on the first
+   *  poll after it or when the room is dropped. The game plays on past its result. */
   noteMilestones(now: number): void {
     if (this.game === null) return;
     if (this.runningAt === null && this.game.running) {
       this.runningAt = now;
       this.log('game running', { loadSeconds: wholeSeconds(now - (this.startedAt ?? now)) });
     }
-    if (this.endedAt === null && this.game.endedTick !== null) {
-      this.endedAt = now;
-      this.game.closeClockLog(now);
-      this.logStatus(now);
-      this.log('game ended', {
+    if (!this.resultLogged && this.game.endedTick !== null) {
+      this.resultLogged = true;
+      this.log('match decided', {
         tick: this.game.endedTick,
         playedSeconds: wholeSeconds(now - (this.runningAt ?? now)),
       });
     }
   }
 
-  /** The room is being dropped: a game that has not ended closes its log with a last room status. */
+  /** The room is being dropped: a started game closes its log with a last room status. */
   noteDrop(now: number): void {
     this.noteMilestones(now);
-    if (this.game === null || this.state !== 'running') return;
+    if (this.game === null) return;
     this.game.closeClockLog(now);
     this.logStatus(now);
   }
@@ -616,7 +610,10 @@ export class Room {
 
   /** The AI case lands on the clock through the game. */
   private kickOut(target: Member, player: number, now: number, cause: DepartureCause): void {
-    const mode = this.seats.departedModeOf(player, this.lobby.settings.kickedSeatMode);
+    const offered = this.seats.departedModeOf(player, this.lobby.settings.kickedSeatMode);
+    // Past the result a departure hands the seat to nobody, whatever the room offered.
+    const pastResult = this.game !== null && this.game.endedTick !== null;
+    const mode = offered !== null && pastResult ? 'idle' : offered;
     let farewell: Farewell | null = null;
     if (this.game !== null && mode !== null) {
       const tick = this.game.kicked(target, player, mode, cause);

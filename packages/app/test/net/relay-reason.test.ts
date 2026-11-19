@@ -59,7 +59,6 @@ const SAMPLES: { readonly [C in RelayReasonCode]: Extract<RelayReason, { code: C
   ackOutOfOrder: { code: 'ackOutOfOrder', expected: 3 },
   tickNotEmitted: { code: 'tickNotEmitted', tick: 9 },
   noWorldYet: { code: 'noWorldYet' },
-  matchEnded: { code: 'matchEnded' },
   loadingTimedOut: { code: 'loadingTimedOut', nick: 'Bartek' },
   leftBeforeStart: { code: 'leftBeforeStart', nick: 'Bartek' },
   commandBudget: { code: 'commandBudget' },

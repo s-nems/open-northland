@@ -1,7 +1,7 @@
 import type { GameSession } from '@open-northland/lockstep';
 import { RelayClient } from '@open-northland/net-client';
 import { type ClientMessage, DESCRIPTOR_WORLD } from '@open-northland/net-protocol';
-import { components, Simulation } from '@open-northland/sim';
+import { components, playerCommand, Simulation } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import { testContent } from '../../../sim/test/fixtures/content.js';
 
@@ -63,7 +63,7 @@ describe('client match completion', () => {
     ]);
   });
 
-  it('refuses a terminal snapshot with a different full hash before exposing a confirmed result', async () => {
+  it('refuses a world whose full hash differs from the confirmed result', async () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
     sim.world.add(sim.world.create(), components.MatchRules, { participants: 3, dead: 0, won: 3 });
     const { client, errors } = await clientFor(sim);
@@ -73,7 +73,6 @@ describe('client match completion', () => {
     client.advance(1000);
     client.advance(1000);
     expect(client.endedTick).toBeNull();
-    expect(client.tick).toBe(0);
     expect(errors).toHaveLength(1);
     expect(errors[0]).toMatch(/confirmed match result/);
   });
@@ -98,6 +97,35 @@ describe('client match completion', () => {
     client.receive({ kind: 'left' });
     expect(client.endedTick).toBeNull();
     expect(client.resultTick).toBeNull();
+  });
+
+  it('stands at its result only until the room confirms it, then runs on and takes orders', async () => {
+    const sim = new Simulation({ seed: 1, content: testContent() });
+    sim.world.add(sim.world.create(), components.MatchRules, { participants: 3, dead: 0, won: 3 });
+    const hash = sim.hashState();
+    const { client, sent } = await clientFor(sim);
+    for (let tick = 1; tick < 4; tick++) client.receive({ kind: 'frame', tick, commands: [] });
+    client.advance(1000);
+    expect(client.tick).toBe(0);
+    expect(client.paused).toBe(true);
+    client.receive({ kind: 'ended', tick: 0, hash });
+    client.advance(1000);
+    expect(client.endedTick).toBe(0);
+    expect(client.tick).toBe(3);
+    expect(client.paused).toBe(false);
+    expect(sent.filter((message) => message.kind === 'finish')).toHaveLength(1);
+    client.setSpeed(2);
+    expect(sent.at(-1)).toEqual({ kind: 'clock', speed: 2 });
+    client.submit(
+      playerCommand(0, {
+        kind: 'setAssistantCounter',
+        player: 0,
+        counter: 'extraMen',
+        value: 3,
+        infinite: false,
+      }),
+    );
+    expect(sent.at(-1)).toMatchObject({ kind: 'command', envelope: { player: 0 } });
   });
 
   it('does not stop when only the local player has lost', async () => {

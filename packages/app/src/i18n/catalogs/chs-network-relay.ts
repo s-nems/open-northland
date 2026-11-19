@@ -67,7 +67,6 @@ export const chsNetworkRelay = {
     noWorldYet: '还没有载入任何世界',
     leftBeforeStart: '{nick} 在游戏开始前离开了',
     loadingTimedOut: '{nick} 未能及时完成载入，请重新创建房间',
-    matchEnded: '对局已结束',
     commandBudget: '一次下达的命令过多',
     envelopeTooLarge: '命令过大',
     seatEmpty: '席位 {seat} 无人就座',

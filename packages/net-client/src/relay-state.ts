@@ -93,9 +93,6 @@ export class RelayState {
           if (self !== undefined) this.session = { ...this.session, localSeat: self.seat ?? 'observer' };
         }
         break;
-      case 'ended':
-        this.waitingFor = [];
-        break;
       case 'left':
         this.room = null;
         this.session = null;
@@ -142,6 +139,7 @@ export class RelayState {
       case 'mapRequest':
       case 'kickVote':
       case 'kicked':
+      case 'ended':
       case 'error':
       case 'snapshotRequest':
       case 'disputed':

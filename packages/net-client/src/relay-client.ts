@@ -237,9 +237,7 @@ export class RelayClient extends RelayLobby implements SessionDriver, RelayClien
   }
 
   get paused(): boolean {
-    return (
-      this.resultTick !== null || this.completion.confirmedTick !== null || (this.clockState?.paused ?? false)
-    );
+    return this.completion.halted || (this.clockState?.paused ?? false);
   }
 
   /** The requested speed; the clock runs slower while `governed` is set. */
@@ -253,13 +251,11 @@ export class RelayClient extends RelayLobby implements SessionDriver, RelayClien
 
   /** A request, sent only when it would change what the relay last broadcast. */
   setPaused(paused: boolean): void {
-    if (this.resultTick === null && this.completion.confirmedTick === null && paused !== this.paused)
-      this.setClock({ paused });
+    if (paused !== (this.clockState?.paused ?? false)) this.setClock({ paused });
   }
 
   setSpeed(speed: number): void {
-    if (this.resultTick === null && this.completion.confirmedTick === null && speed !== this.speed)
-      this.setClock({ speed });
+    if (speed !== this.speed) this.setClock({ speed });
   }
 
   get droppedTicks(): number {
@@ -295,7 +291,6 @@ export class RelayClient extends RelayLobby implements SessionDriver, RelayClien
    *  as a relay refusal would, without consuming an earlier command's latency stamp. */
   submit(envelope: CommandEnvelope): void {
     if (this.session !== null && typeof this.session.localSeat !== 'number') return;
-    if (this.resultTick !== null || this.completion.confirmedTick !== null) return;
     if (this.driver === null) {
       this.options.onError?.('command', new Error(`${this.nick} holds no world`));
       this.refuseLocally('notLoaded');
@@ -434,11 +429,7 @@ export class RelayClient extends RelayLobby implements SessionDriver, RelayClien
     if (driver === null || transport === null) return this.alpha;
     this.reportResult();
     this.verifyResult();
-    driver.setPaused(
-      this.resultTick !== null ||
-        this.tick === this.completion.confirmedTick ||
-        (this.paused && transport.bufferedTicks === 0),
-    );
+    driver.setPaused(this.completion.halted || (this.paused && transport.bufferedTicks === 0));
     // A tick's cost runs from the end of the previous tick's work here to its acknowledgement: the
     // frame's admission, the sim step and the host's `onTick`.
     this.tickCost.begin(this.now());
@@ -451,9 +442,7 @@ export class RelayClient extends RelayLobby implements SessionDriver, RelayClien
           this.shrinkingBuffer,
         ),
       () => {
-        if (this.completion.detect(this.sim) || this.tick === this.completion.confirmedTick) {
-          driver.setPaused(true);
-        }
+        if (this.completion.detect(this.sim)) driver.setPaused(true);
         onTick?.();
         this.acknowledge(this.tickCost.end(this.now()));
         this.reportResult();

@@ -10,7 +10,7 @@ import type { SyncDomain } from '@open-northland/sim';
 import type { LobbyCompatibility } from './compatibility.js';
 import type { RelayReason } from './reasons.js';
 
-export type RoomState = 'lobby' | 'running' | 'ended';
+export type RoomState = 'lobby' | 'running';
 
 /** Where the creator's map came from, when the room lets members fetch it; absent turns map delivery off. */
 export type RoomMapOrigin = 'mod' | 'user' | 'catalog';

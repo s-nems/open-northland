@@ -67,7 +67,6 @@ export const ruNetworkRelay = {
     noWorldYet: 'ещё ни один мир не загружен',
     leftBeforeStart: 'игрок {nick} вышел до начала игры',
     loadingTimedOut: '{nick}: загрузка не завершена вовремя; создайте комнату заново',
-    matchEnded: 'матч завершён',
     commandBudget: 'слишком много приказов одновременно',
     envelopeTooLarge: 'размер приказа слишком велик',
     seatEmpty: 'место {seat} не занято',

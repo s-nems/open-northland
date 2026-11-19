@@ -66,13 +66,6 @@ export class CatchUpStore {
     return this.frames.slice(low).map(({ frame }) => frame);
   }
 
-  /** Frames paced ahead of a confirmed result must not outlive the terminal simulation tick. */
-  finishAt(tick: number): void {
-    const first = this.frames.findIndex(({ frame }) => frame.tick > tick);
-    if (first < 0) return;
-    for (const removed of this.frames.splice(first)) this.retainedBytes -= removed.bytes;
-  }
-
   cache(snapshot: CachedSnapshot, replaceSameTick = false): boolean {
     if (this.cached !== null && snapshot.tick < this.cached.tick) return false;
     const newer = this.cached === null || snapshot.tick > this.cached.tick;

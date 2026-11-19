@@ -132,8 +132,6 @@ describe('room clock', () => {
     expect(clock.schedule('b', large, 1, 1)).toEqual({ applyTick: 2 });
     clock.advance(TICK_MS);
     expect(clock.schedule('a', large, 2, 20)).toHaveProperty('applyTick');
-    clock.finishAt(clock.tick);
-    expect(clock.schedule('a', large, clock.tick, 1)).toHaveProperty('applyTick');
   });
 
   it('bounds pending input while paused and releases exactly the capacity it emitted', () => {
@@ -173,8 +171,6 @@ describe('room clock', () => {
       command: { kind: 'setAiControl', player: 1, enabled: true, computerEnabled: true, mapAiEnabled: true },
     });
     expect(clock.schedule('b', first, 2, 2, historySpace)).toEqual({ refused: 'budget' });
-    clock.finishAt(2);
-    expect(clock.schedule('b', first, 2, 2, historySpace)).toEqual({ applyTick: 4 });
   });
 
   it('runs at the governed speed while one is set, reporting the requested speed throughout', () => {
@@ -185,17 +181,6 @@ describe('room clock', () => {
     expect(clock.speed).toBe(2);
     clock.govern(null);
     expect(clock.advance(TICK_MS).map((frame) => frame.tick)).toEqual([3, 4]);
-  });
-
-  it('discards every pending frame and its capacity accounting at the terminal tick', () => {
-    const clock = startedAt(1);
-    for (let i = 0; i < MAX_PENDING_COMMANDS_PER_MEMBER; i++)
-      clock.schedule('a', envelope('queued'), 1, 1 + Math.floor(i / MAX_COMMANDS_PER_TICK));
-    clock.finishAt(1);
-    expect(clock.pendingFrames()).toEqual([]);
-    expect(clock.advance(TICK_MS * 10)).toEqual([]);
-    // Game guards further submissions; the clock itself no longer retains the retired budget.
-    expect(clock.schedule('a', envelope('fresh'), 1, 1)).toEqual({ applyTick: 2 });
   });
 
   it('caps a stall to one burst and lets the game run late instead', () => {

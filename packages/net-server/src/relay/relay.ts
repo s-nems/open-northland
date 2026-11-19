@@ -367,7 +367,7 @@ export class Relay {
       repeatedFaults === 0
     )
       return;
-    const rooms = { lobby: 0, running: 0, ended: 0 };
+    const rooms = { lobby: 0, running: 0 };
     let playing = 0;
     for (const room of this.rooms.values()) {
       rooms[room.state]++;

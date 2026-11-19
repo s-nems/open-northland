@@ -970,6 +970,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
         onQuit: quitToMenu,
         ...(sharedClock ? {} : { onLoad: (back) => systemMenu?.openPage('load', back) }),
         ...(replay !== undefined ? { playAgain: replay } : {}),
+        ...(sharedClock ? { holdsSeat: () => !watching } : {}),
         onContinue: () => {
           if (!sharedClock) issueTrusted({ kind: 'continueMatch', player: localPlayer });
           else if (!watching) {

@@ -51,7 +51,7 @@ import {
 import { fingerprint, parseCompatibility } from './compatibility.js';
 import { assertNever, parseFlag, parseLine, parseNick } from './text.js';
 
-const ROOM_STATES = ['lobby', 'running', 'ended'] as const satisfies readonly RoomState[];
+const ROOM_STATES = ['lobby', 'running'] as const satisfies readonly RoomState[];
 
 const SEAT_MODES = keysOf<SeatMode>({
   human: true,

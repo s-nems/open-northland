@@ -63,7 +63,7 @@ export class RelayClientMirror implements RelayClientView {
   apply(message: ServerMessage): void {
     this.state.apply(message);
     if (message.kind === 'kickVote') this.tallies.set(message.player, message);
-    else if (message.kind === 'waiting' || message.kind === 'ended' || message.kind === 'left') {
+    else if (message.kind === 'waiting' || message.kind === 'left') {
       const waited = new Set(this.state.waitingFor.map((member) => member.nick));
       const seats = new Set(
         this.state.room?.members.flatMap((member) => (waited.has(member.nick) ? (member.seat ?? []) : [])),

@@ -68,7 +68,6 @@ export const plNetworkRelay = {
     noWorldYet: 'żaden świat nie został jeszcze wczytany',
     leftBeforeStart: 'gracz {nick} opuścił grę przed startem',
     loadingTimedOut: 'gracz {nick} nie wczytał gry na czas, utwórzcie pokój od nowa',
-    matchEnded: 'rozgrywka się zakończyła',
     commandBudget: 'zbyt wiele rozkazów naraz',
     envelopeTooLarge: 'rozkaz jest za duży',
     seatEmpty: 'nikt nie zajmuje miejsca {seat}',

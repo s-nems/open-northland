@@ -1,20 +1,18 @@
 import type { ClientMessage, ServerMessage } from '@open-northland/net-protocol';
 import { broadcast, type Deliver, isSynced, type Member, type Refusal } from '../member.js';
 
-import type { RoomClock } from '../timing/room-clock.js';
-
 type FinishReport = Extract<ClientMessage, { kind: 'finish' }>;
 
+/** The match's result: the tick and full hash every connected player's world agreed on. The game plays
+ *  on past it; the result only says who won. */
 export class MatchEnd {
   private readonly reports = new Map<string, FinishReport>();
   private result: FinishReport | null = null;
   failure: Refusal = null;
 
   constructor(
-    private readonly clock: RoomClock,
     private readonly members: ReadonlyMap<string, Member>,
     private readonly deliver: Deliver,
-    private readonly onEnded: (tick: number) => void,
   ) {}
 
   get tick(): number | null {
@@ -26,10 +24,11 @@ export class MatchEnd {
   }
 
   report(member: Member, report: FinishReport): Refusal {
+    // A world that comes back or catches up passes the decided result again.
+    if (this.result !== null) return null;
     if (report.world !== member.world || member.outOfSync !== null) return null;
     if (!isSynced(member)) return { code: 'notLoaded' };
     if (report.tick !== member.ackedTick) return { code: 'resultTickUnacknowledged' };
-    if (this.result !== null) return sameResult(this.result, report) ? null : { code: 'matchEnded' };
     const previous = this.reports.get(member.token);
     if (previous !== undefined && !sameResult(previous, report)) return { code: 'resultAlreadyReported' };
     this.reports.set(member.token, report);
@@ -66,19 +65,11 @@ export class MatchEnd {
     }
     this.result = candidate;
     this.reports.clear();
-    this.clock.finishAt(candidate.tick);
-    const send = (message: Parameters<Deliver>[1]) => broadcast(this.members.values(), this.deliver, message);
-    send({ kind: 'waiting', for: [] });
-    send({
-      kind: 'clock',
-      tick: this.clock.nextTick,
-      speed: this.clock.speed,
-      paused: true,
-      by: null,
-      governed: this.clock.governed,
+    broadcast(this.members.values(), this.deliver, {
+      kind: 'ended',
+      tick: candidate.tick,
+      hash: candidate.hash,
     });
-    this.onEnded(candidate.tick);
-    send({ kind: 'ended', tick: candidate.tick, hash: candidate.hash });
   }
 }
 
