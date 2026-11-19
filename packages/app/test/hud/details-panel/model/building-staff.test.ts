@@ -695,6 +695,41 @@ describe('building panel orders and alerts', () => {
     expect(alert(GOOD_FLOUR)).toBe('full');
   });
 
+  it('lists what a workplace gathers without a recipe as its product, full shelf and all', () => {
+    const farm = sandboxCtx().buildings.find((def) => def.typeId === BUILDING_FARM);
+    const crop = farm?.stock.find((slot) => !slot.input);
+    if (crop === undefined) throw new Error('the sandbox farm has no product shelf');
+    const model = buildingModel(
+      [
+        buildingEntity(1, BUILDING_FARM, {
+          components: { Stockpile: { amounts: [[crop.goodType, crop.capacity]] } },
+        }),
+      ],
+      1,
+    );
+    expect(model.stock.find((row) => row.goodType === crop.goodType)).toMatchObject({
+      product: true,
+      alert: 'full',
+    });
+  });
+
+  it('raises no full shelf on a house that tops its own shelf up, whose product it still lists', () => {
+    const well = sandboxCtx().buildings.find((def) => def.typeId === BUILDING_WELL);
+    const water = well?.stock[0];
+    if (water === undefined) throw new Error('the sandbox well has no shelf');
+    const model = buildingModel(
+      [
+        buildingEntity(1, BUILDING_WELL, {
+          components: { Stockpile: { amounts: [[water.goodType, water.capacity]] } },
+        }),
+      ],
+      1,
+    );
+    expect(model.stock.map((row) => [row.goodType, row.product === true, row.alert])).toEqual([
+      [water.goodType, true, undefined],
+    ]);
+  });
+
   it('shows a bonus yield past the shelf capacity with its banked tenths', () => {
     const flourShelf =
       sandboxCtx()

@@ -53,7 +53,6 @@ import {
   goodDef,
   goodLabel,
   jobDisplayName,
-  recipeOutputs,
   type SettlerWorkStatus,
   type UnitPanelModelContext,
 } from './context.js';
@@ -483,10 +482,13 @@ function markedStock(
       for (const input of status.missingInputs) waiting.add(input.goodType);
     }
   }
-  const products = new Set(recipeOutputs(ctx, def).map((output) => output.goodType));
+  // A workplace makes what it does not consume; any other house only keeps or eats its goods. A full
+  // product shelf holds the house up, unless the house tops its shelf up itself (a well, a hive).
+  const makes = def?.kind === 'workplace';
+  const stalls = def?.refillsOwnStock !== true;
   const marked = rows.map((row): StockRow => {
-    const product = products.has(row.goodType);
-    const full = product && row.capacity !== undefined && row.amount >= row.capacity;
+    const product = makes && !row.input;
+    const full = product && stalls && row.capacity !== undefined && row.amount >= row.capacity;
     const alert: StockAlert | null = waiting.has(row.goodType) ? 'waiting' : full ? 'full' : null;
     return { ...row, ...(alert === null ? {} : { alert }), ...(product ? { product } : {}) };
   });

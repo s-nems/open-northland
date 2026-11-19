@@ -56,6 +56,8 @@ const SAWMILL = 2;
 const VIKING = 1;
 const HUMAN = 0; // the owner the posted crew needs - assignWorker is an owned-unit order
 const HARVEST_ATOMIC = 24;
+/** The wood the HQ is placed holding, so the mill has input before the first trunk arrives. */
+const HQ_START_WOOD = 10;
 
 interface GoldenRun {
   readonly hash: string;
@@ -75,7 +77,14 @@ function runSlice(seed: number, ticks: number): GoldenRun {
 
   // Placement via the command log (CommandSystem applies these on tick 1) - the seam the UI uses.
   // Command coords are half-cell nodes: cell x on row 0 sits at node (2x, 0).
-  sim.enqueueSetup({ kind: 'placeBuilding', buildingType: HEADQUARTERS, x: 10, y: 0, tribe: VIKING });
+  sim.enqueueSetup({
+    kind: 'placeBuilding',
+    buildingType: HEADQUARTERS,
+    x: 10,
+    y: 0,
+    tribe: VIKING,
+    initialGoods: [{ good: WOOD, amount: HQ_START_WOOD }],
+  });
   sim.enqueueSetup({ kind: 'placeBuilding', buildingType: SAWMILL, x: 8, y: 0, tribe: VIKING });
   sim.enqueueSetup({ kind: 'spawnSettler', jobType: WOODCUTTER, x: 0, y: 0, tribe: VIKING });
   // The two settlers the slice POSTS carry an owner: `assignWorker` is an owned-unit order. The

@@ -2490,6 +2490,12 @@ body.on-drag-scroll.on-drag-scroll-free * {
 .on-hud .on-tip__row--zero .on-good {
   opacity: 0.45;
 }
+/* A good the building consumes: an inbound arrow before its amount. */
+.on-hud .on-tip__row--input > b::before {
+  content: "\2190\00a0";
+  color: var(--ink-muted);
+  font-weight: 400;
+}
 /* The standings breakdown's two sections side by side, the army and the settlement, on tighter rows
    than a counter's breakdown. */
 .on-hud .on-standings__columns {

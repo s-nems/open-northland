@@ -142,7 +142,7 @@ export function colonyContent(tradeShip = false): ContentSet {
         ? {
             ...b,
             ...(b.typeId === STOCK_TYPE ? { upgradeTarget: STOCK_TOP_TYPE } : {}),
-            stock: CARGO_GOODS.map((goodType) => ({ goodType, capacity: STORE_SLOT, initial: 0 })),
+            stock: CARGO_GOODS.map((goodType) => ({ goodType, capacity: STORE_SLOT, input: false })),
           }
         : b,
     ),
@@ -258,7 +258,7 @@ export function overflowContent(): ContentSet {
       // The warehouses take spears as the game's do, so the colony's armory has a store to clear to.
       ...base.buildings.map((b) =>
         b.typeId === STOCK_TYPE || b.typeId === STOCK_TOP_TYPE
-          ? { ...b, stock: [...b.stock, { goodType: SPEAR, capacity: STORE_SLOT, initial: 0 }] }
+          ? { ...b, stock: [...b.stock, { goodType: SPEAR, capacity: STORE_SLOT, input: false }] }
           : b,
       ),
       {
@@ -274,8 +274,8 @@ export function overflowContent(): ContentSet {
         ],
         construction: [{ goodType: WOOD, amount: 2 }],
         stock: [
-          { goodType: WOOD, capacity: SHELF_UNITS, initial: 0 },
-          { goodType: SPEAR, capacity: SHELF_UNITS, initial: 0 },
+          { goodType: WOOD, capacity: SHELF_UNITS, input: false },
+          { goodType: SPEAR, capacity: SHELF_UNITS, input: false },
         ],
       },
     ],

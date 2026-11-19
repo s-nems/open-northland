@@ -156,7 +156,7 @@ describe('placing with a paper', () => {
     expect(sim.papers(P0)).toEqual([sawmillPaper]);
   });
 
-  it('a stocked-house paper fills every stock slot to capacity', () => {
+  it('a stocked-house paper fills the slots of the goods it consumes, not what it makes', () => {
     const sim = fresh();
     const stocked: Paper = { kind: 'placeStockedHouse', param: SAWMILL };
     sim.enqueueSetup({ kind: 'grantPaper', player: P0, paper: stocked });
@@ -174,7 +174,7 @@ describe('placing with a paper', () => {
     const e = buildings(sim)[0] as Entity;
     const amounts = sim.world.get(e, Stockpile).amounts;
     expect(amounts.get(WOOD)).toBe(SAWMILL_CAPACITY);
-    expect(amounts.get(PLANK)).toBe(SAWMILL_CAPACITY);
+    expect(amounts.has(PLANK)).toBe(false);
   });
 });
 

@@ -26,7 +26,7 @@ export const BUILD_MATERIAL = WOOD;
  *  utility-good slots on the warehouse, the storage fallback. */
 export function utilityContent(wellCapacity = 1): ContentSet {
   const base = testContent();
-  const consumerSlot = (goodType: number) => ({ goodType, capacity: CONSUMER_CAPACITY, initial: 0 });
+  const consumerSlot = (goodType: number) => ({ goodType, capacity: CONSUMER_CAPACITY, input: false });
   return parseContentSet({
     ...base,
     goods: [
@@ -43,10 +43,10 @@ export function utilityContent(wellCapacity = 1): ContentSet {
               ...b,
               stock: [
                 ...b.stock,
-                { goodType: WATER, capacity: 150, initial: 0 },
-                { goodType: BREAD, capacity: 150, initial: 0 },
-                { goodType: HONEY, capacity: 150, initial: 0 },
-                { goodType: ALE, capacity: 150, initial: 0 },
+                { goodType: WATER, capacity: 150, input: false },
+                { goodType: BREAD, capacity: 150, input: false },
+                { goodType: HONEY, capacity: 150, input: false },
+                { goodType: ALE, capacity: 150, input: false },
               ],
             }
           : b,
@@ -59,7 +59,7 @@ export function utilityContent(wellCapacity = 1): ContentSet {
         collectAtomic: WELL_PUMP_ATOMIC,
         refillsOwnStock: true,
         workers: [{ jobType: CARRIER, count: 1 }],
-        stock: [{ goodType: WATER, capacity: wellCapacity, initial: 0 }],
+        stock: [{ goodType: WATER, capacity: wellCapacity, input: false }],
         produces: [WATER],
         construction: [{ goodType: BUILD_MATERIAL, amount: 1 }], // so a site stays one until supplied
       },
@@ -71,7 +71,7 @@ export function utilityContent(wellCapacity = 1): ContentSet {
         collectAtomic: HIVE_COLLECT_ATOMIC,
         refillsOwnStock: true,
         workers: [{ jobType: CARRIER, count: 1 }],
-        stock: [{ goodType: HONEY, capacity: 1, initial: 0 }],
+        stock: [{ goodType: HONEY, capacity: 1, input: false }],
         produces: [HONEY],
       },
       {

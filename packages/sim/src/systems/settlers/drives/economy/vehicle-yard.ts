@@ -190,7 +190,7 @@ function siteFor(plan: PlannerContext, workplace: Entity, houseType: number): En
     x: verdict.node.hx,
     y: verdict.node.hy,
     underConstruction: true,
-    fillStock: false,
+    stockFill: 'empty',
   });
   if (site !== null) targets.vehicleSites.push(site);
   return site;

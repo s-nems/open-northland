@@ -36,6 +36,8 @@ export interface StockRow {
   readonly amount: number;
   /** The good's declared store ceiling (its `stock` slot capacity) - the row reads "7.0 / 25.0". */
   readonly capacity?: number;
+  /** The building consumes this good (its `stock` slot's `input` flag). */
+  readonly input: boolean;
   /** The stock-window category tab (0-7) this good belongs to. */
   readonly category: number;
   /** The shelf holds up the house: a posted worker waits for this input, or this product's shelf is
@@ -151,6 +153,7 @@ export function stockRows(
         systems.OUTPUT_TENTHS_PER_UNIT,
       category: goodCategoryTab(goodId),
       capacity: slot.capacity,
+      input: slot.input,
       ...(goodId !== undefined ? { goodId } : {}),
       ...(effect !== '' ? { effect } : {}),
     };

@@ -27,6 +27,8 @@ export interface HoverCardRow {
   readonly amount: number;
   /** Site bill only: the units the line needs in all, so the row reads "3 / 8". */
   readonly needed?: number;
+  /** A standing building's good it consumes, marked inbound on its line. */
+  readonly input?: boolean;
 }
 
 /** A building that is not standing finished: it is being raised from nothing, or raised a tier. */

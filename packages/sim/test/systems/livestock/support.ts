@@ -145,8 +145,8 @@ export function livestockContent(): ContentSet {
               ...b,
               stock: [
                 ...(b.stock ?? []),
-                { goodType: WOOL, capacity: 20, initial: 0 },
-                { goodType: MEAT, capacity: 20, initial: 0 },
+                { goodType: WOOL, capacity: 20, input: false },
+                { goodType: MEAT, capacity: 20, input: false },
               ],
             }
           : b,
@@ -157,12 +157,12 @@ export function livestockContent(): ContentSet {
         kind: 'workplace',
         workers: [{ jobType: BREEDER, count: 2 }],
         stock: [
-          { goodType: WATER, capacity: 10, initial: 0 },
-          { goodType: WHEAT, capacity: 10, initial: 0 },
-          { goodType: COW_GOOD, capacity: HERD_CAPACITY, initial: 0 },
-          { goodType: DEER_GOOD, capacity: HERD_CAPACITY, initial: 0 },
-          { goodType: WOOL, capacity: WOOL_CAPACITY, initial: 0 },
-          { goodType: MEAT, capacity: MEAT_CAPACITY, initial: 0 },
+          { goodType: WATER, capacity: 10, input: false },
+          { goodType: WHEAT, capacity: 10, input: false },
+          { goodType: COW_GOOD, capacity: HERD_CAPACITY, input: false },
+          { goodType: DEER_GOOD, capacity: HERD_CAPACITY, input: false },
+          { goodType: WOOL, capacity: WOOL_CAPACITY, input: false },
+          { goodType: MEAT, capacity: MEAT_CAPACITY, input: false },
         ],
         produces: [COW_GOOD, DEER_GOOD, WOOL, MEAT],
         recipes: [

@@ -105,7 +105,7 @@ function coinDrillContent(seats?: number): ContentSet {
         id: 'barracks',
         kind: 'training',
         workers: [{ jobType: CARRIER_JOB, count: 4 }],
-        stock: [{ goodType: COIN_GOOD, capacity: 100, initial: 1 }],
+        stock: [{ goodType: COIN_GOOD, capacity: 100, input: true }],
         ...(seats === undefined ? {} : { schoolSize: seats }),
       },
       {

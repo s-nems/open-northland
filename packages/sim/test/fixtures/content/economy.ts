@@ -196,10 +196,10 @@ export const economyContent = {
         { jobType: 36, count: 1 },
       ],
       stock: [
-        { goodType: 1, capacity: 150, initial: 10 },
-        { goodType: 2, capacity: 150, initial: 0 },
+        { goodType: 1, capacity: 150, input: false },
+        { goodType: 2, capacity: 150, input: false },
         // A food slot so the HQ can act as the settlement larder a hungry settler eats from.
-        { goodType: 3, capacity: 150, initial: 0 },
+        { goodType: 3, capacity: 150, input: false },
       ],
     },
     {
@@ -208,8 +208,8 @@ export const economyContent = {
       kind: 'workplace',
       workers: [{ jobType: 2, count: 1 }],
       stock: [
-        { goodType: 1, capacity: 20, initial: 0 },
-        { goodType: 2, capacity: 20, initial: 0 },
+        { goodType: 1, capacity: 20, input: true },
+        { goodType: 2, capacity: 20, input: false },
       ],
       recipes: [{ inputs: [{ goodType: 1, amount: 1 }], outputs: [{ goodType: 2, amount: 1 }], ticks: 20 }],
     },
@@ -237,7 +237,7 @@ export const economyContent = {
       id: 'farm',
       kind: 'workplace',
       workers: [{ jobType: 18, count: 4 }],
-      stock: [{ goodType: 6, capacity: 25, initial: 0 }],
+      stock: [{ goodType: 6, capacity: 25, input: false }],
       produces: [6],
     },
     {
@@ -247,7 +247,7 @@ export const economyContent = {
       typeId: 6,
       id: 'granary',
       kind: 'storage',
-      stock: [{ goodType: 6, capacity: 150, initial: 0 }],
+      stock: [{ goodType: 6, capacity: 150, input: false }],
     },
     {
       // A general WAREHOUSE (kind storage) that stocks every fixture good - the delivery SINK the
@@ -258,12 +258,12 @@ export const economyContent = {
       id: 'warehouse',
       kind: 'storage',
       stock: [
-        { goodType: 1, capacity: 150, initial: 0 },
-        { goodType: 2, capacity: 150, initial: 0 },
-        { goodType: 3, capacity: 150, initial: 0 },
-        { goodType: 4, capacity: 150, initial: 0 },
-        { goodType: 5, capacity: 150, initial: 0 },
-        { goodType: 6, capacity: 150, initial: 0 },
+        { goodType: 1, capacity: 150, input: false },
+        { goodType: 2, capacity: 150, input: false },
+        { goodType: 3, capacity: 150, input: false },
+        { goodType: 4, capacity: 150, input: false },
+        { goodType: 5, capacity: 150, input: false },
+        { goodType: 6, capacity: 150, input: false },
       ],
     },
     {
@@ -279,8 +279,8 @@ export const economyContent = {
         { jobType: 36, count: 1 },
       ],
       stock: [
-        { goodType: 1, capacity: 10, initial: 0 },
-        { goodType: 2, capacity: 20, initial: 0 },
+        { goodType: 1, capacity: 10, input: false },
+        { goodType: 2, capacity: 20, input: false },
       ],
       recipes: [{ inputs: [{ goodType: 1, amount: 1 }], outputs: [{ goodType: 2, amount: 1 }], ticks: 20 }],
     },
@@ -300,10 +300,10 @@ export const economyContent = {
         { jobType: 36, count: 1 },
       ],
       stock: [
-        { goodType: 1, capacity: 10, initial: 0 },
-        { goodType: 2, capacity: 20, initial: 0 },
-        { goodType: 3, capacity: 20, initial: 0 },
-        { goodType: 6, capacity: 10, initial: 0 },
+        { goodType: 1, capacity: 10, input: false },
+        { goodType: 2, capacity: 20, input: false },
+        { goodType: 3, capacity: 20, input: false },
+        { goodType: 6, capacity: 10, input: false },
       ],
       recipes: [
         { inputs: [{ goodType: 1, amount: 1 }], outputs: [{ goodType: 2, amount: 1 }], ticks: 20 },
@@ -323,8 +323,8 @@ export const economyContent = {
         { jobType: 36, count: 1 },
       ],
       stock: [
-        { goodType: 1, capacity: 10, initial: 0 },
-        { goodType: 7, capacity: 5, initial: 0 },
+        { goodType: 1, capacity: 10, input: false },
+        { goodType: 7, capacity: 5, input: false },
       ],
       recipes: [{ inputs: [{ goodType: 1, amount: 1 }], outputs: [{ goodType: 7, amount: 1 }], ticks: 20 }],
       // Declared like the real bakery (`work_bakery_00` carries `produces: [19]`): the dish conversion
@@ -340,9 +340,9 @@ export const economyContent = {
       kind: 'workplace',
       workers: [{ jobType: 2, count: 1 }],
       stock: [
-        { goodType: 1, capacity: 20, initial: 0 },
-        { goodType: 2, capacity: 20, initial: 0 },
-        { goodType: 3, capacity: 20, initial: 0 },
+        { goodType: 1, capacity: 20, input: false },
+        { goodType: 2, capacity: 20, input: false },
+        { goodType: 3, capacity: 20, input: false },
       ],
       recipes: [
         { inputs: [{ goodType: 1, amount: 1 }], outputs: [{ goodType: 2, amount: 1 }], ticks: 20 },
@@ -358,8 +358,8 @@ export const economyContent = {
       id: 'armoury',
       kind: 'storage',
       stock: [
-        { goodType: 8, capacity: 10, initial: 0 },
-        { goodType: 9, capacity: 10, initial: 0 },
+        { goodType: 8, capacity: 10, input: false },
+        { goodType: 9, capacity: 10, input: false },
       ],
     },
     {
@@ -375,8 +375,8 @@ export const economyContent = {
       // BOTH carcass goods: a meat-only store would filter a body out at its leather stage, the wedge
       // the flag path dodges by ignoring its flag's good filter for a hunter.
       stock: [
-        { goodType: 21, capacity: 50, initial: 0 },
-        { goodType: 22, capacity: 50, initial: 0 },
+        { goodType: 21, capacity: 50, input: false },
+        { goodType: 22, capacity: 50, input: false },
       ],
     },
   ],

@@ -91,7 +91,7 @@ function towerContent(body: TowerBody = ANCHOR_ONLY): ContentSet {
           { jobType: SOLDIER_JOB, count: 1 },
           { jobType: CARRIER_JOB, count: 1 },
         ],
-        stock: [{ goodType: FOOD_GOOD, capacity: 25, initial: 0 }],
+        stock: [{ goodType: FOOD_GOOD, capacity: 25, input: false }],
         // A door two nodes off the anchor: without it the interaction cell IS the tower tile and every
         // "he stands on the post, not the doorstep" assertion below would hold vacuously.
         footprint: { blocked: [...body], door: { dx: 2, dy: 0 } },

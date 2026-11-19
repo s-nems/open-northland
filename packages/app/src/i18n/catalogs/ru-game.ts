@@ -605,7 +605,7 @@ export const ruGame = {
       paperEffect: {
         placeAny: 'Выберите в каталоге; здание сразу будет готово',
         placeHouse: 'Появляется сразу, без строительства и материалов',
-        placeStockedHouse: 'Появляется сразу, с полным хранилищем',
+        placeStockedHouse: 'Появляется сразу, с полным запасом того, что потребляет',
       },
       papersEmptyTitle: 'Нет бумаг',
       papersEmptyText: 'Бумаги можно найти в сундуках на карте.',

@@ -153,8 +153,8 @@ function bakingContent(): ReturnType<typeof aiContent> {
               },
             ],
             stock: [
-              { goodType: WOOD, capacity: INPUT_SLOT, initial: 0 },
-              { goodType: FOOD_SIMPLE, capacity: OUTPUT_SLOT, initial: 0 },
+              { goodType: WOOD, capacity: INPUT_SLOT, input: false },
+              { goodType: FOOD_SIMPLE, capacity: OUTPUT_SLOT, input: false },
             ],
           }
         : b,

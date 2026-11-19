@@ -28,7 +28,7 @@ import {
 
 /**
  * The tribute table: what a script opens, demands and closes, the goal that reads a paid slot, and the
- * one seat command that pays. The fixture headquarters is a storage that opens with ten wood; the
+ * one seat command that pays. The fixture headquarters is a storage placed holding ten wood; the
  * sawmill is a workplace whose wood slot is an input and whose plank slot is its product; the kitchen
  * makes bread, the dish that becomes food_simple everywhere else.
  */
@@ -50,7 +50,7 @@ const WAREHOUSE = 7;
 const KITCHEN = 21;
 /** A test-local home type that shelves wood. */
 const HOME = 90;
-/** What the fixture headquarters opens with. */
+/** The wood every test headquarters is placed holding, beside the goods its spec names. */
 const HQ_WOOD = 10;
 const ELSEWHERE = { hx: 8, hy: 8 };
 const FAR_CORNER = { hx: 36, hy: 36 };
@@ -66,6 +66,8 @@ interface HouseSpec {
 
 function place(sim: Simulation, spec: HouseSpec): void {
   const at = spec.at ?? POINT;
+  const goods =
+    spec.type === HEADQUARTERS ? [{ good: WOOD, amount: HQ_WOOD }, ...(spec.goods ?? [])] : spec.goods;
   sim.enqueueSetup({
     kind: 'placeBuilding',
     buildingType: spec.type,
@@ -74,7 +76,7 @@ function place(sim: Simulation, spec: HouseSpec): void {
     y: at.hy,
     force: true,
     owner: spec.owner ?? OWNER,
-    ...(spec.goods !== undefined ? { initialGoods: spec.goods } : {}),
+    ...(goods !== undefined ? { initialGoods: goods } : {}),
   });
 }
 

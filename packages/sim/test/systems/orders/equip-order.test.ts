@@ -97,8 +97,8 @@ function upgradeableForgeSim(): Simulation {
     kind: 'workplace' as const,
     produces: [SWORD],
     stock: [
-      { goodType: WOOD, capacity: 10, initial: 0 },
-      { goodType: SWORD, capacity: 10, initial: 0 },
+      { goodType: WOOD, capacity: 10, input: false },
+      { goodType: SWORD, capacity: 10, input: false },
     ],
     recipes: [
       {
@@ -138,8 +138,8 @@ function walledForgeSim(): Simulation {
     kind: 'workplace' as const,
     produces: [SWORD],
     stock: [
-      { goodType: WOOD, capacity: 10, initial: 0 },
-      { goodType: SWORD, capacity: 10, initial: 0 },
+      { goodType: WOOD, capacity: 10, input: false },
+      { goodType: SWORD, capacity: 10, input: false },
     ],
     recipes: [
       {
@@ -258,9 +258,9 @@ function brewhouseContent(): ContentSet {
         kind: 'workplace',
         workers: [{ jobType: CARPENTER, count: 1 }],
         stock: [
-          { goodType: WOOD, capacity: 10, initial: 0 },
-          { goodType: SHOES, capacity: 10, initial: 0 },
-          { goodType: MEAD, capacity: 10, initial: 0 },
+          { goodType: WOOD, capacity: 10, input: false },
+          { goodType: SHOES, capacity: 10, input: false },
+          { goodType: MEAD, capacity: 10, input: false },
         ],
         recipes: [
           {

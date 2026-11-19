@@ -153,10 +153,10 @@ export function aiContent(vehicles: readonly unknown[] = []): ContentSet {
           { jobType: 8, count: 3 },
         ],
         stock: [
-          { goodType: 1, capacity: 150, initial: 0 },
-          { goodType: 2, capacity: 150, initial: 0 },
-          { goodType: 3, capacity: 150, initial: 0 },
-          { goodType: 4, capacity: 150, initial: 0 },
+          { goodType: 1, capacity: 150, input: false },
+          { goodType: 2, capacity: 150, input: false },
+          { goodType: 3, capacity: 150, input: false },
+          { goodType: 4, capacity: 150, input: false },
         ],
       },
       {
@@ -167,7 +167,7 @@ export function aiContent(vehicles: readonly unknown[] = []): ContentSet {
         upgradeTarget: 3,
         // A real material bill keeps a placed site open (a zero-cost site completes instantly).
         construction: [{ goodType: 1, amount: 2 }],
-        stock: [{ goodType: 3, capacity: 5, initial: 0 }],
+        stock: [{ goodType: 3, capacity: 5, input: false }],
       },
       {
         typeId: 3,
@@ -176,7 +176,7 @@ export function aiContent(vehicles: readonly unknown[] = []): ContentSet {
         homeSize: 2,
         upgradeTarget: 4,
         construction: [{ goodType: 1, amount: 2 }],
-        stock: [{ goodType: 3, capacity: 5, initial: 0 }],
+        stock: [{ goodType: 3, capacity: 5, input: false }],
       },
       // Three family slots per top home: three upgraded homes make the plan's nine families.
       {
@@ -185,7 +185,7 @@ export function aiContent(vehicles: readonly unknown[] = []): ContentSet {
         kind: 'home',
         homeSize: 3,
         construction: [{ goodType: 1, amount: 2 }],
-        stock: [{ goodType: 3, capacity: 5, initial: 0 }],
+        stock: [{ goodType: 3, capacity: 5, input: false }],
       },
       {
         typeId: 5,
@@ -198,7 +198,7 @@ export function aiContent(vehicles: readonly unknown[] = []): ContentSet {
           { jobType: 24, count: 1 },
         ],
         construction: [{ goodType: 1, amount: 2 }],
-        stock: [{ goodType: 3, capacity: 25, initial: 0 }],
+        stock: [{ goodType: 3, capacity: 25, input: false }],
       },
       {
         typeId: 6,
@@ -208,7 +208,7 @@ export function aiContent(vehicles: readonly unknown[] = []): ContentSet {
         buildOnBioPattern: true,
         workers: [{ jobType: 24, count: 1 }],
         construction: [{ goodType: 1, amount: 2 }],
-        stock: [{ goodType: 3, capacity: 5, initial: 0 }],
+        stock: [{ goodType: 3, capacity: 5, input: false }],
       },
       {
         typeId: 7,
@@ -219,7 +219,7 @@ export function aiContent(vehicles: readonly unknown[] = []): ContentSet {
           { jobType: 24, count: 1 },
         ],
         construction: [{ goodType: 1, amount: 2 }],
-        stock: [{ goodType: 3, capacity: 5, initial: 0 }],
+        stock: [{ goodType: 3, capacity: 5, input: false }],
       },
       // A baker operator beside a carrier transport slot - the bakery is the plan's one
       // carrier-staffed building, so staffing must fill BOTH.
@@ -233,7 +233,7 @@ export function aiContent(vehicles: readonly unknown[] = []): ContentSet {
           { jobType: 24, count: 1 },
         ],
         construction: [{ goodType: 1, amount: 2 }],
-        stock: [{ goodType: 3, capacity: 5, initial: 0 }],
+        stock: [{ goodType: 3, capacity: 5, input: false }],
       },
       // The upgraded bakery: two baker slots - a building whose operator target is raised to two
       // (`STAFFING_BY_BUILDING_ID`), still carrier-staffed.
@@ -246,7 +246,7 @@ export function aiContent(vehicles: readonly unknown[] = []): ContentSet {
           { jobType: 24, count: 1 },
         ],
         construction: [{ goodType: 1, amount: 2 }],
-        stock: [{ goodType: 3, capacity: 5, initial: 0 }],
+        stock: [{ goodType: 3, capacity: 5, input: false }],
       },
       {
         typeId: 10,
@@ -257,7 +257,7 @@ export function aiContent(vehicles: readonly unknown[] = []): ContentSet {
           { jobType: 24, count: 1 },
         ],
         construction: [{ goodType: 1, amount: 2 }],
-        stock: [{ goodType: 3, capacity: 5, initial: 0 }],
+        stock: [{ goodType: 3, capacity: 5, input: false }],
       },
       // The joinery makes wooden tools from wood and iron tools from wood+iron - the two recipes
       // the craft restriction chooses between.
@@ -282,10 +282,10 @@ export function aiContent(vehicles: readonly unknown[] = []): ContentSet {
         ],
         construction: [{ goodType: 1, amount: 2 }],
         stock: [
-          { goodType: 1, capacity: 5, initial: 0 },
-          { goodType: 5, capacity: 5, initial: 0 },
-          { goodType: 6, capacity: 5, initial: 0 },
-          { goodType: 7, capacity: 5, initial: 0 },
+          { goodType: 1, capacity: 5, input: false },
+          { goodType: 5, capacity: 5, input: false },
+          { goodType: 6, capacity: 5, input: false },
+          { goodType: 7, capacity: 5, input: false },
         ],
       },
       // The barracks: carrier slots only, the real shape - the seat posts porters to them from the late game.
@@ -295,7 +295,7 @@ export function aiContent(vehicles: readonly unknown[] = []): ContentSet {
         kind: 'training',
         workers: [{ jobType: 24, count: 4 }],
         construction: [{ goodType: 1, amount: 2 }],
-        stock: [{ goodType: 3, capacity: 5, initial: 0 }],
+        stock: [{ goodType: 3, capacity: 5, input: false }],
       },
       // Storages share the HQ's worker shape - one surplus-tier carrier from the late game, harvest slots open.
       {
@@ -309,7 +309,7 @@ export function aiContent(vehicles: readonly unknown[] = []): ContentSet {
           { jobType: 8, count: 3 },
         ],
         construction: [{ goodType: 1, amount: 2 }],
-        stock: [{ goodType: 3, capacity: 45, initial: 0 }],
+        stock: [{ goodType: 3, capacity: 45, input: false }],
       },
       {
         typeId: 14,
@@ -320,7 +320,7 @@ export function aiContent(vehicles: readonly unknown[] = []): ContentSet {
           { jobType: 8, count: 3 },
         ],
         construction: [{ goodType: 1, amount: 2 }],
-        stock: [{ goodType: 3, capacity: 120, initial: 0 }],
+        stock: [{ goodType: 3, capacity: 120, input: false }],
       },
       // The level-2 tower (its fighter-band slots are the seat's garrison posts) and the defence WALL,
       // which shares kind 'tower' but must never count as a covering tower (the id allowlist).
@@ -336,7 +336,7 @@ export function aiContent(vehicles: readonly unknown[] = []): ContentSet {
           { jobType: 24, count: 4 },
         ],
         construction: [{ goodType: 1, amount: 2 }],
-        stock: [{ goodType: 3, capacity: 5, initial: 0 }],
+        stock: [{ goodType: 3, capacity: 5, input: false }],
       },
       {
         typeId: 16,
@@ -359,8 +359,8 @@ export function aiContent(vehicles: readonly unknown[] = []): ContentSet {
         ],
         construction: [{ goodType: 1, amount: 2 }],
         stock: [
-          { goodType: 1, capacity: 5, initial: 0 },
-          { goodType: 6, capacity: 5, initial: 0 },
+          { goodType: 1, capacity: 5, input: false },
+          { goodType: 6, capacity: 5, input: false },
         ],
       },
       // A workshop's hidden vehicle yard: the site a joiner's cart cycle opens, never one the list places.

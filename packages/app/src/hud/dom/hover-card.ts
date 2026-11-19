@@ -67,7 +67,7 @@ interface DrawnRow {
 
 /** What identifies a line across two ticks of the same store: its good, or a nameless one's label. */
 function rowKey(row: HoverCardRow): string {
-  return row.goodId ?? row.label;
+  return `${row.goodId ?? row.label}${row.input === true ? ':in' : ''}`;
 }
 
 /** The good rows the card lists: a store's or a hold's, and none at all for a settler. */
@@ -95,7 +95,7 @@ function factElement(fact: HoverCardFact): HTMLElement {
 export function createHoverCard(deps: HoverCardDeps): HoverCard {
   const rowElement = (row: HoverCardRow): DrawnRow => {
     const line = document.createElement('p');
-    line.className = 'on-tip__row';
+    line.className = row.input === true ? 'on-tip__row on-tip__row--input' : 'on-tip__row';
     const name = document.createElement('span');
     if (row.goodId !== undefined) name.innerHTML = goodIconMarkup(ROW_ICON_PX);
     name.append(row.label);

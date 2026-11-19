@@ -734,7 +734,10 @@ export const WORLD: ArticleGroup = {
                 "Qualsiasi edificio dell'elenco di costruzione, subito in piedi",
               ],
               ["Piazza 'nome'", "L'edificio indicato, subito in piedi"],
-              ["Piazza 'nome' e riempine il magazzino", "L'edificio indicato con le scorte piene"],
+              [
+                "Piazza 'nome' e riempine il magazzino",
+                "L'edificio indicato, con piene scorte delle merci che consuma",
+              ],
             ],
             foot: "Un documento sparisce dopo l'uso, tranne quando il punto non è adatto. Trovi i tuoi documenti nella finestra di costruzione alla voce «Documenti».",
           },

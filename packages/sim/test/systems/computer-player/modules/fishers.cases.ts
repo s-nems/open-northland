@@ -91,7 +91,7 @@ function fishingContent(): ContentSet {
         ? {
             ...b,
             workers: [...b.workers, { jobType: FISHER, count: 3 }],
-            stock: [...b.stock, { goodType: FISH, capacity: 50, initial: 0 }],
+            stock: [...b.stock, { goodType: FISH, capacity: 50, input: false }],
           }
         : b,
     ),

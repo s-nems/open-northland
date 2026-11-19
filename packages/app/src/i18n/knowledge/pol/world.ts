@@ -693,7 +693,10 @@ export const WORLD: ArticleGroup = {
             rows: [
               ['Umieść wybrany przez ciebie budynek', 'Dowolny budynek z listy budowy, stanie od razu'],
               ["Umieść 'nazwa'", 'Wskazany budynek, stanie od razu'],
-              ["Umieść 'nazwa' i zapełnij jego skład", 'Wskazany budynek z pełnym zapasem'],
+              [
+                "Umieść 'nazwa' i zapełnij jego skład",
+                'Wskazany budynek z pełnym zapasem towarów, które zużywa',
+              ],
             ],
             foot: 'Papier znika po użyciu, chyba że miejsce nie pasuje. Swoje papiery znajdziesz w oknie budowy pod "Papiery".',
           },

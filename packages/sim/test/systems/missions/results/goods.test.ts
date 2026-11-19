@@ -26,8 +26,8 @@ import {
 /**
  * The goods a script hands out and asks about: stock put into named houses, into the player's
  * storages, and onto the ground around a point, and the four counts that read it back. The fixture
- * headquarters is a storage that opens with ten wood; the sawmill is a workplace whose wood slot is
- * an input and whose plank slot is its product.
+ * headquarters is a storage; the sawmill is a workplace whose wood slot is an input and whose plank
+ * slot is its product.
  */
 
 const SAWMILL = 2;
@@ -35,6 +35,8 @@ const WOOD = 1;
 const PLANK = 2;
 const BREAD = 7;
 const HQ_WOOD_CAPACITY = 150;
+/** The wood a test HQ is placed holding, so its own stock has something to give. */
+const HQ_WOOD = { good: WOOD, amount: 10 } as const;
 const SAWMILL_WOOD_CAPACITY = 20;
 const OWNER = 0;
 const RIVAL = 1;
@@ -59,7 +61,7 @@ function shedContent(): ContentSet {
         typeId: SHED,
         id: 'shed',
         kind: 'storage',
-        stock: [{ goodType: WOOD, capacity: 50, initial: 0 }],
+        stock: [{ goodType: WOOD, capacity: 50, input: false }],
         construction: [{ goodType: WOOD, amount: 1 }],
       },
     ],
@@ -292,11 +294,15 @@ describe('RemoveGoodsFromMapArea', () => {
   });
 
   it('takes the player house own stock first when the flag says so', () => {
-    const sim = seeded(areaOp('RemoveGoodsFromMapArea', 15, 2, true), { type: HEADQUARTERS, owner: OWNER });
+    const sim = seeded(areaOp('RemoveGoodsFromMapArea', 15, 2, true), {
+      type: HEADQUARTERS,
+      owner: OWNER,
+      goods: [HQ_WOOD],
+    });
     const { before, after } = loadPassDelta(sim, WOOD);
-    const held = before[0] ?? 0;
+    expect(before[0]).toBe(HQ_WOOD.amount);
     expect(after[0]).toBe(0);
-    expect(groundTotal(sim, WOOD)).toBe(12 - (15 - held));
+    expect(groundTotal(sim, WOOD)).toBe(12 - (15 - HQ_WOOD.amount));
   });
 
   it('leaves another player house alone, flag or not', () => {
@@ -320,13 +326,13 @@ describe('RemoveGoodsFromMapArea', () => {
 
 describe('the goods goals', () => {
   it('GoodsInHouses sums the named houses, any slot', () => {
-    const enough = goalSim({ opcode: 'GoodsInHouses', objectId: GROUP, good: WOOD, amount: 30 });
+    const enough = goalSim({ opcode: 'GoodsInHouses', objectId: GROUP, good: WOOD, amount: 20 });
     place(enough, { type: HEADQUARTERS, missionId: GROUP, goods: [{ good: WOOD, amount: 10 }] });
     place(enough, { type: SAWMILL, at: FAR, missionId: GROUP, goods: [{ good: WOOD, amount: 10 }] });
     enough.run(LOAD_PASS);
     expect(holds(enough)).toBe(true);
 
-    const short = goalSim({ opcode: 'GoodsInHouses', objectId: GROUP, good: WOOD, amount: 31 });
+    const short = goalSim({ opcode: 'GoodsInHouses', objectId: GROUP, good: WOOD, amount: 21 });
     place(short, { type: HEADQUARTERS, missionId: GROUP, goods: [{ good: WOOD, amount: 10 }] });
     place(short, { type: SAWMILL, at: FAR, missionId: GROUP, goods: [{ good: WOOD, amount: 10 }] });
     short.run(LOAD_PASS);
@@ -392,7 +398,7 @@ describe('the goods goals', () => {
   }
 
   it('NumberOfGoodsInArea adds the ground to what the player houses within range hold', () => {
-    const hq: HouseSpec = { type: HEADQUARTERS, owner: OWNER };
+    const hq: HouseSpec = { type: HEADQUARTERS, owner: OWNER, goods: [HQ_WOOD] };
     const goal = (amount: number): MissionGoalOp => ({
       opcode: 'NumberOfGoodsInArea',
       player: OWNER,
@@ -401,7 +407,7 @@ describe('the goods goals', () => {
       point: POINT,
       range: 3,
     });
-    const inArea = 12 + (holdsOverLaidWood(goal(1), hq).stocks[0] ?? 0);
+    const inArea = 12 + HQ_WOOD.amount;
     expect(holdsOverLaidWood(goal(inArea), hq).held).toBe(true);
     expect(holdsOverLaidWood(goal(inArea + 1), hq).held).toBe(false);
     // A house beyond the range adds nothing, and so does one that is not the player's.
@@ -410,7 +416,7 @@ describe('the goods goals', () => {
   });
 
   it('NumberOfGoodsInHousesInArea leaves the ground out', () => {
-    const hq: HouseSpec = { type: HEADQUARTERS, owner: OWNER };
+    const hq: HouseSpec = { type: HEADQUARTERS, owner: OWNER, goods: [HQ_WOOD] };
     const goal = (amount: number): MissionGoalOp => ({
       opcode: 'NumberOfGoodsInHousesInArea',
       player: OWNER,
@@ -419,9 +425,7 @@ describe('the goods goals', () => {
       point: POINT,
       range: 3,
     });
-    const held = holdsOverLaidWood(goal(1), hq).stocks[0] ?? 0;
-    expect(held).toBeGreaterThan(0);
-    expect(holdsOverLaidWood(goal(held), hq).held).toBe(true);
-    expect(holdsOverLaidWood(goal(held + 1), hq).held).toBe(false);
+    expect(holdsOverLaidWood(goal(HQ_WOOD.amount), hq).held).toBe(true);
+    expect(holdsOverLaidWood(goal(HQ_WOOD.amount + 1), hq).held).toBe(false);
   });
 });

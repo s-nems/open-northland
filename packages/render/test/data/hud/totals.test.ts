@@ -368,6 +368,7 @@ describe('buildHud over a mirror', () => {
     const MAP_HEIGHT = 2;
     const RUN_TICKS = 400;
     const LATE_PLACEMENT_TICK = 150;
+    const HQ_OPENING_WOOD = 10;
     const TREE_COLUMNS = [2, 3];
     const map: TerrainMap = {
       resolution: 'half-cell',
@@ -377,7 +378,16 @@ describe('buildHud over a mirror', () => {
     };
     const sim = new Simulation({ seed: 7, content: testContent(), map });
     const owned = { tribe: VIKING, owner: PLAYER } as const;
-    sim.enqueueSetup({ kind: 'placeBuilding', buildingType: HEADQUARTERS, x: 5, y: 0, ...owned });
+    // The store opens with wood, so the stock figures have something to show from the first tick.
+    const initialGoods = [{ good: WOOD, amount: HQ_OPENING_WOOD }];
+    sim.enqueueSetup({
+      kind: 'placeBuilding',
+      buildingType: HEADQUARTERS,
+      x: 5,
+      y: 0,
+      initialGoods,
+      ...owned,
+    });
     sim.enqueueSetup({ kind: 'spawnSettler', jobType: WOODCUTTER, x: 0, y: 0, ...owned });
     sim.enqueueSetup({ kind: 'spawnSettler', jobType: CARRIER, x: 1, y: 0, ...owned });
     for (const x of TREE_COLUMNS) {

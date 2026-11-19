@@ -719,7 +719,10 @@ export const WORLD: ArticleGroup = {
             rows: [
               ['Ein Haus deiner Wahl setzen', 'Beliebiges Gebäude aus der Bauliste, steht sofort'],
               ["'Name' setzen", 'Das genannte Gebäude, steht sofort'],
-              ["'Name' setzen und dessen Lager füllen", 'Das genannte Gebäude mit vollem Vorrat'],
+              [
+                "'Name' setzen und dessen Lager füllen",
+                'Das genannte Gebäude mit vollem Vorrat an allem, was es verbraucht',
+              ],
             ],
             foot: 'Ein Brief verschwindet nach Gebrauch, außer der Ort passt nicht. Deine Briefe findest du im Baufenster unter „Briefe“.',
           },

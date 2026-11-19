@@ -71,7 +71,8 @@ function billRows(
   }));
 }
 
-/** A standing building lists what it actually holds; an empty slot is no line, as in the original. */
+/** A standing building lists what it actually holds; an empty slot is no line, as in the original. The
+ *  original also marks the lines of the goods the house consumes as inbound. */
 function held(ctx: BuildingStockContext, def: BuildingDef | undefined, ent: SnapshotEntity): HoverCardRow[] {
   return stockRows(ctx, def, ent.components.Stockpile, ent.components.ProductionBonus)
     .filter((row) => row.amount > 0)
@@ -79,6 +80,7 @@ function held(ctx: BuildingStockContext, def: BuildingDef | undefined, ent: Snap
       label: row.label,
       amount: row.amount,
       ...(row.goodId !== undefined ? { goodId: row.goodId } : {}),
+      ...(row.input ? { input: true } : {}),
     }));
 }
 

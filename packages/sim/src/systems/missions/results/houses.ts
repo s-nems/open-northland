@@ -135,7 +135,7 @@ function rebuildAtLevel(
     x: hx,
     y: hy,
     underConstruction: false,
-    fillStock: false,
+    stockFill: 'empty',
     record,
   });
   world.mut(rebuilt, Building).level = level;

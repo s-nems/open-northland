@@ -82,7 +82,7 @@ import { workerSlotsFor } from './worker-slots.js';
 // Extracted `logicstock 4 25 0` on the "work farm 00" block (`DataCnmd/types/houses.ini`).
 const FARM_WHEAT_CAPACITY = 25;
 // Extracted `logicstock 4 10 1` + `logicstock 11 20 0` on "work mill 00". The trailing logicstock int
-// is the consumed-here flag, not an initial fill, so every slot in this file starts empty.
+// is the consumed-here flag each slot's `input` carries.
 const MILL_WHEAT_CAPACITY = 10;
 const MILL_FLOUR_CAPACITY = 20;
 // Extracted `logicstock 1 1 0` on the "work well 00" block.
@@ -101,9 +101,8 @@ const ANIMAL_FARM_OUTPUT_CAPACITY = 30;
 const DRUID_INPUT_CAPACITY = 10;
 const DRUID_HUT_OIL_CAPACITY = 15;
 const DRUID_HUT_01_OUTPUT_CAPACITY = 25;
-// Our pack's "work temple": a holy oil store of five holding one, the fuel its blessing burns.
+// Our pack's "work temple": a holy oil store of five, the fuel its blessing burns.
 const TEMPLE_OIL_CAPACITY = 5;
-const TEMPLE_OIL_INITIAL = 1;
 const CRAFT_INPUT_CAPACITY = 10;
 // Extracted `logicstock` on "work joinery 02": the cart slot is declared and never filled, since a
 // vehicle good is built on a yard, not shelved.
@@ -124,7 +123,7 @@ const JOINERY_03_LEATHER_CAPACITY = 15;
 export interface StockSlot {
   readonly goodType: number;
   readonly capacity: number;
-  readonly initial: number;
+  readonly input: boolean;
 }
 
 /**
@@ -151,7 +150,7 @@ const STORE_GOODS: readonly number[] = [
 ];
 
 function storeStock(capacity: number): readonly StockSlot[] {
-  return STORE_GOODS.map((goodType) => ({ goodType, capacity, initial: 0 }));
+  return STORE_GOODS.map((goodType) => ({ goodType, capacity, input: false }));
 }
 
 /** Per-good capacity by warehouse tier: sandbox balance, not extracted (real `logicstock` is 45/70/120). */
@@ -250,11 +249,11 @@ function potteryRecipe(output: number, mud: number, wood: number): SandboxRecipe
 function joineryUpgrade(outputCapacity: number, inputCapacity: number): Partial<SandboxBuildingRow> {
   return {
     stock: [
-      { goodType: GOOD_WOOD, capacity: inputCapacity, initial: 0 },
-      { goodType: GOOD_IRON, capacity: inputCapacity, initial: 0 },
-      { goodType: GOOD_TOOL_WOODEN, capacity: outputCapacity, initial: 0 },
-      { goodType: GOOD_TOOL_IRON, capacity: outputCapacity, initial: 0 },
-      { goodType: GOOD_FURNITURE, capacity: outputCapacity, initial: 0 },
+      { goodType: GOOD_WOOD, capacity: inputCapacity, input: true },
+      { goodType: GOOD_IRON, capacity: inputCapacity, input: true },
+      { goodType: GOOD_TOOL_WOODEN, capacity: outputCapacity, input: false },
+      { goodType: GOOD_TOOL_IRON, capacity: outputCapacity, input: false },
+      { goodType: GOOD_FURNITURE, capacity: outputCapacity, input: false },
     ],
     produces: [GOOD_TOOL_WOODEN, GOOD_TOOL_IRON, GOOD_FURNITURE],
     recipes: [
@@ -292,7 +291,7 @@ function withVehicleTurns(
     stock: [
       ...(row.stock ?? []),
       ...extraStock,
-      ...vehicles.map((goodType) => ({ goodType, capacity: JOINERY_CART_CAPACITY, initial: 0 })),
+      ...vehicles.map((goodType) => ({ goodType, capacity: JOINERY_CART_CAPACITY, input: false })),
     ],
     produces: [...(row.produces ?? []), ...vehicles],
     recipes: [...(row.recipes ?? []), ...vehicles.map(vehicleTurn)],
@@ -304,16 +303,16 @@ const BUILDING_OVERRIDES: Readonly<Record<number, Partial<SandboxBuildingRow>>> 
   [BUILDING_HEADQUARTERS]: { stock: storeStock(HQ_SLOT_CAPACITY) },
   // Extracted shape ("work well 00"): water-only store, `logicproduction 1`, refilled by the well itself.
   [BUILDING_WELL]: {
-    stock: [{ goodType: GOOD_WATER, capacity: WELL_WATER_CAPACITY, initial: 0 }],
+    stock: [{ goodType: GOOD_WATER, capacity: WELL_WATER_CAPACITY, input: false }],
     produces: [GOOD_WATER],
   },
   // Extracted shape ("work bakery 00"): three-slot store, `logicproduction 19`. The 1 water + 1 flour
   // per bread is a named approximation; `productionInputGoods 11 1` names the inputs, not the amounts.
   [BUILDING_BAKERY]: {
     stock: [
-      { goodType: GOOD_WATER, capacity: BAKERY_WATER_CAPACITY, initial: 0 },
-      { goodType: GOOD_FLOUR, capacity: BAKERY_FLOUR_CAPACITY, initial: 0 },
-      { goodType: GOOD_BREAD, capacity: BAKERY_BREAD_CAPACITY, initial: 0 },
+      { goodType: GOOD_WATER, capacity: BAKERY_WATER_CAPACITY, input: true },
+      { goodType: GOOD_FLOUR, capacity: BAKERY_FLOUR_CAPACITY, input: true },
+      { goodType: GOOD_BREAD, capacity: BAKERY_BREAD_CAPACITY, input: false },
     ],
     produces: [GOOD_BREAD],
     recipes: [
@@ -330,15 +329,15 @@ const BUILDING_OVERRIDES: Readonly<Record<number, Partial<SandboxBuildingRow>>> 
   // Extracted shape ("work farm 00"): wheat-only store, `logicproduction 4`. No recipe on purpose, the
   // field loop around the building makes the wheat.
   [BUILDING_FARM]: {
-    stock: [{ goodType: GOOD_WHEAT, capacity: FARM_WHEAT_CAPACITY, initial: 0 }],
+    stock: [{ goodType: GOOD_WHEAT, capacity: FARM_WHEAT_CAPACITY, input: false }],
     produces: [GOOD_WHEAT],
   },
   // Extracted shape ("work mill 00"): two-slot store, `logicproduction 11`. The 1:1 wheat-to-flour
   // ratio is a named approximation; `productionInputGoods 4` names the input, not the amount.
   [BUILDING_MILL]: {
     stock: [
-      { goodType: GOOD_WHEAT, capacity: MILL_WHEAT_CAPACITY, initial: 0 },
-      { goodType: GOOD_FLOUR, capacity: MILL_FLOUR_CAPACITY, initial: 0 },
+      { goodType: GOOD_WHEAT, capacity: MILL_WHEAT_CAPACITY, input: true },
+      { goodType: GOOD_FLOUR, capacity: MILL_FLOUR_CAPACITY, input: false },
     ],
     produces: [GOOD_FLOUR],
     recipes: [
@@ -356,9 +355,9 @@ const BUILDING_OVERRIDES: Readonly<Record<number, Partial<SandboxBuildingRow>>> 
       {
         goodType: GOOD_FOOD_SIMPLE,
         capacity: TOWER_LARDER_CAPACITY,
-        initial: 0,
+        input: false,
       },
-      { goodType: GOOD_MEAD, capacity: TOWER_LARDER_CAPACITY, initial: 0 },
+      { goodType: GOOD_MEAD, capacity: TOWER_LARDER_CAPACITY, input: false },
     ],
   },
   // Extracted shape ("work animal farm"): the sheep and cattle rows count the herd attached to the farm
@@ -370,37 +369,37 @@ const BUILDING_OVERRIDES: Readonly<Record<number, Partial<SandboxBuildingRow>>> 
       {
         goodType: GOOD_WATER,
         capacity: ANIMAL_FARM_INPUT_CAPACITY,
-        initial: 0,
+        input: true,
       },
       {
         goodType: GOOD_WHEAT,
         capacity: ANIMAL_FARM_INPUT_CAPACITY,
-        initial: 0,
+        input: true,
       },
       {
         goodType: GOOD_SHEEP,
         capacity: ANIMAL_FARM_TOKEN_CAPACITY,
-        initial: 0,
+        input: false,
       },
       {
         goodType: GOOD_CATTLE,
         capacity: ANIMAL_FARM_TOKEN_CAPACITY,
-        initial: 0,
+        input: false,
       },
       {
         goodType: GOOD_WOOL,
         capacity: ANIMAL_FARM_OUTPUT_CAPACITY,
-        initial: 0,
+        input: false,
       },
       {
         goodType: GOOD_LEATHER,
         capacity: ANIMAL_FARM_OUTPUT_CAPACITY,
-        initial: 0,
+        input: false,
       },
       {
         goodType: GOOD_MEAT,
         capacity: ANIMAL_FARM_OUTPUT_CAPACITY,
-        initial: 0,
+        input: false,
       },
     ],
     produces: [GOOD_SHEEP, GOOD_CATTLE, GOOD_WOOL, GOOD_LEATHER, GOOD_MEAT],
@@ -427,8 +426,8 @@ const BUILDING_OVERRIDES: Readonly<Record<number, Partial<SandboxBuildingRow>>> 
   // `productionInputGoods 14`).
   [BUILDING_DRUID_HUT]: {
     stock: [
-      { goodType: GOOD_MUSHROOM, capacity: DRUID_INPUT_CAPACITY, initial: 0 },
-      { goodType: GOOD_HOLY_OIL, capacity: DRUID_HUT_OIL_CAPACITY, initial: 0 },
+      { goodType: GOOD_MUSHROOM, capacity: DRUID_INPUT_CAPACITY, input: true },
+      { goodType: GOOD_HOLY_OIL, capacity: DRUID_HUT_OIL_CAPACITY, input: false },
     ],
     produces: [GOOD_HOLY_OIL],
     recipes: [holyOilRecipe()],
@@ -438,26 +437,26 @@ const BUILDING_OVERRIDES: Readonly<Record<number, Partial<SandboxBuildingRow>>> 
   // (`productionInputGoods 1 14 13 28` / `1 1 14 14 13 13 28` in our data pack).
   [BUILDING_DRUID_HUT_01]: {
     stock: [
-      { goodType: GOOD_MUSHROOM, capacity: DRUID_INPUT_CAPACITY, initial: 0 },
+      { goodType: GOOD_MUSHROOM, capacity: DRUID_INPUT_CAPACITY, input: true },
       {
         goodType: GOOD_HOLY_OIL,
         capacity: DRUID_HUT_01_OUTPUT_CAPACITY,
-        initial: 0,
+        input: false,
       },
-      { goodType: GOOD_WATER, capacity: DRUID_INPUT_CAPACITY, initial: 0 },
-      { goodType: GOOD_HERB, capacity: DRUID_INPUT_CAPACITY, initial: 0 },
-      { goodType: GOOD_CROCKERY, capacity: DRUID_INPUT_CAPACITY, initial: 0 },
+      { goodType: GOOD_WATER, capacity: DRUID_INPUT_CAPACITY, input: true },
+      { goodType: GOOD_HERB, capacity: DRUID_INPUT_CAPACITY, input: true },
+      { goodType: GOOD_CROCKERY, capacity: DRUID_INPUT_CAPACITY, input: true },
       ...POTIONS.map(([, goodType]) => ({
         goodType,
         capacity: DRUID_HUT_01_OUTPUT_CAPACITY,
-        initial: 0,
+        input: false,
       })),
     ],
     produces: [GOOD_HOLY_OIL, ...POTIONS.map(([, goodType]) => goodType)],
     recipes: [holyOilRecipe(), ...POTIONS.map(([amount, goodType]) => potionRecipe(goodType, amount))],
   },
   [BUILDING_TEMPLE]: {
-    stock: [{ goodType: GOOD_HOLY_OIL, capacity: TEMPLE_OIL_CAPACITY, initial: TEMPLE_OIL_INITIAL }],
+    stock: [{ goodType: GOOD_HOLY_OIL, capacity: TEMPLE_OIL_CAPACITY, input: true }],
   },
   [BUILDING_WAREHOUSE_00]: { stock: storeStock(WAREHOUSE_SLOT_CAPACITY[0]) },
   [BUILDING_WAREHOUSE_01]: { stock: storeStock(WAREHOUSE_SLOT_CAPACITY[1]) },
@@ -488,36 +487,36 @@ const BUILDING_OVERRIDES: Readonly<Record<number, Partial<SandboxBuildingRow>>> 
   [BUILDING_JOINERY_03]: withVehicleTurns(
     joineryUpgrade(25, JOINERY_03_INPUT_CAPACITY),
     [GOOD_HANDCART, GOOD_OXCART, GOOD_SHIP_SMALL, GOOD_CATAPULT],
-    [{ goodType: GOOD_LEATHER, capacity: JOINERY_03_LEATHER_CAPACITY, initial: 0 }],
+    [{ goodType: GOOD_LEATHER, capacity: JOINERY_03_LEATHER_CAPACITY, input: true }],
   ),
   // Extracted `work pottery 00/01/02`: each upgrade keeps the products below it and adds tiles, then
   // crockery.
   [BUILDING_POTTERY]: {
     stock: [
-      { goodType: GOOD_MUD, capacity: CRAFT_INPUT_CAPACITY, initial: 0 },
-      { goodType: GOOD_WOOD, capacity: CRAFT_INPUT_CAPACITY, initial: 0 },
-      { goodType: GOOD_BRICK, capacity: 15, initial: 0 },
+      { goodType: GOOD_MUD, capacity: CRAFT_INPUT_CAPACITY, input: true },
+      { goodType: GOOD_WOOD, capacity: CRAFT_INPUT_CAPACITY, input: true },
+      { goodType: GOOD_BRICK, capacity: 15, input: false },
     ],
     produces: [GOOD_BRICK],
     recipes: [potteryRecipe(GOOD_BRICK, 1, 1)],
   },
   [BUILDING_POTTERY_01]: {
     stock: [
-      { goodType: GOOD_MUD, capacity: CRAFT_INPUT_CAPACITY, initial: 0 },
-      { goodType: GOOD_WOOD, capacity: CRAFT_INPUT_CAPACITY, initial: 0 },
-      { goodType: GOOD_BRICK, capacity: 20, initial: 0 },
-      { goodType: GOOD_TILE, capacity: 20, initial: 0 },
+      { goodType: GOOD_MUD, capacity: CRAFT_INPUT_CAPACITY, input: true },
+      { goodType: GOOD_WOOD, capacity: CRAFT_INPUT_CAPACITY, input: true },
+      { goodType: GOOD_BRICK, capacity: 20, input: false },
+      { goodType: GOOD_TILE, capacity: 20, input: false },
     ],
     produces: [GOOD_BRICK, GOOD_TILE],
     recipes: [potteryRecipe(GOOD_BRICK, 1, 1), potteryRecipe(GOOD_TILE, 2, 1)],
   },
   [BUILDING_POTTERY_02]: {
     stock: [
-      { goodType: GOOD_MUD, capacity: CRAFT_INPUT_CAPACITY, initial: 0 },
-      { goodType: GOOD_WOOD, capacity: CRAFT_INPUT_CAPACITY, initial: 0 },
-      { goodType: GOOD_BRICK, capacity: 25, initial: 0 },
-      { goodType: GOOD_TILE, capacity: 25, initial: 0 },
-      { goodType: GOOD_CROCKERY, capacity: 25, initial: 0 },
+      { goodType: GOOD_MUD, capacity: CRAFT_INPUT_CAPACITY, input: true },
+      { goodType: GOOD_WOOD, capacity: CRAFT_INPUT_CAPACITY, input: true },
+      { goodType: GOOD_BRICK, capacity: 25, input: false },
+      { goodType: GOOD_TILE, capacity: 25, input: false },
+      { goodType: GOOD_CROCKERY, capacity: 25, input: false },
     ],
     produces: [GOOD_BRICK, GOOD_TILE, GOOD_CROCKERY],
     recipes: [
@@ -816,8 +815,8 @@ function homeRow(b: VikingBuilding): Partial<SandboxBuildingRow> {
     homeSize: tier.homeSize,
     furnishedFamilies: tier.furnishedFamilies,
     stock: [
-      { goodType: GOOD_FOOD_SIMPLE, capacity: tier.foodCapacity, initial: 0 },
-      { goodType: GOOD_FOOD_EXTRA, capacity: tier.foodCapacity, initial: 0 },
+      { goodType: GOOD_FOOD_SIMPLE, capacity: tier.foodCapacity, input: true },
+      { goodType: GOOD_FOOD_EXTRA, capacity: tier.foodCapacity, input: true },
     ],
   };
 }

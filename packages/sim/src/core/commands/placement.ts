@@ -133,10 +133,10 @@ interface PlaceBuildingFields {
   readonly owner?: number;
   /**
    * Spend one of the owner's placing papers on this placement: the building stands finished at once,
-   * and a `placeStockedHouse` paper also fills every stock slot to capacity. The paper must be a placing
-   * kind the owner holds, and a house paper must name `buildingType`; otherwise nothing is placed and
-   * nothing is spent. A house paper bypasses the tech gate, as the original's paper window lists the
-   * named house whether or not the tribe has unlocked it.
+   * and a `placeStockedHouse` paper also fills each slot of a good it consumes to capacity. The paper
+   * must be a placing kind the owner holds, and a house paper must name `buildingType`; otherwise
+   * nothing is placed and nothing is spent. A house paper bypasses the tech gate, as the original's
+   * paper window lists the named house whether or not the tribe has unlocked it.
    */
   readonly paper?: Paper;
 }
@@ -153,7 +153,7 @@ interface AuthoredPlaceBuildingFields {
    *  site, whose hold accumulates delivered materials instead. */
   readonly fillStock?: boolean;
   /** Authored starting stock (a decoded map's `addgoods`): each entry adds `amount` × `good` on top of
-   *  whatever the default/`fillStock` seeding put in the stockpile. Ignored for an `underConstruction`
+   *  whatever `fillStock` put in the stockpile. Ignored for an `underConstruction`
    *  site, like `fillStock`. */
   readonly initialGoods?: readonly { readonly good: number; readonly amount: number }[];
   /** The {@link import('../../components/missions/mission.js').MissionObjectId} to stamp; omit for a house no

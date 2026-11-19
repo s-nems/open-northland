@@ -60,7 +60,7 @@ describe('constructionSystem - manual upgrade lifecycle', () => {
       const e = assembleBuilding(sim.world, ctx, type, {
         ...spec,
         underConstruction: false,
-        fillStock: false,
+        stockFill: 'empty',
       });
       return sim.world.get(e, Building).level;
     };

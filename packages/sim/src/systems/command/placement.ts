@@ -120,11 +120,23 @@ export function placeBuilding(
     x: command.x,
     y: command.y,
     underConstruction: paper === undefined && command.underConstruction === true,
-    fillStock: paper === undefined ? command.fillStock === true : paper.kind === 'placeStockedHouse',
+    stockFill: stockFillOf(command),
     initialGoods: command.initialGoods,
     level: command.level,
     record: command.record,
   });
+}
+
+/**
+ * What a finished building's store starts with before its authored goods: nothing, every slot to its
+ * capacity (an authored setup), or the slots of the goods it consumes to theirs (the stocked-house paper;
+ * original behavior, so a storage house gets nothing from it).
+ */
+export type StockFill = 'empty' | 'full' | 'inputs';
+
+function stockFillOf(command: Extract<Command, { kind: 'placeBuilding' }>): StockFill {
+  if (command.paper !== undefined) return command.paper.kind === 'placeStockedHouse' ? 'inputs' : 'empty';
+  return command.fillStock === true ? 'full' : 'empty';
 }
 
 /** What {@link assembleBuilding} puts down: the gated `placeBuilding` fields past their gates. */
@@ -137,7 +149,8 @@ export interface BuildingSpec {
   readonly x: number;
   readonly y: number;
   readonly underConstruction: boolean;
-  readonly fillStock: boolean;
+  /** Ignored for an `underConstruction` site, whose hold takes delivered materials instead. */
+  readonly stockFill: StockFill;
   readonly initialGoods?: readonly { readonly good: number; readonly amount: number }[] | undefined;
   /** An authored level, kept when the type's record draws it above the type's rung. */
   readonly level?: number | undefined;
@@ -156,7 +169,7 @@ export function assembleBuilding(
   type: BuildingType,
   spec: BuildingSpec,
 ): Entity {
-  const { underConstruction, fillStock } = spec;
+  const { underConstruction, stockFill } = spec;
   const e = world.create();
   // The anchor is a half-cell node; its Position is the node's fractional tile coords.
   world.add(e, Position, positionOfNode(spec.x, spec.y));
@@ -183,11 +196,9 @@ export function assembleBuilding(
     // 0-HP corpse the CleanupSystem reaps.
     world.add(e, UnderConstruction, { labor: fx.fromInt(0) });
     if (hitpoints !== undefined) world.add(e, Health, { hitpoints: 1, max: hitpoints });
-  } else if (fillStock) {
-    for (const slot of type.stock) amounts.set(slot.goodType, slot.capacity);
-  } else {
+  } else if (stockFill !== 'empty') {
     for (const slot of type.stock) {
-      if (slot.initial > 0) amounts.set(slot.goodType, slot.initial);
+      if (stockFill === 'full' || slot.input) amounts.set(slot.goodType, slot.capacity);
     }
   }
   if (!underConstruction) {

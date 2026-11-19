@@ -270,7 +270,7 @@ it('expensive unused selection does not let a cheap recipe steal priority', () =
     { goodType: WOOD, amount: 1 },
     { goodType: WHEAT, amount: 1 },
   ];
-  type.stock.push({ goodType: 7, capacity: 20, initial: 0 });
+  type.stock.push({ goodType: 7, capacity: 20, input: false });
   type.recipes.push({
     inputs: [
       { goodType: WOOD, amount: 1 },
@@ -349,7 +349,7 @@ function forgeBesideWell() {
   const base = testContent();
   const forge = workshop(base, FORGE);
   forge.workers = [{ jobType: CARPENTER, count: 2 }];
-  forge.stock.push({ goodType: WATER, capacity: 20, initial: 0 });
+  forge.stock.push({ goodType: WATER, capacity: 20, input: false });
   secondRecipe(forge).inputs = [
     { goodType: WOOD, amount: 1 },
     { goodType: WATER, amount: 1 },
@@ -366,7 +366,7 @@ function forgeBesideWell() {
         collectAtomic: 44,
         refillsOwnStock: true,
         workers: [{ jobType: 24, count: 1 }],
-        stock: [{ goodType: WATER, capacity: 1, initial: 0 }],
+        stock: [{ goodType: WATER, capacity: 1, input: false }],
         produces: [WATER],
       },
     ],

@@ -134,12 +134,16 @@ function dropPile(s: Simulation, good: number, at: { hx: number; hy: number }, a
   s.step();
 }
 
+/** The wood a headquarters is placed holding when a test names no goods of its own. */
+const HQ_START_WOOD = 10;
+
 function placeHq(
   s: Simulation,
   at: { hx: number; hy: number },
-  goods?: { good: number; amount: number }[],
+  goods?: readonly { good: number; amount: number }[],
   buildingType = HEADQUARTERS,
 ): Entity {
+  const held = goods ?? (buildingType === HEADQUARTERS ? [{ good: WOOD, amount: HQ_START_WOOD }] : []);
   s.enqueueSetup({
     kind: 'placeBuilding',
     buildingType,
@@ -148,7 +152,7 @@ function placeHq(
     y: at.hy,
     owner: P0,
     force: true,
-    ...(goods === undefined ? {} : { initialGoods: goods }),
+    initialGoods: held,
   });
   s.step();
   const houses = [...s.world.query(Building)];
@@ -241,7 +245,7 @@ describe('the commander as cargo hand', () => {
     expect(crewRefusals(s)).toEqual([]);
     s.run(TRIP_TICKS * 2);
     expect(line(s, cart, WOOD)).toEqual({ current: 2, wanted: 2, reserved: 2 });
-    expect(s.world.get(hq, Stockpile).amounts.get(WOOD)).toBe(10 - 2);
+    expect(s.world.get(hq, Stockpile).amounts.get(WOOD)).toBe(HQ_START_WOOD - 2);
     expect(s.world.has(commander, Carrying)).toBe(false);
   });
 
@@ -256,7 +260,7 @@ describe('the commander as cargo hand', () => {
     s.enqueue(playerCommand(P0, { kind: 'clearVehicleWanted', vehicle: cart }));
     s.run(TRIP_TICKS * 3);
     expect(line(s, cart, WOOD)).toEqual({ current: 0, wanted: 0, reserved: 0 });
-    expect(s.world.get(hq, Stockpile).amounts.get(WOOD)).toBe(10 + 2);
+    expect(s.world.get(hq, Stockpile).amounts.get(WOOD)).toBe(HQ_START_WOOD + 2);
     expect(s.world.has(scout, Carrying)).toBe(false);
   });
 
@@ -334,7 +338,7 @@ describe('the commander as cargo hand', () => {
     s.run(TRIP_TICKS * 2);
 
     expect(line(s, cart, WOOD)).toEqual({ current: 2, wanted: 2, reserved: 2 });
-    expect(s.world.get(hq, Stockpile).amounts.get(WOOD)).toBe(10 - 2);
+    expect(s.world.get(hq, Stockpile).amounts.get(WOOD)).toBe(HQ_START_WOOD - 2);
     expect(s.world.get(soldier, Stance).anchorCell).toBe(anchor);
   });
 
@@ -374,7 +378,7 @@ describe('the commander as cargo hand', () => {
     s.run(TRIP_TICKS * 2);
     expect(line(s, cart, WOOD)).toEqual({ current: 0, wanted: 0, reserved: 0 });
     expect(pileAmount(s, WOOD)).toBe(2);
-    expect(s.world.get(hq, Stockpile).amounts.get(WOOD)).toBe(10);
+    expect(s.world.get(hq, Stockpile).amounts.get(WOOD)).toBe(HQ_START_WOOD);
     // With nothing left to move the scout steps back in.
     expect(s.world.has(scout, Position)).toBe(false);
   });
@@ -403,7 +407,7 @@ describe('the carrier rung', () => {
     want(s, cart, WOOD, 3);
     s.run(TRIP_TICKS * 3);
     expect(line(s, cart, WOOD)).toEqual({ current: 3, wanted: 3, reserved: 3 });
-    expect(s.world.get(hq, Stockpile).amounts.get(WOOD)).toBe(10 - 3);
+    expect(s.world.get(hq, Stockpile).amounts.get(WOOD)).toBe(HQ_START_WOOD - 3);
   });
 
   it('fills the hold to its budget and no further, then rests at the door', () => {
@@ -456,7 +460,7 @@ describe('the carrier rung', () => {
     attachCarrier(s, cart);
     s.run(TRIP_TICKS * 3);
     expect(line(s, cart, WOOD)).toEqual({ current: 0, wanted: 0, reserved: 0 });
-    expect(s.world.get(hq, Stockpile).amounts.get(WOOD)).toBe(10 + 3);
+    expect(s.world.get(hq, Stockpile).amounts.get(WOOD)).toBe(HQ_START_WOOD + 3);
   });
 
   it('sets a flushed unit on the ground at the door when nothing stores it', () => {
@@ -479,7 +483,7 @@ describe('the carrier rung', () => {
     s.run(TRIP_TICKS * 2);
     expect(line(s, cart, WOOD).current).toBe(0);
     expect(s.world.get(sawmill, Stockpile).amounts.get(WOOD) ?? 0).toBe(0);
-    expect(s.world.get(hq, Stockpile).amounts.get(WOOD)).toBe(10 + 1);
+    expect(s.world.get(hq, Stockpile).amounts.get(WOOD)).toBe(HQ_START_WOOD + 1);
   });
 
   it('sets unloaded goods on the ground when only a workplace would take them', () => {
@@ -611,7 +615,7 @@ describe('the carrier rung', () => {
     expect(line(s, cart, WOOD)).toEqual({ current: 0, wanted: 0, reserved: 0 });
     expect(s.world.has(carrier, CargoRun)).toBe(false);
     expect(s.world.has(carrier, Carrying)).toBe(false);
-    expect(s.world.get(hq, Stockpile).amounts.get(WOOD)).toBe(10 + 1);
+    expect(s.world.get(hq, Stockpile).amounts.get(WOOD)).toBe(HQ_START_WOOD + 1);
     expect(s.world.get(carrier, Rider)).toEqual({ vehicle: cart, boarding: false, leaving: null });
   });
 
@@ -635,7 +639,7 @@ describe('the carrier rung', () => {
     s.world.add(scout, Carrying, { goodType: WOOD, amount: 1 });
     s.run(TRIP_TICKS * 2);
     expect(s.world.has(scout, Carrying)).toBe(false);
-    expect(s.world.get(hq, Stockpile).amounts.get(WOOD)).toBe(10 + 1);
+    expect(s.world.get(hq, Stockpile).amounts.get(WOOD)).toBe(HQ_START_WOOD + 1);
     expect(s.world.get(scout, Rider)).toEqual({ vehicle: cart, boarding: false, leaving: null });
     expect(line(s, cart, WOOD)).toEqual({ current: 0, wanted: 0, reserved: 0 });
   });

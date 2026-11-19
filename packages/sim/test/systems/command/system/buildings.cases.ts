@@ -24,8 +24,11 @@ import {
   WOODCUTTER,
 } from './support.js';
 
+/** The fixture HQ's capacity for every good it stores. */
+const HQ_SLOT_CAPACITY = 150;
+
 describe('CommandSystem - buildings and demolition', () => {
-  it('placeBuilding creates a built building with a seeded stockpile and emits buildingPlaced', () => {
+  it('placeBuilding creates a built building with an empty stockpile and emits buildingPlaced', () => {
     const sim = fresh();
     // Command coords are half-cell nodes; cell (3,4)'s anchor node (6,8) sits exactly on tile (3,4).
     const anchor = cellAnchorNode(3, 4);
@@ -46,10 +49,8 @@ describe('CommandSystem - buildings and demolition', () => {
     const b = sim.world.get(e, Building);
     expect(b.buildingType).toBe(HEADQUARTERS);
     expect(b.tribe).toBe(VIKING);
-    // The HQ stock slots: wood init 10 (seeded), plank init 0 (omitted - only positive initials seed).
-    const stock = sim.world.get(e, Stockpile).amounts;
-    expect(stock.get(WOOD)).toBe(10);
-    expect(stock.has(2)).toBe(false);
+    // A slot declares what the house may hold; nothing is in it until goods arrive.
+    expect(sim.world.get(e, Stockpile).amounts.size).toBe(0);
     const pos = sim.world.get(e, Position);
     expect([pos.x, pos.y]).toEqual([3 * 65536, 4 * 65536]);
     const placed = sim.events.current().filter((ev) => ev.kind === 'buildingPlaced');
@@ -57,7 +58,7 @@ describe('CommandSystem - buildings and demolition', () => {
     expect(placed[0]).toMatchObject({ at: { hx: anchor.hx, hy: anchor.hy } }); // events echo node coords
   });
 
-  it('placeBuilding initialGoods (authored addgoods) add on top of the type-default seeding', () => {
+  it('placeBuilding initialGoods (authored addgoods) add on top of a full stock', () => {
     const sim = fresh();
     sim.enqueueSetup({
       kind: 'placeBuilding',
@@ -65,15 +66,16 @@ describe('CommandSystem - buildings and demolition', () => {
       x: 3,
       y: 4,
       tribe: VIKING,
+      fillStock: true,
       initialGoods: [
-        { good: WOOD, amount: 15 }, // on top of the slot's init 10
-        { good: PLANK, amount: 5 }, // a slot the defaults left empty
+        { good: WOOD, amount: 15 },
+        { good: PLANK, amount: 5 },
       ],
     });
     sim.step();
     const stock = sim.world.get(nthEntity(sim, 0), Stockpile).amounts;
-    expect(stock.get(WOOD)).toBe(25);
-    expect(stock.get(PLANK)).toBe(5);
+    expect(stock.get(WOOD)).toBe(HQ_SLOT_CAPACITY + 15);
+    expect(stock.get(PLANK)).toBe(HQ_SLOT_CAPACITY + 5);
   });
 
   it('placeBuilding initialGoods are ignored for an under-construction site (empty hold)', () => {

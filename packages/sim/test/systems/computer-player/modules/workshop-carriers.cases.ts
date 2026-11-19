@@ -743,7 +743,7 @@ const INPUT_SHELF = 10;
  *  flour. */
 function grainContent(): ContentSet {
   const base = aiContent();
-  const shelf = (goodType: number) => ({ goodType, capacity: INPUT_SHELF, initial: 0 });
+  const shelf = (goodType: number) => ({ goodType, capacity: INPUT_SHELF, input: false });
   const recipe = (input: number, output: number) => ({
     inputs: [{ goodType: input, amount: 1 }],
     outputs: [{ goodType: output, amount: 1 }],

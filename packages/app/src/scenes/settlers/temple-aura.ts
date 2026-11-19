@@ -38,7 +38,8 @@ function blessedAny(sim: Simulation, owner: number): boolean {
 function build(sim: Simulation): void {
   CIVILIZATIONS.forEach((tribe, i) => {
     const x = TEMPLE_FIRST_X + i * TEMPLE_STEP_X;
-    placeBuiltSandboxBuilding(sim, 'work_temple', x, TEMPLE_ROW_Y, HUMAN_PLAYER, { tribe });
+    // A full oil store keeps the fire, and so the blessing, burning through the run.
+    placeBuiltSandboxBuilding(sim, 'work_temple', x, TEMPLE_ROW_Y, HUMAN_PLAYER, { tribe, fillStock: true });
   });
   worshipper(sim, NEAR_AT.x, NEAR_AT.y);
   worshipper(sim, FAR_AT.x, FAR_AT.y);

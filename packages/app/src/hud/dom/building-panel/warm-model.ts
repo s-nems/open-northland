@@ -131,6 +131,7 @@ export function warmBuildingModel(goodIds: readonly string[]): BuildingPanelMode
       label: 'Warm',
       amount: goodType % 2,
       capacity: 10,
+      input: goodType === 0,
       category: goodType % 2,
       ...(goodType === 0 ? { alert: 'waiting' as const } : goodType === 1 ? { alert: 'full' as const } : {}),
     })),

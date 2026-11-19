@@ -170,7 +170,7 @@ describe('production events share the batch clock with the displayed craft', () 
             ? b
             : {
                 ...b,
-                stock: [...b.stock, { goodType: freeGood, capacity: 20, initial: 0 }],
+                stock: [...b.stock, { goodType: freeGood, capacity: 20, input: false }],
                 recipes: [
                   ...b.recipes,
                   {
@@ -219,7 +219,7 @@ describe('production events share the batch clock with the displayed craft', () 
           : {
               ...b,
               workers: [{ jobType: CARPENTER, count: 2 }],
-              stock: [...b.stock, { goodType: freeGood, capacity: 20, initial: 0 }],
+              stock: [...b.stock, { goodType: freeGood, capacity: 20, input: false }],
               recipes: [
                 ...b.recipes,
                 {

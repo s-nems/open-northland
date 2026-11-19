@@ -98,13 +98,14 @@ const TAKE_TICKS = 60;
 const TRIP_TICKS = 400;
 /** How far below its spawn a porter walks before a Shift-queued order starts. */
 const QUEUED_WALK_NODES = 4;
-/** The twin mill's wood slot takes ten units; the fixture headquarters starts with ten wood. */
+/** The twin mill's wood slot takes ten units. */
 const MILL_WOOD_CAPACITY = 10;
 /** The wood one cycle of the mill takes. */
 const MILL_WOOD_FOR_A_CYCLE = 1;
 /** The mill slot part filled, so the fetch has a shortfall smaller than the source's stock. */
 const MILL_STOCKED_WOOD = 8;
 const HQ_WOOD_FOR_MILL = 14;
+/** The wood the headquarters these trips draw on is placed holding. */
 const HQ_INITIAL_WOOD = 10;
 const HQ_WOOD_CAPACITY = 150;
 const HQ_PLANK_CAPACITY = 150;
@@ -167,6 +168,7 @@ function placeHouse(s: Simulation, at: { hx: number; hy: number }, buildingType 
     y: at.hy,
     owner: P0,
     force: true,
+    ...(buildingType === HEADQUARTERS ? { initialGoods: [{ good: WOOD, amount: HQ_INITIAL_WOOD }] } : {}),
   });
   s.step();
   const houses = [...s.world.query(Building)];

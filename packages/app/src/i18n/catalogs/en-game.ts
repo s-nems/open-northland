@@ -574,7 +574,7 @@ export const enGame = {
       paperEffect: {
         placeAny: 'Choose in the catalogue; it stands at once',
         placeHouse: 'Stands at once, no construction, no materials',
-        placeStockedHouse: 'Stands at once, its store filled to the brim',
+        placeStockedHouse: 'Stands at once, with the goods it uses filled to the brim',
       },
       papersEmptyTitle: 'No papers',
       papersEmptyText: 'Papers are found in the chests on the map.',

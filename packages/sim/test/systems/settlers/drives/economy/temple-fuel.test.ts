@@ -52,7 +52,7 @@ function fuelledContent(): ContentSet {
         ? {
             ...b,
             workers: [{ jobType: CARRIER, count: 1 }],
-            stock: [{ goodType: PLANK, capacity: FUEL_CAPACITY, initial: 0 }],
+            stock: [{ goodType: PLANK, capacity: FUEL_CAPACITY, input: false }],
           }
         : b,
     ),

@@ -555,7 +555,7 @@ export const plGame = {
       paperEffect: {
         placeAny: 'Wybierz w katalogu; stanie od razu',
         placeHouse: 'Stanie od razu, bez budowy i materiałów',
-        placeStockedHouse: 'Stanie od razu, ze składem pełnym po brzegi',
+        placeStockedHouse: 'Stanie od razu, z towarami, które zużywa, po brzegi',
       },
       papersEmptyTitle: 'Brak papierów',
       papersEmptyText: 'Papiery znajdziesz w skrzyniach na mapie.',

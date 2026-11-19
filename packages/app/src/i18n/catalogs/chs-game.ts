@@ -543,7 +543,7 @@ export const chsGame = {
       paperEffect: {
         placeAny: '在目录中选择；立即建成',
         placeHouse: '立即建成，无需施工和材料',
-        placeStockedHouse: '立即建成，库存装得满满当当',
+        placeStockedHouse: '立即建成，所需原料装得满满当当',
       },
       papersEmptyTitle: '没有文书',
       papersEmptyText: '文书可在地图上的箱子里找到。',

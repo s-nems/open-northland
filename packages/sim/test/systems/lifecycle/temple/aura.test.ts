@@ -65,7 +65,7 @@ function fuelledContent(): ContentSet {
     ...base,
     buildings: base.buildings.map((b) =>
       b.typeId === TEMPLE_TYPE
-        ? { ...b, stock: [{ goodType: FUEL, capacity: FUEL_CAPACITY, initial: 0 }] }
+        ? { ...b, stock: [{ goodType: FUEL, capacity: FUEL_CAPACITY, input: false }] }
         : b,
     ),
   };

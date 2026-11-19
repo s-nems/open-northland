@@ -26,7 +26,7 @@ function barracksContent(): ContentSet {
         id: 'barracks',
         kind: 'training',
         workers: [{ jobType: CARRIER, count: 1 }],
-        stock: [{ goodType: COIN, capacity: COIN_SHELF, initial: 0 }],
+        stock: [{ goodType: COIN, capacity: COIN_SHELF, input: false }],
         construction: [{ goodType: WOOD, amount: 1 }],
       },
     ],

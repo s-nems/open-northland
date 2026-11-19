@@ -853,7 +853,7 @@ describe('producer unblocks its own full output slot', () => {
     const costly = forgeType?.recipes[1];
     if (forgeType === undefined || costly === undefined) throw new Error('fixture forge needs two recipes');
     costly.inputs = [{ goodType: WOOD, amount: 2 }];
-    forgeType.stock.push({ goodType: 7, capacity: 20, initial: 0 });
+    forgeType.stock.push({ goodType: 7, capacity: 20, input: false });
     forgeType.recipes.push({
       inputs: [{ goodType: WOOD, amount: 1 }],
       outputs: [{ goodType: 7, amount: 1 }],

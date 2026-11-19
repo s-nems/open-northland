@@ -181,7 +181,7 @@ function workshopContent(): ContentSet {
       { inputs: [{ goodType: input, amount: 1 }], outputs: [{ goodType: TOOL_IRON, amount: 1 }], ticks: 180 },
     ],
     construction: [{ goodType: WOOD, amount: 2 }],
-    stock: [{ goodType: input, capacity: 5, initial: 0 }],
+    stock: [{ goodType: input, capacity: 5, input: false }],
   });
   return parseContentSet({
     ...base,
@@ -189,7 +189,7 @@ function workshopContent(): ContentSet {
     buildings: [
       ...base.buildings.map((b) =>
         b.id === 'headquarters'
-          ? { ...b, stock: [...b.stock, { goodType: IRON, capacity: 150, initial: 0 }] }
+          ? { ...b, stock: [...b.stock, { goodType: IRON, capacity: 150, input: false }] }
           : b,
       ),
       workshop(POTTERY_00_TYPE, 'work_pottery_00', POTTER, 1, MUD),

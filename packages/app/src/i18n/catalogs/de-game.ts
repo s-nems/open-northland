@@ -610,7 +610,7 @@ export const deGame = {
       paperEffect: {
         placeAny: 'Im Katalog auswählen; das Gebäude steht sofort',
         placeHouse: 'Sofort fertig, ohne Bauarbeiten oder Materialien',
-        placeStockedHouse: 'Sofort fertig, mit vollem Lager',
+        placeStockedHouse: 'Sofort fertig, mit vollem Vorrat an allem, was es verbraucht',
       },
       papersEmptyTitle: 'Keine Briefe',
       papersEmptyText: 'Briefe findest du in Kisten auf der Karte.',

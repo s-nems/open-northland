@@ -74,13 +74,15 @@ export function extractBuildings(sections: readonly RuleSection[], src: SourceRe
       if (Number.isNaN(jobType) || Number.isNaN(count)) continue;
       workers.push({ jobType, count });
     }
-    const stock: { goodType: number; capacity: number; initial: number }[] = [];
+    const stock: { goodType: number; capacity: number; input: boolean }[] = [];
     for (const p of findProps(sec, 'logicstock')) {
       const goodType = Number.parseInt(p.values[0] ?? '', 10);
       const capacity = Number.parseInt(p.values[1] ?? '', 10);
-      const initial = Number.parseInt(p.values[2] ?? '', 10);
+      // The third value is a flag read as "nonzero", never an amount (original behavior, unconfirmed
+      // against the running original).
+      const flag = Number.parseInt(p.values[2] ?? '', 10);
       if (Number.isNaN(goodType) || Number.isNaN(capacity)) continue;
-      stock.push({ goodType, capacity, initial: Number.isNaN(initial) ? 0 : initial });
+      stock.push({ goodType, capacity, input: !Number.isNaN(flag) && flag !== 0 });
     }
     const id = name ? slug(name) : `house_${typeId}`;
     buildings.push(

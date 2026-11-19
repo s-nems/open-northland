@@ -402,8 +402,8 @@ function smithyContent(): ContentSet {
         ],
         construction: [{ goodType: WOOD, amount: 2 }],
         stock: [
-          { goodType: IRON, capacity: 5, initial: 0 },
-          { goodType: SWORD, capacity: 5, initial: 0 },
+          { goodType: IRON, capacity: 5, input: false },
+          { goodType: SWORD, capacity: 5, input: false },
         ],
       },
     ],

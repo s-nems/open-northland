@@ -245,8 +245,8 @@ function mintContent(): ContentSet {
         id: 'coin_mint',
         kind: 'workplace',
         stock: [
-          { goodType: SHOES, capacity: 10, initial: 0 },
-          { goodType: MEAD, capacity: 10, initial: 0 },
+          { goodType: SHOES, capacity: 10, input: false },
+          { goodType: MEAD, capacity: 10, input: false },
         ],
         recipes: [
           { inputs: [{ goodType: SHOES, amount: 1 }], outputs: [{ goodType: MEAD, amount: 1 }], ticks: 20 },

@@ -93,7 +93,7 @@ function drillContent(): ContentSet {
         id: 'barracks',
         kind: 'training',
         workers: [{ jobType: CARRIER_JOB, count: BARRACKS_CARRIER_SLOTS }],
-        stock: [{ goodType: COIN_GOOD, capacity: 100, initial: 0 }],
+        stock: [{ goodType: COIN_GOOD, capacity: 100, input: false }],
         schoolSize: BARRACKS_SEATS,
       },
     ],

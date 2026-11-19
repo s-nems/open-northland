@@ -38,7 +38,7 @@ function foodMillContent(): ContentSet {
         type.typeId === SAWMILL
           ? {
               ...type,
-              stock: [{ goodType: FOOD_SIMPLE, capacity: 20, initial: 0 }],
+              stock: [{ goodType: FOOD_SIMPLE, capacity: 20, input: false }],
               recipes: [{ inputs: [{ goodType: FOOD_SIMPLE, amount: 1 }], outputs: [], ticks: 20 }],
             }
           : type,

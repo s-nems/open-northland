@@ -6,7 +6,14 @@ import { fresh, HEADQUARTERS, nthEntity, VIKING, WOOD, WOODCUTTER } from './supp
 describe('snapshot read-view', () => {
   it('is a plain, canonical, non-aliasing copy of the world (Maps -> sorted [k,v] arrays)', () => {
     const sim = fresh();
-    sim.enqueueSetup({ kind: 'placeBuilding', buildingType: HEADQUARTERS, x: 1, y: 1, tribe: VIKING });
+    sim.enqueueSetup({
+      kind: 'placeBuilding',
+      buildingType: HEADQUARTERS,
+      x: 1,
+      y: 1,
+      tribe: VIKING,
+      initialGoods: [{ good: WOOD, amount: 10 }],
+    });
     sim.step();
 
     const snap = sim.snapshot();

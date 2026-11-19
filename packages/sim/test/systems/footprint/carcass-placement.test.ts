@@ -49,7 +49,7 @@ describe('a carcass under a building site', () => {
       x: AT.hx,
       y: AT.hy,
       underConstruction: true,
-      fillStock: false,
+      stockFill: 'empty',
     });
 
     expect(sim.world.isAlive(carcass)).toBe(false);

@@ -37,8 +37,6 @@ import {
 } from '../missions/support.js';
 
 const WOOD = 1;
-/** The fixture headquarters opens with this much wood before any authored stock. */
-const HQ_OPENING_WOOD = 10;
 const FIRST_CHECK = MATCH_GOAL_CHECK_TICKS;
 const SECOND_CHECK = 2 * MATCH_GOAL_CHECK_TICKS;
 /** Every setup command has applied by then. */
@@ -164,7 +162,7 @@ describe('multiplayer goal table', () => {
     }
     sim.run(PLACED);
     // Seat 0 holds exactly the amount over its two houses; seat 1's one house falls short.
-    const amount = 2 * HQ_OPENING_WOOD + 6 + 4;
+    const amount = 6 + 4;
     goalsSim([0, 1, 2], [{ kind: 'goods', goods: [{ good: WOOD, amount }] }], sim);
     expect(verdicts(check(sim, FIRST_CHECK))).toEqual([{ kind: 'playerWon', player: 0 }]);
 

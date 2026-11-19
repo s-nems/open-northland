@@ -217,7 +217,7 @@ function barracksContent(): ContentSet {
     ],
     buildings: base.buildings.map((b) =>
       b.typeId === BARRACKS_TYPE
-        ? { ...b, stock: shelved.map((goodType) => ({ goodType, capacity: SHELF, initial: 0 })) }
+        ? { ...b, stock: shelved.map((goodType) => ({ goodType, capacity: SHELF, input: false })) }
         : b,
     ),
   });

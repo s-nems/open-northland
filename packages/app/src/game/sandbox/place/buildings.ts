@@ -81,9 +81,8 @@ export function placeBuiltSandboxBuildingAtNode(
   const level = buildingLevelForType(sim.content, typeId);
   sim.world.add(e, Building, { buildingType: typeId, tribe: opts.tribe ?? PRIMARY_TRIBE, built: ONE, level });
   const amounts = new Map<number, number>();
-  for (const slot of def?.stock ?? []) {
-    const seeded = opts.fillStock ? slot.capacity : slot.initial;
-    if (seeded > 0) amounts.set(slot.goodType, seeded);
+  if (opts.fillStock === true) {
+    for (const slot of def?.stock ?? []) if (slot.capacity > 0) amounts.set(slot.goodType, slot.capacity);
   }
   sim.world.add(e, Stockpile, { amounts });
   if (def?.hitpoints !== undefined) {

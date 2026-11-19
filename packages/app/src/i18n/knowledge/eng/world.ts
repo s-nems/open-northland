@@ -704,7 +704,10 @@ export const WORLD: ArticleGroup = {
             rows: [
               ['Place a building of your choice', 'Any building in the build list, up at once'],
               ["Place 'name'", 'The named building, up at once'],
-              ["Place 'name' and fill its store", 'The named building with a full stock'],
+              [
+                "Place 'name' and fill its store",
+                'The named building, with full stocks of the goods it uses',
+              ],
             ],
             foot: 'A paper disappears once used, unless the spot doesn\'t fit. You find your papers in the build window under "Papers".',
           },

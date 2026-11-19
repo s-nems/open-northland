@@ -6,7 +6,12 @@ import { GoodQuantity } from './goods.js';
 export const StockSlot = z.strictObject({
   goodType: TypeId,
   capacity: z.number().int().nonnegative(),
-  initial: z.number().int().nonnegative().default(0),
+  /**
+   * `logicstock`'s third value: the slot holds a good the building consumes (a recipe input, a home's
+   * food, the barracks' coin), as opposed to one it stores or makes. The stocked-house paper fills only
+   * these slots.
+   */
+  input: z.boolean().default(false),
 });
 export type StockSlot = z.infer<typeof StockSlot>;
 

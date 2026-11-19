@@ -72,8 +72,8 @@ export function placementContent(): ContentSet {
         kind: 'workplace',
         workers: [{ jobType: WOODCUTTER, count: 1 }],
         stock: [
-          { goodType: 1, capacity: 10, initial: 0 },
-          { goodType: 2, capacity: 10, initial: 0 },
+          { goodType: 1, capacity: 10, input: false },
+          { goodType: 2, capacity: 10, input: false },
         ],
         recipes: [{ inputs: [{ goodType: 1, amount: 1 }], outputs: [{ goodType: 2, amount: 1 }], ticks: 20 }],
         footprint: HUT_FOOTPRINT,

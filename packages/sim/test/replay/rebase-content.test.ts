@@ -24,6 +24,8 @@ const SAWMILL = 2;
 const WOODCUTTER = 1;
 const CARPENTER = 2;
 const VIKING = 1;
+/** A life pool the fixture HQ does not carry, so setting it is an observable balance edit. */
+const HQ_HITPOINTS = 42;
 
 /**
  * A RAW content blob (a plain object), the shape the app would read off disk and hand to
@@ -85,9 +87,9 @@ describe('rebaseContent', () => {
   });
 
   it('rebasing onto CHANGED content reaches a state the new data dictates, not the old', () => {
-    // The HQ seeds its starting wood from content (`stock[].initial`, read at placeBuilding time).
-    // Bumping that initial (10→42) is a balance edit whose effect is directly observable: the rebased
-    // run's placed HQ holds the NEW amount, so its state at the same tick must DIFFER from the original.
+    // A finished HQ takes its life pool from content (`hitpoints`, read at placeBuilding time). Setting it
+    // is a balance edit whose effect is directly observable: the rebased run's placed HQ carries the NEW
+    // pool, so its state at the same tick must DIFFER from the original.
     const schedule = new Map<number, Command[]>([
       [1, [{ kind: 'placeBuilding', buildingType: HEADQUARTERS, x: 5, y: 0, tribe: VIKING }]],
       [2, [{ kind: 'spawnSettler', jobType: WOODCUTTER, x: 1, y: 0, tribe: VIKING }]],
@@ -98,8 +100,7 @@ describe('rebaseContent', () => {
     const tweaked = rebaseContent(
       rawContent((c) => {
         const hq = c.buildings.find((b) => b.id === 'headquarters');
-        const woodSlot = hq?.stock.find((s) => s.goodType === 1);
-        if (woodSlot) woodSlot.initial = 42; // a balance edit: more starting wood
+        if (hq) hq.hitpoints = HQ_HITPOINTS; // a balance edit: a sturdier HQ
       }),
       { seed: 7, map: grassMap(6, 1), log, untilTick: 60 },
     );
@@ -110,10 +111,7 @@ describe('rebaseContent', () => {
     // Different rules ⇒ a different reachable state at the same tick: the rebase actually applied.
     expect(tweaked.sim.hashState()).not.toBe(originalFinal);
     // And the new content is what the rebased sim now carries.
-    expect(
-      tweaked.content.buildings.find((b) => b.id === 'headquarters')?.stock.find((s) => s.goodType === 1)
-        ?.initial,
-    ).toBe(42);
+    expect(tweaked.content.buildings.find((b) => b.id === 'headquarters')?.hitpoints).toBe(HQ_HITPOINTS);
   });
 
   it('rebasing the CHANGED content back to the ORIGINAL content restores the original state', () => {
@@ -130,8 +128,7 @@ describe('rebaseContent', () => {
     const changed = rebaseContent(
       rawContent((c) => {
         const hq = c.buildings.find((b) => b.id === 'headquarters');
-        const woodSlot = hq?.stock.find((s) => s.goodType === 1);
-        if (woodSlot !== undefined) woodSlot.initial = 42;
+        if (hq !== undefined) hq.hitpoints = HQ_HITPOINTS;
       }),
       { seed: 7, map: grassMap(6, 1), log, untilTick: 80 },
     );

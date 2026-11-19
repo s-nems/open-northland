@@ -30,7 +30,7 @@ function springContent(): ContentSet {
         id: 'wood_spring',
         refillsOwnStock: true,
         produces: [WOOD],
-        stock: [{ goodType: WOOD, capacity: 10, initial: 0 }],
+        stock: [{ goodType: WOOD, capacity: 10, input: false }],
       },
     ],
   };

@@ -88,7 +88,7 @@ function withWaterHut(): ContentSet {
         typeId: WATER_HUT,
         id: 'water_hut',
         kind: 'home',
-        stock: [{ goodType: WATER, capacity: WATER_HUT_CAPACITY, initial: 0 }],
+        stock: [{ goodType: WATER, capacity: WATER_HUT_CAPACITY, input: false }],
       },
     ],
   });

@@ -578,7 +578,7 @@ export const itGame = {
       paperEffect: {
         placeAny: "Scegli nel catalogo; sorge all'istante",
         placeHouse: "Sorge all'istante, senza cantiere né materiali",
-        placeStockedHouse: "Sorge all'istante, con il magazzino pieno fino all'orlo",
+        placeStockedHouse: "Sorge all'istante, con le merci che consuma piene fino all'orlo",
       },
       papersEmptyTitle: 'Nessun documento',
       papersEmptyText: 'I documenti si trovano nelle casse sulla mappa.',

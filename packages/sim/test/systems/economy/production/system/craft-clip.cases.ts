@@ -43,8 +43,8 @@ function workshopType(typeId: number, id: string, jobType: number, product: numb
     kind: 'workplace',
     workers: [{ jobType, count: 1 }],
     stock: [
-      { goodType: WOOD, capacity: SHELF, initial: 0 },
-      { goodType: product, capacity: SHELF, initial: 0 },
+      { goodType: WOOD, capacity: SHELF, input: false },
+      { goodType: product, capacity: SHELF, input: false },
     ],
     recipes: [
       {

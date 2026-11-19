@@ -185,10 +185,10 @@ function yardContent(): ContentSet {
         // A bill, so its foundation stands open for a builder's pin.
         construction: [{ goodType: WOOD, amount: 1 }],
         stock: [
-          { goodType: WOOD, capacity: 20, initial: 0 },
-          { goodType: PLANK, capacity: 20, initial: 0 },
-          { goodType: HANDCART_GOOD, capacity: 20, initial: 0 },
-          { goodType: SHIP_GOOD, capacity: 20, initial: 0 },
+          { goodType: WOOD, capacity: 20, input: false },
+          { goodType: PLANK, capacity: 20, input: false },
+          { goodType: HANDCART_GOOD, capacity: 20, input: false },
+          { goodType: SHIP_GOOD, capacity: 20, input: false },
         ],
         produces: [PLANK, HANDCART_GOOD, SHIP_GOOD],
         recipes: [

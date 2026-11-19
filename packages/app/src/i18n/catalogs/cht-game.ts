@@ -543,7 +543,7 @@ export const chtGame = {
       paperEffect: {
         placeAny: '從目錄中選擇，立即落成',
         placeHouse: '立即落成，無需施工與建材',
-        placeStockedHouse: '立即落成，倉儲裝得滿滿的',
+        placeStockedHouse: '立即落成，所需原料裝得滿滿的',
       },
       papersEmptyTitle: '沒有文書',
       papersEmptyText: '文書可在地圖上的箱子中找到。',
