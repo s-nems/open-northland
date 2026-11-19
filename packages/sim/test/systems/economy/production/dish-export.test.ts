@@ -116,7 +116,10 @@ describe('a dish leaves the kitchen as the edible it becomes', () => {
     const larder = buildingAt(sim, HEADQUARTERS, 3, 0); // an empty destination with room for any food
     const index = new ExternalFoodIndex(sim.world, ctxOf(sim), sim.terrain, collectSupplyTally(sim.world));
 
-    expect(index.nearest({ hx: 0, hy: 0 }, undefined, larder, null)).toEqual({ store: hq, goodType: BREAD });
+    expect(index.nearest({ hx: 0, hy: 0 }, undefined, larder, null)).toMatchObject({
+      store: hq,
+      goodType: BREAD,
+    });
   });
 
   it('the baker walking away from the kitchen is holding food, not bread', () => {

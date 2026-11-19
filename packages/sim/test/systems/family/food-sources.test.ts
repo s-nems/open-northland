@@ -10,13 +10,17 @@ import {
 } from '../../../src/components/index.js';
 import { GENERATION_JOURNAL_LIMIT } from '../../../src/ecs/generation-journal.js';
 import type { Entity } from '../../../src/ecs/world.js';
-import { fx, Simulation } from '../../../src/index.js';
+import { fx, type NodeId, Simulation } from '../../../src/index.js';
 import { positionOfNode } from '../../../src/nav/halfcell.js';
+import { NO_WALK, type WalkLengths } from '../../../src/nav/node-circle.js';
 import { ExternalFoodIndex } from '../../../src/systems/family/food-search.js';
 import { foodSourcesOf } from '../../../src/systems/family/food-sources.js';
+import { interactionCell } from '../../../src/systems/settlers/targets/index.js';
+import { hexNodeDistance } from '../../../src/systems/spatial/metric.js';
 import { collectSupplyTally, setAccessibleStockAmount } from '../../../src/systems/stores/index.js';
-import { TEST_MANIFEST } from '../../fixtures/content.js';
+import { TEST_MANIFEST, testContent } from '../../fixtures/content.js';
 import { ctxOf } from '../../fixtures/context.js';
+import { grassNodeMap } from '../../fixtures/terrain.js';
 
 /**
  * The family food-source set held across ticks (`systems/family/food-sources.ts`): a read catches up from
@@ -35,6 +39,8 @@ const WAREHOUSE = 7;
 /** The animal farm, whose slaughter lands meat on its shelf. */
 const ANIMAL_FARM = 17;
 const VIKING = 1;
+/** The fixture maps' walkable ground. */
+const GRASS = 0;
 
 function foodContent(): ContentSet {
   return parseContentSet({
@@ -132,13 +138,13 @@ describe('foodSourcesOf', () => {
         null,
       );
     expect(foodSourcesOf(sim.world, content).candidates).toEqual([warehouse]);
-    expect(pick()).toEqual({ store: warehouse, goodType: FOOD });
+    expect(pick()).toMatchObject({ store: warehouse, goodType: FOOD });
     sim.world.mut(workshop, Stockpile).amounts.set(FOOD_EXTRA, 1);
-    expect(pick()).toEqual({ store: workshop, goodType: FOOD_EXTRA });
+    expect(pick()).toMatchObject({ store: workshop, goodType: FOOD_EXTRA });
     sim.world.mut(workshop, Building).buildingType = WAREHOUSE;
-    expect(pick()).toEqual({ store: workshop, goodType: FOOD });
+    expect(pick()).toMatchObject({ store: workshop, goodType: FOOD });
     sim.world.mut(workshop, Building).buildingType = processor;
-    expect(pick()).toEqual({ store: workshop, goodType: FOOD_EXTRA });
+    expect(pick()).toMatchObject({ store: workshop, goodType: FOOD_EXTRA });
     expect(sim.world.verifyCaches()).toEqual([]);
   });
 
@@ -268,11 +274,11 @@ describe('foodSourcesOf', () => {
         null,
       );
 
-    expect(search()).toEqual({ store: far, goodType: FOOD_EXTRA });
+    expect(search()).toMatchObject({ store: far, goodType: FOOD_EXTRA });
     sim.world.mut(home, Stockpile).amounts.set(FOOD_EXTRA, LARDER_SLOT);
     expect(search()).toBeNull();
     sim.world.mut(home, Stockpile).amounts.set(FOOD, LARDER_SLOT - 1);
-    expect(search()).toEqual({ store: near, goodType: FOOD });
+    expect(search()).toMatchObject({ store: near, goodType: FOOD });
   });
 
   it("takes meat before a nearer store's food, while it is hers and unclaimed", () => {
@@ -292,13 +298,13 @@ describe('foodSourcesOf', () => {
         null,
       );
 
-    expect(search()).toEqual({ store: farm, goodType: MEAT });
+    expect(search()).toMatchObject({ store: farm, goodType: MEAT });
     sim.world.mut(farm, Owner).player = RIVAL;
-    expect(search()).toEqual({ store: near, goodType: FOOD });
+    expect(search()).toMatchObject({ store: near, goodType: FOOD });
     expect(sim.world.verifyCaches()).toEqual([]);
     sim.world.mut(farm, Owner).player = SEEKER;
     supply.stampPickupClaim(sim.world.create(), { source: farm, goodType: MEAT, amount: 1 });
-    expect(search()).toEqual({ store: near, goodType: FOOD });
+    expect(search()).toMatchObject({ store: near, goodType: FOOD });
     expect(sim.world.verifyCaches()).toEqual([]);
     // Drained of meat but still holding food, the farm stays a source and leaves the meat list.
     setAccessibleStockAmount(sim.world, farm, FOOD, 1);
@@ -318,7 +324,42 @@ describe('foodSourcesOf', () => {
     sim.world.destroy(pile);
     storeAt(sim, 3, FOOD, 3);
 
-    expect(index.nearest({ hx: 0, hy: 2 }, undefined, home, null)).toEqual({ store: far, goodType: FOOD });
+    expect(index.nearest({ hx: 0, hy: 2 }, undefined, home, null)).toMatchObject({
+      store: far,
+      goodType: FOOD,
+    });
+  });
+
+  it('ranks by the walk to the cell a source is lifted at, when a walk is measured', () => {
+    const DETOUR_STEPS = 40;
+    const grass = testContent().landscape.filter((ground) => ground.typeId === GRASS);
+    const content = parseContentSet({ ...foodContent(), landscape: grass });
+    const sim = new Simulation({ seed: 1, content, map: grassNodeMap(24, 6) });
+    const terrain = sim.terrain;
+    if (terrain === undefined) throw new Error('mapped sim');
+    const home = storeAt(sim, 0, FOOD, 0, HOME);
+    const near = storeAt(sim, 4, FOOD, 3, WAREHOUSE);
+    const far = storeAt(sim, 12, FOOD, 3, WAREHOUSE);
+    const from = { hx: 0, hy: 2 };
+    const here = terrain.nodeAt(from.hx, from.hy);
+    const cellOf = (store: Entity): NodeId => interactionCell(sim.world, ctxOf(sim), terrain, store, here);
+    // The near store lies behind a detour; every other node is walked straight to.
+    const walk: WalkLengths = {
+      from: here,
+      maxSteps: DETOUR_STEPS,
+      stepsTo: (node, within = DETOUR_STEPS) => {
+        const steps = node === cellOf(near) ? DETOUR_STEPS : hexNodeDistance(terrain, here, node);
+        return steps > within ? NO_WALK : steps;
+      },
+    };
+    const index = new ExternalFoodIndex(sim.world, ctxOf(sim), terrain, collectSupplyTally(sim.world));
+
+    expect(index.nearest(from, undefined, home, null)?.store).toBe(near);
+    expect(index.nearest(from, undefined, home, null, undefined, walk)).toEqual({
+      store: far,
+      goodType: FOOD,
+      length: hexNodeDistance(terrain, here, cellOf(far)),
+    });
   });
 
   it('verifier reports a stock change that bypassed the mut seam', () => {

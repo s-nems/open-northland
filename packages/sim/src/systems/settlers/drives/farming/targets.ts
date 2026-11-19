@@ -6,7 +6,7 @@ import { type FarmingSpec, sowNodeOccupied } from '../../../economy/fields.js';
 import { dynamicBlockOverlay, workFlagBlockerCounts } from '../../../footprint/index.js';
 import { manhattan, ringOffsetCount, ringOffsetDx, ringOffsetDy } from '../../../spatial/metric.js';
 import { lowestStockedGood } from '../../../stores/index.js';
-import type { PlannerContext } from '../../planner/context.js';
+import { type PlannerContext, planRank } from '../../planner/context.js';
 import {
   interactionCell,
   nearestByCell,
@@ -16,9 +16,9 @@ import {
 import type { FarmClaims } from './claims.js';
 
 /**
- * The nearest cut sheaf of the farmed good lying within the field radius, or null. Ranked by Manhattan
- * distance from the farmer with an ascending-cell-id tie-break, while the radius is measured from the
- * farmer's work centre, so a farmer never chases a sheaf across the map.
+ * The nearest cut sheaf of the farmed good lying within the field radius, or null. Ranked from the farmer
+ * ({@link planRank}) with an ascending-cell-id tie-break, while the radius is measured from the farmer's
+ * work centre, so a farmer never chases a sheaf across the map.
  */
 export function nearestFarmSheaf(
   plan: PlannerContext,
@@ -32,7 +32,7 @@ export function nearestFarmSheaf(
   const { world, ctx, terrain, here, targets } = plan;
   const { anchor, spec, claims, gates } = opts;
   return (
-    nearestByCell(terrain, targets.groundDropsByGood.get(spec.goodType) ?? [], here, (e) => {
+    nearestByCell(terrain, targets.groundDropsByGood.get(spec.goodType) ?? [], planRank(plan), (e) => {
       const stock = world.tryGet(e, Stockpile);
       // Gone when a placement earlier in the pass displaced it; otherwise not this farm's crop.
       if (stock === undefined || lowestStockedGood(stock) !== spec.goodType) return null;

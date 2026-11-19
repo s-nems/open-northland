@@ -4,9 +4,9 @@ import type { Entity, World } from '../../../../ecs/world.js';
 import { hexDistanceBetween } from '../../../../nav/halfcell.js';
 import type { SpatialGate } from '../../../../nav/node-circle.js';
 import type { NodeId, TerrainGraph } from '../../../../nav/terrain/index.js';
-import type { RankFrom } from '../../../spatial/walk-rank.js';
+import { type RankFrom, rankWalk } from '../../../spatial/walk-rank.js';
 import type { TargetBands } from '../bands.js';
-import { ACCEPT_ALL, type InteractionCellIndex, QUALIFIES } from '../cell-index.js';
+import { ACCEPT_ALL, type InteractionCellIndex, type NearestByCell, QUALIFIES } from '../cell-index.js';
 
 /** Map points within which the nearest temple is taken outright; a farther one competes with the
  *  headquarters, and the nearer of the two wins, a tie going to the headquarters. Original behavior. */
@@ -16,8 +16,8 @@ export const TEMPLE_PREFERRED_RANGE = 40;
  * Where a devout settler with no holy fire at home walks to pray: the nearest of its player's finished
  * temples, unless it lies beyond {@link TEMPLE_PREFERRED_RANGE} and a headquarters is no farther. The
  * candidates are ranked by this index's length order from `rank` with the shared ascending-cell-id
- * tie-break and compared in map points, an approximation of the original's hex-distance search on the
- * settler's own continent. Null when neither is found. `gate` is the settler's signpost confinement: a site outside its
+ * tie-break and compared in map points, or under a walk in its steps, an approximation of the original's
+ * hex-distance search on the settler's own continent. Null when neither is found. `gate` is the settler's signpost confinement: a site outside its
  * allowed area is not one it knows the way to.
  */
 export function nearestPrayerSite(
@@ -38,13 +38,15 @@ export function nearestPrayerSite(
   const accepts =
     acceptsSite === undefined ? ACCEPT_ALL : (entity: Entity) => (acceptsSite(entity) ? QUALIFIES : null);
   const temple = bands.prayerSites(PRAYER_SITE.temple).nearest(here, accepts, gate, avoid, onSide, rank);
-  const templePoints =
-    temple === null ? Number.POSITIVE_INFINITY : mapPointsBetween(terrain, here, temple.cell);
+  // A walk's steps are map points along the ground.
+  const pointsTo = (site: NearestByCell): number =>
+    rankWalk(rank) === undefined ? mapPointsBetween(terrain, here, site.cell) : site.distance;
+  const templePoints = temple === null ? Number.POSITIVE_INFINITY : pointsTo(temple);
   if (temple !== null && templePoints <= TEMPLE_PREFERRED_RANGE) return temple.entity;
   const headquarters = bands
     .prayerSites(PRAYER_SITE.headquarters)
     .nearest(here, accepts, gate, avoid, onSide, rank);
-  if (headquarters !== null && mapPointsBetween(terrain, here, headquarters.cell) <= templePoints) {
+  if (headquarters !== null && pointsTo(headquarters) <= templePoints) {
     return headquarters.entity;
   }
   return temple?.entity ?? null;

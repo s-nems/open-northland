@@ -33,7 +33,7 @@ import { isServedAtHome } from '../../settlers/drives/home-errands.js';
 import { anyNeedPressing } from '../../settlers/drives/needs.js';
 import { enterBuilding, isInside, stepIn, stepOut } from '../../settlers/indoors.js';
 import { interactionCell, releaseBushClaim, unreachableCellVeto } from '../../settlers/targets/index.js';
-import { landReachAt, navigationLimitFor } from '../../signposts/index.js';
+import { landReachAt, navigationLimitFor, rankFromSpot } from '../../signposts/index.js';
 import { heldMoverNode } from '../../spatial/node-moves.js';
 import type { SupplyTally } from '../../stores/index.js';
 import { deliverHome, fetchFrom, HAUL_LIFT_UNITS } from '../food-haul.js';
@@ -290,14 +290,16 @@ function haulFood(
       ? (navigationLimitFor(world, ctx.content, terrain, woman) ??
         landReachAt(terrain, terrain.nodeAtClamped(hereNode.hx, hereNode.hy)))
       : null;
+  const here = terrain?.nodeAtClamped(hereNode.hx, hereNode.hy);
   const source = pass.externalFood.nearest(
     hereNode,
     ownerOf(world, woman),
     home,
     limit,
-    terrain === undefined
+    terrain === undefined || here === undefined
       ? undefined
-      : unreachableCellVeto(world, ctx, terrain, woman, terrain.nodeAtClamped(hereNode.hx, hereNode.hy)),
+      : unreachableCellVeto(world, ctx, terrain, woman, here),
+    here === undefined ? undefined : rankFromSpot(limit, here),
   );
   if (source === null) {
     // No reachable food outside homes, so she waits and the order stands.

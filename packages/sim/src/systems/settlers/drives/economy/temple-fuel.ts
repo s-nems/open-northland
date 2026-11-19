@@ -6,6 +6,8 @@ import { interactionNodeId } from '../../../footprint/interaction.js';
 import { finishedTemples, templeFuelShortfall } from '../../../lifecycle/temple/index.js';
 import { templeFuelGoods, templeFuelSlotOf } from '../../../readviews/index.js';
 import { jobLimitAt, landReachAt } from '../../../signposts/index.js';
+import { manhattan } from '../../../spatial/metric.js';
+import { rankLength, rankWalk } from '../../../spatial/walk-rank.js';
 import { mergedRecipeOf } from '../../../stores/index.js';
 import { walkFetchInput, walkPickupBatch } from '../../atomics/start.js';
 import { type PlannerContext, planRank } from '../../planner/context.js';
@@ -24,8 +26,8 @@ export interface ShortTemple {
 /**
  * Of the settler's player's finished temples whose fuel `burns` admits and whose store still takes a unit
  * beyond what it holds and the loads on their way, the one holding least, so every temple gets a unit
- * before any fills; the nearest by Manhattan distance to its door on a tie, then the lower id. Only a
- * door inside `gate` counts. Null when none. A player's temples are few, so they are walked rather than
+ * before any fills; on a tie the nearest by the settler's rank length to its door ({@link planRank}), then
+ * the lower id. Only a door inside `gate` counts. Null when none. A player's temples are few, so they are walked rather than
  * searched.
  */
 export function templeShortOf(
@@ -39,6 +41,7 @@ export function templeShortOf(
   let best: ShortTemple | null = null;
   let bestShortfall = 0;
   let bestDistance = Number.POSITIVE_INFINITY;
+  const walk = rankWalk(planRank(plan));
   for (const temple of finishedTemples(world, ctx)) {
     if (ownerOf(world, temple) !== owner) continue;
     const type = world.tryGet(temple, Building)?.buildingType;
@@ -48,8 +51,9 @@ export function templeShortOf(
     if (shortfall <= 0 || shortfall < bestShortfall) continue;
     const door = interactionNodeId(world, ctx, terrain, temple);
     if (door === null || !gate.allowsNode(door) || avoid?.(door) === true) continue;
-    const distance =
-      Math.abs(terrain.xOf(door) - terrain.xOf(here)) + Math.abs(terrain.yOf(door) - terrain.yOf(here));
+    // A temple shorter of fuel wins whatever its length, so only a tie caps the walk asked.
+    const within = shortfall === bestShortfall ? bestDistance : Number.POSITIVE_INFINITY;
+    const distance = rankLength(walk, door, manhattan(terrain, here, door), within);
     if (shortfall === bestShortfall && distance >= bestDistance) continue;
     best = { temple, goodType };
     bestShortfall = shortfall;

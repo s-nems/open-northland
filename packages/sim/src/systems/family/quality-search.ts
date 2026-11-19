@@ -19,8 +19,10 @@ import type { SystemContext } from '../context.js';
 import { templeFuelSlotOf } from '../readviews/index.js';
 import { interactionCell, unclaimedGoodsAt } from '../settlers/targets/index.js';
 import { NodeBuckets } from '../spatial/nodes.js';
+import { type RankFrom, rankWalk } from '../spatial/walk-rank.js';
 import { accessibleStockAmounts, type SupplyTally } from '../stores/index.js';
 import { SidedCandidates, sidesMatch } from './candidate-sides.js';
+import { type HaulSource, nearestSourceByWalk, sourceDistance } from './walk-nearest.js';
 
 /**
  * Per-tick searchable view of external stores carrying a configured household-quality good. The
@@ -46,7 +48,10 @@ export class ExternalQualityIndex {
     demanded: ReadonlySet<number>,
     gate: SpatialGate | null,
     avoid?: (cell: NodeId) => boolean,
-  ): { store: Entity; goodType: number } | null {
+    /** A walk from `from` ranks by its steps to the cell she lifts at, not by distance. */
+    rank?: RankFrom,
+  ): HaulSource | null {
+    const walk = rank === undefined ? undefined : rankWalk(rank);
     const here = this.terrain?.nodeAtClamped(from.hx, from.hy);
     const accept = (store: Entity): boolean => {
       if (!ownersCompatible(owner, ownerOf(this.world, store))) return false;
@@ -65,10 +70,14 @@ export class ExternalQualityIndex {
     const ringed = side.length > RING_MIN_CANDIDATES;
     const hit = ringed ? this.bucketed().nearest(from.hx, from.hy, 0, RING_MAX_RADIUS, accept) : null;
     // A ring sweep that missed rejected every candidate inside its radius already.
-    const store = hit?.entity ?? this.linearNearest(side, from, accept, ringed ? RING_MAX_RADIUS : -1);
-    if (store === null) return null;
-    const goodType = this.lowestDemanded(store, demanded);
-    return goodType === null ? null : { store, goodType };
+    const nearest = hit?.entity ?? this.linearNearest(side, from, accept, ringed ? RING_MAX_RADIUS : -1);
+    if (nearest === null) return null;
+    const source =
+      walk === undefined || this.terrain === undefined
+        ? { store: nearest, length: sourceDistance(this.world, from, nearest) }
+        : nearestSourceByWalk(this.world, this.ctx, this.terrain, walk, side, nearest, accept);
+    const goodType = this.lowestDemanded(source.store, demanded);
+    return goodType === null ? null : { ...source, goodType };
   }
 
   /** The candidates `owner` may take from, ascending id; `accept` still checks the side. */

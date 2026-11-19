@@ -15,7 +15,7 @@ import { farmWorkGood } from '../../../economy/fields.js';
 import { clearNavState } from '../../../movement/nav-state.js';
 import { atomicDuration } from '../../../readviews/animations.js';
 import { isTempleFuel } from '../../../readviews/buildings.js';
-import { nearestCell } from '../../../spatial/metric.js';
+import { nearestRankedCell } from '../../../spatial/walk-rank.js';
 import {
   haulingCartHoldGood,
   liftsWithHaulingCart,
@@ -24,7 +24,7 @@ import {
 import { dropCarryAtOwnTile } from '../../atomics/effects/goods/index.js';
 import { atOrWalk, PILEUP_ATOMIC_ID, startAtomic, startCartUnload, startDrop } from '../../atomics/start.js';
 import { enterBuilding } from '../../indoors.js';
-import type { PlannerContext } from '../../planner/context.js';
+import { type PlannerContext, planRank } from '../../planner/context.js';
 import type { PlannerSpacing } from '../../planner/spacing.js';
 import { interactionCell, nearestFreeYardNode } from '../../targets/index.js';
 import { deliveryTargetFor } from './delivery-targets.js';
@@ -152,9 +152,10 @@ export function planDelivery(
     // A stand on the carrier's own land first: a ship site's stands may lie on two shores.
     const stands = spacing.workCells(store);
     const land = terrain.componentOf(here);
+    const rank = planRank(plan);
     cell =
-      nearestCell(terrain, stands, here, (stand) => terrain.componentOf(stand) === land) ??
-      nearestCell(terrain, stands, here);
+      nearestRankedCell(terrain, rank, stands, (stand) => terrain.componentOf(stand) === land) ??
+      nearestRankedCell(terrain, rank, stands);
   } else {
     cell = interactionCell(world, ctx, terrain, store, here);
   }

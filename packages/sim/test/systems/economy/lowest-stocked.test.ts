@@ -50,7 +50,7 @@ describe('stock min scans pick by good id, not insertion order', () => {
           sim.terrain,
           collectSupplyTally(sim.world),
         );
-        expect(index.nearest({ hx: 0, hy: 0 }, undefined, larder, null)).toEqual({
+        expect(index.nearest({ hx: 0, hy: 0 }, undefined, larder, null)).toMatchObject({
           store: hq,
           goodType: expected,
         });

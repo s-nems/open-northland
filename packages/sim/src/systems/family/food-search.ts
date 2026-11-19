@@ -3,14 +3,16 @@ import { ownerOf, ownersCompatible, Position, Stockpile } from '../../components
 import { contentIndex } from '../../core/content-index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import { nodeHxOfPosition, nodeHyOfPosition } from '../../nav/halfcell.js';
-import type { SpatialGate } from '../../nav/node-circle.js';
+import type { SpatialGate, WalkLengths } from '../../nav/node-circle.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
 import { edibleGoodFormOf, isFoodIn } from '../readviews/index.js';
 import { hasRoom } from '../settlers/drives/economy/store-policy.js';
 import { interactionCell, unclaimedGoodsAt } from '../settlers/targets/index.js';
+import { type RankFrom, rankWalk } from '../spatial/walk-rank.js';
 import { accessibleStockAmounts, mayFetchGoodFrom, type SupplyTally } from '../stores/index.js';
 import { type FoodSources, foodSourcesOf, meatGoodOf } from './food-sources.js';
+import { type HaulSource, nearestSourceByWalk, type RankedSource, sourceDistance } from './walk-nearest.js';
 
 /**
  * The greatest Manhattan ring radius (half-cell nodes) {@link ExternalFoodIndex.nearest} expands to before
@@ -54,7 +56,9 @@ export class ExternalFoodIndex {
    * would be refused and the unit carried straight back. `gate` is the seeker's signpost confinement (null
    * when unlimited), `avoid` her failed-goal veto, probed at the source's interaction cell, the node
    * `fetchFrom` walks to. `owner` is her player: she hauls only out of her own side's stores. The shared
-   * candidate list is owner-blind, so her side is checked per seeker.
+   * candidate list is owner-blind, so her side is checked per seeker. Nearest is by the Manhattan distance
+   * of the source's own node, or under a walk `rank`, measured from `from`, by the steps to the cell she
+   * lifts at.
    *
    * Departure (owner ruling): the original takes the nearest source of any food. Meat goes first, the
    * reason at `MEAT_GOOD_ID`.
@@ -65,7 +69,9 @@ export class ExternalFoodIndex {
     home: Entity,
     gate: SpatialGate | null,
     avoid?: (cell: NodeId) => boolean,
-  ): { store: Entity; goodType: number } | null {
+    rank?: RankFrom,
+  ): HaulSource | null {
+    const walk = rank === undefined ? undefined : rankWalk(rank);
     const { candidates, buckets } = this.sources;
     if (candidates.length === 0) return null;
     if (!this.world.has(home, Stockpile)) return null;
@@ -81,8 +87,10 @@ export class ExternalFoodIndex {
     const meat = meatGoodOf(this.ctx.content);
     if (meat !== null && roomy.includes(meat)) {
       // Scanned whole without the ring: meat lies only on the few stores it was produced or carried to.
-      const held = this.linearNearest(this.sources.meatOn(owner), from, (e) => usable(e, meat), -1);
-      if (held !== null) return this.liftAt(held, roomy, meat);
+      const withMeat = this.sources.meatOn(owner);
+      const hasMeat = (e: Entity): boolean => usable(e, meat);
+      const held = this.linearNearest(withMeat, from, hasMeat, -1);
+      if (held !== null) return this.liftAt(this.ranked(held, withMeat, from, hasMeat, walk), roomy, meat);
     }
     const accept = (e: Entity): boolean => usable(e, undefined);
     const side = this.onSide(owner);
@@ -90,18 +98,35 @@ export class ExternalFoodIndex {
     const hit = ringed ? buckets.nearest(from.hx, from.hy, 0, RING_MAX_RADIUS, accept) : null;
     // A ring sweep that missed rejected every candidate inside its radius already.
     const store = hit?.entity ?? this.linearNearest(side, from, accept, ringed ? RING_MAX_RADIUS : -1);
-    return store === null ? null : this.liftAt(store, roomy, undefined);
+    return store === null
+      ? null
+      : this.liftAt(this.ranked(store, side, from, accept, walk), roomy, undefined);
+  }
+
+  /** `nearest`, the pick by distance among `candidates`, with its distance, or under `walk` the pick by
+   *  walk with its steps. */
+  private ranked(
+    nearest: Entity,
+    candidates: readonly Entity[],
+    from: { hx: number; hy: number },
+    accept: (e: Entity) => boolean,
+    walk: WalkLengths | undefined,
+  ): RankedSource {
+    if (walk === undefined || this.terrain === undefined) {
+      return { store: nearest, length: sourceDistance(this.world, from, nearest) };
+    }
+    return nearestSourceByWalk(this.world, this.ctx, this.terrain, walk, candidates, nearest, accept);
   }
 
   /** The unit the query lifts at its winner. A null here would mean a mid-pass mutation drained the
    *  winner: fail the query rather than guess. */
   private liftAt(
-    store: Entity,
+    source: RankedSource,
     roomy: readonly number[],
     only: number | undefined,
-  ): { store: Entity; goodType: number } | null {
-    const goodType = this.liftableFood(store, roomy, only);
-    return goodType === null ? null : { store, goodType };
+  ): HaulSource | null {
+    const goodType = this.liftableFood(source.store, roomy, only);
+    return goodType === null ? null : { ...source, goodType };
   }
 
   /** The candidates `owner` may haul from, ascending id; `accept` still checks the side. */

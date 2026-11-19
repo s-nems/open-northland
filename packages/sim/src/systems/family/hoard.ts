@@ -9,7 +9,7 @@ import {
   Stockpile,
 } from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
-import { nodeHxOfPosition, nodeHyOfPosition, nodeOfPosition } from '../../nav/halfcell.js';
+import { nodeOfPosition } from '../../nav/halfcell.js';
 import type { TerrainGraph } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
 import { interactionNode } from '../footprint/index.js';
@@ -19,7 +19,7 @@ import { hasRoom } from '../settlers/drives/economy/store-policy.js';
 import { liftLostWalk } from '../settlers/lost-way.js';
 import { unreachableCellVeto } from '../settlers/targets/index.js';
 import { unreachableGoals } from '../settlers/unreachable-goals.js';
-import { landReachAt, type NavigationLimit } from '../signposts/index.js';
+import { landReachAt, type NavigationLimit, rankFromSpot } from '../signposts/index.js';
 import type { SupplyTally } from '../stores/index.js';
 import { deliverHome, fetchFrom, HAUL_LIFT_UNITS } from './food-haul.js';
 import type { ExternalFoodIndex } from './food-search.js';
@@ -32,6 +32,7 @@ import {
 } from './home-quality.js';
 import { builtHomeType, storedFoodUnits } from './households.js';
 import type { ExternalQualityIndex } from './quality-search.js';
+import type { HaulSource } from './walk-nearest.js';
 
 /**
  * The housewife's hoarding drive - a woman with a home hauls food into its larder and the configured
@@ -97,12 +98,14 @@ export function planWomanHoard(
     terrain === undefined
       ? undefined
       : unreachableCellVeto(world, ctx, terrain, e, terrain.nodeAtClamped(hereNode.hx, hereNode.hy));
+  const rank =
+    terrain === undefined ? undefined : rankFromSpot(limit, terrain.nodeAtClamped(hereNode.hx, hereNode.hy));
   const larderFull = storedFoodUnits(world, ctx, home) >= larderCapacity(ctx, homeType);
-  const foodSource = larderFull ? null : externalFood.nearest(hereNode, owner, home, reach, avoid);
+  const foodSource = larderFull ? null : externalFood.nearest(hereNode, owner, home, reach, avoid, rank);
   const demanded = demandedHomeQualityGoods(world, ctx, e, home);
   const qualitySource =
-    demanded.size > 0 ? externalQuality.nearest(hereNode, owner, demanded, reach, avoid) : null;
-  const source = nearerSource(world, hereNode, foodSource, qualitySource);
+    demanded.size > 0 ? externalQuality.nearest(hereNode, owner, demanded, reach, avoid, rank) : null;
+  const source = nearerSource(foodSource, qualitySource);
   if (source === null) {
     // No walk is left for her to be lost on, unless the one she just failed is what hides her source.
     if (unreachableGoals(world, ctx, e) === null) liftLostWalk(world, e);
@@ -131,22 +134,11 @@ function larderCapacity(ctx: SystemContext, homeType: BuildingType): number {
   return capacity;
 }
 
-/** The nearer of the food source and the household-goods source, entity id breaking an exact distance tie:
- *  the original searches both in one candidate set. The food source is the food search's own pick. */
-function nearerSource(
-  world: World,
-  from: { hx: number; hy: number },
-  a: { store: Entity; goodType: number } | null,
-  b: { store: Entity; goodType: number } | null,
-): { store: Entity; goodType: number } | null {
+/** The nearer of the food source and the household-goods source by the length each search ranked it at,
+ *  entity id breaking an exact tie: the original searches both in one candidate set. The food source is
+ *  the food search's own pick. */
+function nearerSource(a: HaulSource | null, b: HaulSource | null): HaulSource | null {
   if (a === null) return b;
   if (b === null) return a;
-  const da = distanceTo(world, from, a.store);
-  const db = distanceTo(world, from, b.store);
-  return da < db || (da === db && a.store <= b.store) ? a : b;
-}
-
-function distanceTo(world: World, from: { hx: number; hy: number }, store: Entity): number {
-  const p = world.get(store, Position);
-  return Math.abs(nodeHxOfPosition(p.x, p.y) - from.hx) + Math.abs(nodeHyOfPosition(p.x, p.y) - from.hy);
+  return a.length < b.length || (a.length === b.length && a.store <= b.store) ? a : b;
 }
