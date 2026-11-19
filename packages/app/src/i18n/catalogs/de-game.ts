@@ -200,6 +200,7 @@ export const deGame = {
     choiceEmpty: 'Noch keine Optionen entdeckt.',
     choiceNoMatches: 'Keine passenden Optionen.',
     choiceMethods: 'Produktionsmethode',
+    choiceBack: 'Zurück',
     choiceGathers: 'Was sammeln',
     choiceGatherAll: 'Alles',
     schoolPlaces: 'Plätze: {occupied} / {capacity}',

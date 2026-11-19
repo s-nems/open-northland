@@ -3313,6 +3313,15 @@ body.on-drag-scroll.on-drag-scroll-free * {
   padding: 6px 10px 5px;
   flex-shrink: 0;
 }
+.on-hud .on-choice-back {
+  min-height: 25px;
+  padding: 2px 10px 2px 4px;
+  margin-bottom: 5px;
+  font-size: 13px;
+}
+.on-hud .on-choice-back[hidden] {
+  display: none;
+}
 .on-hud .on-choice-context {
   display: flex;
   justify-content: space-between;

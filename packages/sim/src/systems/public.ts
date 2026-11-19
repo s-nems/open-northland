@@ -243,7 +243,6 @@ export {
   schoolCoursePoints,
   schoolLessonTicks,
   schoolMethodJob,
-  schoolTeachesTrade,
 } from './orders/education.js';
 export { EXPLORE_MAX_FAILED_LEGS } from './orders/explore.js';
 export { WORK_FLAG_SNAP_MAX_RADIUS } from './orders/work/selection.js';

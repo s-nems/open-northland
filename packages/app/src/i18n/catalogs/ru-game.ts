@@ -197,6 +197,7 @@ export const ruGame = {
     choiceEmpty: 'Варианты ещё не открыты.',
     choiceNoMatches: 'Нет подходящих вариантов.',
     choiceMethods: 'Способ производства',
+    choiceBack: 'Назад',
     choiceGathers: 'Что собирать',
     choiceGatherAll: 'Всё',
     schoolPlaces: 'Места: {occupied} / {capacity}',

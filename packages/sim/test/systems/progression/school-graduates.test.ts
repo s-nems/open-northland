@@ -11,6 +11,7 @@ import {
   ProductionCounters,
   productionCountOf,
   Settler,
+  SettlerProgress,
   setNeedsEnabled,
   TrainingOrder,
   UnderConstruction,
@@ -265,8 +266,9 @@ describe('school graduates', () => {
     expect(sim.world.get(pupil, GraduateWait).school).toBe(house);
   });
 
-  it('starts a graduate on the method it picked from several rather than the first product', () => {
+  it('starts a graduate on the method just taught, not the first product or an earlier course', () => {
     const { sim, pupil, house } = school(COLLECTOR, FORGED, undefined, 'good', [BREAD]);
+    sim.world.mut(pupil, SettlerProgress).learned = { job: [], good: [PLANK] };
     postGraduates(sim, true);
     const forge = building(sim, FORGE, { x: 8, y: 12 });
     graduate(sim, pupil, house, FORGED, 'good');

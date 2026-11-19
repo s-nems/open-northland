@@ -178,6 +178,7 @@ export const itGame = {
     choiceEmpty: 'Nessuna scelta scoperta.',
     choiceNoMatches: 'Nessuna scelta corrispondente.',
     choiceMethods: 'Metodo di produzione',
+    choiceBack: 'Indietro',
     choiceGathers: 'Cosa raccogliere',
     choiceGatherAll: 'Tutto',
     schoolPlaces: 'Posti: {occupied} / {capacity}',

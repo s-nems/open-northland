@@ -195,7 +195,6 @@ export const EXPERIENCE: ArticleGroup = {
           table: {
             head: ['課程', '時長'],
             rows: [
-              ['[[job:collector|採集者]]加其他任何產品', '{{course.gatherSeconds}}秒'],
               ['職業加一種基礎產品', '{{course.tradeSeconds}}秒'],
               ['[[job:collector|採集者]]加[[good:iron|鐵礦]]或[[good:gold|金礦]]', '{{course.oreSeconds}}秒'],
               [

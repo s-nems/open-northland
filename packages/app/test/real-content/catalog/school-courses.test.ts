@@ -18,15 +18,12 @@ it.skipIf(!hasRealIr())('lists discovered-capable methods under the profession t
         .map((course) => content.goods.find((good) => good.typeId === course.typeId)?.id ?? '') ?? []
     );
   };
-  expect(goodIds('collector')).toEqual(expect.arrayContaining(['iron', 'gold']));
+  expect(goodIds('collector')).toEqual(['iron', 'gold']);
+  expect(goodIds('joiner').slice(0, 3)).toEqual(['tool_wooden', 'tool_iron', 'furniture']);
   expect(goodIds('smith')).toEqual(expect.arrayContaining(['armor_chain', 'armor_plate']));
   const compare = new Intl.Collator(bcp47Tag(), { sensitivity: 'base' }).compare;
   const labels = groups.map((group) => group.label);
   expect(labels).toEqual([...labels].sort(compare));
-  for (const group of groups) {
-    const methods = group.courses.filter((course) => course.target === 'good').map((course) => course.label);
-    expect(methods).toEqual([...methods].sort(compare));
-  }
   const smith = content.jobs.find((row) => row.id === 'smith');
   const joiner = content.jobs.find((row) => row.id === 'joiner');
   const plate = content.goods.find((row) => row.id === 'armor_plate');

@@ -53,8 +53,9 @@ export function schoolChoices(
   });
 }
 
-/** Courses are grouped by the trade that uses them, every good of a taught trade among them, with each
- *  group and its methods in display order. */
+/** Courses are grouped by the trade that uses them, every good of a taught trade that has a course among
+ *  them. Trades stand in label order, a trade's goods in the tribe's unlock order (the file order of its
+ *  `jobEnables` rows). */
 export function schoolGroups(content: ContentSet, tribeId: number): SchoolGroup[] {
   const tribe = content.tribes.find((row) => row.typeId === tribeId);
   if (tribe === undefined) return [];
@@ -75,7 +76,7 @@ export function schoolGroups(content: ContentSet, tribeId: number): SchoolGroup[
   }
   for (const edge of tribe.jobEnables) {
     if (edge.kind !== 'good' || professionDefForJob(edge.jobType) === undefined) continue;
-    if (!systems.schoolTeachesTrade(content, tribeId, edge.jobType)) continue;
+    if (systems.schoolCoursePoints(content, tribeId, 'good', edge.targetId, null) === undefined) continue;
     // The sim teaches a good several trades make with its lowest producer, so no other group lists it.
     if (systems.schoolMethodJob(content, tribeId, edge.targetId, null) !== edge.jobType) continue;
     const courses = groups.get(edge.jobType) ?? [];
@@ -91,13 +92,7 @@ export function schoolGroups(content: ContentSet, tribeId: number): SchoolGroup[
     .map(([jobType, courses]) => ({
       jobType,
       label: technologyLabel(content, 'job', jobType),
-      courses: courses.sort((a, b) =>
-        a.target === b.target
-          ? compare(a.label, b.label) || a.typeId - b.typeId
-          : a.target === 'job'
-            ? -1
-            : 1,
-      ),
+      courses,
     }))
     .sort((a, b) => compare(a.label, b.label) || a.jobType - b.jobType);
 }
@@ -210,7 +205,7 @@ export function openSchoolDialog(opts: SchoolDialogOptions): SchoolDialog | unde
         if (group.courses.length > 1) {
           selectedJob = group.jobType;
           refresh(true);
-          dialog.show(group.label, { search: false });
+          dialog.show(group.label, { search: false, back: true });
           return;
         }
         const course = group.courses[0];

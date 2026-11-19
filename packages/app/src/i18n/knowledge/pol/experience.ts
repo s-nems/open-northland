@@ -204,7 +204,6 @@ export const EXPERIENCE: ArticleGroup = {
           table: {
             head: ['Kursy', 'Czas'],
             rows: [
-              ['[[job:collector|Zbieracz]] z każdym innym surowcem', '{{course.gatherSeconds}} s'],
               ['zawód z podstawowym wyrobem', '{{course.tradeSeconds}} s'],
               [
                 '[[job:collector|Zbieracz]] z [[good:iron|Żelazem]] lub [[good:gold|Złotem]]',

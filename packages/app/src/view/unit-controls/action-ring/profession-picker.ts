@@ -100,7 +100,7 @@ export function createProfessionPicker(opts: ProfessionPickerOptions): Professio
       goodsJob = job;
       dialog.update(goodChoices(goods));
       const trade = opts.professions.find((entry) => entry.kind === 'profession' && entry.jobType === job);
-      dialog.show(trade?.label);
+      dialog.show(trade?.label, { back: true });
     },
   });
   const refresh = (): void => {

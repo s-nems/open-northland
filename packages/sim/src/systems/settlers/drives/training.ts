@@ -147,7 +147,10 @@ export function planTraining(
         }
         // A graduate without a workplace takes a free one if the assistant posts graduates, else waits by
         // the school.
-        if (!world.has(e, JobAssignment) && !postGraduate(world, ctx, terrain, e, here, limit, job))
+        if (
+          !world.has(e, JobAssignment) &&
+          !postGraduate(world, ctx, terrain, e, here, limit, job, order.lesson.kind === 'good' ? taught : [])
+        )
           world.add(e, GraduateWait, { school: order.house });
         // A gatherer taught a good (a collector's iron or gold) leaves school gathering only that good,
         // unless the player already held it to one.

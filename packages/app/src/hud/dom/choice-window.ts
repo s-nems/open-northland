@@ -75,9 +75,15 @@ export function createChoiceWindow(opts: {
   const search = quietTextField(input);
   search.placeholder = copy.choiceSearch;
   search.setAttribute('aria-label', copy.choiceSearch);
+  const back = document.createElement('button');
+  back.type = 'button';
+  back.className = 'on-button on-choice-back';
+  back.innerHTML = GLYPH.back;
+  back.append(copy.choiceBack);
+  back.hidden = true;
   const list = document.createElement('div');
   list.className = 'on-choice-list';
-  tools.append(context, field);
+  tools.append(back, context, field);
   window.body.append(tools, list);
   document.body.append(dialog);
   let groups: readonly ChoiceGroup[] = [];
@@ -216,6 +222,7 @@ export function createChoiceWindow(opts: {
     opts.cue?.('confirm');
     opts.onDismiss();
   };
+  back.addEventListener('click', dismiss);
   // HudWindow's own close hides its section; the owner can instead navigate back a level.
   window.onDismiss(() => {
     window.open();
@@ -267,9 +274,11 @@ export function createChoiceWindow(opts: {
       context.hidden = caption === '';
       render();
     },
-    show(label = opts.title, options: { search?: boolean } = {}): void {
+    /** `back` marks a page under another one: it shows the button that dismisses like Escape. */
+    show(label = opts.title, options: { search?: boolean; back?: boolean } = {}): void {
       searchable = options.search ?? true;
       field.hidden = !searchable;
+      back.hidden = options.back !== true;
       if (!dialog.open) anchor = undefined;
       dialog.setAttribute('aria-label', label);
       if (title !== null) title.textContent = label;

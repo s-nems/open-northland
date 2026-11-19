@@ -54,7 +54,8 @@ export function schoolTeachesTrade(content: ContentSet, tribeId: number, jobType
  * A course's cost in lesson points, undefined when the school holds no such course. A good is taught with
  * its producer trade ({@link schoolMethodJob}) and costs the trade's `trainforjob` plus its own
  * `trainforgood`; a good without a row adds nothing, and the trade is charged whether or not the pupil
- * already holds it. Original behavior, unconfirmed against the running original.
+ * already holds it. Original behavior, unconfirmed against the running original. Authored: a good whose
+ * course would cost nothing has no course, since there is nothing to teach.
  */
 export function schoolCoursePoints(
   content: ContentSet,
@@ -65,10 +66,10 @@ export function schoolCoursePoints(
 ): number | undefined {
   if (target === 'job') return trainPoints(content, tribeId, 'job', typeId);
   const job = schoolMethodJob(content, tribeId, typeId, current);
-  if (job === undefined || !schoolTeachesTrade(content, tribeId, job)) return undefined;
-  return (
-    (trainPoints(content, tribeId, 'job', job) ?? 0) + (trainPoints(content, tribeId, 'good', typeId) ?? 0)
-  );
+  if (job === undefined) return undefined;
+  const points =
+    (trainPoints(content, tribeId, 'job', job) ?? 0) + (trainPoints(content, tribeId, 'good', typeId) ?? 0);
+  return points > 0 ? points : undefined;
 }
 
 /**

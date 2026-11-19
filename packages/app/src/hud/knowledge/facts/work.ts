@@ -469,7 +469,6 @@ export const WORK_FACTS: Readonly<Record<string, Fact>> = {
   'barracks.gearStock': whole((base) => stockOf(base, 'barracks', 'sword_long')),
   'barracks.foodStock': whole((base) => stockOf(base, 'barracks', 'food_simple')),
   'barracks.coinStock': whole((base) => stockOf(base, 'barracks', 'coin')),
-  'course.gatherSeconds': oneDecimal((base) => courseSeconds(base, 'wood')),
   'course.oreSeconds': oneDecimal((base) => courseSeconds(base, 'iron')),
   'course.tradeSeconds': oneDecimal((base) => {
     const points = systems.schoolCoursePoints(base.content, VIKING, 'job', JOB_JOINER, null);

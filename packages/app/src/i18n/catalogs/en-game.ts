@@ -178,6 +178,7 @@ export const enGame = {
     choiceEmpty: 'No discovered choices.',
     choiceNoMatches: 'No matching choices.',
     choiceMethods: 'Production method',
+    choiceBack: 'Back',
     choiceGathers: 'What to gather',
     choiceGatherAll: 'Everything',
     schoolPlaces: 'Places: {occupied} / {capacity}',

@@ -12,6 +12,9 @@ const PLANK = 2;
 const SHIP = 9;
 const TRADE_POINTS = 10;
 const SHIP_POINTS = 30;
+const LOG = 3;
+const ORE = 7;
+const ORE_POINTS = 10;
 const GET_TRAINING = 29;
 const CLIP_TICKS = 28;
 const TRAINING_EXPERIENCE_TYPE = 77;
@@ -38,7 +41,8 @@ function content() {
       jobEnables: [
         { jobType: CARPENTER, kind: 'good', targetId: PLANK },
         { jobType: CARPENTER, kind: 'good', targetId: SHIP },
-        { jobType: WOODCUTTER, kind: 'good', targetId: PLANK + 1 },
+        { jobType: WOODCUTTER, kind: 'good', targetId: LOG },
+        { jobType: WOODCUTTER, kind: 'good', targetId: ORE },
       ],
       jobRequirements: [
         {
@@ -55,6 +59,13 @@ function content() {
           amount: SHIP_POINTS,
           experienceTypes: [TRAINING_EXPERIENCE_TYPE],
         },
+        {
+          target: 'good',
+          targetId: ORE,
+          requirement: 'train',
+          amount: ORE_POINTS,
+          experienceTypes: [TRAINING_EXPERIENCE_TYPE],
+        },
       ],
     })),
   });
@@ -68,8 +79,9 @@ it('charges a course its trade and its good, whether or not the pupil holds the 
   expect(schoolCoursePoints(c, TRIBE, 'good', SHIP, CARPENTER)).toBe(TRADE_POINTS + SHIP_POINTS);
 });
 
-it('holds no course in a good of a trade the school does not teach', () => {
-  expect(schoolCoursePoints(content(), TRIBE, 'good', PLANK + 1, null)).toBeUndefined();
+it('holds no course in a good that would cost nothing', () => {
+  expect(schoolCoursePoints(content(), TRIBE, 'good', ORE, null)).toBe(ORE_POINTS);
+  expect(schoolCoursePoints(content(), TRIBE, 'good', LOG, null)).toBeUndefined();
 });
 
 it('ends a course on the repetition after its points are earned', () => {

@@ -26,8 +26,8 @@ import { assignedWorkers } from '../stores/assigned-workers.js';
  * ties by entity id. A foundation counts, since a site takes its staff from placement. Returns whether it was
  * posted; with no such slot nothing happens. Workplaces rank, before distance: a finished one over a site,
  * then one nobody of that trade works at yet over a staffed one (a second mill gets its first miller before
- * the first gets its second), then, where the school teaches the trade several methods, one that crafts a
- * method the settler learned, which the graduate then starts on. A flag gatherer (collector, fisher) is never
+ * the first gets its second), then, where the school teaches the trade several methods, one that crafts
+ * the `taught` goods of the course just finished, which the graduate then starts on. A flag gatherer (collector, fisher) is never
  * posted, since its work runs from a flag rather than a building. Source basis: authored, the switch is this
  * project's addition.
  */
@@ -39,6 +39,7 @@ export function postGraduate(
   here: NodeId,
   limit: NavigationLimit | null,
   jobType: number,
+  taught: readonly number[],
 ): boolean {
   const owner = ownerOf(world, e);
   if (owner === undefined || assistantPostsGraduatesEntity(world, owner) === null) return false;
@@ -56,9 +57,7 @@ export function postGraduate(
     jobType: settler.jobType,
   };
   // A trade with a single good keeps its first product: the player picked the trade, not a ware.
-  const methods = schoolTeachesMethodChoice(ctx.content, settler.tribe, jobType)
-    ? (progress.learned?.good ?? [])
-    : [];
+  const methods = schoolTeachesMethodChoice(ctx.content, settler.tribe, jobType) ? taught : [];
   const regions = routeRegions(world, ctx, terrain);
   let best: Entity | null = null;
   let bestRank = -1;
@@ -86,9 +85,9 @@ export function postGraduate(
 
 const RANK_FINISHED = 4;
 const RANK_UNSTAFFED = 2;
-const RANK_CRAFTS_LEARNED = 1;
+const RANK_CRAFTS_TAUGHT = 1;
 
-/** Higher wins: finished over a site, then unstaffed in the trade, then crafting a learned method. */
+/** Higher wins: finished over a site, then unstaffed in the trade, then crafting a taught method. */
 function workplaceRank(
   world: World,
   ctx: SystemContext,
@@ -99,7 +98,7 @@ function workplaceRank(
   let rank = 0;
   if (!world.has(workplace, UnderConstruction)) rank += RANK_FINISHED;
   if (!holdsTrade(world, workplace, jobType)) rank += RANK_UNSTAFFED;
-  if (craftsAnyAt(world, ctx, workplace, jobType, methods)) rank += RANK_CRAFTS_LEARNED;
+  if (craftsAnyAt(world, ctx, workplace, jobType, methods)) rank += RANK_CRAFTS_TAUGHT;
   return rank;
 }
 

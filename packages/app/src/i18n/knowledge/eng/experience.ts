@@ -209,7 +209,6 @@ export const EXPERIENCE: ArticleGroup = {
           table: {
             head: ['Courses', 'Time'],
             rows: [
-              ['[[job:collector|Extractor]] with any other product', '{{course.gatherSeconds}} s'],
               ['profession with a basic product', '{{course.tradeSeconds}} s'],
               [
                 '[[job:collector|Extractor]] with [[good:iron|Iron]] or [[good:gold|Gold]]',

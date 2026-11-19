@@ -171,6 +171,7 @@ export const plGame = {
     choiceEmpty: 'Brak odkrytych opcji.',
     choiceNoMatches: 'Brak pasujących opcji.',
     choiceMethods: 'Metoda produkcji',
+    choiceBack: 'Wróć',
     choiceGathers: 'Co zbierać',
     choiceGatherAll: 'Wszystko',
     schoolPlaces: 'Miejsca: {occupied} / {capacity}',

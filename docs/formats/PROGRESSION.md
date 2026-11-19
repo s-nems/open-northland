@@ -118,7 +118,9 @@ watering. A track record without `experiencefactor` loads as 100 and without `ba
 it).
 
 Right-click a school with selected workers to choose a civilian profession and one of its products,
-the ones without a lesson of their own included. The player must already know both. A course costs the
+the ones without a lesson of their own included, listed in the order the tribe's `jobEnables` rows
+unlock them. A product whose course would cost no points is not offered (authored): the collector, a
+profession without `trainforjob`, is taught iron and gold only. The player must already know both. A course costs the
 profession's `trainforjob` points plus the product's `trainforgood` points, the profession's also for
 a pupil who already has it. Each completed exercise animation earns its atomic event value (one in the
 mod's `viking_civilist_exercise`), and the course ends on the repetition after the points are in: a
