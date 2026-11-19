@@ -9,6 +9,7 @@ import {
   FamilyDuty,
   FarmTask,
   Fleeing,
+  ForageClaim,
   Frightened,
   Garrison,
   HuntFocus,
@@ -57,6 +58,7 @@ import { answerNeedInPlace } from '../drives/needs.js';
 import { planShelter } from '../drives/shelter.js';
 import { heldIndoors, stepOut } from '../indoors.js';
 import { markLostWay } from '../lost-way.js';
+import { releaseBushClaim } from '../targets/index.js';
 import { noteUnreachableGoal, pruneUnreachableGoals } from '../unreachable-goals.js';
 import { waitsHoldOnBeat, waitsIdle } from './idle-replan.js';
 
@@ -169,6 +171,7 @@ export const RELEASE_IDLE_MEMBERSHIP: readonly Component<unknown>[] = [
   PathFollow,
   SupplyRun,
   PickupClaim,
+  ForageClaim,
   FarmTask,
   Resting,
   JobAssignment,
@@ -224,9 +227,9 @@ export function idleRelease(world: World, e: Entity): IdleRelease | null {
   return quiet ? 'travelling' : null;
 }
 
-/** Whether the settler holds a supply run or a pickup claim, the errands a re-plan releases. */
+/** Whether the settler holds a supply run, a pickup claim or a bush claim, the errands a re-plan releases. */
 function hasErrand(world: World, e: Entity): boolean {
-  return world.has(e, SupplyRun) || world.has(e, PickupClaim);
+  return world.has(e, SupplyRun) || world.has(e, PickupClaim) || world.has(e, ForageClaim);
 }
 
 /** Whether {@link releaseStaleIntent} returns true for `e` without a write: nothing holds or walks it,
@@ -394,7 +397,7 @@ export function releaseStaleIntent(
   // flight or player-order route hits the travel early-out below. Nothing below stamps an errand, so one
   // without any has none to release at the end either.
   const errand = hasErrand(world, e);
-  if (errand && divertsErrand(world, e)) supply.releaseErrands(e);
+  if (errand && divertsErrand(world, e)) releaseErrands(world, supply, e);
   // Fresh read - reconcileYardRoute may have cleared the request.
   const request = world.tryGet(e, PathRequest);
   if (request?.failed === true && !ownsFailedRoute(world, e)) {
@@ -436,6 +439,11 @@ export function releaseStaleIntent(
   // pastime chat's clip is shed with the chat once a drive takes the settler.
   if (!inPastimeChat(world, e)) removeCurrentAtomic(world, e);
   // Releasing through the tally keeps its counts in lockstep with the store.
-  if (errand) supply.releaseErrands(e);
+  if (errand) releaseErrands(world, supply, e);
   return true;
+}
+
+function releaseErrands(world: World, supply: SupplyTally, e: Entity): void {
+  supply.releaseErrands(e);
+  releaseBushClaim(world, e);
 }

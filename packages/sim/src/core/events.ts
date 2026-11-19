@@ -406,8 +406,8 @@ export type SimEvent =
     }
   | {
       /**
-       * A berry bush's last ripe fruit was eaten this tick, so it flips ripe to bare and starts
-       * regrowing. Fires on the first working of a virgin bush too.
+       * A forager picked a berry bush's fruit this tick to eat it, so the bush flips ripe to bare and
+       * starts regrowing. Fires on the first working of a virgin bush too.
        */
       readonly kind: 'berryForaged';
       readonly bush: Entity;

@@ -212,7 +212,7 @@ it('keeps a carried sheaf through berry foraging and deposits it before harvesti
   setNeeds(sim, farmer, { hunger: fx.fromInt(1) });
 
   plannerSystem(sim.world, ctxOf(sim));
-  expect(sim.world.get(farmer, components.CurrentAtomic).effect).toEqual({ kind: 'forage', bush });
+  expect(sim.world.get(farmer, components.CurrentAtomic).effect).toEqual({ kind: 'forage' });
   expect(sim.world.get(farmer, Carrying).amount).toBe(1);
 
   let harvestedWithLoad = false;

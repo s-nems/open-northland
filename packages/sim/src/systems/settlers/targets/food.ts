@@ -20,6 +20,7 @@ import type { SupplyTally } from '../../stores/index.js';
 import { isUnreachableGoal, unreachableGoals } from '../unreachable-goals.js';
 import type { TargetCandidates } from './candidates.js';
 import { type NearestByCell, nearerOf, type Qualified } from './cell-index.js';
+import { bushClaimed } from './forage-claims.js';
 import { unclaimedGoodsAt } from './stores/stock.js';
 import { interactionCell } from './workplaces.js';
 
@@ -128,7 +129,7 @@ export type MealTarget = (
  *
  * Project rule: each search ranks by Manhattan distance, then cell and entity id, where the original
  * takes the first hit of its resistance-weighted flood. Other families' larders and another player's
- * stocks stay private; a bush is anyone's.
+ * stocks stay private; a bush is anyone's, save one another forager is already walking to.
  */
 export function chooseMeal(
   targets: TargetCandidates,
@@ -170,7 +171,7 @@ export function chooseMeal(
     return goodType === null ? null : { payload: { kind: 'store', goodType, atHome: false } };
   };
   const ripe = (source: Entity): Qualified<Meal> | null =>
-    world.tryGet(source, BerryBush)?.stage === 'ripe' ? RIPE_BUSH : null;
+    world.tryGet(source, BerryBush)?.stage === 'ripe' && !bushClaimed(world, source) ? RIPE_BUSH : null;
   const anyMeal = (source: Entity): Qualified<Meal> | null =>
     ripe(source) ?? (isHome(world, ctx, source) ? larder(source) : stocked(source));
 

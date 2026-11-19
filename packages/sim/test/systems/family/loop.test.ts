@@ -486,8 +486,8 @@ describe('e2e: marriage → household → child (full step schedule)', () => {
     const larder = (): number => sim.world.get(home(), Stockpile).amounts.get(FOOD) ?? 0;
     sim.world.mut(home(), Stockpile).amounts.set(FOOD, CHILD_FOOD_UNITS - 1);
     sim.enqueueSetup({ kind: 'debugSetNeeds', target: man(), hunger: 100 });
-    runUntil(sim, () => larder() === 0, 600, 'husband eats the larder');
-    expect(needsOf(sim, man()).hunger).toBeLessThan(ONE);
+    runUntil(sim, () => needsOf(sim, man()).hunger < ONE, 600, 'husband eats the larder');
+    expect(larder()).toBe(0);
     expect(sim.world.has(home(), MakingLove)).toBe(false);
     expect(sim.world.has(woman(), ChildOrder)).toBe(true);
 
@@ -1064,8 +1064,8 @@ describe('e2e: marriage → household → child (full step schedule)', () => {
     expect(needsOf(sim, stranger).hunger).toBe(ONE); // still starving (no other food)
     // Move him in: now it IS his larder and he eats.
     sim.enqueueSetup({ kind: 'assignHouse', entity: stranger, house: home });
-    runUntil(sim, () => (sim.world.get(home, Stockpile).amounts.get(FOOD) ?? 0) < 2, 200, 'resident meal');
-    expect(needsOf(sim, stranger).hunger).toBeLessThan(ONE);
+    runUntil(sim, () => needsOf(sim, stranger).hunger < ONE, 200, 'resident meal');
+    expect(sim.world.get(home, Stockpile).amounts.get(FOOD)).toBe(1);
   });
 
   it('a resident whose trade never comes home leaves the family larder alone', () => {

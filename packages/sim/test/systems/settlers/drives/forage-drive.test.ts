@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
 import {
-  addCurrentAtomic,
   BerryBush,
   Building,
   CurrentAtomic,
@@ -99,7 +98,8 @@ describe('forageDrive - the planner choosing to forage a wild bush', () => {
     expect(sim.world.has(settler, MoveGoal)).toBe(false);
     const atomic = sim.world.get(settler, CurrentAtomic);
     expect(atomic.atomicId).toBe(EAT_ATOMIC); // forage runs on the eat animation
-    expect(atomic.effect).toEqual({ kind: 'forage', bush });
+    expect(atomic.effect).toEqual({ kind: 'forage' });
+    expect(atomic.targetEntity).toBe(bush);
   });
 
   it('walks to the nearest ripe bush when hungry and not standing on one', () => {
@@ -188,12 +188,12 @@ describe('eat drive - stocked food before bushes in reach, the nearest meal beyo
   it('forages the bush it stands on rather than walk to a store', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(6, 1) });
     const settler = settlerAt(sim, 0, 0, HUNGRY);
-    const bush = bushAt(sim, 0, 0); // on the bush - distance 0
+    bushAt(sim, 0, 0); // on the bush - distance 0
     storeAt(sim, 3, 0, 5); // a larder exists, but the bush is right here
 
     plannerSystem(sim.world, ctxOf(sim));
 
-    expect(sim.world.get(settler, CurrentAtomic).effect).toEqual({ kind: 'forage', bush });
+    expect(sim.world.get(settler, CurrentAtomic).effect).toEqual({ kind: 'forage' });
   });
 
   it("walks to a store in reach past a nearer bush beyond arm's reach", () => {
@@ -222,26 +222,53 @@ describe('eat drive - stocked food before bushes in reach, the nearest meal beyo
 });
 
 describe('forage atomic + regrow (AtomicSystem, BerryGrowthSystem)', () => {
-  it('foraging a ripe bush feeds the forager, flips it bare and emits berryForaged', () => {
+  it('picks the serving as the meal starts, and the clip feeds the forager', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(3, 1) });
     const settler = settlerAt(sim, 0, 0, HUNGRY);
     const bush = bushAt(sim, 0, 0);
-    addCurrentAtomic(sim.world, settler, {
-      atomicId: EAT_ATOMIC,
-      duration: EAT_CLIP_TICKS,
-      effect: { kind: 'forage', bush },
-      targetEntity: bush,
-      targetTile: null,
-    });
+
+    plannerSystem(sim.world, ctxOf(sim));
+
+    expect(sim.world.get(bush, BerryBush).stage).toBe('bare');
+    expect(sim.events.current().some((e) => e.kind === 'berryForaged')).toBe(true);
+    expect(needsOf(sim, settler).hunger).toBe(HUNGRY);
 
     for (let i = 0; i < EAT_CLIP_TICKS; i++) atomicSystem(sim.world, nextTickCtxOf(sim));
 
-    const b = sim.world.get(bush, BerryBush);
-    expect(b.stage).toBe('bare'); // one serving eaten
     // One berry is a partial meal, worth the same as a stored one (observed original).
     expect(needsOf(sim, settler).hunger).toBe(fx.sub(HUNGRY, MEAL));
-    expect(sim.world.has(settler, CurrentAtomic)).toBe(false); // atomic done
-    expect(sim.events.current().some((e) => e.kind === 'berryForaged')).toBe(true);
+    expect(sim.world.has(settler, CurrentAtomic)).toBe(false);
+  });
+
+  it('feeds one forager from a bush two hungry settlers stand on', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(3, 1) });
+    const first = settlerAt(sim, 0, 0, HUNGRY);
+    const second = settlerAt(sim, 0, 0, HUNGRY);
+    bushAt(sim, 0, 0);
+
+    plannerSystem(sim.world, ctxOf(sim));
+    // The second arrives while the first chews: the planner sees it again each tick of the clip.
+    for (let i = 0; i < EAT_CLIP_TICKS; i++) {
+      const ctx = nextTickCtxOf(sim);
+      atomicSystem(sim.world, ctx);
+      plannerSystem(sim.world, ctx);
+    }
+
+    const fed = [first, second].filter((e) => needsOf(sim, e).hunger < HUNGRY);
+    expect(fed).toEqual([first]);
+  });
+
+  it('leaves a bush another forager is walking to', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(6, 1) });
+    const first = settlerAt(sim, 0, 0, HUNGRY);
+    const second = settlerAt(sim, 0, 0, HUNGRY);
+    bushAt(sim, 2, 0);
+    bushAt(sim, 4, 0);
+
+    plannerSystem(sim.world, ctxOf(sim));
+
+    expect(sim.world.get(first, MoveGoal).cell).toBe(cellOf(sim, 2, 0));
+    expect(sim.world.get(second, MoveGoal).cell).toBe(cellOf(sim, 4, 0));
   });
 
   it('a bare bush grows one stage per growth run over its section: flowering, then ripe a period later', () => {

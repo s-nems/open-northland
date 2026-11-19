@@ -636,6 +636,23 @@ describe('the tower garrison - its needs', () => {
     expect(sim.world.tryGet(soldier, Garrison)?.post).toBe(tower); // still on the wall
   });
 
+  it('feeds one of two garrisons from a post holding one ration', () => {
+    const sim = simWithTower();
+    const tower = towerAt(sim, 6, 3);
+    const soldiers = [settlerAt(sim, SOLDIER_JOB, 2, 3), settlerAt(sim, SOLDIER_JOB, 2, 3)];
+    for (const soldier of soldiers) manTheTower(sim, soldier, tower);
+    sim.world.add(tower, Stockpile, { amounts: new Map([[FOOD_GOOD, 1]]) });
+    for (const soldier of soldiers) {
+      setNeeds(sim, soldier, { hunger: STARVING });
+      sim.world.add(soldier, Engagement, { repathAt: sim.tick });
+    }
+
+    plannerSystem(sim.world, ctxOf(sim));
+
+    expect(soldiers.filter((soldier) => sim.world.has(soldier, CurrentAtomic))).toHaveLength(1);
+    expect(sim.world.get(tower, Stockpile).amounts.get(FOOD_GOOD) ?? 0).toBe(0);
+  });
+
   it('stays awake on its post while ENGAGED - a garrison under fire does not bed down', () => {
     const sim = simWithTower();
     const tower = towerAt(sim, 6, 3);

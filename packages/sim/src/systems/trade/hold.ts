@@ -8,6 +8,7 @@ import {
   Position,
   Rider,
   recordGoodsTraded,
+  setStockAmount,
   TradeRoute,
   TradeShip,
   Vehicle,
@@ -348,6 +349,7 @@ export function loadTraderHold(
  * shelf, on the slot the store banks it in. A store gone or filled since the decision refuses it, and the
  * unit stays aboard for the next one: a full store never sends goods onto the ground (owner ruling). At a
  * foreign stop the unit counts toward the agreement's give. A delivery that lands trains the trader.
+ * A house under upgrade takes it as a bill delivery into its build hold, the stock its capacity counts.
  */
 export function unloadTraderHold(
   world: World,
@@ -361,7 +363,7 @@ export function unloadTraderHold(
   const slot = bankedSlot(world, ctx, store, goodType);
   const have = stockOf(world, store, slot.goodType);
   if (have >= slot.capacity || moveThroughHold(world, ctx, trader, goodType, -1) !== -1) return;
-  setAccessibleStockAmount(world, store, slot.goodType, have + 1);
+  setStockAmount(world, store, slot.goodType, have + 1);
   grantTradeExperience(world, ctx, trader);
   if (atForeignStop(world, trader, store)) {
     const agreement = activeAgreement(world, trader, route);

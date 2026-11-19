@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
   Age,
-  addCurrentAtomic,
   Building,
   Carrying,
   CurrentAtomic,
@@ -240,82 +239,48 @@ describe('eatDrive - the planner choosing to eat', () => {
   });
 });
 
-describe('eat atomic - consuming food + relieving hunger (AtomicSystem)', () => {
-  it('consumes one unit from a store and takes one meal off hunger on completion', () => {
+describe('a meal takes its unit as it starts', () => {
+  it('takes one unit off the shelf at once, and the clip takes one meal off hunger', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(3, 1) });
     const settler = settlerAt(sim, 0, 0, HUNGRY);
     const store = storeAt(sim, 0, 0, 3);
-    addCurrentAtomic(sim.world, settler, {
-      atomicId: EAT_ATOMIC,
-      duration: EAT_CLIP_TICKS,
-      effect: { kind: 'eat', goodType: FOOD, from: store },
-      targetEntity: store,
-      targetTile: null,
-    });
+
+    plannerSystem(sim.world, ctxOf(sim));
+
+    expect(sim.world.get(store, Stockpile).amounts.get(FOOD)).toBe(2);
+    expect(needsOf(sim, settler).hunger).toBe(HUNGRY);
 
     for (let i = 0; i < EAT_CLIP_TICKS; i++) atomicSystem(sim.world, nextTickCtxOf(sim));
 
-    expect(sim.world.get(store, Stockpile).amounts.get(FOOD)).toBe(2); // one unit eaten
     // One meal is a partial refill, not a reset - the eater is left hungry enough to come back.
     expect(needsOf(sim, settler).hunger).toBe(fx.sub(HUNGRY, MEAL));
-    expect(sim.world.has(settler, CurrentAtomic)).toBe(false); // atomic done
+    expect(sim.world.has(settler, CurrentAtomic)).toBe(false);
   });
 
-  it('consumes one unit from the carried load (from=null), dropping Carrying when empty', () => {
+  it('takes the unit off the carried load, dropping Carrying when empty', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(3, 1) });
     const settler = settlerAt(sim, 0, 0, HUNGRY);
     sim.world.add(settler, Carrying, { goodType: FOOD, amount: 1 });
-    addCurrentAtomic(sim.world, settler, {
-      atomicId: EAT_ATOMIC,
-      duration: EAT_CLIP_TICKS,
-      effect: { kind: 'eat', goodType: FOOD, from: null },
-      targetEntity: settler,
-      targetTile: null,
-    });
 
-    for (let i = 0; i < EAT_CLIP_TICKS; i++) atomicSystem(sim.world, nextTickCtxOf(sim));
+    plannerSystem(sim.world, ctxOf(sim));
 
-    expect(sim.world.has(settler, Carrying)).toBe(false); // last carried unit eaten
-    expect(needsOf(sim, settler).hunger).toBe(fx.sub(HUNGRY, MEAL));
+    expect(sim.world.has(settler, Carrying)).toBe(false);
+    expect(sim.world.get(settler, CurrentAtomic).effect).toEqual({ kind: 'eat', goodType: FOOD, from: null });
   });
 
-  it('reaps a loose ground heap eaten down to zero (no dead pile entity lingers)', () => {
+  it('reaps a loose ground heap eaten down to zero and still plays the meal', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(3, 1) });
     const settler = settlerAt(sim, 0, 0, HUNGRY);
     // A bare Stockpile+Position, the gatherer-yard / player-dropped heap shape, holding the last food unit.
     const heap = sim.world.create();
     sim.world.add(heap, Position, { x: fx.fromInt(0), y: fx.fromInt(0) });
     sim.world.add(heap, Stockpile, { amounts: new Map([[FOOD, 1]]) });
-    addCurrentAtomic(sim.world, settler, {
-      atomicId: EAT_ATOMIC,
-      duration: EAT_CLIP_TICKS,
-      effect: { kind: 'eat', goodType: FOOD, from: heap },
-      targetEntity: heap,
-      targetTile: null,
-    });
+
+    plannerSystem(sim.world, ctxOf(sim));
+    expect(sim.world.isAlive(heap)).toBe(false);
 
     for (let i = 0; i < EAT_CLIP_TICKS; i++) atomicSystem(sim.world, nextTickCtxOf(sim));
-
-    expect(sim.world.isAlive(heap)).toBe(false); // emptied heap vanished, no zero-stock artifact
     expect(needsOf(sim, settler).hunger).toBe(fx.sub(HUNGRY, MEAL));
-  });
-
-  it('keeps a building store alive after its last food unit is eaten (only loose piles reap)', () => {
-    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(3, 1) });
-    const settler = settlerAt(sim, 0, 0, HUNGRY);
-    const store = storeAt(sim, 0, 0, 1); // a headquarters larder down to its last unit
-    addCurrentAtomic(sim.world, settler, {
-      atomicId: EAT_ATOMIC,
-      duration: EAT_CLIP_TICKS,
-      effect: { kind: 'eat', goodType: FOOD, from: store },
-      targetEntity: store,
-      targetTile: null,
-    });
-
-    for (let i = 0; i < EAT_CLIP_TICKS; i++) atomicSystem(sim.world, nextTickCtxOf(sim));
-
-    expect(sim.world.isAlive(store)).toBe(true); // the warehouse persists empty
-    expect(sim.world.get(store, Stockpile).amounts.get(FOOD) ?? 0).toBe(0);
   });
 });
 

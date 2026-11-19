@@ -78,8 +78,7 @@ export function eatOffShelf(
 ): boolean {
   const goodType = storedFoodGood(world, ctx, building);
   if (goodType === null) return false;
-  startMeal(world, ctx, e, settler, { kind: 'eat', goodType, from: building }, building);
-  return true;
+  return startMeal(world, ctx, e, settler, { kind: 'eat', goodType, from: building });
 }
 
 /** Bed a garrison down where it stands rather than walk home and leave the wall unmanned. Source basis:

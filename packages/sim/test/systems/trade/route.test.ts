@@ -19,6 +19,7 @@ import {
   TRADE_LIMIT_NONE,
   TradeRoute,
   UnderConstruction,
+  Upgrading,
   VehicleStock,
 } from '../../../src/components/index.js';
 import type { Entity } from '../../../src/ecs/world.js';
@@ -41,6 +42,7 @@ import {
   AI_STOCK_REFILL_LEVEL,
   AI_STOCK_REFILL_TURNS,
   TRADE_CART_HOUSE_DISTANCE,
+  unloadTraderHold,
 } from '../../../src/systems/trade/index.js';
 import { attachToVehicle, boardRider } from '../../../src/systems/vehicles/crew.js';
 import { createVehicle } from '../../../src/systems/vehicles/index.js';
@@ -941,6 +943,28 @@ describe('a trader between its own houses', () => {
     sim.run(RUN_TICKS); // the route resumes, the cart picked up where it was left
     expect(stockOf(sim, far, WOOD)).toBe(10);
     expect(sim.world.has(trader, HaulingCart)).toBe(true);
+  });
+
+  it('unloads into the build hold of a house under upgrade, leaving its kept inventory alone', () => {
+    const sim = newSim();
+    const near = houseAt(sim, NEAR_X, HUMAN);
+    const far = houseAt(sim, FAR_X, HUMAN, [[WOOD, 2]]);
+    const trader = traderOnFoot(sim, FAR_X);
+    woodRoute(sim, trader, near, far);
+    sim.step();
+    const kept = 4;
+    sim.world.add(far, Upgrading, {
+      target: sim.world.get(far, Building).buildingType,
+      savedStock: new Map([[WOOD, kept]]),
+      seeded: new Map(),
+    });
+    sim.world.add(trader, Carrying, { goodType: WOOD, amount: 1 });
+
+    unloadTraderHold(sim.world, ctxOf(sim), trader, far, WOOD);
+
+    expect(sim.world.get(far, Stockpile).amounts.get(WOOD)).toBe(3);
+    expect(sim.world.get(far, Upgrading).savedStock.get(WOOD)).toBe(kept);
+    expect(sim.world.has(trader, Carrying)).toBe(false);
   });
 });
 

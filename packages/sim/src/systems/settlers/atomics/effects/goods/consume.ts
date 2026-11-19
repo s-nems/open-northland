@@ -1,4 +1,4 @@
-import { BerryBush, Carrying, PickupClaim, Position } from '../../../../../components/index.js';
+import { BerryBush, Carrying, Position } from '../../../../../components/index.js';
 import { eventAt } from '../../../../../core/events.js';
 import type { Entity, World } from '../../../../../ecs/world.js';
 import type { SystemContext } from '../../../../context.js';
@@ -11,42 +11,41 @@ import { reapEmptyLoosePile } from './piles.js';
 export const MEAL_UNITS = 1;
 
 /**
- * Consume one unit of `goodType` for an `eat` atomic: from the store `from` when given, else from the
- * settler's own carried load. A source that emptied since the planner chose it takes nothing rather than
- * going negative or below its owner's storage minimum, and the atomic still credits the meal. The settler's pickup claim on the store ends here.
+ * Take the unit of `goodType` a meal about to start eats: off the store or pile `from` when given, else
+ * off the settler's own carried load. False, taking nothing, when the source no longer gives it up: it
+ * emptied, or its owner's storage minimum holds the unit back. The check and the take are one step, so
+ * a unit feeds one eater.
  */
-export function consumeFood(
+export function takeMealUnit(
   world: World,
   ctx: SystemContext,
   settler: Entity,
   from: Entity | null,
   goodType: number,
-): void {
-  if (from !== null) {
-    world.remove(settler, PickupClaim);
-    const stock = accessibleStockAmounts(world, from);
-    if (stock === undefined) return;
-    const have = stock.get(goodType) ?? 0;
-    if (cappedByStorageMinimum(world, ctx, from, goodType, Math.min(MEAL_UNITS, have)) < MEAL_UNITS) return;
-    setAccessibleStockAmount(world, from, goodType, have - MEAL_UNITS);
-    reapEmptyLoosePile(world, from);
-    return;
+): boolean {
+  if (from === null) {
+    const load = world.tryGet(settler, Carrying);
+    if (load === undefined || load.goodType !== goodType || load.amount < MEAL_UNITS) return false;
+    shrinkCarry(world, settler, load, MEAL_UNITS);
+    return true;
   }
-  const load = world.tryGet(settler, Carrying);
-  if (load === undefined || load.goodType !== goodType || load.amount <= 0) return;
-  shrinkCarry(world, settler, load, MEAL_UNITS);
+  const have = accessibleStockAmounts(world, from)?.get(goodType) ?? 0;
+  if (cappedByStorageMinimum(world, ctx, from, goodType, Math.min(MEAL_UNITS, have)) < MEAL_UNITS)
+    return false;
+  setAccessibleStockAmount(world, from, goodType, have - MEAL_UNITS);
+  reapEmptyLoosePile(world, from);
+  return true;
 }
 
 /**
- * Forage a ripe {@link BerryBush} for a completed `forage` atomic: its one serving is eaten, so the bush
- * flips to bare and regrows on the landscape growth trigger. A bush already bare or gone is a no-op, the same
- * raced-source stance as {@link consumeFood}. The entity persists and regrows in place, unlike a depleted
- * `Resource` node, which is destroyed.
+ * Pick the one serving off a ripe {@link BerryBush} for a meal about to start: the bush flips to bare and
+ * regrows on the landscape growth trigger. False, picking nothing, when the bush is gone or holds no
+ * fruit. The entity persists and regrows in place, unlike a depleted `Resource` node, which is destroyed.
  */
-export function forageBerry(world: World, ctx: SystemContext, bush: Entity): void {
-  const b = world.tryGet(bush, BerryBush);
-  if (b === undefined || b.stage !== 'ripe') return;
+export function pickBerry(world: World, ctx: SystemContext, bush: Entity): boolean {
+  if (world.tryGet(bush, BerryBush)?.stage !== 'ripe') return false;
   world.mut(bush, BerryBush).stage = 'bare';
   const pos = world.get(bush, Position);
   ctx.events.emit({ kind: 'berryForaged', bush, at: eventAt(pos.x, pos.y) });
+  return true;
 }

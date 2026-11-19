@@ -320,6 +320,13 @@ export const PickupClaim = defineComponent<{
 }>('PickupClaim', 'settlers');
 
 /**
+ * A hungry settler's walk to pick the one serving off the ripe `bush`. A settler choosing a meal later
+ * passes a claimed bush over. The claim ends as the forager picks, with its next planning pass, or with
+ * any order that diverts it.
+ */
+export const ForageClaim = defineComponent<{ bush: Entity }>('ForageClaim', 'settlers', { simOnly: true });
+
+/**
  * The specific `Building` a settler is employed at, so two same-type workplaces staff independently.
  * Only the `assignWorker` order stamps it; nothing else employs a settler.
  */

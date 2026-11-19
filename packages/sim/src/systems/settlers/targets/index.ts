@@ -12,6 +12,7 @@ export {
 } from './cell-index.js';
 export { isServedConstructionSite } from './construction-site-cells.js';
 export { BUSH_AT_HAND_NODES, chooseMeal, homeErrandDoor, storedFoodGood } from './food.js';
+export { bushClaimed, claimBush, releaseBushClaim } from './forage-claims.js';
 export {
   unreachableCellVeto,
   unreachableSiteStand,

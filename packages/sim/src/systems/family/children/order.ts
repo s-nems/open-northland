@@ -32,7 +32,7 @@ import { fillCompanyOnComingHome } from '../../settlers/drives/at-home.js';
 import { isServedAtHome } from '../../settlers/drives/home-errands.js';
 import { anyNeedPressing } from '../../settlers/drives/needs.js';
 import { enterBuilding, isInside, stepIn, stepOut } from '../../settlers/indoors.js';
-import { interactionCell, unreachableCellVeto } from '../../settlers/targets/index.js';
+import { interactionCell, releaseBushClaim, unreachableCellVeto } from '../../settlers/targets/index.js';
 import { landReachAt, navigationLimitFor } from '../../signposts/index.js';
 import { heldMoverNode } from '../../spatial/node-moves.js';
 import type { SupplyTally } from '../../stores/index.js';
@@ -327,6 +327,7 @@ function claimDuty(world: World, e: Entity, pass: ChildOrderPass): void {
   if (!world.has(e, FamilyDuty)) {
     world.add(e, FamilyDuty, { duty: true });
     pass.supply.releaseErrands(e);
+    releaseBushClaim(world, e);
   }
   pass.dutyClaimed.claim(e);
 }

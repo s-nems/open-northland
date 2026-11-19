@@ -37,10 +37,23 @@ import { isEdibleFoodIn, jobNeedsReligion } from '../../readviews/index.js';
 import type { NavigationLimit } from '../../signposts/index.js';
 import type { SupplyTally } from '../../stores/index.js';
 import { MEAL_UNITS } from '../atomics/effects/goods/index.js';
-import { atOrWalk, PRAY_ATOMIC_ID, SLEEP_ATOMIC_ID, startAtomic, startMeal } from '../atomics/start.js';
+import {
+  atOrWalk,
+  PRAY_ATOMIC_ID,
+  type Serving,
+  SLEEP_ATOMIC_ID,
+  startAtomic,
+  startMeal,
+} from '../atomics/start.js';
 import { enterBuilding } from '../indoors.js';
 import type { PlannerSpacing } from '../planner/spacing.js';
-import { chooseMeal, nearestPrayerSite, type TargetCandidates } from '../targets/index.js';
+import {
+  chooseMeal,
+  claimBush,
+  nearestPrayerSite,
+  releaseBushClaim,
+  type TargetCandidates,
+} from '../targets/index.js';
 import { fillCompanyOnComingHome } from './at-home.js';
 import { prayAtHome, sleepAtHome } from './home-errands.js';
 import { prayerStand } from './prayer-stand.js';
@@ -173,8 +186,7 @@ function eatCarried(
   load: { goodType: number; amount: number } | undefined,
 ): boolean {
   if (load === undefined || load.amount <= 0 || !isEdibleFoodIn(ctx.content, load.goodType)) return false;
-  startMeal(world, ctx, e, settler, { kind: 'eat', goodType: load.goodType, from: null }, e);
-  return true;
+  return startMeal(world, ctx, e, settler, { kind: 'eat', goodType: load.goodType, from: null });
 }
 
 /**
@@ -344,26 +356,33 @@ function seekMeal(
   const walks = seek && (hunger >= NEED_CRITICAL_THRESHOLD || !onAlert());
   const food = walks ? chooseMeal(targets, world, ctx, supply, terrain, here, e, limit ?? undefined) : null;
   if (food !== null) {
-    const target = food.kind === 'store' ? food.store : food.bush;
+    // The claim covers the walk: an eater that has arrived takes the serving itself.
     if (food.kind === 'store') {
       supply.stampPickupClaim(e, { source: food.store, goodType: food.goodType, amount: MEAL_UNITS });
+    } else {
+      claimBush(world, e, food.bush);
     }
-    const effect =
+    const serving: Serving =
       food.kind === 'store'
-        ? ({ kind: 'eat', goodType: food.goodType, from: food.store } as const)
-        : ({ kind: 'forage', bush: food.bush } as const);
-    const serve = (): void => startMeal(world, ctx, e, settler, effect, target);
+        ? { kind: 'eat', goodType: food.goodType, from: food.store }
+        : { kind: 'forage', bush: food.bush };
+    let served = true;
+    const serve = (): void => {
+      supply.releasePickupClaim(e);
+      releaseBushClaim(world, e);
+      served = startMeal(world, ctx, e, settler, serving);
+    };
     if (food.kind === 'store' && food.atHome) {
       const home = food.store;
       enterBuilding(world, e, home, here, food.cell, () => {
         fillCompanyOnComingHome(world, ctx, e);
         serve();
-        wearLodging(world, ctx, home, e, 'meal');
+        if (served) wearLodging(world, ctx, home, e, 'meal');
       });
     } else {
       atOrWalk(world, e, here, food.cell, serve);
     }
-    return true;
+    if (served) return true;
   }
   // Hungry with no reachable food, or forbidden to look: a human seat's settler falls through to
   // work while hunger climbs to ONE and the starvation bite drains the pool until food appears. A

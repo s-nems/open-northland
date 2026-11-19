@@ -711,10 +711,9 @@ describe('shelter larder', () => {
     setNeeds(sim, farmer, { hunger: ONE });
 
     const shelf = (): number => sim.world.get(tower, Stockpile).amounts.get(RATION) ?? 0;
-    stepUntil(sim, 200, () => shelf() < 2);
+    stepUntil(sim, 200, () => needsOf(sim, farmer).hunger < ONE);
 
     expect(shelf()).toBe(1);
-    expect(needsOf(sim, farmer).hunger).toBeLessThan(ONE);
     expect(insideOf(sim, farmer)).toBe(tower);
   });
 });

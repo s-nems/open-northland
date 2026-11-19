@@ -56,8 +56,8 @@ export type AtomicEffect =
   | {
       readonly kind: 'eat';
       readonly goodType: number;
-      /** The store the food is consumed from (a stockpile the eater stands on), or null when the eater
-       *  consumes a unit it already carries. One unit of `goodType` is destroyed on completion. */
+      /** The store the unit came off (a stockpile the eater stands on), or null for a unit the eater
+       *  carried. The unit left its source as the clip began; the clip's own events feed the eater. */
       readonly from: Entity | null;
     }
   /** The settler drinks one sip of the draught of `goodType` in its misc `slot` on the eat clip, whose own
@@ -139,10 +139,10 @@ export type AtomicEffect =
       readonly x: number;
       readonly y: number;
     }
-  /** A hungry settler forages a wild ripe `bush`: the bush flips ripe to bare and regrows, and the eat
-   *  clip's own events feed the forager. No stored or carried good is consumed and no job or tool is
-   *  needed; a bush already bare or gone consumes nothing but the meal still counts. */
-  | { readonly kind: 'forage'; readonly bush: Entity }
+  /** A hungry settler eats the serving it picked off a wild bush as the clip began, which left the bush
+   *  bare; the eat clip's own events feed the forager. No stored or carried good is consumed and no job
+   *  or tool is needed. */
+  | { readonly kind: 'forage' }
   /** A farmer's watering (the original's cultivate atomic) steps `crop` and every field on its six lattice
    *  neighbours one growth stage; nothing else grows a field. Approximation: the reach is not readable. A
    *  target already reaped or gone waters nothing; a ripe field in reach stands. */

@@ -29,6 +29,7 @@ import {
 import type { PlannerContext } from '../planner/context.js';
 import { interactionCell, unclaimedStockOf } from '../targets/index.js';
 import { atomicHoldsSettler } from './busy.js';
+import { pickBerry, takeMealUnit } from './effects/goods/index.js';
 
 // An atomic id is only a content cross-reference and animation join key, pinned to the original's
 // `setatomic` bindings; the typed {@link AtomicEffect} carries the behavior the AtomicSystem applies.
@@ -62,22 +63,38 @@ export function mealAtomicId(content: ContentSet, settler: SettlerIdentity, good
   return candy ? EAT_CANDY_ATOMIC_ID : EAT_ATOMIC_ID;
 }
 
+/** What a meal eats: one unit of a good off a store or the eater's own back, or a bush's serving. */
+export type Serving =
+  | { readonly kind: 'eat'; readonly goodType: number; readonly from: Entity | null }
+  | { readonly kind: 'forage'; readonly bush: Entity };
+
 /**
- * Start a meal: the eat slot {@link mealAtomicId} picks for the good, or the plain slot for a forage,
- * which eats the bush's fruit. The clip is the whole meal (raise, chew, lower), so its length is the
- * atomic's; most working trades bind no eat clip and play the civilist's.
+ * Start a meal by taking its `serving` off the source: the eat slot {@link mealAtomicId} picks for the
+ * good, or the plain slot for a bush's fruit. False, starting nothing, when the source no longer holds
+ * the serving, so no clip feeds an eater on a unit somebody else took. The clip is the whole meal
+ * (raise, chew, lower), so its length is the atomic's; most working trades bind no eat clip and play
+ * the civilist's.
  */
 export function startMeal(
   world: World,
   ctx: SystemContext,
   e: Entity,
   settler: SettlerIdentity,
-  effect: Extract<AtomicEffect, { kind: 'eat' | 'forage' }>,
-  target: Entity | null,
-): void {
-  const atomicId =
-    effect.kind === 'eat' ? mealAtomicId(ctx.content, settler, effect.goodType) : EAT_ATOMIC_ID;
-  startAtomic(world, e, atomicId, effect, atomicDuration(ctx.content, settler, atomicId), target);
+  serving: Serving,
+): boolean {
+  if (serving.kind === 'forage') {
+    if (!pickBerry(world, ctx, serving.bush)) return false;
+    const duration = atomicDuration(ctx.content, settler, EAT_ATOMIC_ID);
+    startAtomic(world, e, EAT_ATOMIC_ID, { kind: 'forage' }, duration, serving.bush);
+    return true;
+  }
+  if (!takeMealUnit(world, ctx, e, serving.from, serving.goodType)) return false;
+  const atomicId = mealAtomicId(ctx.content, settler, serving.goodType);
+  // A loose pile eaten to nothing is gone, and the clip faces nothing.
+  const source = serving.from ?? e;
+  const target = world.isAlive(source) ? source : null;
+  startAtomic(world, e, atomicId, serving, atomicDuration(ctx.content, settler, atomicId), target);
+  return true;
 }
 
 /**

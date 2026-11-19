@@ -18,7 +18,7 @@ import {
   serializeSaveGame,
 } from '../../../src/index.js';
 import { bindHaulFlag } from '../../../src/systems/economy/work-flag.js';
-import { consumeFood } from '../../../src/systems/settlers/atomics/effects/goods/consume.js';
+import { takeMealUnit } from '../../../src/systems/settlers/atomics/effects/goods/consume.js';
 import { pickupFromStore } from '../../../src/systems/settlers/atomics/effects/goods/transfer.js';
 import {
   BREAD,
@@ -182,14 +182,13 @@ describe('a storage minimum holds stock back', () => {
     expect(sim.world.get(carrier, Carrying).amount).toBe(2);
   });
 
-  it('leaves the unit on the shelf for a meal at the minimum', () => {
+  it('refuses a meal the unit held at the minimum', () => {
     const sim = world();
     const warehouse = owned(sim, buildingAt(sim, WAREHOUSE, 2, 0, [[WATER, 3]]));
     const eater = owned(sim, settlerAt(sim, 2, 0, CARRIER));
     setMinimum(sim, WATER, 3);
 
-    consumeFood(sim.world, ctxOf(sim), eater, warehouse, WATER);
-
+    expect(takeMealUnit(sim.world, ctxOf(sim), eater, warehouse, WATER)).toBe(false);
     expect(waterIn(sim, warehouse)).toBe(3);
   });
 

@@ -15,8 +15,7 @@ import { carriesNeeds, mutNeeds, NEED_SATED_THRESHOLD, needLevel } from '../../l
 import { atomicClipName, atomicDuration, atomicEventChannelDelta } from '../../readviews/animations.js';
 import { ATOMIC_EVENT_CHANNEL } from '../../readviews/index.js';
 import type { SupplyTally } from '../../stores/index.js';
-import { MEAL_UNITS } from '../atomics/effects/goods/index.js';
-import { mealAtomicId, SLEEP_ATOMIC_ID, startAtomic } from '../atomics/start.js';
+import { mealAtomicId, SLEEP_ATOMIC_ID, startAtomic, startMeal } from '../atomics/start.js';
 import { heldIndoors, isInside } from '../indoors.js';
 import { storedFoodGood } from '../targets/index.js';
 
@@ -103,22 +102,12 @@ export function planHomeTopUp(
 ): boolean {
   const round = nextHomeRound(world, ctx, supply, e);
   if (round === null) return false;
-  // The meal starts at once, but a housemate walking home for the same last unit must see it taken.
-  if (round.effect.kind === 'eat' && round.effect.from !== null) {
-    supply.stampPickupClaim(e, {
-      source: round.effect.from,
-      goodType: round.effect.goodType,
-      amount: MEAL_UNITS,
-    });
+  if (round.effect.kind === 'eat') {
+    if (!startMeal(world, ctx, e, settler, round.effect)) return false;
+  } else {
+    const duration = atomicDuration(ctx.content, settler, round.atomicId);
+    startAtomic(world, e, round.atomicId, round.effect, duration, round.target);
   }
-  startAtomic(
-    world,
-    e,
-    round.atomicId,
-    round.effect,
-    atomicDuration(ctx.content, settler, round.atomicId),
-    round.target,
-  );
   wearLodging(world, ctx, round.home, e, round.effect.kind === 'sleep' ? 'sleep' : 'meal');
   return true;
 }

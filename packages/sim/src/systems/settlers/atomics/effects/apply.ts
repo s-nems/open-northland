@@ -32,10 +32,8 @@ import { loadHaulingCart, unloadHaulingCart } from '../../../vehicles/hauling-ca
 import { serveCoinDrillRepetition } from '../../drives/coin-drill-coins.js';
 import { serveDrillRepetition } from '../../drives/training.js';
 import {
-  consumeFood,
   dropCarriedLoad,
   equipFromStore,
-  forageBerry,
   harvestFromNode,
   harvestStrokesPerUnit,
   loadVehicleHold,
@@ -115,14 +113,9 @@ export function applyEffect(
     case 'vehicleUnload':
       unloadVehicleHold(world, ctx, settler, effect.vehicle, effect.goodType);
       return;
-    // The meal itself was paid out at the clip's own event frame; the unit leaves the shelf here. The eat
-    // clips carry no `interruptable`, so an order parks behind one rather than splitting the two halves.
+    // The serving left its source as the clip began, and the clip's own event frames fed the eater.
     case 'eat':
-      consumeFood(world, ctx, settler, effect.from, effect.goodType);
-      clearNeedOrder(world, settler, 'hunger');
-      return;
     case 'forage':
-      forageBerry(world, ctx, effect.bush);
       clearNeedOrder(world, settler, 'hunger');
       return;
     case 'drink':

@@ -1,7 +1,7 @@
 // The goods effects of the atomic executor. Import this barrel, not the leaves.
 
 export { addCarry, dropCarriedLoad, dropCarryAtOwnTile } from './carry.js';
-export { consumeFood, forageBerry, MEAL_UNITS } from './consume.js';
+export { MEAL_UNITS, pickBerry, takeMealUnit } from './consume.js';
 export { EQUIP_FETCH_UNITS, equipFromStore, unequipWornGood } from './equip.js';
 export {
   continuesHarvest,
