@@ -15,6 +15,7 @@ const reviewedBinaryAssets = new Set([
   'packages/app/src/assets/menu-backdrops/kraina_starych_bohaterow.jpg',
   'packages/app/src/assets/menu-backdrops/nowa_nadzieja.jpg',
   'packages/app/src/assets/menu-backdrops/oczy_weza.jpg',
+  'packages/app/src/assets/menu-backdrops/osada_nad_rzeka.jpg',
   'packages/app/src/assets/menu-backdrops/piracka_utopia.jpg',
   'packages/app/src/assets/menu-backdrops/smocza_kraina.jpg',
   'packages/app/src/assets/menu-backdrops/upadek_krola.jpg',

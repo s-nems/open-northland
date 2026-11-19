@@ -195,6 +195,7 @@ npm run shot -- --seed 7 --ticks 20 --out shot.png
 Options: `--map <id>`, `--atlas [real]`, `--terrain`, `--zoom <n>`, `--no-hud`.
 Screenshots need visual review.
 
-Menu backdrops are 2560×1440 JPEGs in `packages/app/src/assets/menu-backdrops/`, named after their map.
+Menu backdrops are 16:9 JPEGs, 2560×1440 or at least 1920×1080, in
+`packages/app/src/assets/menu-backdrops/`, named after their map, or after the scene when the map is unknown.
 Use a settlement or landscape with no HUD or map edge. The boot card uses the last menu still.
 Update `scripts/check-repository-assets.mjs` when changing the set.
