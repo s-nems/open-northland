@@ -220,7 +220,7 @@ export const enGame = {
     statistics: 'Statistics',
     diplomacy: 'Diplomacy',
     player: 'Player',
-    computerSeat: '{name} ({computer}, {level})',
+    computerSeat: '{name} ({level})',
     diplomacyStances: {
       friend: 'friendly',
       neutral: 'neutral',

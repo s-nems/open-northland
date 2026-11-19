@@ -4,14 +4,10 @@ import { formatMessage, messages } from '../../i18n/index.js';
 import { playerNameMap } from '../map/roster.js';
 import { computerLevelsOf } from './session-roles.js';
 
-/** `name` with the computer's level beside it, "Wikingowie 1 (Komputer Trudny)". */
+/** `name` with the computer's level beside it, "Wikingowie 1 (Trudny)". */
 export function withComputerLevel(name: string, level: ComputerDifficulty): string {
   const copy = messages();
-  return formatMessage(copy.hud.computerSeat, {
-    name,
-    computer: copy.mainMenu.lobby.vacantComputer,
-    level: copy.mainMenu.lobby.difficulty[level],
-  });
+  return formatMessage(copy.hud.computerSeat, { name, level: copy.mainMenu.lobby.difficulty[level] });
 }
 
 /**

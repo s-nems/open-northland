@@ -242,7 +242,7 @@ export const deGame = {
     statistics: 'Statistik',
     diplomacy: 'Diplomatie',
     player: 'Spieler',
-    computerSeat: '{name} ({computer}, {level})',
+    computerSeat: '{name} ({level})',
     diplomacyStances: {
       friend: 'freundlich',
       neutral: 'neutral',

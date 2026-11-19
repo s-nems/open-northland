@@ -220,7 +220,7 @@ export const itGame = {
     statistics: 'Statistiche',
     diplomacy: 'Diplomazia',
     player: 'Giocatore',
-    computerSeat: '{name} ({computer}, {level})',
+    computerSeat: '{name} ({level})',
     diplomacyStances: {
       friend: 'amichevole',
       neutral: 'neutrale',

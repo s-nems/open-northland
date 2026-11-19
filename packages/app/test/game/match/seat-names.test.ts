@@ -39,9 +39,9 @@ describe('seatNameMap', () => {
     );
     expect([0, 1, 2, 3, 4, 5].map(nameOf)).toEqual([
       'Ragnar',
-      'Wikingowie 1 (Komputer Trudny)',
-      'Wikingowie 2 (Komputer Łatwy)',
-      'Gracz 4 (Komputer Średni)',
+      'Wikingowie 1 (Trudny)',
+      'Wikingowie 2 (Łatwy)',
+      'Gracz 4 (Średni)',
       'Potwory',
       undefined,
     ]);

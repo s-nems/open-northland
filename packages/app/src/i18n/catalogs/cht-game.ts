@@ -204,7 +204,7 @@ export const chtGame = {
     statistics: '統計',
     diplomacy: '外交',
     player: '玩家',
-    computerSeat: '{name}（{computer}，{level}）',
+    computerSeat: '{name}（{level}）',
     diplomacyStances: {
       friend: '友好',
       neutral: '中立',
