@@ -1,13 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { depthKey } from '../../../src/data/projection/index.js';
 import { PlacementGhostLayer } from '../../../src/gpu/placement/ghost.js';
-import {
-  bandSides,
-  overlayBounds,
-  SIDE_BLOCKED,
-  SIDE_OPEN,
-  sweptEllipseQuad,
-} from '../../../src/gpu/placement/overlay.js';
+import { bandSides, overlayBounds, SIDE_BLOCKED, SIDE_OPEN } from '../../../src/gpu/placement/overlay.js';
 import { TextureCache } from '../../../src/gpu/textures/texture-cache.js';
 import { halfCellToScreen, makeElevationField, TILE_HALF_H, TILE_HALF_W } from '../../../src/index.js';
 
@@ -67,17 +61,6 @@ describe('bandSides', () => {
     expect(sides.borders(0, 0)).toBe(false);
     expect(sides.borders(6, 3)).toBe(false);
     expect(sides.borders(6, 6)).toBe(false);
-  });
-});
-
-describe('sweptEllipseQuad', () => {
-  it('joins two ellipses of a row along their top and bottom, and a diagonal pair along its tangents', () => {
-    expect(sweptEllipseQuad(0, 0, 34, 0, 24, 12).map((v) => v + 0)).toEqual([0, 12, 34, 12, 34, -12, 0, -12]);
-    // Every corner lies on its ellipse, and the offset is tangent there: in the space where the ellipse
-    // is a circle it is perpendicular to the line between the centres.
-    const [x = Number.NaN, y = Number.NaN] = sweptEllipseQuad(0, 0, 17, 19, 24, 12);
-    expect((x / 24) ** 2 + (y / 12) ** 2).toBeCloseTo(1, 9);
-    expect(x * 17 + y * 2 * (19 * 2)).toBeCloseTo(0, 9);
   });
 });
 

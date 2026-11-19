@@ -2,12 +2,12 @@ import { Container, Graphics, type Renderer, RenderTexture, Sprite } from 'pixi.
 import {
   halfCellToScreenX,
   halfCellToScreenY,
-  nodeDiamondPoly,
   TILE_HALF_H,
   TILE_HALF_W,
 } from '../../data/projection/index.js';
 import { type ElevationField, projectNode } from '../../data/terrain/index.js';
 import { hashCells } from './cell-signature.js';
+import { WashMesh } from './wash-mesh.js';
 
 /**
  * The build-placement overlay: a translucent dark wash over everything the held building cannot anchor
@@ -163,11 +163,11 @@ export class PlacementOverlayLayer {
   /** The composite's ground past the band's own nodes, cut out of the lift and the rim so neither shows
    *  beyond the map's edge. */
   private outsideTexture: RenderTexture | null = null;
-  private readonly bandHost = new Container();
-  private readonly bandG = new Graphics();
-  /** The open nodes' cells, erased out of the closed sides' padded shapes. */
-  private readonly openHost = new Container();
-  private readonly openG = new Graphics();
+  private readonly band = new WashMesh('erase');
+  /** The default brush's closed sides, and the open nodes' cells erased out of their padded shapes. */
+  private readonly blocked = new WashMesh();
+  private readonly reserved = new WashMesh();
+  private readonly open = new WashMesh('erase');
   private dimTexture: RenderTexture | null = null;
   private brightTexture: RenderTexture | null = null;
   private reserveTexture: RenderTexture | null = null;
@@ -199,10 +199,6 @@ export class PlacementOverlayLayer {
     this.container.addChild(this.dim, this.reserve, this.bright, this.rim);
     this.eraser.blendMode = 'erase';
     this.eraseHost.addChild(this.eraser);
-    this.bandG.blendMode = 'erase';
-    this.bandHost.addChild(this.bandG);
-    this.openG.blendMode = 'erase';
-    this.openHost.addChild(this.openG);
     // Two closed sides (blocked, reserved) per direction of each ring, then a cut of each and of the ground past the band.
     for (const ring of RIM_RINGS) {
       for (const [dx, dy] of RIM_DIRECTIONS) {
@@ -278,10 +274,11 @@ export class PlacementOverlayLayer {
     reserveTexture: RenderTexture,
   ): void {
     const side = bandSides(frame);
-    const blockedG = this.blockedG.clear();
-    const reservedG = this.reservedG.clear();
-    const bandG = this.bandG.clear();
-    const openG = this.openG.clear();
+    const blocked = this.blocked.shape;
+    const reserved = this.reserved.shape;
+    const band = this.band.shape;
+    const open = this.open.shape;
+    for (const shape of [blocked, reserved, band, open]) shape.clear();
     // Nodes stand HALF_W apart in a row and HALF_H/2 between rows, odd rows offset by HALF_W/2, so a
     // diamond of those half-extents on every node covers the plane with room to spare.
     const hw = (TILE_HALF_W + CELL_OVERLAP) * COMPOSITE_RESOLUTION;
@@ -298,15 +295,15 @@ export class PlacementOverlayLayer {
         const p = projectNode(elevation, col, row);
         const cx = (p.x - bounds.x) * COMPOSITE_RESOLUTION;
         const cy = (p.y - bounds.y) * COMPOSITE_RESOLUTION;
-        bandG.poly(nodeDiamondPoly(cx, cy, hw, hh));
+        band.diamond(cx, cy, hw, hh);
         const own = side.at(col, row);
         const onBorder = side.borders(col, row);
         if (own === SIDE_OPEN) {
           if (!onBorder) {
-            openG.poly(nodeDiamondPoly(cx, cy, openHw, openHh));
+            open.diamond(cx, cy, openHw, openHh);
             continue;
           }
-          openG.ellipse(cx, cy, openRx, openRy);
+          open.ellipse(cx, cy, openRx, openRy);
           // An odd row stands half a node east, so the row below starts at `col`, not `col - 1`.
           const west = (row & 1) === 0 ? col - 1 : col;
           for (const [nCol, nRow] of [
@@ -319,19 +316,16 @@ export class PlacementOverlayLayer {
             const n = projectNode(elevation, nCol, nRow);
             const nx = (n.x - bounds.x) * COMPOSITE_RESOLUTION;
             const ny = (n.y - bounds.y) * COMPOSITE_RESOLUTION;
-            openG.poly(sweptEllipseQuad(cx, cy, nx, ny, openRx, openRy));
+            open.sweep(cx, cy, nx, ny, openRx, openRy);
           }
           continue;
         }
-        const g = own === SIDE_BLOCKED ? blockedG : reservedG;
+        const g = own === SIDE_BLOCKED ? blocked : reserved;
         if (onBorder) g.ellipse(cx, cy, rx, ry);
-        else g.poly(nodeDiamondPoly(cx, cy, hw, hh));
+        else g.diamond(cx, cy, hw, hh);
       }
     }
-    blockedG.fill(0xffffff);
-    reservedG.fill(0xffffff);
-    bandG.fill(0xffffff);
-    openG.fill(0xffffff);
+    for (const mesh of [this.blocked, this.reserved, this.band, this.open]) mesh.commit();
     const fullG = this.buildableG
       .clear()
       .rect(0, 0, bounds.width * COMPOSITE_RESOLUTION, bounds.height * COMPOSITE_RESOLUTION)
@@ -339,14 +333,14 @@ export class PlacementOverlayLayer {
 
     // The textures may be quantized larger than the band, so `clear: true` blanks the margin and the
     // slack past the band's edge stays transparent.
-    this.renderer.render({ container: blockedG, target: dimTexture, clear: true });
-    this.renderer.render({ container: reservedG, target: reserveTexture, clear: true });
-    this.renderer.render({ container: this.openHost, target: dimTexture, clear: false });
-    this.renderer.render({ container: this.openHost, target: reserveTexture, clear: false });
+    this.renderer.render({ container: this.blocked.host, target: dimTexture, clear: true });
+    this.renderer.render({ container: this.reserved.host, target: reserveTexture, clear: true });
+    this.renderer.render({ container: this.open.host, target: dimTexture, clear: false });
+    this.renderer.render({ container: this.open.host, target: reserveTexture, clear: false });
     const outsideTexture = this.outsideTexture;
     if (outsideTexture === null) return;
     this.renderer.render({ container: fullG, target: outsideTexture, clear: true });
-    this.renderer.render({ container: this.bandHost, target: outsideTexture, clear: false });
+    this.renderer.render({ container: this.band.host, target: outsideTexture, clear: false });
     this.renderer.render({ container: fullG, target: brightTexture, clear: true });
     for (const closed of [dimTexture, reserveTexture, outsideTexture]) {
       this.eraser.texture = closed;
@@ -462,37 +456,13 @@ export class PlacementOverlayLayer {
     this.rimTexture?.destroy(true);
     this.outsideTexture?.destroy(true);
     this.rimHost.destroy({ children: true });
-    this.bandHost.destroy({ children: true });
-    this.openHost.destroy({ children: true });
+    for (const mesh of [this.blocked, this.reserved, this.band, this.open]) mesh.destroy();
     this.blockedG.destroy();
     this.buildableG.destroy();
     this.reservedG.destroy();
     this.eraseHost.destroy({ children: true });
     this.container.destroy({ children: true });
   }
-}
-
-/**
- * The quad between two equal ellipses centred on `a` and `b`, edge to edge along their common tangents:
- * with the ellipses themselves it is the shape one of them sweeps on the way to the other.
- */
-export function sweptEllipseQuad(
-  ax: number,
-  ay: number,
-  bx: number,
-  by: number,
-  rx: number,
-  ry: number,
-): number[] {
-  // In the space where the ellipse is a circle of radius `rx`, the tangent offset is the unit normal.
-  const stretch = rx / ry;
-  const dx = bx - ax;
-  const dy = (by - ay) * stretch;
-  const length = Math.hypot(dx, dy);
-  if (length === 0) return [];
-  const ox = (-dy / length) * rx;
-  const oy = (dx / length) * ry;
-  return [ax + ox, ay + oy, bx + ox, by + oy, bx - ox, by - oy, ax - ox, ay - oy];
 }
 
 export const SIDE_OPEN = 0;
