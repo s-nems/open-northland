@@ -11,7 +11,6 @@ export {
   halfCellToScreen,
   halfCellToScreenX,
   halfCellToScreenY,
-  nodeDiamondPoly,
   ONE,
   rowStagger,
   screenToCell,

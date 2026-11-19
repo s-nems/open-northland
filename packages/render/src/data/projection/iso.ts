@@ -105,14 +105,6 @@ export function screenToCell(x: number, y: number): { col: number; row: number }
   return { col: Math.floor(x / (2 * TILE_HALF_W)), row: Math.floor(y / TILE_HALF_H) };
 }
 
-/**
- * The flat `[x, y, …]` point list of a node diamond centred at `(cx, cy)` with half-extents `(hw, hh)`,
- * wound top → right → bottom → left for `Graphics.poly`.
- */
-export function nodeDiamondPoly(cx: number, cy: number, hw: number, hh: number): number[] {
-  return [cx, cy - hh, cx + hw, cy, cx, cy + hh, cx - hw, cy];
-}
-
 /** The camera transform every projected position passes through, `screen = world·scale + offset`. */
 export interface Camera {
   /** Pan, in screen px. */

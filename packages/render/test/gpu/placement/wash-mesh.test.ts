@@ -6,13 +6,6 @@ function corners(shape: WashGeometry): number[] {
 }
 
 describe('WashGeometry', () => {
-  it('writes a diamond as two triangles over its four corners', () => {
-    const shape = new WashGeometry();
-    shape.diamond(10, 20, 4, 2);
-    expect(corners(shape)).toEqual([10, 18, 14, 20, 10, 22, 6, 20]);
-    expect(Array.from(shape.indices.subarray(0, shape.indexCount))).toEqual([0, 1, 2, 0, 2, 3]);
-  });
-
   it('sweeps an ellipse along a row on its top and bottom, and along a diagonal on its tangents', () => {
     const row = new WashGeometry();
     row.sweep(0, 0, 34, 0, 24, 12);

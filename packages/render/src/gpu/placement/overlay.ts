@@ -7,7 +7,7 @@ import {
 } from '../../data/projection/index.js';
 import { type ElevationField, projectNode } from '../../data/terrain/index.js';
 import { hashCells } from './cell-signature.js';
-import { WashMesh } from './wash-mesh.js';
+import { type WashGeometry, WashMesh } from './wash-mesh.js';
 
 /**
  * The build-placement overlay: a translucent dark wash over everything the held building cannot anchor
@@ -77,7 +77,7 @@ const RIM_DIRECTIONS: readonly (readonly [number, number])[] = [
   [1, 1],
 ];
 /** Half-resolution compositing - halves the fill cost. */
-const COMPOSITE_RESOLUTION = 0.5;
+export const COMPOSITE_RESOLUTION = 0.5;
 /** World-px pad each diamond grows by, so adjacent same-side cells fuse without hairline seams. Must
  *  exceed 2 composite px (2 / COMPOSITE_RESOLUTION world px); below that the pad is sub-pixel and
  *  neighbouring AA edges leave a visible seam lattice. */
@@ -171,10 +171,9 @@ export class PlacementOverlayLayer {
   private dimTexture: RenderTexture | null = null;
   private brightTexture: RenderTexture | null = null;
   private reserveTexture: RenderTexture | null = null;
-  /** The retained composite sources, cleared + refilled per recomposite (never re-allocated). */
-  private readonly blockedG = new Graphics();
-  private readonly buildableG = new Graphics();
-  private readonly reservedG = new Graphics();
+  /** The whole composite as one white rect, and the `round` brush's feathered open ellipses. */
+  private readonly fullG = new Graphics();
+  private readonly roundOpenG = new Graphics();
   /** The `round` brush's cut: the open side's texture erased out of the dim. A child's blend mode is
    *  honoured in a render where a root's is not, so the sprite renders under a host container. */
   private readonly eraseHost = new Container();
@@ -273,60 +272,14 @@ export class PlacementOverlayLayer {
     brightTexture: RenderTexture,
     reserveTexture: RenderTexture,
   ): void {
-    const side = bandSides(frame);
-    const blocked = this.blocked.shape;
-    const reserved = this.reserved.shape;
-    const band = this.band.shape;
-    const open = this.open.shape;
-    for (const shape of [blocked, reserved, band, open]) shape.clear();
-    // Nodes stand HALF_W apart in a row and HALF_H/2 between rows, odd rows offset by HALF_W/2, so a
-    // diamond of those half-extents on every node covers the plane with room to spare.
-    const hw = (TILE_HALF_W + CELL_OVERLAP) * COMPOSITE_RESOLUTION;
-    const hh = (TILE_HALF_H / 2 + CELL_OVERLAP) * COMPOSITE_RESOLUTION;
-    const rx = EDGE_RADIUS.x * COMPOSITE_RESOLUTION;
-    const ry = EDGE_RADIUS.y * COMPOSITE_RESOLUTION;
-    const openRx = OPEN_RADIUS.x * COMPOSITE_RESOLUTION;
-    const openRy = OPEN_RADIUS.y * COMPOSITE_RESOLUTION;
-    const openHw = (TILE_HALF_W / 2 + OPEN_PAD) * COMPOSITE_RESOLUTION;
-    const openHh = (TILE_HALF_H / 2 + OPEN_PAD) * COMPOSITE_RESOLUTION;
-    for (let row = frame.minRow; row <= frame.maxRow; row++) {
-      for (let col = frame.minCol; col <= frame.maxCol; col++) {
-        // Project into composite-texture space: the lifted node point, less the band origin, at half res.
-        const p = projectNode(elevation, col, row);
-        const cx = (p.x - bounds.x) * COMPOSITE_RESOLUTION;
-        const cy = (p.y - bounds.y) * COMPOSITE_RESOLUTION;
-        band.diamond(cx, cy, hw, hh);
-        const own = side.at(col, row);
-        const onBorder = side.borders(col, row);
-        if (own === SIDE_OPEN) {
-          if (!onBorder) {
-            open.diamond(cx, cy, openHw, openHh);
-            continue;
-          }
-          open.ellipse(cx, cy, openRx, openRy);
-          // An odd row stands half a node east, so the row below starts at `col`, not `col - 1`.
-          const west = (row & 1) === 0 ? col - 1 : col;
-          for (const [nCol, nRow] of [
-            [col + 1, row],
-            [west, row + 1],
-            [west + 1, row + 1],
-          ] as const) {
-            if (nCol < frame.minCol || nCol > frame.maxCol || nRow > frame.maxRow) continue;
-            if (side.at(nCol, nRow) !== SIDE_OPEN) continue;
-            const n = projectNode(elevation, nCol, nRow);
-            const nx = (n.x - bounds.x) * COMPOSITE_RESOLUTION;
-            const ny = (n.y - bounds.y) * COMPOSITE_RESOLUTION;
-            open.sweep(cx, cy, nx, ny, openRx, openRy);
-          }
-          continue;
-        }
-        const g = own === SIDE_BLOCKED ? blocked : reserved;
-        if (onBorder) g.ellipse(cx, cy, rx, ry);
-        else g.diamond(cx, cy, hw, hh);
-      }
-    }
+    fillGridWash(frame, elevation, bounds, {
+      band: this.band.shape,
+      blocked: this.blocked.shape,
+      reserved: this.reserved.shape,
+      open: this.open.shape,
+    });
     for (const mesh of [this.blocked, this.reserved, this.band, this.open]) mesh.commit();
-    const fullG = this.buildableG
+    const fullG = this.fullG
       .clear()
       .rect(0, 0, bounds.width * COMPOSITE_RESOLUTION, bounds.height * COMPOSITE_RESOLUTION)
       .fill(0xffffff);
@@ -364,8 +317,8 @@ export class PlacementOverlayLayer {
     const closed = new Set<string>();
     for (const c of frame.blocked) closed.add(`${c.col},${c.row}`);
     for (const c of frame.reserved) closed.add(`${c.col},${c.row}`);
-    const fullG = this.blockedG.clear();
-    const openG = this.buildableG.clear();
+    const fullG = this.fullG.clear();
+    const openG = this.roundOpenG.clear();
     fullG
       .rect(0, 0, bounds.width * COMPOSITE_RESOLUTION, bounds.height * COMPOSITE_RESOLUTION)
       .fill(0xffffff);
@@ -389,7 +342,9 @@ export class PlacementOverlayLayer {
     // The same ellipses cut out of the dim; `erase` keeps the destination less the source's alpha.
     this.eraser.texture = brightTexture;
     this.renderer.render({ container: this.eraseHost, target: dimTexture, clear: false });
-    this.renderer.render({ container: this.reservedG.clear(), target: reserveTexture, clear: true });
+    this.reserved.shape.clear();
+    this.reserved.commit();
+    this.renderer.render({ container: this.reserved.host, target: reserveTexture, clear: true });
   }
 
   private show(
@@ -441,11 +396,12 @@ export class PlacementOverlayLayer {
     this.rimTexture?.destroy(true);
     this.rimTexture = RenderTexture.create({ width: newW, height: newH });
     this.outsideTexture?.destroy(true);
-    this.outsideTexture = RenderTexture.create({ width: newW, height: newH, antialias: true });
-    // Linear (default) sampling upscales the half-res composite into the soft, grid-free edge; the
-    // multisampled targets keep the shapes' own edges, and so the rim, from stepping at that resolution.
+    this.outsideTexture = RenderTexture.create({ width: newW, height: newH });
+    this.brightTexture = RenderTexture.create({ width: newW, height: newH });
+    // Linear (default) sampling upscales the half-res composite into the soft, grid-free edge. The two
+    // closed sides are multisampled, which keeps their shapes' edges, and so the rim and the lift cut
+    // from them, from stepping at that resolution.
     this.dimTexture = RenderTexture.create({ width: newW, height: newH, antialias: true });
-    this.brightTexture = RenderTexture.create({ width: newW, height: newH, antialias: true });
     this.reserveTexture = RenderTexture.create({ width: newW, height: newH, antialias: true });
   }
 
@@ -457,9 +413,8 @@ export class PlacementOverlayLayer {
     this.outsideTexture?.destroy(true);
     this.rimHost.destroy({ children: true });
     for (const mesh of [this.blocked, this.reserved, this.band, this.open]) mesh.destroy();
-    this.blockedG.destroy();
-    this.buildableG.destroy();
-    this.reservedG.destroy();
+    this.fullG.destroy();
+    this.roundOpenG.destroy();
     this.eraseHost.destroy({ children: true });
     this.container.destroy({ children: true });
   }
@@ -517,6 +472,74 @@ export function bandSides(
       );
     },
   };
+}
+
+/** The triangle sets the default brush composites from, in composite-texture px. */
+export interface GridWashShapes {
+  /** Every node of the band. */
+  readonly band: WashGeometry;
+  readonly blocked: WashGeometry;
+  readonly reserved: WashGeometry;
+  /** The open nodes' own cells, erased out of both closed sides. */
+  readonly open: WashGeometry;
+}
+
+/** Refill the default brush's shapes for a band. Pure, so it tests without GL. */
+export function fillGridWash(
+  frame: PlacementOverlayFrame,
+  elevation: ElevationField,
+  bounds: OverlayBounds,
+  shapes: GridWashShapes,
+): void {
+  const { band, blocked, reserved, open } = shapes;
+  for (const shape of [band, blocked, reserved, open]) shape.clear();
+  const side = bandSides(frame);
+  // Nodes stand HALF_W apart in a row and HALF_H/2 between rows, odd rows offset by HALF_W/2, so a
+  // diamond of those half-extents on every node covers the plane with room to spare.
+  const hw = (TILE_HALF_W + CELL_OVERLAP) * COMPOSITE_RESOLUTION;
+  const hh = (TILE_HALF_H / 2 + CELL_OVERLAP) * COMPOSITE_RESOLUTION;
+  const rx = EDGE_RADIUS.x * COMPOSITE_RESOLUTION;
+  const ry = EDGE_RADIUS.y * COMPOSITE_RESOLUTION;
+  const openRx = OPEN_RADIUS.x * COMPOSITE_RESOLUTION;
+  const openRy = OPEN_RADIUS.y * COMPOSITE_RESOLUTION;
+  const openHw = (TILE_HALF_W / 2 + OPEN_PAD) * COMPOSITE_RESOLUTION;
+  const openHh = (TILE_HALF_H / 2 + OPEN_PAD) * COMPOSITE_RESOLUTION;
+  for (let row = frame.minRow; row <= frame.maxRow; row++) {
+    for (let col = frame.minCol; col <= frame.maxCol; col++) {
+      // Project into composite-texture space: the lifted node point, less the band origin, at half res.
+      const p = projectNode(elevation, col, row);
+      const cx = (p.x - bounds.x) * COMPOSITE_RESOLUTION;
+      const cy = (p.y - bounds.y) * COMPOSITE_RESOLUTION;
+      band.diamond(cx, cy, hw, hh);
+      const own = side.at(col, row);
+      const onBorder = side.borders(col, row);
+      if (own === SIDE_OPEN) {
+        if (!onBorder) {
+          open.diamond(cx, cy, openHw, openHh);
+          continue;
+        }
+        open.ellipse(cx, cy, openRx, openRy);
+        // An odd row stands half a node east, so the row below starts at `col`, not `col - 1`.
+        const west = (row & 1) === 0 ? col - 1 : col;
+        for (const [nCol, nRow] of [
+          [col + 1, row],
+          [west, row + 1],
+          [west + 1, row + 1],
+        ] as const) {
+          if (nCol < frame.minCol || nCol > frame.maxCol || nRow > frame.maxRow) continue;
+          if (side.at(nCol, nRow) !== SIDE_OPEN) continue;
+          const n = projectNode(elevation, nCol, nRow);
+          const nx = (n.x - bounds.x) * COMPOSITE_RESOLUTION;
+          const ny = (n.y - bounds.y) * COMPOSITE_RESOLUTION;
+          open.sweep(cx, cy, nx, ny, openRx, openRy);
+        }
+        continue;
+      }
+      const closed = own === SIDE_BLOCKED ? blocked : reserved;
+      if (onBorder) closed.ellipse(cx, cy, rx, ry);
+      else closed.diamond(cx, cy, hw, hh);
+    }
+  }
 }
 
 /** Order-sensitive signature of a frame - equal frames hash equal because the caller emits blocked and

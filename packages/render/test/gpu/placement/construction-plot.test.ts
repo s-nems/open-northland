@@ -1,6 +1,6 @@
 import { Graphics, GraphicsContext, Texture } from 'pixi.js';
 import { describe, expect, it, vi } from 'vitest';
-import { nodeDiamondPoly, TILE_HALF_H, TILE_HALF_W } from '../../../src/data/projection/index.js';
+import { TILE_HALF_H, TILE_HALF_W } from '../../../src/data/projection/index.js';
 import { type ElevationField, projectNode } from '../../../src/data/terrain/index.js';
 import {
   type ConstructionPlotFrame,
@@ -30,10 +30,12 @@ function screenSet(loop: readonly { u: number; v: number }[]): string[] {
 /** The placement overlay's diamond of a node, as sorted "x,y" keys. */
 function diamondSet(cell: Cell): string[] {
   const p = projectNode(FLAT, cell.col, cell.row);
-  const poly = nodeDiamondPoly(p.x, p.y, DIAMOND_HALF_W, DIAMOND_HALF_H);
-  const keys: string[] = [];
-  for (let i = 0; i < poly.length; i += 2) keys.push(`${poly[i]},${poly[i + 1]}`);
-  return keys.sort();
+  return [
+    `${p.x},${p.y - DIAMOND_HALF_H}`,
+    `${p.x + DIAMOND_HALF_W},${p.y}`,
+    `${p.x},${p.y + DIAMOND_HALF_H}`,
+    `${p.x - DIAMOND_HALF_W},${p.y}`,
+  ].sort();
 }
 
 /** How far `(x,y)` sits inside a node diamond: below 1 inside, 1 on the boundary. */

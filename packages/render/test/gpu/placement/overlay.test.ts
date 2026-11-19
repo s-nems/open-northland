@@ -1,7 +1,17 @@
 import { describe, expect, it } from 'vitest';
 import { depthKey } from '../../../src/data/projection/index.js';
+import { projectNode } from '../../../src/data/terrain/index.js';
 import { PlacementGhostLayer } from '../../../src/gpu/placement/ghost.js';
-import { bandSides, overlayBounds, SIDE_BLOCKED, SIDE_OPEN } from '../../../src/gpu/placement/overlay.js';
+import {
+  bandSides,
+  COMPOSITE_RESOLUTION,
+  fillGridWash,
+  overlayBounds,
+  type PlacementOverlayCell,
+  SIDE_BLOCKED,
+  SIDE_OPEN,
+} from '../../../src/gpu/placement/overlay.js';
+import { WashGeometry } from '../../../src/gpu/placement/wash-mesh.js';
 import { TextureCache } from '../../../src/gpu/textures/texture-cache.js';
 import { halfCellToScreen, makeElevationField, TILE_HALF_H, TILE_HALF_W } from '../../../src/index.js';
 
@@ -61,6 +71,78 @@ describe('bandSides', () => {
     expect(sides.borders(0, 0)).toBe(false);
     expect(sides.borders(6, 3)).toBe(false);
     expect(sides.borders(6, 6)).toBe(false);
+  });
+});
+
+describe('fillGridWash', () => {
+  const band = { minCol: 0, maxCol: 6, minRow: 0, maxRow: 6 };
+  const CENTRE = { col: 3, row: 3 };
+
+  function fill(blocked: readonly PlacementOverlayCell[]) {
+    const frame = { ...band, blocked, reserved: [] };
+    const bounds = overlayBounds(frame, FLAT.maxLift);
+    const shapes = {
+      band: new WashGeometry(),
+      blocked: new WashGeometry(),
+      reserved: new WashGeometry(),
+      open: new WashGeometry(),
+    };
+    fillGridWash(frame, FLAT, bounds, shapes);
+    /** Whether a shape set's triangles cover a node's centre. */
+    const covers = (shape: WashGeometry, cell: PlacementOverlayCell): boolean => {
+      const p = projectNode(FLAT, cell.col, cell.row);
+      const x = (p.x - bounds.x) * COMPOSITE_RESOLUTION;
+      const y = (p.y - bounds.y) * COMPOSITE_RESOLUTION;
+      const at = (vertex: number | undefined, axis: 0 | 1): number =>
+        shape.positions[(vertex ?? 0) * 2 + axis] ?? Number.NaN;
+      for (let i = 0; i < shape.indexCount; i += 3) {
+        const signs = [0, 1, 2].map((corner) => {
+          const a = shape.indices[i + corner];
+          const b = shape.indices[i + ((corner + 1) % 3)];
+          return Math.sign((at(b, 0) - at(a, 0)) * (y - at(a, 1)) - (at(b, 1) - at(a, 1)) * (x - at(a, 0)));
+        });
+        if (signs.every((s) => s >= 0) || signs.every((s) => s <= 0)) return true;
+      }
+      return false;
+    };
+    return { shapes, covers };
+  }
+
+  function allBut(skip: (cell: PlacementOverlayCell) => boolean): PlacementOverlayCell[] {
+    const cells: PlacementOverlayCell[] = [];
+    for (let row = band.minRow; row <= band.maxRow; row++) {
+      for (let col = band.minCol; col <= band.maxCol; col++) {
+        if (!skip({ col, row })) cells.push({ col, row });
+      }
+    }
+    return cells;
+  }
+
+  it('cuts a lone open node, and every node of a one-row strip, out of the blocked ground around it', () => {
+    const lone = fill(allBut((c) => c.col === CENTRE.col && c.row === CENTRE.row));
+    expect(lone.covers(lone.shapes.open, CENTRE)).toBe(true);
+    // The blocked neighbours' padding reaches the open node's centre, which is what the cut is for.
+    expect(lone.covers(lone.shapes.blocked, CENTRE)).toBe(true);
+
+    const strip = fill(allBut((c) => c.row === CENTRE.row));
+    for (let col = band.minCol; col <= band.maxCol; col++) {
+      expect(strip.covers(strip.shapes.open, { col, row: CENTRE.row })).toBe(true);
+    }
+  });
+
+  it('leaves a lone blocked node its centre while its open neighbours keep theirs', () => {
+    const { shapes, covers } = fill([CENTRE]);
+    expect(covers(shapes.blocked, CENTRE)).toBe(true);
+    expect(covers(shapes.open, CENTRE)).toBe(false);
+    for (const neighbour of [
+      { col: 2, row: 3 },
+      { col: 4, row: 3 },
+      { col: 3, row: 2 },
+      { col: 4, row: 4 },
+      { col: 3, row: 5 },
+    ]) {
+      expect(covers(shapes.open, neighbour)).toBe(true);
+    }
   });
 });
 

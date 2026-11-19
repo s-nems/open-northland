@@ -9,19 +9,19 @@ const ELLIPSE_RIM: readonly { readonly cos: number; readonly sin: number }[] = A
     return { cos: Math.cos(angle), sin: Math.sin(angle) };
   },
 );
-const INITIAL_VERTICES = 4096;
 const QUAD_VERTICES = 4;
 const QUAD_INDICES = 6;
 const TRIANGLE_INDICES = 3;
+/** Starting room, in quads; the buffers double from there. */
+const INITIAL_QUADS = 1024;
 
 /**
- * The triangles of one side of the placement wash, written straight into grow-only buffers. A shape per
- * node through `Graphics` re-triangulated the whole band on every recomposite, which cost more than the
- * fill it fed. Pure, so it tests without GL.
+ * The triangles of one side of the placement wash, written straight into grow-only buffers: a `Graphics`
+ * shape per node would re-triangulate the whole band on every recomposite. Pure, so it tests without GL.
  */
 export class WashGeometry {
-  positions = new Float32Array(INITIAL_VERTICES * 2);
-  indices = new Uint32Array(INITIAL_VERTICES * 3);
+  positions = new Float32Array(INITIAL_QUADS * QUAD_VERTICES * 2);
+  indices = new Uint32Array(INITIAL_QUADS * QUAD_INDICES);
   vertexCount = 0;
   indexCount = 0;
 
@@ -67,14 +67,14 @@ export class WashGeometry {
     this.positions[p++] = cx;
     this.positions[p++] = cy;
     let i = this.indexCount;
-    for (let segment = 0; segment < ELLIPSE_SEGMENTS; segment++) {
-      const rim = ELLIPSE_RIM[segment];
-      if (rim === undefined) continue;
+    let segment = 0;
+    for (const rim of ELLIPSE_RIM) {
       this.positions[p++] = cx + rim.cos * rx;
       this.positions[p++] = cy + rim.sin * ry;
       this.indices[i++] = centre;
       this.indices[i++] = centre + 1 + segment;
       this.indices[i++] = centre + 1 + ((segment + 1) % ELLIPSE_SEGMENTS);
+      segment++;
     }
     this.vertexCount += ELLIPSE_SEGMENTS + 1;
     this.indexCount = i;
@@ -110,8 +110,8 @@ export class WashGeometry {
   }
 }
 
-/** A {@link WashGeometry} as a white mesh under its own host, the root an off-screen render takes: a
- *  child's blend mode is honoured there where a root's is not, and an empty side hides the child. */
+/** A {@link WashGeometry} as a white mesh under its own host, the root an off-screen render takes so the
+ *  mesh's blend mode applies. An empty side hides the mesh. */
 export class WashMesh {
   readonly host = new Container();
   readonly shape = new WashGeometry();
