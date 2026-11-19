@@ -3299,6 +3299,19 @@ body.on-drag-scroll.on-drag-scroll-free * {
 }
 .on-hud .on-window--choices .on-window__head {
   padding: 6px 10px;
+  display: grid;
+  grid-template-columns: 30px 1fr 30px;
+  gap: 8px;
+}
+.on-hud .on-window--choices .on-window__heading {
+  display: contents;
+}
+.on-hud .on-window--choices .on-window__heading > div {
+  grid-column: 2;
+  text-align: center;
+}
+.on-hud .on-window--choices .on-window__close {
+  grid-column: 3;
 }
 .on-hud .on-window--choices .on-window__title {
   font-size: 17px;
@@ -3314,6 +3327,7 @@ body.on-drag-scroll.on-drag-scroll-free * {
   flex-shrink: 0;
 }
 .on-hud .on-choice-back {
+  grid-column: 1;
   width: 30px;
   height: 30px;
   flex-shrink: 0;
