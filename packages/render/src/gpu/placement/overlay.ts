@@ -52,11 +52,16 @@ const BRIGHT_ALPHA = 0.1;
  *  rough terrain. A project choice; the original draws no such hint. */
 const RESERVE_COLOR = 0xd9a03a;
 const RESERVE_ALPHA = 0.4;
-/** The rim along the open side's edge: the closed side's composite spread {@link RIM_REACH} composite px
- *  every way, less the closed side itself. Tuned by eye. */
+/** The rim along the open side's edge: the closed side's composite spread every way, less the closed
+ *  side itself. Tuned by eye. */
 const RIM_COLOR = 0xfff4d0;
 const RIM_ALPHA = 0.7;
-const RIM_REACH = 1;
+/** The spreads the rim is made of, in composite px, painted in order: a wide faint one whose eight copies
+ *  pile up towards the edge into a glow on the open ground, then the line itself. */
+const RIM_RINGS: readonly { readonly reach: number; readonly alpha: number }[] = [
+  { reach: 4, alpha: 0.12 },
+  { reach: 1, alpha: 1 },
+];
 /** The sides the rim runs along: blocked and reserved. */
 const CLOSED_SIDES = 2;
 /** What is cut out of the spread: each closed side and the ground past the band. */
@@ -150,8 +155,8 @@ export class PlacementOverlayLayer {
   /** The pale line where the open side meets the closed one. */
   private readonly rim = new Sprite();
   private rimTexture: RenderTexture | null = null;
-  /** The rim's composite: the closed sides' textures at every {@link RIM_DIRECTIONS} offset, then the
-   *  same two erased in place. */
+  /** The rim's composite: the closed sides' textures at every {@link RIM_DIRECTIONS} offset of each of
+   *  the {@link RIM_RINGS}, then the same two erased in place. */
   private readonly rimHost = new Container();
   private readonly rimSpread: Sprite[] = [];
   private readonly rimCuts: Sprite[] = [];
@@ -198,13 +203,16 @@ export class PlacementOverlayLayer {
     this.bandHost.addChild(this.bandG);
     this.openG.blendMode = 'erase';
     this.openHost.addChild(this.openG);
-    // Two closed sides (blocked, reserved) per direction, then a cut of each and of the ground past the band.
-    for (const [dx, dy] of RIM_DIRECTIONS) {
-      for (let side = 0; side < CLOSED_SIDES; side++) {
-        const spread = new Sprite();
-        spread.position.set(dx * RIM_REACH, dy * RIM_REACH);
-        this.rimSpread.push(spread);
-        this.rimHost.addChild(spread);
+    // Two closed sides (blocked, reserved) per direction of each ring, then a cut of each and of the ground past the band.
+    for (const ring of RIM_RINGS) {
+      for (const [dx, dy] of RIM_DIRECTIONS) {
+        for (let side = 0; side < CLOSED_SIDES; side++) {
+          const spread = new Sprite();
+          spread.position.set(dx * ring.reach, dy * ring.reach);
+          spread.alpha = ring.alpha;
+          this.rimSpread.push(spread);
+          this.rimHost.addChild(spread);
+        }
       }
     }
     for (let cuts = 0; cuts < RIM_CUTS; cuts++) {
@@ -439,11 +447,12 @@ export class PlacementOverlayLayer {
     this.rimTexture?.destroy(true);
     this.rimTexture = RenderTexture.create({ width: newW, height: newH });
     this.outsideTexture?.destroy(true);
-    this.outsideTexture = RenderTexture.create({ width: newW, height: newH });
-    // Linear (default) sampling upscales the half-res composite into the soft, grid-free edge.
-    this.dimTexture = RenderTexture.create({ width: newW, height: newH });
-    this.brightTexture = RenderTexture.create({ width: newW, height: newH });
-    this.reserveTexture = RenderTexture.create({ width: newW, height: newH });
+    this.outsideTexture = RenderTexture.create({ width: newW, height: newH, antialias: true });
+    // Linear (default) sampling upscales the half-res composite into the soft, grid-free edge; the
+    // multisampled targets keep the shapes' own edges, and so the rim, from stepping at that resolution.
+    this.dimTexture = RenderTexture.create({ width: newW, height: newH, antialias: true });
+    this.brightTexture = RenderTexture.create({ width: newW, height: newH, antialias: true });
+    this.reserveTexture = RenderTexture.create({ width: newW, height: newH, antialias: true });
   }
 
   destroy(): void {
