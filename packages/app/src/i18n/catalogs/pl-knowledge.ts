@@ -190,7 +190,7 @@ export const plKnowledge = {
     building: {
       aura: {
         title: 'Aura',
-        lead: 'Działa sama, gdy Świątynia jest gotowa, nieuszkodzona i pali Oliwę. Obejmuje wszystkich ludzi właściciela w zasięgu.',
+        lead: 'Działa sama, gdy Świątynia jest gotowa, nieuszkodzona i pali Oliwę. Obejmuje wszystkich ludzi właściciela i jego sojuszników w zasięgu.',
         range: 'Zasięg',
         rangeValue: '{{aura.range}} hexów',
         health: 'Zdrowie',

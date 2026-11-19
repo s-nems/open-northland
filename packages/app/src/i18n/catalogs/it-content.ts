@@ -787,7 +787,7 @@ export const itContent = {
     'temple-aura': {
       title: 'Benedizione del tempio',
       summary:
-        "In fila c'è un tempio per ogni civiltà. Selezionane uno per vedere il raggio azzurro della sua benedizione. Il civile vicino recupera religione; quello lontano resta fuori dall'aura.",
+        "In fila c'è un tempio per ogni civiltà. Selezionane uno per vedere il raggio azzurro della sua benedizione. Il civile vicino recupera religione; quello lontano resta fuori dall'aura. Accanto a quello vicino viene benedetto anche il civile del tuo alleato, uno neutrale no.",
     },
     'temple-oil': {
       title: 'Olio del tempio',

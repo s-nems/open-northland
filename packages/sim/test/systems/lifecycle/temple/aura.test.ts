@@ -11,7 +11,7 @@ import {
   TempleFire,
   UnderConstruction,
 } from '../../../../src/components/index.js';
-import { setNeedsEnabled } from '../../../../src/components/rules.js';
+import { setDiplomacyStance, setNeedsEnabled } from '../../../../src/components/rules.js';
 import { ULP } from '../../../../src/core/fixed.js';
 import { TICKS_PER_SECOND } from '../../../../src/core/loop.js';
 import type { Entity } from '../../../../src/ecs/world.js';
@@ -41,6 +41,7 @@ const HEADQUARTERS_TYPE = 1;
 const TEMPLE_HITPOINTS = 1000;
 const OWNER = 0;
 const RIVAL = 1;
+const ALLY = 2;
 /** A woodcutter: a trade that never prays, which the blessing still reaches. */
 const WOODCUTTER = 1;
 const POOL = 300;
@@ -110,7 +111,7 @@ function blessAt(sim: Simulation, tick: number): void {
 const hp = (sim: Simulation, e: Entity): number => sim.world.get(e, Health).hitpoints;
 const piety = (sim: Simulation, e: Entity): Fixed => needsOf(sim, e).piety;
 
-describe('templeAuraSystem - the temple blesses its owner people once a game second', () => {
+describe("templeAuraSystem - the temple blesses its owner's and allies' people once a game second", () => {
   it('adds hitpoints above the max and religion to a worn bar, on the second boundary only', () => {
     const sim = fresh();
     templeAt(sim, 10);
@@ -148,17 +149,38 @@ describe('templeAuraSystem - the temple blesses its owner people once a game sec
     expect(piety(sim, settler)).toBe(applyNeedUnits(ONE, TEMPLE_AURA_PIETY_UNITS));
   });
 
-  it("blesses only the temple owner's people", () => {
+  it("blesses the people of the temple owner's allies, but not a rival's or nobody's", () => {
     const sim = fresh();
+    setDiplomacyStance(sim.world, OWNER, ALLY, 'friend');
+    setDiplomacyStance(sim.world, ALLY, OWNER, 'friend');
     templeAt(sim, 10);
+    const ally = personAt(sim, 11, { owner: ALLY });
+    const rival = personAt(sim, 12, { owner: RIVAL });
+    const unowned = personAt(sim, 13, { owner: null });
+
+    blessAt(sim, 0);
+
+    expect(hp(sim, ally)).toBe(POOL + TEMPLE_AURA_HITPOINTS);
+    expect(piety(sim, ally)).toBe(applyNeedUnits(WORN, TEMPLE_AURA_PIETY_UNITS));
+    expect(hp(sim, rival)).toBe(POOL);
+    expect(hp(sim, unowned)).toBe(POOL);
+    expect(piety(sim, rival)).toBe(WORN);
+  });
+
+  it('needs both sides to hold friend: a one-sided friendship blesses neither way', () => {
+    const sim = fresh();
+    setDiplomacyStance(sim.world, OWNER, RIVAL, 'friend');
+    const rivalTemple = 10 + 2 * TEMPLE_AURA_RANGE;
+    templeAt(sim, 10);
+    templeAt(sim, rivalTemple, { owner: RIVAL });
+    // Each person stands in the other side's aura alone.
     const rival = personAt(sim, 11, { owner: RIVAL });
-    const unowned = personAt(sim, 12, { owner: null });
+    const own = personAt(sim, rivalTemple + 1);
 
     blessAt(sim, 0);
 
     expect(hp(sim, rival)).toBe(POOL);
-    expect(hp(sim, unowned)).toBe(POOL);
-    expect(piety(sim, rival)).toBe(WORN);
+    expect(hp(sim, own)).toBe(POOL);
   });
 
   it('gives nothing from a temple still being built, the headquarters or another building', () => {

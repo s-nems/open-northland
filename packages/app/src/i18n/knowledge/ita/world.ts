@@ -662,7 +662,10 @@ export const WORLD: ArticleGroup = {
               ['Raggio', '{{aura.range}} esagoni'],
               ['Salute', '+{{aura.perSecond}} al secondo, fino a {{aura.ceiling}}'],
               ['Religione', '+{{aura.pietyPct}}% al secondo finché la barra è al {{need.satedPct}}% o meno'],
-              ['Per chi', 'Tutta la tua gente, ai bambini solo salute'],
+              [
+                'Per chi',
+                'La tua gente e quella dei tuoi [[article:diplomacy|alleati]], ai bambini solo salute',
+              ],
               ['Condizione', 'Tempio finito, integro e con [[good:holy_oil|olio]] che brucia'],
               [
                 'Olio',

@@ -1,5 +1,7 @@
 import {
+  alliedPlayers,
   Health,
+  MAX_PLAYERS,
   needsEnabled,
   ownerOf,
   Person,
@@ -29,13 +31,13 @@ export function blessedHitpointCeiling(max: number): number {
 }
 
 /**
- * Once per game second, each finished temple at full hitpoints blesses every person of its owner within
- * {@link TEMPLE_AURA_RANGE}: hitpoints above the max, and religion up to the sated level for a settler
- * whose bars move. One wound on the temple stops the blessing until it is whole again. Original behavior;
- * the original also blesses children, whose bars this sim does not keep. Departures: a temple that stores
- * fuel blesses only while it burns some ({@link tendTempleFire}, owner ruling); the original blesses once
- * per temple in reach, so a cluster of temples multiplies the bonus, where here a person is blessed once
- * a second however many temples reach it.
+ * Once per game second, each finished temple at full hitpoints blesses every person of its owner and
+ * of the owner's allies within {@link TEMPLE_AURA_RANGE}: hitpoints above the max, and religion up to the
+ * sated level for a settler whose bars move. One wound on the temple stops the blessing until it is whole
+ * again. The original also blesses children, whose bars this sim does not keep. Departures: a temple that
+ * stores fuel blesses only while it burns some ({@link tendTempleFire}, owner ruling); the original
+ * blesses once per temple in reach, so a cluster of temples multiplies the bonus, where here a person is
+ * blessed once a second however many temples reach it.
  */
 export const templeAuraSystem: System = (world, ctx) => {
   // Caught up every tick, so a busy tick's building writes never pile past the feed's limit.
@@ -45,12 +47,12 @@ export const templeAuraSystem: System = (world, ctx) => {
     return;
   }
   if (temples.length === 0) return;
-  const anchorsByOwner = blessingTempleAnchors(world, ctx, temples);
-  if (anchorsByOwner.size === 0) return;
+  const anchorsByPlayer = withAllies(world, blessingTempleAnchors(world, ctx, temples));
+  if (anchorsByPlayer.size === 0) return;
   const piety = needsEnabled(world);
   for (const e of world.query(Person, Position, Health)) {
     const owner = ownerOf(world, e);
-    const anchors = owner === undefined ? undefined : anchorsByOwner.get(owner);
+    const anchors = owner === undefined ? undefined : anchorsByPlayer.get(owner);
     if (anchors === undefined) continue;
     const at = world.get(e, Position);
     if (!withinAnyAnchor(anchors, nodeHxOfPosition(at.x, at.y), nodeHyOfPosition(at.x, at.y))) continue;
@@ -79,6 +81,24 @@ function blessingTempleAnchors(
     anchors.push(nodeHxOfPosition(at.x, at.y), nodeHyOfPosition(at.x, at.y));
   }
   return byOwner;
+}
+
+/** Each player's own temple anchors joined by those of every ally: the temples whose blessing reaches
+ *  that player's people. */
+function withAllies(world: World, byOwner: ReadonlyMap<number, readonly number[]>): Map<number, number[]> {
+  const byPlayer = new Map<number, number[]>();
+  const reach = (player: number, anchors: readonly number[]): void => {
+    const held = byPlayer.get(player);
+    if (held === undefined) byPlayer.set(player, [...anchors]);
+    else held.push(...anchors);
+  };
+  for (const [owner, anchors] of byOwner) {
+    reach(owner, anchors);
+    for (let player = 0; player < MAX_PLAYERS; player++) {
+      if (player !== owner && alliedPlayers(world, owner, player)) reach(player, anchors);
+    }
+  }
+  return byPlayer;
 }
 
 function withinAnyAnchor(anchors: readonly number[], hx: number, hy: number): boolean {

@@ -189,7 +189,7 @@ export const chsKnowledge = {
     building: {
       aura: {
         title: '光环',
-        lead: '神庙建成、无损伤且在燃烧油时自动生效，覆盖范围内神庙所有者的全部人员。',
+        lead: '神庙建成、无损伤且在燃烧油时自动生效，覆盖范围内神庙所有者及其盟友的全部人员。',
         range: '范围',
         rangeValue: '{{aura.range}}格',
         health: '生命值',

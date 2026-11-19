@@ -627,7 +627,7 @@ export const WORLD: ArticleGroup = {
               ['Zasięg', '{{aura.range}} hexów'],
               ['Zdrowie', '+{{aura.perSecond}} na sekundę, do {{aura.ceiling}}'],
               ['Religia', '+{{aura.pietyPct}}% na sekundę, gdy pasek ma do {{need.satedPct}}%'],
-              ['Dla kogo', 'Wszyscy twoi ludzie, dzieci tylko zdrowie'],
+              ['Dla kogo', 'Twoi ludzie i ludzie [[article:diplomacy|sojuszników]], dzieci tylko zdrowie'],
               ['Warunek', 'Świątynia ukończona, nieuszkodzona i pali [[good:holy_oil|Oliwę]]'],
               [
                 'Oliwa',

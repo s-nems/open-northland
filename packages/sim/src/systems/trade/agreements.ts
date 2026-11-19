@@ -1,4 +1,5 @@
 import {
+  alliedPlayers,
   Building,
   diplomacyStance,
   isForeignHouse,
@@ -52,11 +53,7 @@ export function agreementsAt(world: World, house: Entity): HouseAgreement[] {
 export function mutualFriends(world: World, trader: Entity, house: Entity): boolean {
   const player = ownerOf(world, trader);
   const partner = ownerOf(world, house);
-  if (player === undefined || partner === undefined) return false;
-  return (
-    diplomacyStance(world, player, partner) === 'friend' &&
-    diplomacyStance(world, partner, player) === 'friend'
-  );
+  return player !== undefined && partner !== undefined && alliedPlayers(world, player, partner);
 }
 
 /**

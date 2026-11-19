@@ -190,7 +190,7 @@ export const enKnowledge = {
     building: {
       aura: {
         title: 'Aura',
-        lead: "Works by itself while the Temple is finished, undamaged and burning Oil. It covers all of the owner's people in range.",
+        lead: "Works by itself while the Temple is finished, undamaged and burning Oil. It covers all people in range who belong to the owner or the owner's allies.",
         range: 'Range',
         rangeValue: '{{aura.range}} hexes',
         health: 'Health',

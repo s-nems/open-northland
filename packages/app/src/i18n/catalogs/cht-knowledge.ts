@@ -189,7 +189,7 @@ export const chtKnowledge = {
     building: {
       aura: {
         title: '光環',
-        lead: '神廟建成、無損傷且在燃燒油時自動生效，涵蓋範圍內神廟所有者的全部人員。',
+        lead: '神廟建成、無損傷且在燃燒油時自動生效，涵蓋範圍內神廟所有者及其盟友的全部人員。',
         range: '範圍',
         rangeValue: '{{aura.range}}格',
         health: '生命值',

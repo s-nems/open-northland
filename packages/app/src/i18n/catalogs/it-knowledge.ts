@@ -212,7 +212,7 @@ export const itKnowledge = {
     building: {
       aura: {
         title: 'Aura',
-        lead: 'Agisce da sola finché il tempio è completato, integro e brucia olio. Copre tutte le persone del proprietario nel raggio.',
+        lead: 'Agisce da sola finché il tempio è completato, integro e brucia olio. Copre tutte le persone del proprietario e dei suoi alleati nel raggio.',
         range: 'Raggio',
         rangeValue: '{{aura.range}} esagoni',
         health: 'Salute',

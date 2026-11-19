@@ -650,7 +650,10 @@ export const WORLD: ArticleGroup = {
               ['Reichweite', '{{aura.range}} Hexfelder'],
               ['Gesundheit', '+{{aura.perSecond}} pro Sekunde, bis {{aura.ceiling}}'],
               ['Religion', '+{{aura.pietyPct}}% pro Sekunde, wenn der Balken bis {{need.satedPct}}% steht'],
-              ['Für wen', 'Alle deine Leute, Kinder nur Gesundheit'],
+              [
+                'Für wen',
+                'Deine Leute und die deiner [[article:diplomacy|Verbündeten]], Kinder nur Gesundheit',
+              ],
               ['Bedingung', 'Tempel fertig, unbeschädigt und mit brennendem [[good:holy_oil|Öl]]'],
               [
                 'Öl',

@@ -212,7 +212,7 @@ export const deKnowledge = {
     building: {
       aura: {
         title: 'Aura',
-        lead: 'Wirkt von selbst, solange der Tempel fertig und unbeschädigt ist und Öl verbrennt. Erfasst alle Leute des Besitzers in Reichweite.',
+        lead: 'Wirkt von selbst, solange der Tempel fertig und unbeschädigt ist und Öl verbrennt. Erfasst alle Leute des Besitzers und seiner Verbündeten in Reichweite.',
         range: 'Reichweite',
         rangeValue: '{{aura.range}} Hexfelder',
         health: 'Gesundheit',

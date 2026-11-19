@@ -583,7 +583,7 @@ export const WORLD: ArticleGroup = {
               ['範圍', '{{aura.range}}格'],
               ['生命值', '每秒+{{aura.perSecond}}，上限{{aura.ceiling}}'],
               ['信仰', '需求條不超過{{need.satedPct}}%時每秒+{{aura.pietyPct}}%'],
-              ['對象', '你的所有人，兒童只加生命值'],
+              ['對象', '你和[[article:diplomacy|盟友]]的所有人，兒童只加生命值'],
               ['條件', '神廟已完工、無損傷且在燃燒[[good:holy_oil|油]]'],
               ['油', '1份能燒{{aura.oilBurnTime}}，滿儲{{aura.oilUnits}}份能燒{{aura.oilFullBurnTime}}'],
               ['多座神廟', '光環不疊加'],

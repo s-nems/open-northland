@@ -776,7 +776,7 @@ export const plContent = {
     'temple-aura': {
       title: 'Aura świątyni',
       summary:
-        'W rzędzie stoi świątynia każdej nacji. Zaznacz jedną, aby zobaczyć jasnoniebieski zasięg błogosławieństwa. Bliski osadnik odzyskuje religię, odległy pozostaje poza aurą.',
+        'W rzędzie stoi świątynia każdej nacji. Zaznacz jedną, aby zobaczyć jasnoniebieski zasięg błogosławieństwa. Bliski osadnik odzyskuje religię, odległy pozostaje poza aurą. Obok bliskiego osadnik sojusznika też dostaje błogosławieństwo, neutralny nie.',
     },
     'temple-oil': {
       title: 'Oliwa w świątyni',

@@ -222,6 +222,11 @@ export function diplomacyStance(world: World, from: number, to: number): Diploma
   return diplomacyRules.read(world).stances.get(stanceKey(from, to)) ?? 'enemy';
 }
 
+/** Whether `a` and `b` are allies: each holds `friend` toward the other. */
+export function alliedPlayers(world: World, a: number, b: number): boolean {
+  return diplomacyStance(world, a, b) === 'friend' && diplomacyStance(world, b, a) === 'friend';
+}
+
 /** A player-slot bitmask naming every slot: players are < {@link MAX_PLAYERS}, which fits one integer. */
 export const EVERY_PLAYER = (1 << MAX_PLAYERS) - 1;
 

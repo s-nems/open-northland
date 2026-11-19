@@ -1,4 +1,4 @@
-import { alliedVisionEnabled, diplomacyStance, MAX_PLAYERS } from '../../components/index.js';
+import { alliedPlayers, alliedVisionEnabled, MAX_PLAYERS } from '../../components/index.js';
 import type { World } from '../../ecs/world.js';
 
 /**
@@ -10,11 +10,9 @@ import type { World } from '../../ecs/world.js';
  */
 export function alliedVisionGroups(world: World): number[][] {
   if (!alliedVisionEnabled(world)) return [];
-  const allied = (a: number, b: number): boolean =>
-    diplomacyStance(world, a, b) === 'friend' && diplomacyStance(world, b, a) === 'friend';
   const groups: number[][] = [];
   for (let player = 0; player < MAX_PLAYERS; player++) {
-    const group = groups.find((members) => members.every((member) => allied(member, player)));
+    const group = groups.find((members) => members.every((member) => alliedPlayers(world, member, player)));
     if (group === undefined) groups.push([player]);
     else group.push(player);
   }

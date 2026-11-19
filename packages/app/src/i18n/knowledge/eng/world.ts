@@ -638,7 +638,7 @@ export const WORLD: ArticleGroup = {
               ['Range', '{{aura.range}} hexes'],
               ['Health', '+{{aura.perSecond}} per second, up to {{aura.ceiling}}'],
               ['Religion', '+{{aura.pietyPct}}% per second while the bar is at {{need.satedPct}}% or less'],
-              ['For whom', 'All your people, children only health'],
+              ['For whom', 'Your people and your [[article:diplomacy|allies]], children only health'],
               ['Condition', 'Temple finished, undamaged and burning [[good:holy_oil|Oil]]'],
               [
                 'Oil',
