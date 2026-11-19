@@ -132,9 +132,10 @@ export interface PoolFrame {
    *  setting itself, since a ship is not landscape. */
   readonly sailWind?: boolean;
   readonly buildingDamage?: boolean;
-  /** The occlusion ghost setting: units a standing sprite hides show as a translucent outline over
-   *  it. Absent leaves every unit hidden, as the baseline renderer always has. */
-  readonly occlusionGhosts?: boolean | undefined;
+  /** Units a standing sprite hides show through it as a team-coloured fill, an outline, or both.
+   *  Both absent leaves every unit hidden, as the baseline renderer always has. */
+  readonly occlusionFill?: boolean | undefined;
+  readonly occlusionOutline?: boolean | undefined;
   /** The hold-to-reveal key held down: the standing sprites that hide a resident draw translucent
    *  while it lasts. Absent fades nothing. */
   readonly fadeOccluders?: boolean | undefined;
@@ -658,7 +659,9 @@ export class SpritePool {
    *  asks - the reveal key, a selected hidden unit, the cursor's world position - ride along so the
    *  scan can draw the covers translucent. */
   private ghostPass(frame: PoolFrame): void {
-    if (frame.occlusionGhosts === true)
+    const fill = frame.occlusionFill === true;
+    const ring = frame.occlusionOutline === true;
+    if (fill || ring)
       this.occlusionGhosts.scan(
         this.drawn,
         this.pool,
@@ -672,6 +675,7 @@ export class SpritePool {
           pointer: frame.pointerWorld,
           held: frame.fadeOccluders === true,
         },
+        { fill, ring },
       );
     else this.occlusionGhosts.reset();
   }

@@ -3,11 +3,17 @@ import { Container, Texture, TextureSource } from 'pixi.js';
 import { describe, expect, it } from 'vitest';
 import { HumanPaletteBook } from '../../../src/data/palettes/human-palettes.js';
 import type { ElevationField } from '../../../src/data/terrain/index.js';
-import { GhostOutlineSprite, SelectionGraphics } from '../../../src/gpu/selection/sprite-effect.js';
+import {
+  GhostOutlineSprite,
+  SelectionGraphics,
+  type SelectionSprite,
+} from '../../../src/gpu/selection/sprite-effect.js';
 import { type PoolFrame, SpritePool } from '../../../src/gpu/sprite-pool/index.js';
 import {
   GHOST_ALPHA,
+  GHOST_FILL_ALPHA,
   GHOST_TINT,
+  GHOST_UNDER_RING_FILL_ALPHA,
   type GhostOccluder,
   OCCLUDER_FADE_ALPHA,
 } from '../../../src/gpu/sprite-pool/occlusion.js';
@@ -75,7 +81,7 @@ function frame(snapshot: WorldSnapshot): PoolFrame {
     screenH: 600,
     elevation: FLAT,
     alpha: 1,
-    occlusionGhosts: true,
+    occlusionOutline: true,
   };
 }
 
@@ -307,12 +313,12 @@ describe('SpritePool - a unit a standing sprite hides shows as an occlusion ghos
     const pool = new SpritePool(layer, new TextureCache(), undefined);
     // The default: the flag absent draws no stamps, whatever the scene hides.
     const covered = snapshotOf([settler(1, 0, 0), house(2, 0, 0.4)]);
-    pool.reconcile({ ...frame(covered), occlusionGhosts: undefined });
+    pool.reconcile({ ...frame(covered), occlusionOutline: undefined });
     expect(pool.occlusionGhosts.container.children.length).toBe(0);
     // Turning it on ghosts the hidden unit; turning it off drops the stamps at once.
     pool.reconcile(frame(covered));
     expect(pool.occlusionGhosts.container.children.length).toBe(1);
-    pool.reconcile({ ...frame(covered), occlusionGhosts: undefined });
+    pool.reconcile({ ...frame(covered), occlusionOutline: undefined });
     expect(pool.occlusionGhosts.container.children.length).toBe(0);
     pool.destroy();
   });
@@ -368,7 +374,7 @@ describe('SpritePool - a unit a standing sprite hides shows as an occlusion ghos
     pool.reconcile(frame(snapshotOf([settler(1, 0, 0)])));
     const unit = pool.boundsOf(1);
     if (unit === undefined) throw new Error('the unit drew no bounds');
-    let faded: number | undefined = undefined;
+    let faded: number | undefined;
     const crown: GhostOccluder = {
       depth: 1e9,
       bounds: () => unit,
@@ -395,7 +401,7 @@ describe('SpritePool - a unit a standing sprite hides shows as an occlusion ghos
     const covered = snapshotOf([settler(1, 0, 0), house(2, 0, 0.4)]);
     pool.reconcile({ ...frame(covered), fadeOccluders: true });
     expect(pool.containerOf(2)?.alpha).toBe(OCCLUDER_FADE_ALPHA);
-    pool.reconcile({ ...frame(covered), occlusionGhosts: undefined });
+    pool.reconcile({ ...frame(covered), occlusionOutline: undefined });
     expect(pool.containerOf(2)?.alpha).toBe(1);
     pool.destroy();
   });
@@ -488,5 +494,88 @@ describe('SpritePool - a unit a standing sprite hides shows as an occlusion ghos
     expect(pool.occlusionGhosts.container.children.length).toBe(0);
     pool.destroy();
     sheet.source.destroy();
+  });
+
+  it('stamps the body as fill quads with only the fill setting on, with no ring', () => {
+    const layer = new Container();
+    const pool = new SpritePool(layer, new TextureCache(), sheetWithTeamPalette([0, 255, 0]));
+    const covered = snapshotOf([ownedSettler(1, 0, 0, 0), house(2, 0, 0.1)]);
+    pool.reconcile({ ...frame(covered), tick: 1, occlusionOutline: false, occlusionFill: true });
+    const shown = (pool.occlusionGhosts.container.children[0]?.children ?? []).filter((c) => c.alpha > 0);
+    expect(shown.length).toBeGreaterThan(0);
+    for (const child of shown) {
+      expect(child).not.toBeInstanceOf(GhostOutlineSprite);
+      expect((child as SelectionSprite).selectionEffect).toBe(SELECTION_STAMP);
+      expect(child.alpha).toBe(GHOST_FILL_ALPHA);
+      expect(child.tint).toBe(0x00ff00);
+    }
+    pool.destroy();
+  });
+
+  it('lays a light fill under the ring with both settings on', () => {
+    const layer = new Container();
+    const pool = new SpritePool(layer, new TextureCache(), sheetWithAnimals());
+    pool.reconcile({
+      ...frame(snapshotOf([settler(1, 0, 0), house(2, 0, 0.1)])),
+      tick: 1,
+      occlusionFill: true,
+    });
+    const children = pool.occlusionGhosts.container.children[0]?.children ?? [];
+    const rings = children.filter((c) => c instanceof GhostOutlineSprite);
+    const fills = children.filter((c) => !(c instanceof GhostOutlineSprite));
+    expect(rings.length).toBeGreaterThan(0);
+    expect(fills.length).toBe(rings.length);
+    for (const fill of fills) expect(fill.alpha).toBe(GHOST_UNDER_RING_FILL_ALPHA);
+    // Every fill sits under every ring.
+    const lastFill = Math.max(...fills.map((c) => children.indexOf(c)));
+    const firstRing = Math.min(...rings.map((c) => children.indexOf(c)));
+    expect(lastFill).toBeLessThan(firstRing);
+    pool.destroy();
+  });
+
+  it('hides the fill quads when the fill setting turns off, keeping their textures', () => {
+    const layer = new Container();
+    const pool = new SpritePool(layer, new TextureCache(), sheetWithAnimals());
+    const covered = snapshotOf([settler(1, 0, 0), house(2, 0, 0.1)]);
+    pool.reconcile({ ...frame(covered), tick: 1, occlusionFill: true });
+    const children = pool.occlusionGhosts.container.children[0]?.children ?? [];
+    const fills = children.filter((c): c is SelectionSprite => !(c instanceof GhostOutlineSprite));
+    const textures = fills.map((f) => f.texture);
+    pool.reconcile({ ...frame(covered), tick: 1, occlusionFill: false });
+    for (const [i, fill] of fills.entries()) {
+      expect(fill.alpha).toBe(0);
+      expect(fill.texture).toBe(textures[i]);
+    }
+    for (const ring of children.filter((c) => c instanceof GhostOutlineSprite))
+      expect(ring.alpha).toBe(GHOST_ALPHA);
+    pool.destroy();
+  });
+
+  it('fades the cover while the reveal key holds with only the fill setting on', () => {
+    const layer = new Container();
+    const pool = new SpritePool(layer, new TextureCache(), undefined);
+    const covered = snapshotOf([settler(1, 0, 0), house(2, 0, 0.4)]);
+    const fillOnly = { ...frame(covered), occlusionOutline: false, occlusionFill: true };
+    pool.reconcile(fillOnly);
+    expect(pool.containerOf(2)?.alpha).toBe(1);
+    pool.reconcile({ ...fillOnly, fadeOccluders: true });
+    expect(pool.occlusionGhosts.container.children[0]?.alpha).toBe(1);
+    expect(pool.containerOf(2)?.alpha).toBe(OCCLUDER_FADE_ALPHA);
+    pool.destroy();
+  });
+
+  it('hides the rings when the outline setting turns off with fill still on', () => {
+    const layer = new Container();
+    const pool = new SpritePool(layer, new TextureCache(), sheetWithAnimals());
+    const covered = snapshotOf([settler(1, 0, 0), house(2, 0, 0.1)]);
+    pool.reconcile({ ...frame(covered), tick: 1, occlusionFill: true });
+    const children = pool.occlusionGhosts.container.children[0]?.children ?? [];
+    const rings = children.filter((c) => c instanceof GhostOutlineSprite);
+    expect(rings.length).toBeGreaterThan(0);
+    pool.reconcile({ ...frame(covered), tick: 1, occlusionFill: true, occlusionOutline: false });
+    for (const ring of rings) expect(ring.alpha).toBe(0);
+    for (const fill of children.filter((c) => !(c instanceof GhostOutlineSprite)))
+      expect(fill.alpha).toBe(GHOST_FILL_ALPHA);
+    pool.destroy();
   });
 });

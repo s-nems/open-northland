@@ -261,9 +261,12 @@ export const deSurfaces = {
         'Glättet die Kanten eigener Figurengrafiken und verkleinerter Weltgrafiken. Die Textdarstellung bleibt unverändert.',
       postFx: 'Nachbearbeitung',
       postFxTip: 'Legt eine Vignette und warme Farbtöne über die Spielwelt.',
-      occlusionGhosts: 'Umrisse verdeckter Einheiten',
-      occlusionGhostsTip:
-        'Zeigt eine Einheit, die hinter einem Gebäude, einer Mauer oder einem Baum steht, als halbtransparenten Umriss über dem Verdeckenden.',
+      occlusionFill: 'Füllung verdeckter Einheiten',
+      occlusionFillTip:
+        'Zeigt eine Einheit hinter einem Gebäude, einer Mauer oder einem Baum als halbtransparente Füllung in ihrer Teamfarbe über dem Verdeckenden. Ist auch der Umriss an, wird die Füllung unter dem Umriss heller. Gedrückthalten von Alt, eine ausgewählte verdeckte Einheit oder der Mauszeiger in ihrer Nähe machen das Verdeckende durchsichtig.',
+      occlusionOutline: 'Umriss verdeckter Einheiten',
+      occlusionOutlineTip:
+        'Zeigt eine Einheit hinter einem Gebäude, einer Mauer oder einem Baum als Umriss in ihrer Teamfarbe über dem Verdeckenden. Gedrückthalten von Alt, eine ausgewählte verdeckte Einheit oder der Mauszeiger in ihrer Nähe machen das Verdeckende durchsichtig.',
       integerScaling: 'Ganzzahlige Skalierung',
       integerScalingTip:
         'Zoomt nur in ganzen Stufen (½×, 1×, 2×, 3×…), sodass jedes Pixel der Grafik eine ganze Zahl von Bildschirmpixeln abdeckt und nie durch einen gebrochenen Maßstab neu abgetastet wird. Die Ansicht springt zwischen den Stufen, statt zu gleiten.',

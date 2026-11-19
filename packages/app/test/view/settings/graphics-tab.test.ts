@@ -49,31 +49,35 @@ function graphicsTab(patches: Partial<MenuSettings>[]): void {
   page.render();
 }
 
-describe('the hidden-unit outlines row', () => {
-  it('sits directly under Post-processing, the last row of the world group', () => {
+describe('the hidden-unit fill and outline rows', () => {
+  it('sit directly under Post-processing, the last rows of the world group', () => {
     const text = messages().mainMenu.settings;
     graphicsTab([]);
     const rowOf = (focus: string): Element | null =>
       document.querySelector(`[data-settings-focus="${focus}"]`)?.closest('.main-menu__settings-row') ?? null;
     const postFxRow = rowOf('post-fx');
     expect(postFxRow).not.toBeNull();
-    // The next row is the outlines' own, and the next heading after it closes the world group.
-    const ghostRow = postFxRow?.nextElementSibling;
-    expect(ghostRow?.querySelector('.main-menu__settings-label')?.textContent).toBe(text.occlusionGhosts);
-    expect(ghostRow?.querySelector('[data-settings-focus="occlusionGhosts"]')).not.toBeNull();
-    const nextHeading = ghostRow?.nextElementSibling;
+    const fillRow = postFxRow?.nextElementSibling;
+    expect(fillRow).toBe(rowOf('occlusionFill'));
+    expect(fillRow?.querySelector('.main-menu__settings-label')?.textContent).toBe(text.occlusionFill);
+    const outlineRow = fillRow?.nextElementSibling;
+    expect(outlineRow).toBe(rowOf('occlusionOutline'));
+    expect(outlineRow?.querySelector('.main-menu__settings-label')?.textContent).toBe(text.occlusionOutline);
+    const nextHeading = outlineRow?.nextElementSibling;
     expect(nextHeading?.tagName).toBe('H3');
     expect(nextHeading?.textContent).toBe(text.accessibilityHeading);
   });
 
-  it('starts off, and its pill patches the setting on', async () => {
+  it('start off, and each pill patches its own setting on', async () => {
     const patches: Partial<MenuSettings>[] = [];
     graphicsTab(patches);
-    const pill = document.querySelector<HTMLButtonElement>('[data-settings-focus="occlusionGhosts"]');
-    expect(pill?.getAttribute('aria-checked')).toBe('false');
-    pill?.click();
-    await Promise.resolve();
-    expect(patches).toEqual([{ occlusionGhosts: true }]);
-    expect(pill?.getAttribute('aria-checked')).toBe('true');
+    for (const key of ['occlusionFill', 'occlusionOutline'] as const) {
+      const pill = document.querySelector<HTMLButtonElement>(`[data-settings-focus="${key}"]`);
+      expect(pill?.getAttribute('aria-checked')).toBe('false');
+      pill?.click();
+      await Promise.resolve();
+      expect(pill?.getAttribute('aria-checked')).toBe('true');
+    }
+    expect(patches).toEqual([{ occlusionFill: true }, { occlusionOutline: true }]);
   });
 });

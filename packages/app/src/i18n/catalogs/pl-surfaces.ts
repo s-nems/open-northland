@@ -224,9 +224,12 @@ export const plSurfaces = {
         'Wygładza krawędzie własnych postaci i pomniejszanych sprite’ów świata. Nie zmienia renderowania napisów.',
       postFx: 'Postprocessing',
       postFxTip: 'Winieta i ocieplenie barw nakładane na obraz świata.',
-      occlusionGhosts: 'Kontury zasłoniętych jednostek',
-      occlusionGhostsTip:
-        'Rysuje jednostkę stojącą za budynkiem, murem lub drzewem jako półprzezroczysty kontur na tym, co ją zasłania.',
+      occlusionFill: 'Wypełnienie zasłoniętych jednostek',
+      occlusionFillTip:
+        'Rysuje jednostkę stojącą za budynkiem, murem lub drzewem jako półprzezroczyste wypełnienie w kolorze jej drużyny na tym, co ją zasłania. Gdy kontur też jest włączony, wypełnienie pod nim staje się jaśniejsze. Przytrzymanie Alt, zaznaczenie zasłoniętej jednostki lub kursor w jej pobliżu czyni zasłonę przezroczystą.',
+      occlusionOutline: 'Kontur zasłoniętych jednostek',
+      occlusionOutlineTip:
+        'Rysuje jednostkę stojącą za budynkiem, murem lub drzewem jako kontur w kolorze jej drużyny na tym, co ją zasłania. Przytrzymanie Alt, zaznaczenie zasłoniętej jednostki lub kursor w jej pobliżu czyni zasłonę przezroczystą.',
       integerScaling: 'Skalowanie całkowite',
       integerScalingTip:
         'Przybliża tylko pełnymi krokami (½×, 1×, 2×, 3×…), więc każdy piksel grafiki zajmuje całą liczbę pikseli ekranu i nigdy nie jest przeskalowany ułamkowo. Widok przeskakuje między krokami zamiast płynnie się zmieniać.',
