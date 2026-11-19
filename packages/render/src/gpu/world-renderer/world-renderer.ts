@@ -628,7 +628,7 @@ export class WorldRenderer {
       fogFrame.fogEpoch,
       tick + alpha,
       this.wind,
-      this.enhancements.occlusionGhosts,
+      this.enhancements.occlusionFill || this.enhancements.occlusionOutline,
     );
     const portrait = this.portrait.subjects();
     const erased = this.flagErasures.update(doorBadges);
@@ -655,7 +655,8 @@ export class WorldRenderer {
       environmentMotion,
       detail,
       buildingDamage: this.enhancements.buildingDamage,
-      occlusionGhosts: this.enhancements.occlusionGhosts,
+      occlusionFill: this.enhancements.occlusionFill,
+      occlusionOutline: this.enhancements.occlusionOutline,
       // The frame's tall map objects, in the poses the update above just bound: the ghost scan's
       // occluders beyond the pool's own draw list, so a virgin tree covers a settler behind it too.
       staticOccluders: this.mapObjects.tallOccluders,

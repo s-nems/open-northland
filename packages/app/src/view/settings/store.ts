@@ -118,9 +118,10 @@ export interface MenuSettings {
   /** Off holds a scripted or game cycle at daylight and draws any remaining night flat, without its
    *  lights. Presentation only, the sim never reads it. */
   readonly dayNight: boolean;
-  /** A settler a standing sprite hides shows as a translucent outline over it; off leaves every
-   *  hidden unit hidden. Local presentation only. */
-  readonly occlusionGhosts: boolean;
+  /** A settler a standing sprite hides shows through it as a team-coloured fill, an outline, or
+   *  both; both off leaves every hidden unit hidden. Local presentation only. */
+  readonly occlusionFill: boolean;
+  readonly occlusionOutline: boolean;
   /** Hit sprays and ground stains; local presentation only. */
   readonly blood: boolean;
   /** Bone piles fade out with age; off keeps them for good. Local presentation only. */
@@ -236,7 +237,8 @@ export function defaultSettings(): MenuSettings {
     distantDetail: false,
     weather: true,
     dayNight: true,
-    occlusionGhosts: false,
+    occlusionFill: false,
+    occlusionOutline: false,
     blood: true,
     bonesFade: true,
     equipmentEffects: true,
@@ -426,8 +428,9 @@ export function parseStoredSettings(raw: string | null): MenuSettings {
     distantDetail: typeof record.distantDetail === 'boolean' ? record.distantDetail : defaults.distantDetail,
     weather: typeof record.weather === 'boolean' ? record.weather : defaults.weather,
     dayNight: typeof record.dayNight === 'boolean' ? record.dayNight : defaults.dayNight,
-    occlusionGhosts:
-      typeof record.occlusionGhosts === 'boolean' ? record.occlusionGhosts : defaults.occlusionGhosts,
+    occlusionFill: typeof record.occlusionFill === 'boolean' ? record.occlusionFill : defaults.occlusionFill,
+    occlusionOutline:
+      typeof record.occlusionOutline === 'boolean' ? record.occlusionOutline : defaults.occlusionOutline,
     blood: typeof record.blood === 'boolean' ? record.blood : defaults.blood,
     bonesFade: typeof record.bonesFade === 'boolean' ? record.bonesFade : defaults.bonesFade,
     equipmentEffects:

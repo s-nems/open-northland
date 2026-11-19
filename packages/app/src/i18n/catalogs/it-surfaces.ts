@@ -256,9 +256,12 @@ export const itSurfaces = {
         'Smussa i bordi dei personaggi propri e gli sprite del mondo visti da lontano. Non cambia la resa del testo.',
       postFx: 'Post-elaborazione',
       postFxTip: 'Una vignettatura e una correzione cromatica calda sopra il mondo.',
-      occlusionGhosts: 'Profili delle unità nascoste',
-      occlusionGhostsTip:
-        "Disegna un'unità dietro un edificio, un muro o un albero come profilo semitrasparente su ciò che la nasconde.",
+      occlusionFill: 'Riempimento delle unità nascoste',
+      occlusionFillTip:
+        "Disegna un'unità dietro un edificio, un muro o un albero come riempimento semitrasparente nel colore della sua squadra su ciò che la nasconde. Con anche il profilo attivo, il riempimento diventa leggero sotto il profilo. Tenere premuto Alt, selezionare un'unità nascosta o avvicinarle il cursore rende trasparente ciò che la copre.",
+      occlusionOutline: 'Profilo delle unità nascoste',
+      occlusionOutlineTip:
+        "Disegna un'unità dietro un edificio, un muro o un albero come profilo nel colore della sua squadra su ciò che la nasconde. Tenere premuto Alt, selezionare un'unità nascosta o avvicinarle il cursore rende trasparente ciò che la copre.",
       integerScaling: 'Scala intera',
       integerScalingTip:
         "Ingrandisce solo a passi interi (½×, 1×, 2×, 3×…), così ogni pixel della grafica copre un numero intero di pixel dello schermo e non viene mai ricampionato da una scala frazionaria. La vista salta da un passo all'altro invece di scorrere.",

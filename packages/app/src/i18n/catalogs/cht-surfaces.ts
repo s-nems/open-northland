@@ -218,8 +218,12 @@ export const chtSurfaces = {
       spriteSmoothingTip: '平滑本專案角色的邊緣以及縮小顯示的世界圖像。不會改變文字的算繪。',
       postFx: '後製處理',
       postFxTip: '在世界畫面上疊加暗角與暖色調色。',
-      occlusionGhosts: '被遮擋單位的輪廓',
-      occlusionGhostsTip: '站在建築、城牆或樹木後的單位，會以半透明輪廓顯示在遮擋物之上。',
+      occlusionFill: '被遮擋單位的填充',
+      occlusionFillTip:
+        '站在建築、城牆或樹木後的單位，會以其隊伍顏色的半透明填充顯示在遮擋物之上。同時開啟輪廓時，填充在輪廓下變淺。按住 Alt、選取被遮擋的單位或將游標停在其附近，會讓遮擋物變為半透明。',
+      occlusionOutline: '被遮擋單位的輪廓',
+      occlusionOutlineTip:
+        '站在建築、城牆或樹木後的單位，會以其隊伍顏色的輪廓顯示在遮擋物之上。按住 Alt、選取被遮擋的單位或將游標停在其附近，會讓遮擋物變為半透明。',
       integerScaling: '整數縮放',
       integerScalingTip:
         '僅以整數級縮放（½×、1×、2×、3×…），使圖像的每個像素都佔據整數個螢幕像素，不會被小數比例重新取樣。視圖在各級之間直接切換，而非平滑過渡。',

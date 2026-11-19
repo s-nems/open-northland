@@ -47,9 +47,10 @@ export interface WorldEnhancements {
   readonly buildingDamage: boolean;
   /** A map script's night lit by its fires, houses and settlers; off, the night is a flat grade. */
   readonly dayNight: boolean;
-  /** A settler a standing sprite hides shows as a translucent silhouette over it; off hides it for
-   *  good, as the baseline renderer always has. */
-  readonly occlusionGhosts: boolean;
+  /** A settler a standing sprite hides shows through it as a team-coloured fill, an outline, or both;
+   *  both off hides it for good, as the baseline renderer always has. */
+  readonly occlusionFill: boolean;
+  readonly occlusionOutline: boolean;
 }
 
 /** The baseline renderer: every enhancement off. */
@@ -62,7 +63,8 @@ export const BASELINE_ENHANCEMENTS: WorldEnhancements = {
   groundedBuildings: false,
   buildingDamage: false,
   dayNight: false,
-  occlusionGhosts: false,
+  occlusionFill: false,
+  occlusionOutline: false,
 };
 
 export interface WorldRendererOptions {

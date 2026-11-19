@@ -222,9 +222,12 @@ export const enSurfaces = {
         'Smooths own character edges and zoomed-out world sprites. Does not change text rendering.',
       postFx: 'Post-processing',
       postFxTip: 'A vignette and warm colour grade layered over the world.',
-      occlusionGhosts: 'Hidden-unit outlines',
-      occlusionGhostsTip:
-        'Draws a unit standing behind a building, wall or tree as a translucent outline over what hides it.',
+      occlusionFill: 'Hidden-unit fill',
+      occlusionFillTip:
+        'Draws a unit standing behind a building, wall or tree as a translucent fill in its team colour over what hides it. With the outline also on, the fill turns light under the outline. Holding Alt, selecting a hidden unit or resting the cursor near one fades its cover.',
+      occlusionOutline: 'Hidden-unit outline',
+      occlusionOutlineTip:
+        'Draws a unit standing behind a building, wall or tree as an outline in its team colour over what hides it. Holding Alt, selecting a hidden unit or resting the cursor near one fades its cover.',
       integerScaling: 'Integer scaling',
       integerScalingTip:
         'Zooms only in whole steps (½×, 1×, 2×, 3×…), so every pixel of the art covers a whole number of screen pixels and is never resampled by a fractional scale. The view jumps between steps instead of gliding.',
