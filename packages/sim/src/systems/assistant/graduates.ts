@@ -27,9 +27,9 @@ import { assignedWorkers } from '../stores/assigned-workers.js';
  * posted; with no such slot nothing happens. Workplaces rank, before distance: a finished one over a site,
  * then one nobody of that trade works at yet over a staffed one (a second mill gets its first miller before
  * the first gets its second), then, where the school teaches the trade several methods, one that crafts
- * the `taught` goods of the course just finished, which the graduate then starts on. A flag gatherer (collector, fisher) is never
- * posted, since its work runs from a flag rather than a building. Source basis: authored, the switch is this
- * project's addition.
+ * the `taught` goods of the course just finished, which the graduate then starts on. A flag gatherer
+ * (collector, fisher) is never posted, since its work runs from a flag rather than a building. Source
+ * basis: authored, the switch is this project's addition.
  */
 export function postGraduate(
   world: World,

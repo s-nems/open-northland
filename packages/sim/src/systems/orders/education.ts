@@ -38,7 +38,7 @@ function trainPoints(
 }
 
 /** Whether the school holds courses in `jobType`: the trade or one of its goods carries a `train` row. */
-export function schoolTeachesTrade(content: ContentSet, tribeId: number, jobType: number): boolean {
+function schoolTeachesTrade(content: ContentSet, tribeId: number, jobType: number): boolean {
   if (isFighterJob(content, jobType)) return false;
   if (trainPoints(content, tribeId, 'job', jobType) !== undefined) return true;
   const tribe = contentIndex(content).tribes.get(tribeId);

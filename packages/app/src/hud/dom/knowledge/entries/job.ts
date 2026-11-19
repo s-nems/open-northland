@@ -21,6 +21,7 @@ import {
   secondsText,
   wholeText,
 } from '../../../knowledge/entry-format.js';
+import { lessonSeconds } from '../../../knowledge/facts/reader.js';
 import type { KnowledgeJob, KnowledgeRequirement } from '../../../knowledge/model.js';
 import type { KnowledgeContext } from '../context.js';
 import {
@@ -143,7 +144,9 @@ function learnBlock(context: KnowledgeContext, job: KnowledgeJob): EntryBlock {
             '',
             node('b', '', text.schoolLabel),
             ' ',
-            formatMessage(text.schoolTime, { time: secondsText(r.amount) }),
+            formatMessage(text.schoolTime, {
+              time: secondsText(lessonSeconds(context.base, r.amount) ?? r.amount),
+            }),
           ),
         ),
       ),

@@ -1,3 +1,5 @@
+import { systems } from '@open-northland/sim';
+import { VIKING } from '../../catalog/buildings.js';
 import {
   JOB_HERO_UNARMED,
   JOB_HEROINE_BOW,
@@ -266,16 +268,23 @@ export function buildingCapacity(building: KnowledgeBuilding): BuildingCapacity 
 export const capacityShows = (capacity: BuildingCapacity): boolean =>
   capacity.store !== null || capacity.larder !== null || capacity.families > 0 || capacity.pupils > 0;
 
-/** What a school teaches: the trades and crafts with a lesson row. */
+/** What a school teaches: the goods it holds a course in and the trades those courses and lesson rows
+ *  give. */
 export function schoolCourses(base: KnowledgeBase): {
   readonly jobs: readonly KnowledgeJob[];
   readonly goods: readonly KnowledgeGood[];
 } {
-  const taught = (rows: readonly { readonly route: string }[] | undefined): boolean =>
-    rows?.some((r) => r.route === 'train') ?? false;
+  const goods = base.goods.filter(
+    (good) => systems.schoolCoursePoints(base.content, VIKING, 'good', good.typeId, null) !== undefined,
+  );
+  const trades = new Set(
+    goods.map((good) => systems.schoolMethodJob(base.content, VIKING, good.typeId, null)),
+  );
   return {
-    jobs: base.jobs.filter((job) => taught(job.requirements)),
-    goods: base.goods.filter((good) => taught(base.goodRequirements.get(good.typeId))),
+    jobs: base.jobs.filter(
+      (job) => trades.has(job.typeId) || job.requirements.some((r) => r.route === 'train'),
+    ),
+    goods,
   };
 }
 

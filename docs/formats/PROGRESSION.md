@@ -120,12 +120,12 @@ it).
 Right-click a school with selected workers to choose a civilian profession and one of its products,
 the ones without a lesson of their own included, listed in the order the tribe's `jobEnables` rows
 unlock them. A product whose course would cost no points is not offered (authored): the collector, a
-profession without `trainforjob`, is taught iron and gold only. The player must already know both. A course costs the
-profession's `trainforjob` points plus the product's `trainforgood` points, the profession's also for
-a pupil who already has it. Each completed exercise animation earns its atomic event value (one in the
-mod's `viking_civilist_exercise`), and the course ends on the repetition after the points are in: a
-10-point profession takes 11 repetitions of 28 ticks, a profession with a 30-point product 41. School
-places are reserved by
+profession without `trainforjob`, is taught iron and gold only. The player must already know both.
+A course costs the profession's `trainforjob` points plus the product's `trainforgood` points, the
+profession's also for a pupil who already has it. Each completed exercise animation earns its atomic
+event value (one in the mod's `viking_civilist_exercise`), and the course ends on the repetition
+after the points are in: a 10-point profession takes 11 repetitions of 28 ticks, a profession with a
+30-point product 41. School places are reserved by
 active training orders, and a course is refused while the school is full, the target already learned
 or the school's door out of the worker's reach; the dialog greys such courses with the reason.
 Reissuing the same course keeps its progress (the original restarts the count, an approximation);
