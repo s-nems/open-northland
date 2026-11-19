@@ -174,6 +174,30 @@ describe('gossip initiation (planner rungs)', () => {
     expect(sim.world.get(lonely, Chat)).toMatchObject({ partner: diagonal, seeker: true });
   });
 
+  it('a partner within reach by steps is taken though its distance over the rows is longer', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(8, 6) });
+    const SEEKER_NODE = { hx: 4, hy: 2 };
+    /** Eight rows down: the eight steps a settler just grown lonely walks, and twelve nodes of distance. */
+    const PARTNER_NODE = { hx: 8, hy: 10 };
+    const FIRST_REACH_STEPS = 8;
+    expect(hexDistanceBetween(SEEKER_NODE.hx, SEEKER_NODE.hy, PARTNER_NODE.hx, PARTNER_NODE.hy)).toBe(
+      FIRST_REACH_STEPS,
+    );
+    const lonely = gossiper(sim, 0, 0, LONELY);
+    const idler = gossiper(sim, 0, 0, FULL);
+    for (const [e, node] of [
+      [lonely, SEEKER_NODE],
+      [idler, PARTNER_NODE],
+    ] as const) {
+      const p = sim.world.mut(e, Position);
+      ({ x: p.x, y: p.y } = positionOfNode(node.hx, node.hy));
+    }
+
+    plannerSystem(sim.world, ctxOf(sim));
+
+    expect(sim.world.get(lonely, Chat)).toMatchObject({ partner: idler, seeker: true });
+  });
+
   it('a lonely settler takes a partner out of idle chatter, sending the other half to its breather', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(8, 1) });
     const a = gossiper(sim, 2, 0, MILD);

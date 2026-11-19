@@ -42,6 +42,7 @@ import { atomicDuration } from '../../readviews/animations.js';
 import { isFighterJob } from '../../readviews/index.js';
 import { IDLE_MEDIUM_ATOMIC_ID, IDLE_SHORT_ATOMIC_IDS } from '../../settlers/atomics/start.js';
 import { walkLengthsFrom } from '../../signposts/index.js';
+import { farthestSpan } from '../../spatial/walk-rank.js';
 import { type GossipCandidates, NO_PARTNER } from './candidates.js';
 import { endChat } from './drive.js';
 
@@ -76,20 +77,21 @@ interface PartnerWay {
   /** No more than {@link to}, and cheap: a search drops a partner whose least way cannot beat the price
    *  it holds. */
   least(dist: number, x: number, y: number): number;
+  /** The Manhattan distance past which no partner is within the seeker's reach: the search's clip. */
+  readonly span: number;
 }
-
-/** The way of a fixture without terrain: the straight distance. */
-const STRAIGHT_WAY: PartnerWay = { to: (dist) => dist, least: (dist) => dist };
 
 /**
  * The {@link PartnerWay} of a seeker on `(hx, hy)` that walks at most `reach` nodes: the steps of the walk
  * to the partner, so one across a wall or a river is as far away as the walk round it, and one no walk of
- * `reach` steps gets to is out of reach. The walk is searched on the first ask, and no walk is shorter
- * than the hex distance. A seeker on a node no walk starts from counts the straight distance.
+ * `reach` steps gets to is out of reach. The walk is searched on the first ask, no walk is shorter than
+ * the hex distance, and a walk of `reach` steps spans more Manhattan nodes than `reach`, so the search is
+ * clipped at that span and a partner is turned away by its price. A seeker on a node no walk starts from counts the straight distance.
  */
 function partnerWay(world: World, ctx: SystemContext, hx: number, hy: number, reach: number): PartnerWay {
   const { terrain } = ctx;
-  if (terrain === undefined) return STRAIGHT_WAY;
+  // A fixture without terrain counts the straight distance.
+  if (terrain === undefined) return { to: (dist) => dist, least: (dist) => dist, span: reach };
   let lengths: ReturnType<typeof walkLengthsFrom> | undefined;
   return {
     to: (dist, x, y) => {
@@ -97,6 +99,7 @@ function partnerWay(world: World, ctx: SystemContext, hx: number, hy: number, re
       return lengths === null ? dist : walkLengthTo(lengths, x, y);
     },
     least: (_dist, x, y) => hexDistanceBetween(hx, hy, x, y),
+    span: farthestSpan(reach),
   };
 }
 
@@ -306,14 +309,7 @@ function passingPartner(
   };
   const found = candidates
     .ensure()
-    .cheapest(
-      hx,
-      hy,
-      CHAT_PARTNER_MIN_DIST_NODES,
-      CHAT_PASSING_REACH_NODES,
-      CHAT_PASSING_REACH_NODES,
-      priceOf,
-    );
+    .cheapest(hx, hy, CHAT_PARTNER_MIN_DIST_NODES, way.span, CHAT_PASSING_REACH_NODES, priceOf);
   if (found === null) {
     world.add(e, ChatSearchRest, { until: tick + CHAT_PASSING_RETRY_TICKS });
     return false;
@@ -407,7 +403,7 @@ function seekPartner(
     const chatTicks = companyChatTicks(ctx.content, settler, world.get(cand, Settler));
     return walk + wastedChatTicks(world, tick, cand, chatTicks, urgency);
   };
-  const found = candidates.ensure().cheapest(hx, hy, CHAT_PARTNER_MIN_DIST_NODES, reach, budget, priceOf);
+  const found = candidates.ensure().cheapest(hx, hy, CHAT_PARTNER_MIN_DIST_NODES, way.span, budget, priceOf);
   if (found === null) return false;
   if (world.has(found, Chat)) {
     // Its old partner goes into the breather; it goes straight into company.
@@ -475,7 +471,7 @@ export function planGossipIdle(
     hx,
     hy,
     CHAT_PARTNER_MIN_DIST_NODES,
-    CHAT_IDLE_WALK_RADIUS_NODES,
+    way.span,
     CHAT_IDLE_WALK_RADIUS_NODES,
     (cand, dist, toBeat, x, y) =>
       way.least(dist, x, y) > toBeat || !idle(cand) ? NO_PARTNER : way.to(dist, x, y),

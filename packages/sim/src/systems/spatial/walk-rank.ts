@@ -46,7 +46,7 @@ export function rankLength(
 }
 
 /** The Manhattan distance a walk of `steps` covers at most. */
-function farthestSpan(steps: number): number {
+export function farthestSpan(steps: number): number {
   return Math.floor((ROW_PAIR_SPAN * steps + FIRST_STEP_EXTRA_SPAN) / ROW_PAIR_STEPS);
 }
 
