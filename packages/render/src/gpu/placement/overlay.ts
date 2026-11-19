@@ -14,7 +14,8 @@ import { hashCells } from './cell-signature.js';
  * on and a slight lift over the ground it can, with no visible tile grid. The sim's placement rule
  * (`Simulation.placementProbe`) decides the blocked set; this layer only projects it. Each side is
  * composited off-screen at half resolution first, where the padded shapes fuse by saturating instead
- * of double-blending. The alpha and softness constants are tuned by eye against the original's
+ * of double-blending. An open node keeps its own lattice cell clear of the closed sides' padding, so a
+ * gap one node wide still shows. The alpha and softness constants are tuned by eye against the original's
  * build-mode look (observation). A pale rim runs along the open side's edge, which the original does not
  * draw: the border of the ground that takes the building reads without comparing two shades of grass.
  */
@@ -80,6 +81,14 @@ const CELL_OVERLAP = 5;
  *  fuse with its row and diagonal neighbours into an edge that waves by a pixel or two where the
  *  diamonds' corners would saw. Tuned by eye. */
 const EDGE_RADIUS = { x: 42, y: 24 } as const;
+/** The ground ellipse an open node on its side's border cuts out of the closed sides, swept along the
+ *  lines to its open row and diagonal neighbours so a run of them ends on a straight edge. Its lattice
+ *  cell is a diamond of half-extents `TILE_HALF_W / 2` × `TILE_HALF_H / 2`; the ellipse is wider and
+ *  lower, which puts a row's edge about midway to the next row and leaves a lone closed node a core its
+ *  open neighbours do not reach. Tuned by eye. */
+const OPEN_RADIUS = { x: 24, y: 12 } as const;
+/** World-px pad on the cell diamond an open node away from every border cuts. */
+const OPEN_PAD = 3;
 /** The `round` brush's ground ellipse per open node, wide enough to fuse with its row and diagonal
  *  neighbours (nodes stand `TILE_HALF_W` apart in a row, a quarter cell between rows), and its feather:
  *  concentric steps from the rim inward, each scale with the alpha it adds. Tuned by eye. */
@@ -151,6 +160,9 @@ export class PlacementOverlayLayer {
   private outsideTexture: RenderTexture | null = null;
   private readonly bandHost = new Container();
   private readonly bandG = new Graphics();
+  /** The open nodes' cells, erased out of the closed sides' padded shapes. */
+  private readonly openHost = new Container();
+  private readonly openG = new Graphics();
   private dimTexture: RenderTexture | null = null;
   private brightTexture: RenderTexture | null = null;
   private reserveTexture: RenderTexture | null = null;
@@ -184,6 +196,8 @@ export class PlacementOverlayLayer {
     this.eraseHost.addChild(this.eraser);
     this.bandG.blendMode = 'erase';
     this.bandHost.addChild(this.bandG);
+    this.openG.blendMode = 'erase';
+    this.openHost.addChild(this.openG);
     // Two closed sides (blocked, reserved) per direction, then a cut of each and of the ground past the band.
     for (const [dx, dy] of RIM_DIRECTIONS) {
       for (let side = 0; side < CLOSED_SIDES; side++) {
@@ -243,8 +257,9 @@ export class PlacementOverlayLayer {
 
   /**
    * The default brush: each closed side is its nodes' fused diamonds, rounded off where it borders
-   * another side by a ground ellipse per border node, and the lift is the band's own nodes less both
-   * closed sides, so the sides meet on one edge without a doubly shaded seam between them.
+   * another side by a ground ellipse per border node, less the open nodes' own cells, and the lift is
+   * the band's own nodes less both closed sides, so the sides meet on one edge without a doubly shaded
+   * seam between them.
    */
   private composeGrid(
     frame: PlacementOverlayFrame,
@@ -258,12 +273,17 @@ export class PlacementOverlayLayer {
     const blockedG = this.blockedG.clear();
     const reservedG = this.reservedG.clear();
     const bandG = this.bandG.clear();
+    const openG = this.openG.clear();
     // Nodes stand HALF_W apart in a row and HALF_H/2 between rows, odd rows offset by HALF_W/2, so a
     // diamond of those half-extents on every node covers the plane with room to spare.
     const hw = (TILE_HALF_W + CELL_OVERLAP) * COMPOSITE_RESOLUTION;
     const hh = (TILE_HALF_H / 2 + CELL_OVERLAP) * COMPOSITE_RESOLUTION;
     const rx = EDGE_RADIUS.x * COMPOSITE_RESOLUTION;
     const ry = EDGE_RADIUS.y * COMPOSITE_RESOLUTION;
+    const openRx = OPEN_RADIUS.x * COMPOSITE_RESOLUTION;
+    const openRy = OPEN_RADIUS.y * COMPOSITE_RESOLUTION;
+    const openHw = (TILE_HALF_W / 2 + OPEN_PAD) * COMPOSITE_RESOLUTION;
+    const openHh = (TILE_HALF_H / 2 + OPEN_PAD) * COMPOSITE_RESOLUTION;
     for (let row = frame.minRow; row <= frame.maxRow; row++) {
       for (let col = frame.minCol; col <= frame.maxCol; col++) {
         // Project into composite-texture space: the lifted node point, less the band origin, at half res.
@@ -272,15 +292,38 @@ export class PlacementOverlayLayer {
         const cy = (p.y - bounds.y) * COMPOSITE_RESOLUTION;
         bandG.poly(nodeDiamondPoly(cx, cy, hw, hh));
         const own = side.at(col, row);
-        if (own === SIDE_OPEN) continue;
+        const onBorder = side.borders(col, row);
+        if (own === SIDE_OPEN) {
+          if (!onBorder) {
+            openG.poly(nodeDiamondPoly(cx, cy, openHw, openHh));
+            continue;
+          }
+          openG.ellipse(cx, cy, openRx, openRy);
+          // An odd row stands half a node east, so the row below starts at `col`, not `col - 1`.
+          const west = (row & 1) === 0 ? col - 1 : col;
+          for (const [nCol, nRow] of [
+            [col + 1, row],
+            [west, row + 1],
+            [west + 1, row + 1],
+          ] as const) {
+            if (nCol < frame.minCol || nCol > frame.maxCol || nRow > frame.maxRow) continue;
+            if (side.at(nCol, nRow) !== SIDE_OPEN) continue;
+            const n = projectNode(elevation, nCol, nRow);
+            const nx = (n.x - bounds.x) * COMPOSITE_RESOLUTION;
+            const ny = (n.y - bounds.y) * COMPOSITE_RESOLUTION;
+            openG.poly(sweptEllipseQuad(cx, cy, nx, ny, openRx, openRy));
+          }
+          continue;
+        }
         const g = own === SIDE_BLOCKED ? blockedG : reservedG;
-        if (side.borders(col, row)) g.ellipse(cx, cy, rx, ry);
+        if (onBorder) g.ellipse(cx, cy, rx, ry);
         else g.poly(nodeDiamondPoly(cx, cy, hw, hh));
       }
     }
     blockedG.fill(0xffffff);
     reservedG.fill(0xffffff);
     bandG.fill(0xffffff);
+    openG.fill(0xffffff);
     const fullG = this.buildableG
       .clear()
       .rect(0, 0, bounds.width * COMPOSITE_RESOLUTION, bounds.height * COMPOSITE_RESOLUTION)
@@ -290,6 +333,8 @@ export class PlacementOverlayLayer {
     // slack past the band's edge stays transparent.
     this.renderer.render({ container: blockedG, target: dimTexture, clear: true });
     this.renderer.render({ container: reservedG, target: reserveTexture, clear: true });
+    this.renderer.render({ container: this.openHost, target: dimTexture, clear: false });
+    this.renderer.render({ container: this.openHost, target: reserveTexture, clear: false });
     const outsideTexture = this.outsideTexture;
     if (outsideTexture === null) return;
     this.renderer.render({ container: fullG, target: outsideTexture, clear: true });
@@ -409,6 +454,7 @@ export class PlacementOverlayLayer {
     this.outsideTexture?.destroy(true);
     this.rimHost.destroy({ children: true });
     this.bandHost.destroy({ children: true });
+    this.openHost.destroy({ children: true });
     this.blockedG.destroy();
     this.buildableG.destroy();
     this.reservedG.destroy();
@@ -417,14 +463,38 @@ export class PlacementOverlayLayer {
   }
 }
 
+/**
+ * The quad between two equal ellipses centred on `a` and `b`, edge to edge along their common tangents:
+ * with the ellipses themselves it is the shape one of them sweeps on the way to the other.
+ */
+export function sweptEllipseQuad(
+  ax: number,
+  ay: number,
+  bx: number,
+  by: number,
+  rx: number,
+  ry: number,
+): number[] {
+  // In the space where the ellipse is a circle of radius `rx`, the tangent offset is the unit normal.
+  const stretch = rx / ry;
+  const dx = bx - ax;
+  const dy = (by - ay) * stretch;
+  const length = Math.hypot(dx, dy);
+  if (length === 0) return [];
+  const ox = (-dy / length) * rx;
+  const oy = (dx / length) * ry;
+  return [ax + ox, ay + oy, bx + ox, by + oy, bx - ox, by - oy, ax - ox, ay - oy];
+}
+
 export const SIDE_OPEN = 0;
 export const SIDE_BLOCKED = 1;
 export const SIDE_RESERVED = 2;
 
 /**
- * Which side each node of a band is on, and whether a node borders another side: one of its two row
- * neighbours or four diagonal ones, the six nodes nearest it on the lattice. Nodes past the band count
- * as the node's own side, so the band's rim draws no edge.
+ * Which side each node of a band is on, and whether a node borders another side: one of the eight nodes
+ * whose lattice cells touch its own, its two row neighbours, four diagonal ones and the two in its
+ * column two rows away. Nodes past the band count as the node's own side, so the band's rim draws no
+ * edge.
  */
 export function bandSides(
   frame: Pick<PlacementOverlayFrame, 'minCol' | 'maxCol' | 'minRow' | 'maxRow' | 'blocked' | 'reserved'>,
@@ -462,7 +532,9 @@ export function bandSides(
         differs(own, west, row - 1) ||
         differs(own, west + 1, row - 1) ||
         differs(own, west, row + 1) ||
-        differs(own, west + 1, row + 1)
+        differs(own, west + 1, row + 1) ||
+        differs(own, col, row - 2) ||
+        differs(own, col, row + 2)
       );
     },
   };
