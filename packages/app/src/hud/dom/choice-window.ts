@@ -77,13 +77,16 @@ export function createChoiceWindow(opts: {
   search.setAttribute('aria-label', copy.choiceSearch);
   const back = document.createElement('button');
   back.type = 'button';
-  back.className = 'on-button on-choice-back';
+  back.className = 'on-medallion on-choice-back';
   back.innerHTML = GLYPH.back;
-  back.append(copy.choiceBack);
+  back.title = copy.choiceBack;
+  back.setAttribute('aria-label', copy.choiceBack);
   back.hidden = true;
+  // Beside the title, on the close medallion's line.
+  window.element.querySelector('.on-window__heading')?.prepend(back);
   const list = document.createElement('div');
   list.className = 'on-choice-list';
-  tools.append(back, context, field);
+  tools.append(context, field);
   window.body.append(tools, list);
   document.body.append(dialog);
   let groups: readonly ChoiceGroup[] = [];
