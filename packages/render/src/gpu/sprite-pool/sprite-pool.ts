@@ -58,7 +58,7 @@ import { damageScaffoldLayers } from './layers/building.js';
 import { resolvesWithoutClock } from './layers/resolve.js';
 import type { ResolvedLayer } from './layers/resolved-layer.js';
 import { NightBearers } from './night-bearers.js';
-import { type GhostOccluder, OcclusionGhosts } from './occlusion.js';
+import { type GhostOccluder, ghostTintOf, OcclusionGhosts } from './occlusion.js';
 import {
   anchorOf,
   boundsOf,
@@ -132,8 +132,8 @@ export interface PoolFrame {
    *  setting itself, since a ship is not landscape. */
   readonly sailWind?: boolean;
   readonly buildingDamage?: boolean;
-  /** The occlusion ghost setting: units a standing sprite hides show as a translucent silhouette
-   *  over it. Absent leaves every unit hidden, as the baseline renderer always has. */
+  /** The occlusion ghost setting: units a standing sprite hides show as a translucent outline over
+   *  it. Absent leaves every unit hidden, as the baseline renderer always has. */
   readonly occlusionGhosts?: boolean | undefined;
   /** The frame's visible tall map objects - a decoded map's virgin trees and rocks - as occluder
    *  candidates, since the retained map-object layer draws them outside this pool's draw list.
@@ -274,7 +274,7 @@ function framesSubjects(framed: readonly FramedInset[], subjects: readonly numbe
 export class SpritePool {
   readonly groundContainer = new Container({ sortableChildren: true });
   /** Occlusion ghosts' overlay: the renderer mounts it above the sprite layer, under the mark layers. */
-  readonly occlusionGhosts = new OcclusionGhosts();
+  readonly occlusionGhosts: OcclusionGhosts;
 
   private readonly resourceBinding: SpriteSheet['bindings']['resource'] | undefined;
 
@@ -512,6 +512,12 @@ export class SpritePool {
   ) {
     this.resourceBinding = sheet?.bindings.resource;
     this.selectionEffects = new SelectionEffects(textures);
+    this.occlusionGhosts = new OcclusionGhosts(
+      textures,
+      // A paletted body reads its own LUT row's team step, so the ring shows the colour the unit
+      // itself wears; no palette draws every ring in the fallback tint.
+      sheet?.palette !== undefined ? ghostTintOf(sheet.palette) : undefined,
+    );
     this.frameOf = (pe) => this.currentFrameOf(pe);
     this.portrait = new PortraitSubject(spriteLayer);
     this.binder = new LayerBinder(textures, sheet, stakes, roads);
@@ -650,6 +656,7 @@ export class SpritePool {
         this.pool,
         this.frameOf,
         this.epoch.viewMoved,
+        frame.camera.scale ?? 1,
         frame.staticOccluders,
         this.sheet?.characters?.animals?.tribes,
       );

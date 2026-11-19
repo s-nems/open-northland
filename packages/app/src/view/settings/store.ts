@@ -118,7 +118,7 @@ export interface MenuSettings {
   /** Off holds a scripted or game cycle at daylight and draws any remaining night flat, without its
    *  lights. Presentation only, the sim never reads it. */
   readonly dayNight: boolean;
-  /** A settler a standing sprite hides shows as a translucent silhouette over it; off leaves every
+  /** A settler a standing sprite hides shows as a translucent outline over it; off leaves every
    *  hidden unit hidden. Local presentation only. */
   readonly occlusionGhosts: boolean;
   /** Hit sprays and ground stains; local presentation only. */

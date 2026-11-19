@@ -155,7 +155,7 @@ export class SelectionEffects {
           body.updateLocalTransform();
           frameTransform(this.transform, body.localTransform, body.anchor, texture);
         }
-        this.place(quad, texture, reach);
+        placeOutline(quad, texture, this.transform, this.textures, reach);
       }
       if (pe.placeholder?.visible === true && pe.placeholder.alpha > 0) {
         for (const [dx, dy] of OUTLINE_DIRECTIONS) {
@@ -180,43 +180,6 @@ export class SelectionEffects {
       const stamp = outline.children[i];
       if (stamp !== undefined) hideStamp(stamp);
     }
-  }
-
-  /**
-   * Lay `quad` over the body texels {@link transform} places, grown by whole texels past `reach` (outline
-   * container units) on every side, and give it the uv step of one unit of reach along each axis. A body
-   * texel stands `scale` units or more across, the transform's smaller singular value.
-   */
-  private place(quad: OutlineSprite, body: Texture, reach: number): void {
-    const { a, b, c, d, tx, ty } = this.transform;
-    const det = a * d - b * c;
-    if (det === 0) {
-      hideStamp(quad);
-      return;
-    }
-    const sum = (a * a + b * b + c * c + d * d) / 2;
-    const scale = Math.sqrt(sum - Math.sqrt(Math.max(0, sum * sum - det * det)));
-    const margin = Math.ceil(reach / scale);
-    // A grown view lives as long as its body texture, so the quad's still serves the same body and margin.
-    const held = quad.texture;
-    if (
-      quad.bodyTexture !== body ||
-      held.destroyed ||
-      held.frame.width !== body.frame.width + 2 * margin ||
-      held.frame.height !== body.frame.height + 2 * margin
-    ) {
-      quad.bodyTexture = body;
-      quad.texture = this.textures.grownView(body, margin);
-    }
-    // The inverse transform takes a reach step to texels; a texel is a fixed uv step on the page.
-    const { uvs, frame } = body;
-    const uPerTexel = (uvs.x1 - uvs.x0) / frame.width;
-    const vPerTexel = (uvs.y3 - uvs.y0) / frame.height;
-    const step = reach / det;
-    quad.setReach(d * step * uPerTexel, -b * step * vPerTexel, -c * step * uPerTexel, a * step * vPerTexel);
-    this.transform.tx = tx - margin * (a + c);
-    this.transform.ty = ty - margin * (b + d);
-    quad.setFromMatrix(this.transform);
   }
 
   /** Portrait and map insets borrow the world without its selection emphasis. The outlines go to zero
@@ -263,6 +226,50 @@ function outlineQuadAt(outline: Container<OutlineSprite | SelectionGraphics>, in
   const quad = worldBatched(new OutlineSprite());
   outline.addChildAt(quad, index);
   return quad;
+}
+
+/**
+ * Lay `quad` over the body texels `transform` places, grown by whole texels past `reach` (the quad's
+ * container units) on every side, and give it the uv step of one unit of reach along each axis. A body
+ * texel stands `scale` units or more across, the transform's smaller singular value. Shared with the
+ * occlusion ghost's ring quads, which grow past their body and reach by the zoom the same way.
+ */
+export function placeOutline(
+  quad: OutlineSprite,
+  body: Texture,
+  transform: Matrix,
+  textures: TextureCache,
+  reach: number,
+): void {
+  const { a, b, c, d, tx, ty } = transform;
+  const det = a * d - b * c;
+  if (det === 0) {
+    hideStamp(quad);
+    return;
+  }
+  const sum = (a * a + b * b + c * c + d * d) / 2;
+  const scale = Math.sqrt(sum - Math.sqrt(Math.max(0, sum * sum - det * det)));
+  const margin = Math.ceil(reach / scale);
+  // A grown view lives as long as its body texture, so the quad's still serves the same body and margin.
+  const held = quad.texture;
+  if (
+    quad.bodyTexture !== body ||
+    held.destroyed ||
+    held.frame.width !== body.frame.width + 2 * margin ||
+    held.frame.height !== body.frame.height + 2 * margin
+  ) {
+    quad.bodyTexture = body;
+    quad.texture = textures.grownView(body, margin);
+  }
+  // The inverse transform takes a reach step to texels; a texel is a fixed uv step on the page.
+  const { uvs, frame } = body;
+  const uPerTexel = (uvs.x1 - uvs.x0) / frame.width;
+  const vPerTexel = (uvs.y3 - uvs.y0) / frame.height;
+  const step = reach / det;
+  quad.setReach(d * step * uPerTexel, -b * step * vPerTexel, -c * step * uPerTexel, a * step * vPerTexel);
+  transform.tx = tx - margin * (a + c);
+  transform.ty = ty - margin * (b + d);
+  quad.setFromMatrix(transform);
 }
 
 /** `out` set to `local`'s placement of `texture`'s frame texels, from the quad Pixi lays a sprite on.

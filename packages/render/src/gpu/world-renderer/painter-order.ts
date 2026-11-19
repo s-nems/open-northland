@@ -19,7 +19,7 @@ export interface WorldSceneLayers {
   readonly selection: Container;
   readonly bones: Container;
   readonly sprites: Container;
-  /** Occlusion ghosts: the silhouette of a unit a standing sprite hides, drawn over that sprite. Over
+  /** Occlusion ghosts: the outline of a unit a standing sprite hides, drawn over that sprite. Over
    *  the sprites it ghosts, under every marker layer. */
   readonly occlusionGhosts: Container;
   /** Over the sprites: an order's acknowledgement or a refused goal must not hide behind the rock or tree

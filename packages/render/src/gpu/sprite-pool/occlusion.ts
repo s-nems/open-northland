@@ -1,26 +1,33 @@
-import { Container, Matrix, type Texture } from 'pixi.js';
+import { Container, Matrix } from 'pixi.js';
+import { GLOW_PALETTE_INDEX } from '../../data/palettes/glow-colour.js';
+import { createHumanPaletteColours } from '../../data/palettes/human-palettes.js';
 import type { SpriteDrawItem } from '../../data/scene/index.js';
 import { PalettedSprite } from '../paletted-sprite/index.js';
-import { SelectionGraphics, SelectionSprite } from '../selection/sprite-effect.js';
+import { GhostOutlineSprite, SelectionGraphics } from '../selection/sprite-effect.js';
+import type { HumanPaletteLut } from '../textures/human-palette-lut.js';
+import type { TextureCache } from '../textures/texture-cache.js';
 import { worldBatched } from '../world-batch/batcher.js';
 import { SELECTION_STAMP } from '../world-batch/shader.js';
 import { pixelHit } from './picking/pick.js';
 import { pooledDepth } from './pooled-depth.js';
 import type { EntityBounds, PooledEntity } from './pooled-entity.js';
-import { frameTransform } from './selection-effects.js';
+import { frameTransform, placeOutline } from './selection-effects.js';
 
 /**
- * Occlusion ghosts: a settler a standing sprite hides shows as a translucent silhouette over that
- * sprite, so the player can follow people behind houses, walls and trees. The scan runs over the
- * painter-ordered draw list after each reconcile: a unit is ghosted when a later-drawn occluder's art
- * covers part of it, and the ghost draws as one `SELECTION_STAMP` quad per body layer in an overlay
- * above the sprite layer, so it shows through the cover without leaving its painter-order slot.
+ * Occlusion ghosts: a settler a standing sprite hides shows as a translucent outline over that sprite,
+ * so the player can follow people behind houses, walls and trees. The scan runs over the painter-ordered
+ * draw list after each reconcile: a unit is ghosted when a later-drawn occluder's art covers part of it,
+ * and the ghost draws as one `SELECTION_GHOST_OUTLINE` ring quad per body layer in an overlay above the
+ * sprite layer, so the contour shows through the cover without leaving its painter-order slot. A ring
+ * tints with the colour its unit's body wears — the team step of the entity's own composed palette row —
+ * so friends and foes read apart through the cover; where no colour resolves the ring keeps
+ * {@link GHOST_TINT}.
  *
  * Approximation, not observed original behaviour: the original's hidden-unit rendering has no readable
- * source here. The stamp colour, alpha and the coverage samples are tuned by eye; the occluder kinds
- * are the standing sprites tall enough to hide a person (delivery flags and loose heaps are not, and a
- * unit behind one stays plain). Vehicles are neither ghosted nor occluders: their paletted layers are
- * self-placing meshes the stamp quad cannot copy, so a cart behind a house stays hidden.
+ * source here. The ring alpha, reach and the coverage samples are tuned by eye; the occluder kinds are
+ * the standing sprites tall enough to hide a person (delivery flags and loose heaps are not, and a unit
+ * behind one stays plain). Vehicles are neither ghosted nor occluders: their paletted layers are
+ * self-placing meshes the ring quad cannot copy, so a cart behind a house stays hidden.
  *
  * The occluders beyond the pool's own draw list arrive through {@link GhostOccluder}: a decoded map's
  * virgin trees and rocks draw on the retained map-object layer and never enter the scene items, so
@@ -47,9 +54,38 @@ const OCCLUDER_KINDS: ReadonlySet<SpriteDrawItem['kind']> = new Set([
   'resource',
 ]);
 
-/** The ghost's stamp colour and alpha over the cover. Approximation, tuned by eye for legibility. */
+/** The ghost ring's tint where nothing resolves: no sheet palette at all, or the playerless placeholder
+ *  marker. Approximation, tuned by eye for legibility. */
 export const GHOST_TINT = 0xf0ede2;
 export const GHOST_ALPHA = 0.4;
+/** Screen px the ring reaches past the body art, one pass per ring. Approximation, tuned by eye for
+ *  legibility: the selection outline's own keyline reach, drawn without the body under it. */
+export const GHOST_OUTLINE_RADIUS = 2;
+/** Bytes per palette entry: the team palettes are RGB triplets. */
+const RGB = 3;
+
+/**
+ * The tint a ghost ring takes, per pooled entity: a body bound through the human LUT reads the row it
+ * draws through — step {@link GLOW_PALETTE_INDEX} of its composed body palette, the step the hero glow
+ * reads — so the ring shows the exact colour the unit itself wears, its sex and palette rolls included.
+ * A look baked on a plain atlas draws no team band; its ring composes the owner's team palette instead
+ * (`composeTeam`, the male recipe, whose ramp the women's recipe shares). No darkness lift, unlike the
+ * glow: the ring answers to the unit's colour, not the glow's legibility.
+ */
+export function ghostTintOf(lut: HumanPaletteLut): (pe: PooledEntity) => number {
+  const scratch = createHumanPaletteColours();
+  return (pe) => {
+    if (pe.paletted && pe.palette === lut) return lut.teamColourAt(pe.lutRow);
+    lut.book.composeTeam(pe.bound.item?.player ?? 0, scratch);
+    return teamTint(scratch.body);
+  };
+}
+
+/** The tint number of the palette's team step: the RGB triplet at {@link GLOW_PALETTE_INDEX}. */
+function teamTint(palette: Uint8Array): number {
+  const at = GLOW_PALETTE_INDEX * RGB;
+  return ((palette[at] ?? 0) << 16) | ((palette[at + 1] ?? 0) << 8) | (palette[at + 2] ?? 0);
+}
 
 /**
  * Where the scan samples the unit's box for cover, as (u, v) shares from the box's top-left. The strip
@@ -105,16 +141,18 @@ interface OccluderSlot {
 /** A unit's pooled ghost stamps, kept while its unit draws and dropped when it stops. */
 interface GhostStamp {
   readonly container: Container;
-  /** One stamp quad per stamped body layer, grown on demand and hidden beyond the body's layer count. */
-  readonly quads: SelectionSprite[];
+  /** One ring quad per stamped body layer, grown on demand and hidden beyond the body's layer count. */
+  readonly quads: GhostOutlineSprite[];
   /** The placeholder's stamp, minted when an unbound body draws the marker instead of atlas layers. */
   placeholder: SelectionGraphics | undefined;
   /** The entity the stamps copy; a ref the pool freed destroys the stamp with it. */
   pe: PooledEntity;
-  /** The bind the quads were laid from, and whether the camera had moved then: either changing lays
-   *  them again, since a rebind re-resolves layers and a moved camera re-nudges paletted ones. */
+  /** The bind and view the quads were laid from, and whether the camera had moved then: any changing
+   *  lays them again, since a rebind re-resolves layers and a moved or rezooned camera re-places the
+   *  paletted quads a ring copies and re-scales the reach the ring rides on. */
   bindSerial: number;
   laidUnderMovedView: boolean;
+  laidAtZoom: number;
 }
 
 /**
@@ -123,6 +161,12 @@ interface GhostStamp {
  */
 export class OcclusionGhosts {
   readonly container = new Container();
+
+  constructor(
+    private readonly textures: TextureCache,
+    /** The tint a ghosted unit's ring takes, per entity; absent draws every ring in {@link GHOST_TINT}. */
+    private readonly tintOf: ((pe: PooledEntity) => number) | undefined,
+  ) {}
 
   private readonly stamps = new Map<number, GhostStamp>();
   /** The occluder slots by their occluder object - the pool's entities for its own standing sprites,
@@ -149,17 +193,18 @@ export class OcclusionGhosts {
   /** The units that drew this frame and the ones a ghost shows, so a stamp hides or dies by them. */
   private readonly drawnUnits = new Set<number>();
   private readonly ghostedUnits = new Set<number>();
-  /** Scratch for laying one stamp quad over its body layer. */
+  /** Scratch for laying one ring quad or the placeholder over its body layer. */
   private readonly transform = new Matrix();
 
   /**
    * Scan the painter-ordered draw list the pool just presented: collect the settlers and the standing
    * sprites, find the covered units and update their stamps. `frameOf` answers the frame id a pooled
    * entity's stamped bounds and pixels are valid for; `viewMoved` says the camera moved since the last
-   * scan, which re-lays the paletted layers a stamp copies. `staticOccluders` carries the frame's
-   * visible map-object candidates, whose drawn poses the pool's list never sees. `wildlifeTribes`
-   * lists the animal tribes the sheet knows: their walkers draw behind trees like anyone else, but a
-   * ghosted deer tells the player nothing and a herd would fill the overlay, so they stay unghosted.
+   * scan, which re-lays the paletted layers a ring copies, and `zoom` is the camera's scale, whose
+   * divisor holds the ring's screen width. `staticOccluders` carries the frame's visible map-object
+   * candidates, whose drawn poses the pool's list never sees. `wildlifeTribes` lists the animal tribes
+   * the sheet knows: their walkers draw behind trees like anyone else, but a ghosted deer tells the
+   * player nothing and a herd would fill the overlay, so they stay unghosted.
    *
    * Depth throughout is the painter depth the shared entity layer sorts at - the pool's own
    * {@link pooledDepth} over the item being drawn and the entity's drawn motion, a static candidate's
@@ -171,6 +216,7 @@ export class OcclusionGhosts {
     pool: ReadonlyMap<number, PooledEntity>,
     frameOf: (pe: PooledEntity) => number,
     viewMoved: boolean,
+    zoom: number,
     staticOccluders: readonly GhostOccluder[] = [],
     wildlifeTribes?: ReadonlySet<number>,
   ): void {
@@ -213,7 +259,7 @@ export class OcclusionGhosts {
     for (let u = 0; u < this.unitCount; u++) {
       const pe = this.unitPe[u];
       if (pe === undefined) continue;
-      if (this.coveredUnit(pe, this.unitDepth[u] ?? 0, frameOf)) this.stamp(pe, viewMoved);
+      if (this.coveredUnit(pe, this.unitDepth[u] ?? 0, frameOf)) this.stamp(pe, viewMoved, zoom);
     }
     this.sweepStamps();
   }
@@ -396,8 +442,8 @@ export class OcclusionGhosts {
     return false;
   }
 
-  /** Show or mint `pe`'s stamps, tracking its body's placement; lay the quads when the body rebinds. */
-  private stamp(pe: PooledEntity, viewMoved: boolean): void {
+  /** Show or mint `pe`'s stamps, tracking its body's placement; lay the rings when the body rebinds. */
+  private stamp(pe: PooledEntity, viewMoved: boolean, zoom: number): void {
     const ref = pe.bound.item?.ref;
     if (ref === undefined) return;
     this.ghostedUnits.add(ref);
@@ -410,20 +456,30 @@ export class OcclusionGhosts {
         pe,
         bindSerial: -1,
         laidUnderMovedView: !viewMoved,
+        laidAtZoom: zoom,
       };
       this.stamps.set(ref, stamp);
       this.container.addChild(stamp.container);
     }
     stamp.container.alpha = 1;
     stamp.container.position.copyFrom(pe.container.position);
-    if (pe.bindSerial !== stamp.bindSerial || viewMoved !== stamp.laidUnderMovedView)
-      this.lay(pe, stamp, viewMoved);
+    if (
+      pe.bindSerial !== stamp.bindSerial ||
+      viewMoved !== stamp.laidUnderMovedView ||
+      zoom !== stamp.laidAtZoom
+    )
+      this.lay(pe, stamp, viewMoved, zoom);
   }
 
-  /** Lay one stamp quad per stamped body layer, each over its body's placement and share of the alpha. */
-  private lay(pe: PooledEntity, stamp: GhostStamp, viewMoved: boolean): void {
+  /** Lay one ghost ring quad per stamped body layer, each over its body's placement and share of the alpha. */
+  private lay(pe: PooledEntity, stamp: GhostStamp, viewMoved: boolean, zoom: number): void {
     stamp.bindSerial = pe.bindSerial;
     stamp.laidUnderMovedView = viewMoved;
+    stamp.laidAtZoom = zoom;
+    const reach = GHOST_OUTLINE_RADIUS / zoom;
+    // The ring reads the colour the entity draws with; an owner change rebinds the body, which lays
+    // the rings again.
+    const tint = this.tintOf?.(pe) ?? GHOST_TINT;
     let count = 0;
     for (let i = 0; i < pe.sprites.length; i++) {
       const body = pe.sprites[i];
@@ -432,14 +488,12 @@ export class OcclusionGhosts {
       if (body === undefined || !body.visible || body.alpha <= 0 || body instanceof PalettedSprite) continue;
       if ('glow' in body && body.glow === true) continue;
       if (!pe.paletted && pe.pickExempt[i] === true) continue;
-      const texture = body.texture;
       body.updateLocalTransform();
-      frameTransform(this.transform, body.localTransform, body.anchor, texture);
+      frameTransform(this.transform, body.localTransform, body.anchor, body.texture);
       const quad = quadAt(stamp, count++);
-      quad.tint = GHOST_TINT;
+      quad.tint = tint;
       quad.alpha = body.alpha * GHOST_ALPHA;
-      quad.texture = texture;
-      quad.setFromMatrix(this.transform);
+      placeOutline(quad, body.texture, this.transform, this.textures, reach);
     }
     let marker = false;
     if (pe.placeholder?.visible === true && pe.placeholder.alpha > 0) {
@@ -463,21 +517,20 @@ export class OcclusionGhosts {
   }
 }
 
-/** The stamp quad at `index` of `stamp`, minted over whatever stood there. */
-function quadAt(stamp: GhostStamp, index: number): SelectionSprite {
+/** The ghost ring quad at `index` of `stamp`, minted over whatever stood there. */
+function quadAt(stamp: GhostStamp, index: number): GhostOutlineSprite {
   const held = stamp.quads[index];
   if (held !== undefined) return held;
-  const quad = worldBatched(new SelectionSprite());
-  quad.selectionEffect = SELECTION_STAMP;
+  const quad = worldBatched(new GhostOutlineSprite());
   stamp.quads[index] = quad;
   stamp.container.addChild(quad);
   return quad;
 }
 
 /** Retire a stamp quad in place: zero alpha repacks without rebuilding the batch's instructions. The
- *  quad keeps its texture: swapping to {@link Texture.EMPTY} names a page the batch does not hold, so
- *  a full batch would rebuild the render group's whole instruction set on every hide and re-show. */
-function hideQuad(quad: SelectionSprite): void {
+ *  quad keeps its texture: swapping to an empty texture names a page the batch does not hold, so a
+ *  full batch would rebuild the render group's whole instruction set on every hide and re-show. */
+function hideQuad(quad: GhostOutlineSprite): void {
   quad.alpha = 0;
 }
 

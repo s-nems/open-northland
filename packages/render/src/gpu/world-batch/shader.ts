@@ -36,6 +36,9 @@ export const WORLD_LUT_ROW_SHIFT = 7;
  *  {@link OUTLINE_DIRECTIONS} offset. */
 export const SELECTION_STAMP = -1;
 export const SELECTION_OUTLINE = -2;
+/** `aSelection` for an outline quad that draws its ring alone: the reach's offset copies less the
+ *  body's own coverage, since nothing draws under an occlusion ghost to fill it. */
+export const SELECTION_GHOST_OUTLINE = -3;
 /**
  * `aNight`: how lit an element shows in the night's lit mask (see `lighting/night-mask.ts`), 0 unlit up
  * to 1 a light-bearer's full share. From {@link NIGHT_FALL_BAND} up the share fades from full at the
@@ -312,6 +315,7 @@ const float SINGLE_TAP_FOOTPRINT = 0.000001;
 const float MINIFY_TAP_OFFSET = 0.25;
 const float MINIFY_TAP_WEIGHT = 0.25;
 const float SELECTION_OUTLINE = ${SELECTION_OUTLINE}.0;
+const float SELECTION_GHOST_OUTLINE = ${SELECTION_GHOST_OUTLINE}.0;
 const float NIGHT_FALL_BAND = ${glslFloat(NIGHT_FALL_BAND)};
 const float NIGHT_FALL_TOP = ${glslFloat(NIGHT_FALL_TOP)};
 const float NIGHT_FALL_FROM = ${glslFloat(NIGHT_FALL_FROM)};
@@ -451,6 +455,15 @@ ${textureChain(maxTextures, 'vTextureId', (i) => `for (int k = 0; k < OUTLINE_TA
         uncovered *= 1.0 - (inside ? vColor.a * coverage[k] : 0.0);
       }
       float alpha = 1.0 - uncovered;
+      if (vSelection < SELECTION_GHOST_OUTLINE + 0.5) {
+        // An occlusion ghost draws its ring alone: the copies' union less the body's own coverage,
+        // which nothing draws under the ghost to fill.
+        vec2 centreUV = WORLD_MAGNIFY > 0.5 ? clamp(vUV, stampLow, stampHigh) : vUV;
+        bool over = all(greaterThanEqual(centreUV, vFrame.xy)) && all(lessThan(centreUV, vFrame.zw));
+        vec4 centreTexel = sampleTexture(centreUV, uvDx, uvDy);
+        float centre = indexed ? centreTexel.g : centreTexel.a;
+        alpha *= over ? 1.0 - centre : 1.0;
+      }
       finalColor = vColor.a > 0.0 ? vec4(vColor.rgb * (alpha / vColor.a), alpha) : vec4(0.0);
       return;
     }

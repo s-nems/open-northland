@@ -1,13 +1,17 @@
 import type { WorldSnapshot } from '@open-northland/sim';
-import { Container, TextureSource } from 'pixi.js';
+import { Container, Texture, TextureSource } from 'pixi.js';
 import { describe, expect, it } from 'vitest';
+import { HumanPaletteBook } from '../../../src/data/palettes/human-palettes.js';
 import type { ElevationField } from '../../../src/data/terrain/index.js';
-import { SelectionGraphics } from '../../../src/gpu/selection/sprite-effect.js';
+import { GhostOutlineSprite, SelectionGraphics } from '../../../src/gpu/selection/sprite-effect.js';
 import { type PoolFrame, SpritePool } from '../../../src/gpu/sprite-pool/index.js';
-import { GHOST_ALPHA, type GhostOccluder } from '../../../src/gpu/sprite-pool/occlusion.js';
+import { GHOST_ALPHA, GHOST_TINT, type GhostOccluder } from '../../../src/gpu/sprite-pool/occlusion.js';
+import { HumanPaletteLut } from '../../../src/gpu/textures/human-palette-lut.js';
 import { TextureCache } from '../../../src/gpu/textures/texture-cache.js';
-import { SELECTION_STAMP } from '../../../src/gpu/world-batch/shader.js';
+import { SELECTION_GHOST_OUTLINE, SELECTION_STAMP } from '../../../src/gpu/world-batch/shader.js';
+import type { SpriteSheet } from '../../../src/index.js';
 import { entity, snapshotOf } from '../../support/fixtures.js';
+import { flatRamp, syntheticLane, TEST_BASE } from '../../support/human-palettes.js';
 
 /**
  * Occlusion ghosts without a sheet: every entity draws the placeholder marker, whose `pixelHit`
@@ -69,6 +73,72 @@ function frame(snapshot: WorldSnapshot): PoolFrame {
     occlusionGhosts: true,
   };
 }
+
+/** A human palette LUT whose player 0 recipes paint the team band (the band the hero glow's colour
+ *  step reads) one flat colour, the men's and the women's. */
+function teamPaletteLut(
+  male: readonly [number, number, number],
+  female: readonly [number, number, number] = male,
+): HumanPaletteLut {
+  const lane = syntheticLane({ men: flatRamp(...male), women: flatRamp(...female) }, [
+    { name: 'player_00', patches: [{ band: 10, source: { kind: 'ramp', ramp: 'men' }, weight: 1 }] },
+    { name: 'woman_00', patches: [{ band: 10, source: { kind: 'ramp', ramp: 'women' }, weight: 1 }] },
+  ]);
+  return new HumanPaletteLut(new HumanPaletteBook(lane, TEST_BASE), {
+    tierByGood: new Map(),
+    soldierJobs: new Set(),
+  });
+}
+
+/** The animals sheet with a palette LUT, so its settler binds team-coloured PalettedQuads. */
+function sheetWithTeamPalette(
+  male: readonly [number, number, number],
+  female: readonly [number, number, number] = male,
+): SpriteSheet {
+  const source = new TextureSource({ width: 8, height: 8, scaleMode: 'nearest' });
+  const atlas = {
+    width: 8,
+    height: 8,
+    frames: new Map([[1, { x: 0, y: 0, width: 8, height: 8, offsetX: 0, offsetY: 0 }]]),
+  };
+  const character = { body: { source, atlas }, binding: { idle: 1 } };
+  return {
+    source,
+    atlas,
+    bindings: { settler: 1, building: 1, resource: 1 },
+    characters: {
+      byJob: {},
+      default: character,
+      animals: { byTribe: { 7: character }, tribes: new Set([7]) },
+    },
+    palette: teamPaletteLut(male, female),
+  };
+}
+
+/** The team-palette sheet whose character is baked on a plain atlas: its settler draws no team band. */
+function sheetWithBakedSettler(male: readonly [number, number, number]): SpriteSheet {
+  const source = new TextureSource({ width: 8, height: 8, scaleMode: 'nearest' });
+  const atlas = {
+    width: 8,
+    height: 8,
+    frames: new Map([[1, { x: 0, y: 0, width: 8, height: 8, offsetX: 0, offsetY: 0 }]]),
+  };
+  const character = { body: { source, atlas }, binding: { idle: 1 }, indexed: false };
+  return {
+    source,
+    atlas,
+    bindings: { settler: 1, building: 1, resource: 1 },
+    characters: { byJob: {}, default: character },
+    palette: teamPaletteLut(male),
+  };
+}
+
+/** A settler of `player`: a ghost ring reads its tint off the owner slot. */
+const ownedSettler = (id: number, col: number, row: number, player: number): ReturnType<typeof entity> =>
+  entity(id, col, row, { Settler: { tribe: 0 }, Owner: { player } });
+/** A woman of player 0: her body wears the women's team recipe, so her ring must match it. */
+const womanSettler = (id: number, col: number, row: number): ReturnType<typeof entity> =>
+  entity(id, col, row, { Settler: { tribe: 0 }, Owner: { player: 0 }, Female: { female: true } });
 
 describe('SpritePool - a unit a standing sprite hides shows as an occlusion ghost', () => {
   it('stamps the placeholder of a settler half a row behind a building, at the settler anchor', () => {
@@ -239,6 +309,76 @@ describe('SpritePool - a unit a standing sprite hides shows as an occlusion ghos
     expect(pool.occlusionGhosts.container.children.length).toBe(1);
     pool.reconcile({ ...frame(covered), occlusionGhosts: undefined });
     expect(pool.occlusionGhosts.container.children.length).toBe(0);
+    pool.destroy();
+  });
+
+  it('lays the ghost of a bound body as ring quads in the ghost tint, not as filled stamps', () => {
+    const layer = new Container();
+    const pool = new SpritePool(layer, new TextureCache(), sheetWithAnimals());
+    pool.reconcile({ ...frame(snapshotOf([settler(1, 0, 0), house(2, 0, 0.1)])), tick: 1 });
+    const stamp = pool.occlusionGhosts.container.children[0];
+    expect(stamp?.children.length).toBeGreaterThan(0);
+    for (const child of stamp?.children ?? []) {
+      expect(child).toBeInstanceOf(GhostOutlineSprite);
+      const quad = child as GhostOutlineSprite;
+      expect(quad.selectionEffect).toBe(SELECTION_GHOST_OUTLINE);
+      expect(quad.tint).toBe(GHOST_TINT);
+      expect(quad.alpha).toBe(GHOST_ALPHA);
+      // The ring reaches: its grown view past the body and its uv step per unit of reach ride along.
+      expect(quad.reachUv.some((step) => step !== 0)).toBe(true);
+      expect(quad.bodyTexture).not.toBe(Texture.EMPTY);
+      expect(quad.texture.frame.width).toBeGreaterThan(quad.bodyTexture.frame.width);
+    }
+    pool.destroy();
+  });
+
+  it('tints the ring of a ghosted settler with the colour its body wears', () => {
+    const layer = new Container();
+    const pool = new SpritePool(layer, new TextureCache(), sheetWithTeamPalette([0, 255, 0]));
+    pool.reconcile({ ...frame(snapshotOf([ownedSettler(1, 0, 0, 0), house(2, 0, 0.1)])), tick: 1 });
+    const stamp = pool.occlusionGhosts.container.children[0];
+    expect(stamp?.children.length).toBeGreaterThan(0);
+    for (const child of stamp?.children ?? []) expect(child.tint).toBe(0x00ff00);
+    pool.destroy();
+  });
+
+  it('keeps a dark team colour as its body wears it, with no legibility lift', () => {
+    const layer = new Container();
+    const pool = new SpritePool(layer, new TextureCache(), sheetWithTeamPalette([255, 0, 0]));
+    pool.reconcile({ ...frame(snapshotOf([ownedSettler(1, 0, 0, 0), house(2, 0, 0.1)])), tick: 1 });
+    const stamp = pool.occlusionGhosts.container.children[0];
+    expect(stamp?.children.length).toBeGreaterThan(0);
+    for (const child of stamp?.children ?? []) expect(child.tint).toBe(0xff0000);
+    pool.destroy();
+  });
+
+  it("tints a woman's ring with the women's recipe she wears", () => {
+    const layer = new Container();
+    const pool = new SpritePool(layer, new TextureCache(), sheetWithTeamPalette([0, 255, 0], [255, 0, 0]));
+    pool.reconcile({ ...frame(snapshotOf([womanSettler(1, 0, 0), house(2, 0, 0.1)])), tick: 1 });
+    const stamp = pool.occlusionGhosts.container.children[0];
+    expect(stamp?.children.length).toBeGreaterThan(0);
+    for (const child of stamp?.children ?? []) expect(child.tint).toBe(0xff0000);
+    pool.destroy();
+  });
+
+  it('composes the owner colour for a settler whose look is baked on a plain atlas', () => {
+    const layer = new Container();
+    const pool = new SpritePool(layer, new TextureCache(), sheetWithBakedSettler([0, 255, 0]));
+    pool.reconcile({ ...frame(snapshotOf([ownedSettler(1, 0, 0, 0), house(2, 0, 0.1)])), tick: 1 });
+    const stamp = pool.occlusionGhosts.container.children[0];
+    expect(stamp?.children.length).toBeGreaterThan(0);
+    for (const child of stamp?.children ?? []) expect(child.tint).toBe(0x00ff00);
+    pool.destroy();
+  });
+
+  it('falls back to the team step of a player the book lacks, the grey its body draws', () => {
+    const layer = new Container();
+    const pool = new SpritePool(layer, new TextureCache(), sheetWithTeamPalette([0, 255, 0]));
+    pool.reconcile({ ...frame(snapshotOf([ownedSettler(1, 0, 0, 1), house(2, 0, 0.1)])), tick: 1 });
+    const stamp = pool.occlusionGhosts.container.children[0];
+    expect(stamp?.children.length).toBeGreaterThan(0);
+    for (const child of stamp?.children ?? []) expect(child.tint).toBe(0xaaaaaa);
     pool.destroy();
   });
 
