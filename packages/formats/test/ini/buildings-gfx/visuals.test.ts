@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   extractBuildingBobs,
+  extractBuildingDoors,
   extractBuildingFlagPoints,
   extractBuildingGraphics,
   extractBuildingHolyFirePoints,
@@ -117,6 +118,22 @@ GfxBobId 0 3
 GfxFlagPoint 0 17 70
 GfxFlagPoint 0 17 72
 `;
+
+describe('extractBuildingDoors', () => {
+  it('joins each open-door bob to the typeId of its level, once per palette', () => {
+    const ini = `${GFXHOUSE_LAYERS_INI}Gfxdoorbobid 0 1 56\nGfxdoorbobid 1 1 115\nGfxdoorbobid 5 1 9\n`;
+    const doors = extractBuildingDoors(parseIniSections(ini), {
+      file: 'budynki12/houses/houses.ini',
+      layer: 'mod',
+    });
+    expect(doors.map((d) => [d.typeId, d.level, d.paletteName, d.bobId])).toEqual([
+      [2, 0, 'house01', 56],
+      [2, 0, 'house02', 56],
+      [3, 1, 'house01', 115],
+      [3, 1, 'house02', 115],
+    ]);
+  });
+});
 
 describe('extractBuildingFlagPoints', () => {
   const src = { file: 'budynki12/houses/houses.ini', block: 'GfxHouse', layer: 'mod' as const };

@@ -8,6 +8,7 @@ import {
   buildingOverlayRefsByType,
   constructionRefsByType,
   DEFAULT_BUILDING_FAMILY,
+  doorBobsByBody,
   skinSlotCount,
 } from '../../../src/content/building-gfx/index.js';
 import type { BuildingBobRow } from '../../../src/content/ir/rows.js';
@@ -350,5 +351,38 @@ describe('buildingOverlayRefsByType - the type-4 GfxOverlay join (the mill rotor
     const out = buildingOverlayRefsByType(rows, scope(1, MILLER_FAMILIES));
     expect(Object.keys(out)).toEqual(['13']);
     expect(out[13]?.idle).toBe(76);
+  });
+});
+
+describe('doorBobsByBody', () => {
+  it("keys each door by the body its own record draws at that level, in the body's family layer", () => {
+    const house = {
+      bmd: `data/x/${DEFAULT_BUILDING_FAMILY.bmdBasename}`,
+      paletteName: DEFAULT_BUILDING_FAMILY.paletteName,
+    };
+    const bodies = [
+      bobRow(6, 41, house),
+      bobRow(7, 44, { ...house, level: 1 }),
+      bobRow(20, 3, { bmd: VIKING4_BMD }),
+      bobRow(21, 9, { bmd: VIKING2_BMD }),
+      bobRow(22, 47, { ...house, level: 2 }),
+      bobRow(23, 45, { ...house, level: 3 }),
+      bobRow(24, 45, { ...house, level: 3 }),
+    ];
+    const doors = [
+      bobRow(6, 56, house),
+      bobRow(7, 57, { ...house, level: 1 }),
+      bobRow(20, 30, { bmd: VIKING4_BMD }),
+      bobRow(21, 90, { bmd: VIKING2_BMD }), // its family is not loaded
+      bobRow(8, 58, house), // no body at this type and level
+      bobRow(22, 41, { ...house, level: 2 }), // names another house's body, a placeholder row
+      bobRow(23, 60, { ...house, level: 3 }),
+      bobRow(24, 61, { ...house, level: 3 }), // a second record claims body 45 with another door
+    ];
+    expect(doorBobsByBody(bodies, doors, FAMILIES)).toEqual({
+      '41:': 56,
+      '44:': 57,
+      '3:ls_houses_viking4.house01': 30,
+    });
   });
 });

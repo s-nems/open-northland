@@ -10,6 +10,7 @@ import {
 import type { WorldTribes } from '../../game/world-tribes.js';
 import type { ContentIr } from '../ir/rows.js';
 import { constructionRefsByType, upgradeRefsByType } from './construction.js';
+import { doorBobsByBody } from './doors.js';
 import {
   type BuildingFamily,
   type BuildingRefScope,
@@ -88,11 +89,13 @@ export function buildingBinding(
     if (b.typeId !== undefined && b.upgradeTarget !== undefined)
       upgradeTargetByType[b.typeId] = b.upgradeTarget;
   }
+  const doorByBody = doorBobsByBody(perType?.buildingBobs ?? [], perType?.buildingDoors ?? [], families);
   return {
     ...base,
     default: HOUSE_BOB,
     byTribe,
     ...(byRecord.size > 0 ? { byRecord } : {}),
+    ...(Object.keys(doorByBody).length > 0 ? { doorByBody } : {}),
     ...(Object.keys(upgradeTargetByType).length > 0 ? { upgradeTargetByType } : {}),
   };
 }

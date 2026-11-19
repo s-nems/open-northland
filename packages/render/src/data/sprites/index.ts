@@ -17,6 +17,7 @@ export {
   finishedBuildingBobKeys,
   type ResourceDraw,
   raisesUpgradeRows,
+  resolveBuildingDoorDraw,
   resolveBuildingDraw,
   resolveBuildingOverlayDraw,
   resolveConstructionDraws,

@@ -17,6 +17,7 @@ import { type BuildingDoorInfoOf, computeDoorBadges, type DoorBadgeCache } from 
 import { computeExperienceStars, type ExperienceStarInputs } from './experience-stars.js';
 import type { FogGates } from './fog-gates.js';
 import { computeLifeHearts, type LifeHeartInputs } from './life-hearts.js';
+import { computeOpenDoors } from './open-doors.js';
 import { computeRoadEntrances } from './road-entrances.js';
 import { computeSettlerBubbles } from './settler-bubbles.js';
 
@@ -135,6 +136,9 @@ export function createSnapshotProjections(
     snapshot: WorldSnapshot,
     viewport?: Viewport,
   ) => ReturnType<typeof computeExperienceStars>;
+  /** The buildings under the sprites' cull `viewport` whose door stands open: the same set object for as
+   *  long as its members hold. */
+  readonly openDoorsFor: (snapshot: WorldSnapshot, viewport: Viewport) => ReadonlySet<number>;
   /** The entrances of `owner`'s buildings the road tool lights, under the sprites' cull `viewport`. */
   readonly roadEntrancesFor: (
     snapshot: WorldSnapshot,
@@ -202,6 +206,16 @@ export function createSnapshotProjections(
       ? badges
       : badges.filter((badge) => fogTileVisible(fog, badge.x / ONE, badge.y / ONE));
   }, viewerVersion);
+  let openDoors: ReadonlySet<number> = new Set();
+  const openDoorsFor = memoByScreen(
+    (snapshot, box) => {
+      if (box === undefined) return openDoors;
+      const open = computeOpenDoors(snapshot, buildingInfoOf, hearts.isLivestockTribe, box);
+      if (open.length !== openDoors.size || !open.every((id) => openDoors.has(id))) openDoors = new Set(open);
+      return openDoors;
+    },
+    () => 0,
+  );
   // One memo per side the road tool lays for: the player's own, or another the admin tool picks.
   const roadEntrances = new Map<number, ScreenMemo<readonly PlacementOverlayCell[]>>();
   const roadEntrancesFor = (
@@ -246,6 +260,7 @@ export function createSnapshotProjections(
       }
       return lifeHearts(snapshot, viewport);
     },
+    openDoorsFor,
     roadEntrancesFor,
   };
 }

@@ -265,6 +265,20 @@ export function resolveBuildingOverlayDraw(
   return overlay.layer === undefined ? { bob: overlay.idle } : { bob: overlay.idle, layer: overlay.layer };
 }
 
+/** A finished building's open door, drawn from its body's layer, or `null` while the door is shut, the
+ *  building rises or upgrades, or its body has no door bob. */
+export function resolveBuildingDoorDraw(
+  binding: number | BuildingTypeBinding,
+  item: DrawItem,
+): BuildingDraw | null {
+  if (typeof binding === 'number' || item.doorOpen !== true) return null;
+  if (item.builtPct !== undefined || item.upgradePct !== undefined) return null;
+  const body = resolveBuildingDraw(binding, item);
+  const bob = binding.doorByBody?.[bobKey(body)];
+  if (bob === undefined) return null;
+  return body.layer === undefined ? { bob } : { bob, layer: body.layer };
+}
+
 /** A resource draw; `looping` marks a frame of a {@link ResourceLoopRef}, which changes with the tick. */
 export interface ResourceDraw extends BuildingDraw {
   readonly looping?: true;

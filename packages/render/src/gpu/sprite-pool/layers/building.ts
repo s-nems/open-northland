@@ -5,6 +5,7 @@ import {
   type ConstructionDraw,
   finishedBuildingBobKeys,
   raisesUpgradeRows,
+  resolveBuildingDoorDraw,
   resolveBuildingDraw,
   resolveBuildingOverlayDraw,
   resolveConstructionDraws,
@@ -87,7 +88,8 @@ export function pushBuildingLayers(
 }
 
 /**
- * The layers above a finished building's body: its animated state overlay (the mill's rotor) and, for an
+ * The layers above a finished building's body: its animated state overlay (the mill's rotor), its open
+ * door and, for an
  * upgrading building that keeps its old-tier body, the target tier's foundation and timber stages, then
  * its next-tier body from the upgrade rows or else from the construction stack's body stage.
  */
@@ -116,6 +118,11 @@ export function pushBuildingExtras(out: LayerBuffer, sheet: SpriteSheet, item: D
       frames.set(bob, layer);
     }
     out.push(layer);
+  }
+  const doorDraw = resolveBuildingDoorDraw(sheet.bindings.building, item);
+  if (doorDraw !== null) {
+    const resolved = layeredLayerFor(sheet, 'building', doorDraw);
+    if (resolved !== null) out.push(boundsExemptLayerFor(resolved));
   }
   // The target's foundation and timber rise in front of the old body, then the next-tier body over them.
   const construction = resolveUpgradeConstructionDraws(sheet.bindings.building, item);

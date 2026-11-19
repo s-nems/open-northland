@@ -179,6 +179,7 @@ export function perTypeHouseRows(ir: ContentIr | null): ContentIr | null {
     buildingBobs: keep(ir.buildingBobs),
     constructionLayers: keep(ir.constructionLayers),
     buildingOverlays: keep(ir.buildingOverlays),
+    buildingDoors: keep(ir.buildingDoors),
     buildingLandscapeOverlays: keep(ir.buildingLandscapeOverlays),
     buildingFlagPoints: keep(ir.buildingFlagPoints),
     buildingSoldierFlagPoints: keep(ir.buildingSoldierFlagPoints),

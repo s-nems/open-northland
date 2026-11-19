@@ -174,6 +174,8 @@ export interface PoolFrame {
   /** Entities not drawn for now (waiting for a presentation to end, or hidden from the viewer); skipped
    *  like {@link staticRefs}. A change hands a new set, which keys the cached scene build. */
   readonly withheldRefs?: ReadonlySet<number>;
+  /** Buildings whose door stands open; a change hands a new set, which keys the cached scene build. */
+  readonly openDoors?: ReadonlySet<number>;
   /** The fog-of-war cull: entities on tiles it rejects stay pooled but undrawn. Absent = no fog. */
   readonly fogVisible?: (tileX: number, tileY: number) => boolean;
   /** Version of the fog cull's answers, bumped by the fog owner whenever `fogVisible` may answer
@@ -1170,6 +1172,7 @@ export class SpritePool {
         elevation: frame.elevation,
         staticRefs: frame.staticRefs,
         withheldRefs: frame.withheldRefs,
+        openDoors: frame.openDoors,
         fogVisible: frame.fogVisible,
         fogEpoch: frame.fogEpoch,
         ghosts: frame.ghosts,

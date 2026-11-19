@@ -173,6 +173,7 @@ export class WorldRenderer {
   private hoverOutline = true;
   private groupNumbersShown = false;
   private withheldRefs: ReadonlySet<number> | undefined;
+  private openDoors: ReadonlySet<number> | undefined;
 
   constructor(app: Application, opts?: WorldRendererOptions) {
     installWorldBatcher(); // before the sprite layer's render group builds its first batch
@@ -559,6 +560,11 @@ export class WorldRenderer {
     this.withheldRefs = refs.size > 0 ? refs : undefined;
   }
 
+  /** The buildings whose door stands open this frame. Pass a new set on every change. */
+  setOpenDoors(buildings: ReadonlySet<number>): void {
+    this.openDoors = buildings.size > 0 ? buildings : undefined;
+  }
+
   update(frame: WorldFrame): void {
     this.textureCache.beginFrame();
     this.prescaler.update(this.textureCache);
@@ -684,6 +690,7 @@ export class WorldRenderer {
       shadowStyle: this.enhancements.softShadows ? DEFAULT_SHADOW_STYLE : undefined,
       ...fogFrame,
       ...(this.withheldRefs !== undefined ? { withheldRefs: this.withheldRefs } : {}),
+      ...(this.openDoors !== undefined ? { openDoors: this.openDoors } : {}),
       ...(this.targetMarks !== undefined ? { marks: this.targetMarks } : {}),
       ...(erased.size > 0 ? { erased } : {}),
       ...(portrait.ref !== null ? { portraitRef: portrait.ref } : {}),

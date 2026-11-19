@@ -202,6 +202,9 @@ export interface DrawItem extends Readonly<StaticDrawFields> {
    *  state overlay such as the mill's rotor. Approximation of the original's overlay state 1:
    *  `Production` persists through a brief worker-away pause, whose exact behaviour is unobserved. */
   readonly working?: boolean;
+  /** For a finished building: its door stands open. Original behavior: the open-door bob draws while a
+   *  visible settler of the building's player stands on the door node or one beside it. */
+  readonly doorOpen?: boolean;
   /** For a projectile: flight heading in screen space (radians, 0 = screen-east, clockwise), tilted
    *  along the drawn arc's tangent when the launch origin is readable. */
   readonly rotation?: number;
@@ -329,6 +332,7 @@ export function newDrawItem(
     upgradePct: undefined,
     upgradeTypeId: undefined,
     working: undefined,
+    doorOpen: undefined,
     landscapeOverlayMask: undefined,
     hpFrac: undefined,
     rotation: undefined,

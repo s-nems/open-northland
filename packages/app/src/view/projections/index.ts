@@ -14,6 +14,7 @@ export * from './fog-gates.js';
 export * from './geometry-debug-items.js';
 export * from './hud-labels.js';
 export * from './life-hearts.js';
+export * from './open-doors.js';
 export * from './rally-banners.js';
 export * from './range-rings.js';
 export * from './road-entrances.js';

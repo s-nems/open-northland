@@ -31,6 +31,16 @@ export const BuildingBob = BuildingBobBase.extend({
 export type BuildingBob = z.infer<typeof BuildingBob>;
 
 /**
+ * One `[GfxHouse]` open-door bob: `Gfxdoorbobid <level> 1 <bobId>`, drawn over the finished body of
+ * that level. Only the state-`1` (open) rows are extracted; the source lists no other state.
+ */
+export const BuildingDoor = BuildingBobBase.extend({
+  /** The atlas bob of the door swung open. */
+  bobId: z.number().int().nonnegative(),
+});
+export type BuildingDoor = z.infer<typeof BuildingDoor>;
+
+/**
  * One `[GfxHouse]` construction-stage layer: `GfxBobConstructionLayer <sizeIdx> <upgrade> <bobId>
  * <shadowBobId|-1> <fromPct> <toPct>`. A level's ranges overlap: at build progress `p` every layer
  * whose range contains `p` draws, stacked in file order, so the last active layer lands on top.

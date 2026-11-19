@@ -5,6 +5,7 @@
 import {
   BuildingBob,
   BuildingConstructionLayer,
+  BuildingDoor,
   BuildingFlagPoint,
   BuildingHolyFirePoint,
   BuildingOverlay,
@@ -69,6 +70,39 @@ export function extractConstructionLayers(
     }
   }
   return layers;
+}
+
+/** The `Gfxdoorbobid` state (2nd int) naming the door swung open. */
+const DOOR_STATE_OPEN = 1;
+
+/** Extracts the open-door bobs, `Gfxdoorbobid <sizeIdx> 1 <bobId>`, one row per palette skin. */
+export function extractBuildingDoors(sections: readonly RuleSection[], src: SourceRef): BuildingDoor[] {
+  const doors: BuildingDoor[] = [];
+  for (const record of gfxHouseGraphicsRecords(sections)) {
+    const { rec, tribeId, normalizedBmd, palettes, editName, typeByLevel } = record;
+    for (const p of findProps(rec, 'Gfxdoorbobid')) {
+      const [level, state, bobId] = p.values.map((v) => Number.parseInt(v, 10));
+      if (level === undefined || state !== DOOR_STATE_OPEN || bobId === undefined) continue;
+      if (Number.isNaN(level) || Number.isNaN(bobId) || bobId < 0) continue;
+      const typeId = typeByLevel.get(level);
+      if (typeId === undefined) continue;
+      for (const paletteName of palettes) {
+        doors.push(
+          BuildingDoor.parse({
+            tribeId,
+            typeId,
+            level,
+            bobId,
+            bmd: normalizedBmd,
+            paletteName: normalizePaletteName(paletteName),
+            editName,
+            source: makeSource(src, 'GfxHouse'),
+          }),
+        );
+      }
+    }
+  }
+  return doors;
 }
 
 /** The `GfxOverlay` type discriminator (2nd int) of the two-state animated overlays. */

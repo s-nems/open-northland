@@ -1337,6 +1337,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       settlerBubblesFor,
       lifeHeartsFor,
       experienceStarsFor,
+      openDoorsFor,
       roadEntrancesFor,
     } = await createViewReadModels({
       authoredBuildings:
@@ -1706,6 +1707,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       settlerBubblesFor,
       lifeHeartsFor,
       experienceStarsFor,
+      openDoorsFor,
       roadEntrancesFor,
       canPlaceAt,
       shipWaterAt: placementGates.shipWaterAt,

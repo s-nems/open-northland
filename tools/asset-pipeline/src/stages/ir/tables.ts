@@ -6,6 +6,7 @@ import {
   extractAtomicAnimations,
   extractBobSequences,
   extractBuildingBobs,
+  extractBuildingDoors,
   extractBuildingFlagPoints,
   extractBuildingFootprints,
   extractBuildingHolyFirePoints,
@@ -89,6 +90,7 @@ export async function extractIniTables(roots: SourceRoots, sources: readonly Ini
   const buildingBobs: ReturnType<typeof extractBuildingBobs> = [];
   const constructionLayers: ReturnType<typeof extractConstructionLayers> = [];
   const buildingOverlays: ReturnType<typeof extractBuildingOverlays> = [];
+  const buildingDoors: ReturnType<typeof extractBuildingDoors> = [];
   const buildingLandscapeOverlays: ReturnType<typeof extractBuildingLandscapeOverlays> = [];
   const buildingFlagPoints: ReturnType<typeof extractBuildingFlagPoints> = [];
   const buildingSoldierFlagPoints: ReturnType<typeof extractBuildingSoldierFlagPoints> = [];
@@ -104,6 +106,7 @@ export async function extractIniTables(roots: SourceRoots, sources: readonly Ini
     buildingBobs.push(...extractBuildingBobs(sections, src));
     constructionLayers.push(...extractConstructionLayers(sections, src));
     buildingOverlays.push(...extractBuildingOverlays(sections, src));
+    buildingDoors.push(...extractBuildingDoors(sections, src));
     buildingLandscapeOverlays.push(...extractBuildingLandscapeOverlays(sections, src));
     buildingFlagPoints.push(...extractBuildingFlagPoints(sections, src));
     buildingSoldierFlagPoints.push(...extractBuildingSoldierFlagPoints(sections, src));
@@ -176,6 +179,7 @@ export async function extractIniTables(roots: SourceRoots, sources: readonly Ini
     buildingBobs,
     constructionLayers,
     buildingOverlays,
+    buildingDoors,
     buildingLandscapeOverlays,
     buildingFlagPoints,
     buildingSoldierFlagPoints,

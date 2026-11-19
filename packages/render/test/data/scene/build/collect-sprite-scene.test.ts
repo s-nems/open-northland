@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { SpriteDepthOrder } from '../../../../src/data/scene/build/depth-order.js';
-import { collectSpriteScene, SceneItemMemo, type SpriteScene } from '../../../../src/data/scene/index.js';
+import {
+  collectSpriteScene,
+  indoorHouseOf,
+  isIndoorSettler,
+  SceneItemMemo,
+  type SpriteScene,
+} from '../../../../src/data/scene/index.js';
 import { buildSpriteScene, ONE, tileToScreen } from '../../../../src/index.js';
 import { entity, ghostSourceOf, snapshotOf } from '../../../support/fixtures.js';
 
@@ -96,6 +102,88 @@ describe('collectSpriteScene - the single-pass draw list + liveness set', () => 
     const drawnSettlers = scene.items.filter((d) => d.kind === 'settler').map((d) => d.ref);
     expect(drawnSettlers.sort()).toEqual([3, 4, 5]);
     expect(liveOf(scene, [1, 2, 3, 4, 5, 10, 11, 12])).toEqual([1, 2, 3, 4, 5, 10, 11, 12]);
+  });
+
+  it('hides a settler taking gear or lifting a trade unit by hand inside a store, not one beside its cart', () => {
+    const acting = (id: number, effect: Record<string, unknown>, extra: Record<string, unknown> = {}) =>
+      entity(id, 2, 2, { Settler: { tribe: 0 }, CurrentAtomic: { effect }, ...extra });
+    const scene = collectSpriteScene(
+      snapshotOf([
+        entity(10, 2, 2, { Building: { buildingType: 1, tribe: 1, built: ONE, level: 0 } }),
+        entity(12, 6, 6, { Stockpile: { amounts: [[1, 2]] } }),
+        acting(1, { kind: 'equip', from: 10, goodType: 1, group: 'weapon', slot: 0 }),
+        acting(2, { kind: 'unequip', group: 'weapon', slot: 0, sink: 10 }),
+        acting(3, { kind: 'tradeUnload', store: 10, goodType: 1 }),
+        acting(4, { kind: 'equip', from: 12, goodType: 1, group: 'weapon', slot: 0 }),
+        acting(5, { kind: 'unequip', group: 'weapon', slot: 0, sink: null }),
+        acting(6, { kind: 'tradeUnload', store: 10, goodType: 1 }, { HaulingCart: { vehicle: 20 } }),
+      ]),
+    );
+    const drawnSettlers = scene.items.filter((d) => d.kind === 'settler').map((d) => d.ref);
+    expect(drawnSettlers.sort()).toEqual([4, 5, 6]);
+  });
+
+  it('shows a cart lift at a store as half inside it and half at the cart', () => {
+    const lifting = (id: number, kind: string, startedAt: number) =>
+      entity(id, 2, 2, {
+        Settler: { tribe: 0 },
+        HaulingCart: { vehicle: 20 },
+        CurrentAtomic: { duration: 12, effect: { kind, store: 10, from: 10, goodType: 1 } },
+        AtomicClock: { startedAt },
+      });
+    const TICK = 100;
+    const scene = collectSpriteScene(
+      snapshotOf(
+        [
+          entity(10, 2, 2, { Building: { buildingType: 1, tribe: 1, built: ONE, level: 0 } }),
+          lifting(1, 'haulUnload', TICK - 2), // still at the cart with the unit
+          lifting(2, 'haulUnload', TICK - 8), // carrying it in
+          lifting(3, 'tradeLoad', TICK - 2), // inside for the unit
+          lifting(4, 'tradeLoad', TICK - 8), // setting it into the cart
+        ],
+        TICK,
+      ),
+    );
+    const drawnSettlers = scene.items.filter((d) => d.kind === 'settler').map((d) => d.ref);
+    expect(drawnSettlers.sort()).toEqual([1, 4]);
+  });
+
+  it('opens the door of the buildings named open, on one item per building while it holds', () => {
+    const house = entity(10, 2, 2, { Building: { buildingType: 1, tribe: 1, built: ONE, level: 0 } });
+    const snapshot = snapshotOf([house]);
+    const doorOf = (openDoors?: ReadonlySet<number>) =>
+      collectSpriteScene(snapshot, { openDoors }).items.find((d) => d.ref === 10);
+    expect(doorOf()?.doorOpen).toBeUndefined();
+    expect(doorOf(new Set([10]))?.doorOpen).toBe(true);
+    expect(doorOf(new Set([11]))?.doorOpen).toBeUndefined();
+
+    // The pool binds by item identity: a held building keeps one shut item and one open twin.
+    const memo = new SceneItemMemo();
+    const held = (openDoors?: ReadonlySet<number>) =>
+      collectSpriteScene(snapshot, { openDoors }, undefined, memo).items.find((d) => d.ref === 10);
+    const shut = held();
+    const open = held(new Set([10]));
+    expect(open).not.toBe(shut);
+    expect(held(new Set([10]))).toBe(open);
+    expect(held()).toBe(shut);
+  });
+
+  it('shows a cart lift in the scene only: the portrait frames no house that flips within a lift', () => {
+    const snapshot = snapshotOf(
+      [
+        entity(10, 2, 2, { Building: { buildingType: 1, tribe: 1, built: ONE, level: 0 } }),
+        entity(1, 2, 2, {
+          Settler: { tribe: 0 },
+          HaulingCart: { vehicle: 20 },
+          CurrentAtomic: { duration: 12, effect: { kind: 'haulLoad', from: 10, goodType: 1 } },
+          AtomicClock: { startedAt: 98 },
+        }),
+      ],
+      100,
+    );
+    const carrier = snapshot.entities.find((e) => e.id === 1)?.components ?? {};
+    expect(isIndoorSettler(snapshot, carrier)).toBe(true);
+    expect(indoorHouseOf(snapshot, carrier)).toBeNull();
   });
 
   it('hides a settler RESTING inside its workplace (waiting between chores), keeping it live', () => {

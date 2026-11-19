@@ -1,5 +1,5 @@
 import { terrainWorldBounds, type Viewport } from '@open-northland/render';
-import { FOG_MODE, FOG_STATE, fx } from '@open-northland/sim';
+import { FOG_MODE, FOG_STATE, fx, positionOfNode } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import { workerRoleOf } from '../../../src/game/sandbox/index.js';
 import { trainingOccupancyOf, trainingQueueOf } from '../../../src/game/snapshot/index.js';
@@ -144,6 +144,30 @@ describe('createSnapshotProjections - memoized by snapshot identity', () => {
     });
     expect(doorBadgesFor(world)).toHaveLength(0);
     expect(lifeHeartsFor(world)).toHaveLength(0);
+  });
+
+  it('hands the renderer the same open-door set until a door moves', () => {
+    const { openDoorsFor } = createSnapshotProjections(
+      fixedViewerSeat(PLAYER),
+      () => ({ footprint: { door: { dx: 0, dy: 2 } } }),
+      workerRoleOf,
+      createFogGates(),
+      MAP_SIZE,
+      { isLivestockTribe: () => false },
+    );
+    const home = building(10, HOME_TYPE, 1, 2);
+    const house: Ent = { ...home, components: { ...home.components, Owner: { player: 0 } } };
+    // Tile (1, 2) anchors at node (2, 4); the door stands two rows in front of it.
+    const atDoor: Ent = {
+      id: 20,
+      components: { Settler: { tribe: 1 }, Owner: { player: 0 }, Position: positionOfNode(2, 6) },
+    };
+    const screen: Viewport = { minX: 0, minY: 0, maxX: 800, maxY: 600 };
+
+    const open = openDoorsFor(snapshotOf([house, atDoor], 1), screen);
+    expect([...open]).toEqual([10]);
+    expect(openDoorsFor(snapshotOf([house, atDoor], 2), screen)).toBe(open);
+    expect([...openDoorsFor(snapshotOf([house], 3), screen)]).toEqual([]);
   });
 
   it("lights each road side's own doors, and none under the viewer's fog, for one held snapshot", () => {

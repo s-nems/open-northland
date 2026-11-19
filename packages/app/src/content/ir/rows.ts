@@ -109,6 +109,9 @@ export interface ConstructionLayerRow {
   readonly source?: HouseRowSource;
 }
 
+/** One `[GfxHouse]` `Gfxdoorbobid` row: `bobId` is the open door drawn over that level's finished body. */
+export type BuildingDoorRow = BuildingBobRow;
+
 /** One `[GfxHouse]` type-4 `GfxOverlay` row - a finished building's animated state overlay (the mill
  *  rotor, the mason hut's work): `state` 0 = the idle still frame, `state` 1 = the working frames. */
 export interface BuildingOverlayRow {
@@ -229,6 +232,7 @@ export interface ContentIr {
   readonly constructionLayers?: readonly ConstructionLayerRow[];
   readonly buildingLandscapeOverlays?: readonly BuildingLandscapeOverlay[];
   readonly buildingOverlays?: readonly BuildingOverlayRow[];
+  readonly buildingDoors?: readonly BuildingDoorRow[];
   readonly buildingFlagPoints?: readonly BuildingFlagPointRow[];
   /** `gfxsoldierflagpoint` - the mast a manned post flies its garrison flag from; observed only on the
    *  tower records. */

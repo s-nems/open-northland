@@ -13,6 +13,7 @@ import { BobSequenceSet } from '../graphics/bob-sequences.js';
 import {
   BuildingBob,
   BuildingConstructionLayer,
+  BuildingDoor,
   BuildingFlagPoint,
   BuildingHolyFirePoint,
   BuildingLandscapeOverlay,
@@ -88,6 +89,8 @@ export const ContentSet = z.strictObject({
   constructionLayers: z.array(BuildingConstructionLayer).default([]),
   /** `[GfxHouse]` `GfxOverlay` type-4 animated state overlays, such as the mill rotor. */
   buildingOverlays: z.array(BuildingOverlay).default([]),
+  /** `[GfxHouse]` `Gfxdoorbobid` open-door bobs, one per level that has one. */
+  buildingDoors: z.array(BuildingDoor).default([]),
   buildingLandscapeOverlays: z.array(BuildingLandscapeOverlay).default([]),
   /** `[GfxHouse]` `GfxFlagPoint` anchors: where a building's sign chain plants. */
   buildingFlagPoints: z.array(BuildingFlagPoint).default([]),

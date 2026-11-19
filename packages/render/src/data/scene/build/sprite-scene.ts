@@ -81,6 +81,8 @@ export interface SpriteSceneOptions {
    *  trunk pile and stump under its falling clip) or hidden from the viewer. Skipped like
    *  {@link staticRefs}. */
   readonly withheldRefs?: ReadonlySet<number> | undefined;
+  /** Buildings whose door stands open ({@link DrawItem.doorOpen}). A change hands a new set. */
+  readonly openDoors?: ReadonlySet<number> | undefined;
   /** The fog-of-war cull; absent = no fog. An entity whose tile it rejects is treated like a
    *  viewport-culled one: no draw item, but kept live so its pooled sprite survives until the fog
    *  lifts. */
@@ -358,6 +360,19 @@ function ownItemsOf(
   return { item, extras, readIds, reads: readIds.map((id) => entityById(snapshot, id)) };
 }
 
+const openDoorTwins = new WeakMap<SpriteDrawItem, SpriteDrawItem>();
+
+/** `item` with its door open: one twin per item, so a building holding its item holds its open twin
+ *  too and the pool rebinds only when the door moves. */
+function withOpenDoor(item: SpriteDrawItem): SpriteDrawItem {
+  let twin = openDoorTwins.get(item);
+  if (twin === undefined) {
+    twin = { ...item, doorOpen: true };
+    openDoorTwins.set(item, twin);
+  }
+  return twin;
+}
+
 /** Reused query outputs of the incremental build. */
 const rebuiltCandidates: EntitySnapshot[] = [];
 const exposedCandidates: EntitySnapshot[] = [];
@@ -374,6 +389,7 @@ function collectScene(
     elevation,
     staticRefs,
     withheldRefs,
+    openDoors,
     fogVisible,
     ghosts,
     keepIndoorSettlers,
@@ -530,7 +546,7 @@ function collectScene(
       liveVehicles ??= new Set();
       liveVehicles.add(entity.id);
     }
-    list.push(item);
+    list.push(kind === 'building' && openDoors?.has(entity.id) === true ? withOpenDoor(item) : item);
     if (anchors !== undefined && !isSelfContainedKind(kind, 'DeliveryFlag' in entity.components)) {
       for (let i = firstPushed; i < list.size; i++) {
         const pushed = list.at(i);

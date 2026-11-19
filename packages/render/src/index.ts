@@ -132,6 +132,7 @@ export {
   type BuildingTypeBinding,
   type BuildTimeSheet,
   type ByJobTable,
+  bobKey,
   buildTimeThreshold,
   type CarryingBinding,
   type CartDriveAnim,

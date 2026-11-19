@@ -5,6 +5,7 @@ import {
   buildTimeThreshold,
   finishedBuildingBobKeys,
   houseRecordKey,
+  resolveBuildingDoorDraw,
   resolveBuildingDraw,
   resolveBuildingOverlayDraw,
   resolveConstructionDraws,
@@ -370,6 +371,28 @@ describe('buildTimeThreshold - progress → TimeMask threshold within a stage wi
     expect(buildTimeThreshold(1.2, 20, 100)).toBe(255);
     expect(buildTimeThreshold(0.3, 40, 40)).toBe(0); // degenerate: nothing until reached...
     expect(buildTimeThreshold(0.5, 40, 40)).toBe(255); // ...then everything
+  });
+});
+
+describe('resolveBuildingDoorDraw', () => {
+  const binding: BuildingTypeBinding = {
+    byType: { 6: 41, 13: { layer: 'miller', bob: 70 }, 14: 80 },
+    default: 11,
+    doorByBody: { [bobKey({ bob: 41 })]: 56, [bobKey({ bob: 70, layer: 'miller' })]: 77 },
+  };
+  const house = (typeId: number, fields: Partial<DrawItem> = { doorOpen: true }): DrawItem =>
+    drawItem('building', { typeId, ...fields });
+
+  it("draws the open door of the body the building draws, from that body's layer", () => {
+    expect(resolveBuildingDoorDraw(binding, house(6))).toEqual({ bob: 56 });
+    expect(resolveBuildingDoorDraw(binding, house(13))).toEqual({ bob: 77, layer: 'miller' });
+  });
+
+  it('draws none while shut, for a body without a door bob, or on a site', () => {
+    expect(resolveBuildingDoorDraw(binding, house(6, {}))).toBeNull();
+    expect(resolveBuildingDoorDraw(binding, house(14))).toBeNull();
+    expect(resolveBuildingDoorDraw(binding, house(6, { doorOpen: true, builtPct: 50 }))).toBeNull();
+    expect(resolveBuildingDoorDraw(binding, house(6, { doorOpen: true, upgradePct: 50 }))).toBeNull();
   });
 });
 

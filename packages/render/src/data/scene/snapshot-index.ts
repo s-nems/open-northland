@@ -14,6 +14,7 @@ import {
   readActingAtomic,
   readAtomicTargetEntity,
   readBuiltPct,
+  readCartLiftStoreRef,
   readCraftWorkplace,
   readPosition,
   readStoreExchangeRef,
@@ -232,9 +233,9 @@ export function enterableStoresOf(snapshot: WorldSnapshot): ReadonlySet<number> 
 
 /**
  * The building the scene hides this settler inside, or null: the `Resting` marker's building, or an
- * enterable store the settler exchanges goods with through the generic pick-up rather than the store's
- * own outdoor action. Shared so an overlay does not hang over an empty doorway the scene drew nobody
- * in, and so the portrait can frame the building instead.
+ * enterable store the settler exchanges goods or gear with through the generic pick-up rather than the
+ * store's own outdoor action. Shared so an overlay does not hang over an empty doorway the scene drew
+ * nobody in, and so the portrait can frame the building instead.
  */
 export function indoorHouseOf(
   snapshot: WorldSnapshot,
@@ -249,11 +250,15 @@ export function indoorHouseOf(
   return acting === null || !OUTDOOR_EXCHANGE_ATOMIC_IDS.has(acting) ? store : null;
 }
 
+/** Whether the scene hides this settler: inside a building ({@link indoorHouseOf}), or on the store half
+ *  of a lift beside its hauling cart, which changes within the lift and so frames no portrait. */
 export function isIndoorSettler(
   snapshot: WorldSnapshot,
   components: Readonly<Record<string, unknown>>,
 ): boolean {
-  return 'Resting' in components || indoorHouseOf(snapshot, components) !== null;
+  if ('Resting' in components || indoorHouseOf(snapshot, components) !== null) return true;
+  const lift = readCartLiftStoreRef(components, snapshot.tick);
+  return lift !== null && enterableStoresOf(snapshot).has(lift);
 }
 
 /**

@@ -37,9 +37,9 @@ function withAddedPalettes<T extends PalettedHouseRow>(rows: readonly T[]): read
 }
 
 /** The IR with {@link ADDED_HOUSE_PALETTES} in every paletted `[GfxHouse]` lane: bodies, construction
- *  stages and state overlays, so a building's skin slot draws all three in the same palette. */
+ *  stages, state overlays and doors, so a building's skin slot draws them all in the same palette. */
 export function withAddedHousePalettes(ir: ContentIr): ContentIr {
-  const { buildingBobs, constructionLayers, buildingOverlays } = ir;
+  const { buildingBobs, constructionLayers, buildingOverlays, buildingDoors } = ir;
   return {
     ...ir,
     ...(buildingBobs !== undefined ? { buildingBobs: withAddedPalettes(buildingBobs) } : {}),
@@ -47,5 +47,6 @@ export function withAddedHousePalettes(ir: ContentIr): ContentIr {
       ? { constructionLayers: withAddedPalettes(constructionLayers) }
       : {}),
     ...(buildingOverlays !== undefined ? { buildingOverlays: withAddedPalettes(buildingOverlays) } : {}),
+    ...(buildingDoors !== undefined ? { buildingDoors: withAddedPalettes(buildingDoors) } : {}),
   };
 }

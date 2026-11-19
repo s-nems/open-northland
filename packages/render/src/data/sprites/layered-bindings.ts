@@ -63,6 +63,9 @@ export interface BuildingTypeBinding extends BuildingTribeTables {
   readonly byRecord?: ReadonlyMap<string, AuthoredBuildingDraw>;
   readonly default: BuildingBobRef;
   readonly byTribe?: Readonly<Record<number, BuildingTribeTables>>;
+  /** The open-door bob of each finished body that has one (`Gfxdoorbobid`), keyed by the body's
+   *  `bobKey` and drawn from the body's own layer. */
+  readonly doorByBody?: Readonly<Record<string, number>>;
   /** Each upgradable type's next tier (`upgradeTarget`), shared by every tribe like the typeId space. */
   readonly upgradeTargetByType?: Readonly<Record<number, number>>;
 }

@@ -124,6 +124,8 @@ export interface FrameLoopDeps {
     snap: WorldSnapshot,
     viewport?: Viewport,
   ) => ReturnType<typeof computeExperienceStars>;
+  /** Memoized by snapshot identity and the screen; the same set while its members hold. */
+  readonly openDoorsFor: (snap: WorldSnapshot, viewport: Viewport) => ReadonlySet<number>;
   /** Memoized by snapshot identity, the side and the screen, and fog-filtered. */
   readonly roadEntrancesFor: (
     snap: WorldSnapshot,
@@ -240,6 +242,7 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
     settlerBubblesFor,
     lifeHeartsFor,
     experienceStarsFor,
+    openDoorsFor,
     roadEntrancesFor,
     canPlaceAt,
     ghostPlotAt,
@@ -559,6 +562,7 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
     const lifeHearts = lifeHeartsFor(snap, markViewport);
     const experienceStars = experienceStarsFor(snap, markViewport);
     const roadOwner = toolPanel.controller.roadOwner();
+    renderer.setOpenDoors(openDoorsFor(snap, markViewport));
     renderer.updateRoadEntrances(roadOwner === null ? null : roadEntrancesFor(snap, roadOwner, markViewport));
     const world0 = performance.now();
     if (!loop.worldHeld())
