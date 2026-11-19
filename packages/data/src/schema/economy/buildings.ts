@@ -72,11 +72,15 @@ export const BuildingTribeVariant = z.strictObject({
 export type BuildingTribeVariant = z.infer<typeof BuildingTribeVariant>;
 
 /** A named `[GfxHouse]` record whose own footprint differs from its tribe's default for the type: a map
- *  places the record by `EditName`, such as the viking headquarters' hall beside the default ship. */
+ *  places the record by `EditName`, and a placement may choose it, such as the viking headquarters' hall
+ *  beside the default ship. */
 export const BuildingRecordFootprint = z.strictObject({
   tribe: TypeId,
   editName: z.string(),
   footprint: BuildingFootprint,
+  /** Only the base house table defines the record, which the game's own house table leaves out: it stands
+   *  for the maps that name it, and no placement offers it. */
+  mapOnly: z.boolean().default(false),
 });
 export type BuildingRecordFootprint = z.infer<typeof BuildingRecordFootprint>;
 

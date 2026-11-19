@@ -606,6 +606,7 @@ export const deGame = {
       papersHint: 'Briefe aus Kisten: Gebäude sofort setzen',
       catalog: 'Katalog',
       plans: 'Briefe',
+      chooseHouse: 'Wähle das Aussehen des Gebäudes',
       tally: '×{count}',
       paperEffect: {
         placeAny: 'Im Katalog auswählen; das Gebäude steht sofort',

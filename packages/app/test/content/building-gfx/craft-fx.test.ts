@@ -146,6 +146,19 @@ describe('the staged craft effects', () => {
     expect(lookup(2, HQ, 0, 9)).toBeUndefined();
   });
 
+  it('burns on the house record a building stands as', () => {
+    const lookup = holyFireLookup(fixtureIr());
+    expect(lookup(VIKING, HQ, 0, 10, 'viking headquarters house')?.points).toEqual([
+      { x: 19, y: 66 },
+      { x: -63, y: 44 },
+    ]);
+    // A record with no points of its own burns where the type's canonical body does.
+    expect(lookup(VIKING, HQ, 0, 10, 'viking headquarters ruin')?.points).toEqual([
+      { x: 17, y: 38 },
+      { x: -63, y: 16 },
+    ]);
+  });
+
   it('keeps the fire of a prayer site burning without oil, and only there', () => {
     const lookup = holyFireLookup(fixtureIr());
     expect(lookup(VIKING, TEMPLE, 0)?.perpetual).toBe(true);

@@ -569,6 +569,8 @@ export const enGame = {
       papersHint: 'Papers from chests: buildings that stand at once',
       catalog: 'Catalogue',
       plans: 'Papers',
+      /** Over the houses a paper may stand as, when its building has more than one look. */
+      chooseHouse: "Choose the building's look",
       tally: '×{count}',
       /** What spending a paper does, under its name on the papers page. */
       paperEffect: {

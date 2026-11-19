@@ -64,7 +64,12 @@ function recordFootprints(
       const standard = buildingFootprintFor(type, r.tribe);
       return standard === undefined || !sameFootprintCells(standard, r.footprint);
     })
-    .map((r) => ({ tribe: r.tribe, editName: r.editName, footprint: r.footprint }))
+    .map((r) => ({
+      tribe: r.tribe,
+      editName: r.editName,
+      footprint: r.footprint,
+      mapOnly: r.mapOnly === true,
+    }))
     .sort((a, b) => a.tribe - b.tribe || (a.editName < b.editName ? -1 : a.editName > b.editName ? 1 : 0));
 }
 
@@ -99,4 +104,20 @@ export function applyBuildingGraphicsOverlays(
       ...(records.length > 0 ? { recordFootprints: records } : {}),
     };
   });
+}
+
+/** Joins the base table's own house records behind the ones each type already has, per
+ *  `(typeId, tribe, EditName)`. The game's house table leaves them out, so each joins as map-only. */
+export function fillBaseRecordFootprints(
+  into: Map<number, RecordFootprint[]>,
+  baseRows: ReadonlyMap<number, readonly RecordFootprint[]>,
+): void {
+  for (const [typeId, records] of baseRows) {
+    const merged = [...(into.get(typeId) ?? [])];
+    for (const record of records) {
+      if (!merged.some((r) => r.tribe === record.tribe && r.editName === record.editName))
+        merged.push({ ...record, mapOnly: true });
+    }
+    into.set(typeId, merged);
+  }
 }

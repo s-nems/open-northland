@@ -1,5 +1,5 @@
 import { buildingFootprintFor, type FootprintCell, lastByTypeId } from '@open-northland/data';
-import type { BuildingTypeBinding, HouseBodyOf } from '@open-northland/render';
+import { type BuildingTypeBinding, type HouseBodyOf, houseRecordKey } from '@open-northland/render';
 import type { SignpostReachView } from '@open-northland/sim';
 import { systems } from '@open-northland/sim';
 import { buildingSignAnchorsFor } from '../../content/building-gfx/index.js';
@@ -32,6 +32,8 @@ import {
 
 export interface ViewReadModelDeps {
   readonly authoredBuildings?: BuildingTypeBinding['byEntity'];
+  /** The house records a building may stand as, whose own flag points its signs take. */
+  readonly recordBuildings?: BuildingTypeBinding['byRecord'];
   readonly signpostReach?: (player: number) => SignpostReachView | null;
   readonly inventoryVersion?: () => number;
   /** The placement answers the overlays walk, shared with the click gates. */
@@ -57,6 +59,7 @@ export function buildingModels(
   ir: ContentIr | null,
   tribes: WorldTribes,
   authored?: BuildingTypeBinding['byEntity'],
+  byRecord?: BuildingTypeBinding['byRecord'],
 ): { readonly geometryOf: GeometryBuildingInfoOf; readonly infoOf: BuildingDoorInfoOf } {
   const byType = lastByTypeId(buildings);
   const anchorsOf = buildingSignAnchorsFor(ir, tribes);
@@ -83,10 +86,20 @@ export function buildingModels(
     if (held !== undefined || cache.has(key)) return held;
     const type = byType.get(typeId);
     const geometry = geometryOf(typeId, tribe, record);
+    // A house record the building stands as carries its own flag point, as an authored one does.
+    const own =
+      tribe === undefined || record === undefined
+        ? undefined
+        : byRecord?.get(houseRecordKey(tribe, typeId, record));
     const info =
       type === undefined || geometry === undefined
         ? undefined
-        : { ...geometry, ...anchorsOf(typeId, tribe), entered: takesSettlersIn(type) };
+        : {
+            ...geometry,
+            ...anchorsOf(typeId, tribe),
+            ...(own === undefined ? {} : { flagPoint: own.flagPoint }),
+            entered: takesSettlersIn(type),
+          };
     cache.set(key, info);
     return info;
   };
@@ -137,7 +150,13 @@ export async function createViewReadModels(deps: ViewReadModelDeps): Promise<Vie
   const { host, mapSize, localPlayer, fogGates } = deps;
   const goodLabelByType = new Map(host.content.goods.map((g) => [g.typeId, goodName(g)]));
   const ir = await loadIr();
-  const buildings = buildingModels(host.content.buildings, ir, deps.tribes, deps.authoredBuildings);
+  const buildings = buildingModels(
+    host.content.buildings,
+    ir,
+    deps.tribes,
+    deps.authoredBuildings,
+    deps.recordBuildings,
+  );
   return {
     goodLabel: (typeId) => goodLabelByType.get(typeId),
     buildingGeometry: buildings.geometryOf,

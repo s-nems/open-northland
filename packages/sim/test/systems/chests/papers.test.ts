@@ -1,3 +1,4 @@
+import { type ContentSet, parseContentSet } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
 import {
   addPaper,
@@ -37,8 +38,34 @@ const SAWMILL_CAPACITY = 20;
 const anyHouse: Paper = { kind: 'placeAny', param: 0 };
 const sawmillPaper: Paper = { kind: 'placeHouse', param: SAWMILL };
 
-function fresh(): Simulation {
-  const sim = new Simulation({ seed: 5, content: testContent(), map: grassCellMap(16, 16) });
+/** The sawmill's second house, on a body of its own, as the viking headquarters' hall stands beside its
+ *  ship. */
+const SAWMILL_HALL = 'viking sawmill hall';
+/** A sawmill record only the base house table defines, which a map may place by name. */
+const SAWMILL_RUIN = 'viking sawmill ruin';
+
+/** The test content with {@link SAWMILL_HALL} and {@link SAWMILL_RUIN} as viking sawmill records. */
+function contentWithHall(): ContentSet {
+  const base = testContent();
+  const body = { blocked: [{ dx: 0, dy: 0 }], familyBody: [{ dx: 0, dy: 0 }], reserved: [{ dx: 0, dy: 0 }] };
+  return parseContentSet({
+    ...base,
+    buildings: base.buildings.map((b) =>
+      b.typeId === SAWMILL
+        ? {
+            ...b,
+            recordFootprints: [
+              { tribe: VIKING, editName: SAWMILL_HALL, footprint: body },
+              { tribe: VIKING, editName: SAWMILL_RUIN, footprint: body, mapOnly: true },
+            ],
+          }
+        : b,
+    ),
+  });
+}
+
+function fresh(content: ContentSet = testContent()): Simulation {
+  const sim = new Simulation({ seed: 5, content, map: grassCellMap(16, 16) });
   sim.enqueueSetup({ kind: 'setPlayerPlacementTribes', player: P0, tribes: [VIKING] });
   // One of the seat's people, whose build reach spans the whole map.
   sim.enqueueSetup({ kind: 'spawnSettler', jobType: CIVILIST, x: 2, y: 2, tribe: VIKING, owner: P0 });
@@ -175,6 +202,32 @@ describe('placing with a paper', () => {
     const amounts = sim.world.get(e, Stockpile).amounts;
     expect(amounts.get(WOOD)).toBe(SAWMILL_CAPACITY);
     expect(amounts.has(PLANK)).toBe(false);
+  });
+
+  it('stands the house record the seat chose for the named house, and no record it is not offered', () => {
+    const sim = fresh(contentWithHall());
+    sim.enqueueSetup({ kind: 'grantPaper', player: P0, paper: sawmillPaper });
+    sim.enqueueSetup({ kind: 'grantPaper', player: P0, paper: sawmillPaper });
+    sim.enqueueSetup({ kind: 'grantPaper', player: P0, paper: sawmillPaper });
+    const place = (x: number, record: string): void =>
+      sim.enqueue(
+        playerCommand(P0, {
+          kind: 'placeBuilding',
+          buildingType: SAWMILL,
+          x,
+          y: 8,
+          tribe: VIKING,
+          paper: sawmillPaper,
+          record,
+        }),
+      );
+    place(4, SAWMILL_HALL);
+    // Neither a name the type has no body of its own for, nor a record only maps place, is offered.
+    place(8, 'viking sawmill');
+    place(12, SAWMILL_RUIN);
+    sim.step();
+    expect(buildings(sim).map((e) => sim.world.get(e, Building).record)).toEqual([SAWMILL_HALL]);
+    expect(sim.papers(P0)).toEqual([sawmillPaper, sawmillPaper]);
   });
 });
 

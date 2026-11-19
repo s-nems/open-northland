@@ -232,6 +232,18 @@ describe('placement cursor', () => {
     ]);
   });
 
+  it('stands the ghost as the held house record, whose footprint the probe and the plot read', () => {
+    const record = 'saracen palace hall';
+    const asked: (string | undefined)[] = [];
+    const f = frame({
+      building: { ...HELD, record },
+      canPlaceAt: (...args) => (asked.push(args[6]), true),
+      plotAt: (...args) => (asked.push(args[4]), undefined),
+    });
+    expect(f.cursor().ghost).toMatchObject({ kind: 'building', tribe: SARACEN, record });
+    expect(asked).toEqual([record, record]);
+  });
+
   it('hides the ghost while the pointer is off the canvas', () => {
     const f = frame({ building: HELD, tileAt: () => null });
 

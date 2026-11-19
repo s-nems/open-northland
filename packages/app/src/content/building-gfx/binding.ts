@@ -1,10 +1,11 @@
-import type {
-  BuildingBobRef,
-  BuildingOverlayRef,
-  BuildingSkinTables,
-  BuildingTribeTables,
-  BuildingTypeBinding,
-  ConstructionLayerRef,
+import {
+  type BuildingBobRef,
+  type BuildingOverlayRef,
+  type BuildingSkinTables,
+  type BuildingTribeTables,
+  type BuildingTypeBinding,
+  type ConstructionLayerRef,
+  houseRecordKey,
 } from '@open-northland/render';
 import type { WorldTribes } from '../../game/world-tribes.js';
 import type { ContentIr } from '../ir/rows.js';
@@ -24,6 +25,7 @@ import {
 } from './families.js';
 import { landscapeOverlayFamilies, landscapeOverlayRefs } from './landscape-overlays.js';
 import { buildingOverlayRefsByType } from './overlays.js';
+import { houseRecordDraws } from './records.js';
 
 /** One skin slot of a tribe's building tables, from its own `[GfxHouse]` rows in the families the sheet
  *  loaded. */
@@ -80,6 +82,7 @@ export function buildingBinding(
   const base = tribeTables(perType, tribes[0], families);
   const byTribe: Record<number, BuildingTribeTables> = { [tribes[0]]: base };
   for (const tribe of tribes) byTribe[tribe] ??= tribeTables(perType, tribe, families);
+  const byRecord = houseRecordDraws(perType, tribes, families);
   const upgradeTargetByType: Record<number, number> = {};
   for (const b of ir?.buildings ?? []) {
     if (b.typeId !== undefined && b.upgradeTarget !== undefined)
@@ -89,19 +92,25 @@ export function buildingBinding(
     ...base,
     default: HOUSE_BOB,
     byTribe,
+    ...(byRecord.size > 0 ? { byRecord } : {}),
     ...(Object.keys(upgradeTargetByType).length > 0 ? { upgradeTargetByType } : {}),
   };
 }
 
-/** The bob a type is bound to for its own tribe, then for the sheet's base tribe; `undefined` when no
- *  civilization skins it (the wonders and `work_murek`), where the total `resolveBuildingDraw` would hand
- *  back the default house. */
+/** The bob a type is bound to for its own tribe, as the house `record` where the binding draws it, then
+ *  for the sheet's base tribe; `undefined` when no civilization skins it (the wonders and `work_murek`),
+ *  where the total `resolveBuildingDraw` would hand back the default house. */
 export function boundBuildingRef(
   binding: number | BuildingTypeBinding,
   typeId: number,
   tribe: number | undefined,
+  record?: string,
 ): BuildingBobRef | undefined {
   if (typeof binding === 'number') return binding;
+  if (record !== undefined && tribe !== undefined) {
+    const own = binding.byRecord?.get(houseRecordKey(tribe, typeId, record));
+    if (own !== undefined) return own.body;
+  }
   const own = tribe !== undefined ? binding.byTribe?.[tribe] : undefined;
   return own?.byType[typeId] ?? binding.byType[typeId];
 }
@@ -127,6 +136,10 @@ export function referencedFamilyLayers(binding: BuildingTypeBinding): Set<string
     for (const overlay of Object.values<BuildingOverlayRef>(tables.overlayByType ?? {})) {
       if (overlay.layer !== undefined) layers.add(overlay.layer);
     }
+  }
+  for (const record of binding.byRecord?.values() ?? []) {
+    if (typeof record.body !== 'number') layers.add(record.body.layer);
+    for (const overlay of record.landscapeOverlays ?? []) layers.add(overlay.layer);
   }
   return layers;
 }

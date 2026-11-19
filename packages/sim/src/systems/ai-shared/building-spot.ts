@@ -78,16 +78,11 @@ export function spotAcceptor(
     const node = anchorNodeOf(world, e);
     if (node !== null && terrain.inBounds(node.hx, node.hy)) occupied.add(terrain.nodeAt(node.hx, node.hy));
   }
-  const probe = seatPlacementProbe(
-    world,
-    ctx.content,
-    terrain,
-    ctx.fog,
-    buildingTypeId,
+  const probe = seatPlacementProbe(world, ctx.content, terrain, ctx.fog, buildingTypeId, {
     tribe,
     player,
     withinReach,
-  );
+  });
   const reserved = buildingFootprintOf(ctx.content, buildingTypeId, tribe)?.reserved;
   const zone = reserved !== undefined && reserved.length > 0 ? reserved : ANCHOR_ONLY;
   const deposits = new Set<number>();

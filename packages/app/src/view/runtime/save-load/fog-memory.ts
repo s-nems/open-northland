@@ -91,6 +91,7 @@ const GHOST_FIELDS: Readonly<Record<keyof FogGhost, (value: unknown) => boolean>
   level: isFiniteNumber,
   levels: isFiniteNumber,
   gfxIndex: isFiniteNumber,
+  record: (value) => typeof value === 'string',
   tribe: isFiniteNumber,
   palisadePosts: (value) =>
     Array.isArray(value) &&

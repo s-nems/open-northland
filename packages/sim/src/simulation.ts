@@ -83,6 +83,7 @@ import {
   type FogView,
   fogMaskAnswerFor,
   fogViewFor,
+  type PlacementAsk,
   placementProbeFor,
   signpostProbeFor,
 } from './simulation/read-seams.js';
@@ -177,7 +178,7 @@ import {
 } from './systems/vehicles/index.js';
 import { FogState, playerHasMet } from './systems/vision/index.js';
 
-export type { FogMaskAnswer, FogView } from './simulation/read-seams.js';
+export type { FogMaskAnswer, FogView, PlacementAsk } from './simulation/read-seams.js';
 export type { DigestComponentInputs, SyncDigest, SyncDigestInputs } from './simulation/sync-digest.js';
 
 export interface SimOptions {
@@ -451,20 +452,10 @@ export class Simulation {
    * Blockers come from the incrementally maintained placement count grid, so probing a viewport costs
    * O(visible tiles); with a `player` the probe also refuses the ground a hostile army the seat can see
    * contests and the ground a lobby peace keeps the seat off. A supplied tribe picks the footprint and,
-   * while `gated`, adds its player-scoped technology gate, which a placing paper waives. Null for a
-   * mapless sim.
+   * while gated, adds its player-scoped technology gate. Null for a mapless sim.
    */
-  placementProbe(buildingType: number, player?: number, tribe?: number, gated = true): PlacementProbe | null {
-    return placementProbeFor(
-      this.world,
-      this.content,
-      this.terrain,
-      this.fog,
-      buildingType,
-      player,
-      tribe,
-      gated,
-    );
+  placementProbe(buildingType: number, ask?: PlacementAsk): PlacementProbe | null {
+    return placementProbeFor(this.world, this.content, this.terrain, this.fog, buildingType, ask);
   }
 
   /** Fresh formation groups on land, with vehicle commanders retaining the clicked target. */
@@ -477,28 +468,9 @@ export class Simulation {
     return formationSlotsFor(this.world, this.content, this.terrain, target, members, rowSpacing, order);
   }
 
-  /** {@link placementProbe}'s verdict over every node of `area`, as plain data; `withinReach` off drops
-   *  the seat's site reach, for a placement that enters through the admin channel. */
-  placementAnswer(
-    buildingType: number,
-    area: NodeArea,
-    player?: number,
-    tribe?: number,
-    gated = true,
-    withinReach = true,
-  ): NodeGridAnswer | null {
-    return placementAnswerFor(
-      this.world,
-      this.content,
-      this.terrain,
-      this.fog,
-      buildingType,
-      area,
-      player,
-      tribe,
-      gated,
-      withinReach,
-    );
+  /** {@link placementProbe}'s verdict over every node of `area`, as plain data. */
+  placementAnswer(buildingType: number, area: NodeArea, ask?: PlacementAsk): NodeGridAnswer | null {
+    return placementAnswerFor(this.world, this.content, this.terrain, this.fog, buildingType, area, ask);
   }
 
   /** Changes whenever {@link shipWaterGrid} may over the same area, movers aside. */

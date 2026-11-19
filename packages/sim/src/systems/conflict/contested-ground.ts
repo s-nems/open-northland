@@ -114,24 +114,35 @@ export function contestedGroundFor(
   return ground;
 }
 
-/** The footprint rule and, for an owned placement, the seat's site reach ({@link siteReachFor}) unless
- *  `withinReach` is off, the contested-ground rule and the ground a lobby peace keeps the seat off
- *  ({@link peaceGroundFor}), as one probe: the placement command, the computer players' site search and
- *  the placement ghost read the same verdict. */
+/** Whose placement a probe judges and which house it stands. */
+export interface SeatPlacement {
+  /** Picks the footprint; without one the type's default footprint stands. */
+  readonly tribe?: number | undefined;
+  /** The house record whose own footprint stands where it has one for the type and tribe. */
+  readonly record?: string | undefined;
+  /** The seat placing; without one only the footprint rule applies. */
+  readonly player?: number | undefined;
+  /** Off drops the seat's site reach, for a placement through the admin channel. On by default. */
+  readonly withinReach?: boolean | undefined;
+}
+
+/** The footprint rule and, for an owned placement, the seat's site reach ({@link siteReachFor}), the
+ *  contested-ground rule and the ground a lobby peace keeps the seat off ({@link peaceGroundFor}), as one
+ *  probe: the placement command, the computer players' site search and the placement ghost read the same
+ *  verdict. */
 export function seatPlacementProbe(
   world: World,
   content: ContentSet,
   terrain: TerrainGraph,
   fog: FogState | undefined,
   buildingType: number,
-  tribe: number | undefined,
-  player: number | undefined,
-  withinReach = true,
+  placement: SeatPlacement,
 ): PlacementProbe {
-  const footprint = placementProbe(world, content, terrain, buildingType, tribe);
+  const { tribe, record, player } = placement;
+  const footprint = placementProbe(world, content, terrain, buildingType, tribe, record);
   if (player === undefined) return footprint;
   const ground = contestedGroundFor(world, content, fog, player);
-  const reach = withinReach ? siteReachFor(world, player) : null;
+  const reach = placement.withinReach !== false ? siteReachFor(world, player) : null;
   const peace = peaceGroundFor(world, player);
   return {
     canPlace: (x, y) =>

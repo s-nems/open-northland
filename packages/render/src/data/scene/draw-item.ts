@@ -75,6 +75,9 @@ export interface StaticDrawFields {
   /** A resource node's `Resource.gfxIndex`: the exact `[GfxLandscape]` record it was spawned from, so a
    *  map keeps its species variety. Omitted for an admin/scene-spawned node. */
   gfxIndex?: number;
+  /** A building's `Building.record`: the `[GfxHouse]` record (`EditName`) it stands as, for a type that
+   *  draws one on a footprint of its own. Omitted for the type's default house. */
+  record?: string;
   /** A settler's `Settler.tribe`, a building's `Building.tribe` or a vehicle's `Vehicle.tribe`: the key
    *  of the per-tribe look tables, and for a wildlife entity (a settler of an animal tribe with a null
    *  `jobType`) the species key. */
@@ -288,6 +291,7 @@ export function newDrawItem(
     level: undefined,
     levels: undefined,
     gfxIndex: undefined,
+    record: undefined,
     tribe: undefined,
     palisadePosts: undefined,
     palisadeSite: undefined,

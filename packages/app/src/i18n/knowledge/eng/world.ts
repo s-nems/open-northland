@@ -709,7 +709,7 @@ export const WORLD: ArticleGroup = {
                 'The named building, with full stocks of the goods it uses',
               ],
             ],
-            foot: 'A paper disappears once used, unless the spot doesn\'t fit. You find your papers in the build window under "Papers".',
+            foot: 'A paper disappears once used, unless the spot doesn\'t fit. You find your papers in the build window under "Papers". For a building with more than one look, such as the [[building:headquarters|Headquarters]], you choose which one stands.',
           },
         },
         {

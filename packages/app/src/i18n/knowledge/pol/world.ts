@@ -698,7 +698,7 @@ export const WORLD: ArticleGroup = {
                 'Wskazany budynek z pełnym zapasem towarów, które zużywa',
               ],
             ],
-            foot: 'Papier znika po użyciu, chyba że miejsce nie pasuje. Swoje papiery znajdziesz w oknie budowy pod "Papiery".',
+            foot: 'Papier znika po użyciu, chyba że miejsce nie pasuje. Swoje papiery znajdziesz w oknie budowy pod "Papiery". Przy budynku o kilku wyglądach, jak [[building:headquarters|Kwatera główna]], wybierasz, który stanie.',
           },
         },
         {

@@ -246,7 +246,7 @@ export function placeSiteNear(
   at: HalfCellNode,
 ): void {
   const type = buildingType(sim, slug);
-  const probe = sim.placementProbe(type, player, tribe, true);
+  const probe = sim.placementProbe(type, { player, tribe });
   if (probe === null) throw new Error('the world has no terrain');
   for (let ring = 0; ring < SITE_SEARCH_RINGS; ring += SITE_STRIDE)
     for (let dy = -ring; dy <= ring; dy += SITE_STRIDE)
@@ -394,11 +394,11 @@ export function placeFinished(
 ): Entity {
   const type = buildingType(sim, buildingSlug);
   const tribe = tribeOf(sim, player);
-  const gated = sim.placementProbe(type, player, tribe, options.ignoreGate !== true);
+  const gated = sim.placementProbe(type, { player, tribe, gated: options.ignoreGate !== true });
   if (gated === null) throw new Error('the world has no terrain');
   const site = siteNear(sim, (x, y) => gated.canPlace(x, y), hx, hy);
   if (site === undefined) {
-    const open = sim.placementProbe(type, player, tribe, false);
+    const open = sim.placementProbe(type, { player, tribe, gated: false });
     const why =
       open !== null && siteNear(sim, (x, y) => open.canPlace(x, y), hx, hy) !== undefined
         ? `player ${player} may not build ${buildingSlug} yet (technology or script gate); pass ignoreGate to force it`

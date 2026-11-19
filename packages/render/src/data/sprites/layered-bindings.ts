@@ -58,13 +58,22 @@ export interface BuildingTypeBinding extends BuildingTribeTables {
   /** Authored body choices bound once at map boot. Type and tribe guards retire a choice on upgrade, and
    *  a level the tables draw apart from the authored `level` retires it after a scripted level change. */
   readonly byEntity?: ReadonlyMap<number, AuthoredBuildingDraw>;
+  /** The house records a building stands as by its own `record`, keyed by {@link houseRecordKey}: the
+   *  same choice an authored body makes, for a house placed after boot. */
+  readonly byRecord?: ReadonlyMap<string, AuthoredBuildingDraw>;
   readonly default: BuildingBobRef;
   readonly byTribe?: Readonly<Record<number, BuildingTribeTables>>;
   /** Each upgradable type's next tier (`upgradeTarget`), shared by every tribe like the typeId space. */
   readonly upgradeTargetByType?: Readonly<Record<number, number>>;
 }
 
-/** One map-placed building's authored `[GfxHouse]` record, joined by its map name and level. */
+/** The {@link BuildingTypeBinding.byRecord} key of `tribe`'s house record `record` of a type. */
+export function houseRecordKey(tribe: number, typeId: number, record: string): string {
+  return `${tribe}:${typeId}:${record}`;
+}
+
+/** One building's own `[GfxHouse]` record: a map-placed one's joined by its map name and level, or the
+ *  record a building stands as. */
 export interface AuthoredBuildingDraw {
   readonly typeId: number;
   readonly tribe: number;

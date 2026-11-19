@@ -247,13 +247,13 @@ describe('EnableHouse and AllowHouse', () => {
         x: 20,
         y: 20,
       });
-    expect(sim.placementProbe(SAWMILL, OWNER, VIKING)?.canPlace(20, 20)).toBe(false);
+    expect(sim.placementProbe(SAWMILL, { player: OWNER, tribe: VIKING })?.canPlace(20, 20)).toBe(false);
     place();
     sim.step();
     expect(sim.unlockStatus('house', SAWMILL, VIKING, OWNER).enabled).toBe(false);
     grantScriptUnlock(sim.world, 'enabled', OWNER, VIKING, 'house', SAWMILL);
-    expect(sim.placementProbe(SAWMILL, OWNER, VIKING)?.canPlace(20, 20)).toBe(true);
-    expect(sim.placementProbe(SAWMILL, RIVAL, VIKING)?.canPlace(20, 20)).toBe(false);
+    expect(sim.placementProbe(SAWMILL, { player: OWNER, tribe: VIKING })?.canPlace(20, 20)).toBe(true);
+    expect(sim.placementProbe(SAWMILL, { player: RIVAL, tribe: VIKING })?.canPlace(20, 20)).toBe(false);
     expect([...sim.world.query(Building)]).toHaveLength(0);
     place();
     sim.step();

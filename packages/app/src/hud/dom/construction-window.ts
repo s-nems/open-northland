@@ -85,9 +85,13 @@ export interface ConstructionWindowDeps {
   readonly toolHints?: Partial<Readonly<Record<ConstructionTool, string>>>;
   /** A quick-row tool was pressed; the window has already hidden for its placement. */
   readonly onPickTool: (tool: ConstructionTool) => void;
-  /** A plan card was pressed: the owner starts the placement it pays for (a named house), or holds
-   *  it for the catalogue pick (a place-any plan), which the window has already turned to. */
-  readonly onPickPaper: (paper: Paper, tribe: number) => void;
+  /** The house records `tribe` may stand a type as besides its default house; a plan naming a type with
+   *  any first lists them all to choose from. */
+  readonly houseRecords: (typeId: number, tribe: number) => readonly string[];
+  /** A plan card was pressed: the owner starts the placement it pays for (a named house, as the chosen
+   *  `record` where it has several), or holds it for the catalogue pick (a place-any plan), which the
+   *  window has already turned to. */
+  readonly onPickPaper: (paper: Paper, tribe: number, record?: string) => void;
   /** A card's "?": the building's Knowledge entry. */
   readonly onHelp: (typeId: number) => void;
   /** The grid or list view the window opens with; a toggle reports the new one to `onViewChange`. */
@@ -336,6 +340,10 @@ export function createConstructionWindow(deps: ConstructionWindowDeps): Construc
   if (backLabel !== null) backLabel.textContent = copy.catalog;
   back.addEventListener('click', () => {
     deps.cue('confirm');
+    if (choosing !== null) {
+      chooseHouse(null);
+      return;
+    }
     showPage('catalog');
     tabButtons.get(state.category)?.button.focus(); // the tab hid itself under the focus
   });
@@ -378,14 +386,15 @@ export function createConstructionWindow(deps: ConstructionWindowDeps): Construc
   // The parchment: the open cards, the locked cards under their own note, or the empty note.
   const parchment = document.createElement('div');
   parchment.className = 'on-parchment on-catalog';
-  const note = (text: string): { note: HTMLElement; count: HTMLElement } => {
+  const note = (text: string): { note: HTMLElement; label: HTMLElement; count: HTMLElement } => {
     const element = document.createElement('p');
     element.className = 'on-parchment__note';
     element.innerHTML = `<span></span><span class="on-parchment__count"></span>`;
     const [label, count] = element.querySelectorAll('span');
-    if (label === undefined || !(count instanceof HTMLElement)) throw new Error('construction: note');
+    if (!(label instanceof HTMLElement) || !(count instanceof HTMLElement))
+      throw new Error('construction: note');
     label.textContent = text;
-    return { note: element, count };
+    return { note: element, label, count };
   };
   const openNote = note(copy.availableNow);
   const openGrid = document.createElement('div');
@@ -485,37 +494,39 @@ export function createConstructionWindow(deps: ConstructionWindowDeps): Construc
     }
   };
 
-  // A plan card: a named house's picture with the house's "?", or the house glyph for a plan the
-  // catalogue names. A named house goes to placement at once, so the window hides for it; a
-  // place-any plan turns the window to the catalogue, where the next pick spends it.
-  const buildPaperCard = (card: PaperCard, tribe: number): HTMLElement => {
+  // A card of the plans page: a house's picture with the house's "?", or the house glyph where the card
+  // names no house.
+  const buildPlanPageCard = (card: {
+    readonly title: string;
+    readonly effect: string;
+    readonly tally: string;
+    readonly house: number | null;
+    readonly tribe: number;
+    readonly record?: string | undefined;
+    readonly onPick: () => void;
+  }): HTMLElement => {
+    const { house } = card;
     const element = document.createElement('article');
     element.className = 'on-bcard on-bcard--paper';
-    const title = deps.paperLabel(card.paper);
-    const houseLabel = card.house === null ? null : deps.buildingLabel(card.house);
     element.innerHTML = paperCardMarkup({
-      title,
-      effect: copy.paperEffect[card.paper.kind],
-      tally: card.count > 1 ? formatMessage(copy.tally, { count: card.count }) : '',
-      thumb: card.house === null ? GLYPH.house : PICTURE_SLOT,
-      ...(houseLabel === null ? {} : { helpLabel: formatMessage(copy.help, { name: houseLabel }) }),
+      title: card.title,
+      effect: card.effect,
+      tally: card.tally,
+      thumb: house === null ? GLYPH.house : PICTURE_SLOT,
+      ...(house === null ? {} : { helpLabel: formatMessage(copy.help, { name: deps.buildingLabel(house) }) }),
     });
     const pick = element.querySelector('.on-bcard__pick');
     if (!(pick instanceof HTMLButtonElement)) throw new Error('construction: plan card markup');
     const thumb = element.querySelector('img');
     if (
       thumb !== null &&
-      (card.house === null || !deps.thumbs.paint(thumb, card.house, THUMB_BOX_PX, tribe))
+      (house === null || !deps.thumbs.paint(thumb, house, THUMB_BOX_PX, card.tribe, card.record))
     ) {
       thumb.outerHTML = GLYPH.house;
     }
-    if (card.house === null) element.classList.add('on-bcard--any');
-    const house = card.house;
     pick.addEventListener('click', () => {
       deps.cue('confirm');
-      if (house === null) showPage('catalog');
-      else suspend();
-      deps.onPickPaper(card.paper, tribe);
+      card.onPick();
     });
     const help = element.querySelector('.on-bcard__help');
     if (help instanceof HTMLButtonElement && house !== null) {
@@ -528,27 +539,101 @@ export function createConstructionWindow(deps: ConstructionWindowDeps): Construc
     return element;
   };
 
+  // A held plan. A named house goes to placement at once, so the window hides for it, unless it may
+  // stand as more than one house; a place-any plan turns the window to the catalogue, where the next
+  // pick spends it.
+  const buildPaperCard = (card: PaperCard, tribe: number): HTMLElement => {
+    const { house } = card;
+    const element = buildPlanPageCard({
+      title: deps.paperLabel(card.paper),
+      effect: copy.paperEffect[card.paper.kind],
+      tally: card.count > 1 ? formatMessage(copy.tally, { count: card.count }) : '',
+      house,
+      tribe,
+      onPick: () => {
+        if (house !== null && deps.houseRecords(house, tribe).length > 0) {
+          chooseHouse(card);
+          return;
+        }
+        if (house === null) showPage('catalog');
+        else suspend();
+        deps.onPickPaper(card.paper, tribe);
+      },
+    });
+    if (house === null) element.classList.add('on-bcard--any');
+    return element;
+  };
+
+  // One house a plan may stand as: the house's name over its look. The original names every record of a
+  // type alike, so the pictures tell them apart.
+  const buildHouseChoiceCard = (card: PaperCard, house: number, tribe: number, record?: string) =>
+    buildPlanPageCard({
+      title: deps.buildingLabel(house),
+      effect: '',
+      tally: '',
+      house,
+      tribe,
+      record,
+      onPick: () => {
+        suspend();
+        deps.onPickPaper(card.paper, tribe, record);
+      },
+    });
+
   // The plans follow the tick and the nation: a found or spent plan relists the page and recounts the
-  // button, and a nation switch pictures them in the chosen nation's houses.
+  // button, and a nation switch pictures them in the chosen nation's houses. While a plan's houses are
+  // listed to choose from, the page shows them instead, until the plan is gone.
   let shownPlans: string | null = null;
+  let choosing: PaperCard | null = null;
+  /** The held plan `plan` names and the houses it may stand as; undefined once it is spent or when its
+   *  house has one look in `tribe`. */
+  const houseChoiceOf = (plan: PaperCard, listed: readonly PaperCard[], tribe: number) => {
+    const card = listed.find((c) => c.paper.kind === plan.paper.kind && c.paper.param === plan.paper.param);
+    if (card === undefined || card.house === null) return undefined;
+    const records = deps.houseRecords(card.house, tribe);
+    return records.length === 0 ? undefined : { card, house: card.house, records };
+  };
   const layoutPapers = (): void => {
     const listed = paperCards(deps.papers());
     const tribe = shown();
-    const key = `${tribe}|${paperCardsKey(listed)}`;
+    const choice = choosing === null ? undefined : houseChoiceOf(choosing, listed, tribe);
+    if (choice === undefined) choosing = null;
+    const key = `${tribe}|${paperCardsKey(listed)}|${choice?.records.join(',') ?? ''}`;
     if (key === shownPlans) return;
     shownPlans = key;
-    plansGrid.replaceChildren(...listed.map((card) => buildPaperCard(card, tribe)));
     const count = plansCount(listed);
-    plansNote.count.textContent = String(count);
+    if (choice !== undefined) {
+      const { card, house, records } = choice;
+      const looks = [undefined, ...records].map((record) => buildHouseChoiceCard(card, house, tribe, record));
+      plansGrid.replaceChildren(...looks);
+      plansNote.label.textContent = copy.chooseHouse;
+      plansNote.count.textContent = '';
+    } else {
+      plansGrid.replaceChildren(...listed.map((card) => buildPaperCard(card, tribe)));
+      plansNote.label.textContent = copy.plans;
+      plansNote.count.textContent = String(count);
+    }
+    if (backLabel !== null) backLabel.textContent = choice === undefined ? copy.catalog : copy.plans;
     plansNote.note.hidden = listed.length === 0;
     plansGrid.hidden = listed.length === 0;
     plansEmpty.hidden = listed.length > 0;
     papersCount.textContent = String(count);
     papersCount.hidden = count === 0;
   };
+  /** List a plan's houses to choose from, or (null) the plans again; the relisted grid takes the focus
+   *  its pressed card had. */
+  const chooseHouse = (card: PaperCard | null): void => {
+    choosing = card;
+    layoutPapers();
+    plansGrid.querySelector<HTMLButtonElement>('.on-bcard__pick')?.focus();
+  };
 
   const showPage = (page: ConstructionPage): void => {
     state = { ...state, page };
+    if (choosing !== null) {
+      choosing = null;
+      layoutPapers();
+    }
     const onPapers = page === 'papers';
     papers.setAttribute('aria-pressed', String(onPapers));
     searchField.hidden = onPapers;

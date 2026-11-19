@@ -425,13 +425,15 @@ export function holyFireLookup(
       });
     }
   }
-  return (tribe, buildingType, level, entity) => {
+  return (tribe, buildingType, level, entity, record) => {
     const row = entity === undefined ? undefined : authored?.get(entity);
     if (row !== undefined && row.tribe === tribe && row.typeId === buildingType) {
       return byKey.get(`${tribe}/${buildingType}/${row.level}`)?.get(row.editName);
     }
     const variants = byKey.get(`${tribe}/${buildingType}/${level}`);
     if (variants === undefined) return undefined;
+    const own = record === undefined ? undefined : variants.get(record);
+    if (own !== undefined) return own;
     const canonical = CANONICAL_EDIT_NAME[buildingType];
     return (canonical === undefined ? undefined : variants.get(canonical)) ?? variants.values().next().value;
   };

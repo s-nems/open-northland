@@ -8,7 +8,12 @@ import {
   type PalisadeGateProbeResult,
   shipWaterWorkshopsOf,
 } from '@open-northland/sim';
-import type { GateSites, PalisadeGateProbeView } from '../../hud/tool-panel/placement.js';
+import type {
+  AskPlaceAt,
+  CanPlaceAt,
+  GateSites,
+  PalisadeGateProbeView,
+} from '../../hud/tool-panel/placement.js';
 import {
   createLastAnswerCache,
   mooringProbeOf,
@@ -26,10 +31,17 @@ import type { MooringRule } from '../unit-controls/orders/berths.js';
 
 /** The host's placement answers the overlays walk; the gates below read the same ones. */
 export interface PlacementProbeViews {
-  /** The held building's rule for the local seat in `tribe`, whose footprint and technology gate it
-   *  takes; `techWaived` (a paper, the admin tool) skips the gate, and `owner` (the admin tool's) asks
-   *  that seat's ground rule instead, past its site reach as the admin channel places. */
-  readonly building: (typeId: number, tribe: number, techWaived?: boolean, owner?: number) => NodeGridProbe;
+  /** The held building's rule for the local seat in `tribe`, whose footprint (the house `record`'s own
+   *  where it has one) and technology gate it takes; `techWaived` (a paper, the admin tool) skips the
+   *  gate, and `owner` (the admin tool's) asks that seat's ground rule instead, past its site reach as
+   *  the admin channel places. */
+  readonly building: (
+    typeId: number,
+    tribe: number,
+    techWaived?: boolean,
+    owner?: number,
+    record?: string,
+  ) => NodeGridProbe;
   readonly signpost: () => NodeGridProbe;
   /** The wall and road line tools' rules, which their lit washes wait on; a wall's for the seat it
    *  is laid for, whose peace ground it refuses. */
@@ -42,14 +54,7 @@ export interface PlacementProbeViews {
 /** The placement rules a click decides on: each awaits the host's answer as of now. */
 export interface PlacementClickGates {
   readonly askPlaceSignpostAt: (col: number, row: number) => Promise<boolean>;
-  readonly askPlaceAt: (
-    typeId: number,
-    tribe: number,
-    col: number,
-    row: number,
-    techWaived?: boolean,
-    owner?: number,
-  ) => Promise<boolean>;
+  readonly askPlaceAt: AskPlaceAt;
   /** Brings the wall answers within `reach` nodes of a line's anchor, and `owner`'s built nodes, up to
    *  now, so a line decided right after reads current answers through the synchronous rules. */
   readonly palisadeLineReady: (
@@ -72,14 +77,7 @@ export interface PlacementClickGates {
 
 /** The placement rules the cursor ghosts and overlays read, and the click gates beside them. */
 export interface PlacementGates extends PlacementClickGates {
-  readonly canPlaceAt: (
-    typeId: number,
-    tribe: number,
-    col: number,
-    row: number,
-    techWaived?: boolean,
-    owner?: number,
-  ) => boolean;
+  readonly canPlaceAt: CanPlaceAt;
   readonly canPlaceSignpostAt: (col: number, row: number) => boolean;
   /** `canPlaceSignpostAt`, undefined while the node's answer is on its way rather than refused. */
   readonly signpostAnswerAt: (col: number, row: number) => boolean | undefined;
@@ -168,18 +166,19 @@ export function createPlacementGates(
     tribe: number,
     techWaived = false,
     standingFor?: number,
+    record?: string,
   ): NodeGridProbe => {
     // The tribe still picks the footprint of a house waived past the technology gate.
     const gated = !techWaived;
     const owner = standingFor ?? localPlayer;
     const withinReach = standingFor === undefined;
-    const family = `b${typeId}:${tribe}:${gated}:${owner}:${withinReach}`;
+    const family = `b${typeId}:${tribe}:${record ?? ''}:${gated}:${owner}:${withinReach}`;
     // Asked every tick besides: a hostile fighter's step and a technology unlock move no blocker version.
     return gridProbe(family, () =>
       nodeGridProbe(
         grids,
         family,
-        (area) => host.placementProbe(typeId, area, owner, tribe, gated, withinReach),
+        (area) => host.placementProbe(typeId, area, { player: owner, tribe, record, gated, withinReach }),
         blockerVersion,
         true,
       ),
@@ -287,9 +286,9 @@ export function createPlacementGates(
   };
   return {
     // A waiver bypasses only technology; fog, footprint and contested-ground rules still apply.
-    canPlaceAt: (typeId, tribe, col, row, techWaived, owner) => {
+    canPlaceAt: (typeId, tribe, col, row, techWaived, owner, record) => {
       if (!fogGates.seesNode(col, row)) return false;
-      const verdict = building(typeId, tribe, techWaived, owner).at(col, row);
+      const verdict = building(typeId, tribe, techWaived, owner, record).at(col, row);
       return verdict === null || verdict === true;
     },
     canPlaceSignpostAt: (col, row) => fogGates.seesNode(col, row) && signpost().at(col, row) === true,
@@ -319,9 +318,9 @@ export function createPlacementGates(
     roadAnswersKey: () => `${grids.version}:${fogKey()}`,
     shipWaterAt: (typeId, tribe, col, row, owner) =>
       shipWorkshops.has(typeId) ? shipWater(typeId, tribe, owner ?? localPlayer).at(col, row) : null,
-    askPlaceAt: (typeId, tribe, col, row, techWaived, owner) =>
+    askPlaceAt: (typeId, tribe, col, row, techWaived, owner, record) =>
       fogGates.seesNode(col, row)
-        ? building(typeId, tribe, techWaived, owner)
+        ? building(typeId, tribe, techWaived, owner, record)
             .freshAt(col, row)
             .then((verdict) => verdict !== false)
         : Promise.resolve(false),

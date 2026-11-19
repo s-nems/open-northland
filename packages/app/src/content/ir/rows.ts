@@ -2,6 +2,7 @@ import type {
   BuildingFootprint,
   BuildingHolyFirePoint,
   BuildingLandscapeOverlay,
+  BuildingRecordFootprint,
   GfxInHouseProgram,
   GfxPattern,
   GfxPatternTransition,
@@ -257,6 +258,8 @@ export interface ContentIr {
     prayerSite?: string;
     upgradeTarget?: number;
     vehicleType?: number;
+    /** The house records a tribe stands the type as on a footprint of their own. */
+    recordFootprints?: readonly BuildingRecordFootprint[];
   }[];
   /** `baseJob` is the `jobtypes.ini` parent a job's animation lookups fall back through. */
   readonly jobs?: readonly { typeId?: number; id?: string; name?: string; baseJob?: number }[];

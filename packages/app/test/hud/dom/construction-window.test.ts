@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import type { HudModel } from '@open-northland/render';
+import type { Paper } from '@open-northland/sim';
 import { afterEach, expect, it, vi } from 'vitest';
 import {
   AVAILABILITY_REFRESH_MS,
@@ -14,6 +15,8 @@ import {
 
 const VIKING = 1;
 const FARM = 12;
+const HEADQUARTERS = 1;
+const HQ_HALL = 'viking headquarters house';
 const FORBIDDEN: BuildingAvailability = { kind: 'forbidden' };
 
 afterEach(() => {
@@ -34,6 +37,7 @@ function windowDeps(plane: HTMLElement, entries: readonly MenuBuildingEntry[]): 
     buildingLabel: (typeId) => `#${typeId}`,
     homeTribe: VIKING,
     buildTribes: () => [VIKING],
+    houseRecords: () => [],
     answersVersion: () => 0,
     onPick: () => undefined,
     tools: [],
@@ -101,6 +105,44 @@ it('opens in the view the player last chose and reports a new choice', () => {
     grid?.click();
     expect(parchment?.dataset.view).toBe('grid');
     expect(chosen).toEqual(['grid']);
+  } finally {
+    window.dispose();
+  }
+});
+
+it("lists a paper's house in each of its looks and spends the plan on the one picked", () => {
+  const plane = document.createElement('div');
+  document.body.append(plane);
+  const hqPaper: Paper = { kind: 'placeHouse', param: HEADQUARTERS };
+  const farmPaper: Paper = { kind: 'placeHouse', param: FARM };
+  const picked: [Paper, number, string | undefined][] = [];
+  const window = createConstructionWindow({
+    ...windowDeps(plane, []),
+    papers: () => [hqPaper, farmPaper],
+    houseRecords: (typeId) => (typeId === HEADQUARTERS ? [HQ_HALL] : []),
+    onPickPaper: (paper, tribe, record) => picked.push([paper, tribe, record]),
+  });
+  const cards = () => [...plane.querySelectorAll<HTMLButtonElement>('.on-bcard--paper .on-bcard__pick')];
+  try {
+    window.toggle();
+    plane.querySelector<HTMLButtonElement>('.on-button--accent')?.click();
+    expect(cards()).toHaveLength(2);
+
+    // The headquarters stands as its ship or its hall: the plan waits for the choice.
+    cards()[0]?.click();
+    expect(picked).toEqual([]);
+    expect(cards()).toHaveLength(2);
+    plane.querySelector<HTMLButtonElement>('.on-tab--back')?.click();
+    expect(cards()).toHaveLength(2);
+    cards()[0]?.click();
+    cards()[1]?.click();
+    expect(picked).toEqual([[hqPaper, VIKING, HQ_HALL]]);
+
+    // A house of one look goes to placement at once.
+    window.resume();
+    plane.querySelector<HTMLButtonElement>('.on-tab--back')?.click();
+    cards()[1]?.click();
+    expect(picked.at(-1)).toEqual([farmPaper, VIKING, undefined]);
   } finally {
     window.dispose();
   }

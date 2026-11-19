@@ -17,6 +17,7 @@ import type {
   SignpostBinding,
   StockpileBinding,
 } from './layered-bindings.js';
+import { houseRecordKey } from './layered-bindings.js';
 import { waveFrameAt } from './wave-loop.js';
 
 function unwrapBobRef(ref: LayeredBobRef): BuildingDraw {
@@ -49,6 +50,7 @@ export function finishedBuildingBobKeys(binding: BuildingTypeBinding): ReadonlyS
       }
     }
     for (const { body } of binding.byEntity?.values() ?? []) set.add(bobKey(unwrapBobRef(body)));
+    for (const { body } of binding.byRecord?.values() ?? []) set.add(bobKey(unwrapBobRef(body)));
     set.add(bobKey(unwrapBobRef(binding.default)));
     keys = set;
     finishedKeyCache.set(binding, keys);
@@ -93,10 +95,11 @@ export function resolveBuildingDraw(binding: number | BuildingTypeBinding, item:
   );
 }
 
-/** The item's authored body choice while it still applies: the same type and tribe, and no level its
- *  tables draw apart from the authored one, as a wonder stands at after a scripted level change. */
+/** The item's own record, the one authored for it or the one it stands as, while it still applies: the
+ *  same type and tribe, and no level its tables draw apart from the record's, as a wonder stands at
+ *  after a scripted level change. */
 function authoredDrawOf(binding: BuildingTypeBinding, item: DrawItem): AuthoredBuildingDraw | undefined {
-  const authored = binding.byEntity?.get(item.ref);
+  const authored = binding.byEntity?.get(item.ref) ?? recordDrawOf(binding, item);
   if (authored === undefined || authored.typeId !== item.typeId || authored.tribe !== item.tribe) {
     return undefined;
   }
@@ -106,6 +109,12 @@ function authoredDrawOf(binding: BuildingTypeBinding, item: DrawItem): AuthoredB
   return (own ?? skinFor(binding, item.ref).byTypeLevel?.[typeId]?.[level]) === undefined
     ? authored
     : undefined;
+}
+
+function recordDrawOf(binding: BuildingTypeBinding, item: DrawItem): AuthoredBuildingDraw | undefined {
+  const { record, tribe, typeId } = item;
+  if (record === undefined || tribe === undefined || typeId === undefined) return undefined;
+  return binding.byRecord?.get(houseRecordKey(tribe, typeId, record));
 }
 
 /** One table set's body for the item's type, at its level when the set draws that level apart; the level

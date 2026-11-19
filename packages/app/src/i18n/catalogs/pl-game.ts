@@ -551,6 +551,7 @@ export const plGame = {
       papersHint: 'Papiery ze skrzyń: budynki stawiane od razu',
       catalog: 'Katalog',
       plans: 'Papiery',
+      chooseHouse: 'Wybierz wygląd budynku',
       tally: '×{count}',
       paperEffect: {
         placeAny: 'Wybierz w katalogu; stanie od razu',

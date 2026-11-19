@@ -155,7 +155,8 @@ describe('site reach', () => {
     const sim = fresh();
     const man = spawn(sim, SEAT);
     const area = { minHx: HOME.x - 4, maxHx: HOME.x + 4, minHy: HOME.y - 4, maxHy: HOME.y + 4 };
-    const keyOf = (): string | undefined => sim.placementAnswer(HQ_TYPE, area, SEAT, VIKING, false)?.key;
+    const keyOf = (): string | undefined =>
+      sim.placementAnswer(HQ_TYPE, area, { player: SEAT, tribe: VIKING, gated: false })?.key;
     const before = keyOf();
 
     Object.assign(sim.world.mut(man, Position), positionOfNode(HOME.x + 2, HOME.y));

@@ -295,8 +295,8 @@ describe("lobby peace - orders and placements at a partner's door", () => {
     });
     sim.step();
 
-    expect(sim.placementProbe(HOME_TYPE, P0)?.canPlace(DOOR.x, DOOR.y)).toBe(false);
-    expect(sim.placementProbe(HOME_TYPE, P2)?.canPlace(DOOR.x, DOOR.y)).toBe(true);
+    expect(sim.placementProbe(HOME_TYPE, { player: P0 })?.canPlace(DOOR.x, DOOR.y)).toBe(false);
+    expect(sim.placementProbe(HOME_TYPE, { player: P2 })?.canPlace(DOOR.x, DOOR.y)).toBe(true);
     expect(sim.signpostProbe(P0)?.canPlace(DOOR.x, DOOR.y)).toBe(false);
     expect(sim.signpostProbe(P2)?.canPlace(DOOR.x, DOOR.y)).toBe(true);
     placeHome(sim, DOOR, P0);

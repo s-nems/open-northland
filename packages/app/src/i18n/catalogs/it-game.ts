@@ -574,6 +574,7 @@ export const itGame = {
       papersHint: "Documenti dalle casse: edifici che sorgono all'istante",
       catalog: 'Catalogo',
       plans: 'Documenti',
+      chooseHouse: "Scegli l'aspetto dell'edificio",
       tally: '×{count}',
       paperEffect: {
         placeAny: "Scegli nel catalogo; sorge all'istante",

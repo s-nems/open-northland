@@ -126,6 +126,7 @@ import {
   applyGameSpeed,
   buildingLabelsFromContent,
   goodLabelsFromContent,
+  houseRecordsFromContent,
   menuEntriesFromContent,
   mountGameToolPanel,
   palisadeToolsOf,
@@ -827,6 +828,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       bindings: keyBindings,
       tribe: seatTribeOf(localPlayer),
       buildTribes: () => answers.buildTribes(viewerPlayer()),
+      houseRecords: houseRecordsFromContent(host.content),
       constructionAnswersVersion: answers.versions.construction,
       constructionView: storedSettings.constructionView,
       onConstructionViewChange: (constructionView) => patchStoredSettings({ constructionView }),
@@ -1335,6 +1337,8 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
     } = await createViewReadModels({
       authoredBuildings:
         typeof deps.sheet?.bindings.building === 'object' ? deps.sheet.bindings.building.byEntity : undefined,
+      recordBuildings:
+        typeof deps.sheet?.bindings.building === 'object' ? deps.sheet.bindings.building.byRecord : undefined,
       signpostReach: answers.signpostReach,
       inventoryVersion: answers.versions.unitPanel,
       probes: placementGates.probes,
@@ -1705,7 +1709,9 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
         if (at === null) shipWaterTip.hide();
         else shipWaterTip.show(at.clientX, at.clientY, messages().hud.construction.shipWater);
       },
-      ghostPlotAt: makeGhostPlotAt((typeId, tribe) => buildingGeometry(typeId, tribe)?.footprint),
+      ghostPlotAt: makeGhostPlotAt(
+        (typeId, tribe, record) => buildingGeometry(typeId, tribe, record)?.footprint,
+      ),
       defenceRangeAt: (typeId, tribe, col, row) =>
         systems.shelterFireRadius(host.content, { buildingType: typeId, tribe }, col, row),
       blessingRangeFor: (typeId) => templeAuraRadius(host.content, typeId),

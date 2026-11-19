@@ -371,7 +371,7 @@ describe('bio-pattern placement - wells and hives need grass', () => {
     const anchor = { minHx: 6, minHy: 6, maxHx: 6, maxHy: 6 };
     // The overlay's cached grid answer, which must rebuild on each flip.
     const overlayAccepts = (): number | undefined =>
-      sim.placementAnswer(BIO_HUT, anchor, undefined, VIKING, false)?.accepted[0];
+      sim.placementAnswer(BIO_HUT, anchor, { tribe: VIKING, gated: false })?.accepted[0];
     const versionBefore = sim.placementBlockerVersion();
     expect(overlayAccepts()).toBe(0);
 

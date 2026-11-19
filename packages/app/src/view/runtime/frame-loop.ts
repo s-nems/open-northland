@@ -25,7 +25,12 @@ import { peaceHoldsUntilTickOf } from '../../game/snapshot/index.js';
 import { pickableSeat, type ViewerSeat } from '../../game/viewer-seat.js';
 import type { DiplomacyMap } from '../../hud/diplomacy-map/index.js';
 import type { MinimapHandle } from '../../hud/minimap/index.js';
-import { type BuildingPick, probeOwner, techWaived } from '../../hud/tool-panel/placement.js';
+import {
+  type BuildingPick,
+  type CanPlaceAt,
+  probeOwner,
+  techWaived,
+} from '../../hud/tool-panel/placement.js';
 import { teamColourVersion } from '../accessibility/team-colour.js';
 import { setCanvasCursor } from '../cursors/element.js';
 import { placementPointer, wallDemolishPointer } from '../cursors/placement.js';
@@ -125,14 +130,7 @@ export interface FrameLoopDeps {
     owner: number,
     viewport: Viewport,
   ) => readonly PlacementOverlayCell[];
-  readonly canPlaceAt: (
-    typeId: number,
-    tribe: number,
-    col: number,
-    row: number,
-    techWaived?: boolean,
-    owner?: number,
-  ) => boolean;
+  readonly canPlaceAt: CanPlaceAt;
   /** The held building's ground at a node, marked under its ghost. */
   readonly ghostPlotAt: GhostPlotAt;
   /** The held building's defence range at a node, drawn around its ghost. */
@@ -306,6 +304,7 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
       app.screen.height,
       techWaived(pick),
       probeOwner(pick),
+      pick.record,
     );
   const signpostOverlay = () => signpostOverlayFrame(cameraCtl.camera(), app.screen.width, app.screen.height);
   // The sprite pool withholds both the felling presenter's refs and the flags other seats' settlers hold.

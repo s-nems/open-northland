@@ -17,6 +17,11 @@ function readBuildingTribe(components: Readonly<Record<string, unknown>>): numbe
   return readNumField(components, 'Building', 'tribe');
 }
 
+export function readBuildingRecord(components: Readonly<Record<string, unknown>>): string | undefined {
+  const record = (components.Building as { record?: unknown } | undefined)?.record;
+  return typeof record === 'string' ? record : undefined;
+}
+
 function readPalisadeGfxIndex(components: Readonly<Record<string, unknown>>): number | undefined {
   return readNumField(components, 'Palisade', 'gfxIndex');
 }
@@ -232,6 +237,7 @@ const STATIC_DRAW_KEYS = [
   'level',
   'levels',
   'gfxIndex',
+  'record',
   'tribe',
   'palisadePosts',
   'palisadeSite',
@@ -283,6 +289,8 @@ export function assignStaticFields(
       if (typeId !== undefined) target.typeId = typeId;
       const tribe = readBuildingTribe(components);
       if (tribe !== undefined) target.tribe = tribe;
+      const record = readBuildingRecord(components);
+      if (record !== undefined) target.record = record;
       const level = readBuildingLevel(components);
       if (level !== undefined) target.level = level;
       const builtPct = readBuiltPct(components);

@@ -1,4 +1,9 @@
-import { type BuildingType, buildingHitpointsFor, hasRecordFootprint } from '@open-northland/data';
+import {
+  type BuildingType,
+  buildingHitpointsFor,
+  hasRecordFootprint,
+  houseRecordsFor,
+} from '@open-northland/data';
 import {
   Building,
   DefenceMode,
@@ -63,13 +68,14 @@ function paperCoversPlacement(paper: Paper, buildingType: number): boolean {
   return paper.kind === 'placeAny' || paper.param === buildingType;
 }
 
-/** Puts the command's building down once its gates pass; `withinReach` holds a seat's own order to its
- *  site reach, which map setup, the admin tools and a mission's forced house skip. */
+/** Puts the command's building down once its gates pass. A `seatIssued` order is held to the seat's site
+ *  reach and to the house records its tribe's house table offers, which map setup, the admin tools and a
+ *  mission's forced house skip. */
 export function placeBuilding(
   world: World,
   ctx: SystemContext,
   command: Extract<Command, { kind: 'placeBuilding' }>,
-  withinReach: boolean,
+  seatIssued: boolean,
 ): void {
   const type = contentIndex(ctx.content).commandBuildings.get(command.buildingType);
   if (type === undefined) return;
@@ -77,6 +83,13 @@ export function placeBuilding(
   if (
     paper !== undefined &&
     (command.owner === undefined || !paperCoversPlacement(paper, command.buildingType))
+  ) {
+    return;
+  }
+  if (
+    seatIssued &&
+    command.record !== undefined &&
+    !houseRecordsFor(type, command.tribe).includes(command.record)
   ) {
     return;
   }
@@ -94,16 +107,12 @@ export function placeBuilding(
     // The seat's placement rule; a mapless sim validates trivially.
     if (
       ctx.terrain !== undefined &&
-      !seatPlacementProbe(
-        world,
-        ctx.content,
-        ctx.terrain,
-        ctx.fog,
-        command.buildingType,
-        command.tribe,
-        command.owner,
-        withinReach,
-      ).canPlace(command.x, command.y)
+      !seatPlacementProbe(world, ctx.content, ctx.terrain, ctx.fog, command.buildingType, {
+        tribe: command.tribe,
+        record: command.record,
+        player: command.owner,
+        withinReach: seatIssued,
+      }).canPlace(command.x, command.y)
     ) {
       return;
     }
@@ -154,7 +163,7 @@ export interface BuildingSpec {
   readonly initialGoods?: readonly { readonly good: number; readonly amount: number }[] | undefined;
   /** An authored level, kept when the type's record draws it above the type's rung. */
   readonly level?: number | undefined;
-  /** An authored house record, kept when it stands on a footprint of its own. */
+  /** The house record the placement names, kept when it stands on a footprint of its own. */
   readonly record?: string | undefined;
 }
 

@@ -3,7 +3,13 @@ import type { GhostPlot } from '@open-northland/render';
 
 /** The ground a held building takes at an anchor node, for the plot under its ghost, with the ground
  *  its later levels grow onto; undefined for a type whose footprint blocks nothing. */
-export type GhostPlotAt = (typeId: number, tribe: number, col: number, row: number) => GhostPlot | undefined;
+export type GhostPlotAt = (
+  typeId: number,
+  tribe: number,
+  col: number,
+  row: number,
+  record?: string,
+) => GhostPlot | undefined;
 
 /**
  * {@link GhostPlotAt} over the content's footprints: the body cells, the level chain's largest body
@@ -11,13 +17,13 @@ export type GhostPlotAt = (typeId: number, tribe: number, col: number, row: numb
  * kept, so a cursor resting on a node hands the renderer the same plot each frame.
  */
 export function makeGhostPlotAt(
-  footprintOf: (typeId: number, tribe: number) => BuildingFootprint | undefined,
+  footprintOf: (typeId: number, tribe: number, record?: string) => BuildingFootprint | undefined,
 ): GhostPlotAt {
   let last: { key: string; plot: GhostPlot | undefined } | null = null;
-  return (typeId, tribe, col, row) => {
-    const key = `${typeId}:${tribe}:${col},${row}`;
+  return (typeId, tribe, col, row, record) => {
+    const key = `${typeId}:${tribe}:${record ?? ''}:${col},${row}`;
     if (last?.key === key) return last.plot;
-    const footprint = footprintOf(typeId, tribe);
+    const footprint = footprintOf(typeId, tribe, record);
     const placed = (cells: readonly FootprintCell[]) =>
       cells.map((c) => ({ col: col + footprintCellDx(row, c), row: row + c.dy }));
     const plot =

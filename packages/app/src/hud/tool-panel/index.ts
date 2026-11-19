@@ -88,6 +88,7 @@ import type { PapersSeam } from './paper-cards.js';
 import { paperLabel } from './paper-label.js';
 import {
   type BuildingPick,
+  type CanPlaceAt,
   createPlacementController,
   type GatePreview,
   type GateSites,
@@ -158,6 +159,8 @@ export interface ToolPanelOptions {
   readonly tribe: number;
   /** The nations the seat may build houses of, its own first; the construction window reads it a tick. */
   readonly buildTribes: () => readonly number[];
+  /** The house records a nation may stand a type as besides its default house. */
+  readonly houseRecords: (typeId: number, tribe: number) => readonly string[];
   /** Bumped when an answer the construction window reads changes: availability, nations or papers. */
   readonly constructionAnswersVersion: () => number;
   /** The construction window's stored grid or list view; a pick persists through
@@ -211,14 +214,7 @@ export interface ToolPanelOptions {
   /** Convert a client (CSS) point to a map tile, or `null` off the map - the placement target. */
   readonly screenToTile: (clientX: number, clientY: number) => { col: number; row: number } | null;
   /** The sim's live placement rule (`SessionHost.placementProbe`), which gates the placement click. */
-  readonly canPlaceAt: (
-    typeId: number,
-    tribe: number,
-    col: number,
-    row: number,
-    techWaived?: boolean,
-    owner?: number,
-  ) => boolean;
+  readonly canPlaceAt: CanPlaceAt;
   readonly canPlacePalisadeAt?: (
     gfxIndex: number,
     owner: number,
@@ -649,6 +645,7 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
           buildingLabel: (typeId) => labelByType.get(typeId) ?? `#${typeId}`,
           homeTribe: opts.tribe,
           buildTribes: opts.buildTribes,
+          houseRecords: opts.houseRecords,
           answersVersion: opts.constructionAnswersVersion,
           ...(opts.nationEmblemType !== undefined ? { emblemType: opts.nationEmblemType } : {}),
           onPick: seam.onPick,

@@ -29,6 +29,7 @@ export {
   resolveUpgradeDraws,
 } from './layered.js';
 export type {
+  AuthoredBuildingDraw,
   BuildingBobRef,
   BuildingDraw,
   BuildingLandscapeOverlayRef,
@@ -47,6 +48,7 @@ export type {
   SignpostBinding,
   StockpileBinding,
 } from './layered-bindings.js';
+export { houseRecordKey } from './layered-bindings.js';
 export {
   type FamilyEffectsBinding,
   type FootfallBinding,

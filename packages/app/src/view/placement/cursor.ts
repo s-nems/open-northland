@@ -2,6 +2,7 @@ import type { BerthMark, PlacementGhost, PlacementOverlayFrame } from '@open-nor
 import type { LinePreviewNode } from '../../hud/tool-panel/line-tool.js';
 import {
   type BuildingPick,
+  type CanPlaceAt,
   type GatePreview,
   probeOwner,
   type RoadPreview,
@@ -15,8 +16,8 @@ export interface PlacementCursor {
 }
 
 export interface PlacementCursorInput {
-  /** The building the tool panel holds, or null outside build mode; its nation picks the ghost's body
-   *  and footprint, its waiver ({@link techWaived}) the technology part of the live probe, and an admin
+  /** The building the tool panel holds, or null outside build mode; its nation and house record pick the
+   *  ghost's body and footprint, its waiver ({@link techWaived}) the technology part of the live probe, and an admin
    *  pick's owner ({@link probeOwner}) whose ground rule it reads. */
   readonly building: BuildingPick | null;
   readonly palisadeGfxIndex?: number | null;
@@ -38,14 +39,7 @@ export interface PlacementCursorInput {
   readonly dockOverlay: (vehicle: number) => PlacementOverlayFrame | null;
   /** The tile under the cursor, or null off the map or off the canvas. */
   readonly tileAt: () => { readonly col: number; readonly row: number } | null;
-  readonly canPlaceAt: (
-    typeId: number,
-    tribe: number,
-    col: number,
-    row: number,
-    techWaived?: boolean,
-    owner?: number,
-  ) => boolean;
+  readonly canPlaceAt: CanPlaceAt;
   /** Whether the seat ever explored a node's ground; absent, it knows every node. */
   readonly exploredNode?: (col: number, row: number) => boolean;
   /** The ground the held building takes at a node, marked under its ghost. Absent, no plot shows. */
@@ -137,17 +131,19 @@ export function placementCursor(input: PlacementCursorInput): PlacementCursor {
   }
   if (tile === null) return { overlay, ghost: null };
   if (building !== null) {
-    const { typeId, tribe } = building;
-    const plot = input.plotAt?.(typeId, tribe, tile.col, tile.row);
+    const { typeId, tribe, record } = building;
+    const plot = input.plotAt?.(typeId, tribe, tile.col, tile.row, record);
     const held = {
       kind: 'building',
       col: tile.col,
       row: tile.row,
       buildingType: typeId,
       tribe,
+      ...(record === undefined ? {} : { record }),
       ...(plot === undefined ? {} : { plot }),
     } as const;
-    if (!input.canPlaceAt(typeId, tribe, tile.col, tile.row, techWaived(building), probeOwner(building))) {
+    const waived = techWaived(building);
+    if (!input.canPlaceAt(typeId, tribe, tile.col, tile.row, waived, probeOwner(building), record)) {
       // A refused ghost rides the terrain, so over ground the seat never explored it would trace the
       // hills.
       return {

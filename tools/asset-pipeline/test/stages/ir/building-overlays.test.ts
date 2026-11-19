@@ -1,12 +1,21 @@
-import { BuildingType, buildingFootprintFor, buildingHitpointsFor } from '@open-northland/data';
+import {
+  BuildingType,
+  buildingFootprintFor,
+  buildingHitpointsFor,
+  houseRecordsFor,
+} from '@open-northland/data';
 import {
   extractBuildingFootprints,
   extractHouseHitpoints,
   extractRecordFootprints,
   parseIniSections,
+  type RecordFootprint,
 } from '@open-northland/formats/ini';
 import { describe, expect, it } from 'vitest';
-import { applyBuildingGraphicsOverlays } from '../../../src/stages/ir/building-overlays.js';
+import {
+  applyBuildingGraphicsOverlays,
+  fillBaseRecordFootprints,
+} from '../../../src/stages/ir/building-overlays.js';
 
 const VIKING = 1;
 const FRANK = 2;
@@ -93,5 +102,36 @@ describe('applyBuildingGraphicsOverlays', () => {
     expect(buildingFootprintFor(hut, VIKING, 'viking hall')?.blocked).toEqual([{ dx: 0, dy: 0 }]);
     expect(buildingFootprintFor(hut, VIKING, 'viking hut copy')).toEqual(hut.footprint);
     expect(buildingFootprintFor(hut, FRANK, 'viking hall')).toEqual(buildingFootprintFor(hut, FRANK));
+    expect(houseRecordsFor(hut, VIKING)).toEqual(['viking hall']);
+  });
+
+  it("keeps a base-only record for the maps that name it, off a placement's choice", () => {
+    const sections = parseIniSections(HUTS_INI);
+    const baseOnly = new Map<number, RecordFootprint[]>();
+    fillBaseRecordFootprints(baseOnly, extractRecordFootprints(sections));
+    const [hut] = applyBuildingGraphicsOverlays(
+      [BuildingType.parse({ typeId: HUT, id: 'hut', kind: 'home' })],
+      {
+        constructionCosts: new Map(),
+        hitpoints: new Map(),
+        upgradeTargets: new Map(),
+        footprints: extractBuildingFootprints(sections),
+        recordFootprints: baseOnly,
+      },
+    );
+    if (hut === undefined) throw new Error('the join dropped the building');
+    const parsed = BuildingType.parse(hut);
+    expect(parsed.recordFootprints.map((r) => [r.editName, r.mapOnly])).toEqual([['viking hall', true]]);
+    expect(buildingFootprintFor(parsed, VIKING, 'viking hall')?.blocked).toEqual([{ dx: 0, dy: 0 }]);
+    expect(houseRecordsFor(parsed, VIKING)).toEqual([]);
+  });
+
+  it('leaves a record the game table defines on offer when the base table repeats it', () => {
+    const rows = extractRecordFootprints(parseIniSections(HUTS_INI));
+    const ruleRecords = new Map([...rows].map(([typeId, records]) => [typeId, [...records]]));
+    fillBaseRecordFootprints(ruleRecords, rows);
+    const joined = [...ruleRecords.values()].flat();
+    expect(joined).toHaveLength([...rows.values()].flat().length);
+    expect(joined.some((record) => record.mapOnly === true)).toBe(false);
   });
 });

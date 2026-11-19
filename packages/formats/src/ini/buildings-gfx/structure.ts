@@ -260,6 +260,8 @@ export interface RecordFootprint {
   readonly tribe: number;
   readonly editName: string;
   readonly footprint: BuildingFootprint;
+  /** Set where only the base house table defines the record (`BuildingRecordFootprint.mapOnly`). */
+  readonly mapOnly?: boolean;
 }
 
 /**
@@ -302,14 +304,14 @@ export function widenRecordFootprints(
   for (const [typeId, list] of records) {
     out.set(
       typeId,
-      list.map(({ tribe, editName, footprint }) => {
+      list.map((record) => {
+        const { tribe, footprint } = record;
         const others = (chainOf.get(typeId) ?? [])
           .filter((member) => member !== typeId)
           .flatMap((member) => defaults.get(member)?.get(tribe) ?? []);
         const members = [footprint, ...others];
         return {
-          tribe,
-          editName,
+          ...record,
           footprint: {
             ...footprint,
             familyBody: canonicalCells(members.flatMap((m) => m.familyBody)),

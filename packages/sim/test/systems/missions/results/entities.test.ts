@@ -233,7 +233,7 @@ describe('the house results', () => {
     // Exactly the nearest spot the first house left buildable, the lowest node id among ties.
     const alone = firingSim([blocking], houseContent());
     alone.run(LOAD_PASS);
-    const probe = alone.placementProbe(HUT, 1, VIKING);
+    const probe = alone.placementProbe(HUT, { player: 1, tribe: VIKING });
     if (probe === null) throw new Error('mapped fixture');
     let expected: { hx: number; hy: number } | undefined;
     let best = Number.POSITIVE_INFINITY;

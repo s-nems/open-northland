@@ -2,6 +2,7 @@ import { homeQualityView, type WorldSnapshot } from '@open-northland/sim';
 import { ONE } from '../projection/index.js';
 import { readNumField } from '../snapshot/index.js';
 import type { InHouseOverlay } from './in-house.js';
+import { readBuildingRecord } from './snapshot-readers/index.js';
 import { readTempleBlessing } from './temple-glow.js';
 
 export interface HolyFireBinding {
@@ -12,12 +13,14 @@ export interface HolyFireBinding {
   readonly perpetual: boolean;
 }
 
-/** Source-authored holy-fire points for one tribe, building type, and zero-based home level. */
+/** Source-authored holy-fire points for one tribe, building type, and zero-based home level, of the house
+ *  record a building stands as when it names one. */
 export type HolyFireLookup = (
   tribe: number,
   buildingType: number,
   level: number,
   entity?: number,
+  record?: string,
 ) => HolyFireBinding | undefined;
 
 /** The looping flames a visible finished home or prayer site stages this frame. A home's fire needs oil
@@ -44,7 +47,7 @@ export function holyFireOverlays(
   ) {
     return [];
   }
-  const binding = lookup(tribe, buildingType, level, building);
+  const binding = lookup(tribe, buildingType, level, building, readBuildingRecord(components));
   if (binding === undefined || binding.points.length === 0) return [];
   if (
     binding.perpetual

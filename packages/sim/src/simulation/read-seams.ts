@@ -6,7 +6,7 @@ import type { ContentSet } from '@open-northland/data';
 import { FOG_MODE, type FogMode, fogMode } from '../components/index.js';
 import type { World } from '../ecs/world.js';
 import type { TerrainGraph } from '../nav/terrain/index.js';
-import { seatPlacementProbe } from '../systems/conflict/contested-ground.js';
+import { type SeatPlacement, seatPlacementProbe } from '../systems/conflict/contested-ground.js';
 import type { PlacementProbe } from '../systems/footprint/index.js';
 import { buildingEnabled } from '../systems/progression/index.js';
 import { type SignpostProbe, signpostProbe } from '../systems/signposts/index.js';
@@ -32,6 +32,12 @@ export interface FogView {
   readonly cells?: Uint8Array;
 }
 
+/** A {@link SeatPlacement} with the seat's technology gate. */
+export interface PlacementAsk extends SeatPlacement {
+  /** Off waives the technology gate a tribe adds, as a placing paper does. On by default. */
+  readonly gated?: boolean | undefined;
+}
+
 /** Null for a mapless sim. */
 export function placementProbeFor(
   world: World,
@@ -39,13 +45,12 @@ export function placementProbeFor(
   terrain: TerrainGraph | undefined,
   fog: FogState | undefined,
   buildingType: number,
-  player?: number,
-  tribe?: number,
-  gated = true,
+  ask: PlacementAsk = {},
 ): PlacementProbe | null {
   if (terrain === undefined) return null;
-  const probe = seatPlacementProbe(world, content, terrain, fog, buildingType, tribe, player);
-  if (tribe === undefined || !gated) return probe;
+  const { player, tribe } = ask;
+  const probe = seatPlacementProbe(world, content, terrain, fog, buildingType, ask);
+  if (tribe === undefined || ask.gated === false) return probe;
   const enabled = buildingEnabled(world, { content }, player, tribe, buildingType);
   return { canPlace: (x, y) => enabled && probe.canPlace(x, y) };
 }

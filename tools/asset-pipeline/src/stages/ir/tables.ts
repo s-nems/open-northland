@@ -40,7 +40,7 @@ import { BASE_BUILDING_GRAPHICS_FILE, BUILDING_GRAPHICS_FILE } from '../../data-
 import { readSourceFile, type SourceRoots } from '../../roots.js';
 import { loadBaseOnlyHouseRecords } from '../base-houses.js';
 import { withBigShipCartSlot } from './big-ship-cart-slot.js';
-import type { BuildingGraphicsOverlays } from './building-overlays.js';
+import { type BuildingGraphicsOverlays, fillBaseRecordFootprints } from './building-overlays.js';
 import { withShipHitpoints } from './ship-hitpoints.js';
 import type { IniSource } from './sources.js';
 
@@ -59,21 +59,6 @@ function fillTribeOverlay<V>(into: Map<number, ByTribe<V>>, rows: ReadonlyMap<nu
   for (const [typeId, byTribe] of rows) {
     const merged = new Map(into.get(typeId));
     for (const [tribe, value] of byTribe) if (!merged.has(tribe)) merged.set(tribe, value);
-    into.set(typeId, merged);
-  }
-}
-
-/** {@link fillOverlay} per `(typeId, tribe, EditName)`: a fallback record joins the ones a type has. */
-function fillRecordOverlay(
-  into: Map<number, RecordFootprint[]>,
-  rows: ReadonlyMap<number, readonly RecordFootprint[]>,
-): void {
-  for (const [typeId, records] of rows) {
-    const merged = [...(into.get(typeId) ?? [])];
-    for (const record of records) {
-      if (!merged.some((r) => r.tribe === record.tribe && r.editName === record.editName))
-        merged.push(record);
-    }
     into.set(typeId, merged);
   }
 }
@@ -163,7 +148,7 @@ export async function extractIniTables(roots: SourceRoots, sources: readonly Ini
   fillTribeOverlay(buildingGraphicsOverlays.hitpoints, extractHouseHitpoints(baseHouses));
   fillOverlay(buildingGraphicsOverlays.upgradeTargets, extractUpgradeTargets(baseHouses));
   fillTribeOverlay(buildingGraphicsOverlays.footprints, extractBuildingFootprints(baseHouses));
-  fillRecordOverlay(buildingGraphicsOverlays.recordFootprints, extractRecordFootprints(baseHouses));
+  fillBaseRecordFootprints(buildingGraphicsOverlays.recordFootprints, extractRecordFootprints(baseHouses));
   const recordFootprints = widenRecordFootprints(
     buildingGraphicsOverlays.recordFootprints,
     buildingGraphicsOverlays.footprints,

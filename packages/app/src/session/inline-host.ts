@@ -89,8 +89,8 @@ export function inlineSessionHost(sim: Simulation, options: InlineSessionHostOpt
     },
     hashState: () => Promise.resolve({ tick: sim.tick, hash: sim.hashState() }),
 
-    placementProbe: (buildingType, area, player, tribe, gated, withinReach) =>
-      Promise.resolve(sim.placementAnswer(buildingType, area, player, tribe, gated, withinReach)),
+    placementProbe: (buildingType, area, ask) =>
+      Promise.resolve(sim.placementAnswer(buildingType, area, ask)),
     shipWaterVersion: () => sim.shipWaterVersion(),
     shipWaterProbe: (buildingType, tribe, area, player) =>
       Promise.resolve(sim.shipWaterGrid(buildingType, tribe, area, player)),

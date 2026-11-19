@@ -739,7 +739,7 @@ export const WORLD: ArticleGroup = {
                 "L'edificio indicato, con piene scorte delle merci che consuma",
               ],
             ],
-            foot: "Un documento sparisce dopo l'uso, tranne quando il punto non è adatto. Trovi i tuoi documenti nella finestra di costruzione alla voce «Documenti».",
+            foot: "Un documento sparisce dopo l'uso, tranne quando il punto non è adatto. Trovi i tuoi documenti nella finestra di costruzione alla voce «Documenti». Per un edificio con più aspetti, come il [[building:headquarters|Quartier generale]], scegli quale sorge.",
           },
         },
         {

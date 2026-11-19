@@ -14,6 +14,7 @@ export {
   depositVisualLevel,
   readBerryBushGfxIndex,
   readBerryBushLevel,
+  readBuildingRecord,
   readBuiltPct,
   readHpFraction,
   readPalisadeClaimed,

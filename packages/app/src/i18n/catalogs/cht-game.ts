@@ -538,6 +538,7 @@ export const chtGame = {
       papersHint: '來自箱子的文書：可立即落成的建築',
       catalog: '目錄',
       plans: '文書',
+      chooseHouse: '選擇建築的樣式',
       tally: '×{count}',
       /** What spending a paper does, under its name on the papers page. */
       paperEffect: {

@@ -121,7 +121,7 @@ function buildOrder(context: OrderContext): PlayerCommand | null {
   });
   for (let attempt = 0; attempt < BUILD_TYPE_ATTEMPTS; attempt++) {
     const type = pick(types, random);
-    const probe = type === undefined ? null : sim.placementProbe(type.typeId, seat, tribe);
+    const probe = type === undefined ? null : sim.placementProbe(type.typeId, { player: seat, tribe });
     if (type === undefined || probe === null) continue;
     for (let radius = 1; radius <= BUILD_SEARCH_RADIUS; radius++) {
       for (let dy = -radius; dy <= radius; dy++) {

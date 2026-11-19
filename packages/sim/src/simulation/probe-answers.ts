@@ -55,6 +55,7 @@ import {
 } from '../systems/signposts/index.js';
 import { mooringSpotsOf } from '../systems/vehicles/index.js';
 import type { FogState } from '../systems/vision/index.js';
+import type { PlacementAsk } from './read-seams.js';
 
 /** A probe's verdict on every node of an area. */
 export interface NodeGridAnswer {
@@ -197,14 +198,19 @@ interface FootprintGrid {
 /** Grids kept per world before they are all dropped: a panned view keeps asking for new areas. */
 const MAX_FOOTPRINT_GRIDS = 256;
 
-/** Footprint grids by (type, tribe, area), each valid while the blocker counts near its area hold, so a
- *  blocker changing across the map leaves them standing. The contested ground and the technology gate are
+/** Footprint grids by (type, tribe, record, area), each valid while the blocker counts near its area
+ *  hold, so a blocker changing across the map leaves them standing. The contested ground and the technology gate are
  *  laid over them per answer. A read-path cache, never hashed. */
 const footprintGrids = new WeakMap<World, Map<string, FootprintGrid>>();
 
 /** How far past an anchor a footprint cell reaches, in nodes: its offsets, plus the row parity's shift. */
-function footprintReach(content: ContentSet, buildingType: number, tribe: number | undefined): number {
-  const footprint = buildingFootprintOf(content, buildingType, tribe);
+function footprintReach(
+  content: ContentSet,
+  buildingType: number,
+  tribe: number | undefined,
+  record: string | undefined,
+): number {
+  const footprint = buildingFootprintOf(content, buildingType, tribe, record);
   if (footprint === undefined) return 0;
   let reach = 0;
   for (const cells of [footprint.reserved, footprint.familyBody, footprint.blocked]) {
@@ -219,6 +225,7 @@ function footprintGrid(
   terrain: TerrainGraph,
   buildingType: number,
   tribe: number | undefined,
+  record: string | undefined,
   area: NodeArea,
 ): FootprintGrid {
   let grids = footprintGrids.get(world);
@@ -227,20 +234,20 @@ function footprintGrid(
     footprintGrids.set(world, grids);
   }
   const blockers = placementBlockerGrid(world, content, terrain);
-  const key = `${gridChangeKey(blockers, area, footprintReach(content, buildingType, tribe))}.${bioGroundWaived(world) ? 1 : 0}`;
-  const slot = `${buildingType}:${tribe ?? ''}:${areaKey(area)}`;
+  const key = `${gridChangeKey(blockers, area, footprintReach(content, buildingType, tribe, record))}.${bioGroundWaived(world) ? 1 : 0}`;
+  const slot = `${buildingType}:${tribe ?? ''}:${record ?? ''}:${areaKey(area)}`;
   const held = grids.get(slot);
   if (held !== undefined && held.key === key) return held;
-  const probe = placementProbe(world, content, terrain, buildingType, tribe);
+  const probe = placementProbe(world, content, terrain, buildingType, tribe, record);
   const fresh = { key, grid: gridOver(area, (hx, hy) => probe.canPlace(hx, hy)) };
   if (grids.size >= MAX_FOOTPRINT_GRIDS && held === undefined) grids.clear();
   grids.set(slot, fresh);
   return fresh;
 }
 
-/** The building placement probe's answer over `area`: `tribe`'s footprint, the seat's site reach (unless `withinReach` is off),
- *  contested ground, the ground a peace keeps the seat off and, with a tribe while `gated`, the seat's
- *  technology gate. Null for a mapless sim. */
+/** The building placement probe's answer over `area`: the footprint, the seat's site reach, contested
+ *  ground, the ground a peace keeps the seat off and, with a tribe while gated, the seat's technology
+ *  gate. Null for a mapless sim. */
 export function placementAnswerFor(
   world: World,
   content: ContentSet,
@@ -248,13 +255,21 @@ export function placementAnswerFor(
   fog: FogState | undefined,
   buildingType: number,
   area: NodeArea,
-  player?: number,
-  tribe?: number,
-  gated = true,
-  withinReach = true,
+  ask: PlacementAsk = {},
 ): NodeGridAnswer | null {
   if (terrain === undefined) return null;
-  const { key: version, grid: footprint } = footprintGrid(world, content, terrain, buildingType, tribe, area);
+  const { player, tribe, record } = ask;
+  const gated = ask.gated !== false;
+  const withinReach = ask.withinReach !== false;
+  const { key: version, grid: footprint } = footprintGrid(
+    world,
+    content,
+    terrain,
+    buildingType,
+    tribe,
+    record,
+    area,
+  );
   const enabled =
     tribe === undefined || !gated || buildingEnabled(world, { content }, player, tribe, buildingType);
   if (player === undefined) {

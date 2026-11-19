@@ -724,7 +724,7 @@ export const WORLD: ArticleGroup = {
                 'Das genannte Gebäude mit vollem Vorrat an allem, was es verbraucht',
               ],
             ],
-            foot: 'Ein Brief verschwindet nach Gebrauch, außer der Ort passt nicht. Deine Briefe findest du im Baufenster unter „Briefe“.',
+            foot: 'Ein Brief verschwindet nach Gebrauch, außer der Ort passt nicht. Deine Briefe findest du im Baufenster unter „Briefe“. Bei einem Gebäude mit mehreren Ansichten, wie dem [[building:headquarters|Hauptquartier]], wählst du, welche entsteht.',
           },
         },
         {

@@ -55,6 +55,8 @@ export type PlacementSide = { readonly owner: number; readonly tribe: number };
 export interface BuildingPick {
   readonly typeId: number;
   readonly tribe: number;
+  /** The house record it stands as, for a type with several; absent, the type's default house. */
+  readonly record?: string;
   readonly paper: Paper | null;
   /** The admin tool's pick: it stands finished for `owner` through the trusted channel, past the
    *  technology gate, at `level` where the type's records draw one above its rung. */
@@ -87,6 +89,21 @@ export function standingBuildingAt(
   return other === undefined ? { tribe: seatTribe, level: 0 } : { tribe: other.tribe, level: other.topLevel };
 }
 
+/** The sim's placement rule for a house at a node: `techWaived` drops the technology gate (a paper, the
+ *  admin tool), `owner` reads that seat's ground rule and `record` the house record's own footprint. */
+export type CanPlaceAt = (
+  typeId: number,
+  tribe: number,
+  col: number,
+  row: number,
+  techWaived?: boolean,
+  owner?: number,
+  record?: string,
+) => boolean;
+
+/** {@link CanPlaceAt} awaiting the sim's answer as of now, as a click decides. */
+export type AskPlaceAt = (...args: Parameters<CanPlaceAt>) => Promise<boolean>;
+
 /** A paper or the admin tool waives a building's technology gate; its ground rules still apply. */
 export function techWaived(pick: BuildingPick): boolean {
   return pick.paper !== null || pick.standing !== undefined;
@@ -115,14 +132,7 @@ export interface GateSites extends LitNodes {
 
 /** The placement rules as a click asks them: each awaits the sim's answer as of now. */
 export interface PlacementClickAsks {
-  readonly askPlaceAt: (
-    typeId: number,
-    tribe: number,
-    col: number,
-    row: number,
-    techWaived?: boolean,
-    owner?: number,
-  ) => Promise<boolean>;
+  readonly askPlaceAt: AskPlaceAt;
   /** Resolves once the wall answers within `reach` nodes of `anchor` and `owner`'s built nodes are
    *  current, so the line decided next reads them through the synchronous rules. */
   readonly palisadeLineReady: (
@@ -164,14 +174,7 @@ export interface PlacementDeps {
   readonly screenToTile: (clientX: number, clientY: number) => { col: number; row: number } | null;
   /** The sim's live placement rule for the held type and nation at a tile (`SessionHost.placementProbe`);
    *  a click on a rejecting tile is inert, so build mode only ends on a placement that lands. */
-  readonly canPlaceAt: (
-    typeId: number,
-    tribe: number,
-    col: number,
-    row: number,
-    techWaived?: boolean,
-    owner?: number,
-  ) => boolean;
+  readonly canPlaceAt: CanPlaceAt;
   /** Where a wall segment may stand; with `overUpgradeGround`, on ground a building keeps for its
    *  upgrade too. */
   readonly canPlacePalisadeAt?: (
@@ -480,11 +483,18 @@ export function createPlacementController(deps: PlacementDeps): PlacementControl
 
   /** `repeat` keeps the building held for the next placement. */
   const placeBuilding = (
-    { typeId, tribe, paper, standing }: BuildingPick,
+    { typeId, tribe, record, paper, standing }: BuildingPick,
     tile: LineNode,
     repeat: boolean,
   ): void => {
-    const place = { kind: 'placeBuilding', buildingType: typeId, x: tile.col, y: tile.row, tribe } as const;
+    const place = {
+      kind: 'placeBuilding',
+      buildingType: typeId,
+      x: tile.col,
+      y: tile.row,
+      tribe,
+      ...(record !== undefined ? { record } : {}),
+    } as const;
     // Past the technology gate the click's probe waived; the sim still holds the ground rule.
     if (standing !== undefined) {
       deps.enqueueTrusted?.({
@@ -657,10 +667,19 @@ export function createPlacementController(deps: PlacementDeps): PlacementControl
       // A plan pays for one house, so its placement ends with it.
       const repeat = shiftHeld && pick.paper === null;
       if (asks === undefined) {
-        if (deps.canPlaceAt(pick.typeId, pick.tribe, tile.col, tile.row, waived, owner))
+        if (deps.canPlaceAt(pick.typeId, pick.tribe, tile.col, tile.row, waived, owner, pick.record))
           placeBuilding(pick, tile, repeat);
       } else {
-        decideLater(asks.askPlaceAt(pick.typeId, pick.tribe, tile.col, tile.row, waived, owner), (ok) => {
+        const asked = asks.askPlaceAt(
+          pick.typeId,
+          pick.tribe,
+          tile.col,
+          tile.row,
+          waived,
+          owner,
+          pick.record,
+        );
+        decideLater(asked, (ok) => {
           if (ok) placeBuilding(pick, tile, repeat);
         });
       }

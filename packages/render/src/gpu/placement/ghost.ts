@@ -38,6 +38,8 @@ export type PlacementGhost =
       /** The civilization raising it, so the cursor previews the body the placement will actually put
        *  down rather than the base tribe's. */
       readonly tribe: number;
+      /** The house record it stands as, for a type with several; absent, the type's default house. */
+      readonly record?: string;
       /** How far the building would shoot in defence mode from this anchor, in map points; absent for a
        *  type with no defence mode. */
       readonly defenceRangeNodes?: number;
@@ -106,7 +108,7 @@ type SpriteGhost = Exclude<PlacementGhost, { readonly kind: 'line' | 'berths' }>
 function ghostKey(ghost: SpriteGhost): string {
   switch (ghost.kind) {
     case 'building':
-      return `b:${ghost.tribe}:${ghost.buildingType}${ghost.warn === true ? ':warn' : ''}${ghost.refused === true ? ':refused' : ''}`;
+      return `b:${ghost.tribe}:${ghost.buildingType}:${ghost.record ?? ''}${ghost.warn === true ? ':warn' : ''}${ghost.refused === true ? ':refused' : ''}`;
     case 'signpost':
       return `s:${ghost.player}`;
     case 'gate':
@@ -133,6 +135,7 @@ function ghostItem(ghost: SpriteGhost): DrawItem {
         depth: 0,
         typeId: ghost.buildingType,
         tribe: ghost.tribe,
+        ...(ghost.record === undefined ? {} : { record: ghost.record }),
       };
     case 'signpost':
       return { kind: 'signpost', ref: -1, x: 0, y: 0, depth: 0, player: ghost.player };
@@ -341,7 +344,7 @@ export class PlacementGhostLayer {
       return;
     }
     const refused = ghost.refused === true;
-    const key = `${ghost.tribe}:${ghost.buildingType}:${ghost.col},${ghost.row}:${refused}`;
+    const key = `${ghost.tribe}:${ghost.buildingType}:${ghost.record ?? ''}:${ghost.col},${ghost.row}:${refused}`;
     if (this.plot?.key === key && this.plot.elevation === elevation) return;
     this.dropPlot();
     const ground = mintGhostPlot(plot, elevation, refused);

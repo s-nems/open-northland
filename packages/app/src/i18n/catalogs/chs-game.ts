@@ -538,6 +538,7 @@ export const chsGame = {
       papersHint: '来自箱子的文书：可立即建成的建筑',
       catalog: '目录',
       plans: '文书',
+      chooseHouse: '选择建筑的样式',
       tally: '×{count}',
       /** What spending a paper does, under its name on the papers page. */
       paperEffect: {

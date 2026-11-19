@@ -86,10 +86,10 @@ export function paperedPlacement(
     .reverse();
   const fits = (tier: number): boolean =>
     tier === command.buildingType ||
-    seatPlacementProbe(world, ctx.content, terrain, ctx.fog, tier, command.tribe, player).canPlace(
-      command.x,
-      command.y,
-    );
+    seatPlacementProbe(world, ctx.content, terrain, ctx.fog, tier, {
+      tribe: command.tribe,
+      player,
+    }).canPlace(command.x, command.y);
   const spend = (tier: number, paper: Paper): PlaceCommand => ({ ...command, buildingType: tier, paper });
 
   for (const tier of tiers) {

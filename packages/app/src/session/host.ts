@@ -35,6 +35,7 @@ import type {
   OpenTribute,
   PalisadeGateProbeResult,
   Paper,
+  PlacementAsk,
   SaveGame,
   ScriptLandscapeType,
   SignpostReachView,
@@ -179,17 +180,8 @@ export interface SessionHost {
 
   // Probes: the placement rules as data over a node area, or null for a mapless world.
 
-  /** The `placeBuilding` rule; with a `player` it also refuses the ground a hostile army contests and,
-   *  while `withinReach`, the ground past the seat's site reach (an admin placement skips it), and a
-   *  `tribe` picks the footprint and, while `gated`, adds the seat's technology gate (a paper waives it). */
-  placementProbe(
-    buildingType: number,
-    area: NodeArea,
-    player?: number,
-    tribe?: number,
-    gated?: boolean,
-    withinReach?: boolean,
-  ): Promise<NodeGridAnswer | null>;
+  /** The `placeBuilding` rule for the house and seat `ask` names. */
+  placementProbe(buildingType: number, area: NodeArea, ask?: PlacementAsk): Promise<NodeGridAnswer | null>;
   /** Changes whenever a ship-water answer may, movers aside; see {@link shipWaterProbe}. */
   shipWaterVersion(): string;
   /** Over `area`, whether a workshop of `buildingType` (of `tribe`, whose footprint the door reads)

@@ -11,12 +11,17 @@ interface TribeVariants<F> {
     readonly hitpoints?: number | undefined;
   }[];
   readonly recordFootprints?:
-    | readonly { readonly tribe: number; readonly editName: string; readonly footprint: F }[]
+    | readonly {
+        readonly tribe: number;
+        readonly editName: string;
+        readonly footprint: F;
+        readonly mapOnly?: boolean | undefined;
+      }[]
     | undefined;
 }
 
 /** `tribe`'s own footprint for `type`, else the lowest tribe's; an undefined tribe reads the lowest. A
- *  `record` names the house record a map placed, whose own footprint wins where it has one. */
+ *  `record` names the house record a placement chose, whose own footprint wins where it has one. */
 export function buildingFootprintFor<F = BuildingFootprint>(
   type: TribeVariants<F>,
   tribe: number | undefined,
@@ -36,6 +41,14 @@ export function buildingFootprintFor<F = BuildingFootprint>(
 /** Whether `record` stands `type` on a footprint of its own for `tribe`. */
 export function hasRecordFootprint(type: TribeVariants<unknown>, tribe: number, record: string): boolean {
   return (type.recordFootprints ?? []).some((entry) => entry.tribe === tribe && entry.editName === record);
+}
+
+/** The house records a placement may stand `type` as for `tribe` besides its default one: each record of
+ *  the game's house table on a footprint of its own, in name order. Empty for a type with a single house. */
+export function houseRecordsFor(type: TribeVariants<unknown>, tribe: number): readonly string[] {
+  return (type.recordFootprints ?? [])
+    .filter((entry) => entry.tribe === tribe && entry.mapOnly !== true)
+    .map((entry) => entry.editName);
 }
 
 /** `tribe`'s own max hitpoints for `type`, else the lowest tribe's; an undefined tribe reads the lowest. */

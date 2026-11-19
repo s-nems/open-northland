@@ -40,9 +40,9 @@ export function thumbFit(
 
 export interface BuildingThumbs {
   /** Show the type's body in `image` at `boxPx` design px, as `tribe` builds it (the seat's own by
-   *  default); false leaves the image empty (no sheet, no bound frame, or a GPU-only page) and the card
-   *  shows its glyph instead. */
-  paint(image: HTMLImageElement, typeId: number, boxPx: number, tribe?: number): boolean;
+   *  default) and as the house `record` where one is named; false leaves the image empty (no sheet, no
+   *  bound frame, or a GPU-only page) and the card shows its glyph instead. */
+  paint(image: HTMLImageElement, typeId: number, boxPx: number, tribe?: number, record?: string): boolean;
   /** Whether the sheet holds `tribe`'s own body of the type; a type it lacks paints the base tribe's. */
   holds(typeId: number, tribe: number): boolean;
 }
@@ -54,9 +54,9 @@ export function createBuildingThumbs(sheet: SpriteSheet | undefined, seatTribe: 
       const binding = sheet?.bindings.building;
       return typeof binding === 'object' && binding.byTribe?.[tribe]?.byType[typeId] !== undefined;
     },
-    paint: (image, typeId, boxPx, tribe = seatTribe) => {
+    paint: (image, typeId, boxPx, tribe = seatTribe, record) => {
       if (sheet === undefined) return false;
-      const ref = boundBuildingRef(sheet.bindings.building, typeId, tribe);
+      const ref = boundBuildingRef(sheet.bindings.building, typeId, tribe, record);
       if (ref === undefined) return false;
       const draw = typeof ref === 'number' ? { bob: ref, layer: undefined } : ref;
       const layer = draw.layer !== undefined ? sheet.families?.[draw.layer] : sheet.kindLayers?.building;
@@ -64,7 +64,7 @@ export function createBuildingThumbs(sheet: SpriteSheet | undefined, seatTribe: 
       const drawable = frame === null || layer === undefined ? null : drawableFrame(layer.source, frame);
       if (frame === null || drawable === null) return false;
       const size = boxPx * THUMB_BACKING_SCALE;
-      const picture = pictures.picture(`${typeId}:${tribe}:${size}`, size, size, (ctx) => {
+      const picture = pictures.picture(`${typeId}:${tribe}:${record ?? ''}:${size}`, size, size, (ctx) => {
         const fit = thumbFit(frame, size);
         ctx.imageSmoothingEnabled = true;
         ctx.imageSmoothingQuality = 'high';

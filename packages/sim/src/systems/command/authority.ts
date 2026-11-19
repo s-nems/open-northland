@@ -185,8 +185,7 @@ function hasAuthoredOptions(
     command.fillStock !== undefined ||
     command.initialGoods !== undefined ||
     command.missionId !== undefined ||
-    command.level !== undefined ||
-    command.record !== undefined
+    command.level !== undefined
   );
 }
 

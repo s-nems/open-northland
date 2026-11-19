@@ -63,7 +63,7 @@ describe("a building type's per-tribe footprint and life pool", () => {
     const nearEdge = terrain.width - 4;
     const area = { minHx: nearEdge, minHy: 6, maxHx: nearEdge, maxHy: 6 };
     const accepts = (tribe: number, gated: boolean): number | undefined =>
-      sim.placementAnswer(HUT, area, undefined, tribe, gated)?.accepted[0];
+      sim.placementAnswer(HUT, area, { tribe, gated })?.accepted[0];
     expect(accepts(VIKING, true)).toBe(1);
     expect(accepts(SARACEN, true)).toBe(0);
     expect(accepts(SARACEN, false)).toBe(0);
@@ -80,7 +80,7 @@ describe("a building type's per-tribe footprint and life pool", () => {
   });
 });
 
-describe("a map-placed house record's own footprint", () => {
+describe("a house record's own footprint", () => {
   const HALL = 'viking hall';
 
   function recordSim(): Simulation {
@@ -117,5 +117,18 @@ describe("a map-placed house record's own footprint", () => {
     const blocked = buildingBlockedCells(sim.world, ctxOf(sim), terrain);
     expect([2, 3, 4, 5, 6].every((hx) => blocked.has(terrain.nodeAt(hx, 2)))).toBe(true);
     expect(blocked.has(terrain.nodeAt(6, 10))).toBe(false); // the hall's east end, absent from the default
+  });
+
+  it("answers the placement grid with the named record's body", () => {
+    const sim = recordSim();
+    const terrain = terrainOf(sim);
+    // Four nodes from the east edge the default hut's reserve fits and the longer hall's runs off.
+    const nearEdge = terrain.width - 4;
+    const area = { minHx: nearEdge, minHy: 6, maxHx: nearEdge, maxHy: 6 };
+    const accepts = (record?: string): number | undefined =>
+      sim.placementAnswer(HUT, area, { tribe: VIKING, record })?.accepted[0];
+    expect(accepts()).toBe(1);
+    expect(accepts(HALL)).toBe(0);
+    expect(accepts('viking hut')).toBe(1);
   });
 });

@@ -4,6 +4,7 @@ import {
   bobKey,
   buildTimeThreshold,
   finishedBuildingBobKeys,
+  houseRecordKey,
   resolveBuildingDraw,
   resolveBuildingOverlayDraw,
   resolveConstructionDraws,
@@ -123,6 +124,28 @@ describe('resolveBuildingDraw - layer-qualified (multi-.bmd) building binding', 
     expect(resolveBuildingDraw(authored, at(AUTHORED_REF, WONDER, 0))).toEqual({ bob: 1 });
     // A type drawing one body at every level keeps its authored body whatever its level reads.
     expect(resolveBuildingDraw(authored, at(AUTHORED_HOME, HOME, 0))).toEqual({ layer: 'map', bob: 8 });
+  });
+
+  it('draws the house record a building stands as, and its type for any other record', () => {
+    const HEADQUARTERS = 1;
+    const VIKING = 1;
+    const HALL = 'viking headquarters house';
+    const binding: BuildingTypeBinding = {
+      byType: { [HEADQUARTERS]: 34 },
+      byRecord: new Map([
+        [
+          houseRecordKey(VIKING, HEADQUARTERS, HALL),
+          { typeId: HEADQUARTERS, tribe: VIKING, level: 0, body: 44 },
+        ],
+      ]),
+      default: 11,
+    };
+    const hq = (record?: string): DrawItem =>
+      drawItem('building', { typeId: HEADQUARTERS, tribe: VIKING, level: 0, ...(record ? { record } : {}) });
+    expect(resolveBuildingDraw(binding, hq(HALL))).toEqual({ bob: 44 });
+    expect(resolveBuildingDraw(binding, hq())).toEqual({ bob: 34 });
+    expect(resolveBuildingDraw(binding, hq('viking headquarters'))).toEqual({ bob: 34 });
+    expect(finishedBuildingBobKeys(binding).has(bobKey({ bob: 44 }))).toBe(true);
   });
 });
 

@@ -178,7 +178,7 @@ describe('placement gates - the ground an enemy army contests', () => {
     gates.canPlaceAt(BUILDING_HOME_00, VIKING, FAR.hx, FAR.hy, true);
     gates.canPlaceAt(BUILDING_HOME_00, FRANK, FAR.hx, FAR.hy);
 
-    expect(probe.mock.calls.map(([type, , player, tribe, gated]) => [type, player, tribe, gated])).toEqual([
+    expect(probe.mock.calls.map(([type, , ask]) => [type, ask?.player, ask?.tribe, ask?.gated])).toEqual([
       [BUILDING_HOME_00, HUMAN_PLAYER, VIKING, true],
       [BUILDING_HOME_00, HUMAN_PLAYER, VIKING, false],
       [BUILDING_HOME_00, HUMAN_PLAYER, FRANK, true],
@@ -368,7 +368,7 @@ describe('placement gates - the ground an enemy army contests', () => {
     const techAreas = probe.mock.calls.length;
     overlay(BUILDING_HOME_00, VIKING, camera, 320, 200, true);
 
-    const tribes = probe.mock.calls.map(([, , player, tribe, gated]) => `${player}:${tribe}:${gated}`);
+    const tribes = probe.mock.calls.map(([, , ask]) => `${ask?.player}:${ask?.tribe}:${ask?.gated}`);
     expect(techAreas).toBeGreaterThan(0);
     expect(tribes).toEqual([
       ...Array<string>(techAreas).fill(`${HUMAN_PLAYER}:${VIKING}:true`),

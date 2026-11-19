@@ -265,7 +265,7 @@ describe('CommandSystem - command authority', () => {
     expect(sim.commands.log).toHaveLength(1);
   });
 
-  it('keeps an authored level to setup, off a seat placement', () => {
+  it('keeps an authored level to setup, off a seat placement, which may name its house record', () => {
     const sim = fresh();
     setPlayerPlacementTribes(sim.world, sim.content, MINE, [VIKING]);
     const placement = { kind: 'placeBuilding' as const, buildingType: SAWMILL, x: 4, y: 4, tribe: VIKING };
@@ -273,7 +273,7 @@ describe('CommandSystem - command authority', () => {
       authorizedCommand(sim.world, parseCommandEnvelope({ v: 2, origin: 'player', player: MINE, command }));
     expect(seat(placement)).toBeDefined();
     expect(seat({ ...placement, level: 2 })).toBeUndefined();
-    expect(seat({ ...placement, record: 'viking sawmill' })).toBeUndefined();
+    expect(seat({ ...placement, record: 'viking sawmill' })).toMatchObject({ record: 'viking sawmill' });
     expect(authorizedCommand(sim.world, setupCommand({ ...placement, level: 2 }))).toMatchObject({
       level: 2,
     });

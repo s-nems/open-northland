@@ -118,7 +118,7 @@ function typeIdOf(rows: readonly { id?: string; typeId?: number }[] | undefined,
 
 /** The first legal half-cell node for `buildingType` in a square around the headquarters. */
 function plotNear(sim: Simulation, hq: Entity, buildingType: number): { hx: number; hy: number } | null {
-  const probe = sim.placementProbe(buildingType, HUMAN_SEAT);
+  const probe = sim.placementProbe(buildingType, { player: HUMAN_SEAT });
   if (probe === null) return null;
   const p = sim.world.get(hq, Position);
   const centre = nodeOfPosition(p.x, p.y);

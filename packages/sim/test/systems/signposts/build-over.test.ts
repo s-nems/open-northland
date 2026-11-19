@@ -62,7 +62,7 @@ function inHutCells(cells: readonly FootprintCell[], at: { x: number; y: number 
 /** Read every signpost-keyed cache, then prove each matches a fresh derivation: a verifier only checks a
  *  cache that has caught up with the world. */
 function expectCachesExact(sim: Simulation): void {
-  sim.placementProbe(HUT, P0)?.canPlace(ANCHOR.x, ANCHOR.y);
+  sim.placementProbe(HUT, { player: P0 })?.canPlace(ANCHOR.x, ANCHOR.y);
   sim.signpostProbe(P0)?.canPlace(ANCHOR.x, ANCHOR.y);
   signpostNetwork(sim.world);
   expect(sim.world.verifyCaches()).toEqual([]);
@@ -90,8 +90,8 @@ describe('building over signposts', () => {
     post(sim, ANCHOR.x, ANCHOR.y, P0);
     post(sim, NEIGHBOUR.x, NEIGHBOUR.y, P1); // the rival's own post, whose build reach covers the anchor
 
-    expect(sim.placementProbe(HUT, P0)?.canPlace(ANCHOR.x, ANCHOR.y)).toBe(true);
-    expect(sim.placementProbe(HUT, P1)?.canPlace(ANCHOR.x, ANCHOR.y)).toBe(true);
+    expect(sim.placementProbe(HUT, { player: P0 })?.canPlace(ANCHOR.x, ANCHOR.y)).toBe(true);
+    expect(sim.placementProbe(HUT, { player: P1 })?.canPlace(ANCHOR.x, ANCHOR.y)).toBe(true);
     expect(canPlaceBuilding(sim.world, ctxOf(sim), terrainOf(sim), HUT, undefined, ANCHOR.x, ANCHOR.y)).toBe(
       true,
     );
@@ -135,7 +135,7 @@ describe('building over signposts', () => {
     placeHut(sim, P0);
     const pushed = nodeOf(sim, covered);
 
-    const probe = sim.placementProbe(HUT, P0);
+    const probe = sim.placementProbe(HUT, { player: P0 });
     let tried = 0;
     for (let y = pushed.y - COVER_SEARCH; y <= pushed.y + COVER_SEARCH; y++) {
       for (let x = pushed.x - COVER_SEARCH; x <= pushed.x + COVER_SEARCH; x++) {
@@ -238,7 +238,7 @@ describe('building over signposts', () => {
         }
       }
     }
-    expect(sim.placementProbe(HUT, P0)?.canPlace(ANCHOR.x, ANCHOR.y)).toBe(true);
+    expect(sim.placementProbe(HUT, { player: P0 })?.canPlace(ANCHOR.x, ANCHOR.y)).toBe(true);
 
     placeHut(sim, P0);
 

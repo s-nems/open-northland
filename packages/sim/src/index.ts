@@ -278,6 +278,7 @@ export {
   type DigestComponentInputs,
   type FogMaskAnswer,
   type FogView,
+  type PlacementAsk,
   type SimOptions,
   Simulation,
   type SyncDigest,

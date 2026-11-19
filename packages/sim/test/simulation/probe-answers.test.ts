@@ -99,9 +99,9 @@ describe('probe answers', () => {
       [P0, VIKING],
       [P1, VIKING],
     ] as const) {
-      const live = sim.placementProbe(HUT, player, tribe);
+      const live = sim.placementProbe(HUT, { player, tribe });
       if (live === null) throw new Error('no probe');
-      const answer = sim.placementAnswer(HUT, area, player, tribe);
+      const answer = sim.placementAnswer(HUT, area, { player, tribe });
       expect(disagreements(answer, (hx, hy) => live.canPlace(hx, hy))).toEqual([]);
       expect(answer?.accepted.some((node) => node === 1)).toBe(true);
       expect(answer?.accepted.some((node) => node === 0)).toBe(true);
@@ -126,11 +126,11 @@ describe('probe answers', () => {
   it('keep an answer key until a blocker changes', () => {
     const sim = settledWorld();
     const area: NodeArea = { minHx: 0, minHy: 0, maxHx: 7, maxHy: 7 };
-    const before = sim.placementAnswer(HUT, area, P0)?.key;
-    expect(sim.placementAnswer(HUT, area, P0)?.key).toBe(before);
+    const before = sim.placementAnswer(HUT, area, { player: P0 })?.key;
+    expect(sim.placementAnswer(HUT, area, { player: P0 })?.key).toBe(before);
     sim.enqueueSetup({ kind: 'placeBuilding', buildingType: HUT, x: 24, y: 24, tribe: VIKING, owner: P0 });
     sim.step();
-    expect(sim.placementAnswer(HUT, area, P0)?.key).not.toBe(before);
+    expect(sim.placementAnswer(HUT, area, { player: P0 })?.key).not.toBe(before);
   });
 });
 
@@ -161,14 +161,14 @@ function peaceTiles(sim: Simulation): NodeArea[] {
 /** The area answers of the building, signpost and wall rules for `player` that part from the live
  *  probes, square by square. */
 function peaceDisagreements(sim: Simulation, player: number): string[] {
-  const building = sim.placementProbe(HUT, player);
+  const building = sim.placementProbe(HUT, { player });
   const signpost = sim.signpostProbe(player);
   const wall = sim.palisadeProbe(WALL.typeId, player);
   if (building === null || signpost === null || wall === null) throw new Error('no probe');
   const parted: string[] = [];
   for (const area of peaceTiles(sim)) {
     parted.push(
-      ...disagreements(sim.placementAnswer(HUT, area, player), (hx, hy) => building.canPlace(hx, hy)),
+      ...disagreements(sim.placementAnswer(HUT, area, { player }), (hx, hy) => building.canPlace(hx, hy)),
       ...disagreements(sim.signpostAnswer(player, area), (hx, hy) => signpost.canPlace(hx, hy)),
       ...disagreements(sim.palisadeAnswer(WALL.typeId, area, player), (hx, hy) => wall.canPlace(hx, hy)),
     );
@@ -212,7 +212,7 @@ describe('probe answers during a lobby peace', () => {
     const area: NodeArea = { minHx: 24, minHy: 24, maxHx: 31, maxHy: 31 };
     /** The building, signpost and wall answer keys over `area`. */
     const keys = (): (string | undefined)[] => [
-      sim.placementAnswer(HUT, area, P0)?.key,
+      sim.placementAnswer(HUT, area, { player: P0 })?.key,
       sim.signpostAnswer(P0, area)?.key,
       sim.palisadeAnswer(WALL.typeId, area, P0)?.key,
     ];
@@ -284,7 +284,7 @@ describe('probe answer keys', () => {
   it('hold across a blocker change far from the area and move with one near it', () => {
     const sim = mappedSim(grassMap(48, 16));
     const area: NodeArea = { minHx: 0, minHy: 0, maxHx: 7, maxHy: 7 };
-    const before = sim.placementAnswer(HUT, area, P0)?.key;
+    const before = sim.placementAnswer(HUT, area, { player: P0 })?.key;
     const far = { x: 80, y: 20 };
     sim.enqueueSetup({
       kind: 'placeBuilding',
@@ -296,12 +296,12 @@ describe('probe answer keys', () => {
     });
     sim.step();
     expect(buildingsPlaced(sim)).toBe(1);
-    expect(sim.placementAnswer(HUT, area, P0)?.key).toBe(before);
+    expect(sim.placementAnswer(HUT, area, { player: P0 })?.key).toBe(before);
     sim.enqueueSetup({ kind: 'placeBuilding', buildingType: HUT, x: 12, y: 12, tribe: VIKING, owner: P1 });
     sim.step();
-    const near = sim.placementAnswer(HUT, area, P0);
+    const near = sim.placementAnswer(HUT, area, { player: P0 });
     expect(near?.key).not.toBe(before);
-    const live = sim.placementProbe(HUT, P0);
+    const live = sim.placementProbe(HUT, { player: P0 });
     if (live === null) throw new Error('no probe');
     expect(disagreements(near ?? null, (hx, hy) => live.canPlace(hx, hy))).toEqual([]);
     expect(near?.accepted.some((node) => node === 0)).toBe(true);
@@ -339,13 +339,13 @@ describe('road site answer keys', () => {
 describe('probe answers over tiled areas', () => {
   it('match the live probes square by square beside a hostile fighter and edge signposts', () => {
     const { sim } = raidedField();
-    const building = sim.placementProbe(HQ_TYPE, SEAT);
+    const building = sim.placementProbe(HQ_TYPE, { player: SEAT });
     const signpost = sim.signpostProbe(SEAT);
     if (building === null || signpost === null) throw new Error('no probe');
     let contested = 0;
     let spaced = 0;
     for (const area of tiles()) {
-      const answer = sim.placementAnswer(HQ_TYPE, area, SEAT);
+      const answer = sim.placementAnswer(HQ_TYPE, area, { player: SEAT });
       expect(disagreements(answer, (hx, hy) => building.canPlace(hx, hy))).toEqual([]);
       contested += answer?.accepted.filter((node) => node === 0).length ?? 0;
       const posts = sim.signpostAnswer(SEAT, area);
@@ -354,18 +354,22 @@ describe('probe answers over tiled areas', () => {
     }
     // The premises: the raider refuses ground in both squares his radius reaches, the posts in theirs.
     const second = { minHx: AREA_NODES, minHy: 0, maxHx: 2 * AREA_NODES - 1, maxHy: AREA_NODES - 1 };
-    expect(sim.placementAnswer(HQ_TYPE, second, SEAT)?.accepted[RAIDER_AT.y * AREA_NODES]).toBe(0);
+    expect(sim.placementAnswer(HQ_TYPE, second, { player: SEAT })?.accepted[RAIDER_AT.y * AREA_NODES]).toBe(
+      0,
+    );
     expect(contested).toBeGreaterThan(0);
     expect(spaced).toBeGreaterThan(0);
   });
 
   it('answer the technology gate as the live probe does', () => {
     const { sim } = raidedField();
-    const live = sim.placementProbe(HQ_TYPE, SEAT, VIKING);
+    const live = sim.placementProbe(HQ_TYPE, { player: SEAT, tribe: VIKING });
     if (live === null) throw new Error('no probe');
     for (const area of tiles()) {
       expect(
-        disagreements(sim.placementAnswer(HQ_TYPE, area, SEAT, VIKING), (hx, hy) => live.canPlace(hx, hy)),
+        disagreements(sim.placementAnswer(HQ_TYPE, area, { player: SEAT, tribe: VIKING }), (hx, hy) =>
+          live.canPlace(hx, hy),
+        ),
       ).toEqual([]);
     }
   });
@@ -373,12 +377,12 @@ describe('probe answers over tiled areas', () => {
   it('change the key when a fighter outside the square but within reach of it moves', () => {
     const { sim, raider } = raidedField();
     const second = { minHx: AREA_NODES, minHy: 0, maxHx: 2 * AREA_NODES - 1, maxHy: AREA_NODES - 1 };
-    const before = sim.placementAnswer(HQ_TYPE, second, SEAT)?.key;
+    const before = sim.placementAnswer(HQ_TYPE, second, { player: SEAT })?.key;
     Object.assign(sim.world.mut(raider, Position), positionOfNode(RAIDER_AT.x - 1, RAIDER_AT.y));
-    const moved = sim.placementAnswer(HQ_TYPE, second, SEAT);
+    const moved = sim.placementAnswer(HQ_TYPE, second, { player: SEAT });
     expect(RAIDER_AT.x - 1 + CONTESTED_GROUND_RADIUS_NODES).toBeGreaterThanOrEqual(second.minHx);
     expect(moved?.key).not.toBe(before);
-    const live = sim.placementProbe(HQ_TYPE, SEAT);
+    const live = sim.placementProbe(HQ_TYPE, { player: SEAT });
     if (live === null) throw new Error('no probe');
     expect(disagreements(moved, (hx, hy) => live.canPlace(hx, hy))).toEqual([]);
   });

@@ -139,6 +139,11 @@ interface PlaceBuildingFields {
    * paper window lists the named house whether or not the tribe has unlocked it.
    */
   readonly paper?: Paper;
+  /** The `[GfxHouse]` record (`EditName`) the house stands as where the record carries a footprint of its
+   *  own for the type and tribe, as the viking headquarters' hall beside its ship; any other name, like
+   *  none, stands the type's default house. A seat may name only a record its tribe's house table offers
+   *  (`houseRecordsFor`), else nothing is placed; setup keeps any record a map names. */
+  readonly record?: string;
 }
 
 /** The `placeBuilding` options only trusted authored setup may set. */
@@ -163,9 +168,6 @@ interface AuthoredPlaceBuildingFields {
    *  only on a type whose `[GfxHouse]` record draws it above the type's own rung (a wonder's stage); any
    *  other type keeps its rung. */
   readonly level?: number;
-  /** A decoded map's `sethouse` record name. It stands only where the record carries a footprint of its
-   *  own for the type and tribe; otherwise the type's default footprint applies. */
-  readonly record?: string;
 }
 
 /** A `placeBuilding` a seat issues: the authored-setup options are unrepresentable. */

@@ -44,7 +44,7 @@ interface ToolWindowEntry {
 export interface ConstructionWindowSeam {
   readonly entries: readonly MenuBuildingEntry[];
   readonly onPick: (typeId: number, tribe: number) => void;
-  readonly onPickPaper: (paper: Paper, tribe: number) => void;
+  readonly onPickPaper: (paper: Paper, tribe: number, record?: string) => void;
   readonly onHelp: (typeId: number) => void;
 }
 
@@ -116,10 +116,16 @@ export function createToolWindows(deps: ToolWindowsDeps): ToolWindows {
     // A plan naming its house goes straight to placement; a place-any plan is held for the catalogue
     // pick, as the original's papers window does. The plan pays for the house, and nothing more: the
     // catalogue keeps its technology locks (the original's selection window keeps them too).
-    onPickPaper: (paper, tribe) => {
+    onPickPaper: (paper, tribe, record) => {
       heldPaper.cancel(); // a plan already in hand goes back: one plan at a time
       if (paper.kind === 'placeAny') heldPaper.hold(paper);
-      else deps.onPickBuilding({ typeId: paper.param, tribe, paper });
+      else
+        deps.onPickBuilding({
+          typeId: paper.param,
+          tribe,
+          paper,
+          ...(record !== undefined ? { record } : {}),
+        });
     },
     onHelp: (typeId) => {
       closeOthers(knowledge);

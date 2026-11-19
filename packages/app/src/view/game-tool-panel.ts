@@ -1,5 +1,5 @@
 import type { UiCue } from '@open-northland/audio';
-import type { ContentSet } from '@open-northland/data';
+import { type ContentSet, houseRecordsFor, lastByTypeId } from '@open-northland/data';
 import type { SessionClock } from '@open-northland/lockstep';
 import type { Camera, ElevationField, MapViewTarget, SpriteSheet } from '@open-northland/render';
 import {
@@ -39,7 +39,12 @@ import type {
   WorkshopSeam,
 } from '../hud/tool-panel/messages/index.js';
 import type { PapersSeam } from '../hud/tool-panel/paper-cards.js';
-import type { GateSites, PalisadeGateProbeView, PlacementClickAsks } from '../hud/tool-panel/placement.js';
+import type {
+  CanPlaceAt,
+  GateSites,
+  PalisadeGateProbeView,
+  PlacementClickAsks,
+} from '../hud/tool-panel/placement.js';
 import type { ResidentsSeam } from '../hud/tool-panel/residents/seam.js';
 import type { ClientPoint } from '../hud/tool-panel/wall-demolish.js';
 import { bcp47Tag, compareLabels, currentLocale, goodName, type Locale } from '../i18n/index.js';
@@ -67,14 +72,7 @@ export interface GameToolPanelDeps {
   /** The admin channel for the debug tools' standing-wall line; absent where world edits are off. */
   readonly enqueueTrusted?: (command: Command) => void;
   /** Gates the placement click; a closure, so it follows a scene restart. */
-  readonly canPlaceAt: (
-    typeId: number,
-    tribe: number,
-    col: number,
-    row: number,
-    techWaived?: boolean,
-    owner?: number,
-  ) => boolean;
+  readonly canPlaceAt: CanPlaceAt;
   readonly canPlacePalisadeAt: (
     gfxIndex: number,
     owner: number,
@@ -117,6 +115,7 @@ export interface GameToolPanelDeps {
   readonly tribe: number;
   /** The nations the seat may build houses of, its own first. */
   readonly buildTribes: () => readonly number[];
+  readonly houseRecords: ToolPanelOptions['houseRecords'];
   readonly constructionAnswersVersion: () => number;
   readonly constructionView: ToolPanelOptions['constructionView'];
   readonly onConstructionViewChange: ToolPanelOptions['onConstructionViewChange'];
@@ -258,6 +257,17 @@ export function buildingLabelsFromContent(
   return new Map(content.buildings.map((b) => [b.typeId, buildingLabel(b, lang)]));
 }
 
+/** The house records each nation may stand a type as besides its default house, by type. */
+export function houseRecordsFromContent(
+  content: Pick<ContentSet, 'buildings'>,
+): (typeId: number, tribe: number) => readonly string[] {
+  const byType = lastByTypeId(content.buildings);
+  return (typeId, tribe) => {
+    const type = byType.get(typeId);
+    return type === undefined ? [] : houseRecordsFor(type, tribe);
+  };
+}
+
 function buildingLabel(b: { readonly typeId: number; readonly id: string }, lang: string): string {
   const catalog = vikingBuildingByTypeId(b.typeId);
   return localizedBuildingName(catalog?.id ?? b.id, catalog?.label ?? b.id, lang);
@@ -306,6 +316,7 @@ export async function mountGameToolPanel(deps: GameToolPanelDeps): Promise<GameT
     bindings: deps.bindings,
     tribe: deps.tribe,
     buildTribes: deps.buildTribes,
+    houseRecords: deps.houseRecords,
     constructionAnswersVersion: deps.constructionAnswersVersion,
     constructionView: deps.constructionView,
     onConstructionViewChange: deps.onConstructionViewChange,

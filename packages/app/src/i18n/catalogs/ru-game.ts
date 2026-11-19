@@ -601,6 +601,7 @@ export const ruGame = {
       papersHint: 'Бумаги из сундуков: здания, готовые сразу',
       catalog: 'Каталог',
       plans: 'Бумаги',
+      chooseHouse: 'Выберите облик здания',
       tally: '×{count}',
       paperEffect: {
         placeAny: 'Выберите в каталоге; здание сразу будет готово',
