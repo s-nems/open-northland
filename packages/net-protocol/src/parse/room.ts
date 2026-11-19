@@ -5,6 +5,7 @@ import type {
   SeatMode,
   SessionRules,
   SessionWorld,
+  StorageCapacityFactor,
   WeatherMode,
 } from '@open-northland/lockstep';
 import {
@@ -20,6 +21,7 @@ import {
   MAX_TRIBE_ID,
   MAX_WORLD_ID_LENGTH,
   PEACE_MINUTES,
+  STORAGE_CAPACITY_FACTORS,
 } from '../limits.js';
 import type {
   CatalogMapAnnouncement,
@@ -172,7 +174,17 @@ function parseSessionRules(value: unknown, at: string): SessionRules {
     dayNight: raw.dayNight === null ? null : asOneOf(raw.dayNight, DAY_NIGHT_MODES, `${at}.dayNight`),
     alliedVision: raw.alliedVision === null ? null : asBoolean(raw.alliedVision, `${at}.alliedVision`),
     peace: raw.peace === null ? null : parsePeace(raw.peace, `${at}.peace`),
+    storageCapacity:
+      raw.storageCapacity === null
+        ? null
+        : parseStorageCapacity(raw.storageCapacity, `${at}.storageCapacity`),
   };
+}
+
+function parseStorageCapacity(value: unknown, at: string): StorageCapacityFactor {
+  const factor = STORAGE_CAPACITY_FACTORS.find((known) => known === value);
+  if (factor === undefined) throw new Error(`${at}: ${String(value)} is not a storage factor`);
+  return factor;
 }
 
 function parsePeace(value: unknown, at: string): PeaceMinutes {

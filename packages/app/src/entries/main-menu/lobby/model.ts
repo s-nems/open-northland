@@ -13,7 +13,9 @@ import {
   type GameSession,
   orderedSeats,
   type PeaceMinutes,
+  type SessionRules,
   type SessionSeat,
+  type StorageCapacityFactor,
   type WeatherMode,
 } from '@open-northland/lockstep';
 import {
@@ -23,7 +25,12 @@ import {
   type LobbyFogModeName,
 } from '../../../game/fog.js';
 import { mapSessionWorld } from '../../../game/map/variant.js';
-import { dayNightModeParam, onOffParam, weatherModeParam } from '../../../game/match/session-rules.js';
+import {
+  dayNightModeParam,
+  onOffParam,
+  storageCapacityParam,
+  weatherModeParam,
+} from '../../../game/match/session-rules.js';
 import {
   claimableLocalSeat,
   DEFAULT_SESSION_SPEED,
@@ -56,6 +63,8 @@ export interface LobbyOptions {
   alliedVision: boolean;
   /** Null plays without a peace. */
   peace: PeaceMinutes | null;
+  /** Null keeps the storage buildings' own sizes. */
+  storageCapacity: StorageCapacityFactor | null;
 }
 
 /** Progression and needs default on, so only an explicit `off` in the URL clears the box. Allied vision
@@ -71,6 +80,21 @@ export function initialLobbyOptions(params: URLSearchParams, alliedVision: boole
     dayNight: dayNightModeParam(params) ?? DEFAULT_DAY_NIGHT_MODE,
     alliedVision,
     peace: null,
+    storageCapacity: storageCapacityParam(params),
+  };
+}
+
+/** The session rules a lobby's options play. */
+export function lobbyRules(options: LobbyOptions): SessionRules {
+  return {
+    fog: FOG_MODE_BY_NAME[options.fog],
+    progression: options.professionProgression,
+    needs: options.settlerNeeds,
+    weather: options.weather,
+    dayNight: options.dayNight,
+    alliedVision: options.alliedVision,
+    peace: options.peace,
+    storageCapacity: options.storageCapacity,
   };
 }
 
@@ -192,15 +216,7 @@ export function lobbySession(
     seed,
     seats: orderedSeats(seats),
     localSeat,
-    rules: {
-      fog: FOG_MODE_BY_NAME[options.fog],
-      progression: options.professionProgression,
-      needs: options.settlerNeeds,
-      weather: options.weather,
-      dayNight: options.dayNight,
-      alliedVision: options.alliedVision,
-      peace: options.peace,
-    },
+    rules: lobbyRules(options),
     speed: DEFAULT_SESSION_SPEED,
   };
 }

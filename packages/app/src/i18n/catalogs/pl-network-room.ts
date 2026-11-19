@@ -48,10 +48,6 @@ export const plNetworkRoom: { readonly [Key in keyof typeof enNetworkRoom]: stri
   creatorSettings:
     'Ustawienia i miejsca zmienia twórca pokoju; kolor i plemię swojego miejsca wybierasz sam.',
   savedSettings: 'Zapisana gra zachowuje swoje pierwotne zasady i kolory.',
-  progression: 'Rozwój zawodów',
-  progressionDetail: 'Wymagania doświadczenia dla nowych zawodów i produkcji.',
-  needs: 'Potrzeby osadników',
-  needsDetail: 'Głód, zmęczenie i pozostałe potrzeby.',
   enabled: 'Włączone',
   disabled: 'Wyłączone',
   compatibility: 'Zgodność gry',

@@ -32,6 +32,7 @@ const BASE_OPTIONS = {
   needs: null,
   alliedVision: null,
   peace: null,
+  storageCapacity: null,
   missions: null,
 } as const;
 

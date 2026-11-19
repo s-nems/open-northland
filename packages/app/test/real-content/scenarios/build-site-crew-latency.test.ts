@@ -57,6 +57,7 @@ describe.runIf(hasRealIr() && existsSync(realMapPath(MAP_ID)))(
           dayNight: null,
           alliedVision: null,
           peace: null,
+          storageCapacity: null,
         },
       });
       const house = typeIdOf(ir.buildings, 'home_level_00');

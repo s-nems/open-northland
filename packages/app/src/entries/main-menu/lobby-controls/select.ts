@@ -15,11 +15,13 @@ export function selectControl(
     active: '',
     onPick: change,
   });
-  root.append(node('span', '', label), dropdown.root);
+  const caption = node('span', '', label);
+  root.append(caption, dropdown.root);
   // The value the menu does not offer, listed after the usual choices while it is the current one.
   let unlisted: string | null = null;
   return {
     root,
+    caption,
     update(value: string, disabled: boolean, label = value): void {
       // Custom protocol values remain readable even when the menu offers only the usual choices.
       const next = choices.some((choice) => choice.id === value) ? null : value;

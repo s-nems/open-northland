@@ -21,6 +21,7 @@ it('captures the current public roster and refuses an old world after resync', a
       dayNight: null,
       alliedVision: null,
       peace: null,
+      storageCapacity: null,
     },
     seats: [
       { player: 0, mode: 'human', color: 3 },

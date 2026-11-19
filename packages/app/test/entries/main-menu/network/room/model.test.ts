@@ -39,6 +39,7 @@ function room(): RoomView {
         dayNight: null,
         alliedVision: null,
         peace: null,
+        storageCapacity: null,
       },
       speed: 1,
     },
@@ -229,6 +230,7 @@ it('recommends only an exact saved nick match and leaves unnamed/legacy seats wi
         dayNight: null,
         alliedVision: null,
         peace: null,
+        storageCapacity: null,
       },
       seats: [
         { player: 0, color: 0, mode: 'human' },

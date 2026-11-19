@@ -39,7 +39,7 @@ function session(search: string) {
 
 describe('mapSession', () => {
   it('reads the world, the seat, the seed, the rules and the tempo', () => {
-    const parsed = session('map=magiczny_las&player=1&seed=42&fog=recon-fow&needs=off&speed=2');
+    const parsed = session('map=magiczny_las&player=1&seed=42&fog=recon-fow&needs=off&storage=3&speed=2');
     expect(parsed.world).toEqual({ kind: 'map', mapId: 'magiczny_las' });
     expect(parsed.localSeat).toBe(1);
     expect(parsed.seed).toBe(42);
@@ -51,6 +51,7 @@ describe('mapSession', () => {
       dayNight: null,
       alliedVision: null,
       peace: null,
+      storageCapacity: 3,
     });
     expect(parsed.speed).toBe(2);
   });
@@ -70,6 +71,7 @@ describe('mapSession', () => {
       dayNight: null,
       alliedVision: null,
       peace: null,
+      storageCapacity: null,
     });
   });
 
@@ -171,13 +173,14 @@ describe('sceneSession', () => {
       dayNight: null,
       alliedVision: null,
       peace: null,
+      storageCapacity: null,
     });
   });
 });
 
 describe('sessionSearch', () => {
   it('round-trips every parameter a session carries', () => {
-    const search = `map=magiczny_las&player=2&seed=42&colors=0:3&tribes=1:${BYZANTINE}&difficulty=1:easy&computer=1&fog=recon-fow&progression=off&needs=on&weathermode=winter&speed=1.5`;
+    const search = `map=magiczny_las&player=2&seed=42&colors=0:3&tribes=1:${BYZANTINE}&difficulty=1:easy&computer=1&fog=recon-fow&progression=off&needs=on&weathermode=winter&storage=5&speed=1.5`;
     const parsed = session(search);
     expect(mapSession(sessionSearch(parsed, ROSTER), ROSTER)).toEqual(parsed);
   });

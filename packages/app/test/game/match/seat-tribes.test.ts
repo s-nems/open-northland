@@ -254,6 +254,7 @@ describe('a session with a changed seat', () => {
       dayNight: null,
       alliedVision: null,
       peace: null,
+      storageCapacity: null,
     },
     speed: 1,
   });

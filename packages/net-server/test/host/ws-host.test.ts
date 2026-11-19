@@ -31,6 +31,7 @@ const SETTINGS: RoomSettings = {
     dayNight: null,
     alliedVision: null,
     peace: null,
+    storageCapacity: null,
   },
   // The fastest clock: the run is paced by wall time over real sockets.
   speed: MAX_SPEED,

@@ -17,6 +17,7 @@ const BASE_OPTIONS = {
   needs: null,
   alliedVision: null,
   peace: null,
+  storageCapacity: null,
 } as const;
 
 function contentWithOtherTribe() {

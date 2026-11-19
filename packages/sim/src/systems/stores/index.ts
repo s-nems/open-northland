@@ -8,6 +8,7 @@ export {
   isYardHeap,
   lowestStockedGood,
   MAX_GROUND_STACK,
+  slotCapacityFactor,
   slottedGoods,
   stockCapacity,
 } from './capacity.js';

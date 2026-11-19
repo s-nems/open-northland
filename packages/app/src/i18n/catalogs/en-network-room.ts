@@ -46,10 +46,6 @@ export const enNetworkRoom = {
   creatorSettings:
     "Only the room creator changes settings and seats; you choose your own seat's colour and tribe.",
   savedSettings: 'This saved game keeps its original rules and colours.',
-  progression: 'Profession progression',
-  progressionDetail: 'Experience requirements for new professions and production.',
-  needs: 'Settler needs',
-  needsDetail: 'Hunger, fatigue and other needs.',
   enabled: 'On',
   disabled: 'Off',
   compatibility: 'Game compatibility',

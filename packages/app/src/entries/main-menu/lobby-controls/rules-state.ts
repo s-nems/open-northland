@@ -17,6 +17,11 @@ export function ruleChoiceState<T>(choices: readonly T[], change: (value: T) => 
   let current: T | undefined;
   let requested: T | undefined;
   let disabled = true;
+  const claim = (value: T): boolean => {
+    if (disabled || !choices.includes(value) || value === requested) return false;
+    requested = value;
+    return true;
+  };
   return {
     update(value: T, frozen: boolean): void {
       current = value;
@@ -24,10 +29,11 @@ export function ruleChoiceState<T>(choices: readonly T[], change: (value: T) => 
       disabled = frozen;
     },
     value: () => current,
+    /** Take `value` as requested without sending it, for a caller that sends several rules as one
+     *  change; false when it is no new request. */
+    claim,
     request(value: T): void {
-      if (disabled || !choices.includes(value) || value === requested) return;
-      requested = value;
-      change(value);
+      if (claim(value)) change(value);
     },
   };
 }

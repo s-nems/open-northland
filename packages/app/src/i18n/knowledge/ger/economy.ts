@@ -528,7 +528,7 @@ export const ECONOMY: ArticleGroup = {
       lead: 'Ein Träger ohne Karren trägt {{haul.carry}} Stück auf einmal. An einer Stelle am Boden passen bis zu {{haul.groundStack}} Stück einer Ware.',
       blocks: [
         {
-          p: 'Wie viel ein Lager fasst und wie viele Leute darin arbeiten, steht auf den Karten von [[building:stock_00|Lagerhaus 1]], [[building:stock_01|2]], [[building:stock_02|3]] und [[building:headquarters|Hauptquartier]].',
+          p: 'Wie viel ein Lager fasst und wie viele Leute darin arbeiten, steht auf den Karten von [[building:stock_00|Lagerhaus 1]], [[building:stock_01|2]], [[building:stock_02|3]] und [[building:headquarters|Hauptquartier]]. Die erweiterte Einstellung „Lagerkapazität“, vor Spielbeginn gewählt, kann diese Mengen vervielfachen. Werkstätten betrifft das nicht.',
         },
         {
           h: 'Vorrang',

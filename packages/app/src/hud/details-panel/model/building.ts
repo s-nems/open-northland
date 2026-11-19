@@ -26,6 +26,7 @@ import {
   settlerJobType,
   shelterClaimCount,
   staffOf,
+  storageCapacityFactorOf,
   storePriorityGoodsOf,
 } from '../../../game/snapshot/index.js';
 import { ownedByAnotherSeat, pickableSeat } from '../../../game/viewer-seat.js';
@@ -583,7 +584,13 @@ export function buildingPanelModel(
           snapshot,
           def,
           ent.id,
-          stockRows(ctx, def, ent.components.Stockpile, ent.components.ProductionBonus),
+          stockRows(
+            ctx,
+            def,
+            storageCapacityFactorOf(snapshot),
+            ent.components.Stockpile,
+            ent.components.ProductionBonus,
+          ),
         );
   const meta = foreign
     ? foreignOwnerLine(ctx, owner, tribeId)

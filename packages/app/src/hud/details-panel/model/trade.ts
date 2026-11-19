@@ -9,7 +9,7 @@ import {
   type TradeStopView,
   type WorldSnapshot,
 } from '@open-northland/sim';
-import { num } from '../../../game/snapshot/index.js';
+import { num, storageCapacityFactorOf } from '../../../game/snapshot/index.js';
 import { formatMessage, messages } from '../../../i18n/index.js';
 import { goodCategoryTab } from '../../good-categories.js';
 import { stockRows } from './building-materials.js';
@@ -188,7 +188,7 @@ function houseStock(ctx: UnitPanelModelContext, snapshot: WorldSnapshot, house: 
   const typeId = num((ent?.components.Building as { buildingType?: unknown } | undefined)?.buildingType);
   const upgrading = ent?.components.Upgrading as { savedStock?: unknown } | undefined;
   const stock = upgrading === undefined ? ent?.components.Stockpile : { amounts: upgrading.savedStock };
-  return stockRows(ctx, buildingDef(ctx, typeId), stock).map((row) => ({
+  return stockRows(ctx, buildingDef(ctx, typeId), storageCapacityFactorOf(snapshot), stock).map((row) => ({
     goodType: row.goodType,
     ...(row.goodId !== undefined ? { goodId: row.goodId } : {}),
     label: row.label,

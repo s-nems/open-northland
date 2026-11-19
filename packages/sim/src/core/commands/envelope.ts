@@ -153,6 +153,7 @@ export const COMMAND_ISSUER: {
   placeResource: 'trusted',
   placeSignpost: 'seat',
   setAlliedVision: 'trusted',
+  setStorageCapacity: 'trusted',
   setBioGroundWaived: 'trusted',
   setAssistantCounter: 'seat',
   setAssistantGrant: 'seat',

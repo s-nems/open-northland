@@ -69,6 +69,11 @@ export const PEACE_MINUTES = [30, 45, 60, 75, 90, 120, 180] as const;
 
 export type PeaceMinutes = (typeof PEACE_MINUTES)[number];
 
+/** The storage capacity factors a session may choose beyond the content's own sizes (`setStorageCapacity`). */
+export const STORAGE_CAPACITY_FACTORS = [2, 3, 5] as const;
+
+export type StorageCapacityFactor = (typeof STORAGE_CAPACITY_FACTORS)[number];
+
 /** The world rules the session overrides; null keeps whatever the world set for itself. */
 export interface SessionRules {
   /** A `FOG_MODE` id. */
@@ -85,6 +90,8 @@ export interface SessionRules {
   readonly alliedVision: boolean | null;
   /** How long the lobby seats keep a peace from the match start (`setPeaceTime`); null opens none. */
   readonly peace: PeaceMinutes | null;
+  /** What the storage buildings' slots are multiplied by (`setStorageCapacity`); null keeps the world's. */
+  readonly storageCapacity: StorageCapacityFactor | null;
 }
 
 /**
@@ -264,7 +271,15 @@ function parseRules(value: unknown): SessionRules {
     dayNight: parseDayNight(raw.dayNight),
     alliedVision: nullableBoolean(raw.alliedVision, 'rules.alliedVision'),
     peace: parsePeace(raw.peace),
+    storageCapacity: parseStorageCapacity(raw.storageCapacity),
   };
+}
+
+function parseStorageCapacity(value: unknown): StorageCapacityFactor | null {
+  if (value === null) return null;
+  const factor = STORAGE_CAPACITY_FACTORS.find((known) => known === value);
+  if (factor === undefined) throw new Error('rules.storageCapacity must name a storage factor or be null');
+  return factor;
 }
 
 function parsePeace(value: unknown): PeaceMinutes | null {

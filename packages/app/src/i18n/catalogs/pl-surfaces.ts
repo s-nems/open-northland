@@ -151,6 +151,24 @@ export const plSurfaces = {
         off: 'Każdy widzi swoje',
       },
       alliedVisionDetail: 'Gracze wzajemnie przyjaźni dzielą odkryty teren.',
+      progressionDetail: 'Wymagania doświadczenia dla nowych zawodów i produkcji.',
+      needsDetail: 'Głód, zmęczenie i pozostałe potrzeby.',
+      storage: {
+        label: 'Pojemność magazynów',
+        detail:
+          'Mnoży miejsce na każdy towar w magazynach i Kwaterze głównej. Warsztaty mieszczą tyle, co zwykle.',
+        factor: '×{factor}',
+      },
+      advanced: {
+        label: 'Zaawansowane',
+        title: 'Ustawienia zaawansowane',
+        standard: 'Standardowe',
+        changed: 'Zmienione',
+        rulesGroup: 'Zasady gry',
+        worldGroup: 'Świat',
+        reset: 'Przywróć domyślne',
+        done: 'Gotowe',
+      },
       peace: {
         label: 'Czas pokoju',
         detail:

@@ -44,6 +44,7 @@ const options = {
   needs: null,
   alliedVision: null,
   peace: null,
+  storageCapacity: null,
   missions: null,
   script: { missions },
 };

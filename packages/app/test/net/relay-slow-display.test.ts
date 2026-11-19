@@ -46,6 +46,7 @@ const SETTINGS: RoomSettings = {
     dayNight: null,
     alliedVision: null,
     peace: null,
+    storageCapacity: null,
   },
   speed: SESSION_SPEED,
 };

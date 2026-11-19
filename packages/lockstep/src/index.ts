@@ -29,6 +29,8 @@ export {
   type SessionRules,
   type SessionSeat,
   type SessionWorld,
+  STORAGE_CAPACITY_FACTORS,
+  type StorageCapacityFactor,
   seatColourOf,
   WEATHER_MODES,
   type WeatherMode,

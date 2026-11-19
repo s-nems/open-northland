@@ -410,7 +410,12 @@ export { GOODS_SEARCH_SPAN } from './signposts/terrain-reach.js';
 // The company bar under which settlers chat in passing, for the Knowledge window.
 export { CHAT_PASSING_UNITS } from './social/index.js';
 export { createSettler, HUMAN_HITPOINTS, spawnAnimalHerd } from './spawn/index.js';
-export { buildingRowKeepsPriority, isYardHeap, MAX_GROUND_STACK } from './stores/index.js';
+export {
+  buildingRowKeepsPriority,
+  isYardHeap,
+  MAX_GROUND_STACK,
+  slotCapacityFactor,
+} from './stores/index.js';
 export { canPinTradeShip, type TraderShipState } from './trade/index.js';
 export { AI_STOCK_REFILL_LEVEL, AI_STOCK_REFILL_TURNS } from './trade/partner-stock.js';
 export {

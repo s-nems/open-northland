@@ -47,6 +47,7 @@ const settings: RoomSettings = {
     dayNight: null,
     alliedVision: null,
     peace: null,
+    storageCapacity: null,
   },
   speed: 1,
 };
@@ -277,6 +278,15 @@ describe('client messages', () => {
         seats: [],
       },
       /rules\.peace/,
+    ],
+    [
+      'a storage factor the lobby does not offer',
+      {
+        kind: 'createRoom',
+        settings: { ...settings, rules: { ...settings.rules, storageCapacity: 4 } },
+        seats: [],
+      },
+      /rules\.storageCapacity/,
     ],
     [
       'rules without a weather mode',

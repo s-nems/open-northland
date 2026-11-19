@@ -26,7 +26,7 @@ import { mutNeeds } from '../lifecycle/needs/levels.js';
 import { teleportHuman } from '../orders/teleport.js';
 import { stockpilesAtNode } from '../spatial/stockpiles.js';
 import { constructionBillOf } from '../stores/construction.js';
-import { isLoosePile } from '../stores/index.js';
+import { isLoosePile, stockCapacity } from '../stores/index.js';
 
 // The `debug*` commands are real commands, logged and replayed like any other, so each is a no-op on a
 // target of the wrong kind rather than a throw.
@@ -146,7 +146,10 @@ export function debugFillStockpile(
         goodType: line.goodType,
         capacity: line.amount,
       }))
-    : type.stock;
+    : type.stock.map((slot) => ({
+        goodType: slot.goodType,
+        capacity: stockCapacity(world, ctx, command.target, slot.goodType),
+      }));
   if (command.goodType !== undefined && !Number.isSafeInteger(command.goodType)) return;
   const selected =
     command.goodType === undefined ? slots : slots.filter((slot) => slot.goodType === command.goodType);

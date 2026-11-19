@@ -522,7 +522,7 @@ export const ECONOMY: ArticleGroup = {
       lead: 'Tragarz bez wozu niesie {{haul.carry}} sztukę naraz. Na jednym miejscu na ziemi zmieści się do {{haul.groundStack}} sztuk jednego towaru.',
       blocks: [
         {
-          p: 'Ile mieści magazyn i ilu ludzi w nim pracuje, podają karty [[building:stock_00|Magazynu 1]], [[building:stock_01|2]], [[building:stock_02|3]] i [[building:headquarters|Kwatery głównej]].',
+          p: 'Ile mieści magazyn i ilu ludzi w nim pracuje, podają karty [[building:stock_00|Magazynu 1]], [[building:stock_01|2]], [[building:stock_02|3]] i [[building:headquarters|Kwatery głównej]]. Zaawansowane ustawienie "Pojemność magazynów", wybierane przed startem gry, może te ilości pomnożyć. Warsztatów to nie dotyczy.',
         },
         {
           h: 'Priorytet',

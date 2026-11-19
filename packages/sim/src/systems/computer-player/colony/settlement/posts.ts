@@ -31,6 +31,7 @@ import {
 } from '../../../readviews/index.js';
 import { fishSwarmsNearNode } from '../../../spatial/fish.js';
 import { assignedWorkers } from '../../../stores/assigned-workers.js';
+import { stockCapacity } from '../../../stores/capacity.js';
 import { isCarrierJob } from '../../../stores/workplace.js';
 import { sitesShortfalls } from '../../build-order/supply/upgrade-supply.js';
 import { genericCollectorJob } from '../../workforce/collectors/wanted-goods.js';
@@ -274,8 +275,7 @@ function storeRoom(env: ColonyEnv, buildings: readonly Entity[]): (good: number)
   const held = storesHeld(env, stores);
   return (good) => {
     let room = -(held.get(good) ?? 0);
-    for (const e of stores)
-      room += index.stockSlotCapacityByBuilding.get(world.get(e, Building).buildingType)?.get(good) ?? 0;
+    for (const e of stores) room += stockCapacity(world, ctx, e, good);
     return room;
   };
 }

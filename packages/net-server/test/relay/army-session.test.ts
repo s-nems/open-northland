@@ -20,6 +20,7 @@ const settings: RoomSettings = {
     dayNight: null,
     alliedVision: null,
     peace: null,
+    storageCapacity: null,
   },
   speed: 1,
 };

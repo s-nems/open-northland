@@ -49,6 +49,7 @@ const RULES = {
   dayNight: null,
   alliedVision: null,
   peace: null,
+  storageCapacity: null,
 };
 /** Virtual time for a lobby step to cross the slowest link twice, with margin. */
 const LOBBY_SETTLE_MS = 800;

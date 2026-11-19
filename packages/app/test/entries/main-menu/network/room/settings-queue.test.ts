@@ -14,6 +14,7 @@ const original: LobbySettings = {
     dayNight: null,
     alliedVision: null,
     peace: null,
+    storageCapacity: null,
   },
 };
 function view(settings: LobbySettings = original): RoomView {
@@ -61,6 +62,7 @@ describe('lobby settings replacement queue', () => {
         dayNight: null,
         alliedVision: null,
         peace: null,
+        storageCapacity: null,
       },
     });
     expect(sent[1]).not.toHaveProperty('world');
@@ -140,6 +142,7 @@ describe('lobby settings replacement queue', () => {
         dayNight: null,
         alliedVision: null,
         peace: null,
+        storageCapacity: null,
       });
     },
   );

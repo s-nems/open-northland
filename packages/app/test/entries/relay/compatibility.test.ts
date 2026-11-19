@@ -31,6 +31,7 @@ function room(id: string, compatibility: LobbyCompatibility | null = null): Room
         dayNight: null,
         alliedVision: null,
         peace: null,
+        storageCapacity: null,
       },
       speed: 1,
     },

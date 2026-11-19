@@ -150,6 +150,23 @@ export const chtSurfaces = {
         off: '各自擁有視野',
       },
       alliedVisionDetail: '互為友好的玩家共用已探索的地面。',
+      progressionDetail: '新職業與生產所需的經驗條件。',
+      needsDetail: '飢餓、疲勞與其他需求。',
+      storage: {
+        label: '倉庫容量',
+        detail: '成倍提高倉庫和大本營中每種貨物的存放空間。工坊容量不變。',
+        factor: '×{factor}',
+      },
+      advanced: {
+        label: '進階',
+        title: '進階設定',
+        standard: '標準',
+        changed: '已變更',
+        rulesGroup: '遊戲規則',
+        worldGroup: '世界',
+        reset: '恢復預設',
+        done: '完成',
+      },
       peace: {
         label: '和平時間',
         detail:

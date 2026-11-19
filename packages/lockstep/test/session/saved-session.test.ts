@@ -12,6 +12,7 @@ const descriptor: GameSession = {
     dayNight: null,
     alliedVision: null,
     peace: null,
+    storageCapacity: null,
   },
   speed: 2,
   localSeat: 0,
@@ -35,7 +36,7 @@ describe('persisted session metadata', () => {
       { ...descriptor, initialSave: { tick: 10, fingerprint: 'a'.repeat(64) } },
       roster,
     );
-    expect(metadata).toEqual({ version: 9, descriptor, roster });
+    expect(metadata).toEqual({ version: 10, descriptor, roster });
     const parsed = parseSavedSessionMetadata({
       ...metadata,
       token: 'secret',

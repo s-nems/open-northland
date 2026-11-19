@@ -35,6 +35,7 @@ function lobby(): RoomView {
         dayNight: null,
         alliedVision: null,
         peace: null,
+        storageCapacity: null,
       },
       speed: 1,
       kickedSeatMode: 'idle',
@@ -468,8 +469,10 @@ describe('room guidance and chat', () => {
       settings: { ...view.settings, rules: { ...view.settings.rules, progression: true, needs: false } },
     };
     room.update(explicit, true);
+    // Progression is an advanced rule: its switch stands in the window the card's entry opens.
+    room.element.querySelector<HTMLButtonElement>('.main-menu__advanced-entry')?.click();
     const progression = room.element.querySelector<HTMLButtonElement>(
-      `[role="switch"][aria-label="${messages().networkRoom.progression}"]`,
+      `[role="switch"][aria-label="${messages().mainMenu.lobby.progressionLabel}"]`,
     );
     if (progression === null) throw new Error('Missing progression switch');
     expect(progression.getAttribute('aria-checked')).toBe('true');

@@ -19,17 +19,11 @@ export function roomSettings(deps: NetworkRoomDeps) {
     map: { label: lobby.mapLabel, modes: lobby.mapModes, revealed: messages().admin.fogModes.off },
     fogOfWar: { label: lobby.fogOfWarLabel, on: copy.enabled, off: copy.disabled },
     progression: {
-      label: copy.progression,
-      detail: copy.progressionDetail,
-      on: lobby.progressionModes.on,
-      off: lobby.progressionModes.off,
+      label: lobby.progressionLabel,
+      detail: lobby.progressionDetail,
+      ...lobby.progressionModes,
     },
-    needs: {
-      label: copy.needs,
-      detail: copy.needsDetail,
-      on: lobby.needsModes.on,
-      off: lobby.needsModes.off,
-    },
+    needs: { label: lobby.needsLabel, detail: lobby.needsDetail, ...lobby.needsModes },
     alliedVision: {
       label: lobby.alliedVisionLabel,
       detail: lobby.alliedVisionDetail,
@@ -38,13 +32,15 @@ export function roomSettings(deps: NetworkRoomDeps) {
     },
     weather: { label: lobby.weatherLabel, modes: lobby.weatherModes },
     dayNight: { label: lobby.dayNightLabel, modes: lobby.dayNightModes },
+    storage: lobby.storage,
     // A room plays a map with a multiplayer lobby, so it always offers the peace.
     peace: lobby.peace,
+    advanced: lobby.advanced,
     onChange(change) {
       queue.change({ rules: change });
     },
   });
-  fields.append(...rules.environmentElements, ...rules.gameplayElements);
+  fields.append(...rules.basicElements, ...rules.advancedElements);
   root.append(node('p', 'network-room__muted', copy.departure));
   return {
     root,
@@ -52,14 +48,18 @@ export function roomSettings(deps: NetworkRoomDeps) {
       queue.rejected();
       rules.rejected();
     },
-    dispose: queue.dispose,
+    dispose(): void {
+      queue.dispose();
+      rules.dispose();
+    },
     update(next: RoomView, editable: boolean): void {
       queue.update(next, editable);
       if (editable && next.settings.kickedSeatMode !== 'idle') queue.change({ kickedSeatMode: 'idle' });
-      hint.textContent = next.settings.initialSave === undefined ? copy.creatorSettings : copy.savedSettings;
+      const why = next.settings.initialSave === undefined ? copy.creatorSettings : copy.savedSettings;
+      hint.textContent = why;
       hint.hidden = editable && next.settings.initialSave === undefined;
       const frozen = !editable || next.settings.initialSave !== undefined;
-      rules.update(next.settings.rules, frozen);
+      rules.update(next.settings.rules, frozen, why);
     },
   };
 }

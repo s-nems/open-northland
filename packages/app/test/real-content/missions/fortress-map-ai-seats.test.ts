@@ -76,6 +76,7 @@ async function fortressWorld(
     needs: null,
     alliedVision: null,
     peace,
+    storageCapacity: null,
     missions: false,
     berryBushes: true,
   };

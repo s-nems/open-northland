@@ -45,6 +45,12 @@ export type RulesCommand =
       readonly enabled: boolean;
     }
   | {
+      /** Multiply every storage building's stock slots by `factor` (`StorageRules`); a factor
+       *  `setStorageCapacityFactor` rejects is skipped. Default 1. */
+      readonly kind: 'setStorageCapacity';
+      readonly factor: number;
+    }
+  | {
       /** Let wells and hives stand off plantable ground (`BioGroundRules`). Default off. */
       readonly kind: 'setBioGroundWaived';
       readonly waived: boolean;

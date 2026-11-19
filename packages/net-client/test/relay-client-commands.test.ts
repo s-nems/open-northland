@@ -24,6 +24,7 @@ const SESSION: GameSession = {
     dayNight: null,
     alliedVision: null,
     peace: null,
+    storageCapacity: null,
   },
   speed: 1,
 };

@@ -535,7 +535,7 @@ export const ECONOMY: ArticleGroup = {
       lead: 'Un trasportatore senza carretto porta {{haul.carry}} pezzo alla volta. Un punto a terra contiene fino a {{haul.groundStack}} pezzi di un bene.',
       blocks: [
         {
-          p: 'Quanto contiene un magazzino e quante persone ci lavorano è scritto nelle schede di [[building:stock_00|Magazzino 1]], [[building:stock_01|2]], [[building:stock_02|3]] e [[building:headquarters|Quartier generale]].',
+          p: "Quanto contiene un magazzino e quante persone ci lavorano è scritto nelle schede di [[building:stock_00|Magazzino 1]], [[building:stock_01|2]], [[building:stock_02|3]] e [[building:headquarters|Quartier generale]]. L'impostazione avanzata «Capacità dei magazzini», scelta prima dell'inizio della partita, può moltiplicare queste quantità. Le officine non cambiano.",
         },
         {
           h: 'Priorità',

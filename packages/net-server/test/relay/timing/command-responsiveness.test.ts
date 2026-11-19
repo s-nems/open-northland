@@ -58,6 +58,7 @@ describe('relay command responsiveness', () => {
           dayNight: null,
           alliedVision: null,
           peace: null,
+          storageCapacity: null,
         },
         speed: scenario.speed,
       },

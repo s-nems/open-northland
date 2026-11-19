@@ -37,6 +37,7 @@ it('changes shared pacing repeatedly while eight clients apply every command and
         dayNight: null,
         alliedVision: null,
         peace: null,
+        storageCapacity: null,
       },
       speed: 1,
     },

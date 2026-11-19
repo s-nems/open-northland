@@ -172,6 +172,7 @@ export function sessionSearch(
   if (session.rules.alliedVision !== null)
     params.set('alliedvision', session.rules.alliedVision ? 'on' : 'off');
   if (session.rules.peace !== null) params.set('peace', String(session.rules.peace));
+  if (session.rules.storageCapacity !== null) params.set('storage', String(session.rules.storageCapacity));
   if (session.speed !== DEFAULT_SESSION_SPEED) params.set('speed', String(session.speed));
   return params;
 }

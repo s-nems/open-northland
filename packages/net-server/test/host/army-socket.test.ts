@@ -95,6 +95,7 @@ it('carries a 1000-soldier move, paused redirects and a reconnect through real W
           dayNight: null,
           alliedVision: null,
           peace: null,
+          storageCapacity: null,
         },
         speed: 2,
       },

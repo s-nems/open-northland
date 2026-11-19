@@ -84,6 +84,7 @@ it('a new human seat supersedes the old room AI takeover while retaining player 
       dayNight: null,
       alliedVision: null,
       peace: null,
+      storageCapacity: null,
     },
   });
   resumed.run(3);
@@ -129,6 +130,7 @@ it('a resumed room keeps the saved handlers and module toggles of a seat that st
       dayNight: null,
       alliedVision: null,
       peace: null,
+      storageCapacity: null,
     },
   });
   resumed.run(2);
@@ -209,6 +211,7 @@ it('removes local continuation grants and queued grants before a saved multiplay
       dayNight: null,
       alliedVision: null,
       peace: null,
+      storageCapacity: null,
     },
   });
   resumed.run(3);

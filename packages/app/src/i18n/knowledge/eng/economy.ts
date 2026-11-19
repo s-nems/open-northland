@@ -525,7 +525,7 @@ export const ECONOMY: ArticleGroup = {
       lead: 'A Carrier with no cart hauls {{haul.carry}} piece at a time. One spot on the ground holds up to {{haul.groundStack}} pieces of a good.',
       blocks: [
         {
-          p: 'How much a warehouse holds and how many people work there is on the cards of [[building:stock_00|Warehouse 1]], [[building:stock_01|2]], [[building:stock_02|3]] and [[building:headquarters|Headquarters]].',
+          p: 'How much a warehouse holds and how many people work there is on the cards of [[building:stock_00|Warehouse 1]], [[building:stock_01|2]], [[building:stock_02|3]] and [[building:headquarters|Headquarters]]. The "Storage capacity" advanced setting, chosen before a game starts, can multiply these amounts. Workshops are not affected.',
         },
         {
           h: 'Priority',

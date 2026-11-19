@@ -23,6 +23,7 @@ const descriptor: GameSession = {
     dayNight: null,
     alliedVision: null,
     peace: null,
+    storageCapacity: null,
   },
   seats: [
     { player: 0, mode: 'human', color: 3, tribe: 7 },

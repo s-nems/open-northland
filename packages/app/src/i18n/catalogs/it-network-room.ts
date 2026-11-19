@@ -46,10 +46,6 @@ export const itNetworkRoom = {
   creatorSettings:
     'Solo il creatore della stanza può cambiare impostazioni e posti; tu scegli il colore e la tribù del tuo posto.',
   savedSettings: 'Questa partita salvata mantiene le regole e i colori originali.',
-  progression: 'Progressione delle professioni',
-  progressionDetail: 'Esperienza richiesta per nuove professioni e per la produzione.',
-  needs: 'Bisogni dei coloni',
-  needsDetail: 'Fame, stanchezza e altri bisogni.',
   enabled: 'Attivo',
   disabled: 'Disattivato',
   compatibility: 'Compatibilità del gioco',

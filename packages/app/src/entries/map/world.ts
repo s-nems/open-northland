@@ -198,6 +198,7 @@ function applySessionRules(sim: Simulation, options: MapWorldOptions): void {
     progression: options.progression,
     needs: options.needs,
     alliedVision: options.alliedVision,
+    storageCapacity: options.storageCapacity,
   });
   const computerDisabled = new Set<number>();
   for (const seat of options.machineSeats) {

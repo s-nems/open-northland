@@ -152,6 +152,24 @@ export const enSurfaces = {
         off: 'Each player sees alone',
       },
       alliedVisionDetail: 'Mutually friendly players share explored ground.',
+      progressionDetail: 'Experience requirements for new professions and production.',
+      needsDetail: 'Hunger, fatigue and other needs.',
+      storage: {
+        label: 'Storage capacity',
+        detail:
+          'Multiplies the room for each good in warehouses and the Headquarters. Workshops hold as much as ever.',
+        factor: '×{factor}',
+      },
+      advanced: {
+        label: 'Advanced',
+        title: 'Advanced settings',
+        standard: 'Standard',
+        changed: 'Changed',
+        rulesGroup: 'Game rules',
+        worldGroup: 'World',
+        reset: 'Restore defaults',
+        done: 'Done',
+      },
       peace: {
         label: 'Peace time',
         detail:

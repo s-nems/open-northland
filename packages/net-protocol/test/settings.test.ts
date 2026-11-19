@@ -13,6 +13,7 @@ const BASE: LobbySettings = {
     dayNight: null,
     alliedVision: null,
     peace: null,
+    storageCapacity: null,
   },
 };
 

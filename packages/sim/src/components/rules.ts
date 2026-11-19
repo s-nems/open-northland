@@ -173,6 +173,29 @@ export function setProfessionProgression(world: World, enabled: boolean): void {
   });
 }
 
+/** A sanity bound on the storage factor, past every factor a lobby offers. */
+export const MAX_STORAGE_CAPACITY_FACTOR = 10;
+
+const storageRules = defineWorldSingleton<{ capacityFactor: number }>('StorageRules', 'players', () => ({
+  capacityFactor: 1,
+}));
+
+/** What a storage building's stock slots are multiplied by: the headquarters and the storehouses, never
+ *  a workshop's, a home's or a farm's shelves. 1 by default, the content's own sizes. */
+export const StorageRules = storageRules.component;
+
+export function storageCapacityFactor(world: World): number {
+  return storageRules.read(world).capacityFactor;
+}
+
+/** A factor outside 1..{@link MAX_STORAGE_CAPACITY_FACTOR} or not whole is a bad input, skipped. */
+export function setStorageCapacityFactor(world: World, factor: number): void {
+  if (!Number.isInteger(factor) || factor < 1 || factor > MAX_STORAGE_CAPACITY_FACTOR) return;
+  storageRules.write(world, (rules) => {
+    rules.capacityFactor = factor;
+  });
+}
+
 const missionRules = defineWorldSingleton<{ enabled: boolean }>('MissionRules', 'players', () => ({
   enabled: false,
 }));

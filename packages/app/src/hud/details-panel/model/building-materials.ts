@@ -126,6 +126,7 @@ function bonusTenths(productionBonus: unknown): Map<number, number> {
 export function stockRows(
   ctx: BuildingStockContext,
   def: BuildingDef | undefined,
+  storageFactor: number,
   stockpile: unknown,
   productionBonus?: unknown,
 ): StockRow[] {
@@ -138,6 +139,7 @@ export function stockRows(
       ctx.livestockTribeOfGood?.(slot.goodType) == null &&
       goodDef(ctx, slot.goodType)?.vehicleHouse === undefined,
   );
+  const factor = def === undefined ? 1 : systems.slotCapacityFactor(def, storageFactor);
   return slots.map((slot) => {
     const good = goodDef(ctx, slot.goodType);
     const goodId = good?.id;
@@ -152,7 +154,7 @@ export function stockRows(
         ((live.get(slot.goodType) ?? 0) * systems.OUTPUT_TENTHS_PER_UNIT + (tenths.get(slot.goodType) ?? 0)) /
         systems.OUTPUT_TENTHS_PER_UNIT,
       category: goodCategoryTab(goodId),
-      capacity: slot.capacity,
+      capacity: slot.capacity * factor,
       input: slot.input,
       ...(goodId !== undefined ? { goodId } : {}),
       ...(effect !== '' ? { effect } : {}),

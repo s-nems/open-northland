@@ -7,6 +7,7 @@ import {
   Chest,
   FOG_MODE,
   JobAssignment,
+  MAX_STORAGE_CAPACITY_FACTOR,
   Marriage,
   PAPER_KINDS,
   Palisade,
@@ -540,7 +541,7 @@ function nextCommand(rng: Rng): Command {
   const y = rng.int(NODE_H);
   // Every roll is an explicit case, so a modulus that drifts past the case list throws below instead
   // of silently dropping a command kind from the stream.
-  const roll = rng.int(84);
+  const roll = rng.int(85);
   switch (roll) {
     case 31:
       // An AI-seat flip: valid players (the AiControl carrier created/updated/destroyed - the
@@ -1248,6 +1249,10 @@ function nextCommand(rng: Rng): Command {
         entity: (rng.int(TARGET_ID_RANGE) + 1) as Entity,
         house: (rng.int(TARGET_ID_RANGE) + 1) as Entity,
       };
+    case 84:
+      // The storage factor: every store's slot ceiling reads the StorageRules singleton mid-stream; 0 and
+      // past the cap are the skip path.
+      return { kind: 'setStorageCapacity', factor: rng.int(MAX_STORAGE_CAPACITY_FACTOR + 2) };
     default:
       throw new Error(`fuzz roll ${roll} has no case: widen the switch or the modulus above`);
   }

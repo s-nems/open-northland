@@ -374,6 +374,7 @@ describe.runIf(hasRealIr())('a Ragnarök attack on specjalna_forteca', () => {
       needs: null,
       alliedVision: null,
       peace: null,
+      storageCapacity: null,
       missions: false,
       berryBushes: false,
     }).sim;

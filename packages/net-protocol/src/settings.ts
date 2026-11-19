@@ -17,6 +17,7 @@ const RULE_FIELDS = keysOf<keyof SessionRules>({
   dayNight: true,
   alliedVision: true,
   peace: true,
+  storageCapacity: true,
 });
 
 export function sameSessionRules(a: SessionRules, b: SessionRules): boolean {

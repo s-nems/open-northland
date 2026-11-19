@@ -20,6 +20,7 @@ const NO_SESSION_FLAGS = {
   needs: null,
   alliedVision: null,
   peace: null,
+  storageCapacity: null,
   missions: null,
 } as const;
 

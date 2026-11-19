@@ -8,11 +8,10 @@ import {
   loadVerifiedMapDocuments,
   readVerifiedMapDocuments,
 } from '../../../content/transfer/index.js';
-import { FOG_MODE_BY_NAME } from '../../../game/fog.js';
 import { assertMultiplayerMap } from '../../../game/map/multiplayer.js';
 import { mapSessionWorld, variantMapScript } from '../../../game/map/variant.js';
 import { DEFAULT_SESSION_SPEED, drawSessionSeed, mapSession } from '../../../game/match/session-url.js';
-import { initialLobbyOptions } from '../lobby/model.js';
+import { initialLobbyOptions, lobbyRules } from '../lobby/model.js';
 import {
   authoredVacantMode,
   type MapPlayerSlot,
@@ -79,18 +78,9 @@ export async function prepareRoomCreation(choice: CreateChoice, params: URLSearc
           save.header.entry === null ? undefined : [...savedSeats.values()],
         );
   const savedSession = save === null ? null : savedRoster(save);
-  const options = initialLobbyOptions(params, ROOM_ALLIED_VISION);
   const rules =
     save === null
-      ? {
-          fog: FOG_MODE_BY_NAME[options.fog],
-          progression: options.professionProgression,
-          needs: options.settlerNeeds,
-          weather: options.weather,
-          dayNight: options.dayNight,
-          alliedVision: options.alliedVision,
-          peace: options.peace,
-        }
+      ? lobbyRules(initialLobbyOptions(params, ROOM_ALLIED_VISION))
       : await validateNetworkSave(save, handle);
   // The saving client's fog memory is its own seat's alone: every member would download it for nothing.
   const initial: PreparedNetworkSave | null =

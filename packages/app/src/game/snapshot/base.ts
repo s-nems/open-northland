@@ -107,6 +107,14 @@ export function peaceHoldsUntilTickOf(snapshot: WorldSnapshot): number | null {
   return rules?.holds === true && typeof rules.untilTick === 'number' ? rules.untilTick : null;
 }
 
+/** What the storage buildings' slots are multiplied by: the sim's `StorageRules` factor, 1 while absent. */
+export function storageCapacityFactorOf(snapshot: WorldSnapshot): number {
+  const rules = entitiesWith(snapshot, 'StorageRules')[0]?.components.StorageRules as
+    | { capacityFactor?: unknown }
+    | undefined;
+  return typeof rules?.capacityFactor === 'number' ? rules.capacityFactor : 1;
+}
+
 /** Whether wells and hives may stand off grass: the sim's `BioGroundRules` waiver, off while absent. */
 export function bioGroundRuleWaived(snapshot: WorldSnapshot): boolean {
   const rules = entitiesWith(snapshot, 'BioGroundRules')[0]?.components.BioGroundRules as

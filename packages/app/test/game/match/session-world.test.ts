@@ -19,6 +19,7 @@ const SESSION: GameSession = {
     dayNight: null,
     alliedVision: true,
     peace: null,
+    storageCapacity: null,
   },
   seats: [
     { player: 0, mode: 'human', color: 0 },

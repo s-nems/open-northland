@@ -150,6 +150,23 @@ export const chsSurfaces = {
         off: '各自独立视野',
       },
       alliedVisionDetail: '互为友好的玩家共享已探明的地面。',
+      progressionDetail: '新职业和新产品所需的经验要求。',
+      needsDetail: '饥饿、疲劳及其他需求。',
+      storage: {
+        label: '仓库容量',
+        detail: '成倍提高仓库和大本营中每种货物的存放空间。工坊容量不变。',
+        factor: '×{factor}',
+      },
+      advanced: {
+        label: '高级',
+        title: '高级设置',
+        standard: '标准',
+        changed: '已更改',
+        rulesGroup: '游戏规则',
+        worldGroup: '世界',
+        reset: '恢复默认',
+        done: '完成',
+      },
       peace: {
         label: '和平时间',
         detail:

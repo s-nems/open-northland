@@ -18,6 +18,7 @@ import {
   setPlayerPlacementTribes,
   setProfessionProgression,
   setSignpostNavigation,
+  setStorageCapacityFactor,
   setUnplayedSeats,
 } from '../../components/index.js';
 import { assertNever } from '../../core/brand.js';
@@ -621,6 +622,9 @@ function applyCommand(
       return;
     case 'setAlliedVision':
       setAlliedVision(world, command.enabled);
+      return;
+    case 'setStorageCapacity':
+      setStorageCapacityFactor(world, command.factor);
       return;
     case 'setBioGroundWaived':
       setBioGroundWaived(world, command.waived);

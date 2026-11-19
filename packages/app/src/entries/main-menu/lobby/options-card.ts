@@ -1,11 +1,12 @@
-import { FOG_MODE_BY_NAME, fogModeName, LOBBY_FOG_MODES } from '../../../game/fog.js';
+import { fogModeName, LOBBY_FOG_MODES } from '../../../game/fog.js';
 import { messages } from '../../../i18n/index.js';
 import { gameRuleControls } from '../lobby-controls/rules.js';
-import type { LobbyOptions } from './model.js';
+import { type LobbyOptions, lobbyRules } from './model.js';
 
 /**
  * A multiplayer map offers the map setting and the peace choice; a single-player one plays the
- * classic map. `variants` are the toggles of the variants the map ships, listed last.
+ * classic map. `variants` are the toggles of the variants the map ships, listed under the rules and
+ * above the advanced entry.
  */
 export function lobbyOptionsCard(
   options: LobbyOptions,
@@ -21,12 +22,18 @@ export function lobbyOptionsCard(
   const controls = gameRuleControls({
     ...(multiplayerMap ? { map: { label: lobby.mapLabel, modes: lobby.mapModes } } : {}),
     fogOfWar: { label: lobby.fogOfWarLabel, ...lobby.fogOfWarModes },
-    progression: { label: lobby.progressionLabel, ...lobby.progressionModes },
-    needs: { label: lobby.needsLabel, ...lobby.needsModes },
+    progression: {
+      label: lobby.progressionLabel,
+      detail: lobby.progressionDetail,
+      ...lobby.progressionModes,
+    },
+    needs: { label: lobby.needsLabel, detail: lobby.needsDetail, ...lobby.needsModes },
     alliedVision: { label: lobby.alliedVisionLabel, ...lobby.alliedVisionModes },
     weather: { label: lobby.weatherLabel, modes: lobby.weatherModes },
     dayNight: { label: lobby.dayNightLabel, modes: lobby.dayNightModes },
+    storage: lobby.storage,
     ...(multiplayerMap ? { peace: lobby.peace } : {}),
+    advanced: lobby.advanced,
     onChange(change) {
       if (change.fog != null) {
         const name = fogModeName(change.fog);
@@ -38,24 +45,14 @@ export function lobbyOptionsCard(
       if (change.weather != null) options.weather = change.weather;
       if (change.dayNight != null) options.dayNight = change.dayNight;
       if (change.peace !== undefined) options.peace = change.peace;
+      if (change.storageCapacity !== undefined) options.storageCapacity = change.storageCapacity;
       paint();
     },
   });
   function paint(): void {
-    controls.update(
-      {
-        fog: FOG_MODE_BY_NAME[options.fog],
-        progression: options.professionProgression,
-        needs: options.settlerNeeds,
-        weather: options.weather,
-        dayNight: options.dayNight,
-        alliedVision: options.alliedVision,
-        peace: options.peace,
-      },
-      false,
-    );
+    controls.update(lobbyRules(options), false);
   }
   paint();
-  card.append(title, ...controls.elements, ...variants);
+  card.append(title, ...controls.basicElements, ...variants, ...controls.advancedElements);
   return card;
 }

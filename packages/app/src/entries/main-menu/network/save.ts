@@ -1,5 +1,10 @@
 import { mapLobbySlots } from '@open-northland/data';
-import { PEACE_MINUTES, type PeaceMinutes } from '@open-northland/lockstep';
+import {
+  PEACE_MINUTES,
+  type PeaceMinutes,
+  STORAGE_CAPACITY_FACTORS,
+  type StorageCapacityFactor,
+} from '@open-northland/lockstep';
 import type { prepareInitialSave } from '@open-northland/net-client';
 import { components, type SaveGame, type Simulation, TICKS_PER_MINUTE } from '@open-northland/sim';
 import { buildingFootprints } from '../../../content/ir/joins.js';
@@ -71,7 +76,14 @@ export async function validateNetworkSave(save: SaveGame, handle: VerifiedMapDoc
     dayNight: savedDayNightMode(save),
     alliedVision: components.alliedVisionEnabled(sim.world),
     peace: savedPeace(sim),
+    storageCapacity: savedStorageCapacity(sim),
   };
+}
+
+/** The storage factor the saved world plays, so the room shows it; null for the content's own sizes. */
+function savedStorageCapacity(sim: Simulation): StorageCapacityFactor | null {
+  const factor = components.storageCapacityFactor(sim.world);
+  return STORAGE_CAPACITY_FACTORS.find((known) => known === factor) ?? null;
 }
 
 /** The length of the peace the saved match opened while it still holds, so the room shows it; the

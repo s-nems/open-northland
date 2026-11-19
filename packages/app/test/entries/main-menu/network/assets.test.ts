@@ -45,6 +45,7 @@ function room(id = 'room'): RoomView {
         dayNight: null,
         alliedVision: null,
         peace: null,
+        storageCapacity: null,
       },
       speed: 1,
       initialSave: IDENTITY,
@@ -106,6 +107,7 @@ function harness(verify = vi.fn(async () => SAVE)) {
     dayNight: null,
     alliedVision: false,
     peace: null,
+    storageCapacity: null,
   }));
   let delivered: RoomMapTransferOptions['onVerified'] = () => undefined;
   const transfer = {
@@ -294,6 +296,7 @@ describe('room assets coordinator', () => {
         dayNight: null,
         alliedVision: null,
         peace: null,
+        storageCapacity: null,
       },
       seats: [{ player: 0, color: 0, mode: 'human' as const }],
       localSeat: 0,
@@ -316,6 +319,7 @@ describe('room assets coordinator', () => {
         dayNight: null,
         alliedVision: false,
         peace: null,
+        storageCapacity: null,
       };
     });
     h.assets.observe(room());

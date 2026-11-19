@@ -8,6 +8,7 @@ import {
   orderedSeats,
   PEACE_MINUTES,
   parseGameSession,
+  STORAGE_CAPACITY_FACTORS,
   seatColourOf,
   WEATHER_MODES,
 } from '../../src/index.js';
@@ -35,6 +36,7 @@ function session(over: Partial<GameSession> = {}): GameSession {
       dayNight: null,
       alliedVision: null,
       peace: null,
+      storageCapacity: null,
     },
     speed: 1,
     ...over,
@@ -154,6 +156,7 @@ describe('game session descriptor', () => {
             dayNight: null,
             alliedVision: null,
             peace: null,
+            storageCapacity: null,
           },
         }),
       ),
@@ -163,7 +166,7 @@ describe('game session descriptor', () => {
   it('reads every day and night mode and null, and refuses an unknown or missing one', () => {
     const rules = { fog: null, progression: null, needs: null, weather: null };
     for (const dayNight of [...DAY_NIGHT_MODES, null]) {
-      const full = { ...rules, dayNight, alliedVision: null, peace: null };
+      const full = { ...rules, dayNight, alliedVision: null, peace: null, storageCapacity: null };
       expect(roundTrip(session({ rules: full })).rules.dayNight).toBe(dayNight);
     }
     expect(() => parseGameSession({ ...session(), rules: { ...rules, dayNight: 'dusk' } })).toThrow(
@@ -182,6 +185,7 @@ describe('game session descriptor', () => {
         dayNight: null,
         alliedVision: null,
         peace: null,
+        storageCapacity: null,
       };
       expect(roundTrip(session({ rules })).rules.weather).toBe(weather);
     }
@@ -193,28 +197,24 @@ describe('game session descriptor', () => {
   });
 
   it('reads every peace length and null, and refuses a length the lobby does not offer', () => {
+    const { peace: _peace, ...rules } = session().rules;
     for (const peace of [...PEACE_MINUTES, null]) {
-      const rules = {
-        fog: null,
-        progression: null,
-        needs: null,
-        weather: null,
-        dayNight: null,
-        alliedVision: null,
-        peace,
-      };
-      expect(roundTrip(session({ rules })).rules.peace).toBe(peace);
+      expect(roundTrip(session({ rules: { ...rules, peace } })).rules.peace).toBe(peace);
     }
-    const rules = {
-      fog: null,
-      progression: null,
-      needs: null,
-      weather: null,
-      dayNight: null,
-      alliedVision: null,
-    };
     expect(() => parseGameSession({ ...session(), rules: { ...rules, peace: 50 } })).toThrow(/rules.peace/);
     expect(() => parseGameSession({ ...session(), rules })).toThrow(/rules.peace/);
+  });
+
+  it('reads every storage factor and null, and refuses one the lobby does not offer', () => {
+    const { storageCapacity: _storage, ...rules } = session().rules;
+    for (const storageCapacity of [...STORAGE_CAPACITY_FACTORS, null]) {
+      const read = roundTrip(session({ rules: { ...rules, storageCapacity } }));
+      expect(read.rules.storageCapacity).toBe(storageCapacity);
+    }
+    expect(() => parseGameSession({ ...session(), rules: { ...rules, storageCapacity: 4 } })).toThrow(
+      /rules.storageCapacity/,
+    );
+    expect(() => parseGameSession({ ...session(), rules })).toThrow(/rules.storageCapacity/);
   });
 
   it('reads the roster the way the entry consumes it', () => {

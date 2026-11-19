@@ -4,6 +4,7 @@ import {
   builtFractionOf,
   isBuilding,
   type SnapshotEntity,
+  storageCapacityFactorOf,
 } from '../../game/snapshot/index.js';
 import { compareLabels } from '../../i18n/index.js';
 import { healthBar, pct } from '../details-panel/model/bars.js';
@@ -47,7 +48,12 @@ export function buildingHoverModel(
     state: hoverState(ent),
     owner,
     health: healthBar(ent),
-    rows: owner !== null ? [] : sortByLabel(site ? billRows(ctx, def, ent) : held(ctx, def, ent)),
+    rows:
+      owner !== null
+        ? []
+        : sortByLabel(
+            site ? billRows(ctx, def, ent) : held(ctx, def, ent, storageCapacityFactorOf(snapshot)),
+          ),
   };
 }
 
@@ -73,8 +79,13 @@ function billRows(
 
 /** A standing building lists what it actually holds; an empty slot is no line, as in the original. The
  *  original also marks the lines of the goods the house consumes as inbound. */
-function held(ctx: BuildingStockContext, def: BuildingDef | undefined, ent: SnapshotEntity): HoverCardRow[] {
-  return stockRows(ctx, def, ent.components.Stockpile, ent.components.ProductionBonus)
+function held(
+  ctx: BuildingStockContext,
+  def: BuildingDef | undefined,
+  ent: SnapshotEntity,
+  storageFactor: number,
+): HoverCardRow[] {
+  return stockRows(ctx, def, storageFactor, ent.components.Stockpile, ent.components.ProductionBonus)
     .filter((row) => row.amount > 0)
     .map((row) => ({
       label: row.label,

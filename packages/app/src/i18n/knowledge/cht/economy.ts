@@ -476,7 +476,7 @@ export const ECONOMY: ArticleGroup = {
       lead: '沒有車的搬運工每次搬{{haul.carry}}份。地面同一處最多堆{{haul.groundStack}}份同種貨物。',
       blocks: [
         {
-          p: '倉庫能存多少、有多少人在裡面工作，見[[building:stock_00|一級倉庫]]、[[building:stock_01|二級倉庫]]、[[building:stock_02|三級倉庫]]和[[building:headquarters|大本營]]的卡片。',
+          p: '倉庫能存多少、有多少人在裡面工作，見[[building:stock_00|一級倉庫]]、[[building:stock_01|二級倉庫]]、[[building:stock_02|三級倉庫]]和[[building:headquarters|大本營]]的卡片。開局前的進階設定「倉庫容量」可以成倍提高這些數值，工坊不受影響。',
         },
         {
           h: '優先',

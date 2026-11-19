@@ -63,6 +63,7 @@ const ROOM: RoomView = {
       dayNight: null,
       alliedVision: null,
       peace: null,
+      storageCapacity: null,
     },
     speed: REQUESTED_SPEED,
   },

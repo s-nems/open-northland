@@ -34,6 +34,7 @@ describe.runIf(hasRealIr())('Lake of the Mists controller coexistence', () => {
       needs: null,
       alliedVision: null,
       peace: null,
+      storageCapacity: null,
       missions: false,
       berryBushes: true,
     };

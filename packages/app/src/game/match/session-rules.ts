@@ -4,6 +4,8 @@ import {
   PEACE_MINUTES,
   type PeaceMinutes,
   type SessionRules,
+  STORAGE_CAPACITY_FACTORS,
+  type StorageCapacityFactor,
   WEATHER_MODES,
   type WeatherMode,
 } from '@open-northland/lockstep';
@@ -36,8 +38,15 @@ export function peaceParam(params: URLSearchParams): PeaceMinutes | null {
   return PEACE_MINUTES.find((minutes) => String(minutes) === value) ?? null;
 }
 
-/** The `?fog=`, `?progression=`, `?needs=`, `?weathermode=`, `?daynight=`, `?alliedvision=` and `?peace=` flags as the
- *  session's rule overrides. */
+/** `?storage=<factor>`, one of `STORAGE_CAPACITY_FACTORS`; null for absent or unrecognized, which keeps the
+ *  content's storage sizes. */
+export function storageCapacityParam(params: URLSearchParams): StorageCapacityFactor | null {
+  const value = params.get('storage');
+  return STORAGE_CAPACITY_FACTORS.find((factor) => String(factor) === value) ?? null;
+}
+
+/** The `?fog=`, `?progression=`, `?needs=`, `?weathermode=`, `?daynight=`, `?alliedvision=`, `?peace=` and
+ *  `?storage=` flags as the session's rule overrides. */
 export function sessionRuleOverrides(params: URLSearchParams): SessionRules {
   return {
     fog: fogModeParam(params),
@@ -47,6 +56,7 @@ export function sessionRuleOverrides(params: URLSearchParams): SessionRules {
     dayNight: dayNightModeParam(params),
     alliedVision: onOffParam(params, 'alliedvision'),
     peace: peaceParam(params),
+    storageCapacity: storageCapacityParam(params),
   };
 }
 
@@ -66,5 +76,8 @@ export function applySessionRuleOverrides(sim: WorldSetup, overrides: Omit<SimSe
   if (overrides.needs !== null) sim.enqueueSetup({ kind: 'setNeedsEnabled', enabled: overrides.needs });
   if (overrides.alliedVision !== null) {
     sim.enqueueSetup({ kind: 'setAlliedVision', enabled: overrides.alliedVision });
+  }
+  if (overrides.storageCapacity !== null) {
+    sim.enqueueSetup({ kind: 'setStorageCapacity', factor: overrides.storageCapacity });
   }
 }

@@ -28,6 +28,7 @@ function parentSave() {
     needs: null,
     alliedVision: null,
     peace: null,
+    storageCapacity: null,
     missions: null,
     progression: null,
   });

@@ -168,6 +168,24 @@ export const itSurfaces = {
         off: 'Ogni giocatore ha la propria vista',
       },
       alliedVisionDetail: 'I giocatori alleati tra loro condividono il terreno esplorato.',
+      progressionDetail: 'Esperienza richiesta per nuove professioni e per la produzione.',
+      needsDetail: 'Fame, stanchezza e altri bisogni.',
+      storage: {
+        label: 'Capacità dei magazzini',
+        detail:
+          'Moltiplica lo spazio per ogni merce nei magazzini e nel Quartier generale. Le officine contengono quanto al solito.',
+        factor: '×{factor}',
+      },
+      advanced: {
+        label: 'Avanzate',
+        title: 'Impostazioni avanzate',
+        standard: 'Standard',
+        changed: 'Modificate',
+        rulesGroup: 'Regole di gioco',
+        worldGroup: 'Mondo',
+        reset: 'Ripristina predefinite',
+        done: 'Fatto',
+      },
       peace: {
         label: 'Tregua iniziale',
         detail:

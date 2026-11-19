@@ -9,7 +9,7 @@ import { type GameSession, OBSERVER_SEAT, type SessionSeat } from '@open-northla
 import type { RoomSeatSetup, RoomSettings } from '@open-northland/net-protocol';
 import type { SaveGame } from '@open-northland/sim';
 import type { ContentIr } from '../../src/content/ir/rows.js';
-import { initialLobbyOptions } from '../../src/entries/main-menu/lobby/model.js';
+import { initialLobbyOptions, lobbyRules } from '../../src/entries/main-menu/lobby/model.js';
 import {
   authoredVacantMode,
   offersDifficulty,
@@ -18,7 +18,6 @@ import {
 } from '../../src/entries/main-menu/lobby/roster-state.js';
 import { restoreSavedSeats, savedRoster } from '../../src/entries/main-menu/network/saved-roster.js';
 import type { MapWorkerBoot } from '../../src/entries/map/world-inputs.js';
-import { FOG_MODE_BY_NAME } from '../../src/game/fog.js';
 import { loadContentUnderTest, rawIrUnderTest } from '../../test/real-content/helpers.js';
 import { realMapPath, realMapScript } from '../../test/real-content/real-map-world.js';
 import type { ComputerDifficulty } from './config.js';
@@ -148,16 +147,7 @@ export function savedLabSeats(save: SaveGame, humans: number, computers: number 
 
 /** The rules a fresh room starts with: the main menu's defaults. */
 export function roomRules(): RoomSettings['rules'] {
-  const options = initialLobbyOptions(new URLSearchParams(), ROOM_ALLIED_VISION);
-  return {
-    fog: FOG_MODE_BY_NAME[options.fog],
-    progression: options.professionProgression,
-    needs: options.settlerNeeds,
-    weather: options.weather,
-    dayNight: options.dayNight,
-    alliedVision: options.alliedVision,
-    peace: options.peace,
-  };
+  return lobbyRules(initialLobbyOptions(new URLSearchParams(), ROOM_ALLIED_VISION));
 }
 
 /** The rules a saved room keeps: its recorded descriptor's, else the main menu's defaults. */

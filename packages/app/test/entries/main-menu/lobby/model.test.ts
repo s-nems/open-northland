@@ -124,6 +124,7 @@ describe('initialLobbyOptions', () => {
       dayNight: 'map',
       alliedVision: true,
       peace: null,
+      storageCapacity: null,
     });
     expect(
       initialLobbyOptions(
@@ -138,6 +139,7 @@ describe('initialLobbyOptions', () => {
       dayNight: 'on',
       alliedVision: true,
       peace: null,
+      storageCapacity: null,
     });
     expect(initialLobbyOptions(new URLSearchParams('weathermode=bogus'), true).weather).toBe('map');
     // The revealed map is a debug-menu pick, never a lobby one.
@@ -178,6 +180,7 @@ const OPTIONS = {
   dayNight: 'map',
   alliedVision: true,
   peace: null,
+  storageCapacity: null,
 } as const;
 
 /** The offered seats the launched session declares as AI, which is what `?computer=` carries. */
@@ -372,6 +375,7 @@ describe('lobbyStartEntry', () => {
           dayNight: 'map',
           alliedVision: false,
           peace: 45,
+          storageCapacity: null,
         },
         SEED,
       ),

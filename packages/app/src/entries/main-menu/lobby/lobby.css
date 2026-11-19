@@ -538,3 +538,112 @@
   box-sizing: border-box;
   text-align: center;
 }
+
+/* ---- Advanced rules: the card's entry and its window (lobby-controls/advanced.ts) ---- */
+
+.main-menu__advanced-entry {
+  all: unset;
+  box-sizing: border-box;
+  cursor: var(--cursor-pointer, pointer);
+  display: flex;
+  align-items: center;
+  gap: calc(var(--u) * 12);
+  padding: calc(var(--u) * 12) calc(var(--u) * 16);
+  border: 1px solid rgb(var(--accent-rgb) / 0.3);
+  border-radius: 6px;
+  font: 500 calc(var(--u) * 22) / 1.2 var(--font-body);
+  color: var(--text-body);
+  transition:
+    border-color 150ms ease-out,
+    background-color 150ms ease-out;
+}
+
+.main-menu__advanced-entry:hover,
+.main-menu__advanced-entry:focus-visible {
+  border-color: var(--accent);
+  background: rgb(var(--accent-rgb) / 0.08);
+}
+
+.main-menu__advanced-entry::after {
+  content: "›";
+  font-size: 1.4em;
+  line-height: 0.7;
+  color: var(--text-muted);
+}
+
+.main-menu__advanced-entry-name {
+  flex: 1;
+}
+
+.main-menu__advanced-entry-state {
+  font-size: 0.85em;
+  color: var(--text-muted);
+}
+
+.main-menu__advanced-entry.is-changed .main-menu__advanced-entry-state {
+  color: var(--accent-bright);
+}
+
+.main-menu__advanced-summary {
+  margin: calc(var(--u) * -6) 0 0;
+  font: 400 calc(var(--u) * 18) / 1.35 var(--font-body);
+  color: var(--text-muted);
+}
+
+.main-menu__advanced {
+  width: min(calc(var(--u) * 760), 100%);
+  max-height: 100%;
+  overflow-y: auto;
+}
+
+.main-menu__advanced-note {
+  margin: 0 0 calc(var(--u) * 20);
+  font: 400 calc(var(--u) * 19) / 1.35 var(--font-body);
+  color: var(--text-muted);
+}
+
+.main-menu__advanced-group {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--u) * 20);
+  margin-bottom: calc(var(--u) * 32);
+}
+
+.main-menu__advanced .main-menu__advanced-group-title {
+  margin: 0;
+  font: 500 calc(var(--u) * 17) / 1 var(--font-body);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(143, 184, 173, 0.7);
+}
+
+/* A rule's detail is written under its name here, where the card shows it on hover or not at all. */
+.main-menu__advanced .main-menu__rule-detail {
+  display: block;
+  margin-top: calc(var(--u) * 6);
+  font: 400 calc(var(--u) * 18) / 1.35 var(--font-body);
+  color: var(--text-muted);
+}
+
+.main-menu__advanced .main-menu__lobby-option-row {
+  align-items: flex-start;
+}
+
+.main-menu__advanced .main-menu__lobby-option-row > :last-child {
+  flex: none;
+}
+
+/* Done keeps the right edge while the reset is hidden. */
+.main-menu__advanced-done {
+  margin-left: auto;
+}
+
+.main-menu__advanced .main-menu__seg-btn {
+  min-width: calc(var(--u) * 40);
+  text-align: center;
+}
+
+.main-menu__advanced-actions .main-menu__ghost:disabled {
+  cursor: var(--cursor-default, default);
+  opacity: 0.4;
+}

@@ -47,10 +47,6 @@ export const deNetworkRoom = {
   creatorSettings:
     'Einstellungen und Plätze ändert nur der Raumersteller; Farbe und Stamm deines Platzes wählst du selbst.',
   savedSettings: 'Dieser Spielstand behält seine ursprünglichen Regeln und Farben.',
-  progression: 'Berufsentwicklung',
-  progressionDetail: 'Erfahrungsvoraussetzungen für neue Berufe und die Produktion.',
-  needs: 'Bedürfnisse der Siedler',
-  needsDetail: 'Hunger, Müdigkeit und andere Bedürfnisse.',
   enabled: 'An',
   disabled: 'Aus',
   compatibility: 'Spielkompatibilität',

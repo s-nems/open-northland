@@ -305,8 +305,11 @@
   align-self: center;
   color: var(--muted);
 }
-.network-room .main-menu__lobby-option-row {
+/* Not on a hidden row: a rule's switch and its map-default dropdown take turns. */
+.network-room .main-menu__lobby-option-row:not([hidden]) {
   display: flex;
+}
+.network-room .main-menu__lobby-option-row {
   justify-content: space-between;
   align-items: center;
   flex-wrap: wrap;
@@ -545,4 +548,53 @@
 }
 .network-room__relations {
   margin-top: calc(var(--u) * 4);
+}
+
+/* The advanced window in the room's palette and type; lobby-controls/advanced.ts mounts it in the room. */
+.network-room .main-menu__advanced {
+  width: min(calc(var(--u) * 620), 100%);
+  padding: calc(var(--u) * 24) calc(var(--u) * 28);
+  background: linear-gradient(135deg, #273832f5, #182521fa);
+  border: 1px solid var(--wood-hi);
+  border-radius: 3px;
+}
+.network-room .main-menu__advanced .main-menu__dialog-title {
+  margin-bottom: calc(var(--u) * 18);
+  font-size: calc(var(--u) * 24);
+  color: var(--text-hi);
+}
+.network-room .main-menu__advanced .main-menu__advanced-group {
+  gap: calc(var(--u) * 14);
+  margin-bottom: calc(var(--u) * 24);
+}
+.network-room .main-menu__advanced .main-menu__advanced-group-title {
+  font: 500 calc(var(--u) * 13) / 1 var(--font-body);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.network-room .main-menu__advanced .main-menu__lobby-option-row {
+  flex-wrap: nowrap;
+  font-size: calc(var(--u) * 17);
+}
+.network-room .main-menu__advanced .main-menu__dropdown {
+  width: calc(var(--u) * 180);
+}
+.network-room .main-menu__advanced-note {
+  margin-bottom: calc(var(--u) * 16);
+  font-size: calc(var(--u) * 15);
+  color: var(--muted);
+}
+.network-room .main-menu__advanced-entry {
+  margin-top: calc(var(--u) * 12);
+  padding: calc(var(--u) * 10) calc(var(--u) * 14);
+  border-color: var(--wood-hi);
+  border-radius: 3px;
+  font-size: calc(var(--u) * 17);
+  color: var(--text);
+}
+.network-room .main-menu__advanced-summary {
+  margin-top: calc(var(--u) * 6);
+  font-size: calc(var(--u) * 14);
+  color: var(--muted);
 }

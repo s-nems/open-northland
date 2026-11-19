@@ -91,7 +91,9 @@ which also decides the seats the creator lists. Alliances
 come from the map's diplomacy and in-game diplomacy; while the rules' `alliedVision` is on, the sim joins
 mutual friends into one fog mask and follows later stance changes, so allies explore, see and meet as one
 in every fog mode. The rules' `peace` (30, 45, 60, 75, 90, 120 or 180 minutes, or null) opens a peace from the
-match start among every human, idle and lobby computer seat. `seats` lists the world's seats in ascending order:
+match start among every human, idle and lobby computer seat. The rules' `storageCapacity` (2, 3 or 5, or null for
+the content's sizes) multiplies the slots of every storage building, the headquarters and the storehouses.
+`seats` lists the world's seats in ascending order:
 
 | Field | Meaning |
 | --- | --- |

@@ -54,6 +54,12 @@ describe('the on/off session rules', () => {
     expect(sessionRuleOverrides(new URLSearchParams('')).peace).toBeNull();
   });
 
+  it('carries ?storage= to the running sim as one of the offered factors', () => {
+    expect(components.storageCapacityFactor(launch('storage=3').world)).toBe(3);
+    expect(sessionRuleOverrides(new URLSearchParams('storage=4')).storageCapacity).toBeNull();
+    expect(launch('').world.lowestEntityWith(components.StorageRules)).toBeNull();
+  });
+
   it('applies every flag on one launch without them interfering', () => {
     const sim = launch('fog=off&progression=off&needs=off');
     expect(sim.needsEnabled()).toBe(false);

@@ -1,6 +1,10 @@
 import { BUILDING_KIND, type ContentSet } from '@open-northland/data';
 import { stockSlotsForType, systems, TICKS_PER_SECOND, type WorldSnapshot } from '@open-northland/sim';
-import { buildingTypeOf, type SnapshotEntity } from '../../../game/snapshot/index.js';
+import {
+  buildingTypeOf,
+  type SnapshotEntity,
+  storageCapacityFactorOf,
+} from '../../../game/snapshot/index.js';
 import { ownedBuildingsOfType } from '../../details-panel/model/building.js';
 import { liveAmounts } from '../../details-panel/model/building-materials.js';
 import { type MessageNaming, type MessageRaiser, nodeOf } from './raise.js';
@@ -121,9 +125,11 @@ export class StorageFull {
     stocks: Map<number, ReadonlyMap<number, number>>,
   ): SnapshotEntity | undefined {
     let first: SnapshotEntity | undefined;
+    const factor = storageCapacityFactorOf(snapshot);
     for (const [type, slots] of this.layout.storehouses) {
-      const capacity = slots.get(good);
-      if (capacity === undefined || capacity <= 0) continue;
+      const slot = slots.get(good);
+      if (slot === undefined || slot <= 0) continue;
+      const capacity = slot * factor;
       for (const store of ownedBuildingsOfType(snapshot, this.seat, type)) {
         if (store.components.UnderConstruction !== undefined) continue;
         let stock = stocks.get(store.id);

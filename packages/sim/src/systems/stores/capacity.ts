@@ -1,3 +1,4 @@
+import { BUILDING_KIND, type ContentSet } from '@open-northland/data';
 import {
   Building,
   DeliveryFlag,
@@ -6,6 +7,7 @@ import {
   Position,
   RoadSite,
   Stockpile,
+  storageCapacityFactor,
 } from '../../components/index.js';
 import { contentIndex } from '../../core/content-index.js';
 import { ONE } from '../../core/fixed.js';
@@ -41,7 +43,8 @@ export function stockCapacity(world: World, ctx: ContentContext, store: Entity, 
       }
       return 0;
     }
-    return contentIndex(ctx.content).stockSlotCapacityByBuilding.get(type.typeId)?.get(goodType) ?? 0;
+    const slot = contentIndex(ctx.content).stockSlotCapacityByBuilding.get(type.typeId)?.get(goodType) ?? 0;
+    return slot * slotCapacityFactor(type, storageCapacityFactor(world));
   }
   const stock = world.tryGet(store, Stockpile);
   if (stock !== undefined && world.has(store, Position)) {
@@ -52,6 +55,15 @@ export function stockCapacity(world: World, ctx: ContentContext, store: Entity, 
     return MAX_GROUND_STACK;
   }
   return UNCAPPED_CAPACITY;
+}
+
+/** What a finished building type's declared stock slots are multiplied by under a world's storage factor
+ *  (`StorageRules`): that factor for a storage building, 1 for any other. */
+export function slotCapacityFactor(
+  building: Pick<ContentSet['buildings'][number], 'kind'>,
+  storageFactor: number,
+): number {
+  return building.kind === BUILDING_KIND.storage ? storageFactor : 1;
 }
 
 /** The goods of a building type's slot table with room for at least one unit, kept per content table:

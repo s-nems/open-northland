@@ -40,6 +40,7 @@ it('catches up at maximum speed within the host traffic budget while still sendi
         dayNight: null,
         alliedVision: null,
         peace: null,
+        storageCapacity: null,
       },
       speed: MAX_SPEED,
     },

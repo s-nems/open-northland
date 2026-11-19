@@ -106,6 +106,7 @@ it('recovers when a stalled upload releases a valid catch-up acknowledgement bur
           dayNight: null,
           alliedVision: null,
           peace: null,
+          storageCapacity: null,
         },
         speed: 8,
       },

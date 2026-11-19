@@ -28,6 +28,7 @@ import {
   peaceHoldsUntilTickOf,
   settlersOfTrade,
   staffOf,
+  storageCapacityFactorOf,
   supplyRunsTo,
 } from '../../game/snapshot/index.js';
 import { readMinimapIndexes } from '../../hud/minimap/dots.js';
@@ -103,6 +104,8 @@ export const FRAME_INDEX_READERS: readonly AppFrameIndexReader[] = [
   { name: 'needs rule', read: (snapshot) => needsRuleEnabled(snapshot) },
   // The system bar's peace countdown, read every frame.
   { name: 'peace rule', read: (snapshot) => peaceHoldsUntilTickOf(snapshot) },
+  // A storehouse's shelves in the building panel and the storage-full note.
+  { name: 'storage rule', read: (snapshot) => storageCapacityFactorOf(snapshot) },
   { name: 'actors', read: (snapshot) => actorIdsOf(snapshot) },
   { name: 'minimap layers', read: (snapshot) => readMinimapIndexes(snapshot) },
   { name: 'minimap standing nodes', read: (snapshot) => standingNodesRevision(snapshot, NO_GOODS) },

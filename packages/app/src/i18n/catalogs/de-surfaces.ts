@@ -179,6 +179,24 @@ export const deSurfaces = {
         off: 'Jeder sieht nur selbst',
       },
       alliedVisionDetail: 'Gegenseitig befreundete Spieler teilen erkundetes Gelände.',
+      progressionDetail: 'Erfahrungsvoraussetzungen für neue Berufe und die Produktion.',
+      needsDetail: 'Hunger, Müdigkeit und andere Bedürfnisse.',
+      storage: {
+        label: 'Lagerkapazität',
+        detail:
+          'Vervielfacht den Platz für jede Ware in den Lagerhäusern und im Hauptquartier. Werkstätten fassen so viel wie sonst.',
+        factor: '×{factor}',
+      },
+      advanced: {
+        label: 'Erweitert',
+        title: 'Erweiterte Einstellungen',
+        standard: 'Standard',
+        changed: 'Geändert',
+        rulesGroup: 'Spielregeln',
+        worldGroup: 'Welt',
+        reset: 'Standard wiederherstellen',
+        done: 'Fertig',
+      },
       peace: {
         label: 'Friedenszeit',
         detail:

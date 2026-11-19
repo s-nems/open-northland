@@ -27,6 +27,7 @@ function room(): RoomView {
         dayNight: null,
         alliedVision: null,
         peace: null,
+        storageCapacity: null,
       },
       speed: 1,
       mapOrigin: 'user',
