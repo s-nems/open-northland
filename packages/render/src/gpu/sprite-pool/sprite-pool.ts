@@ -135,6 +135,12 @@ export interface PoolFrame {
   /** The occlusion ghost setting: units a standing sprite hides show as a translucent outline over
    *  it. Absent leaves every unit hidden, as the baseline renderer always has. */
   readonly occlusionGhosts?: boolean | undefined;
+  /** The hold-to-reveal key held down: the standing sprites that hide a resident draw translucent
+   *  while it lasts. Absent fades nothing. */
+  readonly fadeOccluders?: boolean | undefined;
+  /** The cursor's world position while it inspects the world: a resident the cursor rests near fades
+   *  the sprites that hide it. Absent while the pointer is off the canvas or a tool claims it. */
+  readonly pointerWorld?: { readonly x: number; readonly y: number } | undefined;
   /** The frame's visible tall map objects - a decoded map's virgin trees and rocks - as occluder
    *  candidates, since the retained map-object layer draws them outside this pool's draw list.
    *  Absent leaves only the pool's own standing sprites as covers. */
@@ -648,7 +654,9 @@ export class SpritePool {
   }
 
   /** The occlusion ghost pass: scan and stamp when the setting draws them, otherwise leave nothing.
-   *  The sheet's animal tribes ride along so the scan leaves wildlife unghosted. */
+   *  The sheet's animal tribes ride along so the scan leaves wildlife unghosted, and the frame's fade
+   *  asks - the reveal key, a selected hidden unit, the cursor's world position - ride along so the
+   *  scan can draw the covers translucent. */
   private ghostPass(frame: PoolFrame): void {
     if (frame.occlusionGhosts === true)
       this.occlusionGhosts.scan(
@@ -659,6 +667,11 @@ export class SpritePool {
         frame.camera.scale ?? 1,
         frame.staticOccluders,
         this.sheet?.characters?.animals?.tribes,
+        {
+          selection: frame.selection,
+          pointer: frame.pointerWorld,
+          held: frame.fadeOccluders === true,
+        },
       );
     else this.occlusionGhosts.reset();
   }
@@ -1271,6 +1284,12 @@ export class SpritePool {
   anchorOf(ref: number): { x: number; y: number } | undefined {
     const pe = this.pool.get(ref);
     return anchorOf(pe, this.currentFrameOf(pe));
+  }
+
+  /** The entity's pooled root container, or undefined when nothing pools it: the ghost scan fades a
+   *  covering occluder's art through it. */
+  containerOf(ref: number): Container | undefined {
+    return this.pool.get(ref)?.container;
   }
 
   depthOf(ref: number): number | undefined {

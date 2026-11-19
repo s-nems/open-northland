@@ -137,6 +137,13 @@ export interface WorldFrame {
   /** The entity id the cursor rests over, drawn with the selection outline's contour (default none).
    *  Transient view state, never sim state; the app picks it and gates it on the player's setting. */
   readonly hovered?: number | undefined;
+  /** The hold-to-reveal key held down: the standing sprites that hide a resident draw translucent
+   *  (default false). Transient view state, never sim state. */
+  readonly fadeOccluders?: boolean | undefined;
+  /** The cursor's world position while it inspects the world: a resident the cursor rests near fades
+   *  the sprites that hide it (default none). Absent while the pointer leaves the canvas or a tool
+   *  claims it; trails the frame like {@link WorldFrame.hovered} does. */
+  readonly pointerWorld?: { readonly x: number; readonly y: number } | undefined;
   /** Fixed-timestep interpolation fraction: each entity draws `alpha` of the way from its previous tick
    *  anchor to its current one (default 1 draws raw tick positions). */
   readonly alpha?: number | undefined;

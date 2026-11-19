@@ -55,4 +55,30 @@ describe('tall objects as occlusion ghost occluders', () => {
     layer.update(WIDE, 5, undefined, undefined, 5, undefined, false);
     expect(layer.tallOccluders).toHaveLength(0);
   });
+
+  it("fades the occluder's body and its cast shadow together, and restores both", () => {
+    const spriteLayer = new Container();
+    const layer = new MapObjectLayer(spriteLayer, new TextureCache());
+    layer.set([
+      {
+        x: 0,
+        y: 0,
+        source: Texture.WHITE.source,
+        frames: [FRAME_0],
+        scale: 1,
+        decor: false,
+        phase: 0,
+        shadow: { source: Texture.WHITE.source, frames: [FRAME_0] },
+      },
+    ]);
+    layer.update(WIDE, 0, undefined, undefined, 0, undefined, true);
+    const occluder = layer.tallOccluders[0];
+    if (occluder === undefined) throw new Error('the tree drew no occluder');
+    const sprites = spriteLayer.children as Sprite[];
+    expect(sprites.length).toBe(2);
+    occluder.setFade?.(0.45);
+    expect(sprites.every((s) => s.alpha === 0.45)).toBe(true);
+    occluder.setFade?.(undefined);
+    expect(sprites.every((s) => s.alpha === 1)).toBe(true);
+  });
 });

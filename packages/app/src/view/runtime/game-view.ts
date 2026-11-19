@@ -154,6 +154,7 @@ import {
   templeAuraRadius,
   windTrailGoods,
 } from '../projections/index.js';
+import { createRevealKey } from '../reveal-key.js';
 import { createScriptEffects } from '../script/effects.js';
 import { createScriptMarkers } from '../script/markers.js';
 import { createScriptPresentation } from '../script/presentation.js';
@@ -1463,6 +1464,11 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
 
     cleanup.push(() => worldHover.destroy());
 
+    // Holding the reveal key fades the sprites that hide a resident, so a look behind them costs no
+    // click; the frame loop reads the held state each frame.
+    const revealKey = createRevealKey();
+    cleanup.push(() => revealKey.dispose());
+
     // A seat switch from the picker: the selection was the last seat's. The camera stays put, so a
     // spectator can compare both sides of the same fight.
     switchableSeat?.onSwitch(() => {
@@ -1639,6 +1645,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       ...(mapPing === undefined ? {} : { mapPings: mapPing.live }),
       rallyColourOf: (player) => pingColour(deps.playerColourOf?.(player) ?? player),
       worldHover,
+      fadeOccluders: revealKey.held,
       geometryDebug: debugMounts.geometryDebug,
       overlayFrame,
       signpostOverlayFrame,

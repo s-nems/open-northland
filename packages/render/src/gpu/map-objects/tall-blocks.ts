@@ -131,7 +131,12 @@ class TallOccluder implements GhostOccluder {
   };
   private boxed = false;
 
-  constructor(private readonly obj: MapObjectSprite) {}
+  constructor(private readonly po: PooledObject) {}
+
+  /** The member's object record, which the occluder reads its pose through. */
+  private get obj(): MapObjectSprite {
+    return this.po.obj;
+  }
 
   bounds(): EntityBounds | undefined {
     return this.boxed ? this.box : undefined;
@@ -139,6 +144,14 @@ class TallOccluder implements GhostOccluder {
 
   hit(wx: number, wy: number): boolean | undefined {
     return mapObjectPixelHit(this.obj, this.tick, wx, wy);
+  }
+
+  setFade(alpha: number | undefined): void {
+    // The body and its cast shadow fade together; the grounded foot overlays belong to ground-pass
+    // objects, which never sort as occluders and never reach here.
+    const a = alpha ?? 1;
+    if (this.po.sprite !== null) this.po.sprite.alpha = a;
+    if (this.po.shadowSprite !== null) this.po.shadowSprite.alpha = a;
   }
 
   /** Restamp the box from the pose bound at {@link tick}, as {@link mapObjectBounds} places it. */
@@ -241,7 +254,7 @@ export class TallObjectLayer {
     const obj = po.obj;
     const depth = depthKey(obj.x, obj.y) + drawPassDepth(obj.groundPass === true ? 'ground' : 'sorted');
     po.depth = depth;
-    po.occluder = new TallOccluder(obj);
+    po.occluder = new TallOccluder(po);
     const sprite = worldBatched(new BloodSurfaceSprite());
     sprite.scale.set(obj.scale);
     sprite.zIndex = depth;

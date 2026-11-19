@@ -639,6 +639,8 @@ export class WorldRenderer {
       selectionStyle: this.selectionStyle,
       selectionTime,
       ...(this.hoverOutline && hovered !== undefined ? { hovered } : {}),
+      fadeOccluders: frame.fadeOccluders === true,
+      pointerWorld: frame.pointerWorld,
       ...(targetFlashes !== undefined && targetFlashes.size > 0 ? { flashes: targetFlashes } : {}),
       viewport: vp,
       tick,

@@ -94,6 +94,8 @@ export interface FrameLoopDeps {
   /** The colour a player's rally banner wears. */
   readonly rallyColourOf: (player: number) => number;
   readonly worldHover: WorldHover;
+  /** Whether the hold-to-reveal key is down: standing sprites that hide a resident fade. */
+  readonly fadeOccluders: () => boolean;
   readonly geometryDebug: GeometryDebugOverlay;
   readonly overlayFrame: ReturnType<typeof makeOverlayFrameSource>;
   /** The erect-signpost band probe, live while signpost placement mode is active. */
@@ -222,6 +224,7 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
     diplomacyMap,
     controls,
     worldHover,
+    fadeOccluders,
     geometryDebug,
     overlayFrame,
     signpostOverlayFrame,
@@ -561,6 +564,10 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
         // against the freshly drawn list: that hovered-target outline trails the cursor's read by one
         // frame, like the card does its rest.
         hovered: (pickMarks !== null ? aimed : worldHover.hovered()) ?? undefined,
+        // The reveal key and the cursor's world position trail the frame like the hovered outline
+        // does: both read the worldHover and key state the previous update settled.
+        fadeOccluders: fadeOccluders(),
+        pointerWorld: worldHover.pointerWorld() ?? undefined,
         selectionTime: nowMs / 1000,
         alpha: renderAlpha,
         doorBadges,

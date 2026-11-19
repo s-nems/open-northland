@@ -23,11 +23,17 @@ import { frameTransform, placeOutline } from './selection-effects.js';
  * so friends and foes read apart through the cover; where no colour resolves the ring keeps
  * {@link GHOST_TINT}.
  *
+ * On top of the ring, the view can ask to see through a cover: while the hold-to-reveal key is down,
+ * a selected unit hides behind one, or the cursor rests near a covered unit, the sprites that hide it
+ * draw translucent ({@link OCCLUDER_FADE_ALPHA}) until the ask lifts, which the scan undoes itself —
+ * a cover fades only while some covered unit asks for it.
+ *
  * Approximation, not observed original behaviour: the original's hidden-unit rendering has no readable
- * source here. The ring alpha, reach and the coverage samples are tuned by eye; the occluder kinds are
- * the standing sprites tall enough to hide a person (delivery flags and loose heaps are not, and a unit
- * behind one stays plain). Vehicles are neither ghosted nor occluders: their paletted layers are
- * self-placing meshes the ring quad cannot copy, so a cart behind a house stays hidden.
+ * source here. The ring alpha, reach, the coverage samples and the fade's alpha and proximity are tuned
+ * by eye; the occluder kinds are the standing sprites tall enough to hide a person (delivery flags and
+ * loose heaps are not, and a unit behind one stays plain). Vehicles are neither ghosted nor occluders:
+ * their paletted layers are self-placing meshes the ring quad cannot copy, so a cart behind a house
+ * stays hidden.
  *
  * The occluders beyond the pool's own draw list arrive through {@link GhostOccluder}: a decoded map's
  * virgin trees and rocks draw on the retained map-object layer and never enter the scene items, so
@@ -44,7 +50,29 @@ export interface GhostOccluder {
   /** Whether the bound pose's art covers the world point; `undefined` keeps the box verdict, as the
    *  picker does where its pixels are unreadable. */
   hit(wx: number, wy: number): boolean | undefined;
+  /** Fade the occluder's drawn art to `alpha`, or `undefined` restores it: the scan fades a sprite
+   *  that hides a resident the view asks to see through. Absent keeps the candidate unfadeable - the
+   *  scan still rings the unit over it. */
+  setFade?(alpha: number | undefined): void;
 }
+
+/** What the scan may fade occluders for this frame, as the app reports the view's asks. */
+export interface OccluderFade {
+  /** The frame's selected ids: a covered unit among them fades the sprites that cover it. */
+  readonly selection: ReadonlySet<number> | undefined;
+  /** The cursor's world position: a covered unit within {@link OCCLUDER_FADE_PROXIMITY} of it fades
+   *  its covers. Absent while the pointer leaves the canvas or a tool claims it. */
+  readonly pointer: { readonly x: number; readonly y: number } | undefined;
+  /** The hold-to-reveal key held down: every covered unit's covers fade. */
+  readonly held: boolean;
+}
+
+/** How translucent a standing sprite draws while it hides a resident the view asks to see through (the
+ *  reveal key, a selected unit or the cursor resting near one). Approximation, tuned by eye. */
+export const OCCLUDER_FADE_ALPHA = 0.45;
+/** How near, in world px, the cursor must rest to a covered unit to fade its covers - about two tiles,
+ *  since the player knows roughly where the hidden one stands. Approximation, tuned by eye. */
+export const OCCLUDER_FADE_PROXIMITY = 64;
 
 /** The kinds whose art can hide a unit standing behind it. */
 const OCCLUDER_KINDS: ReadonlySet<SpriteDrawItem['kind']> = new Set([
@@ -193,6 +221,16 @@ export class OcclusionGhosts {
   /** The units that drew this frame and the ones a ghost shows, so a stamp hides or dies by them. */
   private readonly drawnUnits = new Set<number>();
   private readonly ghostedUnits = new Set<number>();
+  /** The occluders the last scan faded and this one did, and the same for this scan alone: the restore
+   *  walks the last scan's set against this scan's, then the pair swaps for the next scan. */
+  private fadedPes = new Set<PooledEntity>();
+  private fadedNowPes = new Set<PooledEntity>();
+  private fadedStatic = new Set<GhostOccluder>();
+  private fadedNowStatic = new Set<GhostOccluder>();
+  /** The covering slots of the unit under the walk, when the scan collects them to fade. */
+  private readonly covers: OccluderSlot[] = [];
+  /** The fade context of the running scan; absent collects no covers and nothing fades. */
+  private fade: OccluderFade | undefined = undefined;
   /** Scratch for laying one ring quad or the placeholder over its body layer. */
   private readonly transform = new Matrix();
 
@@ -210,6 +248,9 @@ export class OcclusionGhosts {
    * {@link pooledDepth} over the item being drawn and the entity's drawn motion, a static candidate's
    * own - never the scene item's oracle sort key, which lives on a different scale and would bury
    * every static tree behind a row's worth of key.
+   *
+   * `fade` carries the view's asks to see through a cover - the reveal key, a selected unit, the
+   * cursor resting near one - and absent fades nothing, which also undoes the last scan's fades.
    */
   scan(
     items: readonly SpriteDrawItem[],
@@ -219,9 +260,13 @@ export class OcclusionGhosts {
     zoom: number,
     staticOccluders: readonly GhostOccluder[] = [],
     wildlifeTribes?: ReadonlySet<number>,
+    fade?: OccluderFade | undefined,
   ): void {
     this.run++;
     this.unitCount = 0;
+    this.fade = fade;
+    this.fadedNowPes.clear();
+    this.fadedNowStatic.clear();
     this.occluderCount = 0;
     this.drawnUnits.clear();
     this.ghostedUnits.clear();
@@ -259,8 +304,18 @@ export class OcclusionGhosts {
     for (let u = 0; u < this.unitCount; u++) {
       const pe = this.unitPe[u];
       if (pe === undefined) continue;
-      if (this.coveredUnit(pe, this.unitDepth[u] ?? 0, frameOf)) this.stamp(pe, viewMoved, zoom);
+      const covered = this.coveredUnit(
+        pe,
+        this.unitDepth[u] ?? 0,
+        frameOf,
+        fade !== undefined && this.fadesFor(pe),
+        this.covers,
+      );
+      if (!covered) continue;
+      this.stamp(pe, viewMoved, zoom);
+      this.fadeCovers();
     }
+    this.restoreFades();
     this.sweepStamps();
   }
 
@@ -299,12 +354,19 @@ export class OcclusionGhosts {
     return entries;
   }
 
-  /** Free every stamp and the occluder grid; the overlay stays mounted. The pool calls this in the
-   *  scan's place while the setting is off, and once it has cleared, each call walks empty maps. */
+  /** Free every stamp and the occluder grid, and undo every occluder fade still out; the overlay
+   *  stays mounted. The pool calls this in the scan's place while the setting is off, and once it
+   *  has cleared, each call walks empty maps. */
   reset(): void {
     for (const stamp of this.stamps.values()) stamp.container.destroy({ children: true });
     this.stamps.clear();
     this.clearGrid();
+    for (const pe of this.fadedPes) if (!pe.container.destroyed) pe.container.alpha = 1;
+    for (const occ of this.fadedStatic) occ.setFade?.(undefined);
+    this.fadedPes.clear();
+    this.fadedNowPes.clear();
+    this.fadedStatic.clear();
+    this.fadedNowStatic.clear();
   }
 
   /** Free every stamp and cell; the pool calls this on its own teardown. */
@@ -404,8 +466,16 @@ export class OcclusionGhosts {
     slot.cells.length = 0;
   }
 
-  /** Whether any standing sprite drawn in front of the unit covers sampled body points of it. */
-  private coveredUnit(pe: PooledEntity, depth: number, frameOf: (pe: PooledEntity) => number): boolean {
+  /** Whether any standing sprite drawn in front of the unit covers sampled body points of it. When
+   *  `collect` holds, the covering slots gather into `covers` and the walk keeps probing past the
+   *  first one, so every cover can fade; otherwise the walk stops at the first. */
+  private coveredUnit(
+    pe: PooledEntity,
+    depth: number,
+    frameOf: (pe: PooledEntity) => number,
+    collect: boolean,
+    covers: OccluderSlot[],
+  ): boolean {
     const b = pe.bounds;
     this.unitRun++;
     const run = this.unitRun;
@@ -423,6 +493,7 @@ export class OcclusionGhosts {
           if (!boxesOverlap(b, ob)) continue;
           const width = b.maxX - b.minX;
           const height = b.maxY - b.minY;
+          let coveredSlot = false;
           for (const [u, v] of COVER_SAMPLES) {
             const px = b.minX + u * width;
             const py = b.minY + v * height;
@@ -434,12 +505,63 @@ export class OcclusionGhosts {
                 : slot.occ === undefined
                   ? undefined
                   : slot.occ.hit(px, py);
-            if (hit !== false) return true;
+            if (hit !== false) {
+              coveredSlot = true;
+              break;
+            }
+          }
+          if (coveredSlot) {
+            if (collect) covers.push(slot);
+            else return true;
           }
         }
       }
     }
-    return false;
+    return covers.length > 0;
+  }
+
+  /** Whether this scan should know which sprites cover `pe`: the reveal key holds, its unit is
+   *  selected or the cursor rests within the fade's proximity of its anchor. */
+  private fadesFor(pe: PooledEntity): boolean {
+    const fade = this.fade;
+    if (fade === undefined) return false;
+    if (fade.held === true) return true;
+    const ref = pe.bound.item?.ref;
+    if (ref !== undefined && fade.selection?.has(ref) === true) return true;
+    const pointer = fade.pointer;
+    if (pointer === undefined) return false;
+    const dx = pointer.x - pe.container.position.x;
+    const dy = pointer.y - pe.container.position.y;
+    return dx * dx + dy * dy <= OCCLUDER_FADE_PROXIMITY * OCCLUDER_FADE_PROXIMITY;
+  }
+
+  /** Fade every sprite that covered the last stamped unit, and note them for the restore. */
+  private fadeCovers(): void {
+    for (const slot of this.covers) {
+      const pe = slot.pe;
+      if (pe !== undefined) {
+        if (!pe.container.destroyed) pe.container.alpha = OCCLUDER_FADE_ALPHA;
+        this.fadedNowPes.add(pe);
+      } else if (slot.occ?.setFade !== undefined) {
+        slot.occ.setFade(OCCLUDER_FADE_ALPHA);
+        this.fadedNowStatic.add(slot.occ);
+      }
+    }
+    this.covers.length = 0;
+  }
+
+  /** Restore every occluder the last scan faded that this one did not, then hand the sets over for
+   *  the next scan, whose clears empty the swapped-out one. */
+  private restoreFades(): void {
+    for (const pe of this.fadedPes)
+      if (!this.fadedNowPes.has(pe) && !pe.container.destroyed) pe.container.alpha = 1;
+    for (const occ of this.fadedStatic) if (!this.fadedNowStatic.has(occ)) occ.setFade?.(undefined);
+    const pes = this.fadedPes;
+    this.fadedPes = this.fadedNowPes;
+    this.fadedNowPes = pes;
+    const statics = this.fadedStatic;
+    this.fadedStatic = this.fadedNowStatic;
+    this.fadedNowStatic = statics;
   }
 
   /** Show or mint `pe`'s stamps, tracking its body's placement; lay the rings when the body rebinds. */
