@@ -1,6 +1,7 @@
 import { jobCanPray } from '@open-northland/data';
 import {
   AttackOrder,
+  CurrentAtomic,
   MealBreakRetry,
   NeedOrder,
   NoRegeneration,
@@ -10,7 +11,7 @@ import {
   Settler,
 } from '../../components/index.js';
 import type { Command } from '../../core/commands/index.js';
-import type { World } from '../../ecs/world.js';
+import type { Entity, World } from '../../ecs/world.js';
 import type { SystemContext } from '../context.js';
 import { carriesNeeds } from '../lifecycle/needs/index.js';
 import { clearNavState } from '../movement/nav-state.js';
@@ -39,13 +40,19 @@ export function orderNeed(
   world.add(e, NeedOrder, { need: command.need });
   // A retry left by an earlier failed search or an obeyed walk says nothing about this order.
   if (command.need === 'hunger') world.remove(e, MealBreakRetry);
-  removeCurrentAtomic(world, e);
+  // A meal under way already took its serving and answers the order as it ends.
+  if (!(command.need === 'hunger' && eatsNow(world, e))) removeCurrentAtomic(world, e);
   supersedeStandingOrders(world, ctx, e);
   world.remove(e, PlayerOrder); // and any walk the settler was on
   // And any standing attack order, which would otherwise pull the settler back into the fight the drive
   // ladder breaks off for the errand, leaving the order looking ignored.
   world.remove(e, AttackOrder);
   clearNavState(world, e);
+}
+
+function eatsNow(world: World, e: Entity): boolean {
+  const kind = world.tryGet(e, CurrentAtomic)?.effect.kind;
+  return kind === 'eat' || kind === 'forage';
 }
 
 /** Allow or prohibit one owned settler's regeneration - see the command doc. */

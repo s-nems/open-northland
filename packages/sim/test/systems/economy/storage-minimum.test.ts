@@ -20,6 +20,7 @@ import {
 import { bindHaulFlag } from '../../../src/systems/economy/work-flag.js';
 import { takeMealUnit } from '../../../src/systems/settlers/atomics/effects/goods/consume.js';
 import { pickupFromStore } from '../../../src/systems/settlers/atomics/effects/goods/transfer.js';
+import { storedFoodGood } from '../../../src/systems/settlers/targets/index.js';
 import {
   BREAD,
   buildingAt,
@@ -182,7 +183,7 @@ describe('a storage minimum holds stock back', () => {
     expect(sim.world.get(carrier, Carrying).amount).toBe(2);
   });
 
-  it('refuses a meal the unit held at the minimum', () => {
+  it('refuses a meal a unit the minimum holds back', () => {
     const sim = world();
     const warehouse = owned(sim, buildingAt(sim, WAREHOUSE, 2, 0, [[WATER, 3]]));
     const eater = owned(sim, settlerAt(sim, 2, 0, CARRIER));
@@ -190,6 +191,8 @@ describe('a storage minimum holds stock back', () => {
 
     expect(takeMealUnit(sim.world, ctxOf(sim), eater, warehouse, WATER)).toBe(false);
     expect(waterIn(sim, warehouse)).toBe(3);
+    // Nor is the held unit offered to an eater inside, which looks no claims up.
+    expect(storedFoodGood(sim.world, ctxOf(sim), warehouse)).toBeNull();
   });
 
   it('leaves a house that is no storehouse alone, a farm’s crop included', () => {

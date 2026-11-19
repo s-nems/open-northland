@@ -33,7 +33,8 @@ import { interactionCell } from './workplaces.js';
  * conversion. The returned type is the raw one, which is what comes off the shelf. The family's
  * {@link lowestStockedFood} is the same pick; a store with no shelf at all answers null.
  *
- * Given `claims`, a good whose every unit here is claimed by a settler walking to take it is passed over.
+ * A good its owner's storage minimum holds back is passed over, and given `claims`, so is one whose every
+ * unit here is claimed by a settler walking to take it.
  */
 export function storedFoodGood(
   world: World,
@@ -41,8 +42,7 @@ export function storedFoodGood(
   entity: Entity,
   claims?: SupplyTally,
 ): number | null {
-  const unclaimed = claims === undefined ? undefined : unclaimedGoodsAt(world, ctx, claims, entity);
-  return lowestStockedFood(world, ctx.content, entity, unclaimed);
+  return lowestStockedFood(world, ctx.content, entity, unclaimedGoodsAt(world, ctx, claims, entity));
 }
 
 /**

@@ -5,6 +5,7 @@ import {
   Carrying,
   CurrentAtomic,
   MoveGoal,
+  NeedOrder,
   NoRegeneration,
   Owner,
   PathRequest,
@@ -29,6 +30,7 @@ import {
   stampResourceFootprintData,
 } from '../../../../src/systems/index.js';
 import { dropPath } from '../../../../src/systems/movement/nav-state.js';
+import { orderNeed } from '../../../../src/systems/orders/needs.js';
 import { noteUnreachableGoal } from '../../../../src/systems/settlers/unreachable-goals.js';
 import { collectSupplyTally } from '../../../../src/systems/stores/index.js';
 import { testContent } from '../../../fixtures/content.js';
@@ -255,6 +257,25 @@ describe('a meal takes its unit as it starts', () => {
     // One meal is a partial refill, not a reset - the eater is left hungry enough to come back.
     expect(needsOf(sim, settler).hunger).toBe(fx.sub(HUNGRY, MEAL));
     expect(sim.world.has(settler, CurrentAtomic)).toBe(false);
+  });
+
+  it('lets a meal under way answer an eat order instead of taking a second unit', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(3, 1) });
+    const settler = settlerAt(sim, 0, 0, HUNGRY);
+    const store = storeAt(sim, 0, 0, 3);
+    plannerSystem(sim.world, ctxOf(sim));
+    sim.world.add(settler, Owner, { player: 0 });
+
+    orderNeed(sim.world, ctxOf(sim), { kind: 'orderNeed', entity: settler, need: 'hunger' });
+    expect(sim.world.has(settler, NeedOrder)).toBe(true);
+    for (let i = 0; i < EAT_CLIP_TICKS; i++) {
+      const ctx = nextTickCtxOf(sim);
+      plannerSystem(sim.world, ctx);
+      atomicSystem(sim.world, ctx);
+    }
+
+    expect(sim.world.get(store, Stockpile).amounts.get(FOOD)).toBe(2);
+    expect(sim.world.has(settler, NeedOrder)).toBe(false);
   });
 
   it('takes the unit off the carried load, dropping Carrying when empty', () => {

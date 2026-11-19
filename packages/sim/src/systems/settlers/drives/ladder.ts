@@ -150,8 +150,7 @@ export function planAdult(pass: PlannerPass, e: Entity, settler: SettlerView, jo
   if (planBreak(pass, plan, settler, load, hx, hy, alert)) {
     // Whatever took the carrier off its trade parks its hauling cart where it stands; the rung below
     // takes the cart up again once the trade is back on. A meal from its own hands is eaten on the spot
-    // with the cart in hand: parked, the food would be stowed out of the meal's reach. A drink touches
-    // neither the hands nor the cart.
+    // with the cart in hand, and a drink touches neither the hands nor the cart.
     if (!eatsFromHands(world, e) && !drinks(world, e)) parkHaulingCart(world, ctx, e);
     return;
   }

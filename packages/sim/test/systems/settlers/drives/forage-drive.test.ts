@@ -23,6 +23,7 @@ import {
   plannerSystem,
   stampResourceFootprintData,
 } from '../../../../src/systems/index.js';
+import { clearNavState } from '../../../../src/systems/movement/nav-state.js';
 import { BUSH_AT_HAND_NODES } from '../../../../src/systems/settlers/targets/index.js';
 import { testContent } from '../../../fixtures/content.js';
 import { nextTickCtxOf } from '../../../fixtures/context.js';
@@ -34,7 +35,7 @@ import {
   NEED_DRIVE_THRESHOLD,
   needsSettlerAt,
 } from '../../../fixtures/needs.js';
-import { needsOf } from '../../../fixtures/settler.js';
+import { needsOf, setNeeds } from '../../../fixtures/settler.js';
 import { grassNodeMap } from '../../../fixtures/terrain.js';
 
 /**
@@ -60,6 +61,8 @@ const DRAIN: Fixed = needBar(NEED_DRAIN_UNITS_PER_TICK);
 const HUNGRY: Fixed = justAbove(NEED_DRIVE_THRESHOLD);
 /** Ticks between two runs of the landscape growth trigger, each over the next map section. */
 const GROWTH_RUN_TICKS = 24;
+/** Longer than any idle beat, so a standing settler re-plans within it. */
+const IDLE_BEAT_BUDGET_TICKS = 400;
 
 function settlerAt(sim: Simulation, x: number, y: number, hunger: Fixed): Entity {
   return needsSettlerAt(sim, x, y, { hunger });
@@ -247,7 +250,7 @@ describe('forage atomic + regrow (AtomicSystem, BerryGrowthSystem)', () => {
     bushAt(sim, 0, 0);
 
     plannerSystem(sim.world, ctxOf(sim));
-    // The second arrives while the first chews: the planner sees it again each tick of the clip.
+    // The planner sees the second again each tick of the first's clip.
     for (let i = 0; i < EAT_CLIP_TICKS; i++) {
       const ctx = nextTickCtxOf(sim);
       atomicSystem(sim.world, ctx);
@@ -269,6 +272,24 @@ describe('forage atomic + regrow (AtomicSystem, BerryGrowthSystem)', () => {
 
     expect(sim.world.get(first, MoveGoal).cell).toBe(cellOf(sim, 2, 0));
     expect(sim.world.get(second, MoveGoal).cell).toBe(cellOf(sim, 4, 0));
+  });
+
+  it('frees the bush once its forager gives the walk up', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(6, 1) });
+    const first = settlerAt(sim, 0, 0, HUNGRY);
+    const second = settlerAt(sim, 0, 0, HUNGRY);
+    bushAt(sim, 2, 0);
+    plannerSystem(sim.world, ctxOf(sim));
+    expect(sim.world.has(second, MoveGoal)).toBe(false);
+
+    setNeeds(sim, first, { hunger: fx.fromInt(0) });
+    clearNavState(sim.world, first);
+    // The second stands idle and looks again on its idle beat.
+    for (let i = 0; i < IDLE_BEAT_BUDGET_TICKS && !sim.world.has(second, MoveGoal); i++) {
+      plannerSystem(sim.world, nextTickCtxOf(sim));
+    }
+
+    expect(sim.world.get(second, MoveGoal).cell).toBe(cellOf(sim, 2, 0));
   });
 
   it('a bare bush grows one stage per growth run over its section: flowering, then ripe a period later', () => {
