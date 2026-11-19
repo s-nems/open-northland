@@ -203,14 +203,23 @@ export const EXPERIENCE: ArticleGroup = {
           h: 'Durata dei corsi',
         },
         {
+          p: "Un corso insegna una professione insieme a uno dei suoi prodotti. Il tempo comprende entrambe le parti, anche se l'allievo conosce già la professione.",
+        },
+        {
           table: {
             head: ['Corsi', 'Tempo'],
             rows: [
+              ['[[job:collector|Estrattore]] con qualsiasi altro prodotto', '{{course.gatherSeconds}} s'],
+              ['professione con un prodotto base', '{{course.tradeSeconds}} s'],
+              [
+                '[[job:collector|Estrattore]] con [[good:iron|ferro]] o [[good:gold|oro]]',
+                '{{course.oreSeconds}} s',
+              ],
               [
                 '[[good:armor_leather|Armatura di cuoio]], [[good:potion_food_small|pozione nutriente piccola]], [[good:potion_stamina_small|pozione di resistenza piccola]]',
                 '{{course.shortSeconds}} s',
               ],
-              ['professioni e la maggior parte dei prodotti', '{{course.commonSeconds}} s'],
+              ['professione con la maggior parte degli altri prodotti', '{{course.commonSeconds}} s'],
               ['[[good:potion_heal_big|Pozione di guarigione grande]]', '{{course.healSeconds}} s'],
               ['[[good:handcart|Carretto a mano]]', '{{course.handcartSeconds}} s'],
               ['[[good:oxcart|Carro di buoi]]', '{{course.oxcartSeconds}} s'],

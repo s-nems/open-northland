@@ -612,7 +612,7 @@ export const enContent = {
     'school-graduates': {
       title: 'Graduates go to work',
       summary:
-        "Two extractors learn carpentry with the assistant sending graduates to work. The first takes the only carpenter slot in the carpenter's shop. The second finds no free slot, stays in the school yard and walks back there whenever it has nothing to do. A blacksmith learns plate armour, passes the nearer smithy that cannot make it and forges plate at the upgraded one. A baker learns cakes, the bakers' only course, and keeps baking bread. A tailor learns leather armour, one of the tailor's two courses, and makes it at the tailor's workshop.",
+        "Two extractors learn carpentry with the assistant sending graduates to work. The first takes the only carpenter slot in the carpenter's shop. The second finds no free slot, stays in the school yard and walks back there whenever it has nothing to do. A blacksmith learns plate armour, passes the nearer smithy that cannot make it and forges plate at the upgraded one. A baker learns cakes and bakes them. A tailor learns leather armour and makes it at the tailor's workshop.",
     },
     'porter-flag': {
       title: "A carrier's flag at the quarry",

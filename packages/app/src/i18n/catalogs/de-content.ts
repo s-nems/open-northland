@@ -614,7 +614,7 @@ export const deContent = {
     'school-graduates': {
       title: 'Absolventen gehen an die Arbeit',
       summary:
-        'Zwei Abbauer lernen den Beruf des Schreiners, während der Assistent Absolventen zur Arbeit schickt. Der erste besetzt die einzige Schreinerstelle der Schreinerei. Der zweite findet keine freie Stelle, bleibt im Schulhof und kehrt immer dorthin zurück, wenn er nichts zu tun hat. Ein Schmied lernt, Plattenrüstungen herzustellen, lässt die nähere Schmiede aus, die dazu nicht geeignet ist, und schmiedet sie in der ausgebauten Schmiede. Ein Bäcker lernt Kuchen, den einzigen Kurs der Bäcker, und backt weiter Brot. Ein Näher lernt Lederrüstungen, einen der beiden Kurse des Nähers, und fertigt sie in der Näherei.',
+        'Zwei Abbauer lernen den Beruf des Schreiners, während der Assistent Absolventen zur Arbeit schickt. Der erste besetzt die einzige Schreinerstelle der Schreinerei. Der zweite findet keine freie Stelle, bleibt im Schulhof und kehrt immer dorthin zurück, wenn er nichts zu tun hat. Ein Schmied lernt, Plattenrüstungen herzustellen, lässt die nähere Schmiede aus, die dazu nicht geeignet ist, und schmiedet sie in der ausgebauten Schmiede. Ein Bäcker lernt Kuchen und backt sie. Ein Näher lernt Lederrüstungen und fertigt sie in der Näherei.',
     },
     'porter-flag': {
       title: 'Trägerfahne am Steinbruch',

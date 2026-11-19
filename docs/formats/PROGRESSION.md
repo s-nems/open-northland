@@ -117,8 +117,13 @@ watering. A track record without `experiencefactor` loads as 100 and without `ba
 (approximation: two workers on one node share its count, and a watering between two reap strokes keeps
 it).
 
-Right-click a school with selected workers to choose a civilian profession or product. The player must
-already know it; a product must belong to the worker's profession. School places are reserved by
+Right-click a school with selected workers to choose a civilian profession and one of its products,
+the ones without a lesson of their own included. The player must already know both. A course costs the
+profession's `trainforjob` points plus the product's `trainforgood` points, the profession's also for
+a pupil who already has it. Each completed exercise animation earns its atomic event value (one in the
+mod's `viking_civilist_exercise`), and the course ends on the repetition after the points are in: a
+10-point profession takes 11 repetitions of 28 ticks, a profession with a 30-point product 41. School
+places are reserved by
 active training orders, and a course is refused while the school is full, the target already learned
 or the school's door out of the worker's reach; the dialog greys such courses with the reason.
 Reissuing the same course keeps its progress (the original restarts the count, an approximation);
@@ -144,11 +149,10 @@ not independently prove the lifetime of every flag or all scheduling details.
 
 Remaining approximations:
 
-- Schooling serves one second per required lesson point, rounded up to completed exercise animations.
-  The original counts completed exercise animations (each adds its atomic event value, one in the
-  mod's `viking_civilist_exercise`) against the sum of the paired `trainforjob` and `trainforgood`
-  rows, and offers a course as a job with one of its goods rather than the two apart;
-  `docs/tickets/features/technology-professions-experience.md` carries both.
+- A course is stored as its product, taught with the lowest civilian profession that makes it unless
+  the pupil's own profession does; the original stores the chosen profession beside the product. A
+  course ends when its last repetition does, where the original ends it at that repetition's event
+  frame. Lesson timing, interruption and target changes are unobserved in the running original.
 - Gathering XP counts extracted units; production XP counts completed batches. Exact original atomic
   triggers and the efficiency curve still require observational comparison. Existing work, combat
   and scout bonus curves remain the documented approximations in the progression helpers.

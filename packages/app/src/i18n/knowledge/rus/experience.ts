@@ -203,14 +203,23 @@ export const EXPERIENCE: ArticleGroup = {
           h: 'Длительность курса',
         },
         {
+          p: 'Курс обучает профессии вместе с одним из её изделий. Время включает обе части, даже если ученик уже владеет профессией.',
+        },
+        {
           table: {
             head: ['Курсы', 'Время'],
             rows: [
+              ['[[job:collector|Добытчик]] с любым другим сырьём', '{{course.gatherSeconds}} с'],
+              ['профессия с базовым изделием', '{{course.tradeSeconds}} с'],
+              [
+                '[[job:collector|Добытчик]] с [[good:iron|железом]] или [[good:gold|золотом]]',
+                '{{course.oreSeconds}} с',
+              ],
               [
                 '[[good:armor_leather|Кожаные Доспехи]], [[good:potion_food_small|Малое Питательное Зелье]], [[good:potion_stamina_small|Малое Зелье Жизненной Силы]]',
                 '{{course.shortSeconds}} с',
               ],
-              ['профессии и большинство изделий', '{{course.commonSeconds}} с'],
+              ['профессия с большинством остальных изделий', '{{course.commonSeconds}} с'],
               ['[[good:potion_heal_big|Большое Целебное Зелье]]', '{{course.healSeconds}} с'],
               ['[[good:handcart|Ручная Тележка]]', '{{course.handcartSeconds}} с'],
               ['[[good:oxcart|Бычья Повозка]]', '{{course.oxcartSeconds}} с'],

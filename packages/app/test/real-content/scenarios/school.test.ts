@@ -1,9 +1,16 @@
 import { components, halfCellMapFromCells, Simulation, systems } from '@open-northland/sim';
 import { expect, it } from 'vitest';
 import { VIKING } from '../../../src/catalog/buildings.js';
+import { JOB_CIVILIST } from '../../../src/catalog/jobs.js';
 import { TERRAIN_OPEN } from '../../../src/catalog/terrain.js';
 import { HUMAN_PLAYER } from '../../../src/game/rules.js';
+import { schoolGroups } from '../../../src/view/unit-controls/panels/school-dialog.js';
 import { hasRealIr, loadContentUnderTest } from '../helpers.js';
+
+/** The viking `trainforjob` joiner row, the `trainforgood` ship row and the civilist exercise clip. */
+const JOINER_POINTS = 10;
+const SHIP_POINTS = 30;
+const EXERCISE_CLIP_TICKS = 28;
 
 it.skipIf(!hasRealIr())(
   'a worker walks into a real school and learns an already discovered civilian trade',
@@ -159,4 +166,33 @@ it.skipIf(!hasRealIr())(
     expect(sim.checkInvariants()).toEqual([]);
   },
   30_000,
+);
+
+it.skipIf(!hasRealIr())(
+  'offers a taught trade with every good it makes, at the summed lesson cost',
+  async () => {
+    const { merge } = await loadContentUnderTest();
+    const content = merge.content;
+    const goodId = (typeId: number) => content.goods.find((g) => g.typeId === typeId)?.id;
+    const joiner = content.jobs.find((j) => j.id === 'joiner');
+    if (joiner === undefined) throw new Error('missing joiner');
+    const group = schoolGroups(content, VIKING).find((row) => row.jobType === joiner.typeId);
+    const methods = group?.courses.filter((course) => course.target === 'good').map((c) => goodId(c.typeId));
+    expect(methods).toEqual(expect.arrayContaining(['tool_wooden', 'tool_iron', 'ship_small']));
+
+    const points = (good: string) =>
+      systems.schoolCoursePoints(
+        content,
+        VIKING,
+        'good',
+        content.goods.find((g) => g.id === good)?.typeId ?? -1,
+        null,
+      );
+    expect(points('tool_wooden')).toBe(JOINER_POINTS);
+    expect(points('ship_small')).toBe(JOINER_POINTS + SHIP_POINTS);
+    const pupil = { tribe: VIKING, jobType: JOB_CIVILIST };
+    expect(systems.schoolLessonTicks(content, pupil, JOINER_POINTS)).toBe(
+      (JOINER_POINTS + 1) * EXERCISE_CLIP_TICKS,
+    );
+  },
 );

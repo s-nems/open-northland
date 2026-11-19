@@ -1,5 +1,4 @@
 import { describe, expect, it } from 'vitest';
-import { TICKS_PER_SECOND } from '../../../../src/core/loop.js';
 import { technologyTable } from '../../../../src/systems/computer-player/technology/requirements.js';
 import { aiContent } from '../../../fixtures/ai-content.js';
 import {
@@ -34,7 +33,7 @@ describe('technology table', () => {
             ],
           },
         ],
-        school: { lessonTicks: MILLER_GATE_REPEATS * TICKS_PER_SECOND, schools: [SCHOOL_TYPE] },
+        school: { schools: [SCHOOL_TYPE] },
       },
     ]);
   });

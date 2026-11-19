@@ -203,14 +203,23 @@ export const EXPERIENCE: ArticleGroup = {
           h: 'Course length',
         },
         {
+          p: 'A course teaches a profession together with one of its products. The time covers both parts, also for a pupil who already has the profession.',
+        },
+        {
           table: {
             head: ['Courses', 'Time'],
             rows: [
+              ['[[job:collector|Extractor]] with any other product', '{{course.gatherSeconds}} s'],
+              ['profession with a basic product', '{{course.tradeSeconds}} s'],
+              [
+                '[[job:collector|Extractor]] with [[good:iron|Iron]] or [[good:gold|Gold]]',
+                '{{course.oreSeconds}} s',
+              ],
               [
                 '[[good:armor_leather|Leather Armour]], [[good:potion_food_small|Small Nourishing Potion]], [[good:potion_stamina_small|Small Stamina Potion]]',
                 '{{course.shortSeconds}} s',
               ],
-              ['professions and most products', '{{course.commonSeconds}} s'],
+              ['profession with most other products', '{{course.commonSeconds}} s'],
               ['[[good:potion_heal_big|Large Healing Potion]]', '{{course.healSeconds}} s'],
               ['[[good:handcart|Handcart]]', '{{course.handcartSeconds}} s'],
               ['[[good:oxcart|Ox Cart]]', '{{course.oxcartSeconds}} s'],

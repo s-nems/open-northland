@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { JOB_BAKER, JOB_SMITH, JOB_TAILOR } from '../../../src/catalog/jobs.js';
 import { createSceneSim } from '../../../src/scenes/index.js';
 import {
+  CAKE_GOOD,
   graduateJoiners,
   LEATHER_ARMOR_GOOD,
   methodPupil,
@@ -10,8 +11,6 @@ import {
   schoolGraduatesScene,
 } from '../../../src/scenes/settlers/school-graduates.js';
 import { hasRealIr, loadContentUnderTest } from '../helpers.js';
-
-const BREAD_GOOD = 'bread';
 
 let graduated: Promise<Simulation> | undefined;
 
@@ -62,11 +61,11 @@ describe.runIf(hasRealIr())('school graduates on real content', () => {
     expectStartsOn(sim, JOB_SMITH, 'work_smithy_01', PLATE_ARMOR_GOOD);
   });
 
-  it('keeps a baker taught cakes, the only bakery course, on bread', {
+  it('posts a baker taught cakes to the bakery, baking cakes', {
     timeout: 30_000,
   }, async () => {
     const sim = await graduatedScene();
-    expectStartsOn(sim, JOB_BAKER, 'work_bakery_01', BREAD_GOOD);
+    expectStartsOn(sim, JOB_BAKER, 'work_bakery_01', CAKE_GOOD);
   });
 
   it('teaches a tailor leather armour, which he then makes', {

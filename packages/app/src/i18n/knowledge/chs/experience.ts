@@ -189,14 +189,20 @@ export const EXPERIENCE: ArticleGroup = {
           h: '课程时长',
         },
         {
+          p: '课程同时教授一门职业及其一种产品。时长包含这两部分，即使学员已掌握该职业。',
+        },
+        {
           table: {
             head: ['课程', '时长'],
             rows: [
+              ['[[job:collector|采集者]]加其他任何产品', '{{course.gatherSeconds}}秒'],
+              ['职业加一种基础产品', '{{course.tradeSeconds}}秒'],
+              ['[[job:collector|采集者]]加[[good:iron|铁矿]]或[[good:gold|金矿]]', '{{course.oreSeconds}}秒'],
               [
                 '[[good:armor_leather|皮甲]]、[[good:potion_food_small|小型营养药水]]、[[good:potion_stamina_small|小型耐力药水]]',
                 '{{course.shortSeconds}}秒',
               ],
-              ['职业和大多数产品', '{{course.commonSeconds}}秒'],
+              ['职业加大多数其他产品', '{{course.commonSeconds}}秒'],
               ['[[good:potion_heal_big|大型治疗药水]]', '{{course.healSeconds}}秒'],
               ['[[good:handcart|手推车]]', '{{course.handcartSeconds}}秒'],
               ['[[good:oxcart|牛车]]', '{{course.oxcartSeconds}}秒'],

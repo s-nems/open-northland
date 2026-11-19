@@ -110,8 +110,9 @@ export class Schooling {
   /**
    * Good lessons for the seat's workshop operators whose every listed product still waits on their own
    * experience: the rotation would put such a man on an earned product off his list instead (the smith on
-   * short swords toward the long sword's 5 repeats and plate's 10). A lesson of 10 points takes 10 s at the
-   * school besides the walk, where earning it costs about 10 cycles of 15 s and their inputs, so the man
+   * short swords toward the long sword's 5 repeats and plate's 10). A course in a 10-point good costs the
+   * trade's points again, about 49 s at the school besides the walk, where earning it costs about 10 cycles
+   * of 15 s and their inputs, so the man
    * learns the listed product he lacks the most repeats for (lowest id on a tie), a good the seat has
    * discovered and his own trade makes. One lesson per man suffices: crafting it credits the trade's track
    * toward the rest. Seats come after this decision's job lessons.

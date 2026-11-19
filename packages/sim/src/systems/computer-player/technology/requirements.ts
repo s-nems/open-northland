@@ -1,6 +1,5 @@
 import type { ContentSet, JobRequirementTarget, TribeType } from '@open-northland/data';
 import { contentIndex } from '../../../core/content-index.js';
-import { SCHOOL_LESSON_TICKS } from '../../orders/education.js';
 import { isFighterJob, isSchoolType } from '../../readviews/index.js';
 
 /** The work that credits an experience track, read from the trade the track belongs to. `goods` empty
@@ -29,9 +28,8 @@ export interface NeedRow {
   readonly tracks: readonly CreditedTrack[];
 }
 
-/** What a school teaches of a discovered target: the lesson's length and the buildings that hold it. */
+/** What a school teaches of a discovered target: the buildings that hold its lesson. */
 export interface SchoolCourse {
-  readonly lessonTicks: number;
   readonly schools: readonly number[];
 }
 
@@ -120,24 +118,21 @@ function discoveryGate(
   }
   enablingJobs.sort((a, b) => a - b);
   const needs: NeedRow[] = [];
-  let lessonAmount = -1;
+  let taught = false;
   // Our rule: a fighter trade has no experience gate and the school refuses it; the barracks is its door.
   const fighter = kind === 'job' && isFighterJob(content, typeId);
   for (const row of tribe.jobRequirements) {
     if (fighter || row.target !== kind || row.targetId !== typeId) continue;
-    if (row.requirement === 'train') lessonAmount = Math.max(lessonAmount, row.amount);
+    if (row.requirement === 'train') taught = true;
     else if (row.amount > 0 && row.experienceTypes.length > 0)
       needs.push({ amount: row.amount, tracks: row.experienceTypes.map((id) => creditedTrack(content, id)) });
   }
-  const taught = lessonAmount >= 0;
   return {
     kind,
     typeId,
     enablingJobs,
     needs,
-    school: taught
-      ? { lessonTicks: lessonAmount * SCHOOL_LESSON_TICKS, schools: schoolTypes(content) }
-      : null,
+    school: taught ? { schools: schoolTypes(content) } : null,
   };
 }
 

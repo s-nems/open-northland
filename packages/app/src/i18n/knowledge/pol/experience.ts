@@ -198,14 +198,23 @@ export const EXPERIENCE: ArticleGroup = {
           h: 'Czas kursu',
         },
         {
+          p: 'Kurs uczy zawodu razem z jednym jego wyrobem. Czas obejmuje obie części, także gdy uczeń zna już zawód.',
+        },
+        {
           table: {
             head: ['Kursy', 'Czas'],
             rows: [
+              ['[[job:collector|Zbieracz]] z każdym innym surowcem', '{{course.gatherSeconds}} s'],
+              ['zawód z podstawowym wyrobem', '{{course.tradeSeconds}} s'],
+              [
+                '[[job:collector|Zbieracz]] z [[good:iron|Żelazem]] lub [[good:gold|Złotem]]',
+                '{{course.oreSeconds}} s',
+              ],
               [
                 '[[good:armor_leather|Skórzana Zbroja]], [[good:potion_food_small|Mała Odżywcza Mikstura]], [[good:potion_stamina_small|Mała Mikstura Wytrzymałości]]',
                 '{{course.shortSeconds}} s',
               ],
-              ['zawody i większość wyrobów', '{{course.commonSeconds}} s'],
+              ['zawód z większością pozostałych wyrobów', '{{course.commonSeconds}} s'],
               ['[[good:potion_heal_big|Duża Lecznicza Mikstura]]', '{{course.healSeconds}} s'],
               ['[[good:handcart|Wózek Ręczny]]', '{{course.handcartSeconds}} s'],
               ['[[good:oxcart|Zaprzęg]]', '{{course.oxcartSeconds}} s'],

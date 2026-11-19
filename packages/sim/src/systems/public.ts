@@ -238,7 +238,13 @@ export {
   walkStepTicks,
 } from './movement/walk-cost.js';
 // So the school dialog offers exactly the courses the `learn` command accepts.
-export { knowsCourse, SCHOOL_LESSON_TICKS } from './orders/education.js';
+export {
+  knowsCourse,
+  schoolCoursePoints,
+  schoolLessonTicks,
+  schoolMethodJob,
+  schoolTeachesTrade,
+} from './orders/education.js';
 export { EXPLORE_MAX_FAILED_LEGS } from './orders/explore.js';
 export { WORK_FLAG_SNAP_MAX_RADIUS } from './orders/work/selection.js';
 export { GATE_ENEMY_NEAR_POINTS } from './palisades/gate-control.js';

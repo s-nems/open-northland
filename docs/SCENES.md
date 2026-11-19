@@ -200,9 +200,8 @@ barracks. Sending him to either clears his grown-up note as he sets off.
 `?scene=school-graduates` sends two collectors to learn carpentry with the assistant's "send graduates
 to work" switch on. The first graduate takes the joinery's only joiner slot. The second finds no free
 slot and stays in the school yard, and walks back there whenever it has nothing to do. A smith taught
-plate armour passes the near smithy for the upgraded one and forges plate there. A baker taught cakes,
-the bakers' only course, keeps baking bread; a tailor taught leather armour, one of two tailor courses,
-starts on it.
+plate armour passes the near smithy for the upgraded one and forges plate there. A baker taught cakes
+bakes them; a tailor taught leather armour starts on it.
 
 `?scene=technology` shows map permission followed by a player-owned profession unlocking housing.
 

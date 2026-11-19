@@ -24,6 +24,7 @@ import {
   JOB_FARMER,
   JOB_FISHER,
   JOB_HERBALIST,
+  JOB_JOINER,
 } from '../../../catalog/jobs.js';
 import { STAR_FULL, STAR_TIER_STEP } from '../../../view/projections/experience-stars.js';
 import type { KnowledgeBase } from '../model.js';
@@ -107,11 +108,12 @@ const roadSaving = (base: KnowledgeBase, ground: string): FactValue => {
   return road === undefined || off === undefined ? undefined : PERCENT * (1 - road / off);
 };
 
+/** The whole course in `good`: its producer trade's lesson points and its own. */
 function courseSeconds(base: KnowledgeBase, good: string): FactValue {
   const goodType = goodTypeOf(base, good);
   if (goodType === undefined) return undefined;
-  const amount = base.goodRequirements.get(goodType)?.find((row) => row.route === 'train')?.amount;
-  return amount === undefined ? undefined : lessonSeconds(base, amount);
+  const points = systems.schoolCoursePoints(base.content, VIKING, 'good', goodType, null);
+  return points === undefined ? undefined : lessonSeconds(base, points);
 }
 
 /** A good's or a job's practice requirement, in repeats of its track. */
@@ -467,6 +469,12 @@ export const WORK_FACTS: Readonly<Record<string, Fact>> = {
   'barracks.gearStock': whole((base) => stockOf(base, 'barracks', 'sword_long')),
   'barracks.foodStock': whole((base) => stockOf(base, 'barracks', 'food_simple')),
   'barracks.coinStock': whole((base) => stockOf(base, 'barracks', 'coin')),
+  'course.gatherSeconds': oneDecimal((base) => courseSeconds(base, 'wood')),
+  'course.oreSeconds': oneDecimal((base) => courseSeconds(base, 'iron')),
+  'course.tradeSeconds': oneDecimal((base) => {
+    const points = systems.schoolCoursePoints(base.content, VIKING, 'job', JOB_JOINER, null);
+    return points === undefined ? undefined : lessonSeconds(base, points);
+  }),
   'course.shortSeconds': oneDecimal((base) => courseSeconds(base, 'armor_leather')),
   'course.commonSeconds': oneDecimal((base) => courseSeconds(base, 'bow_long')),
   'course.healSeconds': oneDecimal((base) => courseSeconds(base, 'potion_heal_big')),

@@ -53,17 +53,13 @@ export function schoolChoices(
   });
 }
 
-/** Courses are grouped by the trade that uses them, with each group and its methods in display order. */
+/** Courses are grouped by the trade that uses them, every good of a taught trade among them, with each
+ *  group and its methods in display order. */
 export function schoolGroups(content: ContentSet, tribeId: number): SchoolGroup[] {
   const tribe = content.tribes.find((row) => row.typeId === tribeId);
   if (tribe === undefined) return [];
   const compare = compareLabels();
   const groups = new Map<number, SchoolCourse[]>();
-  const training = new Set(
-    tribe.jobRequirements
-      .filter((row) => row.requirement === 'train')
-      .map((row) => `${row.target}:${row.targetId}`),
-  );
   for (const requirement of tribe.jobRequirements) {
     if (requirement.requirement !== 'train' || requirement.target !== 'job') continue;
     const jobType = requirement.targetId;
@@ -78,9 +74,10 @@ export function schoolGroups(content: ContentSet, tribeId: number): SchoolGroup[
     groups.set(jobType, courses);
   }
   for (const edge of tribe.jobEnables) {
-    if (edge.kind !== 'good' || !training.has(`good:${edge.targetId}`)) continue;
-    if (systems.isFighterJob(content, edge.jobType) || professionDefForJob(edge.jobType) === undefined)
-      continue;
+    if (edge.kind !== 'good' || professionDefForJob(edge.jobType) === undefined) continue;
+    if (!systems.schoolTeachesTrade(content, tribeId, edge.jobType)) continue;
+    // The sim teaches a good several trades make with its lowest producer, so no other group lists it.
+    if (systems.schoolMethodJob(content, tribeId, edge.targetId, null) !== edge.jobType) continue;
     const courses = groups.get(edge.jobType) ?? [];
     if (!courses.some((course) => course.target === 'good' && course.typeId === edge.targetId))
       courses.push({
@@ -106,8 +103,12 @@ export function schoolGroups(content: ContentSet, tribeId: number): SchoolGroup[
 }
 
 /** The sim's `learn` rule on a snapshot learner: its current trade counts as known. */
-export function knowsCourse(learner: SnapshotEntity, course: SchoolCourse): boolean {
+export function knowsCourse(content: ContentSet, learner: SnapshotEntity, course: SchoolCourse): boolean {
+  const tribeId = settlerTribeOf(learner);
+  if (tribeId === undefined) return false;
   return systems.knowsCourse(
+    content,
+    tribeId,
     {
       jobType: settlerJobType(learner) ?? null,
       learned: {
@@ -228,7 +229,7 @@ export function openSchoolDialog(opts: SchoolDialogOptions): SchoolDialog | unde
     const commands: UnitSelectionCommand[] = [];
     for (const entity of students) {
       const learner = entityById(state, entity);
-      if (learner === undefined || knowsCourse(learner, course)) continue;
+      if (learner === undefined || knowsCourse(content, learner, course)) continue;
       commands.push({
         kind: 'learn',
         entity: entity as Entity,
@@ -277,7 +278,9 @@ export function openSchoolDialog(opts: SchoolDialogOptions): SchoolDialog | unde
     for (const group of choices)
       for (const course of group.courses) {
         // A full school takes the rest into its queue, so seats never close a course.
-        const learning = learners.some((learner) => learner !== undefined && !knowsCourse(learner, course));
+        const learning = learners.some(
+          (learner) => learner !== undefined && !knowsCourse(content, learner, course),
+        );
         const reason = invalid ? copy.schoolUnavailable : learning ? undefined : copy.schoolLearned;
         reasons.set(courseKey(course), reason);
       }

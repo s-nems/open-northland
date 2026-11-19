@@ -615,7 +615,7 @@ export const itContent = {
     'school-graduates': {
       title: 'I diplomati vanno al lavoro',
       summary:
-        "Due estrattori imparano la falegnameria con l'assistente che manda i diplomati al lavoro. Il primo prende l'unico posto da carpentiere nella bottega del carpentiere. Il secondo non trova posti liberi, resta nel cortile della scuola e ci torna ogni volta che non ha niente da fare. Un fabbro impara l'armatura di piastre, ignora la fucina più vicina che non può produrla e la forgia in quella migliorata. Un fornaio impara le torte, l'unico corso dei fornai, e continua a cuocere pane. Un sarto impara l'armatura di cuoio, uno dei due corsi del sarto, e la produce nella bottega del sarto.",
+        "Due estrattori imparano la falegnameria con l'assistente che manda i diplomati al lavoro. Il primo prende l'unico posto da carpentiere nella bottega del carpentiere. Il secondo non trova posti liberi, resta nel cortile della scuola e ci torna ogni volta che non ha niente da fare. Un fabbro impara l'armatura di piastre, ignora la fucina più vicina che non può produrla e la forgia in quella migliorata. Un fornaio impara le torte e le cuoce. Un sarto impara l'armatura di cuoio e la produce nella bottega del sarto.",
     },
     'porter-flag': {
       title: 'La bandierina di un trasportatore alla cava',

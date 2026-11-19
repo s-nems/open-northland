@@ -11,12 +11,10 @@ runtime details remain approximations or unconfirmed readings.
 
 - Observe gathering, production, carrying and construction in the running original. Pin which
   completed actions increment general and specialized XP, and compare the work efficiency curve.
-- Measure civilian school lesson timing, any costs, interruption and target-change behavior.
-  The current model uses one second per point and resumes after needs interruptions; the original
-  (unconfirmed reading) counts completed exercise animations, each adding its
-  atomic event value, against the summed `trainforjob` and `trainforgood` rows of a (job, good)
-  course pair, and a reissued course restarts the count. Confirm on the running original, then
-  model the course as the pair with the combined cost and offer it to any settler.
+- Observe a school course in the running original: lesson timing, interruption and target-change
+  behavior. The model follows the readable `trainforjob` and `trainforgood` rows and counts completed
+  exercise animations; a reissued course keeps its progress here, where the original (unconfirmed
+  reading) restarts the count.
 - Check discovery retention after losing the only qualified worker and across sub-mission transitions.
 
 Retain explicit approximations until observations support a replacement. Equipment and military

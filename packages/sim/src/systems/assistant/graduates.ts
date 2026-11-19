@@ -55,8 +55,7 @@ export function postGraduate(
     learned: progress.learned,
     jobType: settler.jobType,
   };
-  // A trade with a single school method keeps its first product: the player picked the trade, not a ware
-  // (a baker taught cakes still bakes bread first).
+  // A trade with a single good keeps its first product: the player picked the trade, not a ware.
   const methods = schoolTeachesMethodChoice(ctx.content, settler.tribe, jobType)
     ? (progress.learned?.good ?? [])
     : [];

@@ -61,8 +61,8 @@ function schoolOf(sim: Simulation): Entity | undefined {
  * Two collectors learn carpentry with the assistant's "send graduates to work" switch on: on real content
  * the first to finish takes the joinery's one joiner slot and the second finds none and waits by the
  * school. A smith learns plate armour and passes the near smithy, which cannot make it, for the far
- * upgraded one, where it forges plate. A baker learns cakes, the bakers' only course, and still bakes
- * bread; a tailor learns leather armour, one of two courses, and makes it. The sandbox workshops employ
+ * upgraded one, where it forges plate. A baker learns cakes and bakes them; a tailor learns leather
+ * armour and makes it. The sandbox workshops employ
  * rebased trade ids the school does not teach, so headless the graduates wait; the posting is checked over
  * real content.
  */

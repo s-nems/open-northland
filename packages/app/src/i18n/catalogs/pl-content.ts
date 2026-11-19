@@ -610,7 +610,7 @@ export const plContent = {
     'school-graduates': {
       title: 'Absolwenci idą do pracy',
       summary:
-        'Dwóch zbieraczy uczy się ciesielstwa, a asystent kieruje absolwentów do pracy. Pierwszy zajmuje jedyne miejsce cieśli w warsztacie ciesielskim. Drugi nie znajduje wolnego miejsca, zostaje przy szkole i wraca tam, gdy nie ma nic do roboty. Kowal uczy się zbroi płytowej, mija bliższą kuźnię, która jej nie robi, i kuje płytówki w rozbudowanej. Piekarz uczy się ciastek, jedynego kursu piekarzy, i dalej piecze chleb. Krawiec uczy się skórzanej zbroi, jednego z dwóch kursów krawca, i szyje ją w zakładzie krawieckim.',
+        'Dwóch zbieraczy uczy się ciesielstwa, a asystent kieruje absolwentów do pracy. Pierwszy zajmuje jedyne miejsce cieśli w warsztacie ciesielskim. Drugi nie znajduje wolnego miejsca, zostaje przy szkole i wraca tam, gdy nie ma nic do roboty. Kowal uczy się zbroi płytowej, mija bliższą kuźnię, która jej nie robi, i kuje płytówki w rozbudowanej. Piekarz uczy się ciastek i je piecze. Krawiec uczy się skórzanej zbroi i szyje ją w zakładzie krawieckim.',
     },
     'porter-flag': {
       title: 'Chorągiewka tragarza w kamieniołomie',

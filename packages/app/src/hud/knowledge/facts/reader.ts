@@ -120,9 +120,10 @@ export function drillSeconds(base: KnowledgeBase, ticks: number): FactValue {
   return clip === undefined ? undefined : seconds(Math.ceil(ticks / clip) * clip);
 }
 
-/** A school course of `lessons`, in seconds. */
-export function lessonSeconds(base: KnowledgeBase, lessons: number): FactValue {
-  return drillSeconds(base, lessons * systems.SCHOOL_LESSON_TICKS);
+/** A school course of `points`, in seconds. */
+export function lessonSeconds(base: KnowledgeBase, points: number): FactValue {
+  const ticks = systems.schoolLessonTicks(base.content, { tribe: VIKING, jobType: JOB_CIVILIST }, points);
+  return seconds(ticks);
 }
 
 const trackPoints = (base: KnowledgeBase, id: string): FactValue => {
