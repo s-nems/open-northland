@@ -178,6 +178,24 @@ export function terrainReach(
   };
 }
 
+/** `held` while it still answers a full search of its own question as it stands, no node it read having
+ *  changed; undefined where {@link terrainReach} would repair it or flood afresh. */
+export function standingReach(
+  world: World,
+  content: ContentSet,
+  terrain: TerrainGraph,
+  held: TerrainReach,
+): TerrainReach | undefined {
+  const mask = signpostMask(world, content, terrain);
+  if (held.terrain !== terrain || held.mask !== mask || !held.complete) return undefined;
+  if (held.maskVersion === mask.version && held.roadRevision === terrain.mirroredRoadRevision) return held;
+  if (readChanges(held, mask, terrain) || changedScratch.length > 0) return undefined;
+  held.maskVersion = mask.version;
+  held.roadRevision = terrain.mirroredRoadRevision;
+  held.resistanceClock = terrain.resistanceClock;
+  return held;
+}
+
 /** Read nodes a held search takes in a repair before a fresh flood is the cheaper answer. */
 const MAX_REPAIRED_CHANGES = 256;
 /** The read nodes whose blocker or resistance changed since the held search being checked last held. */
@@ -192,13 +210,9 @@ function listRead(x: number, y: number): boolean {
   return changedScratch.length > MAX_REPAIRED_CHANGES;
 }
 
-/** `held` itself while no node it read changed, else the repaired search, or null when only a fresh
- *  flood answers. */
-function repairHeld(
-  held: TerrainReach,
-  mask: WalkBlockMask,
-  terrain: TerrainGraph,
-): TerrainReach | ReachSearch | null {
+/** Lists into {@link changedScratch} the nodes `held` read that changed since it last held; true when
+ *  they are too many to list. */
+function readChanges(held: TerrainReach, mask: WalkBlockMask, terrain: TerrainGraph): boolean {
   changedScratch.clear();
   checkedSearch = held;
   checkedWidth = terrain.width;
@@ -206,7 +220,17 @@ function repairHeld(
     mask.flippedSince(held.searched, held.maskVersion, listRead) ||
     terrain.resistanceChangedSince(held.searched, held.resistanceClock, listRead);
   checkedSearch = undefined;
-  if (overflow) return null;
+  return overflow;
+}
+
+/** `held` itself while no node it read changed, else the repaired search, or null when only a fresh
+ *  flood answers. */
+function repairHeld(
+  held: TerrainReach,
+  mask: WalkBlockMask,
+  terrain: TerrainGraph,
+): TerrainReach | ReachSearch | null {
+  if (readChanges(held, mask, terrain)) return null;
   if (changedScratch.length === 0) return held;
   const { range, budget, groundCost } = held.span;
   return repairReach(

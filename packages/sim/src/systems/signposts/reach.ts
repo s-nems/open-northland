@@ -26,6 +26,7 @@ import {
   type ReachShape,
   type ReachSpan,
   signpostMask,
+  standingReach,
   type TerrainReach,
   terrainReach,
   WALK_REACH_SHAPE,
@@ -345,6 +346,20 @@ function spotReachAt(
   return found;
 }
 
+/** The spot's held search of `shape` while no node it read changed since, without flooding for one. */
+function heldSpotReach(
+  world: World,
+  content: ContentSet,
+  terrain: TerrainGraph,
+  hx: number,
+  hy: number,
+  shape: ReachShape,
+): ReachSearch | undefined {
+  const key = spotKey(terrain, shape.id, hx, hy);
+  const held = key === null ? undefined : cacheOf(world, content, terrain).spots.get(key);
+  return held === undefined ? undefined : standingReach(world, content, terrain, held);
+}
+
 function postReach(
   world: World,
   content: ContentSet,
@@ -541,6 +556,8 @@ class ReachLimit implements WalkReach {
    *  rebased limits are never asked. */
   private caught: Uint8Array | undefined;
   private local: ReachSearch | undefined;
+  /** {@link heldFlood}'s answer, null for none; undefined until asked. */
+  private held: ReachSearch | null | undefined;
   /** The reach versions and epoch the limit was built under, and the world mutation version it was last
    *  confirmed at. */
   private readonly versions: ReachVersions;
@@ -639,19 +656,31 @@ class ReachLimit implements WalkReach {
     this.confirmedAt = version;
   }
 
-  /** Read off the own flood when it is at hand, else searched for towards the node, which on open ground
-   *  costs a walk's length where the flood costs its whole area. */
+  /** Read off the own flood when one is at hand, the limit's or the spot's held one, else searched for
+   *  towards the node, which on open ground costs a walk's length where the flood costs its whole area. */
   ownWalkSteps(x: number, y: number, within: number): number {
     this.confirmKey();
     const { world, content, terrain, hx, hy, shape } = this.spot;
     const asked = Math.min(within, shape.own.budget);
-    if (this.local === undefined) {
+    let flood = this.local ?? this.heldFlood();
+    if (flood === undefined) {
       const blocked = signpostMask(world, content, terrain).levelled();
       const found = walkStepsBetween(terrain, blocked, hx, hy, x, y, asked, WALK_SEARCH_MAX_SETTLED);
       if (found !== undefined) return found;
+      flood = this.ownSearch();
     }
-    const steps = walkLengthTo(this.ownSearch().costs, x, y);
+    const steps = walkLengthTo(flood.costs, x, y);
     return steps > asked ? NO_WALK : steps;
+  }
+
+  /** The spot's flood an earlier limit left held, when it still answers as it stands; looked for once,
+   *  since the limit answers under one reach key. */
+  private heldFlood(): ReachSearch | undefined {
+    if (this.held === undefined) {
+      const { world, content, terrain, hx, hy, shape } = this.spot;
+      this.held = heldSpotReach(world, content, terrain, hx, hy, shape) ?? null;
+    }
+    return this.held ?? undefined;
   }
 
   private ownSearch(): ReachSearch {

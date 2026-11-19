@@ -57,6 +57,12 @@ export function collectorStanceGates(
       !regions.unroutable(here, cell));
 }
 
+/** A stance with the length it ranks at. */
+export interface RankedStance {
+  readonly cell: NodeId;
+  readonly length: number;
+}
+
 /** Select the closest eligible approach without consuming the harvest stance draw, by its length from
  *  `rank`, the lower cell on a tie. `passes` is pure, so it runs only for a cell that may come nearer than
  *  the best so far. */
@@ -67,7 +73,7 @@ export function nearestEligibleStance(
   passes: (cell: NodeId) => boolean,
   /** Skip every cell ranking past this length. */
   maxLength = Number.POSITIVE_INFINITY,
-): NodeId | undefined {
+): RankedStance | undefined {
   const from = rankOrigin(rank);
   const walk = rankWalk(rank);
   let best: NodeId | undefined;
@@ -84,5 +90,5 @@ export function nearestEligibleStance(
     best = cell;
     length = exact;
   }
-  return best;
+  return best === undefined ? undefined : { cell: best, length };
 }

@@ -122,8 +122,9 @@ export function nearestHarvestableFor(
   const anchorInBound = (hx: number, hy: number): boolean =>
     bound === undefined || workBoundDistance(terrain, bound, hx, hy) <= anchorReach;
   // Ranked from `origin`, while the interaction cell still resolves from `here`, the route start. Only
-  // when the two coincide does a stance past the best length so far lose for certain.
-  const resolve = (e: Entity, cap?: number): CellMatch<null> | null => {
+  // when the two coincide does a stance past the best length so far lose for certain, and is the stance's
+  // length the candidate's.
+  const resolve = (e: Entity, cap?: number): HarvestMatch<null> | null => {
     if (exclude?.has(e)) return null; // a colleague already digs this node
     const res = world.tryGet(e, Resource);
     if (res === undefined || res.remaining <= 0) return null;
@@ -153,9 +154,9 @@ export function nearestHarvestableFor(
     }
     passes ??= collectorStanceGates(plan, bound);
     const ranked = stanceRank === rank;
-    const cell = nearestEligibleStance(terrain, stanceRank, stances, passes, ranked ? cap : undefined);
-    if (cell === undefined) return null;
-    return { cell, payload: null };
+    const stance = nearestEligibleStance(terrain, stanceRank, stances, passes, ranked ? cap : undefined);
+    if (stance === undefined) return null;
+    return { cell: stance.cell, payload: null, length: ranked ? stance.length : undefined };
   };
   let best: NearestByCell<null> | null;
   if (opts.diagnostic !== undefined) {
@@ -202,7 +203,7 @@ function nearestDropFor(
   const rank = rankFromSpot(plan.limit, here);
   let passes: ((cell: NodeId) => boolean) | undefined;
   // Ranked from `here` as the stance is, so a stance past the best length so far cannot win.
-  const resolve = (e: Entity, cap?: number): CellMatch<number> | null => {
+  const resolve = (e: Entity, cap?: number): HarvestMatch<number> | null => {
     const good = pick(e);
     if (good === null) return null;
     if (passes === undefined) {
@@ -218,15 +219,15 @@ function nearestDropFor(
       );
       passes = (node) => stance(node) && (goods === null || goods.allowsNode(node));
     }
-    const cell = nearestEligibleStance(
+    const stance = nearestEligibleStance(
       terrain,
       rank,
       positionedStanceCells(world, ctx, terrain, e),
       passes,
       cap,
     );
-    if (cell === undefined) return null;
-    return { cell, payload: good };
+    if (stance === undefined) return null;
+    return { cell: stance.cell, payload: good, length: stance.length };
   };
   // A pile's stance is the node itself, a free neighbour, or the work cell of a resource standing on it,
   // so a pile farther than that offset past `within` has no stance inside it and is never resolved.
@@ -321,6 +322,11 @@ export function nearestOwnDropFor(
   });
 }
 
+/** A resolved candidate, with the length it ranks at when its stance was ranked as the candidates are. */
+interface HarvestMatch<P> extends CellMatch<P> {
+  readonly length: number | undefined;
+}
+
 /** Candidate sort keys: an anchor's lower-bound distance in the high part, the entity id in the low. */
 let anchorKeys = new Float64Array(0);
 const ENTITY_KEY_SPAN = 2 ** 31;
@@ -375,7 +381,7 @@ class AnchorRanking {
     terrain: TerrainGraph,
     rank: RankFrom,
     best: NearestByCell<P> | null,
-    resolve: (e: Entity, cap?: number) => CellMatch<P> | null,
+    resolve: (e: Entity, cap?: number) => HarvestMatch<P> | null,
   ): NearestByCell<P> | null {
     const origin = rankOrigin(rank);
     const walk = rankWalk(rank);
@@ -387,7 +393,8 @@ class AnchorRanking {
       if (best !== null && leastRankLength(walk, (key - e) / ENTITY_KEY_SPAN) > best.distance) break;
       const match = resolve(e, best?.distance);
       if (match === null) continue;
-      const distance = rankLength(walk, match.cell, manhattan(terrain, origin, match.cell), best?.distance);
+      const distance =
+        match.length ?? rankLength(walk, match.cell, manhattan(terrain, origin, match.cell), best?.distance);
       if (best === null || precedes(distance, match.cell, e, best))
         best = { entity: e, cell: match.cell, distance, payload: match.payload };
     }
@@ -409,7 +416,7 @@ function nearestInGrowingBoxes(
   rank: RankFrom,
   atomics: ReadonlySet<number>,
   anchors: AnchorRanking,
-  resolve: (e: Entity, cap?: number) => CellMatch<null> | null,
+  resolve: (e: Entity, cap?: number) => HarvestMatch<null> | null,
 ): NearestByCell<null> | null {
   const origin = rankOrigin(rank);
   const walk = rankWalk(rank);

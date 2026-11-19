@@ -424,7 +424,9 @@ export class InteractionCellIndex {
       if (gate !== undefined && !gate.allowsNode(cell)) continue;
       if (vetoed(avoid, here, cell)) continue;
       if (door === undefined && this.pileCellSealed(e, here, cell)) continue;
-      const distance = rankLength(walk, cell, manhattan(terrain, origin, cell));
+      // Every candidate may be the first a later veto leaves, so each length is asked in full: up to
+      // the longest the walk measures.
+      const distance = rankLength(walk, cell, manhattan(terrain, origin, cell), walk?.maxSteps);
       ranked.push({ entity: e, cell, distance, payload: hit.payload });
     }
     return ranked.sort((a, b) => a.distance - b.distance || a.cell - b.cell || a.entity - b.entity);
@@ -623,13 +625,16 @@ export class InteractionCellIndex {
     if (best !== null && !closer(least, cell, best.distance, best.cell)) return best;
     if (gate !== undefined && !gate.allowsNode(cell)) return best; // the whole cell is out of bounds
     if (vetoed(avoid, here, cell)) return best; // a goal this seeker cannot reach
-    const distance = rankLength(walk, cell, span, best?.distance);
-    if (walk !== undefined && best !== null && !closer(distance, cell, best.distance, best.cell)) return best;
     for (let i = 0; i < bucket.length; i++) {
       const e = bucket[i];
       if (e === undefined) continue; // i < length, so only for the type
       const hit = accept(e);
-      if (hit !== null) return { entity: e, cell, distance, payload: hit.payload };
+      if (hit === null) continue;
+      // The walk is read behind every filter: measuring it may flood.
+      const distance = rankLength(walk, cell, span, best?.distance);
+      if (walk !== undefined && best !== null && !closer(distance, cell, best.distance, best.cell))
+        return best;
+      return { entity: e, cell, distance, payload: hit.payload };
     }
     return best;
   }
@@ -766,7 +771,8 @@ export class InteractionCellIndex {
 
   /** The exact linear scan the rings accelerate, for a short list. A list runs in id order, so under a walk
    *  the candidate nearest by distance is found first and its walk measured: the scan by walk then asks
-   *  every other walk only up to that length, and a search no candidate passes measures none. */
+   *  every other walk only up to that length, and a search no candidate passes measures none. Both scans
+   *  share each candidate's `accept` verdict. */
   private linearNearest<P>(
     list: readonly Entity[],
     here: NodeId,
@@ -781,12 +787,21 @@ export class InteractionCellIndex {
     if (walk === undefined) {
       return this.linearScan(list, here, accept, gate, avoid, rank, undefined, bound, count, null);
     }
+    const verdicts = new Map<Entity, Qualified<P> | null>();
+    const once = (e: Entity): Qualified<P> | null => {
+      let hit = verdicts.get(e);
+      if (hit === undefined) {
+        hit = accept(e);
+        verdicts.set(e, hit);
+      }
+      return hit;
+    };
     const unbounded = Number.POSITIVE_INFINITY;
-    const direct = this.linearScan(list, here, accept, gate, avoid, rank, undefined, unbounded, count, null);
+    const direct = this.linearScan(list, here, once, gate, avoid, rank, undefined, unbounded, count, null);
     if (direct === null) return null;
-    const length = rankLength(walk, direct.cell, direct.distance, bound);
-    const seed = length > bound ? null : { ...direct, distance: length };
-    return this.linearScan(list, here, accept, gate, avoid, rank, walk, bound, count, seed);
+    const seed = { ...direct, distance: rankLength(walk, direct.cell, direct.distance, bound) };
+    const found = this.linearScan(list, here, once, gate, avoid, rank, walk, bound, count, seed);
+    return found !== null && found.distance > bound ? null : found;
   }
 
   /** {@link nearestByCell}'s loop and tie-break, resolving each candidate's cell in place, over the
@@ -813,7 +828,7 @@ export class InteractionCellIndex {
     let bestCell: number = seed?.cell ?? Number.POSITIVE_INFINITY;
     for (let i = 0; i < count; i++) {
       const e = list[i];
-      if (e === undefined) continue;
+      if (e === undefined || e === seed?.entity) continue;
       const door = this.doorCell.get(e);
       let hit: Qualified<P> | null;
       let cell: NodeId;
