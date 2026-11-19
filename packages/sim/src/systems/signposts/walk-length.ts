@@ -1,5 +1,6 @@
 import type { ContentSet } from '@open-northland/data';
 import type { World } from '../../ecs/world.js';
+import { NO_WALK } from '../../nav/node-circle.js';
 import {
   enteredCost,
   type FloodCosts,
@@ -16,8 +17,7 @@ import { signpostMask } from './terrain-reach.js';
 /** The hex range of a flood asked only for its costs: its marked area is one unread node. */
 const NO_MARKED_AREA = 1;
 
-/** A node no walk of the asked length reaches. */
-export const NO_WALK = NOT_ENTERED;
+export { NO_WALK };
 
 /**
  * The steps of the shortest walk from `(hx, hy)` to each node at most `steps` away, over the ground a

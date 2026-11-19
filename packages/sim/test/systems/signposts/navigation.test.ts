@@ -24,12 +24,14 @@ import {
   setMissionBehaviour,
   stampOwner,
   WALK_RANGE_NODES,
+  WALK_ROUTE_STEPS,
 } from '../../../src/components/index.js';
 import { fx, ONE } from '../../../src/core/fixed.js';
 import { TICKS_PER_SECOND } from '../../../src/core/loop.js';
 import type { Entity } from '../../../src/ecs/world.js';
 import { cellAnchorNode, hexDistanceBetween, Simulation } from '../../../src/index.js';
 import { nodeOfPosition, positionOfNode } from '../../../src/nav/halfcell.js';
+import { NO_WALK } from '../../../src/nav/node-circle.js';
 import type { NodeId, TerrainGraph } from '../../../src/nav/terrain/index.js';
 import {
   createSignpost,
@@ -40,7 +42,12 @@ import {
 } from '../../../src/systems/index.js';
 import { CUT_OFF_CHECK_TICKS } from '../../../src/systems/settlers/drives/cut-off.js';
 import { LOST_GUIDE_DELAY_TICKS } from '../../../src/systems/settlers/drives/lost-guide.js';
+import { ACCEPT_ALL, InteractionCellIndex } from '../../../src/systems/settlers/targets/cell-index.js';
+import { interactionCell } from '../../../src/systems/settlers/targets/index.js';
+import { walkLengthsFrom, walkLengthTo } from '../../../src/systems/signposts/walk-length.js';
+import { manhattan } from '../../../src/systems/spatial/metric.js';
 import { TEST_MANIFEST, testContent } from '../../fixtures/content.js';
+import { ctxOf } from '../../fixtures/context.js';
 import { grassCellMap as grassMap, waterColumnMap } from '../../fixtures/terrain.js';
 import { makeWoodcutter, placeFellableTree, VIKING } from '../settlers/drives/gatherer-flag/support.js';
 import { stampPost } from './support.js';
@@ -364,6 +371,81 @@ describe('setSignpostNavigation + moveUnit - the confinement rule', () => {
       // other bank is longer than WALK_ROUTE_STEPS.
       expect(bankReached(12)).toBe(true);
       expect(bankReached(80)).toBe(false);
+    });
+
+    it("ON: a store up the settler's own bank is nearer than one a short line but a long walk across", () => {
+      const FORD_ROWS = 2;
+      const UP_THE_BANK_CELL = { x: 33, y: 5 };
+      const sim = new Simulation({
+        seed: 5,
+        content: testContent(),
+        map: waterColumnMap(40, 12, STRAIT_CELL_COLUMN, FORD_ROWS),
+      });
+      sim.enqueueSetup({ kind: 'setSignpostNavigation', enabled: true });
+      sim.step();
+      const terrain = sim.terrain;
+      if (terrain === undefined) throw new Error('mapped sim');
+      const u = unitOnCell(sim, EAST_CELL, WOODCUTTER);
+      const here = cellNode(terrain, EAST_CELL);
+      const store = (cell: { x: number; y: number }): Entity => {
+        const anchor = cellAnchorNode(cell.x, cell.y);
+        const e = sim.world.create();
+        sim.world.add(e, Position, positionOfNode(anchor.hx, anchor.hy));
+        return e;
+      };
+      const across = store(WEST_CELL);
+      const upTheBank = store(UP_THE_BANK_CELL);
+      const index = new InteractionCellIndex(sim.world, ctxOf(sim), terrain, [across, upTheBank]);
+      const cellOf = (e: Entity): NodeId => interactionCell(sim.world, ctxOf(sim), terrain, e, here);
+      expect(manhattan(terrain, here, cellOf(across))).toBeLessThan(
+        manhattan(terrain, here, cellOf(upTheBank)),
+      );
+
+      const limit = navigationLimitFor(sim.world, sim.content, terrain, u) ?? undefined;
+      expect(limit?.allowsNode(cellOf(across))).toBe(true);
+      const lengths = limit?.walkLengths?.();
+      expect(lengths?.stepsTo(cellOf(upTheBank))).toBe(rangeBetween(EAST_CELL, UP_THE_BANK_CELL));
+      expect(lengths?.stepsTo(cellOf(across))).toBeGreaterThan(rangeBetween(EAST_CELL, UP_THE_BANK_CELL));
+      expect(index.nearest(here, ACCEPT_ALL, limit)?.entity).toBe(upTheBank);
+      // Without the confinement the straight line still ranks.
+      expect(index.nearest(here, ACCEPT_ALL)?.entity).toBe(across);
+    });
+
+    it('ON: a walk length asked under a cap equals the full walk, or is none past the cap', () => {
+      const FORD_ROWS = 2;
+      const CAPS = [3, 10, 30, WALK_ROUTE_STEPS];
+      const FAR_BANK_ROW = 26;
+      const sim = new Simulation({
+        seed: 5,
+        content: testContent(),
+        map: waterColumnMap(40, 30, STRAIT_CELL_COLUMN, FORD_ROWS),
+      });
+      sim.enqueueSetup({ kind: 'setSignpostNavigation', enabled: true });
+      sim.step();
+      const terrain = sim.terrain;
+      if (terrain === undefined) throw new Error('mapped sim');
+      const u = unitOnCell(sim, EAST_CELL, WOODCUTTER);
+      const from = cellAnchorNode(EAST_CELL.x, EAST_CELL.y);
+      const full = walkLengthsFrom(sim.world, sim.content, terrain, from.hx, from.hy, WALK_ROUTE_STEPS - 1);
+      const lengths = navigationLimitFor(sim.world, sim.content, terrain, u)?.walkLengths?.();
+      if (full === null || lengths === undefined || lengths === null) throw new Error('a walk starts here');
+      const wrong: string[] = [];
+      // Short caps first, so each longer one is answered by a search deepened from the last.
+      for (const cap of CAPS) {
+        for (let node = 0; node < terrain.width * terrain.height; node++) {
+          const expected = walkLengthTo(full, terrain.xOf(node as NodeId), terrain.yOf(node as NodeId));
+          const got = lengths.stepsTo(node as NodeId, cap);
+          if (got !== expected && !(expected > cap && got === NO_WALK)) wrong.push(`${node} under ${cap}`);
+        }
+      }
+      expect(wrong).toEqual([]);
+      // The far bank by the ford is walked, the far bank opposite the settler is not.
+      const farBankByFord = cellNode(terrain, { x: WEST_CELL.x, y: FAR_BANK_ROW });
+      expect(walkLengthTo(full, terrain.xOf(farBankByFord), terrain.yOf(farBankByFord))).toBeLessThan(
+        NO_WALK,
+      );
+      const opposite = cellNode(terrain, WEST_CELL);
+      expect(walkLengthTo(full, terrain.xOf(opposite), terrain.yOf(opposite))).toBe(NO_WALK);
     });
 
     it('ON: a settler standing on the water is confined by range alone', () => {

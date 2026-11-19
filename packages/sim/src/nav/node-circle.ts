@@ -33,7 +33,24 @@ export interface SpatialGate {
   /** False only when no node within Manhattan `radius` of `(x, y)` is allowed, so a search can drop a
    *  candidate before resolving the exact cell it would be reached at. A gate without it is asked per node. */
   mayAllowNear?(x: number, y: number, radius: number): boolean;
+  /** The walk the gate measures its area by, for a search that ranks its candidates by the walk to them;
+   *  null while it measures none. Asked per search: the answer holds until the next world write. */
+  walkLengths?(): WalkLengths | null;
 }
+
+/** The steps of the shortest walk from one node to each node a walk of bounded length reaches. */
+export interface WalkLengths {
+  readonly from: NodeId;
+  /** No walk it measures is longer. */
+  readonly maxSteps: number;
+  /** The steps to `node`, to a node no walk stands on from the nearest neighbour one does, when they are
+   *  at most `within`; else {@link NO_WALK} or the steps, so an asker that only needs a walk shorter than
+   *  one it holds spares the walk a longer search. */
+  stepsTo(node: NodeId, within?: number): number;
+}
+
+/** {@link WalkLengths.stepsTo} of a node no measured walk reaches: above every walk length. */
+export const NO_WALK = 0xffff;
 
 /**
  * The bounding {@link NodeBox} of a set of world-metric node circles. Under the anisotropic pitch a

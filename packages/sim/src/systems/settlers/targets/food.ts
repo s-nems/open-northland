@@ -127,9 +127,10 @@ export type MealTarget = (
  *    past its reach fails the need; here a meal still inside the walk reach is taken instead, a far
  *    larder on the same terms as a store.
  *
- * Project rule: each search ranks by Manhattan distance, then cell and entity id, where the original
- * takes the first hit of its resistance-weighted flood. Other families' larders and another player's
- * stocks stay private; a bush is anyone's, save one another forager is already walking to.
+ * Project rule: each search ranks by the walk the eater's confinement measures, else by Manhattan
+ * distance, then cell and entity id, where the original takes the first hit of its resistance-weighted
+ * flood. Other families' larders and another player's stocks stay private; a bush is anyone's, save one
+ * another forager is already walking to.
  */
 export function chooseMeal(
   targets: TargetCandidates,

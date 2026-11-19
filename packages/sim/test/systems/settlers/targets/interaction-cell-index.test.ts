@@ -4,8 +4,8 @@ import { contentIndex } from '../../../../src/core/content-index.js';
 import { GENERATION_JOURNAL_LIMIT } from '../../../../src/ecs/generation-journal.js';
 import type { Entity } from '../../../../src/ecs/world.js';
 import { ONE, positionOfNode, type Simulation } from '../../../../src/index.js';
-import { nodeHxOfPosition, nodeHyOfPosition } from '../../../../src/nav/halfcell.js';
-import type { SpatialGate } from '../../../../src/nav/node-circle.js';
+import { hexDistanceBetween, nodeHxOfPosition, nodeHyOfPosition } from '../../../../src/nav/halfcell.js';
+import { NO_WALK, type SpatialGate, type WalkLengths } from '../../../../src/nav/node-circle.js';
 import type { NodeId } from '../../../../src/nav/terrain/index.js';
 import {
   FILED_STRIDE,
@@ -54,6 +54,12 @@ const BOX_READS = 200;
 const BOX_SPAN = 120;
 /** A candidate list short enough for the index's linear scan. */
 const SHORT_LIST = 40;
+/** The synthetic walk's longest length, and the share of nodes it leaves unreached or sends on a detour. */
+const WALK_MAX_STEPS = 75;
+const WALK_UNREACHED_ONE_IN = 6;
+const WALK_DETOUR_SPAN = 30;
+/** One query in this many is asked again under the walk, to keep the suite's time. */
+const WALK_QUERY_EVERY = 3;
 
 /** A deterministic LCG, so a failure replays. */
 function rng(seed: number): (n: number) => number {
@@ -113,6 +119,26 @@ function boxGate(
   };
 }
 
+/**
+ * `gate` measuring a made-up walk from `here`: a node's length is its hex distance, the least a walk can
+ * take, plus a detour drawn from the node, and some nodes and every node past {@link WALK_MAX_STEPS} are
+ * left unreached. Scattered lengths, so a search that prunes
+ * by distance where the walk decides picks another winner than the linear scan.
+ */
+function walkGate(gate: SpatialGate, here: NodeId, xOf: (n: NodeId) => number, yOf: (n: NodeId) => number) {
+  const walk: WalkLengths = {
+    from: here,
+    maxSteps: WALK_MAX_STEPS,
+    stepsTo: (n) => {
+      if (n % WALK_UNREACHED_ONE_IN === 0) return NO_WALK;
+      const direct = hexDistanceBetween(xOf(here), yOf(here), xOf(n), yOf(n));
+      const steps = direct + ((n * 7919) % WALK_DETOUR_SPAN);
+      return steps > WALK_MAX_STEPS ? NO_WALK : steps;
+    },
+  };
+  return { gate: { ...gate, walkLengths: () => walk }, walk };
+}
+
 /** The linear scan every index query must match, over `candidates` in ascending id. */
 function linearWinner(
   sim: Simulation,
@@ -123,6 +149,7 @@ function linearWinner(
   avoid: ((cell: NodeId) => boolean) | undefined,
   onSide: ((e: Entity) => boolean) | undefined,
   rank: NodeId = here,
+  walk?: WalkLengths,
 ) {
   const terrain = terrainOf(sim);
   return nearestByCell(
@@ -138,6 +165,7 @@ function linearWinner(
       return { cell, payload: hit.payload };
     },
     onSide,
+    walk,
   );
 }
 
@@ -191,6 +219,34 @@ function checkQueries(
     const doors = candidates.filter((e) => sim.world.has(e, Building));
     expect(index.nearestDoor(here, accept, gate, avoid, onSide), `door query ${q}`).toEqual(
       linearWinner(sim, doors, here, accept, gate, avoid, onSide),
+    );
+
+    if (q % WALK_QUERY_EVERY !== 0) continue;
+    const everywhere = boxGate(0, nodesW - 1, 0, nodesH - 1, xOf, yOf);
+    const walked = walkGate(gate ?? everywhere, here, xOf, yOf);
+    const byWalk = (list: readonly Entity[]) =>
+      linearWinner(sim, list, here, accept, walked.gate, avoid, onSide, here, walked.walk);
+    expect(index.nearest(here, accept, walked.gate, avoid, onSide), `walk query ${q}`).toEqual(
+      byWalk(candidates),
+    );
+    expect(
+      index.nearestAmong(field, field.length, here, accept, walked.gate, avoid),
+      `narrowed walk query ${q}`,
+    ).toEqual(byWalk(candidates));
+    expect(index.nearestLoose(here, accept, walked.gate, avoid, onSide), `loose walk query ${q}`).toEqual(
+      byWalk(loose),
+    );
+    expect(index.nearestDoor(here, accept, walked.gate, avoid, onSide), `door walk query ${q}`).toEqual(
+      byWalk(doors),
+    );
+    expect(
+      index.rankedAmong(field, field.length, here, accept, walked.gate, avoid)[0] ?? null,
+      `ranked walk query ${q}`,
+    ).toEqual(byWalk(candidates));
+    // A walk measured from elsewhere than the ranking origin leaves the order by distance.
+    if (rank === here) continue;
+    expect(index.nearest(here, accept, walked.gate, avoid, onSide, rank), `off-origin query ${q}`).toEqual(
+      linearWinner(sim, candidates, here, accept, gate ?? everywhere, avoid, onSide, rank),
     );
   }
 }

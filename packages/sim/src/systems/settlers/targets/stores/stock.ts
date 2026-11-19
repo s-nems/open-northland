@@ -44,7 +44,7 @@ import { minimumBoundOwner, storageLendable, storageSurplus } from './storage-re
 import { yardOffsets } from './yard-layout.js';
 
 /**
- * The nearest store that can stock `goodType`, by Manhattan distance from `here` with the shared
+ * The nearest store that can stock `goodType`, by the index's length order from `here` with the shared
  * ascending-cell-id tie-break, or null when none can take it. A boat hull counts as a store.
  *
  * A workplace that produces `goodType` is never a delivery target for it: goods are hauled out of a
@@ -238,8 +238,8 @@ export function unclaimedGoodsAt(
 }
 
 /**
- * The nearest store that holds at least one unit of `goodType` and may be stripped of it, by Manhattan
- * distance from `here` with an ascending-cell-id tie-break, or null. The counter to
+ * The nearest store that holds at least one unit of `goodType` and may be stripped of it, by the index's
+ * length order from `here` with an ascending-cell-id tie-break, or null. The counter to
  * {@link nearestStoreFor}, which finds a store that can take a good. A from-scratch construction site,
  * a pile buried under a building's walls, and a workshop's own input reserve are excluded. An upgrade
  * site keeps its ordinary inventory available while its separate construction hold stays protected.

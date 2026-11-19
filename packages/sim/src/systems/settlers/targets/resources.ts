@@ -2,6 +2,7 @@ import { HarvestedBy, Position, Resource, Stockpile } from '../../../components/
 import { contentIndex } from '../../../core/content-index.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import { nodeHxOfPosition, nodeHyOfPosition } from '../../../nav/halfcell.js';
+import type { WalkLengths } from '../../../nav/node-circle.js';
 import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
 import { positionedStanceCells, resourceStanceCells } from '../../footprint/index.js';
 import { resourceApproachCells } from '../../footprint/interaction.js';
@@ -14,6 +15,7 @@ import {
   resourceBoxHoldsAll,
   resourcesNearNode,
 } from '../../spatial/resources.js';
+import { leastRankLength, rankLength, rankSweepRadius, walkRanking } from '../../spatial/walk-rank.js';
 import { lowestStockedGood } from '../../stores/index.js';
 import type { PlannerContext } from '../planner/context.js';
 import { type CellMatch, type NearestByCell, nearestByCell, precedes } from './cell-index.js';
@@ -35,8 +37,8 @@ export type HarvestSearchContext = Pick<
 };
 
 /**
- * The nearest {@link Resource} this settler may harvest, by Manhattan distance with an ascending-cell-id
- * tie-break, or null when none qualifies.
+ * The nearest {@link Resource} this settler may harvest, by {@link rankLength} with an ascending-cell-id
+ * tie-break, or null when none qualifies. A scan ranked from a flag stays on Manhattan distance.
  *
  * Approximation: a deposit a building was legally placed over is left un-mined when its work cell lands
  * on the buried anchor, and mined from the side when it does not.
@@ -73,6 +75,7 @@ export function nearestHarvestableFor(
   // probe set comes from the actual resources, so a node carrying an out-of-content atomic still gates.
   if (!anyHarvestAtomicPresent(world, allowed)) return null;
   const origin = area?.center ?? here;
+  const walk = walkRanking(gate, here, origin);
   const bound = area ?? within;
   const maxWorkOffset = contentIndex(ctx.content).maxResourceWorkOffset;
   // A work cell lies at most `maxWorkOffset` Manhattan nodes from its anchor, so an anchor farther than
@@ -140,7 +143,7 @@ export function nearestHarvestableFor(
       }
     }
     passes ??= collectorStanceGates(plan, bound);
-    const cell = nearestEligibleStance(plan, stances, passes, origin === here ? cap : undefined);
+    const cell = nearestEligibleStance(plan, stances, passes, origin === here ? cap : undefined, walk);
     if (cell === undefined) return null;
     return { cell, payload: null };
   };
@@ -150,21 +153,22 @@ export function nearestHarvestableFor(
     const scanned =
       opts.candidates ??
       (box === undefined ? targets.resources : resourcesNearNode(world, box.x, box.y, box.reach, allowed));
-    best = nearestByCell(terrain, scanned, origin, (e) => {
+    const inBound = (e: Entity): CellMatch<null> | null => {
       const p = world.tryGet(e, Position);
       if (p === undefined || !anchorInBound(nodeHxOfPosition(p.x, p.y), nodeHyOfPosition(p.x, p.y)))
         return null;
       return resolve(e);
-    });
+    };
+    best = nearestByCell(terrain, scanned, origin, inBound, undefined, walk);
   } else {
     const anchors = new AnchorRanking(terrain.xOf(origin), terrain.yOf(origin), maxWorkOffset, anchorInBound);
     if (opts.candidates !== undefined) {
-      best = anchors.addList(world, opts.candidates).fold(terrain, origin, null, resolve);
+      best = anchors.addList(world, opts.candidates).fold(terrain, origin, null, resolve, walk);
     } else if (box !== undefined) {
       forEachResourceNear(world, box.x, box.y, box.reach, anchors.add, allowed);
-      best = anchors.fold(terrain, origin, null, resolve);
+      best = anchors.fold(terrain, origin, null, resolve, walk);
     } else {
-      best = nearestInGrowingBoxes(world, terrain, origin, allowed, anchors, resolve);
+      best = nearestInGrowingBoxes(world, terrain, origin, allowed, anchors, resolve, walk);
     }
   }
   // No same-side gate: a standing Resource is never Owner-stamped, so the test would always pass.
@@ -172,8 +176,8 @@ export function nearestHarvestableFor(
 }
 
 /**
- * The nearest {@link GroundDrop} pile across `lists` whose good `pick` selects, with its Manhattan
- * distance. Every `targets.groundDrops` entry already carries GroundDrop+Stockpile+Position, so the scan
+ * The nearest {@link GroundDrop} pile across `lists` whose good `pick` selects, with its rank
+ * length. Every `targets.groundDrops` entry already carries GroundDrop+Stockpile+Position, so the scan
  * re-checks no markers. The good `pick` returns then faces the work-cell reachability, signpost and
  * sealed-pocket gates. Piles are resolved nearest node first under the scan's total order, so a pile
  * listed twice is harmless and the pick matches one scan over the lists' sorted union.
@@ -185,8 +189,9 @@ function nearestDropFor(
   within?: WorkBound,
 ): { pile: Entity; goodType: number; cell: NodeId; dist: number } | null {
   const { world, ctx, terrain, here } = plan;
+  const walk = walkRanking(plan.limit, here);
   let passes: ((cell: NodeId) => boolean) | undefined;
-  // Ranked from `here` as the stance is, so a stance past the best distance so far cannot win.
+  // Ranked from `here` as the stance is, so a stance past the best length so far cannot win.
   const resolve = (e: Entity, cap?: number): CellMatch<number> | null => {
     const good = pick(e);
     if (good === null) return null;
@@ -203,7 +208,13 @@ function nearestDropFor(
       );
       passes = (node) => stance(node) && (goods === null || goods.allowsNode(node));
     }
-    const cell = nearestEligibleStance(plan, positionedStanceCells(world, ctx, terrain, e), passes, cap);
+    const cell = nearestEligibleStance(
+      plan,
+      positionedStanceCells(world, ctx, terrain, e),
+      passes,
+      cap,
+      walk,
+    );
     if (cell === undefined) return null;
     return { cell, payload: good };
   };
@@ -223,14 +234,14 @@ function nearestDropFor(
     const piles = lists[i];
     if (piles !== undefined) anchors.addList(world, piles);
   }
-  const best = anchors.fold(terrain, here, null, resolve);
+  const best = anchors.fold(terrain, here, null, resolve, walk);
   return best === null
     ? null
     : { pile: best.entity, goodType: best.payload, cell: best.cell, dist: best.distance };
 }
 
 /**
- * The nearest ground drop a felling collector should carry off, with its Manhattan distance, or null.
+ * The nearest ground drop a felling collector should carry off, with its rank length, or null.
  * Scoped to keep it the collector's own-trade loop rather than a general porter drive: `GroundDrop` piles
  * only, never a delivery flag or a boat hull, and only a good the settler's job may harvest. Collecting
  * an already-dropped good applies no `needforgood` XP gate, since carrying a trunk is hauling.
@@ -354,16 +365,17 @@ class AnchorRanking {
     rank: NodeId,
     best: NearestByCell<P> | null,
     resolve: (e: Entity, cap?: number) => CellMatch<P> | null,
+    walk: WalkLengths | undefined,
   ): NearestByCell<P> | null {
     const keys = anchorKeys.subarray(0, this.count).sort();
     this.count = 0;
     for (let i = 0; i < keys.length; i++) {
       const key = keys[i] ?? 0;
       const e = (key % ENTITY_KEY_SPAN) as Entity;
-      if (best !== null && (key - e) / ENTITY_KEY_SPAN > best.distance) break;
+      if (best !== null && leastRankLength(walk, (key - e) / ENTITY_KEY_SPAN) > best.distance) break;
       const match = resolve(e, best?.distance);
       if (match === null) continue;
-      const distance = manhattan(terrain, rank, match.cell);
+      const distance = rankLength(walk, match.cell, manhattan(terrain, rank, match.cell), best?.distance);
       if (best === null || precedes(distance, match.cell, e, best))
         best = { entity: e, cell: match.cell, distance, payload: match.payload };
     }
@@ -386,6 +398,7 @@ function nearestInGrowingBoxes(
   atomics: ReadonlySet<number>,
   anchors: AnchorRanking,
   resolve: (e: Entity, cap?: number) => CellMatch<null> | null,
+  walk: WalkLengths | undefined,
 ): NearestByCell<null> | null {
   const ox = terrain.xOf(origin);
   const oy = terrain.yOf(origin);
@@ -394,8 +407,8 @@ function nearestInGrowingBoxes(
   let inner: number | undefined;
   for (let reach = FIRST_SEARCH_BOX_REACH; ; reach *= 2) {
     forEachResourceNear(world, ox, oy, reach, anchors.add, atomics, inner);
-    best = anchors.fold(terrain, origin, best, resolve);
-    if (best !== null && reach - maxWorkOffset >= best.distance) return best;
+    best = anchors.fold(terrain, origin, best, resolve, walk);
+    if (best !== null && reach - maxWorkOffset >= rankSweepRadius(walk, best.distance)) return best;
     if (resourceBoxHoldsAll(world, ox, oy, reach)) return best;
     inner = reach;
   }

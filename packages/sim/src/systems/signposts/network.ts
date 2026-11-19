@@ -2,6 +2,7 @@ import type { ContentSet } from '@open-northland/data';
 import {
   AssistantRecruit,
   CARRIER_WALK_RANGE_NODES,
+  CARRIER_WALK_ROUTE_STEPS,
   hasMissionBehaviour,
   MISSION_BEHAVIOUR,
   Owner,
@@ -11,6 +12,7 @@ import {
   Signpost,
   signpostNavigationEnabled,
   WALK_RANGE_NODES,
+  WALK_ROUTE_STEPS,
 } from '../../components/index.js';
 import { BIT_MASK, BITS_PER_WORD, WORD_SHIFT } from '../../core/bit-words.js';
 import { contentIndex } from '../../core/content-index.js';
@@ -25,13 +27,21 @@ import {
 import {
   hexNodeBox,
   inNodeBox,
+  NO_WALK,
   type NodeBox,
   type SpatialGate,
   unionNodeBoxes,
+  type WalkLengths,
 } from '../../nav/node-circle.js';
 import { NO_COMPONENT, type NodeId, type TerrainGraph } from '../../nav/terrain/index.js';
 import { isCarrierJobRow, isDruidJob, isFighterJob, isHunterJob, isScoutJob } from '../readviews/index.js';
-import { floodMayEnter, GenerationalCache, goodsSearchLimitAt, walkReachLimitAt } from './reach.js';
+import {
+  floodMayEnter,
+  GenerationalCache,
+  goodsSearchLimitAt,
+  type WalkReach,
+  walkReachLimitAt,
+} from './reach.js';
 
 /**
  * The per-player signpost network: which signposts stand where and which belong to one connected group,
@@ -279,7 +289,7 @@ export function navigationLimitFor(
  * Approximations: such a goal with no open ground beside it at all, and every goal while the spot itself
  * is one no walk starts from, are judged by distance, as {@link networkLimitAt} does.
  */
-class WalkConfinement implements NavigationLimit {
+class WalkConfinement implements NavigationLimit, WalkLengths {
   constructor(
     private readonly world: World,
     private readonly content: ContentSet,
@@ -292,13 +302,13 @@ class WalkConfinement implements NavigationLimit {
     readonly revision: number,
   ) {}
 
-  private reach: SpatialGate | null = null;
+  private reach: WalkReach | null = null;
   private askedAt = -1;
   private innerBounds: NodeBox = EMPTY_BOX;
   private widened: NodeBox = EMPTY_BOX;
 
   /** The spot's walk reach, asked again only after a world write: no reach moves without one. */
-  private walk(): SpatialGate | null {
+  private walk(): WalkReach | null {
     const version = this.world.mutationVersion;
     if (version !== this.askedAt) {
       const { world, content, terrain, player, hx, hy, carrier } = this;
@@ -347,6 +357,26 @@ class WalkConfinement implements NavigationLimit {
 
   mayAllowNear(x: number, y: number, radius: number): boolean {
     return (this.walk() ?? this.byDistance())?.mayAllowNear?.(x, y, radius + 1) ?? true;
+  }
+
+  /** Itself while a walk starts from the spot; a spot judged by distance measures none. */
+  walkLengths(): WalkLengths | null {
+    return this.walk() === null ? null : this;
+  }
+
+  get from(): NodeId {
+    return this.terrain.nodeAtClamped(this.hx, this.hy);
+  }
+
+  get maxSteps(): number {
+    return this.carrier ? CARRIER_WALK_ROUTE_STEPS : WALK_ROUTE_STEPS;
+  }
+
+  /** The steps of the spot's own walk, so a goal reached only through a signpost group has no length. */
+  stepsTo(node: NodeId, within = NO_WALK): number {
+    const walk = this.walk();
+    if (walk === null) return NO_WALK;
+    return walk.ownWalkSteps(this.terrain.xOf(node), this.terrain.yOf(node), within);
   }
 }
 

@@ -4,6 +4,8 @@ import { HarvestedBy, Position, Resource } from '../../../../src/components/inde
 import { contentIndex } from '../../../../src/core/content-index.js';
 import type { Entity } from '../../../../src/ecs/world.js';
 import { type NodeId, positionOfNode, Simulation } from '../../../../src/index.js';
+import { hexDistanceBetween } from '../../../../src/nav/halfcell.js';
+import { NO_WALK, type WalkLengths } from '../../../../src/nav/node-circle.js';
 import { stampResourceFootprintData } from '../../../../src/systems/index.js';
 import { dropGroundPile } from '../../../../src/systems/settlers/atomics/effects/goods/piles.js';
 import type { PlannerContext } from '../../../../src/systems/settlers/planner/context.js';
@@ -253,6 +255,27 @@ describe('harvest scan sources', () => {
   const SMALL_GATE = { min: 20, span: 40 };
   const WIDE_GATE = { min: 150, span: 100 };
   const AREA_RADIUS = { min: 10, span: 60 };
+  /** The made-up walk's longest length, and the share of nodes it leaves unreached or sends on a detour. */
+  const WALK_MAX_STEPS = 94;
+  const WALK_UNREACHED_ONE_IN = 6;
+  const WALK_DETOUR_SPAN = 30;
+
+  /** A walk from `here` whose lengths scatter over the hex distance, the least a walk can take, so a
+   *  search that prunes by distance where the walk decides misses the full scan's winner. */
+  function walkFrom(here: NodeId): () => WalkLengths {
+    const [hx, hy] = [here % WIDE_W, Math.floor(here / WIDE_W)];
+    const walk: WalkLengths = {
+      from: here,
+      maxSteps: WALK_MAX_STEPS,
+      stepsTo: (n) => {
+        if (n % WALK_UNREACHED_ONE_IN === 0) return NO_WALK;
+        const direct = hexDistanceBetween(hx, hy, n % WIDE_W, Math.floor(n / WIDE_W));
+        const steps = direct + ((n * 7919) % WALK_DETOUR_SPAN);
+        return steps > WALK_MAX_STEPS ? NO_WALK : steps;
+      },
+    };
+    return () => walk;
+  }
 
   it.each([1])(
     'the growing-box, region-box and list searches pick the full scan winner (seed %i)',
@@ -286,7 +309,9 @@ describe('harvest scan sources', () => {
             const y = Math.floor(cell / WIDE_W);
             return x >= bounds.minX && x <= bounds.maxX && y >= bounds.minY && y <= bounds.maxY;
           };
-          plan = { ...plan, limit: { bounds, allowsNode } };
+          // Every other gate measures a walk, so the same searches also run under the walk's order.
+          const limit = { bounds, allowsNode };
+          plan = { ...plan, limit: q % 2 === 0 ? limit : { ...limit, walkLengths: walkFrom(here) } };
         }
         const area =
           roll(4) === 0

@@ -72,7 +72,7 @@ export class RepairCrews {
  *  clip its segments are raised with. */
 export function startRepair(plan: PlannerContext, spacing: PlannerSpacing, site: Entity): boolean {
   const { world, ctx, terrain, entity: e, here } = plan;
-  const stand = claimWorkCell(world, terrain, e, here, site, spacing);
+  const stand = claimWorkCell(world, terrain, e, here, site, spacing, plan.limit);
   if (stand === null) return false;
   const atomic = world.has(site, Palisade) ? BUILD_WALL_ATOMIC_ID : BUILD_HOUSE_ATOMIC_ID;
   atOrWalk(world, e, here, stand, () =>

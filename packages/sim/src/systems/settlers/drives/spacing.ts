@@ -1,6 +1,7 @@
 import { MoveGoal, Owner, Residence, Stance } from '../../../components/index.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import { hasOpenSide } from '../../../nav/nearest.js';
+import type { SpatialGate } from '../../../nav/node-circle.js';
 import { ringSearch, STAND_SEARCH_CAP } from '../../../nav/ring-search.js';
 import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
 import type { SystemContext } from '../../context.js';
@@ -8,6 +9,7 @@ import { builtHomeType } from '../../family/households.js';
 import { moveAnchor } from '../../orders/combat.js';
 import { nearestCell } from '../../spatial/metric.js';
 import { entityNode } from '../../spatial/nodes.js';
+import { nearestRankedCell, walkRanking } from '../../spatial/walk-rank.js';
 import { PlannerSpacing } from '../planner/spacing.js';
 import { interactionCell } from '../targets/index.js';
 
@@ -119,9 +121,10 @@ export function stepOffHomeDoor(
 }
 
 /**
- * Claim the nearest free perimeter cell for a construction worker. A worker already alone on a legal cell
- * stays there between swings; otherwise `(distance, node id)` chooses deterministically, and a full perimeter
- * falls back to stacking on its nearest legal cell rather than aiming inside the building body.
+ * Claim the nearest free perimeter cell for a construction worker, by the walk `limit` measures from
+ * `here` or else by Manhattan distance. A worker already alone on a legal cell stays there between swings;
+ * otherwise `(length, node id)` chooses deterministically, and a full perimeter falls back to stacking on
+ * its nearest legal cell rather than aiming inside the building body.
  */
 export function claimWorkCell(
   world: World,
@@ -130,16 +133,18 @@ export function claimWorkCell(
   here: NodeId,
   site: Entity,
   spacing: PlannerSpacing,
+  limit: SpatialGate | null,
 ): NodeId | null {
   const cells = spacing.workCells(site);
   if (cells.length === 0) return null;
   if (!world.has(e, Owner)) return nearestCell(terrain, cells, here);
+  const walk = walkRanking(limit, here);
   if (cells.includes(here)) {
     const hereXY = terrain.coordsOf(here);
     const bucket = spacing.occupancy.at(hereXY.x, hereXY.y);
     if (bucket.length === 0 || (bucket.length === 1 && bucket[0] === e)) return here;
   }
-  const free = nearestCell(terrain, cells, here, (cell) => {
+  const free = nearestRankedCell(terrain, walk, cells, here, (cell) => {
     if (spacing.isClaimed(cell)) return false;
     const { x, y } = terrain.coordsOf(cell);
     return spacing.occupancy.at(x, y).length === 0;
@@ -148,7 +153,7 @@ export function claimWorkCell(
     spacing.claim(free);
     return free;
   }
-  return nearestCell(terrain, cells, here);
+  return nearestRankedCell(terrain, walk, cells, here);
 }
 
 /**

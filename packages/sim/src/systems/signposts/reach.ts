@@ -4,9 +4,10 @@ import type { ChangeFeed } from '../../ecs/change-feed.js';
 import type { Entity, World } from '../../ecs/world.js';
 import { type TileBox, TileBuckets } from '../../inspect/tile-buckets.js';
 import { hexDistanceBetween } from '../../nav/halfcell.js';
-import type { NodeBox, SpatialGate } from '../../nav/node-circle.js';
-import { type ReachArea, reachBox, reachContains } from '../../nav/range-search.js';
+import { NO_WALK, type NodeBox, type SpatialGate } from '../../nav/node-circle.js';
+import { type ReachArea, type ReachSearch, reachBox, reachContains } from '../../nav/range-search.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
+import { walkStepsBetween } from '../../nav/walk-steps.js';
 import { interactionNode } from '../footprint/interaction.js';
 import { GroupCoverage } from './group-coverage.js';
 import { type SignpostSite, signpostNetwork, signpostNetworkRevision, spotKey } from './network.js';
@@ -23,6 +24,7 @@ import {
   terrainReach,
   WALK_REACH_SHAPE,
 } from './terrain-reach.js';
+import { walkLengthTo } from './walk-length.js';
 
 /** What a cache's answers depend on beyond the terrain: the walk-block mask version, the mirrored road
  *  revision, the signpost network revision and the door revision. */
@@ -309,7 +311,7 @@ export function goodsReachAt(
   hx: number,
   hy: number,
 ): ReachArea {
-  return spotReachAt(world, content, terrain, hx, hy, GOODS_SEARCH_SHAPE);
+  return spotReachAt(world, content, terrain, hx, hy, GOODS_SEARCH_SHAPE).area;
 }
 
 /** The search of `shape` from the spot itself, held per spot and shape. */
@@ -320,12 +322,12 @@ function spotReachAt(
   hx: number,
   hy: number,
   shape: ReachShape,
-): ReachArea {
+): ReachSearch {
   const cache = cacheOf(world, content, terrain);
   const key = spotKey(terrain, shape.id, hx, hy);
   const held = key === null ? undefined : cache.spots.get(key);
   const found = terrainReach(world, content, terrain, hx, hy, shape.own, held);
-  if (key === null) return found.area;
+  if (key === null) return found;
   // Re-inserted on every read, so the map runs least recently asked first and eviction drops the oldest.
   if (held !== undefined) cache.spots.delete(key);
   else if (cache.spots.size >= SPOT_REACH_CAP) {
@@ -335,7 +337,7 @@ function spotReachAt(
     }
   }
   cache.spots.set(key, found);
-  return found.area;
+  return found;
 }
 
 function postReach(
@@ -381,7 +383,7 @@ export function walkReachLimitAt(
   hx: number,
   hy: number,
   carrier: boolean,
-): SpatialGate | null {
+): WalkReach | null {
   if (!floodMayEnter(world, content, terrain, hx, hy)) return null;
   const shape = carrier ? CARRIER_WALK_REACH_SHAPE : WALK_REACH_SHAPE;
   return reachLimitAt(world, content, terrain, player, hx, hy, shape);
@@ -404,6 +406,17 @@ export function floodMayEnter(
     !signpostMask(world, content, terrain).has(node)
   );
 }
+
+/** A walk reach that also tells how long the walk from its spot is. */
+export interface WalkReach extends SpatialGate {
+  /** The steps of the spot's own walk to `(x, y)` when at most `within`, else {@link NO_WALK}: a node
+   *  reached only through a signpost group has no length. */
+  ownWalkSteps(x: number, y: number, within: number): number;
+}
+
+/** Nodes a search for one walk length settles before the spot's own flood answers instead: a walk round
+ *  an obstacle, or none at all. Performance knob: both give the same length. */
+const WALK_SEARCH_MAX_SETTLED = 1024;
 
 function reachLimitAt(
   world: World,
@@ -497,7 +510,8 @@ export function goodsSearchCatchAt(
  * A spot's goods search or walk reach under a {@link ReachShape}: its own terrain search plus the signpost
  * groups that search reaches. A caught post lies strictly inside the catch range, so a node outside the
  * own range and outside every group with a post inside the catch range passes under no search result.
- * The own search floods only for a node inside the range that no caught group covers.
+ * The own search floods only for a node inside the range that no caught group covers, or for a walk
+ * length a search towards the node leaves undecided.
  *
  * Whether a group is caught is read off its posts' held floods: the own flood marks post `p` exactly when
  * `p`'s flood marks the spot, while both nodes are unblocked with nonzero resistance. A flood marks a
@@ -508,11 +522,11 @@ export function goodsSearchCatchAt(
  * A limit answers only under the reach key it was built under: asked after that key moved, it throws
  * rather than mix two worlds, since a client restored from a snapshot would resolve it differently.
  */
-class ReachLimit implements SpatialGate {
+class ReachLimit implements WalkReach {
   /** Per nearby group, whether the own search catches it, once asked; made on the first ask, since most
    *  rebased limits are never asked. */
   private caught: Uint8Array | undefined;
-  private local: ReachArea | undefined;
+  private local: ReachSearch | undefined;
   /** The reach versions and epoch the limit was built under, and the world mutation version it was last
    *  confirmed at. */
   private readonly versions: ReachVersions;
@@ -556,12 +570,12 @@ class ReachLimit implements SpatialGate {
     const y = this.spot.terrain.yOf(node);
     const inRange = hexDistanceBetween(this.spot.hx, this.spot.hy, x, y) < this.spot.shape.own.range;
     if (!inRange && !this.nearbyCovers(x, y)) return false;
-    if (this.local !== undefined && reachContains(this.local, x, y)) return true;
+    if (this.local !== undefined && reachContains(this.local.area, x, y)) return true;
     const nearby = this.spot.groups.nearby;
     for (let i = 0; i < nearby.length; i++)
       if ((nearby[i] as GroupCoverage).covers(x, y, this.epoch) && this.catches(i)) return true;
     // The own flood marks nothing outside the hex range.
-    return inRange && reachContains(this.ownSearch(), x, y);
+    return inRange && reachContains(this.ownSearch().area, x, y);
   }
 
   /** The flood-free half of {@link allowsNode}: inside the hex range or under a caught group. */
@@ -611,7 +625,22 @@ class ReachLimit implements SpatialGate {
     this.confirmedAt = version;
   }
 
-  private ownSearch(): ReachArea {
+  /** Read off the own flood when it is at hand, else searched for towards the node, which on open ground
+   *  costs a walk's length where the flood costs its whole area. */
+  ownWalkSteps(x: number, y: number, within: number): number {
+    this.confirmKey();
+    const { world, content, terrain, hx, hy, shape } = this.spot;
+    const asked = Math.min(within, shape.own.budget);
+    if (this.local === undefined) {
+      const blocked = signpostMask(world, content, terrain).levelled();
+      const found = walkStepsBetween(terrain, blocked, hx, hy, x, y, asked, WALK_SEARCH_MAX_SETTLED);
+      if (found !== undefined) return found;
+    }
+    const steps = walkLengthTo(this.ownSearch().costs, x, y);
+    return steps > asked ? NO_WALK : steps;
+  }
+
+  private ownSearch(): ReachSearch {
     this.local ??= spotReachAt(
       this.spot.world,
       this.spot.content,
@@ -641,7 +670,7 @@ class ReachLimit implements SpatialGate {
         }
       }
     } else {
-      const local = this.ownSearch();
+      const local = this.ownSearch().area;
       caught = posts.some((p) => reachContains(local, p.hx, p.hy));
     }
     this.caught[i] = caught ? CAUGHT : MISSED;

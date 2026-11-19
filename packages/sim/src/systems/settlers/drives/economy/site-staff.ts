@@ -25,7 +25,7 @@ export function planSiteStaff(
   const site = boundConstructionSite(plan);
   if (site === null) return false;
   if (fetchNeededMaterial(plan, spacing, site)) return true;
-  const stand = claimWorkCell(world, terrain, e, here, site, spacing);
+  const stand = claimWorkCell(world, terrain, e, here, site, spacing, plan.limit);
   if (stand === null) deStackIdle(world, ctx, terrain, e, hx, hy, spacing);
   else atOrWalk(world, e, here, stand, () => {});
   return true;

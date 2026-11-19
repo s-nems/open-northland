@@ -1,7 +1,9 @@
 import { hexDistanceBetween } from '../../../nav/halfcell.js';
+import type { WalkLengths } from '../../../nav/node-circle.js';
 import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
 import { dynamicBlockOverlay, routeRegions } from '../../footprint/index.js';
 import { manhattan } from '../../spatial/metric.js';
+import { leastRankLengthTo, rankLength } from '../../spatial/walk-rank.js';
 import type { PlannerContext } from '../planner/context.js';
 import { isUnreachableGoal, unreachableGoals } from '../unreachable-goals.js';
 
@@ -50,25 +52,30 @@ export function collectorStanceGates(
       !regions.unroutable(here, cell));
 }
 
-/** Select the closest eligible approach without consuming the harvest stance draw. `passes` is pure, so
- *  it runs only for a cell nearer than the best so far. */
+/** Select the closest eligible approach without consuming the harvest stance draw, by Manhattan distance
+ *  from `here` or by the steps of `walk`. `passes` is pure, so it runs only for a cell that may come nearer
+ *  than the best so far. */
 export function nearestEligibleStance(
   plan: Pick<PlannerContext, 'terrain' | 'here'>,
   pool: readonly NodeId[],
   passes: (cell: NodeId) => boolean,
-  /** Skip every cell farther than this Manhattan distance from `here`. */
-  maxDistance = Number.POSITIVE_INFINITY,
+  /** Skip every cell ranking past this length from `here`. */
+  maxLength = Number.POSITIVE_INFINITY,
+  walk?: WalkLengths,
 ): NodeId | undefined {
   let best: NodeId | undefined;
-  let distance = maxDistance;
+  let length = maxLength;
   for (let i = 0; i < pool.length; i++) {
     const cell = pool[i];
     if (cell === undefined) continue;
-    const d = manhattan(plan.terrain, plan.here, cell);
-    if (d > distance || (d === distance && best !== undefined && cell >= best)) continue;
+    const span = manhattan(plan.terrain, plan.here, cell);
+    const least = leastRankLengthTo(plan.terrain, walk, cell, span);
+    if (least > length || (least === length && best !== undefined && cell >= best)) continue;
     if (!passes(cell)) continue;
+    const exact = rankLength(walk, cell, span, length);
+    if (exact > length || (exact === length && best !== undefined && cell >= best)) continue;
     best = cell;
-    distance = d;
+    length = exact;
   }
   return best;
 }

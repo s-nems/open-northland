@@ -14,7 +14,7 @@ export const TEMPLE_PREFERRED_RANGE = 40;
 /**
  * Where a devout settler with no holy fire at home walks to pray: the nearest of its player's finished
  * temples, unless it lies beyond {@link TEMPLE_PREFERRED_RANGE} and a headquarters is no farther. The
- * candidates are ranked by this index's Manhattan distance with the shared ascending-cell-id tie-break and
+ * candidates are ranked by this index's length order with the shared ascending-cell-id tie-break and
  * compared in map points, an approximation of the original's hex-distance search on the settler's own
  * continent. Null when neither is found. `gate` is the settler's signpost confinement: a site outside its
  * allowed area is not one it knows the way to.
@@ -55,7 +55,7 @@ function mapPointsBetween(terrain: TerrainGraph, a: NodeId, b: NodeId): number {
 
 /**
  * The nearest site in `index` a builder should work - a foundation to raise or a damaged building to
- * mend - by Manhattan distance from `here` with the shared ascending-cell-id tie-break, or null when the
+ * mend - by the index's length order from `here` with the shared ascending-cell-id tie-break, or null when the
  * side has none. The side decides, not the nation: a script may hand a seat another nation's foundation.
  */
 export function nearestBuilderSite(

@@ -422,14 +422,15 @@ export function unionReachAreas(areas: readonly ReachArea[]): ReachArea {
 export function intersectReach(a: SpatialGate | undefined, b: SpatialGate | null): SpatialGate | undefined {
   if (b === null) return a;
   if (a === undefined || a === b) return b;
-  const intersection: SpatialGate = {
+  const near = a.mayAllowNear !== undefined || b.mayAllowNear !== undefined;
+  const walked = a.walkLengths !== undefined ? a : b.walkLengths !== undefined ? b : undefined;
+  return {
     bounds: b.bounds,
     allowsNode: (node) => a.allowsNode(node) && b.allowsNode(node),
-  };
-  if (a.mayAllowNear === undefined && b.mayAllowNear === undefined) return intersection;
-  return {
-    ...intersection,
-    mayAllowNear: (x, y, radius) =>
-      (a.mayAllowNear?.(x, y, radius) ?? true) && (b.mayAllowNear?.(x, y, radius) ?? true),
+    ...(near && {
+      mayAllowNear: (x: number, y: number, radius: number) =>
+        (a.mayAllowNear?.(x, y, radius) ?? true) && (b.mayAllowNear?.(x, y, radius) ?? true),
+    }),
+    ...(walked !== undefined && { walkLengths: () => walked.walkLengths?.() ?? null }),
   };
 }

@@ -630,7 +630,7 @@ function startHammer(
 ): boolean {
   const { world, ctx, terrain, entity: e, here } = plan;
   if (!claims.hasHammerWork(site)) return false;
-  const stand = claimWorkCell(world, terrain, e, here, site, spacing);
+  const stand = claimWorkCell(world, terrain, e, here, site, spacing, plan.limit);
   if (stand === null || !claims.claimHammer(site)) return false;
   const buildAtomic = world.has(site, Palisade)
     ? BUILD_WALL_ATOMIC_ID
@@ -652,7 +652,7 @@ function startHammer(
 
 function waitAtSite(plan: PlannerContext, spacing: PlannerSpacing, site: Entity): void {
   const { world, terrain, entity: e, here } = plan;
-  const stand = claimWorkCell(world, terrain, e, here, site, spacing);
+  const stand = claimWorkCell(world, terrain, e, here, site, spacing, plan.limit);
   if (stand !== null) atOrWalk(world, e, here, stand, () => {});
 }
 
