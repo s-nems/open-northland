@@ -1,7 +1,7 @@
 import type { ContentSet } from '@open-northland/data';
 import type { World } from '../../ecs/world.js';
 import { type NodeBox, unionNodeBoxes } from '../../nav/node-circle.js';
-import { type ReachArea, reachBox } from '../../nav/range-search.js';
+import { type ReachArea, reachBox, reachContains } from '../../nav/range-search.js';
 import type { TerrainGraph } from '../../nav/terrain/index.js';
 import type { WalkBlockMask } from '../footprint/walk-block-mask.js';
 import type { SignpostSite } from './network.js';
@@ -9,7 +9,7 @@ import { ChangedNodeList, postTerrainReach, type ReachSpan, signpostMask } from 
 
 /** Nodes per side of the blocks a coverage re-checks its posts by. */
 const COVERAGE_BLOCK_NODES = 16;
-/** The epoch reading of a post or block never checked. */
+/** The epoch reading of a coverage never scanned. */
 const UNCHECKED = -1;
 /** Per post, the four bounds of the box its held search read. */
 const BOX_FIELDS = 4;
@@ -18,34 +18,25 @@ const MAX_X = 1;
 const MIN_Y = 2;
 const MAX_Y = 3;
 
-function sameBox(a: ReachArea, b: ReachArea): boolean {
-  return a.minX === b.minX && a.maxX === b.maxX && a.minY === b.minY && a.maxY === b.maxY;
-}
-
 /** The union of the fresh posts' read boxes a scan lists changes over. */
 const scanArea = { minHx: 0, maxHx: 0, minHy: 0, maxHy: 0 };
 /** The changes a scan lists and then marks its posts by. */
 const scanChanges = new ChangedNodeList();
 
 /**
- * A signpost group's coverage under one span: the nodes some post's search of that span marks. It keeps each post's
- * search and, per node, how many of those searches mark it. Asked about a node, it re-checks only the
- * posts whose search box meets that node's block, once per reach epoch, so a node's count is exact
- * whatever the other posts hold, and a post whose search changed costs its own area, not a new union.
- * Once per epoch it lists the nodes changed since its previous scan over the boxes its held searches
- * read, and asks again only the posts a change met: a search none met answers as it did.
+ * A signpost group's coverage under one span: the nodes some post's search of that span marks. It keeps
+ * each post's search and asks a node of the posts whose search box meets the node's block, searching
+ * again only until one marks it, so a post nobody asks beyond is never searched. Once per epoch it lists
+ * the nodes changed since its previous scan over the boxes its held searches read, and searches again
+ * only the posts a change met: a search none met answers as it did.
  */
 export class GroupCoverage {
   /** The union of the posts' search boxes, whatever the searches mark. */
   readonly bounds: NodeBox;
-  private readonly width: number;
-  private readonly counts: Uint16Array;
   private readonly held: (ReachArea | undefined)[];
-  private readonly postCheckedAt: Float64Array;
   private readonly blockColumns: number;
   /** Per block, the posts whose search box meets it. */
   private readonly blockPosts: number[][];
-  private readonly blockCheckedAt: Float64Array;
   /** Per post, whether a change may have met its held search since it was asked. */
   private readonly stale: Uint8Array;
   private readonly readBoxes: Int32Array;
@@ -66,17 +57,14 @@ export class GroupCoverage {
     const boxes = posts.map((p) => reachBox(terrain, p.hx, p.hy, range));
     this.bounds = unionNodeBoxes(boxes);
     const { minX, maxX, minY, maxY } = this.bounds;
-    this.width = Math.max(0, maxX - minX + 1);
+    const width = Math.max(0, maxX - minX + 1);
     const height = Math.max(0, maxY - minY + 1);
-    this.counts = new Uint16Array(this.width * height);
     this.held = posts.map(() => undefined);
-    this.postCheckedAt = new Float64Array(posts.length).fill(UNCHECKED);
     this.stale = new Uint8Array(posts.length);
     this.readBoxes = new Int32Array(BOX_FIELDS * posts.length);
-    this.blockColumns = Math.ceil(this.width / COVERAGE_BLOCK_NODES);
+    this.blockColumns = Math.ceil(width / COVERAGE_BLOCK_NODES);
     const blockRows = Math.ceil(height / COVERAGE_BLOCK_NODES);
     this.blockPosts = Array.from({ length: this.blockColumns * blockRows }, () => []);
-    this.blockCheckedAt = new Float64Array(this.blockPosts.length).fill(UNCHECKED);
     boxes.forEach((box, i) => {
       if (box.minX > box.maxX || box.minY > box.maxY) return;
       const lastRow = Math.floor((box.maxY - minY) / COVERAGE_BLOCK_NODES);
@@ -99,12 +87,25 @@ export class GroupCoverage {
     const block =
       Math.floor((y - minY) / COVERAGE_BLOCK_NODES) * this.blockColumns +
       Math.floor((x - minX) / COVERAGE_BLOCK_NODES);
-    if (this.blockCheckedAt[block] !== epoch) {
-      this.scan(epoch);
-      for (const i of this.blockPosts[block] as number[]) this.checkPost(i, epoch);
-      this.blockCheckedAt[block] = epoch;
+    this.scan(epoch);
+    const posts = this.blockPosts[block] as number[];
+    let unasked = false;
+    for (let k = 0; k < posts.length; k++) {
+      const held = this.current(posts[k] as number);
+      if (held === undefined) unasked = true;
+      else if (reachContains(held, x, y)) return true;
     }
-    return this.counts[(y - minY) * this.width + x - minX] !== 0;
+    if (!unasked) return false;
+    for (let k = 0; k < posts.length; k++) {
+      const i = posts[k] as number;
+      if (this.current(i) === undefined && reachContains(this.ask(i), x, y)) return true;
+    }
+    return false;
+  }
+
+  /** Post `i`'s held search when no change met it since it was asked. */
+  private current(i: number): ReachArea | undefined {
+    return this.stale[i] === 0 ? this.held[i] : undefined;
   }
 
   /** Mark stale every held post a node changed since the previous scan may have met. */
@@ -166,11 +167,8 @@ export class GroupCoverage {
     }
   }
 
-  private checkPost(i: number, epoch: number): void {
-    if (this.postCheckedAt[i] === epoch) return;
-    this.postCheckedAt[i] = epoch;
-    const held = this.held[i];
-    if (held !== undefined && this.stale[i] === 0) return;
+  /** Search post `i` again and hold the result. */
+  private ask(i: number): ReachArea {
     const post = this.posts[i] as SignpostSite;
     const { world, content, terrain, span } = this;
     const found = postTerrainReach(world, content, terrain, post.entity, post.hx, post.hy, span);
@@ -180,46 +178,7 @@ export class GroupCoverage {
     this.readBoxes[at + MAX_X] = found.searched.maxHx;
     this.readBoxes[at + MIN_Y] = found.searched.minHy;
     this.readBoxes[at + MAX_Y] = found.searched.maxHy;
-    if (found.area === held) return;
-    if (held !== undefined && sameBox(held, found.area)) this.recount(held, found.area);
-    else {
-      if (held !== undefined) this.count(held, -1);
-      this.count(found.area, 1);
-    }
     this.held[i] = found.area;
-  }
-
-  /** Move the counts from `was` to `now` over the box both share, touching only the cells that moved: a
-   *  repaired search keeps its box and moves a few marks. */
-  private recount(was: ReachArea, now: ReachArea): void {
-    const areaWidth = now.maxX - now.minX + 1;
-    const { minX, minY } = this.bounds;
-    const counts = this.counts;
-    const before = was.cells;
-    const after = now.cells;
-    for (let y = now.minY; y <= now.maxY; y++) {
-      const from = (y - now.minY) * areaWidth;
-      const to = (y - minY) * this.width + now.minX - minX;
-      for (let x = 0; x < areaWidth; x++) {
-        const moved = (after[from + x] as number) - (before[from + x] as number);
-        if (moved !== 0) counts[to + x] = (counts[to + x] as number) + moved;
-      }
-    }
-  }
-
-  /** Add `sign` times each node `area` marks to the counts. */
-  private count(area: ReachArea, sign: number): void {
-    const areaWidth = area.maxX - area.minX + 1;
-    const { minX, minY } = this.bounds;
-    const counts = this.counts;
-    const cells = area.cells;
-    for (let y = area.minY; y <= area.maxY; y++) {
-      const from = (y - area.minY) * areaWidth;
-      const to = (y - minY) * this.width + area.minX - minX;
-      // A returned reach area holds only 0 or MARKED (1), since a flood clears its WANTED targets before
-      // returning (`nav/range-search.ts`), so the product is the change without a branch per cell.
-      for (let x = 0; x < areaWidth; x++)
-        counts[to + x] = (counts[to + x] as number) + sign * (cells[from + x] as number);
-    }
+    return found.area;
   }
 }

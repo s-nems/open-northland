@@ -123,6 +123,8 @@ interface Doors {
   /** What the last read resolved doors against; the verifier re-derives with the same pair. */
   content: ContentSet;
   terrain: TerrainGraph;
+  /** Brings one building's entry in line with the world. */
+  readonly refresh: (id: Entity) => void;
 }
 const doorCaches = new WeakMap<World, Doors>();
 function doorsOf(world: World, content: ContentSet, terrain: TerrainGraph): Doors {
@@ -137,6 +139,7 @@ function doorsOf(world: World, content: ContentSet, terrain: TerrainGraph): Door
       revision: 0,
       content,
       terrain,
+      refresh: (id) => refreshDoor(world, made, id),
     };
     made.feed.lose();
     doorCaches.set(world, made);
@@ -145,40 +148,42 @@ function doorsOf(world: World, content: ContentSet, terrain: TerrainGraph): Door
   }
   held.content = content;
   held.terrain = terrain;
-  const state = held;
-  const update = (id: Entity): void => {
-    const old = state.entries.get(id);
-    const drop = (): void => {
-      if (old === undefined) return;
-      state.entries.delete(id);
-      state.byPlayer.get(old.player)?.delete(id);
-      state.revision++;
-    };
-    if (!world.has(id, Building)) {
-      drop();
-      return;
-    }
-    const player = world.tryGet(id, Owner)?.player;
-    const door = interactionNode(world, { content, terrain }, id);
-    if (player === undefined || door === null) {
-      drop();
-    } else if (old?.player !== player || old.hx !== door.x || old.hy !== door.y) {
-      if (old !== undefined && old.player !== player) state.byPlayer.get(old.player)?.delete(id);
-      state.entries.set(id, { player, hx: door.x, hy: door.y });
-      let buckets = state.byPlayer.get(player);
-      if (buckets === undefined) {
-        buckets = new TileBuckets();
-        state.byPlayer.set(player, buckets);
-      }
-      buckets.set(id, id, door.x / 2, door.y / 2);
-      state.revision++;
-    }
-  };
-  if (state.feed.drain(update)) {
-    const ids = new Set([...state.entries.keys(), ...world.query(Building, Position, Owner)]);
-    for (const id of ids) update(id);
+  if (held.feed.drain(held.refresh)) {
+    const ids = new Set([...held.entries.keys(), ...world.query(Building, Position, Owner)]);
+    for (const id of ids) held.refresh(id);
   }
-  return state;
+  return held;
+}
+
+function dropDoor(doors: Doors, id: Entity, old: DoorEntry | undefined): void {
+  if (old === undefined) return;
+  doors.entries.delete(id);
+  doors.byPlayer.get(old.player)?.delete(id);
+  doors.revision++;
+}
+
+/** Bring `id`'s entry in line with the world. */
+function refreshDoor(world: World, doors: Doors, id: Entity): void {
+  const old = doors.entries.get(id);
+  if (!world.has(id, Building)) {
+    dropDoor(doors, id, old);
+    return;
+  }
+  const player = world.tryGet(id, Owner)?.player;
+  const door = interactionNode(world, { content: doors.content, terrain: doors.terrain }, id);
+  if (player === undefined || door === null) {
+    dropDoor(doors, id, old);
+  } else if (old?.player !== player || old.hx !== door.x || old.hy !== door.y) {
+    if (old !== undefined && old.player !== player) doors.byPlayer.get(old.player)?.delete(id);
+    doors.entries.set(id, { player, hx: door.x, hy: door.y });
+    let buckets = doors.byPlayer.get(player);
+    if (buckets === undefined) {
+      buckets = new TileBuckets();
+      doors.byPlayer.set(player, buckets);
+    }
+    buckets.set(id, id, door.x / 2, door.y / 2);
+    doors.revision++;
+  }
 }
 
 /** Every owned building's door must match its entry unless a change of it awaits the next read. */
@@ -600,7 +605,6 @@ class ReachLimit implements WalkReach {
     const x = this.spot.terrain.xOf(node);
     const y = this.spot.terrain.yOf(node);
     const inRange = hexDistanceBetween(this.spot.hx, this.spot.hy, x, y) < this.spot.shape.own.range;
-    if (!inRange && !this.nearbyCovers(x, y)) return false;
     if (this.local !== undefined && reachContains(this.local.area, x, y)) return true;
     const nearby = this.spot.groups.nearby;
     for (let i = 0; i < nearby.length; i++)
