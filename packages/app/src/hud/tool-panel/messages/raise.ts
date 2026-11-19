@@ -1,11 +1,18 @@
 import {
   type DiplomacyState,
+  entityById,
   nodeOfPosition,
   type Paper,
   type WorkerRefusalReason,
   type WorldSnapshot,
 } from '@open-northland/sim';
-import { type ChildOrderWait, num, positionOf, type SnapshotEntity } from '../../../game/snapshot/index.js';
+import {
+  type ChildOrderWait,
+  isSilenced,
+  num,
+  positionOf,
+  type SnapshotEntity,
+} from '../../../game/snapshot/index.js';
 import { idleNoteType } from './idle-reasons.js';
 import type { MessageText, MessageTextParts, NamedSettler } from './text.js';
 import {
@@ -42,6 +49,15 @@ export interface RaisedMessage {
   readonly compose: () => MessageText;
   /** Set on a repeat that carries fresh facts: the note it repeats takes them, and the text they word. */
   readonly updatesStanding?: true;
+}
+
+/** Original behavior: a settler a script silenced (behaviour bit 4) raises no note about itself; a death
+ *  note names no live subject, so it still raises. */
+export function aboutSilencedSettler(raised: RaisedMessage, snapshot: WorldSnapshot): boolean {
+  const subject = raised.pending.subject;
+  if (subject?.kind !== 'settler') return false;
+  const e = entityById(snapshot, subject.entity);
+  return e !== undefined && isSilenced(e);
 }
 
 export function nodeOf(e: SnapshotEntity): PendingMessage['at'] {

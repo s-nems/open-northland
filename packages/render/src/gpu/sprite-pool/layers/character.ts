@@ -22,6 +22,7 @@ const headCastRecords = new WeakMap<ResolvedLayer, ResolvedLayer>();
 const headRecords = new WeakMap<ResolvedLayer, ResolvedLayer>();
 const blobRecords = new WeakMap<ResolvedLayer, ResolvedLayer>();
 const glowRecords = new WeakMap<ResolvedLayer, readonly ResolvedLayer[]>();
+const translucentRecords = new WeakMap<ResolvedLayer, ResolvedLayer>();
 /** A record drawn at a unit's visual scale, apart from the shared record every full-size unit draws. */
 const scaledRecords = new WeakMap<ResolvedLayer, ResolvedLayer>();
 
@@ -107,6 +108,18 @@ function blobLayerFor(of: ResolvedLayer): ResolvedLayer {
   return record;
 }
 
+/** Original behavior: a ghost's body and head print at 128 of 256 opacity. */
+const GHOST_ALPHA = 128 / 256;
+
+function translucentLayerFor(of: ResolvedLayer): ResolvedLayer {
+  let record = translucentRecords.get(of);
+  if (record === undefined) {
+    record = { ...of, alpha: GHOST_ALPHA };
+    translucentRecords.set(of, record);
+  }
+  return record;
+}
+
 function headLayerFor(of: ResolvedLayer): ResolvedLayer {
   let record = headRecords.get(of);
   if (record === undefined) {
@@ -168,15 +181,17 @@ interface Composition {
   readonly scale: number;
   readonly factor: number | undefined;
   readonly glowing: boolean;
+  readonly translucent: boolean;
   readonly body: SpriteLayer;
   readonly head: SpriteLayer | undefined;
   readonly layers: readonly ResolvedLayer[];
 }
 
 /** Head bob ids and head looks a composition key tells apart per body bob; a look past either composes
- *  without the memo. */
+ *  without the memo. A ghost and a solid figure of one frame keep a composition each. */
 const HEAD_BOB_SPAN = 1 << 20;
 const HEAD_LOOK_SPAN = 1 << 6;
+const OPACITY_SPAN = 2;
 
 /**
  * The last figure composed per look, body bob, head bob and head look: the pool composes every drawn
@@ -211,6 +226,7 @@ export function pushComposedCharacterLayers(
   const headBob =
     headBinding !== undefined ? resolveSettlerBobId(headBinding, item, tick, gaitClock, idleElapsed) : bob;
   const glowing = char.glow === 'always' || (item.glow === true && char.glow !== 'never');
+  const translucent = item.translucent === true;
   const keyed =
     Number.isInteger(bob) &&
     bob >= 0 &&
@@ -220,13 +236,16 @@ export function pushComposedCharacterLayers(
     Number.isInteger(headLook) &&
     headLook >= 0 &&
     headLook < HEAD_LOOK_SPAN;
-  if (!keyed) return pushAll(out, composeCharacter(char, headLayer, bob, headBob, scale, factor, glowing));
+  if (!keyed) {
+    return pushAll(out, composeCharacter(char, headLayer, bob, headBob, scale, factor, glowing, translucent));
+  }
   let byBobs = compositions.get(char);
   if (byBobs === undefined) {
     byBobs = new Map();
     compositions.set(char, byBobs);
   }
-  const key = (bob * HEAD_BOB_SPAN + headBob) * HEAD_LOOK_SPAN + headLook;
+  const key =
+    ((bob * HEAD_BOB_SPAN + headBob) * HEAD_LOOK_SPAN + headLook) * OPACITY_SPAN + (translucent ? 1 : 0);
   let composed = byBobs.get(key);
   if (
     composed === undefined ||
@@ -234,6 +253,7 @@ export function pushComposedCharacterLayers(
     composed.scale !== scale ||
     composed.factor !== factor ||
     composed.glowing !== glowing ||
+    composed.translucent !== translucent ||
     // A look may be handed another atlas layer object over its life.
     composed.body !== char.body
   ) {
@@ -241,9 +261,10 @@ export function pushComposedCharacterLayers(
       scale,
       factor,
       glowing,
+      translucent,
       body: char.body,
       head: headLayer,
-      layers: composeCharacter(char, headLayer, bob, headBob, scale, factor, glowing),
+      layers: composeCharacter(char, headLayer, bob, headBob, scale, factor, glowing, translucent),
     };
     byBobs.set(key, composed);
   }
@@ -267,6 +288,7 @@ function composeCharacter(
   scale: number,
   factor: number | undefined,
   glowing: boolean,
+  translucent: boolean,
 ): readonly ResolvedLayer[] {
   const layers: ResolvedLayer[] = [];
   // Every layer below derives from these records, so a scaled unit's cast, glow, box and outline follow.
@@ -288,8 +310,8 @@ function composeCharacter(
     if (body !== null) layers.push(...glowLayersFor(body));
     if (head !== null) layers.push(...glowLayersFor(head));
   }
-  if (body !== null) layers.push(body);
-  if (head !== null) layers.push(headLayerFor(head));
+  if (body !== null) layers.push(translucent ? translucentLayerFor(body) : body);
+  if (head !== null) layers.push(headLayerFor(translucent ? translucentLayerFor(head) : head));
   return layers;
 }
 

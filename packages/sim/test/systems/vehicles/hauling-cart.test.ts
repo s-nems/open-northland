@@ -7,6 +7,7 @@ import {
   Equipment,
   HaulingCart,
   JobAssignment,
+  MISSION_BEHAVIOUR,
   MoveGoal,
   OrderQueue,
   PickupClaim,
@@ -14,6 +15,7 @@ import {
   Rider,
   Settler,
   Stockpile,
+  setMissionBehaviour,
   Vehicle,
   VehicleStock,
 } from '../../../src/components/index.js';
@@ -491,6 +493,19 @@ describe('the cart leaving on its own', () => {
     expect(runUntil(s, TRIP_TICKS, () => s.world.has(porter, Carrying))).toBeGreaterThan(0);
     reap(s.world, ctxOf(s), porter);
     expect(s.world.get(cart, VehicleStock).lines.get(WOOD)?.current).toBe(PILE_UNITS);
+    expect(checkInvariants(s.world, s.content)).toEqual([]);
+  });
+
+  it('a carrier a script bars from work mid-lift frees its cart', () => {
+    const s = sim();
+    const hq = placeHouse(s, HQ_AT);
+    const { porter, cart } = postedPorterWithCart(s, hq);
+    expect(runUntil(s, TAKE_TICKS, () => s.world.get(porter, HaulingCart).taken)).toBeGreaterThan(0);
+    dropPile(s, WOOD, PILE_AT, PILE_UNITS);
+    expect(runUntil(s, TRIP_TICKS, () => s.world.get(porter, HaulingCart).lift !== null)).toBeGreaterThan(0);
+    setMissionBehaviour(s.world, porter, MISSION_BEHAVIOUR.DOES_NOT_WORK, true);
+    expect(runUntil(s, TAKE_TICKS, () => !s.world.has(porter, HaulingCart))).toBeGreaterThan(0);
+    expect(s.world.get(cart, Vehicle).hauler).toBeNull();
     expect(checkInvariants(s.world, s.content)).toEqual([]);
   });
 

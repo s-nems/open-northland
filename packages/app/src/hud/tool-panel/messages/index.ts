@@ -48,7 +48,7 @@ import {
   type NoticeGroup,
 } from './groups.js';
 import { peaceMinutesLeft, peaceNote } from './peace.js';
-import type { MessageNaming, RaisedMessage } from './raise.js';
+import { aboutSilencedSettler, type MessageNaming, type RaisedMessage } from './raise.js';
 import { isSubjectGone, NoteRetirement } from './retire.js';
 import { createSeatFeeds } from './seat-feeds.js';
 import { clearSettingsRestart, settingsRestartNote } from './settings-restart.js';
@@ -439,11 +439,11 @@ export function createMessageCenter(deps: MessageCenterDeps): MessageCenter {
             sighting,
             deps.noticeFilter,
           )) {
-            take(raised, snapshot.tick);
+            if (!aboutSilencedSettler(raised, snapshot)) take(raised, snapshot.tick);
           }
         }
         for (const raised of snapshotSource?.sweep(snapshot, naming, dismissed) ?? []) {
-          take(raised, snapshot.tick);
+          if (!aboutSilencedSettler(raised, snapshot)) take(raised, snapshot.tick);
         }
         if (seat !== null) {
           for (const raised of diplomacySource.poll(naming, sighting)) take(raised, snapshot.tick);

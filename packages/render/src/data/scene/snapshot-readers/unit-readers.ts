@@ -215,6 +215,12 @@ export function readBehaviourGlow(components: Readonly<Record<string, unknown>>)
   return (flags & simComponents.MISSION_BEHAVIOUR.GLOWS) !== 0;
 }
 
+/** Whether a human's mission behaviour mask makes it a ghost, drawn half transparent. */
+export function readBehaviourGhost(components: Readonly<Record<string, unknown>>): boolean {
+  const flags = readNumField(components, 'MissionBehaviour', 'flags') ?? 0;
+  return (flags & simComponents.MISSION_BEHAVIOUR.GHOST) !== 0;
+}
+
 /** The factor a unit draws at about its feet (`VisualScale.pct` / 100), or undefined at full size. */
 export function readVisualScale(components: Readonly<Record<string, unknown>>): number | undefined {
   const pct = readNumField(components, 'VisualScale', 'pct');

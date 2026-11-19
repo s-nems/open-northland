@@ -9,7 +9,7 @@ import { TextureCache } from '../../../src/gpu/textures/texture-cache.js';
 import { drawnGeometry, entity, snapshotOf } from '../../support/fixtures.js';
 
 const IMPORTED = components.MISSION_BEHAVIOUR.IMPORTED;
-const STAYS_PUT = components.MISSION_BEHAVIOUR.STAYS_PUT;
+const DOES_NOT_WORK = components.MISSION_BEHAVIOUR.DOES_NOT_WORK;
 
 const VIKING = 1;
 const BYZANTINE = 3;
@@ -24,10 +24,10 @@ const person = (id: number, jobType: number, flags: number, tribe = VIKING) =>
 describe('importMarkersOf', () => {
   it('marks a person with the import bit unless the exemption names his tribe and job', () => {
     const snap = snapshotOf([
-      person(1, DRUID_JOB, IMPORTED | STAYS_PUT),
+      person(1, DRUID_JOB, IMPORTED | DOES_NOT_WORK),
       person(2, HERO_JOB, IMPORTED, BYZANTINE),
       person(3, HERO_JOB, IMPORTED),
-      person(4, DRUID_JOB, STAYS_PUT),
+      person(4, DRUID_JOB, DOES_NOT_WORK),
     ]);
     expect(importMarkersOf(snap, EXEMPT)).toEqual([
       { id: 1, x: 1 * ONE, y: 1 * ONE },

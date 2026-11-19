@@ -179,6 +179,9 @@ export interface DrawItem extends Readonly<StaticDrawFields> {
   readonly young?: boolean;
   /** For a settler: its mission behaviour mask asks for the hero glow, whatever its job. */
   readonly glow?: boolean;
+  /** For a settler: its mission behaviour mask makes it a ghost, its body and head drawn half
+   *  transparent. */
+  readonly translucent?: boolean;
   /** For a settler: the factor its look draws at about its feet (`VisualScale`); absent at full size. */
   readonly visualScale?: number;
   /** For a settler: `Female` present, which picks the women's player palette recipe. */
@@ -312,6 +315,7 @@ export function newDrawItem(
     armorGood: undefined,
     young: undefined,
     glow: undefined,
+    translucent: undefined,
     visualScale: undefined,
     female: undefined,
     scriptedLook: undefined,

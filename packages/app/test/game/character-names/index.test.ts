@@ -1,6 +1,7 @@
 import { JobType } from '@open-northland/data';
+import { components } from '@open-northland/sim';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { settlerName } from '../../../src/game/character-names/index.js';
+import { isRenamable, settlerName } from '../../../src/game/character-names/index.js';
 import { installLocalizedNames } from '../../../src/game/character-names/localized-names.js';
 import { installPetNames, petNames, petNamesOf } from '../../../src/game/character-names/pet-names.js';
 import type { SnapshotEntity } from '../../../src/game/snapshot/index.js';
@@ -102,5 +103,17 @@ describe('settlerName', () => {
     expect(settlerName({ jobs: [] }, entity({ Settler: { tribe: 999 } }))).toBe('Person #42');
     setActiveLocale('pol');
     expect(settlerName({ jobs: [] }, entity({}))).toBe('Postać #42');
+  });
+});
+
+describe('isRenamable', () => {
+  it('lets the player rename a person, but not a hero, a scripted character or one a script locked', () => {
+    const jobs = [JobType.parse({ typeId: 44, id: 'hero_sword_bjarni' })];
+    const person = { ...identity, Person: {} };
+    const locked = { MissionBehaviour: { flags: components.MISSION_BEHAVIOUR.IMPORTED } };
+    expect(isRenamable({ jobs }, entity(person))).toBe(true);
+    expect(isRenamable({ jobs }, entity({ ...person, Settler: { jobType: 44, tribe: 1 } }))).toBe(false);
+    expect(isRenamable({ jobs }, entity({ ...person, ScriptedName: { stringId: 1 } }))).toBe(false);
+    expect(isRenamable({ jobs }, entity({ ...person, ...locked }))).toBe(false);
   });
 });

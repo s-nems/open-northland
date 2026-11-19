@@ -65,7 +65,7 @@ describe('buildScene over a real Simulation snapshot', () => {
 describe('a mission behaviour mask over a real Simulation snapshot', () => {
   it('asks for the hero glow on the settler whose mask carries the glow bit', () => {
     const sim = new Simulation({ seed: 7, content: testContent(), map: grassMap(4, 1) });
-    const glows = components.MISSION_BEHAVIOUR.GLOWS | components.MISSION_BEHAVIOUR.STAYS_PUT;
+    const glows = components.MISSION_BEHAVIOUR.GLOWS | components.MISSION_BEHAVIOUR.DOES_NOT_WORK;
     sim.enqueueSetup({
       kind: 'spawnSettler',
       jobType: CARRIER,
@@ -80,12 +80,37 @@ describe('a mission behaviour mask over a real Simulation snapshot', () => {
       x: 2,
       y: 0,
       tribe: VIKING,
-      behaviourFlags: components.MISSION_BEHAVIOUR.STAYS_PUT,
+      behaviourFlags: components.MISSION_BEHAVIOUR.DOES_NOT_WORK,
     });
     sim.step();
 
     const settlers = collectSpriteScene(sim.snapshot()).items.filter((i) => i.kind === 'settler');
     expect(settlers.map((i) => i.glow === true)).toEqual([true, false]);
+  });
+
+  it('draws the settler whose mask carries the ghost bit translucent', () => {
+    const sim = new Simulation({ seed: 7, content: testContent(), map: grassMap(4, 1) });
+    const ghost = components.MISSION_BEHAVIOUR.GHOST | components.MISSION_BEHAVIOUR.DOES_NOT_WORK;
+    sim.enqueueSetup({
+      kind: 'spawnSettler',
+      jobType: CARRIER,
+      x: 0,
+      y: 0,
+      tribe: VIKING,
+      behaviourFlags: ghost,
+    });
+    sim.enqueueSetup({
+      kind: 'spawnSettler',
+      jobType: CARRIER,
+      x: 2,
+      y: 0,
+      tribe: VIKING,
+      behaviourFlags: components.MISSION_BEHAVIOUR.DOES_NOT_WORK,
+    });
+    sim.step();
+
+    const settlers = collectSpriteScene(sim.snapshot()).items.filter((i) => i.kind === 'settler');
+    expect(settlers.map((i) => i.translucent === true)).toEqual([true, false]);
   });
 });
 

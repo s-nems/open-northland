@@ -29,6 +29,7 @@ export {
   readAtomicDuration,
   readAtomicElapsed,
   readAtomicTargetEntity,
+  readBehaviourGhost,
   readBehaviourGlow,
   readBehaviourImported,
   readCarriesLiveGood,

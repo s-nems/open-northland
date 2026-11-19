@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
+  BonePile,
   Building,
+  CurrentAtomic,
+  Felling,
   Fleeing,
   Health,
   HOUSE_BEHAVIOUR,
@@ -12,6 +15,7 @@ import {
   Person,
   PlayerOrder,
   Position,
+  Resource,
   Settler,
   SettlerProgress,
   setMissionBehaviour,
@@ -21,8 +25,12 @@ import {
 import { aiCommand, playerCommand } from '../../../../src/core/commands/index.js';
 import type { Entity } from '../../../../src/ecs/world.js';
 import type { Simulation } from '../../../../src/index.js';
-import { hexDistance, nodeOfPosition } from '../../../../src/nav/halfcell.js';
-import { combatSystem } from '../../../../src/systems/index.js';
+import { hexDistance, nodeOfPosition, positionOfNode } from '../../../../src/nav/halfcell.js';
+import {
+  anchorOnlyFootprint,
+  combatSystem,
+  stampResourceFootprintData,
+} from '../../../../src/systems/index.js';
 import { grantWorkExperience } from '../../../../src/systems/progression/index.js';
 import { resolveCombatHit } from '../../../../src/systems/settlers/atomics/effects/combat/hit/resolution.js';
 import { ctxOf } from '../../../fixtures/context.js';
@@ -47,6 +55,8 @@ import {
 const OWNER = 2;
 const GROUP = 61;
 const FAR = { hx: POINT.hx + 16, hy: POINT.hy };
+/** Long enough for a woodcutter standing on a tree to start chopping it. */
+const WORK_TICKS = 40;
 
 function humansOf(sim: Simulation, player: number): Entity[] {
   return [...sim.world.query(Person)].filter((e) => ownerOf(sim.world, e) === player);
@@ -65,6 +75,17 @@ function nodeOf(sim: Simulation, e: Entity): { hx: number; hy: number } {
 
 function nodesEqual(a: { hx: number; hy: number }, b: { hx: number; hy: number }): boolean {
   return a.hx === b.hx && a.hy === b.hy;
+}
+
+/** A standing tree on `at` that a woodcutter fells over several strokes. */
+function fellableTreeAt(sim: Simulation, at: { hx: number; hy: number }): void {
+  const WOOD = 1;
+  const CHOP_ATOMIC = 24;
+  const tree = sim.world.create();
+  sim.world.add(tree, Position, positionOfNode(at.hx, at.hy));
+  sim.world.add(tree, Resource, { goodType: WOOD, remaining: 1, harvestAtomic: CHOP_ATOMIC });
+  stampResourceFootprintData(sim.world, tree, anchorOnlyFootprint());
+  sim.world.add(tree, Felling, { chops: 0 });
 }
 
 /** A world with no script results, running long enough for the settler drives to have their say. */
@@ -97,12 +118,12 @@ describe('the results that write the mask', () => {
     spawn(sim, {
       player: OWNER,
       missionId: GROUP,
-      behaviourFlags: MISSION_BEHAVIOUR.PASSIVE | MISSION_BEHAVIOUR.STAYS_PUT,
+      behaviourFlags: MISSION_BEHAVIOUR.PASSIVE | MISSION_BEHAVIOUR.DOES_NOT_WORK,
     });
     sim.run(LOAD_PASS);
     const e = only(sim, OWNER);
     expect(hasMissionBehaviour(sim.world, e, MISSION_BEHAVIOUR.PASSIVE)).toBe(false);
-    expect(hasMissionBehaviour(sim.world, e, MISSION_BEHAVIOUR.STAYS_PUT)).toBe(true);
+    expect(hasMissionBehaviour(sim.world, e, MISSION_BEHAVIOUR.DOES_NOT_WORK)).toBe(true);
   });
 
   it('writes the player’s humans and nobody else’s', () => {
@@ -169,10 +190,26 @@ describe('the bits the sim reads', () => {
     expect(sim.world.get(frozen, Health).hitpoints).toBeGreaterThan(1);
   });
 
-  it('pins a stay-put human where it was left', () => {
+  it('keeps a human barred from work off the tree it stands on', () => {
+    const chops = (flags: number | undefined): boolean => {
+      const sim = plainSim();
+      fellableTreeAt(sim, POINT);
+      spawn(sim, { player: OWNER, ...(flags === undefined ? {} : { behaviourFlags: flags }) });
+      for (let i = 0; i < WORK_TICKS; i++) {
+        sim.step();
+        const [e] = humansOf(sim, OWNER);
+        if (e !== undefined && sim.world.tryGet(e, CurrentAtomic)?.effect.kind === 'harvest') return true;
+      }
+      return false;
+    };
+    expect(chops(undefined)).toBe(true);
+    expect(chops(MISSION_BEHAVIOUR.DOES_NOT_WORK)).toBe(false);
+  });
+
+  it('pins a human barred from work where it was left', () => {
     // Both belong to one player: two seats' civilians flee each other, and flight is not an idle rung.
     const sim = plainSim();
-    spawn(sim, { player: OWNER, behaviourFlags: MISSION_BEHAVIOUR.STAYS_PUT });
+    spawn(sim, { player: OWNER, behaviourFlags: MISSION_BEHAVIOUR.DOES_NOT_WORK });
     spawn(sim, { player: OWNER });
     sim.step();
     const [pinned, drifter] = humansOf(sim, OWNER);
@@ -280,6 +317,19 @@ describe('the bits the sim reads', () => {
     grantWorkExperience(sim.world, ctxOf(sim), learner, WOOD, 1);
     expect(sim.world.get(barred, SettlerProgress).experience.size).toBe(0);
     expect(sim.world.get(learner, SettlerProgress).experience.size).toBe(2);
+  });
+
+  it('leaves no bones where a ghost falls', () => {
+    const bones = (flags: number | undefined): number => {
+      const sim = plainSim();
+      spawn(sim, { player: OWNER, ...(flags === undefined ? {} : { behaviourFlags: flags }) });
+      sim.run(2);
+      sim.world.mut(only(sim, OWNER), Health).hitpoints = 0;
+      sim.step();
+      return sim.world.count(BonePile);
+    };
+    expect(bones(undefined)).toBe(1);
+    expect(bones(MISSION_BEHAVIOUR.GHOST)).toBe(0);
   });
 
   it('paces a slow human behind and a fast one ahead of an ordinary walker', () => {

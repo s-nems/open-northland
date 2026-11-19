@@ -545,6 +545,16 @@ export function isJobLocked(e: SnapshotEntity): boolean {
   return hasMissionBehaviour(e, components.MISSION_BEHAVIOUR.JOB_LOCKED);
 }
 
+/** A script fixed the settler's name: the player may not rename it. */
+export function isNameLocked(e: SnapshotEntity): boolean {
+  return hasMissionBehaviour(e, components.MISSION_BEHAVIOUR.IMPORTED);
+}
+
+/** A script silenced the settler: it raises no notice for its player. */
+export function isSilenced(e: SnapshotEntity): boolean {
+  return hasMissionBehaviour(e, components.MISSION_BEHAVIOUR.NO_MESSAGES);
+}
+
 /** A script bars the settler from getting better: the sim refuses him a coin drill he would gain nothing
  *  from. */
 export function isBarredFromExperience(e: SnapshotEntity): boolean {

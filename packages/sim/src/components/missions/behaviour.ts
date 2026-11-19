@@ -16,28 +16,34 @@ const HouseBehaviour = defineComponent<{ flags: number }>('HouseBehaviour', 'eco
  */
 export const MISSION_BEHAVIOUR = {
   NEEDS_FROZEN: 1 << 0,
-  /** Stands where it is left instead of drifting on the idle rungs. */
-  STAYS_PUT: 1 << 1,
+  /** Takes up no trade work, seeks no company and stands where it is left instead of drifting on the
+   *  idle rungs; hunger, sleep, prayer, shelter and orders still move it. */
+  DOES_NOT_WORK: 1 << 1,
   /** Acquires no target of its own and never flees. */
   PASSIVE: 1 << 2,
   INVULNERABLE: 1 << 3,
+  /** Raises no notice of its own for its player. */
+  NO_MESSAGES: 1 << 4,
   /** Beyond the player's orders, and never a scripted AI handler's soldier. */
   NOT_CONTROLLABLE: 1 << 5,
   JOB_LOCKED: 1 << 6,
-  /** The import marker `SetImportHumanFlag` writes; drawn on the human, no rule reads it. */
+  /** The import marker `SetImportHumanFlag` writes: drawn over the human, and its name cannot be
+   *  changed. */
   IMPORTED: 1 << 7,
   /** Walks anywhere, as soldiers and scouts do: no signpost confinement. */
   UNLIMITED_WALK_RANGE: 1 << 8,
+  /** Walks at half pace. */
+  WALKS_SLOWLY: 1 << 9,
   /** Earns no experience for the work it does. */
   NO_JOB_EXPERIENCE: 1 << 11,
   /** Walking does not consume shoe condition; barefoot food drain is independent. */
   SHOES_DO_NOT_WEAR: 1 << 12,
   /** A wild animal looking for a victim passes over it. */
   HIDDEN_FROM_ANIMALS: 1 << 13,
+  /** A ghost: drawn half transparent, and it leaves no bones when it dies. */
+  GHOST: 1 << 14,
   /** A blow on it rouses no one else of its side; it still answers the blow itself. */
   BLOW_RAISES_NO_ALARM: 1 << 15,
-  /** Walks at half pace. */
-  WALKS_SLOWLY: 1 << 9,
   /** A weresnake or werewolf spawns in DEFEND instead of ATTACK. */
   SPAWNS_DEFENDING: 1 << 16,
   /** Walks faster than its trade would. */

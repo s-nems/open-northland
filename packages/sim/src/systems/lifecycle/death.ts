@@ -1,8 +1,10 @@
 import {
   BonePile,
+  hasMissionBehaviour,
   isWildlife,
   LeftCarcass,
   Marriage,
+  MISSION_BEHAVIOUR,
   Owner,
   Position,
   Rider,
@@ -51,7 +53,9 @@ export function reap(world: World, ctx: SystemContext, e: Entity): void {
     ...(pos !== undefined ? { at: eventAt(pos.x, pos.y) } : {}),
   });
   if (!animal) recordHumanDeath(world, owner?.player, isSoldierJob(ctx.content, settler?.jobType ?? null));
-  if (!animal && pos !== undefined) layBonePile(world, ctx.tick, eventAt(pos.x, pos.y));
+  if (!animal && pos !== undefined && !hasMissionBehaviour(world, e, MISSION_BEHAVIOUR.GHOST)) {
+    layBonePile(world, ctx.tick, eventAt(pos.x, pos.y));
+  }
   if (animal && pos !== undefined && settler !== undefined)
     layAnimalRemains(world, ctx, e, settler.tribe, pos);
   releaseHaulingCart(world, ctx, e); // the cart stands where its carrier fell, the load in its hold
@@ -63,10 +67,10 @@ export function reap(world: World, ctx: SystemContext, e: Entity): void {
 }
 
 /**
- * A human leaves bones where it fell; an animal leaves none. Observation: only humans leave bones,
- * overruling the readable drained-cadaver REMOVE transition to landscape 81 `cadaver_skeleton` in
- * `landscapetypes.ini`. Past {@link MAX_BONE_PILES} the oldest pile goes, so the saved count stays bounded
- * for a player who keeps bones forever.
+ * A human leaves bones where it fell; an animal and a ghost (behaviour bit 14) leave none. Observation:
+ * only humans leave bones, overruling the readable drained-cadaver REMOVE transition to landscape 81
+ * `cadaver_skeleton` in `landscapetypes.ini`. Past {@link MAX_BONE_PILES} the oldest pile goes, so the
+ * saved count stays bounded for a player who keeps bones forever.
  */
 function layBonePile(world: World, tick: number, at: HalfCellNode): void {
   // Ids ascend with creation, so the lowest is the oldest pile.

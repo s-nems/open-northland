@@ -12,6 +12,7 @@ import {
   copyStaticFields,
   readAtomicDuration,
   readAtomicElapsed,
+  readBehaviourGhost,
   readBehaviourGlow,
   readBerryBushGfxIndex,
   readBerryBushLevel,
@@ -80,6 +81,7 @@ export function assignSettlerFields(
   // from colliding synthetic adult ids.
   if ('Age' in components) item.young = true;
   if (readBehaviourGlow(components)) item.glow = true;
+  if (readBehaviourGhost(components)) item.translucent = true;
   const visualScale = readVisualScale(components);
   if (visualScale !== undefined) item.visualScale = visualScale;
   if ('Female' in components) item.female = true;

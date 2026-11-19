@@ -1,7 +1,7 @@
 import type { ContentSet } from '@open-northland/data';
 import { systems } from '@open-northland/sim';
 import { messages } from '../../i18n/index.js';
-import { num, type SnapshotEntity, settlerJobType } from '../snapshot/index.js';
+import { isNameLocked, num, type SnapshotEntity, settlerJobType } from '../snapshot/index.js';
 import { localizedName } from './localized-names.js';
 import { type NamedSettler, petNames } from './pet-names.js';
 
@@ -31,12 +31,13 @@ export function namedSettlerOf(ent: SnapshotEntity): NamedSettler {
 }
 
 /** Whether the player may give `ent` a name of their own: a person, not an animal they keep, and not a
- *  hero, who keeps its job's name, or a scripted character, who keeps the map's. Whose settler it is,
- *  the order gate decides. */
+ *  hero, who keeps its job's name, a scripted character, who keeps the map's, or one a script locked.
+ *  Whose settler it is, the order gate decides. */
 export function isRenamable(ctx: NameContext, ent: SnapshotEntity): boolean {
   return (
     ent.components.Person !== undefined &&
     ent.components.ScriptedName === undefined &&
+    !isNameLocked(ent) &&
     heroJobOf(ctx, ent) === undefined
   );
 }

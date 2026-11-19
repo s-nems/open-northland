@@ -34,7 +34,7 @@ import { planShipHelper, planTrader } from '../../trade/index.js';
 import { planRider } from '../../vehicles/boarding.js';
 import { abandonCargoRun } from '../../vehicles/cargo.js';
 import { pinnedTraderOf } from '../../vehicles/crew.js';
-import { parkHaulingCart } from '../../vehicles/hauling-cart.js';
+import { parkHaulingCart, releaseHaulingCart } from '../../vehicles/hauling-cart.js';
 import { heldOffEconomy } from '../action-owner.js';
 import { jobCanBuild } from '../atomics/start.js';
 import { isInside, stepOut } from '../indoors.js';
@@ -93,7 +93,7 @@ import { planTraining } from './training.js';
 export function planChild(pass: PlannerPass, e: Entity, settler: SettlerView): void {
   if (planShelterRung(pass, e, settler)) return;
   const { world, ctx } = pass;
-  if (staysPut(world, e)) return;
+  if (doesNotWork(world, e)) return;
   const beat = idleReplanPeriodOf(world, e);
   if (!idleReplanDue(ctx.tick, e, beat)) return;
   planChildWander(world, ctx, pass.terrain, e, pass.spacing, beat);
@@ -156,8 +156,10 @@ export function planAdult(pass: PlannerPass, e: Entity, settler: SettlerView, jo
     return;
   }
   // A posted carrier handed a cart, or back from a break, fetches it before its hauls, once its hands are
-  // free; a hold that no longer stands sets the cart down here, whatever the carrier does next.
-  if (planHaulingCart(plan, pass.seatClaims, load !== undefined && load.amount > 0)) return;
+  // free; a hold that no longer stands sets the cart down here, whatever the carrier does next. One a
+  // script bars from work sets it down for good, its hold kept, so the cart is free for another carrier.
+  if (doesNotWork(world, e)) releaseHaulingCart(world, ctx, e);
+  else if (planHaulingCart(plan, pass.seatClaims, load !== undefined && load.amount > 0)) return;
   planEconomy(plan, pass, settler, load, hx, hy, alert);
 }
 
@@ -349,7 +351,7 @@ function planBreak(
   // dropping its stance. A guard sharing its post's node still spaces out like any idler, and one
   // holding still waits for its idle beat, a human seat's unless a workplace binds it.
   if (world.tryGet(e, Stance)?.mode === MILITARY_MODE.DEFEND) {
-    if (!staysPut(world, e)) deStackGuard(world, ctx, terrain, e, hx, hy, pass.spacing);
+    if (!doesNotWork(world, e)) deStackGuard(world, ctx, terrain, e, hx, hy, pass.spacing);
     if (guardWaitsOnBeat(world, e)) pass.idle.stand(e, false);
     return true;
   }
@@ -360,7 +362,7 @@ function planBreak(
   // alert passed down holds the civilian trade a player or a script put into a fighting stance. Its work
   // is left alone - the alert governs rest and company, not a settler's trade.
   if (
-    !staysPut(world, e) &&
+    !doesNotWork(world, e) &&
     planGossipSeek(world, ctx, e, settler, hx, hy, pass.gossipCandidates, false, alert)
   ) {
     return true;
@@ -370,6 +372,7 @@ function planBreak(
   // work a lost mark of hers waits on, as a trade is an employed settler's.
   if (
     world.has(e, Female) &&
+    !doesNotWork(world, e) &&
     planWomanHoard(world, ctx, terrain, e, pass.externalFood, pass.externalQuality, pass.supply, limit)
   ) {
     noteWorkTaken(world, e);
@@ -434,10 +437,11 @@ function planEconomy(
   alert: () => boolean,
 ): void {
   const { world, ctx, terrain, entity: e } = plan;
+  const idle = doesNotWork(world, e);
 
   // A trader works its route, a unit of it in its hands included, before the delivery rung below would
   // carry that unit off to a store.
-  if (planTrader(plan)) {
+  if (!idle && planTrader(plan)) {
     noteWorkTaken(world, e);
     return;
   }
@@ -456,8 +460,9 @@ function planEconomy(
   // A worker posted or flagged beyond its signpost reach takes up no work until the network reaches the
   // post. Owner ruling: no confined trade (`confinedJob` in the signpost network names the free ones)
   // walks past its signposts for a player; a computer seat's is led back by `guideLostSettler`. A load
-  // still goes to its bound sink above, so it is never stranded in hand.
-  if (strandedPost(world, ctx, terrain, e, plan.limit) !== null) {
+  // still goes to its bound sink above, so it is never stranded in hand. One a script bars from work
+  // stands here too, its load delivered first (approximation: the original drops the load beside it).
+  if (idle || strandedPost(world, ctx, terrain, e, plan.limit) !== null) {
     standIdle(plan, pass, settler, hx, hy, alert);
     return;
   }
@@ -527,7 +532,7 @@ function standIdle(
   const { world, ctx, terrain, entity: e } = plan;
   pass.idle.stand(e, true);
   if (cutOffCheckDue(ctx, plan.owner) && checkCutOff(pass, plan)) return;
-  if (world.has(e, Chat) || staysPut(world, e)) return;
+  if (world.has(e, Chat) || doesNotWork(world, e)) return;
   // A lost settler stands where its note sends the player, so it is found there; it only chats in place.
   const lost = world.has(e, LostWay);
   if (!lost && planGraduateWait(world, ctx, terrain, e, plan.here, pass.spacing, plan.limit)) return;
@@ -564,8 +569,9 @@ function standIfInside(pass: PlannerPass, e: Entity, building: Entity): void {
   if (isInside(pass.world, e, building) && !pass.world.has(e, CurrentAtomic)) pass.idle.stand(e, false);
 }
 
-/** A script may pin a settler where it was left: it still works, shelters and answers its needs, but
- *  takes none of the rungs whose only purpose is to drift (`MISSIONS.md`, behaviour bit 1). */
-function staysPut(world: World, e: Entity): boolean {
-  return hasMissionBehaviour(world, e, MISSION_BEHAVIOUR.STAYS_PUT);
+/** A script may bar a settler from work (`MISSIONS.md`, behaviour bit 1): it takes no trade or larder
+ *  rung and none whose only purpose is to drift or chat, but still shelters, eats, sleeps, prays and
+ *  obeys orders. */
+function doesNotWork(world: World, e: Entity): boolean {
+  return hasMissionBehaviour(world, e, MISSION_BEHAVIOUR.DOES_NOT_WORK);
 }

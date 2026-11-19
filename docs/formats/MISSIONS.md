@@ -462,19 +462,19 @@ the encoding). Bits with a known effect (reading; each is a hypothesis to confir
 | Bit | Value | Effect |
 | --- | --- | --- |
 | 0 | 1 | needs never grow and are never serviced (the original sets it on player 0 in one game mode) |
-| 1 | 2 | stays put when idle instead of drifting back to its anchor |
+| 1 | 2 | does not work: takes up no trade or larder work and stays put when idle instead of drifting back to its anchor |
 | 2 | 4 | passive: a soldier does not retaliate when hit, a civilian does not flee |
 | 3 | 8 | invulnerable: a hit-point event that would take life off is refused while healing still lands; animals ignore the human |
 | 4 | 16 | user messages about the human are suppressed |
 | 5 | 32 | not player-controllable: no command set, ignored by send-to; the scripted AI never lists it as a soldier |
 | 6 | 64 | cannot change job |
-| 7 | 128 | import marker (drawn on the human) |
+| 7 | 128 | import marker: drawn over the human, and its name cannot be changed |
 | 8 | 256 | unlimited walk range: a civilian walks anywhere, as a soldier or scout does, past the signpost confinement |
 | 9 | 512 | walks at half speed |
 | 11 | 2048 | earns no job experience |
-| 12 | 4096 | shoes do not wear while walking; does not protect barefoot food reserves |
+| 12 | 4096 | shoes do not wear while walking; tools still wear, and barefoot food reserves are not protected |
 | 13 | 8192 | aggressive target search; also hidden from animal aggression |
-| 14 | 16384 | leaves no cadaver |
+| 14 | 16384 | ghost: body and head drawn at half opacity, and it leaves no cadaver |
 | 15 | 32768 | a hit does not spread to nearby units |
 | 16 | 65536 | a weresnake or werewolf starts defensive instead of aggressive; every other human starts defensive anyway |
 | 17 | 131072 | walks faster |
@@ -483,6 +483,11 @@ the encoding). Bits with a known effect (reading; each is a hypothesis to confir
 
 Bit 0 acts twice: urgent needs skip such a human, and animation events never change its four need
 bars, so they neither fall nor refill.
+
+Original behavior: bit 1 replaces the job a human would run with idling; it still shelters, eats,
+sleeps, prays and follows orders. Approximations: a load it holds goes to a store first, where the
+original drops it beside the human; a hauling cart it pulled is set down for another carrier; it seeks
+no company on its own; and a vehicle's cargo hand keeps serving the hold.
 
 Original behavior: bit 12 stops only shoe wear; a barefoot step checks bit 0 instead.
 
@@ -496,7 +501,9 @@ Corpus masks: `sethuman` mostly 0, then 272507, 8315, 64; `SetPlayerBehaviourFla
 
 Houses keep their own mask; only bit 0 has a known effect: an indestructible house ignores weapon hits and
 script damage (reading). `SetHouseBehaviourFlag` takes a bit index, not a mask. The animal behaviour
-value is stored on the animal; its effect is unknown.
+value is the animal's own mask, kept whole and passed to its young: 1 its work centre never moves,
+2 it never breeds, 4 it stays within 5 map points of its stay point, 8 a blow takes none of its
+hitpoints (original behavior).
 
 ## Player state the goals read
 
@@ -1262,7 +1269,6 @@ behavior (a reading, the same in the owned 2001 copy; not timed against the runn
 
 ## Open questions
 
-- The animal behaviour value.
 - Readings above may not match the owned 2001 build; it has not been checked for the check period,
   the tick reset, `SelectHuman`'s flag, the load-time job seeding or a death turning off the AI.
 
