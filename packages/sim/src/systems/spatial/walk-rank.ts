@@ -12,16 +12,30 @@ const ROW_PAIR_STEPS = 2;
 const ROW_PAIR_SPAN = 3;
 const FIRST_STEP_EXTRA_SPAN = 1;
 
-/** The walk a search from `here` ranks by, or undefined to rank by Manhattan distance: `gate` measures
- *  none, or measures it from another node than the search ranks from. */
+/** The walk a search ranking from `rank` ranks by, or undefined to rank by Manhattan distance: `gate`
+ *  measures none, or measures it from another node. */
 export function walkRanking(
   gate: SpatialGate | null | undefined,
   here: NodeId,
   rank: NodeId = here,
 ): WalkLengths | undefined {
-  if (rank !== here) return undefined;
   const walk = gate?.walkLengths?.() ?? null;
-  return walk !== null && walk.from === here ? walk : undefined;
+  return walk !== null && walk.from === rank ? walk : undefined;
+}
+
+/** `gate` measuring the walk `measured` does, for a search that ranks from another node than the one its
+ *  gate is asked from, as a workshop's supply ranks from its door. */
+export function gateRankedBy(gate: SpatialGate, measured: SpatialGate | null): SpatialGate {
+  if (measured?.walkLengths === undefined) return gate;
+  const near = gate.mayAllowNear?.bind(gate);
+  return {
+    get bounds() {
+      return gate.bounds;
+    },
+    allowsNode: (node) => gate.allowsNode(node),
+    ...(near !== undefined && { mayAllowNear: near }),
+    walkLengths: () => measured.walkLengths?.() ?? null,
+  };
 }
 
 /**

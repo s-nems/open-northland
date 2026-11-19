@@ -8,6 +8,8 @@ import { craftablePoolInto } from '../../../../economy/production/rotation.js';
 import { startableCycleCount } from '../../../../economy/production.js';
 import { religionAllowsAtomic } from '../../../../lifecycle/needs/religion.js';
 import { productionAtomic } from '../../../../readviews/production-atomic.js';
+import { jobLimitAt } from '../../../../signposts/index.js';
+import { gateRankedBy } from '../../../../spatial/walk-rank.js';
 import {
   buildingProduces,
   isWorkplaceOutput,
@@ -203,7 +205,7 @@ export function nearestMissingInputSource(
   }
 }
 
-/** The source nearest `workplace`'s door, where the original's search starts. */
+/** The source nearest `workplace`'s door, where the original's search starts, by the walk from it. */
 function nearestFromDoor(
   plan: PlannerContext,
   workplace: Entity,
@@ -213,10 +215,22 @@ function nearestFromDoor(
 ) {
   const { world, ctx, terrain, here, targets } = plan;
   const door = interactionCell(world, ctx, terrain, workplace, here);
+  const fromDoor =
+    plan.owner === undefined
+      ? null
+      : jobLimitAt(
+          world,
+          ctx.content,
+          terrain,
+          plan.jobType,
+          plan.owner,
+          terrain.xOf(door),
+          terrain.yOf(door),
+        );
   return band.nearest(
     here,
     source,
-    targets.bands.goodsGate(door, plan.owner, plan.limit ?? undefined),
+    gateRankedBy(targets.bands.goodsGate(door, plan.owner, plan.limit ?? undefined), fromDoor),
     avoid,
     sameSideAs(world, plan.owner),
     door,
