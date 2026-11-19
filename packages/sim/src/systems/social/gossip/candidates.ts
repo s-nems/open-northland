@@ -100,9 +100,9 @@ export class ChatCandidates {
 
   /**
    * The candidate within `minDist..maxDist` Manhattan nodes of `(fromX, fromY)` that `priceOf` prices lowest
-   * and no higher than `budget`, the lower entity id on a tie, or null. `priceOf` gets the distance and the
-   * price to beat, returns {@link NO_PARTNER} for a candidate it rejects, and must be a pure read: the
-   * candidates come in no fixed order.
+   * and no higher than `budget`, the lower entity id on a tie, or null. `priceOf` gets the distance, the
+   * price to beat and the candidate's node, returns {@link NO_PARTNER} for a candidate it rejects, and must
+   * be a pure read: the candidates come in no fixed order.
    */
   cheapest(
     fromX: number,
@@ -110,7 +110,7 @@ export class ChatCandidates {
     minDist: number,
     maxDist: number,
     budget: number,
-    priceOf: (e: Entity, dist: number, toBeat: number) => number,
+    priceOf: (e: Entity, dist: number, toBeat: number, hx: number, hy: number) => number,
   ): Entity | null {
     const { nodes } = this;
     let best: Entity | null = null;
@@ -124,9 +124,11 @@ export class ChatCandidates {
         if (list === undefined) continue;
         for (let i = 0; i < list.length; i++) {
           const e = list[i] as Entity;
-          const d = Math.abs(nodes.hx(e) - fromX) + Math.abs(nodes.hy(e) - fromY);
+          const x = nodes.hx(e);
+          const y = nodes.hy(e);
+          const d = Math.abs(x - fromX) + Math.abs(y - fromY);
           if (d < minDist || d > maxDist) continue;
-          const price = priceOf(e, d, bestPrice);
+          const price = priceOf(e, d, bestPrice, x, y);
           if (price > bestPrice || (price === bestPrice && best !== null && e > best)) continue;
           best = e;
           bestPrice = price;

@@ -42,6 +42,7 @@ import {
   treeAt,
 } from '../../fixtures/needs.js';
 import { needsOf, setNeeds } from '../../fixtures/settler.js';
+import { waterColumnMap } from '../../fixtures/terrain.js';
 
 /**
  * Tests for the GOSSIP drive - the company need's self-satisfying loop: a lonely settler pairs up with
@@ -120,6 +121,28 @@ describe('gossip initiation (planner rungs)', () => {
 
     expect(sim.world.get(lonely, Chat)).toMatchObject({ partner: idler, seeker: true });
     expect(sim.world.get(idler, Chat)).toMatchObject({ partner: lonely, seeker: false });
+  });
+
+  it('a settler across a river is as far away as the walk round it', () => {
+    const RIVER_COLUMN = 2;
+    const pairAcross = (rows: number): { sim: Simulation; lonely: Entity } => {
+      const sim = new Simulation({
+        seed: 1,
+        content: testContent(),
+        map: waterColumnMap(8, rows, RIVER_COLUMN, 1),
+      });
+      const lonely = gossiper(sim, 1, 0, EMPTY);
+      gossiper(sim, 3, 0, FULL);
+      plannerSystem(sim.world, ctxOf(sim));
+      return { sim, lonely };
+    };
+
+    // The only ford lies forty rows down: further than an empty bar walks.
+    const far = pairAcross(40);
+    expect(far.sim.world.has(far.lonely, Chat)).toBe(false);
+    // With the ford one row down the same pair chats.
+    const near = pairAcross(2);
+    expect(near.sim.world.has(near.lonely, Chat)).toBe(true);
   });
 
   it('a lonely settler takes a partner out of idle chatter, sending the other half to its breather', () => {

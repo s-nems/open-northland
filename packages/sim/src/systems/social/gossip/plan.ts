@@ -35,6 +35,7 @@ import { REFERENCE_STEP_TICKS } from '../../movement/walk-cost.js';
 import { atomicDuration } from '../../readviews/animations.js';
 import { isFighterJob } from '../../readviews/index.js';
 import { IDLE_MEDIUM_ATOMIC_ID, IDLE_SHORT_ATOMIC_IDS } from '../../settlers/atomics/start.js';
+import { walkLengthsFrom, walkLengthTo } from '../../signposts/walk-length.js';
 import { type GossipCandidates, NO_PARTNER } from './candidates.js';
 import { endChat } from './drive.js';
 
@@ -58,9 +59,28 @@ const CHAT_PASSING_RETRY_TICKS = 24;
 /** How far in half-cell nodes a settler steps for a passing chat. Authored value, two cells. */
 const CHAT_PASSING_REACH_NODES = 4;
 
-/** Ticks of the seeker's work one node of distance costs: the walk there and the walk back.
- *  Approximation: the reference pace over the straight distance, not the seeker's own path. */
+/** Ticks of the seeker's work one node of its way costs: the walk there and the walk back.
+ *  Approximation: the reference pace, not the seeker's own. */
 const SEEK_TICKS_PER_NODE = 2 * REFERENCE_STEP_TICKS;
+
+/** How many nodes away a partner counts as: the straight distance, or the walk where that is longer. */
+type PartnerWay = (dist: number, x: number, y: number) => number;
+
+/**
+ * The {@link PartnerWay} of a seeker on `(hx, hy)` that walks at most `reach` nodes: a partner across a
+ * wall or a river counts as far away as the walk round it, and one no walk of `reach` steps gets to as out
+ * of reach. The walk is searched on the first ask. A fixture without terrain, and a seeker on a node no
+ * walk starts from, count the straight distance.
+ */
+function partnerWay(world: World, ctx: SystemContext, hx: number, hy: number, reach: number): PartnerWay {
+  const { terrain } = ctx;
+  if (terrain === undefined) return (dist) => dist;
+  let lengths: ReturnType<typeof walkLengthsFrom> | undefined;
+  return (dist, x, y) => {
+    if (lengths === undefined) lengths = walkLengthsFrom(world, ctx.content, terrain, hx, hy, reach);
+    return lengths === null ? dist : Math.max(dist, walkLengthTo(lengths, x, y));
+  };
+}
 
 /** Partner searches start at ring 1: a candidate stacked on the seeker's own node is skipped, since a pair
  *  chatting from one node stands inside each other. */
@@ -246,7 +266,6 @@ function wantsCompany(world: World, ctx: SystemContext, e: Entity): boolean {
  * The passing chat, an authored rule the original lacks: between two tasks a settler short of company
  * takes one round with a settler within {@link CHAT_PASSING_REACH_NODES} who stands idle or is short of
  * company too, so the round is wasted on neither and the bar seldom falls far enough to cost a walk.
- * Approximation: the reach is the straight distance, so a partner behind a wall costs a longer step.
  */
 function passingPartner(
   world: World,
@@ -260,11 +279,12 @@ function passingPartner(
   const { tick } = ctx;
   const rest = world.tryGet(e, ChatSearchRest);
   if (rest !== undefined && rest.until > tick) return false;
-  const priceOf = (cand: Entity, dist: number, toBeat: number): number => {
+  const way = partnerWay(world, ctx, hx, hy, CHAT_PASSING_REACH_NODES);
+  const priceOf = (cand: Entity, dist: number, toBeat: number, x: number, y: number): number => {
     if (dist > toBeat || cand === e || ownerOf(world, cand) !== owner) return NO_PARTNER;
     if (!mayJoinChat(world, tick, cand)) return NO_PARTNER;
     const idle = world.has(cand, IdleSince) && !isTravelling(world, cand);
-    return idle || wantsCompany(world, ctx, cand) ? dist : NO_PARTNER;
+    return idle || wantsCompany(world, ctx, cand) ? way(dist, x, y) : NO_PARTNER;
   };
   const found = candidates
     .ensure()
@@ -334,7 +354,7 @@ function wastedChatTicks(
 
 /**
  * {@link planGossipSeek}'s search and claim. Every partner is priced in ticks of lost work: the seeker's
- * walk there and back, plus what the chat takes from a working partner for nothing. An idler or a pastime
+ * walk there and back by its {@link PartnerWay}, plus what the chat takes from a working partner for nothing. An idler or a pastime
  * chatter loses nothing. The cheapest partner inside the seeker's {@link seekBudgetTicks} is claimed, so a
  * lonely worker nearby beats a busy one with a full bar, and distance is weighed against both.
  * Approximation: only a settler the idle rung has counted ({@link IdleSince}) is an idler, so one a script
@@ -355,11 +375,16 @@ function seekPartner(
   const urgency = seekUrgency(needLevel(world.get(e, SettlerNeeds), 'enjoyment', tick), ordered);
   const budget = seekBudgetTicks(urgency);
   const reach = Math.floor(budget / SEEK_TICKS_PER_NODE);
-  const priceOf = (cand: Entity, dist: number, toBeat: number): number => {
-    const walk = dist * SEEK_TICKS_PER_NODE;
-    if (walk > toBeat || cand === e || ownerOf(world, cand) !== owner) return NO_PARTNER;
-    if (world.has(cand, Chat)) return mayLeavePastimeChat(world, tick, cand) ? walk : NO_PARTNER;
+  const way = partnerWay(world, ctx, hx, hy, reach);
+  const priceOf = (cand: Entity, dist: number, toBeat: number, x: number, y: number): number => {
+    if (dist * SEEK_TICKS_PER_NODE > toBeat || cand === e || ownerOf(world, cand) !== owner) {
+      return NO_PARTNER;
+    }
+    if (world.has(cand, Chat)) {
+      return mayLeavePastimeChat(world, tick, cand) ? way(dist, x, y) * SEEK_TICKS_PER_NODE : NO_PARTNER;
+    }
     if (!mayJoinChat(world, tick, cand)) return NO_PARTNER;
+    const walk = way(dist, x, y) * SEEK_TICKS_PER_NODE;
     // An idler a lower id has just sent off keeps its idle count until the walk is issued.
     if (world.has(cand, IdleSince) && !isTravelling(world, cand)) return walk;
     const chatTicks = companyChatTicks(ctx.content, settler, world.get(cand, Settler));
@@ -428,7 +453,15 @@ export function planGossipIdle(
   if (ctx.rng.int(Math.max(1, Math.floor(CHAT_IDLE_WALK_MEAN_WAIT_TICKS / callPeriodTicks))) !== 0) {
     return false;
   }
-  const distant = buckets.nearest(hx, hy, CHAT_PARTNER_MIN_DIST_NODES, CHAT_IDLE_WALK_RADIUS_NODES, idle);
+  const way = partnerWay(world, ctx, hx, hy, CHAT_IDLE_WALK_RADIUS_NODES);
+  const distant = buckets.cheapest(
+    hx,
+    hy,
+    CHAT_PARTNER_MIN_DIST_NODES,
+    CHAT_IDLE_WALK_RADIUS_NODES,
+    CHAT_IDLE_WALK_RADIUS_NODES,
+    (cand, dist, toBeat, x, y) => (dist > toBeat || !idle(cand) ? NO_PARTNER : way(dist, x, y)),
+  );
   if (distant === null) return false;
   startChat(world, e, distant, 'pastime');
   return true;
