@@ -100,7 +100,8 @@ export class ChatCandidates {
 
   /**
    * The candidate within `minDist..maxDist` Manhattan nodes of `(fromX, fromY)` that `priceOf` prices lowest
-   * and no higher than `budget`, the lower entity id on a tie, or null. `priceOf` gets the distance, the
+   * and no higher than `budget`, the lower entity id on a tie, or null. The distance only bounds the search:
+   * the price is `priceOf`'s own measure, a walk's steps or lost work. `priceOf` gets the distance, the
    * price to beat and the candidate's node, returns {@link NO_PARTNER} for a candidate it rejects, and must
    * be a pure read: the candidates come in no fixed order.
    */

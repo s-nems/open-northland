@@ -26,7 +26,12 @@ import {
 } from '../../../components/index.js';
 import { type Fixed, fx, ONE, ZERO } from '../../../core/fixed.js';
 import type { Entity, World } from '../../../ecs/world.js';
-import { nodeHxOfPosition, nodeHyOfPosition, type nodesAdjacent } from '../../../nav/halfcell.js';
+import {
+  hexDistanceBetween,
+  nodeHxOfPosition,
+  nodeHyOfPosition,
+  type nodesAdjacent,
+} from '../../../nav/halfcell.js';
 import { walkLengthTo } from '../../../nav/range-search.js';
 import type { SystemContext } from '../../context.js';
 import { carriesNeeds, NEED_DRIVE_THRESHOLD, needLevel } from '../../lifecycle/needs/index.js';
@@ -64,22 +69,34 @@ const CHAT_PASSING_REACH_NODES = 4;
  *  Approximation: the reference pace, not the seeker's own. */
 const SEEK_TICKS_PER_NODE = 2 * REFERENCE_STEP_TICKS;
 
-/** How many nodes away a partner counts as: the straight distance, or the walk where that is longer. */
-type PartnerWay = (dist: number, x: number, y: number) => number;
+/** How many nodes away a seeker counts a partner on `(x, y)`, `dist` Manhattan nodes off. */
+interface PartnerWay {
+  /** The way there. */
+  to(dist: number, x: number, y: number): number;
+  /** No more than {@link to}, and cheap: a search drops a partner whose least way cannot beat the price
+   *  it holds. */
+  least(dist: number, x: number, y: number): number;
+}
+
+/** The way of a fixture without terrain: the straight distance. */
+const STRAIGHT_WAY: PartnerWay = { to: (dist) => dist, least: (dist) => dist };
 
 /**
- * The {@link PartnerWay} of a seeker on `(hx, hy)` that walks at most `reach` nodes: a partner across a
- * wall or a river counts as far away as the walk round it, and one no walk of `reach` steps gets to as out
- * of reach. The walk is searched on the first ask. A fixture without terrain, and a seeker on a node no
- * walk starts from, count the straight distance.
+ * The {@link PartnerWay} of a seeker on `(hx, hy)` that walks at most `reach` nodes: the steps of the walk
+ * to the partner, so one across a wall or a river is as far away as the walk round it, and one no walk of
+ * `reach` steps gets to is out of reach. The walk is searched on the first ask, and no walk is shorter
+ * than the hex distance. A seeker on a node no walk starts from counts the straight distance.
  */
 function partnerWay(world: World, ctx: SystemContext, hx: number, hy: number, reach: number): PartnerWay {
   const { terrain } = ctx;
-  if (terrain === undefined) return (dist) => dist;
+  if (terrain === undefined) return STRAIGHT_WAY;
   let lengths: ReturnType<typeof walkLengthsFrom> | undefined;
-  return (dist, x, y) => {
-    if (lengths === undefined) lengths = walkLengthsFrom(world, ctx.content, terrain, hx, hy, reach);
-    return lengths === null ? dist : Math.max(dist, walkLengthTo(lengths, x, y));
+  return {
+    to: (dist, x, y) => {
+      if (lengths === undefined) lengths = walkLengthsFrom(world, ctx.content, terrain, hx, hy, reach);
+      return lengths === null ? dist : walkLengthTo(lengths, x, y);
+    },
+    least: (_dist, x, y) => hexDistanceBetween(hx, hy, x, y),
   };
 }
 
@@ -282,10 +299,10 @@ function passingPartner(
   if (rest !== undefined && rest.until > tick) return false;
   const way = partnerWay(world, ctx, hx, hy, CHAT_PASSING_REACH_NODES);
   const priceOf = (cand: Entity, dist: number, toBeat: number, x: number, y: number): number => {
-    if (dist > toBeat || cand === e || ownerOf(world, cand) !== owner) return NO_PARTNER;
+    if (way.least(dist, x, y) > toBeat || cand === e || ownerOf(world, cand) !== owner) return NO_PARTNER;
     if (!mayJoinChat(world, tick, cand)) return NO_PARTNER;
     const idle = world.has(cand, IdleSince) && !isTravelling(world, cand);
-    return idle || wantsCompany(world, ctx, cand) ? way(dist, x, y) : NO_PARTNER;
+    return idle || wantsCompany(world, ctx, cand) ? way.to(dist, x, y) : NO_PARTNER;
   };
   const found = candidates
     .ensure()
@@ -378,14 +395,13 @@ function seekPartner(
   const reach = Math.floor(budget / SEEK_TICKS_PER_NODE);
   const way = partnerWay(world, ctx, hx, hy, reach);
   const priceOf = (cand: Entity, dist: number, toBeat: number, x: number, y: number): number => {
-    if (dist * SEEK_TICKS_PER_NODE > toBeat || cand === e || ownerOf(world, cand) !== owner) {
-      return NO_PARTNER;
-    }
+    if (way.least(dist, x, y) * SEEK_TICKS_PER_NODE > toBeat) return NO_PARTNER;
+    if (cand === e || ownerOf(world, cand) !== owner) return NO_PARTNER;
     if (world.has(cand, Chat)) {
-      return mayLeavePastimeChat(world, tick, cand) ? way(dist, x, y) * SEEK_TICKS_PER_NODE : NO_PARTNER;
+      return mayLeavePastimeChat(world, tick, cand) ? way.to(dist, x, y) * SEEK_TICKS_PER_NODE : NO_PARTNER;
     }
     if (!mayJoinChat(world, tick, cand)) return NO_PARTNER;
-    const walk = way(dist, x, y) * SEEK_TICKS_PER_NODE;
+    const walk = way.to(dist, x, y) * SEEK_TICKS_PER_NODE;
     // An idler a lower id has just sent off keeps its idle count until the walk is issued.
     if (world.has(cand, IdleSince) && !isTravelling(world, cand)) return walk;
     const chatTicks = companyChatTicks(ctx.content, settler, world.get(cand, Settler));
@@ -461,7 +477,8 @@ export function planGossipIdle(
     CHAT_PARTNER_MIN_DIST_NODES,
     CHAT_IDLE_WALK_RADIUS_NODES,
     CHAT_IDLE_WALK_RADIUS_NODES,
-    (cand, dist, toBeat, x, y) => (dist > toBeat || !idle(cand) ? NO_PARTNER : way(dist, x, y)),
+    (cand, dist, toBeat, x, y) =>
+      way.least(dist, x, y) > toBeat || !idle(cand) ? NO_PARTNER : way.to(dist, x, y),
   );
   if (distant === null) return false;
   startChat(world, e, distant, 'pastime');

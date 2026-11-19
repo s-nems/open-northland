@@ -21,7 +21,12 @@ import {
 } from '../../../src/components/index.js';
 import type { Entity } from '../../../src/ecs/world.js';
 import { type Fixed, fx, ONE, Simulation } from '../../../src/index.js';
-import { nodeOfPosition, nodesAdjacent, positionOfNode } from '../../../src/nav/halfcell.js';
+import {
+  hexDistanceBetween,
+  nodeOfPosition,
+  nodesAdjacent,
+  positionOfNode,
+} from '../../../src/nav/halfcell.js';
 import {
   CHAT_COOLDOWN_TICKS,
   gossipSystem,
@@ -143,6 +148,30 @@ describe('gossip initiation (planner rungs)', () => {
     // With the ford one row down the same pair chats.
     const near = pairAcross(2);
     expect(near.sim.world.has(near.lonely, Chat)).toBe(true);
+  });
+
+  it('a partner is as far away as the steps to it, however its distance counts the rows', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(8, 4) });
+    const at = (e: Entity, hx: number, hy: number): Entity => {
+      const p = sim.world.mut(e, Position);
+      ({ x: p.x, y: p.y } = positionOfNode(hx, hy));
+      return e;
+    };
+    const SEEKER_NODE = { hx: 6, hy: 2 };
+    /** Two rows down: two steps away and three nodes of Manhattan distance. */
+    const DIAGONAL_NODE = { hx: 7, hy: 4 };
+    /** Two nodes along the row: two steps and two nodes away. */
+    const ROW_NODE = { hx: 8, hy: 2 };
+    for (const node of [DIAGONAL_NODE, ROW_NODE])
+      expect(hexDistanceBetween(SEEKER_NODE.hx, SEEKER_NODE.hy, node.hx, node.hy)).toBe(2);
+    const lonely = at(gossiper(sim, 0, 0, EMPTY), SEEKER_NODE.hx, SEEKER_NODE.hy);
+    const diagonal = at(gossiper(sim, 0, 0, FULL), DIAGONAL_NODE.hx, DIAGONAL_NODE.hy);
+    at(gossiper(sim, 0, 0, FULL), ROW_NODE.hx, ROW_NODE.hy);
+
+    plannerSystem(sim.world, ctxOf(sim));
+
+    // Equally far by the walk, so the lower id is taken.
+    expect(sim.world.get(lonely, Chat)).toMatchObject({ partner: diagonal, seeker: true });
   });
 
   it('a lonely settler takes a partner out of idle chatter, sending the other half to its breather', () => {
