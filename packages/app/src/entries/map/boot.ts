@@ -14,6 +14,7 @@ import {
 import type { MatchRulesView, SaveGame, SaveGameHeader } from '@open-northland/sim';
 import type { Application } from 'pixi.js';
 import { MONSTER_TRIBES } from '../../catalog/creatures.js';
+import { WONDER_TRIBE } from '../../catalog/wonders.js';
 import { loadAmbientCreatures } from '../../content/animal-gfx/index.js';
 import { authoredBuildingSheet } from '../../content/building-gfx/authored.js';
 import { loadIr } from '../../content/ir/load.js';
@@ -295,12 +296,17 @@ export async function assembleMapWorld<H extends HostedMapWorld>(
     // Every civilization the map fields brings its own building and settler pages, so the sheet loads
     // exactly the seats' and the authored entities' tribes.
     const seating = sessionSeating(session, script, ir ?? {});
-    const tribes = worldTribes(
+    const fielded = worldTribes(
       script === null ? null : { players: seating.players, missions: script.missions },
       loaded?.entities,
       ir ?? {},
       seating.remap,
     );
+    // The admin panel's monster presets and wonders draw only with their art loaded; those pages are
+    // large, so they load when the admin tools were on at game start. A relayed game never mounts the panel.
+    const adminTools = readStoredSettings().debugToolsEnabled && plan.multiplayer !== true;
+    const tribes: WorldTribes =
+      adminTools && !fielded.includes(WONDER_TRIBE) ? [...fielded, WONDER_TRIBE] : fielded;
     const documents: MapWorldDocuments = {
       map: loaded,
       ir,
@@ -316,10 +322,7 @@ export async function assembleMapWorld<H extends HostedMapWorld>(
     early = plan.multiplayer === true ? null : new EarlyHosting(plan, documents);
     await boot.begin('sprites');
     const goods = realContent?.content.goods ?? sandboxGoods();
-    // The admin panel's monster presets draw only with their looks loaded; those pages are large, so they
-    // load when the admin tools were on at game start. A relayed game never mounts the panel.
-    const adminCharacterTribes =
-      readStoredSettings().debugToolsEnabled && plan.multiplayer !== true ? [...MONSTER_TRIBES] : [];
+    const adminCharacterTribes = adminTools ? [...MONSTER_TRIBES] : [];
     let sheet: SpriteSheet;
     let terrain: TerrainTextureSet;
     try {

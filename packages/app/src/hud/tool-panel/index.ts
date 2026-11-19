@@ -96,6 +96,7 @@ import {
   type PlacementClickAsks,
   type RoadPreview,
   type StandingStructure,
+  standingBuildingAt,
 } from './placement.js';
 import { canBecomeOptions } from './residents/can-become.js';
 import { NO_RESIDENT_FILTERS } from './residents/rows.js';
@@ -1026,9 +1027,16 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
             if (!roadOffered) return false;
             placement.enterRoad({ owner, tribe });
             return true;
-          case 'building':
-            placement.enter({ typeId: structure.typeId, tribe, paper: null, standing: { owner } });
+          case 'building': {
+            const at = standingBuildingAt(structure.records, tribe);
+            placement.enter({
+              typeId: structure.typeId,
+              tribe: at.tribe,
+              paper: null,
+              standing: { owner, level: at.level },
+            });
             return true;
+          }
         }
       },
       cancelPlacement: cancelHeld,

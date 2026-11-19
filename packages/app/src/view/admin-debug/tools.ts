@@ -7,7 +7,7 @@ import type {
   AdminSpawnGroup,
   AdminTool,
 } from '../../hud/dom/admin-panel/model.js';
-import type { StandingStructure } from '../../hud/tool-panel/placement.js';
+import type { BuildingRecord, StandingStructure } from '../../hud/tool-panel/placement.js';
 import { formatMessage, type Messages } from '../../i18n/index.js';
 import { DEBUG_ACTIONS, type DebugAction } from './actions-catalog.js';
 import type { AdminLabels } from './labels.js';
@@ -85,10 +85,12 @@ function standingKey(structure: StandingStructure): string {
     : `standing:${structure.kind}`;
 }
 
-/** One building type the buildings group offers, with its localized name. */
+/** One building type the buildings group offers, with its localized name and every tribe's record of it,
+ *  by ascending tribe. */
 export interface BuildingEntry {
   readonly typeId: number;
   readonly label: string;
+  readonly records: readonly BuildingRecord[];
 }
 
 export interface AdminToolSources {
@@ -212,7 +214,7 @@ export function createAdminToolCatalogue(
     group(
       'buildings',
       sources.standing.buildings.map((entry) =>
-        standing({ kind: 'building', typeId: entry.typeId }, entry.label),
+        standing({ kind: 'building', typeId: entry.typeId, records: entry.records }, entry.label),
       ),
       copy.notes.buildings,
     ),

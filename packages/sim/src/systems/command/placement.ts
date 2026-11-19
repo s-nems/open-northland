@@ -161,8 +161,8 @@ export function assembleBuilding(
   // The anchor is a half-cell node; its Position is the node's fractional tile coords.
   world.add(e, Position, positionOfNode(spec.x, spec.y));
   const built = underConstruction ? fx.fromInt(0) : ONE;
-  // A higher tier placed outright (a map's house, a script's) stands on its rung of the chain, and a map's
-  // wonder on the stage its record draws.
+  // A higher tier placed outright (a map's house, a script's) stands on its rung of the chain, and a wonder
+  // on the stage the command names.
   const index = contentIndex(ctx.content);
   const rung = buildingLevelOf(index, spec.buildingType);
   const drawnTop = index.buildingTopLevel.get(spec.buildingType) ?? rung;

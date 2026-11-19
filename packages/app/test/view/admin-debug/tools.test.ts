@@ -34,7 +34,7 @@ const CHAIN_CLASS = 3;
 const ARMORS: readonly ArmorEntry[] = [{ armorClass: CHAIN_CLASS, good: 935, id: 'armor_chain' }];
 const CART: VehicleEntry = { vehicleType: VEHICLE_HANDCART, label: 'Wózek' };
 const WOLVES = { tribe: 20, id: 'wolves' };
-const HALL = { typeId: 1, label: 'Hala' };
+const HALL = { typeId: 1, label: 'Hala', records: [{ tribe: 1, topLevel: 0 }] };
 
 const labels = createAdminLabels(messages(), goodLabel);
 const catalogue = createAdminToolCatalogue(messages(), labels, {
@@ -110,7 +110,7 @@ describe('admin tool catalogue', () => {
     expect(standing).toEqual([
       { kind: 'standing', structure: { kind: 'wall' } },
       { kind: 'standing', structure: { kind: 'road' } },
-      { kind: 'standing', structure: { kind: 'building', typeId: HALL.typeId } },
+      { kind: 'standing', structure: { kind: 'building', typeId: HALL.typeId, records: HALL.records } },
     ]);
     expect(groupOf('buildings').tools.map((tool) => tool.label)).toEqual([HALL.label]);
     expect(catalogue.choiceOf('nope')).toBeUndefined();

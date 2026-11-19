@@ -207,7 +207,7 @@ describe('placement cursor', () => {
     const overlayAsks: Array<readonly [number, Paper | null]> = [];
     for (const building of [
       { ...HELD, paper },
-      { ...HELD, standing: { owner: 2 } },
+      { ...HELD, standing: { owner: 2, level: 0 } },
     ]) {
       const f = frame({
         building,

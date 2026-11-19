@@ -1,5 +1,6 @@
 import type { TargetMark } from '@open-northland/render';
 import type { Command, Entity, Paper, PlayerCommand } from '@open-northland/sim';
+import { PRIMARY_TRIBE } from '../../game/rules.js';
 import { formatMessage, messages } from '../../i18n/index.js';
 import type { PlacementStrip } from '../dom/placement-strip.js';
 import type { PanelContext } from './context.js';
@@ -56,15 +57,35 @@ export interface BuildingPick {
   readonly tribe: number;
   readonly paper: Paper | null;
   /** The admin tool's pick: it stands finished for `owner` through the trusted channel, past the
-   *  technology gate. */
-  readonly standing?: { readonly owner: number };
+   *  technology gate, at `level` where the type's records draw one above its rung. */
+  readonly standing?: { readonly owner: number; readonly level: number };
 }
 
-/** What the admin tool stands finished: a line of wall or road, or a building. */
+/** One tribe's `[GfxHouse]` record of a building type, with the highest level it draws. */
+export interface BuildingRecord {
+  readonly tribe: number;
+  readonly topLevel: number;
+}
+
+/** What the admin tool stands finished: a line of wall or road, or a building with every tribe's record
+ *  of its type, by ascending tribe. */
 export type StandingStructure =
   | { readonly kind: 'wall' }
   | { readonly kind: 'road' }
-  | { readonly kind: 'building'; readonly typeId: number };
+  | { readonly kind: 'building'; readonly typeId: number; readonly records: readonly BuildingRecord[] };
+
+/** Where a finished building stands for a seat of `seatTribe`: under the seat's tribe while its own or the
+ *  base tribe's record draws the type, else under the first tribe whose record does (a wonder's), as a map
+ *  stands it; at the top level that record draws. */
+export function standingBuildingAt(
+  records: readonly BuildingRecord[],
+  seatTribe: number,
+): { readonly tribe: number; readonly level: number } {
+  const drawn = records.find((r) => r.tribe === seatTribe) ?? records.find((r) => r.tribe === PRIMARY_TRIBE);
+  if (drawn !== undefined) return { tribe: seatTribe, level: drawn.topLevel };
+  const other = records[0];
+  return other === undefined ? { tribe: seatTribe, level: 0 } : { tribe: other.tribe, level: other.topLevel };
+}
 
 /** A paper or the admin tool waives a building's technology gate; its ground rules still apply. */
 export function techWaived(pick: BuildingPick): boolean {
@@ -469,6 +490,7 @@ export function createPlacementController(deps: PlacementDeps): PlacementControl
       deps.enqueueTrusted?.({
         ...place,
         owner: standing.owner,
+        level: standing.level,
         underConstruction: false,
         ignoreTechnology: true,
       });

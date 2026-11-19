@@ -224,13 +224,26 @@ function mountAdminPanel(
 }
 
 /** Every building type with a body to stand but a workshop's hidden vehicle site, in the language's
- *  alphabetical order. */
+ *  alphabetical order, with each tribe's record and its top level: a wonder stands finished on its top
+ *  stage, the look its placement ghost and Knowledge picture show. */
 function standingBuildings(host: SessionHost): BuildingEntry[] {
+  const topLevels = new Map<number, Map<number, number>>();
+  for (const row of host.content.buildingBobs) {
+    const byTribe = topLevels.get(row.typeId) ?? new Map<number, number>();
+    byTribe.set(row.tribeId, Math.max(byTribe.get(row.tribeId) ?? row.level, row.level));
+    topLevels.set(row.typeId, byTribe);
+  }
   const lang = currentLocale();
   const labels = buildingLabelsFromContent(host.content, lang);
   const compare = compareLabels(bcp47Tag(lang));
   return host.content.buildings
     .filter((b) => b.kind !== BUILDING_KIND.vehicle && b.footprint !== undefined)
-    .map((b) => ({ typeId: b.typeId, label: labels.get(b.typeId) ?? b.id }))
+    .map((b) => ({
+      typeId: b.typeId,
+      label: labels.get(b.typeId) ?? b.id,
+      records: [...(topLevels.get(b.typeId) ?? [])]
+        .map(([tribe, topLevel]) => ({ tribe, topLevel }))
+        .sort((x, y) => x.tribe - y.tribe),
+    }))
     .sort((a, b) => compare(a.label, b.label) || a.typeId - b.typeId);
 }

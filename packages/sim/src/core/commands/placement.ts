@@ -159,8 +159,9 @@ interface AuthoredPlaceBuildingFields {
   /** The {@link import('../../components/missions/mission.js').MissionObjectId} to stamp; omit for a house no
    *  mission addresses. */
   readonly missionId?: number;
-  /** A decoded map's `sethouse` level. It stands only on a type whose `[GfxHouse]` record draws it above
-   *  the type's own rung (a wonder's stage); any other type keeps its rung. */
+  /** A decoded map's `sethouse` level, or the top level of the admin tools' finished building. It stands
+   *  only on a type whose `[GfxHouse]` record draws it above the type's own rung (a wonder's stage); any
+   *  other type keeps its rung. */
   readonly level?: number;
   /** A decoded map's `sethouse` record name. It stands only where the record carries a footprint of its
    *  own for the type and tribe; otherwise the type's default footprint applies. */

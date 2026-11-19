@@ -1,6 +1,8 @@
 import type { UiCue } from '@open-northland/audio';
 import type { Command, Entity, Paper } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
+import { BYZANTINE } from '../../../src/catalog/unit-variants.js';
+import { WONDER_TRIBE } from '../../../src/catalog/wonders.js';
 import {
   type BuildingAvailability,
   type MenuBuildingEntry,
@@ -12,6 +14,7 @@ import {
   type BuildingPick,
   createPlacementController,
   PALISADE_LINE_MAX_EDGES,
+  standingBuildingAt,
 } from '../../../src/hud/tool-panel/placement.js';
 import { createToolWindows } from '../../../src/hud/tool-panel/windows.js';
 import { formatMessage, messages } from '../../../src/i18n/index.js';
@@ -764,6 +767,22 @@ describe('placement controller', () => {
     expect([...builtOwners]).toEqual([3]);
   });
 
+  it("stands an admin building under the seat's tribe at its record's top level, a wonder under its own", () => {
+    const church = [
+      { tribe: VIKING, topLevel: 0 },
+      { tribe: FRANK, topLevel: 1 },
+    ];
+    expect(standingBuildingAt(church, FRANK)).toEqual({ tribe: FRANK, level: 1 });
+    expect(standingBuildingAt(church, VIKING)).toEqual({ tribe: VIKING, level: 0 });
+    // A tribe without its own record draws the base tribe's.
+    expect(standingBuildingAt(church, BYZANTINE)).toEqual({ tribe: BYZANTINE, level: 0 });
+    expect(standingBuildingAt([{ tribe: WONDER_TRIBE, topLevel: 2 }], VIKING)).toEqual({
+      tribe: WONDER_TRIBE,
+      level: 2,
+    });
+    expect(standingBuildingAt([], FRANK)).toEqual({ tribe: FRANK, level: 0 });
+  });
+
   it('stands an admin building finished for the chosen owner past the technology gate, cancelling quietly', () => {
     const trusted: Command[] = [];
     const asked: [boolean | undefined, number | undefined][] = [];
@@ -777,7 +796,7 @@ describe('placement controller', () => {
       undefined,
       { enqueueTrusted: (command) => trusted.push(command) },
     );
-    placement.enter({ typeId: 23, tribe: 2, paper: null, standing: { owner: 3 } });
+    placement.enter({ typeId: 23, tribe: 2, paper: null, standing: { owner: 3, level: 1 } });
     expect(strip.shown?.label).toBe(formatMessage(messages().admin.standingBuilding, { name: 'Joinery' }));
     placement.handleClick(0, 0);
     // The chosen owner's ground decides, as the sim's rule for that owner will.
@@ -791,11 +810,12 @@ describe('placement controller', () => {
         y: 2,
         tribe: 2,
         owner: 3,
+        level: 1,
         underConstruction: false,
         ignoreTechnology: true,
       },
     ]);
-    placement.enter({ typeId: 23, tribe: 2, paper: null, standing: { owner: 3 } });
+    placement.enter({ typeId: 23, tribe: 2, paper: null, standing: { owner: 3, level: 1 } });
     expect(placement.activeStanding()).toBe(true);
     placement.cancel();
     expect(cancels).toEqual([]);

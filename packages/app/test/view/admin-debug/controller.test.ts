@@ -14,7 +14,7 @@ const SEAT_TRIBE = 3;
 const LONG_BOW_GOOD = 38;
 const CHAIN = { armorClass: 3, good: 35, id: 'armor_chain' };
 const LEARNED: readonly (readonly [number, number])[] = [[7, 500]];
-const HALL = { typeId: 1, label: 'Hala' };
+const HALL = { typeId: 1, label: 'Hala', records: [{ tribe: SEAT_TRIBE, topLevel: 2 }] };
 
 afterEach(() => {
   document.body.replaceChildren();
@@ -201,7 +201,7 @@ describe('debug tools controller', () => {
     expect(enterStanding.mock.calls).toEqual([
       [{ kind: 'wall' }, 0, SEAT_TRIBE],
       [{ kind: 'road' }, 0, SEAT_TRIBE],
-      [{ kind: 'building', typeId: HALL.typeId }, 0, SEAT_TRIBE],
+      [{ kind: 'building', typeId: HALL.typeId, records: HALL.records }, 0, SEAT_TRIBE],
     ]);
   });
 
