@@ -33,10 +33,9 @@ function walkFrameId(clip: BobSeqRow, offset: number, walk: BobSeqRow): number |
  * `head` with supported body clips it draws no frame of filled from `donors`, the other head sets on
  * the same body: the head's own first `walk` frame in that facing, placed where the first donor drawing the
  * frame puts its head, less the two heads' anchor difference in that walk frame. Only the head's own frames
- * are used, since each head set is its own sheet. The frankish, saracen and byzantine women's head sets
- * draw no kiss frames, the byzantine one no sleep frames, over the shared woman body, and the saracen
- * civilian's second head set no woodcutting frames. Approximation: the head keeps its upright walk pose
- * through the body's lean. Returns `head` by identity when nothing borrows.
+ * are used, since each head set is its own sheet. Original data: some head sets draw none of a clip their
+ * body plays, such as the viking druid's and scout's capped heads in most trade clips. Approximation: the
+ * head keeps its upright walk pose through the body's lean. Returns `head` by identity when nothing borrows.
  */
 export function borrowedHeadAtlas(
   head: SpriteAtlas,

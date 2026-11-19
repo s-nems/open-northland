@@ -86,8 +86,7 @@ viking, frank, byzantine, saracen, egyptian. Watch both heads through the shovel
 to the flag, especially the byzantine collector with a hat.
 
 `?scene=wood-gatherers` places two collectors per civilization between two trees, in the same rows.
-Watch both heads chop facing each tree. The saracen civilian's second head draws no chopping
-frames; it wears its own walk head of the facing the body chops in.
+Watch both heads of every row chop facing each tree, the saracen turban heads included.
 
 `?scene=armed-idle` stands the spearman, swordsman, two-hander, shortbow and longbow of each
 civilization in rows: viking, frank, byzantine, saracen, egyptian. Watch them for a while: every idle
