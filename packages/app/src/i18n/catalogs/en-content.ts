@@ -264,6 +264,10 @@ export const enContent = {
       title: 'Clay extractors',
       summary: 'Two extractors from each tribe dig clay and carry it to their flag.',
     },
+    'wood-gatherers': {
+      title: 'Wood collectors',
+      summary: 'Two collectors from each tribe chop the trees on both sides of their flag.',
+    },
     'nation-footprints': {
       title: 'Nation footprints',
       summary:

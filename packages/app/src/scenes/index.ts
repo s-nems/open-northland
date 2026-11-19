@@ -104,6 +104,7 @@ import { gathererGoodsScene } from './gathering/gatherer-goods.js';
 import { mushroomRegrowthScene } from './gathering/mushroom-regrowth.js';
 import { porterFlagScene } from './gathering/porter-flag.js';
 import { treeRegrowthScene } from './gathering/tree-regrowth.js';
+import { woodGatherersScene } from './gathering/wood-gatherers.js';
 import { audioMixScene } from './interface/audio-mix.js';
 import { groupPanelArmyScene, groupPanelScene, groupSelectionScene } from './interface/group-panel.js';
 import { netPanelScene } from './interface/net-panel.js';
@@ -186,6 +187,7 @@ export const SCENES: readonly SceneDefinition[] = [
   weaponFacingsScene,
   armedIdleScene,
   clayGatherersScene,
+  woodGatherersScene,
   clayOverlaysScene,
   combatGesturesScene,
   byzantineSpearsScene,

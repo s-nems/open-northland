@@ -261,6 +261,10 @@ export const plContent = {
       title: 'Zbieracze gliny',
       summary: 'Dwaj zbieracze każdego plemienia kopią glinę i odnoszą ją do swojej flagi.',
     },
+    'wood-gatherers': {
+      title: 'Zbieracze drewna',
+      summary: 'Dwaj zbieracze każdego plemienia rąbią drzewa po obu stronach swojej flagi.',
+    },
     'nation-footprints': {
       title: 'Obrysy domów nacji',
       summary:

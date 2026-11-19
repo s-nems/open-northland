@@ -258,6 +258,10 @@ export const chtContent = {
       title: '黏土採集者',
       summary: '每個民族各兩名採集者挖掘黏土並搬到自己的旗幟。',
     },
+    'wood-gatherers': {
+      title: '木材採集者',
+      summary: '每個民族各兩名採集者砍伐自己旗幟兩側的樹木。',
+    },
     'nation-footprints': {
       title: '各民族建築占地',
       summary: '維京、法蘭克和拜占庭的房屋成排排列；閒置的居民站在自家旁邊，絕不站在牆格或門口。',

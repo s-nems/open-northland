@@ -266,6 +266,10 @@ export const itContent = {
       title: 'Estrattori di argilla',
       summary: 'Due estrattori per ogni tribù scavano argilla e la portano alla loro bandierina.',
     },
+    'wood-gatherers': {
+      title: 'Raccoglitori di legna',
+      summary: 'Due raccoglitori per ogni tribù tagliano gli alberi ai due lati della loro bandierina.',
+    },
     'nation-footprints': {
       title: 'Ingombro degli edifici per popolo',
       summary:

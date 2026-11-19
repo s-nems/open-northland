@@ -264,6 +264,10 @@ export const deContent = {
       title: 'Lehmabbau',
       summary: 'Zwei Abbauer jedes Stammes graben Lehm und tragen ihn zu ihrer Flagge.',
     },
+    'wood-gatherers': {
+      title: 'Holzsammler',
+      summary: 'Zwei Sammler jedes Stammes fällen die Bäume zu beiden Seiten ihrer Flagge.',
+    },
     'nation-footprints': {
       title: 'Grundrisse der Völker',
       summary:

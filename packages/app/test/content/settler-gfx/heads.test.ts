@@ -149,9 +149,14 @@ describe('carryHeadFallback', () => {
 });
 
 describe('borrowedHeadAtlas', () => {
-  /** Six facings: the stand clip draws one frame per facing, the kiss two. */
-  const STAND = row('walk', 10, 6);
-  const KISS = row('kiss', 40, 12);
+  /** Eight facings of three frames, as the source walks lay them out; the kiss has two frames per hex
+   *  facing. A length that also splits in six makes a hex-block step land on the wrong facing. */
+  const FACINGS = 8;
+  const HEX_FACINGS = 6;
+  const WALK_FRAMES = 3;
+  const KISS_FRAMES = 2;
+  const STAND = row('walk', 10, FACINGS * WALK_FRAMES);
+  const KISS = row('kiss', 40, HEX_FACINGS * KISS_FRAMES);
   const frame = (bobId: number, x: number, offsetX: number, offsetY: number) => ({
     bobId,
     rect: { x, y: 0, width: 8, height: 8 },
@@ -168,10 +173,17 @@ describe('borrowedHeadAtlas', () => {
   /** A taller hat that draws only the stand clip, two pixels higher on the same neck. */
   const hat = indexAtlasFrames(64, 64, standFrames(20, -42));
 
-  it('draws a blank clip with the own stand head of that facing, where the donor puts its head', () => {
+  it('draws a blank clip with the own first walk head of that facing, where the donor puts its head', () => {
     const borrowed = borrowedHeadAtlas(hat, [donor], [STAND, KISS], STAND);
-    // Kiss entry 7 lies in the fourth facing block, whose stand frame is bob 13.
-    expect(borrowed.frames.get(KISS.start + 7)).toMatchObject({ x: 23, offsetX: 7 + 3, offsetY: -38 });
+    // Each hex facing's kiss block takes the first walk frame of the same facing.
+    for (let entry = 0; entry < KISS.length; entry++) {
+      const walkOffset = Math.floor(entry / KISS_FRAMES) * WALK_FRAMES;
+      expect(borrowed.frames.get(KISS.start + entry)).toMatchObject({
+        x: 20 + walkOffset,
+        offsetX: entry + 3,
+        offsetY: -38,
+      });
+    }
     expect(borrowed.frames.get(STAND.start)).toBe(hat.frames.get(STAND.start));
   });
 

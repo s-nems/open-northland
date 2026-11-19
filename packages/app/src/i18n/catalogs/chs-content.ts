@@ -258,6 +258,10 @@ export const chsContent = {
       title: '黏土采集者',
       summary: '每个民族各有两名采集者挖掘黏土，并运到自己的旗帜旁。',
     },
+    'wood-gatherers': {
+      title: '木材采集者',
+      summary: '每个民族各有两名采集者砍伐自己旗帜两侧的树木。',
+    },
     'nation-footprints': {
       title: '各民族建筑占地',
       summary: '维京、法兰克和拜占庭的房屋成排排列；闲置的居民站在自家旁边，绝不站在墙格或门口。',
