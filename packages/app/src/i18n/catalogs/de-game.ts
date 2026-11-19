@@ -312,6 +312,9 @@ export const deGame = {
       restoreMessage:
         'Dies setzt alle Kategorien auf die Standardwerte zurück, einschließlich deiner eigenen Tastenbelegung.',
       cancel: 'Abbrechen',
+      surrender: 'Aufgeben',
+      surrenderConfirm:
+        'Dein Stamm verliert die Partie, und du beobachtest die Karte und die anderen Spieler, ohne Befehle zu erteilen. Das lässt sich nicht rückgängig machen.',
     },
     linkLost: {
       title: 'Verbindung verloren',

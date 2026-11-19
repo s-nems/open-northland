@@ -286,6 +286,9 @@ export const itGame = {
       restoreMessage:
         'Riporta ogni categoria ai valori predefiniti, compresi i tuoi tasti rapidi personalizzati.',
       cancel: 'Annulla',
+      surrender: 'Arrenditi',
+      surrenderConfirm:
+        'La tua tribù perde la partita e osserverai la mappa e gli altri giocatori senza impartire ordini. Non si può annullare.',
     },
     linkLost: {
       title: 'Connessione persa',

@@ -30,6 +30,7 @@ import { setHouseholdGoodUse } from '../family/home-quality.js';
 import { moveOutOfUnfurnishedHomes } from '../family/lodging.js';
 import { razePalisade } from '../lifecycle/cleanup.js';
 import { setTempleFire } from '../lifecycle/temple/index.js';
+import { surrenderSeat } from '../match/index.js';
 import { type PeaceRefusal, peaceRefusal } from '../match/peace.js';
 import { payTribute } from '../missions/tributes.js';
 // Deliberately the module, not the orders barrel: the handler reaches into
@@ -591,6 +592,9 @@ function applyCommand(
       return;
     case 'declareDiplomacy':
       declareDiplomacy(world, command);
+      return;
+    case 'surrender':
+      surrenderSeat(world, ctx, command.player);
       return;
     case 'attachTradeHouse':
     case 'detachTradeHouse':

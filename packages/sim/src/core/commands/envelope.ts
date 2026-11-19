@@ -4,6 +4,7 @@ import { isPlainRecord, valueShapeName } from '../plain-value.js';
 import type { AssistantCommand } from './assistant.js';
 import type { DiplomacyCommand } from './diplomacy.js';
 import type { Command } from './index.js';
+import type { MatchCommand } from './match.js';
 import type { PlayerPlacementCommand } from './placement.js';
 import type { TradeCommand } from './trade.js';
 import type { TributeCommand } from './tribute.js';
@@ -19,6 +20,7 @@ export type PlayerCommand =
   | AssistantCommand
   | TributeCommand
   | DiplomacyCommand
+  | MatchCommand
   | TradeCommand;
 
 /** A command plus the authority it was issued under - the serializable external input the sim accepts. */
@@ -206,6 +208,7 @@ export const COMMAND_ISSUER: {
   spawnAnimalHerd: 'trusted',
   spawnSettler: 'trusted',
   stopVehicle: 'seat',
+  surrender: 'seat',
   trainSoldier: 'seat',
   orderCoinDrill: 'seat',
   unassignBuilder: 'seat',

@@ -265,6 +265,27 @@ describe('matchSystem - death and victory over the declared participants', () =>
     expect(authorizedCommand(sim.world, liveOrder)).toBe(liveOrder.command);
   });
 
+  it('defeats a seat that surrenders at once, never another seat, and lets the rest win at the next check', () => {
+    const sim = fresh();
+    declare(sim, [P0, P1]);
+    personOf(sim, P0);
+    const quitter = personOf(sim, P1);
+    sim.enqueue(playerCommand(P1, { kind: 'surrender', player: P0 }));
+    sim.enqueue(playerCommand(P1, { kind: 'surrender', player: P1 }));
+    sim.step();
+    expect(sim.events.current().filter((event) => event.kind === 'playerDefeated')).toEqual([
+      { kind: 'playerDefeated', player: P1 },
+    ]);
+    expect(sim.matchOutcome(P0)).toBe('undecided');
+    expect(
+      authorizedCommand(sim.world, playerCommand(P1, { kind: 'setStance', entity: quitter, mode: 0 })),
+    ).toBeUndefined();
+    expect(runTo(sim, FIRST_CHECK_TICK).map((e) => e.event)).toEqual([{ kind: 'playerWon', player: P0 }]);
+    sim.enqueue(playerCommand(P0, { kind: 'surrender', player: P0 }));
+    sim.step();
+    expect(sim.matchOutcome(P0)).toBe('victory');
+  });
+
   it('waits for a third seat that still holds a man, then defeats it and lets the friends win', () => {
     const sim = fresh();
     declare(sim, [P0, P1, P2]);

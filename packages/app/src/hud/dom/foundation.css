@@ -8821,8 +8821,22 @@ body.on-drag-scroll.on-drag-scroll-free * {
   flex: 1;
   justify-content: center;
 }
-.on-hud .on-system-menu__quit {
+/* A pair too long for one row stacks, each button on its own line. */
+.on-hud .on-system-menu__exits {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
   margin-top: 8px;
+}
+.on-hud .on-system-menu__exits > button:not([hidden]) {
+  flex: 1 0 auto;
+  justify-content: center;
+  white-space: nowrap;
+}
+.on-hud .on-system-menu__exits > button[hidden] {
+  display: none;
+}
+.on-hud .on-system-menu__quit {
   background: linear-gradient(#743f30, #45251e);
   border-color: #a2694e;
   color: #f5d8c5;

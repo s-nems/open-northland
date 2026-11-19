@@ -58,6 +58,7 @@ export const WORLD: ArticleGroup = {
             'Przez pierwsze {{match.graceSeconds}} s gry brak mężczyzn nie oznacza porażki.',
             'Wynik zapada raz i na stałe. Kto wygrał, nie przegra, nawet gdy potem straci ludzi.',
             'Wygrana jednego gracza nie kończy gry pozostałym.',
+            'W grze sieciowej możesz poddać się z menu gry. Twoje plemię przegrywa tak, jakby zginął jego ostatni mężczyzna, a ty oglądasz dalszą grę.',
           ],
         },
         {

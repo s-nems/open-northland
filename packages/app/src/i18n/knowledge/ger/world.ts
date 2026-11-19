@@ -66,6 +66,7 @@ export const WORLD: ArticleGroup = {
             'In den ersten {{match.graceSeconds}} s Spielzeit bedeutet es keine Niederlage, wenn du keine Männer hast.',
             'Das Ergebnis steht einmal und endgültig fest. Wer gewonnen hat, verliert nicht mehr, auch wenn er danach seine Leute verliert.',
             'Der Sieg eines Spielers beendet das Spiel für die anderen nicht.',
+            'In einem Netzwerkspiel kannst du im Spielmenü aufgeben. Dein Stamm verliert, als wäre sein letzter Mann gestorben, und du schaust dem Rest des Spiels zu.',
           ],
         },
         {

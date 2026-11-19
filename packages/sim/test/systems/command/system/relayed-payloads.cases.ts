@@ -154,6 +154,7 @@ function seatPayloads(t: Targets): { readonly [K in PlayerCommand['kind']]: read
     ],
     payTribute: [{ player: SEAT, slot: 0 }],
     declareDiplomacy: [{ player: SEAT, other: RIVAL, state: 'enemy' }],
+    surrender: [{ player: SEAT }],
     attachTradeHouse: [{ entity: t.carrier, house: t.hq }],
     detachTradeHouse: [{ entity: t.carrier, house: t.hq }],
     setTradeImport: [{ entity: t.carrier, house: t.hq, good: WOOD, on: true }],

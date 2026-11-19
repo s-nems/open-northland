@@ -36,6 +36,8 @@ export interface SystemMenuDeps {
   readonly canLoad?: boolean;
   readonly pauseStopsClock?: boolean;
   readonly onNetwork?: () => void;
+  /** Giving a shared match up, offered beside leaving while the seat may still do so. */
+  readonly surrender?: { available(): boolean; start(): void };
   /** The settings page closed, with the settings it opened on and the ones it leaves. */
   readonly onSettingsLeft?: (opened: MenuSettings, closed: MenuSettings) => void;
 }
@@ -165,6 +167,30 @@ export function createSystemMenu(deps: SystemMenuDeps): SystemMenu {
       });
   });
   quit.classList.add('on-system-menu__quit');
+  const giveUp = deps.surrender;
+  const surrender =
+    giveUp === undefined
+      ? null
+      : button(text.surrender, GLYPH.banner, () => {
+          void confirm
+            .open({
+              title: text.surrender,
+              message: text.surrenderConfirm,
+              cancel: text.cancel,
+              confirm: text.surrender,
+            })
+            .then((confirmed) => {
+              if (!confirmed || scope.signal.aborted) return;
+              // A verdict that landed while the menu stood open leaves nothing to give up.
+              hide();
+              giveUp.start();
+            });
+        });
+  surrender?.classList.add('on-system-menu__quit');
+  const exits = document.createElement('div');
+  exits.className = 'on-system-menu__exits';
+  if (surrender !== null) exits.append(surrender);
+  exits.append(quit);
   const offer = deps.restart;
   const restart =
     offer === undefined
@@ -205,7 +231,7 @@ export function createSystemMenu(deps: SystemMenuDeps): SystemMenu {
       }),
     );
   if (restart !== null) frame.body.append(restart);
-  frame.body.append(quit, support);
+  frame.body.append(exits, support);
   document.body.append(backdrop);
   hidePanels();
   dismissOnBackdropClick([backdrop], hide);
@@ -257,6 +283,7 @@ export function createSystemMenu(deps: SystemMenuDeps): SystemMenu {
     deps.saveLoad.forcePause();
     deps.setCameraSuspended(true);
     syncScale();
+    if (surrender !== null) surrender.hidden = giveUp?.available() !== true;
     backdrop.hidden = false;
     returnFocus = null;
     showMenu();

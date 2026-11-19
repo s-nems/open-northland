@@ -66,6 +66,7 @@ export const WORLD: ArticleGroup = {
             'For the first {{match.graceSeconds}} s of play, having no men does not mean defeat.',
             'The result is settled once and for good. A winner stays a winner even if he loses his people later.',
             "One player's victory doesn't end the game for the others.",
+            'In a network game you can surrender from the game menu. Your tribe is defeated as if its last man had died, and you watch the rest of the game.',
           ],
         },
         {

@@ -42,6 +42,7 @@ function mount(
     paused?: boolean;
     onNetwork?: () => void;
     restart?: ReplayOffer;
+    surrender?: { available(): boolean; start(): void };
     previewBus?: (bus: SoundBus) => void;
     onSettingsLeft?: (opened: MenuSettings, closed: MenuSettings) => void;
   } = {},
@@ -221,6 +222,31 @@ describe('system menu navigation', () => {
     menu.dispose();
     mount().menu.toggle();
     expect(document.querySelector('.on-system-menu')?.textContent).not.toContain(restart);
+  });
+
+  it('offers surrender beside leaving only while the seat may, and gives up only after its confirmation', async () => {
+    let available = true;
+    const start = vi.fn();
+    const { menu } = mount({ surrender: { available: () => available, start } });
+    const text = messages().hud.systemMenuDetails;
+    menu.toggle();
+    const surrender = button(text.surrender);
+    expect(surrender.parentElement).toBe(button(text.leaveGame).parentElement);
+    surrender.click();
+    button(text.cancel).click();
+    await Promise.resolve();
+    expect(start).not.toHaveBeenCalled();
+    surrender.click();
+    const question = document.querySelector('[role="alertdialog"]');
+    if (question === null) throw new Error('Missing confirmation');
+    expect(question.textContent).toContain(text.surrenderConfirm);
+    button(text.surrender, question).click();
+    await Promise.resolve();
+    expect(start).toHaveBeenCalledOnce();
+    expect(menu.isOpen()).toBe(false);
+    available = false;
+    menu.toggle();
+    expect(surrender.hidden).toBe(true);
   });
 
   it('refuses loading in multiplayer and releases the menu before opening Network', () => {

@@ -2,10 +2,12 @@ import {
   deadPlayerBits,
   Female,
   goalsMatchVictory,
+  isMatchParticipant,
   isValidPlayer,
   markPlayerDead,
   markPlayersWon,
   matchGoalTable,
+  matchOutcome,
   matchParticipantBits,
   Owner,
   Person,
@@ -69,13 +71,24 @@ function markDeaths(world: World, ctx: SystemContext, participants: number, anno
   if (pending === 0) return dead;
   const manned = playersWithAdultMen(world, pending);
   for (const player of playersOfBits(pending & ~manned)) {
-    markPlayerDead(world, player);
+    defeatSeat(world, ctx, player, announce);
     dead |= playerBit(player);
-    if (announce) ctx.events.emit({ kind: 'playerDefeated', player });
-    // A dead seat's vehicles are destroyed, never transferred (reading of the original's teardown).
-    removeVehiclesOf(world, ctx, player, 'defeated');
   }
   return dead;
+}
+
+/** A participant still undecided that gives the match up is defeated as a seat whose people died out
+ *  is; under a goal table the loss lands on the table's next check. */
+export function surrenderSeat(world: World, ctx: SystemContext, player: number): void {
+  if (!isMatchParticipant(world, player) || matchOutcome(world, player) !== 'undecided') return;
+  defeatSeat(world, ctx, player, !goalsMatchVictory(world));
+}
+
+function defeatSeat(world: World, ctx: SystemContext, player: number, announce: boolean): void {
+  markPlayerDead(world, player);
+  if (announce) ctx.events.emit({ kind: 'playerDefeated', player });
+  // A dead seat's vehicles are destroyed, never transferred (reading of the original's teardown).
+  removeVehiclesOf(world, ctx, player, 'defeated');
 }
 
 /** The slots of `candidates` owning at least one living adult man, as a bitmask. One pass over the

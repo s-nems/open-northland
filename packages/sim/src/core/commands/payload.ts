@@ -201,6 +201,7 @@ const COMMAND_PAYLOAD: { readonly [K in Command['kind']]: PayloadSpec<Extract<Co
   declareDiplomacy: {
     required: { player: 'integer', other: 'integer', state: { oneOf: DIPLOMACY_STATES } },
   },
+  surrender: { required: { player: 'integer' } },
   attachTradeHouse: { required: { entity: 'integer', house: 'integer' } },
   detachTradeHouse: { required: { entity: 'integer', house: 'integer' } },
   setTradeImport: { required: { entity: 'integer', house: 'integer', good: 'integer', on: 'boolean' } },

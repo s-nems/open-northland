@@ -284,6 +284,9 @@ export const enGame = {
       restoreTitle: 'Restore settings?',
       restoreMessage: 'This resets every category to its defaults, including your custom key bindings.',
       cancel: 'Cancel',
+      surrender: 'Surrender',
+      surrenderConfirm:
+        'Your tribe loses the match, and you watch the map and the other players without issuing orders. This cannot be undone.',
     },
     linkLost: {
       title: 'Connection lost',

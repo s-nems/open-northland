@@ -138,6 +138,7 @@ import { type NetSignalSource, pingColour } from '../map-ping/pings.js';
 import { createMapPingSession } from '../map-ping/session.js';
 import { mountNetOverlays } from '../net/overlays.js';
 import type { NetReadout } from '../net/readout.js';
+import { createSeatSurrender } from '../net/surrender.js';
 import { floatParam, introParam, menuSearch, tintParam, weatherParam } from '../params.js';
 import { nodeBounds } from '../picking.js';
 import { createPlacementGates } from '../placement/gates.js';
@@ -281,7 +282,11 @@ export interface GameViewDeps {
   /** Spectator session: no fog view, every player's entities pickable, and the HUD's command seam a
    *  no-op, so a selection can inspect but never re-task. */
   readonly observer?: boolean;
+  /** Hands a shared session's seat back to the room once its player watches instead. */
   readonly onWatchAfterResult?: () => void;
+  /** Whether a shared session's seat is one its match can defeat, which the system menu then offers to
+   *  surrender. */
+  readonly seatMaySurrender?: boolean;
   /** The seats a spectator may watch one at a time, which mounts the seat picker and starts
    *  the view on the whole map with nobody's figures; absent, a spectator keeps `localPlayer`'s. */
   readonly observerSeats?: readonly ObserverSeatEntry[];
@@ -586,6 +591,11 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
 
     // A spectator drops every HUD command here. Setup commands enqueue on the world's builder.
     const readOnly = (): boolean => watching;
+    // A watcher keeps the seat it follows.
+    const startWatching = (): void => {
+      watching = true;
+      switchableSeat?.watch(PLAYERS_SIGHT);
+    };
     // A trusted command has no wire: a shared session drops it rather than hand it to the relay.
     const issueTrusted = (command: Command): void => {
       if (!sharedClock) driver.submit(adminCommand(command));
@@ -974,14 +984,23 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
         onContinue: () => {
           if (!sharedClock) issueTrusted({ kind: 'continueMatch', player: localPlayer });
           else if (!watching) {
-            // A watcher keeps the seat it follows.
-            watching = true;
-            switchableSeat?.watch(PLAYERS_SIGHT);
+            startWatching();
             deps.onWatchAfterResult?.();
           }
         },
       });
     }
+    const surrender =
+      sharedClock && deps.seatMaySurrender === true
+        ? createSeatSurrender({
+            player: localPlayer,
+            outcome: () => host.matchOutcome(localPlayer),
+            watching: () => watching,
+            submit: issueCommand,
+            watch: startWatching,
+            release: () => deps.onWatchAfterResult?.(),
+          })
+        : null;
     // Assembled below, once the controls and the camera it steers exist.
     const scriptTints = await mountScriptTints(host, renderer, {
       pinnedIndex: tintParam(params),
@@ -1025,6 +1044,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       scriptTints: scriptTints.onEvents,
       subMissions: (events) => !sharedClock && subMissions.onEvents(events),
       verdict: (events) => {
+        surrender?.onEvents(events);
         if (deps.observer !== true && !watching) verdict?.onEvents(events);
       },
       presentation: (events) => {
@@ -1568,6 +1588,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       canLoad: !sharedClock,
       pauseStopsClock: !sharedClock,
       ...(deps.netPanel !== undefined ? { onNetwork: () => toolPanel.controller.openNetwork() } : {}),
+      ...(surrender !== null ? { surrender } : {}),
       onSettingsLeft: noteRestartOnLeave(liveSettings.settings.current(), (labels) =>
         toolPanel.controller.noteSettingsRestart(labels),
       ),

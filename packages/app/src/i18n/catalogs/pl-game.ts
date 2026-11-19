@@ -278,6 +278,9 @@ export const plGame = {
       restoreMessage:
         'Przywróci to domyślne ustawienia wszystkich kategorii, w tym własne skróty klawiszowe.',
       cancel: 'Anuluj',
+      surrender: 'Poddaj się',
+      surrenderConfirm:
+        'Twoje plemię przegra rozgrywkę, a ty będziesz obserwować mapę i pozostałych graczy bez wydawania rozkazów. Tego nie da się cofnąć.',
     },
     linkLost: {
       title: 'Utracono połączenie',

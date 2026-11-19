@@ -70,6 +70,7 @@ export const WORLD: ArticleGroup = {
             'Nei primi {{match.graceSeconds}} s di gioco, restare senza uomini non significa sconfitta.',
             'Il risultato si decide una volta per tutte. Chi ha vinto resta vincitore anche se poi perde la sua gente.',
             'La vittoria di un giocatore non chiude la partita per gli altri.',
+            'In una partita in rete puoi arrenderti dal menu di gioco. La tua tribù perde come se fosse morto il suo ultimo uomo, e osservi il resto della partita.',
           ],
         },
         {

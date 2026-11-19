@@ -11,6 +11,7 @@ import type { Entity } from '../../../src/ecs/world.js';
 import {
   exportSaveGame,
   parseSaveGame,
+  playerCommand,
   restoreSimulation,
   type SimEvent,
   Simulation,
@@ -127,6 +128,18 @@ describe('multiplayer goal table', () => {
     // The first tick past the death check's grace that both cadences land on.
     const both = lcm(MATCH_DEATH_CHECK_INTERVAL_TICKS, MATCH_GOAL_CHECK_TICKS);
     expect(verdicts(check(sim, both))).toEqual([{ kind: 'playerDefeated', player: 1 }]);
+    expect(sim.matchOutcome(0)).toBe('undecided');
+  });
+
+  it('loses a seat that surrendered on its next check, announcing it only there', () => {
+    const sim = goalsSim([0, 1], [{ kind: 'wonByMission' }]);
+    man(sim, 0);
+    man(sim, 1);
+    sim.enqueue(playerCommand(1, { kind: 'surrender', player: 1 }));
+    sim.step();
+    expect(verdicts(sim.events.current())).toEqual([]);
+    expect(verdicts(check(sim, FIRST_CHECK))).toEqual([{ kind: 'playerDefeated', player: 1 }]);
+    expect(sim.matchOutcome(1)).toBe('defeat');
     expect(sim.matchOutcome(0)).toBe('undecided');
   });
 

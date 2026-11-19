@@ -268,6 +268,8 @@ export const chtGame = {
       restoreTitle: '要恢復設定嗎？',
       restoreMessage: '這會把所有類別重設為預設值，包括你自訂的按鍵綁定。',
       cancel: '取消',
+      surrender: '投降',
+      surrenderConfirm: '你的部族將輸掉這場對局，你可以觀看地圖與其他玩家，但不能下達命令。此操作無法復原。',
     },
     linkLost: {
       title: '連線中斷',

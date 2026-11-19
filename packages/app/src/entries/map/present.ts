@@ -254,6 +254,10 @@ export async function presentMapWorld(
     ...(runtime.networkSave === undefined ? {} : { networkSave: runtime.networkSave }),
     ...(runtime.sharedClock !== undefined ? { sharedClock: runtime.sharedClock } : {}),
     ...(runtime.onWatchAfterResult === undefined ? {} : { onWatchAfterResult: runtime.onWatchAfterResult }),
+    seatMaySurrender:
+      runtime.sharedClock === true &&
+      !isSpectator(session) &&
+      hosted.matchRules.participants.includes(localPlayer),
     ...(runtime.playerNickOf === undefined ? {} : { playerNickOf: runtime.playerNickOf }),
     ...(runtime.sharedClock === true
       ? {

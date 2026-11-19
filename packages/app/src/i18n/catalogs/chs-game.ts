@@ -268,6 +268,8 @@ export const chsGame = {
       restoreTitle: '恢复设置？',
       restoreMessage: '这会将所有类别恢复为默认值，包括你自定义的按键绑定。',
       cancel: '取消',
+      surrender: '投降',
+      surrenderConfirm: '你的部族将输掉这场对局，你可以观看地图和其他玩家，但无法下达命令。此操作无法撤销。',
     },
     linkLost: {
       title: '连接中断',
