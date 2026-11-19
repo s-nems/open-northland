@@ -16,8 +16,9 @@ import { schoolTeachesMethodChoice } from '../orders/education.js';
 import { isTradeAssignable } from '../orders/guards.js';
 import { isFighterJob } from '../readviews/index.js';
 import { interactionCell } from '../settlers/targets/index.js';
-import type { NavigationLimit } from '../signposts/index.js';
+import { type NavigationLimit, rankFromSpot } from '../signposts/index.js';
 import { hexNodeDistance } from '../spatial/metric.js';
+import { rankLength, rankWalk } from '../spatial/walk-rank.js';
 import { assignedWorkers } from '../stores/assigned-workers.js';
 
 /**
@@ -62,6 +63,8 @@ export function postGraduate(
   let best: Entity | null = null;
   let bestRank = -1;
   let bestDistance = Number.POSITIVE_INFINITY;
+  // Among equal ranks the shortest walk where the graduate's confinement measures one, else map points.
+  const walk = rankWalk(rankFromSpot(limit, here));
   // Ascending ids, so the first of equally ranked workplaces wins.
   for (const b of ownedBuildings(world, owner)) {
     if (openWorkerJobFromList(query, b, [jobType]) === null) continue;
@@ -71,7 +74,8 @@ export function postGraduate(
     if (limit !== null && !limit.allowsNode(door)) continue; // posted there, he would stand lost
     // Across water or walls: a bound post never gives up on its route.
     if (terrain.componentOf(door) !== terrain.componentOf(here) || regions.unroutable(here, door)) continue;
-    const distance = hexNodeDistance(terrain, here, door);
+    const within = rank > bestRank ? Number.POSITIVE_INFINITY : bestDistance;
+    const distance = rankLength(walk, door, hexNodeDistance(terrain, here, door), within);
     if (rank > bestRank || distance < bestDistance) {
       best = b;
       bestRank = rank;

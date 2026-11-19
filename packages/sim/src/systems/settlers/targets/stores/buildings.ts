@@ -17,7 +17,10 @@ export const TEMPLE_PREFERRED_RANGE = 40;
  * temples, unless it lies beyond {@link TEMPLE_PREFERRED_RANGE} and a headquarters is no farther. The
  * candidates are ranked by this index's length order from `rank` with the shared ascending-cell-id
  * tie-break and compared in map points, or under a walk in its steps, an approximation of the original's
- * hex-distance search on the settler's own continent. Null when neither is found. `gate` is the settler's signpost confinement: a site outside its
+ * hex-distance search on the settler's own continent. Approximation: a site the walk does not reach, one
+ * allowed through a signpost group alone, counts its Manhattan distance past every walked length, so two
+ * such sites compare by that distance and neither lies inside the preferred range. Null when neither is
+ * found. `gate` is the settler's signpost confinement: a site outside its
  * allowed area is not one it knows the way to.
  */
 export function nearestPrayerSite(

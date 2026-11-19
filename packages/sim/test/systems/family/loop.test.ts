@@ -49,6 +49,7 @@ import {
   KISSED_ATOMIC_ID,
   mayMarry,
   NEED_DRAIN_UNITS_PER_TICK,
+  navigationLimitFor,
   needBar,
 } from '../../../src/systems/index.js';
 import { PRAY_ATOMIC_ID } from '../../../src/systems/settlers/atomics/start.js';
@@ -1526,6 +1527,43 @@ describe('marry matches the nearest partner', () => {
     sim.world.add(worker, Marriage, { spouse: wife, child: null });
     sim.world.add(wife, Marriage, { spouse: worker, child: null });
     expect(findPartnerFor(sim.world, sim.content, woman, sim.terrain, null)).toBe(civilian);
+  });
+
+  it('weds the bachelor with the shorter walk, not the nearer one across a river', () => {
+    const MAP_CELLS = { width: 32, height: 12, river: 14, fordRows: 2 };
+    const ROW = 8;
+    /** Ten nodes west of the woman by line, over the river and round its ford by walk. */
+    const ACROSS_X = 24;
+    /** Fourteen nodes east of her on her own bank. */
+    const OWN_BANK_X = 48;
+    const sim = new Simulation({
+      seed: 3,
+      content: familyContent(),
+      map: waterColumnMap(MAP_CELLS.width, MAP_CELLS.height, MAP_CELLS.river, MAP_CELLS.fordRows),
+    });
+    sim.enqueueSetup({ kind: 'setSignpostNavigation', enabled: true });
+    const spawn = (jobType: number, x: number): Entity => {
+      const before = new Set(sim.world.query(Settler));
+      sim.enqueueSetup({ kind: 'spawnSettler', jobType, x, y: ROW, tribe: VIKING, owner: PLAYER });
+      sim.step();
+      const spawned = [...sim.world.query(Settler)].find((e) => !before.has(e));
+      if (spawned === undefined) throw new Error('setup: settler missing');
+      return spawned;
+    };
+    const woman = spawn(WOMAN, EAST_X);
+    const across = spawn(WOODCUTTER, ACROSS_X);
+    const ownBank = spawn(WOODCUTTER, OWN_BANK_X);
+    const terrain = sim.terrain;
+    if (terrain === undefined) throw new Error('mapped sim');
+    const limit = navigationLimitFor(sim.world, sim.content, terrain, woman);
+
+    expect(findPartnerFor(sim.world, sim.content, woman, terrain, limit)).toBe(ownBank);
+    // Ranked by the line the man across the water is the nearer, and he is hers to wed.
+    expect(findPartnerFor(sim.world, sim.content, woman, terrain, null)).toBe(across);
+    const wife = spawn(WOMAN, OWN_BANK_X);
+    sim.world.add(ownBank, Marriage, { spouse: wife, child: null });
+    sim.world.add(wife, Marriage, { spouse: ownBank, child: null });
+    expect(findPartnerFor(sim.world, sim.content, woman, terrain, limit)).toBe(across);
   });
 
   it('weds the nearest eligible bachelor over a farther one', () => {

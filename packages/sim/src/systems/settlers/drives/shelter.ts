@@ -6,7 +6,9 @@ import type { BattleFront } from '../../conflict/battle-alert.js';
 import type { SystemContext } from '../../context.js';
 import { releaseShelter, type ShelterSite, type ShelterSites } from '../../defence/index.js';
 import { sheltersOnAlarm } from '../../readviews/index.js';
-import type { NavigationLimit } from '../../signposts/index.js';
+import { type NavigationLimit, rankFromSpot } from '../../signposts/index.js';
+import { hexNodeDistance } from '../../spatial/metric.js';
+import { rankLength, rankWalk } from '../../spatial/walk-rank.js';
 import { enterBuilding, isInside } from '../indoors.js';
 import { interactionCell } from '../targets/index.js';
 import { isUnreachableGoal, unreachableGoals } from '../unreachable-goals.js';
@@ -80,16 +82,24 @@ function nearestShelterWithRoom(
 ): ShelterSite | null {
   // Read at the first door asked about: most asks find no site with room.
   let failed: ReturnType<typeof unreachableGoals> | undefined;
+  const walk = rankWalk(rankFromSpot(limit, here));
   let best: ShelterSite | null = null;
   let bestDistance = 0;
   for (const site of shelters.get(player) ?? NO_SHELTERS) {
     if (site.free <= 0) continue;
     // Rank on straight-line distance and resolve a door only for a candidate that beats the running best:
     // the door resolve walks the footprint's approach cells, too much to pay for every site on the list.
-    const distance = Math.abs(site.hx - fromHx) + Math.abs(site.hy - fromHy);
-    if (best !== null && distance >= bestDistance) continue;
+    // Under a walk the door is what the walk is measured to, and no walk undercuts its hex distance.
+    let distance = Math.abs(site.hx - fromHx) + Math.abs(site.hy - fromHy);
+    if (walk === undefined && best !== null && distance >= bestDistance) continue;
+    const door = interactionCell(world, ctx, terrain, site.entity, here);
+    if (walk !== undefined && best !== null && hexNodeDistance(terrain, here, door) >= bestDistance) continue;
     if (failed === undefined) failed = unreachableGoals(world, ctx, e);
-    if (!doorIsWalkable(interactionCell(world, ctx, terrain, site.entity, here), limit, failed)) continue;
+    if (!doorIsWalkable(door, limit, failed)) continue;
+    if (walk !== undefined) {
+      distance = rankLength(walk, door, distance, best === null ? undefined : bestDistance);
+      if (best !== null && distance >= bestDistance) continue;
+    }
     best = site;
     bestDistance = distance;
   }

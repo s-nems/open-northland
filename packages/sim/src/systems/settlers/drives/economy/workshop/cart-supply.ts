@@ -1,9 +1,11 @@
 import type { Recipe } from '@open-northland/data';
 import { Stockpile } from '../../../../../components/index.js';
 import type { Entity } from '../../../../../ecs/world.js';
+import type { NodeId } from '../../../../../nav/terrain/index.js';
 import { manhattan } from '../../../../spatial/metric.js';
+import { rankLength, rankWalk } from '../../../../spatial/walk-rank.js';
 import { haulingCartGoods, haulingCartUnits, pullsHaulingCart } from '../../../../vehicles/hauling-cart.js';
-import type { PlannerContext } from '../../../planner/context.js';
+import { type PlannerContext, planRank } from '../../../planner/context.js';
 import { interactionCell } from '../../../targets/index.js';
 import { deliverableGoodProbe, deliveryTargetFor, sinkRoomFor } from '../delivery-targets.js';
 import { haulFlagArea } from '../haul-flag-area.js';
@@ -131,7 +133,12 @@ function extendsFetchTo(
   if (!awaited) return true;
   const door = interactionCell(world, ctx, terrain, workplace, here);
   const sourceCell = interactionCell(world, ctx, terrain, source.store, here);
-  return manhattan(terrain, here, sourceCell) <= manhattan(terrain, here, door);
+  return lengthTo(plan, sourceCell) <= lengthTo(plan, door);
+}
+
+/** How far `cell` lies from where the carrier stands, as its picks rank it ({@link planRank}). */
+function lengthTo(plan: PlannerContext, cell: NodeId): number {
+  return rankLength(rankWalk(planRank(plan)), cell, manhattan(plan.terrain, plan.here, cell));
 }
 
 /**
@@ -157,5 +164,5 @@ export function loadsOutputBeforeFetch(
   }
   const door = interactionCell(world, ctx, terrain, workplace, here);
   const sourceCell = interactionCell(world, ctx, terrain, source.store, here);
-  return manhattan(terrain, here, door) <= manhattan(terrain, here, sourceCell);
+  return lengthTo(plan, door) <= lengthTo(plan, sourceCell);
 }

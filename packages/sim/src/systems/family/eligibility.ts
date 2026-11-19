@@ -13,14 +13,20 @@ import {
   Wedding,
 } from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
-import { nodeHxOfPosition, nodeHyOfPosition, nodeOfPosition } from '../../nav/halfcell.js';
+import {
+  hexDistanceBetween,
+  nodeHxOfPosition,
+  nodeHyOfPosition,
+  nodeOfPosition,
+} from '../../nav/halfcell.js';
 import type { TerrainGraph } from '../../nav/terrain/index.js';
 import type { MapContext } from '../context.js';
 import { interactionNodeId } from '../footprint/interaction.js';
 import { isCivilianTrade, isNonWorkingAge } from '../lifecycle/ageclass.js';
 import { isFighterJob, isScoutJob } from '../readviews/index.js';
-import type { NavigationLimit } from '../signposts/index.js';
+import { type NavigationLimit, rankFromSpot } from '../signposts/index.js';
 import { settlementReachAt } from '../signposts/settlement-reach.js';
+import { rankLength, rankWalk } from '../spatial/walk-rank.js';
 import { isMinor } from './households.js';
 
 /**
@@ -84,8 +90,8 @@ const WORKER_RANK = 0;
 const CIVILIAN_RANK = 1;
 
 /**
- * The nearest eligible partner for `seeker`, or null when none exists. Nearest by half-cell Manhattan
- * distance with an ascending-entity-id tie-break, so the winner never depends on store insertion order;
+ * The nearest eligible partner for `seeker`, or null when none exists. Nearest by the walk the seeker's
+ * confinement measures, else by half-cell Manhattan distance, with an ascending-entity-id tie-break, so the winner never depends on store insertion order;
  * under signpost navigation a partner outside the seeker's allowed area is not eligible. Original
  * behavior: only the seeker's own player's humans of its tribe are candidates. Approximation: the
  * whole-map nearest pick; the original searches a bounded area around the seeker.
@@ -115,6 +121,11 @@ export function findPartnerFor(
       ? null
       : settlementOf(world, { content, terrain }, terrain, owner, from);
   if (settlement !== null && !settlement.holds(seeker)) return null;
+  // Nearest by the seeker's walk where its confinement measures one, which no hex distance undercuts.
+  const walk =
+    terrain === undefined
+      ? undefined
+      : rankWalk(rankFromSpot(limit, terrain.nodeAtClamped(from.hx, from.hy)));
   let best: Entity | null = null;
   let bestRank = WORKER_RANK;
   let bestDist = 0;
@@ -129,12 +140,18 @@ export function findPartnerFor(
     const p = world.get(e, Position);
     const hx = nodeHxOfPosition(p.x, p.y);
     const hy = nodeHyOfPosition(p.x, p.y);
-    const dist = Math.abs(hx - from.hx) + Math.abs(hy - from.hy);
-    if (best !== null && (rank > bestRank || (rank === bestRank && dist >= bestDist))) continue;
+    let dist = Math.abs(hx - from.hx) + Math.abs(hy - from.hy);
+    const least = walk === undefined ? dist : hexDistanceBetween(from.hx, from.hy, hx, hy);
+    if (best !== null && (rank > bestRank || (rank === bestRank && least >= bestDist))) continue;
     if (limit !== null && terrain !== undefined && !limit.allowsNode(terrain.nodeAtClamped(hx, hy))) {
       continue;
     }
     if (settlement !== null && !settlement.holds(e)) continue;
+    if (walk !== undefined && terrain !== undefined) {
+      const ties = best !== null && rank === bestRank;
+      dist = rankLength(walk, terrain.nodeAtClamped(hx, hy), dist, ties ? bestDist : undefined);
+      if (ties && dist >= bestDist) continue;
+    }
     best = e;
     bestRank = rank;
     bestDist = dist;

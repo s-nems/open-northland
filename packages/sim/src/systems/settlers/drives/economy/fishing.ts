@@ -21,8 +21,9 @@ import { isFisherJob } from '../../../readviews/index.js';
 import { fishSwarmsNearNode, visitFishSwarmsNear } from '../../../spatial/fish.js';
 import { closer, manhattan, ringOffsetCount, ringOffsetDx, ringOffsetDy } from '../../../spatial/metric.js';
 import { entityNode } from '../../../spatial/nodes.js';
+import { rankLength, rankWalk } from '../../../spatial/walk-rank.js';
 import { atOrWalk, startAtomic } from '../../atomics/start.js';
-import type { PlannerContext } from '../../planner/context.js';
+import { type PlannerContext, planRank } from '../../planner/context.js';
 import { unreachableWorkCell } from '../../targets/index.js';
 import { unreachableGoals } from '../../unreachable-goals.js';
 import { hasRoom, isStorageSink } from './store-policy.js';
@@ -96,7 +97,8 @@ function shoreSearchOrigin(plan: PlannerContext): NodeId {
 /**
  * The original's shore search for fishing searches outward from the fisher and retains at most eight
  * reachable land points beside water. We do that scan once per fisher, from his {@link shoreSearchOrigin},
- * then pick its canonical nearest result rather than the original's random candidate.
+ * then pick its canonical nearest result rather than the original's random candidate: nearest by the walk
+ * his confinement measures from that origin, else by Manhattan distance.
  */
 function nearbyFishingTargets(
   plan: PlannerContext,
@@ -106,6 +108,7 @@ function nearbyFishingTargets(
   const { terrain, here } = plan;
   const from = shoreSearchOrigin(plan);
   const origin = terrain.coordsOf(from);
+  const walk = rankWalk(planRank(plan, from));
   const found: FishingTarget[] = [];
   const edge = new WaterEdgeSwarm(plan);
   for (let radius = 0; radius <= FISH_SHORE_SEARCH_RADIUS; radius++) {
@@ -120,7 +123,7 @@ function nearbyFishingTargets(
       if (unreachableWorkCell(gates, here, shore) || regions.unroutable(here, shore)) continue;
       const target = edge.at(x, y);
       if (target !== null) {
-        found.push({ ...target, shore, dist: manhattan(terrain, from, shore) });
+        found.push({ ...target, shore, dist: rankLength(walk, shore, manhattan(terrain, from, shore)) });
         if (found.length === 8) return found;
       }
     }
@@ -195,20 +198,21 @@ function syntheticFishingTarget(
   const { world, terrain, here } = plan;
   const from = shoreSearchOrigin(plan);
   const at = terrain.coordsOf(from);
+  const walk = rankWalk(planRank(plan, from));
   let best: FishingTarget | null = null;
   for (const entity of fishSwarmsNearNode(world, at.x, at.y, 2 * FISH_SHORE_SEARCH_RADIUS)) {
     const swarm = world.get(entity, FishSwarm);
     if (swarm.count <= 0 || swarm.shore === null) continue;
     const shore = swarm.shore;
-    const dist = manhattan(terrain, from, shore);
-    if (dist > FISH_SHORE_SEARCH_RADIUS) continue;
+    const span = manhattan(terrain, from, shore);
+    if (span > FISH_SHORE_SEARCH_RADIUS) continue;
     if (plan.limit !== null && !plan.limit.allowsNode(shore)) continue;
     if (unreachableWorkCell(gates, here, shore) || regions.unroutable(here, shore)) continue;
     const position = world.get(entity, Position);
     const point = nodeOfPosition(position.x, position.y);
     const water = terrain.nodeAtClamped(point.hx, point.hy);
-    const candidate = { entity, shore, water, dist };
-    if (best === null || closer(dist, shore, best.dist, best.shore)) best = candidate;
+    const dist = rankLength(walk, shore, span, best?.dist);
+    if (best === null || closer(dist, shore, best.dist, best.shore)) best = { entity, shore, water, dist };
   }
   return best;
 }

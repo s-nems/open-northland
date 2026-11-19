@@ -13,7 +13,8 @@ export interface RingSearchProbe {
   /** Nodes the search expands through. Omit to expand through every node of the traversal class, blocked ones
    *  included. */
   readonly traverse?: (node: NodeId) => boolean;
-  readonly accept: (node: NodeId) => boolean;
+  /** `ring` counts the hops from the start: its neighbours are ring 1. */
+  readonly accept: (node: NodeId, ring: number) => boolean;
 }
 
 const TRAVERSE_ANY = (): boolean => true;
@@ -43,6 +44,7 @@ export function ringSearch(
   let ringStart = 0;
   let ringEnd = queue.length;
   let visited = 0;
+  let ring = 1;
   while (ringStart < ringEnd && visited < cap) {
     for (let i = ringStart; i < ringEnd; i++) {
       const cell = queue[i];
@@ -57,12 +59,13 @@ export function ringSearch(
         if (stepping && !terrain.joined(cell, n)) continue;
         seen.add(n);
         visited++;
-        if (accept(n)) return n;
+        if (accept(n, ring)) return n;
         queue.push(n);
       }
     }
     ringStart = ringEnd;
     ringEnd = queue.length;
+    ring++;
   }
   return null;
 }

@@ -1,9 +1,11 @@
 import type { Entity, World } from '../../../ecs/world.js';
 import type { BlockOverlay } from '../../../nav/block-overlay.js';
+import { NO_WALK, type WalkLengths } from '../../../nav/node-circle.js';
 import { ringSearch, STAND_SEARCH_CAP } from '../../../nav/ring-search.js';
 import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
 import type { SystemContext } from '../../context.js';
-import type { NavigationLimit } from '../../signposts/index.js';
+import { type NavigationLimit, rankFromSpot } from '../../signposts/index.js';
+import { rankWalk } from '../../spatial/walk-rank.js';
 import type { PlannerSpacing } from '../planner/spacing.js';
 import { isUnreachableGoal, unreachableGoals } from '../unreachable-goals.js';
 
@@ -38,17 +40,48 @@ export function restingCell(
   // The beds this settler's routes just failed to reach. The search traverses blocked nodes, so a bed can
   // sit behind a wall and would otherwise be re-picked on every re-plan.
   const failed = unreachableGoals(world, ctx, e);
-  const bed = ringSearch(terrain, here, STAND_SEARCH_CAP, {
-    accept: (n) =>
-      !spacing.isClaimed(n) &&
-      !isUnreachableGoal(failed, n) &&
-      (limit === null || limit.allowsNode(n)) &&
-      isOpenGround(terrain, n, blocked) &&
-      nodeIsFreeFor(terrain, n, e, spacing),
-  });
+  const open = (n: NodeId): boolean =>
+    !spacing.isClaimed(n) &&
+    !isUnreachableGoal(failed, n) &&
+    (limit === null || limit.allowsNode(n)) &&
+    isOpenGround(terrain, n, blocked) &&
+    nodeIsFreeFor(terrain, n, e, spacing);
+  const walk = rankWalk(rankFromSpot(limit, here));
+  const bed =
+    walk === undefined
+      ? ringSearch(terrain, here, STAND_SEARCH_CAP, { accept: open })
+      : nearestBedByWalk(terrain, here, walk, open);
   if (bed === null) return here;
   spacing.claim(bed);
   return bed;
+}
+
+/**
+ * The open node with the fewest steps of `walk`, the first the ring search meets among equals; one the
+ * walk does not reach, allowed through a signpost group alone, only when it reaches none. The search
+ * walks through building bodies where the walk goes round them, so a node a ring out is no fewer steps
+ * away, and it ends once its ring cannot beat the bed held.
+ */
+function nearestBedByWalk(
+  terrain: TerrainGraph,
+  here: NodeId,
+  walk: WalkLengths,
+  open: (n: NodeId) => boolean,
+): NodeId | null {
+  const pick = { bed: null as NodeId | null, steps: Number.POSITIVE_INFINITY, beyond: null as NodeId | null };
+  ringSearch(terrain, here, STAND_SEARCH_CAP, {
+    accept: (n, ring) => {
+      if (ring >= pick.steps || ring > walk.maxSteps) return true;
+      if (!open(n)) return false;
+      const steps = walk.stepsTo(n, pick.steps);
+      if (steps !== NO_WALK && steps < pick.steps) {
+        pick.bed = n;
+        pick.steps = steps;
+      } else if (pick.bed === null) pick.beyond ??= n;
+      return false;
+    },
+  });
+  return pick.bed ?? pick.beyond;
 }
 
 /** Whether `node` and every walkable neighbour are clear of building and resource footprints, so a sleeper

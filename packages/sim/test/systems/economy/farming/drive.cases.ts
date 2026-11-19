@@ -9,6 +9,7 @@ import {
 } from '../../../../src/systems/index.js';
 import { dropPath } from '../../../../src/systems/movement/nav-state.js';
 import { testContent } from '../../../fixtures/content.js';
+import { waterColumnMap } from '../../../fixtures/terrain.js';
 
 import {
   Carrying,
@@ -20,6 +21,7 @@ import {
   farmAt,
   farmerAt,
   fieldAt,
+  fieldAtNode,
   GroundDrop,
   grassMap,
   mapWithBarren,
@@ -129,6 +131,42 @@ describe('planFarmer - the drive ladder', () => {
     const atomic = sim.world.get(farmer, components.CurrentAtomic);
     expect(atomic.atomicId).toBe(REAP_ATOMIC);
     expect(atomic.effect).toEqual({ kind: 'harvest', resource: field, goodType: WHEAT });
+  });
+
+  it('reaps the ripe field with the shorter walk, not the nearer one across a river', () => {
+    const MAP_CELLS = { width: 12, height: 10 };
+    const RIVER_COLUMN = 4;
+    const FORD_ROWS = 2;
+    const FARM_CELL = { x: 6, y: 4 };
+    /** Just over the river, five nodes west of the farm by line and a walk round the ford away. */
+    const ACROSS_NODE = { hx: 2 * FARM_CELL.x - 5, hy: 2 * FARM_CELL.y };
+    /** Six nodes east of the farm on its own bank. */
+    const OWN_BANK_NODE = { hx: 2 * FARM_CELL.x + 6, hy: 2 * FARM_CELL.y };
+    const P0 = 0;
+    const reapedNode = (confined: boolean): number | undefined => {
+      const sim = new Simulation({
+        seed: 1,
+        content: testContent(),
+        map: waterColumnMap(MAP_CELLS.width, MAP_CELLS.height, RIVER_COLUMN, FORD_ROWS),
+      });
+      sim.enqueueSetup({ kind: 'setSignpostNavigation', enabled: confined });
+      sim.step();
+      const farm = farmAt(sim, FARM_CELL.x, FARM_CELL.y);
+      sim.world.add(farm, components.Owner, { player: P0 });
+      fieldAtNode(sim, farm, ACROSS_NODE.hx, ACROSS_NODE.hy, { stage: STAGES });
+      fieldAtNode(sim, farm, OWN_BANK_NODE.hx, OWN_BANK_NODE.hy, { stage: STAGES });
+      // The rest of the plot, so the cap holds the sow branch shut.
+      for (let i = 0; i < FIELD_CAP - 2; i++) fieldAt(sim, farm, FARM_CELL.x + 1, FARM_CELL.y - 2 + i);
+      const farmer = farmerAt(sim, FARM_CELL.x, FARM_CELL.y, farm);
+      sim.world.add(farmer, components.Owner, { player: P0 });
+      plannerSystem(sim.world, ctxOf(sim));
+      return sim.world.tryGet(farmer, components.FarmTask)?.node;
+    };
+    const nodeAt = (at: { hx: number; hy: number }): number => at.hy * (2 * MAP_CELLS.width) + at.hx;
+
+    expect(reapedNode(true)).toBe(nodeAt(OWN_BANK_NODE));
+    // With no walk measured the line decides.
+    expect(reapedNode(false)).toBe(nodeAt(ACROSS_NODE));
   });
 
   // Original behavior: a reap stroke ends the farmer's task, so the field is picked again and walked

@@ -41,10 +41,11 @@ import {
 } from '../../../readviews/index.js';
 import { settlementReachAt } from '../../../signposts/settlement-reach.js';
 import { entityNode } from '../../../spatial/nodes.js';
+import { rankLength, rankWalk } from '../../../spatial/walk-rank.js';
 import { buildingWorkerJobs, recipesByProductOf, stockCapacity } from '../../../stores/index.js';
 import { startAtomic, walkPickupBatch } from '../../atomics/start.js';
 import { enterBuilding, stepIn } from '../../indoors.js';
-import type { PlannerContext } from '../../planner/context.js';
+import { type PlannerContext, planRank } from '../../planner/context.js';
 import { type IdleStands, standsStillForMachine } from '../../planner/idle-replan.js';
 import type { PlannerSpacing } from '../../planner/spacing.js';
 import { interactionCell, jobAtomics, unclaimedStockOf } from '../../targets/index.js';
@@ -154,7 +155,8 @@ function tendedSpecies(plan: PlannerContext, farm: Entity): readonly number[] {
 
 /**
  * Adopt the player's nearest unheld animal of a species this breeder tends into this herd, while the herd
- * has room. Instant, as the original's attachment is: the animal then walks itself to the farm on the
+ * has room: nearest the farm's door by the walk the breeder's confinement measures there, else in map
+ * points. Instant, as the original's attachment is: the animal then walks itself to the farm on the
  * herding sweep. Only an animal inside the farm's settlement reach is taken: across water it could never
  * walk in, and from another settlement of the same player it would be marched away from its own (our own
  * rule). A species no breeder here tends is never taken, as the herding sweep would let it go again.
@@ -177,6 +179,7 @@ function adoptStray(plan: PlannerContext, farm: Entity, species: readonly number
   if (!anyRoom) return false;
   const door = interactionCell(world, ctx, terrain, farm);
   const settlement = settlementReachAt(world, ctx.content, terrain, owner, door);
+  const walk = rankWalk(planRank(plan, door));
   let best: Entity | null = null;
   let bestRange = Number.POSITIVE_INFINITY;
   for (const animal of freeStockOf(world, owner)) {
@@ -184,7 +187,7 @@ function adoptStray(plan: PlannerContext, farm: Entity, species: readonly number
     if (good === null || room.get(good) !== true) continue;
     const node = entityNode(world, terrain, animal);
     if (!settlement.allowsNode(node)) continue;
-    const range = hexRange(plan, door, node);
+    const range = rankLength(walk, node, hexRange(plan, door, node), bestRange);
     if (range < bestRange || (range === bestRange && best !== null && animal < best)) {
       best = animal;
       bestRange = range;
@@ -209,6 +212,7 @@ function takeFromNeighbour(plan: PlannerContext, farm: Entity, good: number): bo
   if (owner === undefined) return false;
   const door = interactionCell(world, ctx, terrain, farm);
   const settlement = settlementReachAt(world, ctx.content, terrain, owner, door);
+  const walk = rankWalk(planRank(plan, door));
   let sources = 0;
   let best: Entity | null = null;
   let bestRange = Number.POSITIVE_INFINITY;
@@ -225,7 +229,7 @@ function takeFromNeighbour(plan: PlannerContext, farm: Entity, good: number): bo
       const node = entityNode(world, terrain, animal);
       if (!settlement.allowsNode(node)) continue;
       offered = true;
-      const range = hexRange(plan, door, node);
+      const range = rankLength(walk, node, hexRange(plan, door, node), bestRange);
       if (range < bestRange || (range === bestRange && best !== null && animal < best)) {
         best = animal;
         bestRange = range;

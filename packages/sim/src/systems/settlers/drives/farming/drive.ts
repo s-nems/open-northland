@@ -24,10 +24,11 @@ import { workplaceStaffable } from '../../../progression/index.js';
 import { atomicDuration } from '../../../readviews/animations.js';
 import { closer, manhattan } from '../../../spatial/metric.js';
 import { resourcesNearNode } from '../../../spatial/resources.js';
+import { rankLength, rankWalk } from '../../../spatial/walk-rank.js';
 import { buildingWorkerJobs } from '../../../stores/index.js';
 import { atOrWalk, startAtomic, startPickup } from '../../atomics/start.js';
 import { enterBuilding } from '../../indoors.js';
-import type { PlannerContext } from '../../planner/context.js';
+import { type PlannerContext, planRank } from '../../planner/context.js';
 import { type IdleStands, standsStillForMachine } from '../../planner/idle-replan.js';
 import { interactionCell, jobAtomics, unreachableWorkCell, type WorkCellGates } from '../../targets/index.js';
 import { unreachableGoals } from '../../unreachable-goals.js';
@@ -126,6 +127,7 @@ export function planFarmer(plan: PlannerContext, claims: FarmClaims, idle?: Idle
   let thirstyStage = Number.POSITIVE_INFINITY;
   let thirstyCell = 0 as NodeId;
   let thirstyDist = Number.POSITIVE_INFINITY;
+  const walk = rankWalk(planRank(plan));
   // The farm's own fields, then the map's unowned ones around the centre, walked as one run without joining
   // them. Only fields inside the centre's radius count, so a plot left behind by a moved flag neither holds
   // the cap nor draws the farmer back; it is worked again once the centre returns.
@@ -151,8 +153,11 @@ export function planFarmer(plan: PlannerContext, claims: FarmClaims, idle?: Idle
     const cell = interactionCell(world, ctx, terrain, c, here);
     if (claims.nodes.has(cell)) continue;
     if (unreachableWorkCell(gates, here, cell)) continue;
-    const dist = manhattan(terrain, here, cell);
-    if (crop.stage >= crop.stages) {
+    // A ripe field ranks against the ripe ones, a growing one only against those at its own stage.
+    const ripens = crop.stage >= crop.stages;
+    const within = ripens ? ripeDist : crop.stage === thirstyStage ? thirstyDist : Number.POSITIVE_INFINITY;
+    const dist = rankLength(walk, cell, manhattan(terrain, here, cell), within);
+    if (ripens) {
       if (closer(dist, cell, ripeDist, ripeCell)) {
         ripe = c;
         ripeDist = dist;

@@ -3,8 +3,9 @@ import type { Entity, World } from '../../../ecs/world.js';
 import { HEX_DIRECTIONS, hexHeadingBetween, nodeOfPosition, stepHex } from '../../../nav/halfcell.js';
 import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
 import type { SystemContext } from '../../context.js';
-import type { NavigationLimit } from '../../signposts/index.js';
+import { type NavigationLimit, rankFromSpot } from '../../signposts/index.js';
 import { hexNodeDistance } from '../../spatial/metric.js';
+import { rankLength, rankWalk } from '../../spatial/walk-rank.js';
 import type { PlannerSpacing } from '../planner/spacing.js';
 import { interactionCell } from '../targets/index.js';
 import { isUnreachableGoal, unreachableGoals } from '../unreachable-goals.js';
@@ -56,11 +57,14 @@ export function prayerStand(
   });
   if ((here === door || perimeter.includes(here)) && usable(here)) return here;
   if (door !== null && usable(door)) return door;
+  // By the settler's walk where its confinement measures one, which no hex distance undercuts.
+  const walk = rankWalk(rankFromSpot(limit, here));
   let nearest: NodeId | null = null;
   let distance = Number.POSITIVE_INFINITY;
   for (const cell of perimeter) {
-    if (!usable(cell)) continue;
-    const gap = hexNodeDistance(terrain, here, cell);
+    const direct = hexNodeDistance(terrain, here, cell);
+    if (direct > distance || !usable(cell)) continue;
+    const gap = rankLength(walk, cell, direct, distance);
     if (gap < distance || (gap === distance && (nearest === null || cell < nearest))) {
       nearest = cell;
       distance = gap;

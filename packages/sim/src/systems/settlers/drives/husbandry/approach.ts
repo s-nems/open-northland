@@ -2,7 +2,8 @@ import { hexagonRing } from '../../../../nav/halfcell.js';
 import type { NodeId } from '../../../../nav/terrain/index.js';
 import { dynamicBlockOverlay, routeRegions } from '../../../footprint/index.js';
 import { hexNodeDistance } from '../../../spatial/metric.js';
-import type { PlannerContext } from '../../planner/context.js';
+import { rankLength, rankWalk } from '../../../spatial/walk-rank.js';
+import { type PlannerContext, planRank } from '../../planner/context.js';
 import { isUnreachableGoal, unreachableGoals } from '../../unreachable-goals.js';
 
 /** An animal's interpolated position can map to a blocked node between its steps. Keep a clear target
@@ -21,14 +22,16 @@ export function livestockApproach(plan: PlannerContext, animal: NodeId, range: n
     !regions.unroutable(here, node);
   if (accepts(animal)) return animal;
   const centre = { hx: terrain.xOf(animal), hy: terrain.yOf(animal) };
+  const walk = rankWalk(planRank(plan));
   let best: NodeId | null = null;
   let distance = Number.POSITIVE_INFINITY;
   for (let radius = 1; radius <= range; radius++) {
     for (const { point } of hexagonRing(centre, radius)) {
       if (!terrain.inBounds(point.hx, point.hy)) continue;
       const node = terrain.nodeAt(point.hx, point.hy);
-      if (!accepts(node)) continue;
-      const next = hexNodeDistance(terrain, here, node);
+      const direct = hexNodeDistance(terrain, here, node);
+      if (direct > distance || !accepts(node)) continue;
+      const next = rankLength(walk, node, direct, distance);
       if (next < distance || (next === distance && (best === null || node < best))) {
         best = node;
         distance = next;
