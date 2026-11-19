@@ -1,7 +1,7 @@
 {
   "reason": "Skórzana zbroja (towar 34) ma u wszystkich pięciu ludów tylko needforgood 34 5 41 (5 powtórzeń doświadczenia 'krawiec ogólne'), bez linii trainforgood. To jedyny wyrób rzemieślnika w danych z takim progiem i bez kursu w szkole, więc krawiec ze szkoły umie tylko tuniki. Traktujemy to jako brak w danych i dopisujemy kurs obok kursu tuniki: trainforgood 34 5 77, z liczbą lekcji równą progowi doświadczenia. Decyzja właściciela; oryginał uczy skórzanej zbroi tylko przez pracę. Garncarnia 3 (typ 22) dostaje u wszystkich pięciu ludów wymagania z oryginału: garncarza, rolnika, zbieracza i kamieniarza oraz znajomość pszenicy, drewna, gliny, kamienia, kolumn, cegieł, dachówek i naczyń (decyzja właściciela: garncarnia ma trzy poziomy). Mod podmienił je na wymagania muru, które przechodzą razem z allowhouse i wierszem jobEnablesHouse zbieracza na nowy typ muru 56: zbieracz, kamieniarz i kamień.",
   "file": "rules/tribes/tribetypes.ini",
-  "sha256": "0f090f51d94032aff1f79e3a1c09c2418591bc6e3836e19f9e551c3f6a4e1dba",
+  "sha256": "d47e87b0241e5dafb587aaefd26c864677418e442c58abcea306d9c666bddb13",
   "lines": [
     {
       "from": "trainforgood 33 10 77",
