@@ -11,6 +11,7 @@ import {
   MissionObjectId,
   markGoalTeardown,
   missionRecords,
+  NoRegeneration,
   Owner,
   ownerOf,
   Person,
@@ -590,7 +591,7 @@ describe('the ownership results', () => {
     expect(sim.world.get(scout, Rider).vehicle).toBe(cart);
   });
 
-  it('stands a handed fighter down to guard its place, whole nation or not', () => {
+  it('stands a handed fighter down to guard its place, free to eat and sleep, whole nation or not', () => {
     const lines: MissionResultOp[] = [
       { opcode: 'ChangeHumanPlayerId', humanId: 77, player: 4 },
       { opcode: 'ChangePlayerPlayerId', player: 2, otherPlayer: 4 },
@@ -602,9 +603,11 @@ describe('the ownership results', () => {
       const anchorCell = sim.world.get(moved, Stance).anchorCell;
       sim.world.add(moved, Stance, { mode: MILITARY_MODE.ATTACK, anchorCell });
       sim.world.add(moved, AttackOrder, { target: stamped(sim, 78) });
+      sim.world.add(moved, NoRegeneration, { prohibited: true });
       runLoadPass(sim);
       expect(sim.world.get(moved, Stance)).toEqual({ mode: MILITARY_MODE.DEFEND, anchorCell });
       expect(sim.world.has(moved, AttackOrder)).toBe(false);
+      expect(sim.world.has(moved, NoRegeneration)).toBe(false);
     }
   });
 

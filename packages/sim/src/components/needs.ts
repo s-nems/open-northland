@@ -14,7 +14,8 @@ export const NeedOrder = defineComponent<{ need: NeedKind }>('NeedOrder', 'settl
 /**
  * Present while the player has prohibited this soldier's regeneration: it answers a need only from a draught
  * it drinks on the spot, and never stops for its mead or leaves what it is doing, a fight included, to look
- * for food, a bed, or a temple. A {@link NeedOrder} still overrides it, and a trade change clears it.
+ * for food, a bed, or a temple. A {@link NeedOrder} still overrides it; a trade change and a change of
+ * owner clear it.
  * Absent means regeneration is allowed, which is the default every settler is born with.
  */
 export const NoRegeneration = defineComponent<{ readonly prohibited: true }>('NoRegeneration', 'settlers');

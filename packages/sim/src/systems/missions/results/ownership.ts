@@ -6,6 +6,7 @@ import {
   GraduateWait,
   isValidPlayer,
   isWildlife,
+  NoRegeneration,
   Owner,
   ownerOf,
   Person,
@@ -132,7 +133,8 @@ export function handAnimalsToPlayer(
 
 /**
  * Give `e` its new owner and settle what every change of player settles (original behavior): a soldier
- * or hero forgets its targets and guards the place it holds, and an animal leaves its herd and its farm.
+ * or hero forgets its targets, guards the place it holds and may eat and sleep again, so a man a
+ * scripted seat had forbidden it arrives free; an animal leaves its herd and its farm.
  */
 function restamp(pass: MissionPass, e: Entity, player: number): void {
   const { world, ctx } = pass;
@@ -142,6 +144,7 @@ function restamp(pass: MissionPass, e: Entity, player: number): void {
   if (!world.has(e, Person) || !isFighterJob(ctx.content, world.get(e, Settler).jobType)) return;
   world.remove(e, Engagement);
   world.remove(e, AttackOrder);
+  world.remove(e, NoRegeneration);
   const anchorCell = world.tryGet(e, Stance)?.anchorCell ?? null;
   world.add(e, Stance, { mode: MILITARY_MODE.DEFEND, anchorCell });
   if (anchorCell === null) anchorAtFeet(world, ctx, e);
