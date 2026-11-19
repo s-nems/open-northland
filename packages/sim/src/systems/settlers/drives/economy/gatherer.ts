@@ -15,7 +15,7 @@ import { atomicDuration } from '../../../readviews/animations.js';
 import { isHunterJob, jobNeedsWorkHouse } from '../../../readviews/index.js';
 import { workplaceStocksGood, workplaceStoredGoods } from '../../../stores/index.js';
 import { atOrWalk, startAtomic, walkPickupBatch } from '../../atomics/start.js';
-import type { PlannerContext } from '../../planner/context.js';
+import { type PlannerContext, planRank } from '../../planner/context.js';
 import type { IdleStands } from '../../planner/idle-replan.js';
 import {
   interactionCell,
@@ -92,7 +92,8 @@ export function planGatherer(plan: PlannerContext, harvestClaims: HarvestClaims,
           exclude: harvestClaims,
           goodFilter,
           admits,
-          within: bound,
+          bound,
+          rank: planRank(plan),
           reserved,
         });
   const trunk = nearestCollectablePileFor(plan, { goodFilter, within: pileBound });
@@ -170,7 +171,13 @@ function planFlagGatherer(
   const node =
     admits === null
       ? null
-      : nearestHarvestableFor(plan, { exclude: harvestClaims, reserved, admits, area: reach });
+      : nearestHarvestableFor(plan, {
+          exclude: harvestClaims,
+          reserved,
+          admits,
+          bound: reach,
+          rank: planRank(plan, reach.center),
+        });
   if (node !== null && startHarvestFromNode(plan, node, harvestClaims, reach)) return true;
 
   // Nothing in reach: stand idle beside the flag.

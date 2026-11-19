@@ -16,6 +16,7 @@ import type { SpatialGate } from '../../../../nav/node-circle.js';
 import type { NodeId, TerrainGraph } from '../../../../nav/terrain/index.js';
 import type { ContentContext, SystemContext } from '../../../context.js';
 import { anchoredStanceCells, positionedStanceCells } from '../../../footprint/index.js';
+import type { RankFrom } from '../../../spatial/walk-rank.js';
 import {
   accessibleStockAmounts,
   bankedSlot,
@@ -67,11 +68,13 @@ export function nearestStoreFor(
   gate?: SpatialGate,
   /** The hauler's failed-goal veto. */
   avoid?: (cell: NodeId) => boolean,
+  /** What the stores are ranked from. */
+  rank: RankFrom = here,
 ): Entity | null {
   return (
     bands
       .sinksFor(goodType, excludeProducers)
-      .nearest(here, ACCEPT_ALL, gate, avoid, sameSideAs(world, owner))?.entity ?? null
+      .nearest(here, ACCEPT_ALL, gate, avoid, sameSideAs(world, owner), rank)?.entity ?? null
   );
 }
 
@@ -259,6 +262,8 @@ export function nearestStoreHolding(
   gate?: SpatialGate,
   /** The fetcher's failed-goal veto. */
   avoid?: (cell: NodeId) => boolean,
+  /** What the stores are ranked from. */
+  rank: RankFrom = here,
 ): Entity | null {
   if (sideLendsNone(bands, world, owner, goodType)) return null;
   // An empty band answers null whatever the gate, so its goods limit is never asked.
@@ -272,6 +277,7 @@ export function nearestStoreHolding(
     supply,
     bands.goodsGate(here, owner, gate),
     avoid,
+    rank,
   );
 }
 
@@ -289,12 +295,13 @@ export function nearestStoreHoldingWithin(
   supply: SupplyTally,
   goodsGate: SpatialGate | undefined,
   avoid?: (cell: NodeId) => boolean,
+  rank: RankFrom = here,
 ): Entity | null {
   if (sideLendsNone(bands, world, owner, goodType)) return null;
   const holders = bands.holding(goodType);
   if (!holders.hasCandidates()) return null;
   if (owner === undefined) {
-    return nearestHolderIn(bands, holders, world, here, goodType, owner, supply, goodsGate, avoid);
+    return nearestHolderIn(bands, holders, world, here, goodType, owner, supply, goodsGate, avoid, rank);
   }
   const filed = storesFiledNear(holders, owner, goodsGate);
   // Mostly none: the stock lies outside the gate, and the search ends before its filter is made.
@@ -304,10 +311,10 @@ export function nearestStoreHoldingWithin(
   if (count === 0) return null;
   // Past the ring search's own linear threshold its rings answer, with the identical winner.
   if (count > RING_MIN_BUCKETS) {
-    return nearestHolderIn(bands, holders, world, here, goodType, owner, supply, goodsGate, avoid);
+    return nearestHolderIn(bands, holders, world, here, goodType, owner, supply, goodsGate, avoid, rank);
   }
   sortAscending(narrowedField, count);
-  return holders.nearestAmong(narrowedField, count, here, lends, goodsGate, avoid)?.entity ?? null;
+  return holders.nearestAmong(narrowedField, count, here, lends, goodsGate, avoid, rank)?.entity ?? null;
 }
 
 /** The stores {@link nearestStoreHolding} weighs for an owned fetcher, ranked as {@link
@@ -322,6 +329,7 @@ export function storesHoldingRanked(
   supply: SupplyTally,
   gate?: SpatialGate,
   avoid?: (cell: NodeId) => boolean,
+  rank: RankFrom = here,
 ): readonly NearestByCell[] {
   if (sideLendsNone(bands, world, owner, goodType)) return [];
   const holders = bands.holding(goodType);
@@ -332,7 +340,7 @@ export function storesHoldingRanked(
   const lends = holdsUnclaimed(world, bands.ctx, supply, goodType);
   const count = keepLenders(filed, lends);
   // The ranking orders by entity id too, so the field needs no sort.
-  return holders.rankedAmong(narrowedField, count, here, lends, goodsGate, avoid);
+  return holders.rankedAmong(narrowedField, count, here, lends, goodsGate, avoid, rank);
 }
 
 /** Keep the first `count` stores of {@link narrowedField} that `lends` passes, in order, and return how
@@ -397,6 +405,7 @@ function nearestHolderIn(
   supply: SupplyTally,
   goodsGate: SpatialGate | undefined,
   avoid: ((cell: NodeId) => boolean) | undefined,
+  rank: RankFrom,
 ): Entity | null {
   return (
     holders.nearest(
@@ -405,6 +414,7 @@ function nearestHolderIn(
       goodsGate,
       avoid,
       sameSideAs(world, owner),
+      rank,
     )?.entity ?? null
   );
 }

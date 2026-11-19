@@ -8,7 +8,7 @@ import { templeFuelGoods, templeFuelSlotOf } from '../../../readviews/index.js';
 import { jobLimitAt, landReachAt } from '../../../signposts/index.js';
 import { mergedRecipeOf } from '../../../stores/index.js';
 import { walkFetchInput, walkPickupBatch } from '../../atomics/start.js';
-import type { PlannerContext } from '../../planner/context.js';
+import { type PlannerContext, planRank } from '../../planner/context.js';
 import { nearestStoreHolding, unclaimedStockOf } from '../../targets/index.js';
 import { unreachableGoalVeto } from '../../unreachable-goals.js';
 
@@ -97,7 +97,8 @@ export function planTempleFuelRun(plan: PlannerContext, workplace: Entity): bool
     walkPickupBatch(plan, workplace, goodType, undefined, FUEL_RUN_UNITS);
     return true;
   }
-  const store = nearestStoreHolding(targets.bands, world, here, goodType, owner, supply, gate, avoid);
+  const rank = planRank(plan);
+  const store = nearestStoreHolding(targets.bands, world, here, goodType, owner, supply, gate, avoid, rank);
   if (store === null) return false;
   supply.stampSupplyRun(entity, { site: temple, goodType, amount: FUEL_RUN_UNITS });
   walkFetchInput(plan, store, goodType, false, FUEL_RUN_UNITS);

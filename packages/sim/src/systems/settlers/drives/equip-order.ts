@@ -12,7 +12,7 @@ import {
   weaponKeepsLockedJob,
 } from '../../readviews/equip-pick.js';
 import { isHeroJob } from '../../readviews/jobs.js';
-import { equipErrandConfinement, type NavigationLimit } from '../../signposts/index.js';
+import { equipErrandConfinement, type NavigationLimit, rankFromSpot } from '../../signposts/index.js';
 import type { SupplyTally } from '../../stores/index.js';
 import { EQUIP_FETCH_UNITS, isUsed } from '../atomics/effects/goods/index.js';
 import { atOrWalk, PICKUP_ATOMIC_ID, PILEUP_ATOMIC_ID, startAtomic, startDrop } from '../atomics/start.js';
@@ -163,7 +163,8 @@ function planFetch(errand: EquipErrand, goodType: number): boolean {
   }
   if (errand.fetches.remaining <= 0) return true; // stands this pass, searches on the next
   errand.fetches.remaining--;
-  const src = nearestStoreHolding(targets.bands, world, here, goodType, owner, supply, gate, avoid);
+  const rank = rankFromSpot(gate, here);
+  const src = nearestStoreHolding(targets.bands, world, here, goodType, owner, supply, gate, avoid, rank);
   if (src === null) {
     errand.failedGood = goodType;
     return endErrand(errand);
@@ -277,7 +278,18 @@ function chainAssistantGrant(errand: EquipErrand): boolean | null {
   for (const owed of inReach) {
     if (errand.fetches.remaining <= 0) return null;
     errand.fetches.remaining--;
-    const src = nearestStoreHolding(targets.bands, world, here, owed.goodType, owner, supply, gate, avoid);
+    const rank = rankFromSpot(gate, here);
+    const src = nearestStoreHolding(
+      targets.bands,
+      world,
+      here,
+      owed.goodType,
+      owner,
+      supply,
+      gate,
+      avoid,
+      rank,
+    );
     if (src === null) continue;
     const live = writableOrder(errand);
     live.group = owed.category;
@@ -333,7 +345,8 @@ function writableOrder(errand: EquipErrand): EquipOrderState {
 /** The nearest same-side store that can take `goodType`. */
 function stowSink(errand: EquipErrand, goodType: number): Entity | null {
   const { world, here, owner, gate, avoid, targets } = errand;
-  return nearestStoreFor(targets.bands, world, here, goodType, owner, EXCLUDE_PRODUCERS, gate, avoid);
+  const rank = rankFromSpot(gate, here);
+  return nearestStoreFor(targets.bands, world, here, goodType, owner, EXCLUDE_PRODUCERS, gate, avoid, rank);
 }
 
 function atOrWalkTo(errand: EquipErrand, target: Entity, act: () => void): void {

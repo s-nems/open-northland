@@ -1,4 +1,4 @@
-import { ownerOf, ownersCompatible, Position, sameSideAs } from '../../components/index.js';
+import { ownerOf, ownersCompatible, Position, Settler, sameSideAs } from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import { nodeOfPosition } from '../../nav/halfcell.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
@@ -8,7 +8,7 @@ import { heldBands } from '../settlers/targets/held-bands.js';
 import { FetchableStock } from '../settlers/targets/stores/fetchable-stock.js';
 import { unclaimedStockOf } from '../settlers/targets/stores/stock.js';
 import { interactionCell } from '../settlers/targets/workplaces.js';
-import { goodsSearchGate, navigationLimitFor } from '../signposts/index.js';
+import { goodsSearchGate, navigationLimitFor, rankFromNode } from '../signposts/index.js';
 import { refillingGoodsOf } from '../stores/index.js';
 
 /** Stores or sources of the worker's side one diagnosis weighs before it stops calling the case decided. */
@@ -78,11 +78,13 @@ export function inputReach(
   }
   const door = interactionCell(world, ctx, terrain, workplace, here);
   const limit = navigationLimitFor(world, ctx.content, terrain, operator) ?? undefined;
+  const jobType = world.tryGet(operator, Settler)?.jobType ?? null;
+  const rank = limit === undefined ? door : rankFromNode(world, ctx.content, terrain, jobType, owner, door);
   const gate = goodsSearchGate(world, ctx.content, terrain, owner, door, limit);
   const band = heldBands(world, ctx, terrain).supplying(goodType);
   band.sync();
   const lender = (e: Entity) => (lends(e) ? QUALIFIES : null);
-  if (band.index.nearest(here, lender, gate, undefined, sameSideAs(world, owner), door) !== null) {
+  if (band.index.nearest(here, lender, gate, undefined, sameSideAs(world, owner), rank) !== null) {
     return 'inReach';
   }
   const produced = reachAmong(world, operator, producers, (source) =>

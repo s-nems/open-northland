@@ -15,6 +15,7 @@ import {
 } from '../../../../src/systems/settlers/targets/cell-index.js';
 import { interactionCell } from '../../../../src/systems/settlers/targets/index.js';
 import { manhattan } from '../../../../src/systems/spatial/metric.js';
+import type { RankFrom } from '../../../../src/systems/spatial/walk-rank.js';
 import { STONE, STONE_ATOMIC, TEST_HUT, VIKING } from '../../footprint/resource-footprint/content.js';
 import {
   ctxOf,
@@ -45,6 +46,8 @@ const NODES_H = SMALL.cellsH * 2;
 const QUERIES = 400;
 /** Owner changes between two rounds of queries, short of the journal window. */
 const OWNER_HANDOVERS = 40;
+/** Queries per round between handovers: the layouts are covered by the full rounds, the sides here. */
+const HANDOVER_QUERIES = 100;
 /** Manhattan offsets of a probe from its lone target: from a few nodes inside the ring cap to past it. */
 const RING_CAP_PROBE_MIN = 40;
 const RING_CAP_PROBE_SPAN = 30;
@@ -120,23 +123,22 @@ function boxGate(
 }
 
 /**
- * `gate` measuring a made-up walk from `here`: a node's length is its hex distance, the least a walk can
- * take, plus a detour drawn from the node, and some nodes and every node past {@link WALK_MAX_STEPS} are
- * left unreached. Scattered lengths, so a search that prunes
- * by distance where the walk decides picks another winner than the linear scan.
+ * A made-up walk from `from`: a node's length is its hex distance, the least a walk can take, plus a
+ * detour drawn from the node, and some nodes and every node past {@link WALK_MAX_STEPS} are left
+ * unreached. Scattered lengths, so a search that prunes by distance where the walk decides picks another
+ * winner than the linear scan. A length past the asked cap is not told, as the real walk's is not.
  */
-function walkGate(gate: SpatialGate, here: NodeId, xOf: (n: NodeId) => number, yOf: (n: NodeId) => number) {
-  const walk: WalkLengths = {
-    from: here,
+function madeUpWalk(from: NodeId, xOf: (n: NodeId) => number, yOf: (n: NodeId) => number): WalkLengths {
+  return {
+    from,
     maxSteps: WALK_MAX_STEPS,
-    stepsTo: (n) => {
+    stepsTo: (n, within = WALK_MAX_STEPS) => {
       if (n % WALK_UNREACHED_ONE_IN === 0) return NO_WALK;
-      const direct = hexDistanceBetween(xOf(here), yOf(here), xOf(n), yOf(n));
+      const direct = hexDistanceBetween(xOf(from), yOf(from), xOf(n), yOf(n));
       const steps = direct + ((n * 7919) % WALK_DETOUR_SPAN);
-      return steps > WALK_MAX_STEPS ? NO_WALK : steps;
+      return steps > Math.min(within, WALK_MAX_STEPS) ? NO_WALK : steps;
     },
   };
-  return { gate: { ...gate, walkLengths: () => walk }, walk };
 }
 
 /** The linear scan every index query must match, over `candidates` in ascending id. */
@@ -148,8 +150,7 @@ function linearWinner(
   gate: SpatialGate | undefined,
   avoid: ((cell: NodeId) => boolean) | undefined,
   onSide: ((e: Entity) => boolean) | undefined,
-  rank: NodeId = here,
-  walk?: WalkLengths,
+  rank: RankFrom = here,
 ) {
   const terrain = terrainOf(sim);
   return nearestByCell(
@@ -165,7 +166,6 @@ function linearWinner(
       return { cell, payload: hit.payload };
     },
     onSide,
-    walk,
   );
 }
 
@@ -176,13 +176,14 @@ function checkQueries(
   index: InteractionCellIndex,
   candidates: readonly Entity[],
   roll: (n: number) => number,
+  queries = QUERIES,
 ): void {
   const terrain = terrainOf(sim);
   const xOf = (n: NodeId) => terrain.xOf(n);
   const yOf = (n: NodeId) => terrain.yOf(n);
   const nodesW = terrain.width;
   const nodesH = terrain.height;
-  for (let q = 0; q < QUERIES; q++) {
+  for (let q = 0; q < queries; q++) {
     const here = terrain.nodeAt(roll(nodesW), roll(nodesH));
     const keep = [1, 2, 7, 40][roll(4)] ?? 1;
     const salt = roll(1000);
@@ -222,32 +223,28 @@ function checkQueries(
     );
 
     if (q % WALK_QUERY_EVERY !== 0) continue;
-    const everywhere = boxGate(0, nodesW - 1, 0, nodesH - 1, xOf, yOf);
-    const walked = walkGate(gate ?? everywhere, here, xOf, yOf);
-    const byWalk = (list: readonly Entity[]) =>
-      linearWinner(sim, list, here, accept, walked.gate, avoid, onSide, here, walked.walk);
-    expect(index.nearest(here, accept, walked.gate, avoid, onSide), `walk query ${q}`).toEqual(
-      byWalk(candidates),
-    );
-    expect(
-      index.nearestAmong(field, field.length, here, accept, walked.gate, avoid),
-      `narrowed walk query ${q}`,
-    ).toEqual(byWalk(candidates));
-    expect(index.nearestLoose(here, accept, walked.gate, avoid, onSide), `loose walk query ${q}`).toEqual(
-      byWalk(loose),
-    );
-    expect(index.nearestDoor(here, accept, walked.gate, avoid, onSide), `door walk query ${q}`).toEqual(
-      byWalk(doors),
-    );
-    expect(
-      index.rankedAmong(field, field.length, here, accept, walked.gate, avoid)[0] ?? null,
-      `ranked walk query ${q}`,
-    ).toEqual(byWalk(candidates));
-    // A walk measured from elsewhere than the ranking origin leaves the order by distance.
-    if (rank === here) continue;
-    expect(index.nearest(here, accept, walked.gate, avoid, onSide, rank), `off-origin query ${q}`).toEqual(
-      linearWinner(sim, candidates, here, accept, gate ?? everywhere, avoid, onSide, rank),
-    );
+    // Ranked by a walk from the seeker's own node, then by one from another node.
+    for (const walk of [madeUpWalk(here, xOf, yOf), madeUpWalk(rank, xOf, yOf)]) {
+      const byWalk = (list: readonly Entity[]) =>
+        linearWinner(sim, list, here, accept, gate, avoid, onSide, walk);
+      expect(index.nearest(here, accept, gate, avoid, onSide, walk), `walk query ${q}`).toEqual(
+        byWalk(candidates),
+      );
+      expect(
+        index.nearestAmong(field, field.length, here, accept, gate, avoid, walk),
+        `narrowed walk query ${q}`,
+      ).toEqual(byWalk(candidates));
+      expect(index.nearestLoose(here, accept, gate, avoid, onSide, walk), `loose walk query ${q}`).toEqual(
+        byWalk(loose),
+      );
+      expect(index.nearestDoor(here, accept, gate, avoid, onSide, walk), `door walk query ${q}`).toEqual(
+        byWalk(doors),
+      );
+      expect(
+        index.rankedAmong(field, field.length, here, accept, gate, avoid, walk)[0] ?? null,
+        `ranked walk query ${q}`,
+      ).toEqual(byWalk(candidates));
+    }
   }
 }
 
@@ -333,7 +330,7 @@ describe('InteractionCellIndex', () => {
 
   it.each([11])('keeps its owner sides current as candidates change hands (seed %i)', (seed) => {
     const { sim, terrain, ctx, candidates, roll, index } = world(seed);
-    checkQueries(sim, index, candidates, roll); // splits the sides
+    checkQueries(sim, index, candidates, roll, HANDOVER_QUERIES); // splits the sides
     for (const handovers of [1, OWNER_HANDOVERS, GENERATION_JOURNAL_LIMIT + 1]) {
       for (let i = 0; i < handovers; i++) {
         const e = candidates[roll(candidates.length)] as Entity;
@@ -345,7 +342,7 @@ describe('InteractionCellIndex', () => {
           sim.world.mut(e, Owner).player = player; // an in-place write
         else sim.world.add(e, Owner, { player });
       }
-      checkQueries(sim, index, candidates, roll);
+      checkQueries(sim, index, candidates, roll, HANDOVER_QUERIES);
       expect(index.divergence(new InteractionCellIndex(sim.world, ctx, terrain, candidates))).toEqual([]);
     }
   });

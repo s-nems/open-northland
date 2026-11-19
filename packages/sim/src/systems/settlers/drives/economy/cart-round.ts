@@ -20,7 +20,7 @@ import {
   pullsHaulingCart,
 } from '../../../vehicles/hauling-cart.js';
 import { walkFetchInput, walkPickupBatch } from '../../atomics/start.js';
-import type { PlannerContext } from '../../planner/context.js';
+import { type PlannerContext, planRank } from '../../planner/context.js';
 import {
   boundWorkplaceTarget,
   haulableOutputGood,
@@ -187,6 +187,7 @@ function storeCartPickup(
     workAreaGate(terrain, here, CART_TOP_UP_REACH, plan.limit),
     unreachableGoalVeto(world, ctx, plan.entity),
     sameSideAs(world, plan.owner),
+    planRank(plan),
   );
   return found === null ? null : pickup(found.entity, found.payload);
 }

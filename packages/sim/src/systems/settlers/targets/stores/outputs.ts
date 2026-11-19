@@ -5,6 +5,7 @@ import { intersectReach } from '../../../../nav/range-search.js';
 import type { NodeId } from '../../../../nav/terrain/index.js';
 import type { SystemContext } from '../../../context.js';
 import { goodsSearchLimitAt } from '../../../signposts/reach.js';
+import type { RankFrom } from '../../../spatial/walk-rank.js';
 import {
   accessibleStockAmounts,
   isWorkplaceOutput,
@@ -56,6 +57,8 @@ export function nearestWorkplaceOutput(
   gate?: SpatialGate,
   /** The carrier's failed-goal veto. */
   avoid?: (cell: NodeId) => boolean,
+  /** What the workplaces are ranked from. */
+  rank: RankFrom = here,
 ): { workplace: Entity; goodType: number } | null {
   // The good that qualified the winner is the good it hauls.
   const terrain = ctx.terrain;
@@ -70,6 +73,7 @@ export function nearestWorkplaceOutput(
     gate,
     avoid,
     sameSideAs(world, owner),
+    rank,
   );
   return winner === null ? null : { workplace: winner.entity, goodType: winner.payload };
 }

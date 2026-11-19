@@ -24,6 +24,7 @@ import { templeFuelShortfall } from '../../../lifecycle/temple/index.js';
 import { edibleClassOf } from '../../../readviews/food.js';
 import { isTempleFuel, templeFuelSlotOf } from '../../../readviews/index.js';
 import { entityNode } from '../../../spatial/nodes.js';
+import type { RankFrom } from '../../../spatial/walk-rank.js';
 import { assignedWorkers } from '../../../stores/assigned-workers.js';
 import {
   bankedSlot,
@@ -33,7 +34,7 @@ import {
   lowestStockedGood,
   type SupplyTally,
 } from '../../../stores/index.js';
-import type { PlannerContext } from '../../planner/context.js';
+import { type PlannerContext, planRank } from '../../planner/context.js';
 import {
   haulableOutputGood,
   type NearestByCell,
@@ -63,7 +64,8 @@ import { isFarmCarrierHaulOutRole } from './store-policy.js';
  * stocked one passing `deliverable`, and the scan is canonical by the index's length order then ascending
  * cell id. The tests run per candidate, so a lift or claim earlier in the pass is seen by the next porter, and
  * a good every unit of which a walker already claimed is passed over. `rankFrom` replaces the flag as
- * the node a flagged porter's finds are ranked from, for the next stop of a cart's round.
+ * the node a flagged porter's finds are ranked from, for the next stop of a cart's round. Either ranks by
+ * the porter's walk from that node ({@link planRank}).
  */
 export function nearestLoosePickup(
   plan: PlannerContext,
@@ -90,7 +92,7 @@ export function nearestLoosePickup(
     const loose =
       collect === null
         ? null
-        : targets.stockpileCells.nearestLoose(here, groundPileGood, collect, avoid, onSide);
+        : targets.stockpileCells.nearestLoose(here, groundPileGood, collect, avoid, onSide, planRank(plan));
     return loose === null ? null : { from: loose.entity, goodType: loose.payload };
   }
   const best = targets.stockpileCells.nearest(
@@ -102,7 +104,7 @@ export function nearestLoosePickup(
     area.gate,
     avoid,
     onSide,
-    rankFrom ?? area.center,
+    planRank(plan, rankFrom ?? area.center),
   );
   return best === null ? null : { from: best.entity, goodType: best.payload };
 }
@@ -159,7 +161,7 @@ function nearestMinimumRestock(
 /** Where a restock search looks: the flag's area or the goods reach, ranked from the flag or the porter. */
 interface RestockSearch {
   readonly gate: SpatialGate | undefined;
-  readonly rank: NodeId;
+  readonly rank: RankFrom;
   readonly avoid: ((cell: NodeId) => boolean) | undefined;
 }
 
@@ -168,7 +170,7 @@ function restockSearch(plan: PlannerContext, owner: number): RestockSearch {
   const area = haulFlagArea(plan);
   return {
     gate: area?.gate ?? targets.bands.goodsGate(here, owner, plan.limit ?? undefined),
-    rank: area?.center ?? here,
+    rank: planRank(plan, area?.center ?? here),
     avoid: unreachableGoalVeto(world, ctx, entity),
   };
 }

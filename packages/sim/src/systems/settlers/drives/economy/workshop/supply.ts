@@ -8,8 +8,6 @@ import { craftablePoolInto } from '../../../../economy/production/rotation.js';
 import { startableCycleCount } from '../../../../economy/production.js';
 import { religionAllowsAtomic } from '../../../../lifecycle/needs/religion.js';
 import { productionAtomic } from '../../../../readviews/production-atomic.js';
-import { jobLimitAt } from '../../../../signposts/index.js';
-import { gateRankedBy } from '../../../../spatial/walk-rank.js';
 import {
   buildingProduces,
   isWorkplaceOutput,
@@ -19,7 +17,7 @@ import {
   type SupplyTally,
   stockCapacity,
 } from '../../../../stores/index.js';
-import type { PlannerContext } from '../../../planner/context.js';
+import { type PlannerContext, planRank } from '../../../planner/context.js';
 import {
   FetchableStock,
   type InteractionCellIndex,
@@ -190,7 +188,7 @@ export function nearestMissingInputSource(
               targets.bands.goodsGate(here, plan.owner, area.gate),
               avoid,
               sameSideAs(world, plan.owner),
-              area.center,
+              planRank(plan, area.center),
             )
           : nearestFromDoor(plan, workplace, band, source, avoid);
     if (winner !== null) {
@@ -215,25 +213,13 @@ function nearestFromDoor(
 ) {
   const { world, ctx, terrain, here, targets } = plan;
   const door = interactionCell(world, ctx, terrain, workplace, here);
-  const fromDoor =
-    plan.owner === undefined
-      ? null
-      : jobLimitAt(
-          world,
-          ctx.content,
-          terrain,
-          plan.jobType,
-          plan.owner,
-          terrain.xOf(door),
-          terrain.yOf(door),
-        );
   return band.nearest(
     here,
     source,
-    gateRankedBy(targets.bands.goodsGate(door, plan.owner, plan.limit ?? undefined), fromDoor),
+    targets.bands.goodsGate(door, plan.owner, plan.limit ?? undefined),
     avoid,
     sameSideAs(world, plan.owner),
-    door,
+    planRank(plan, door),
   );
 }
 

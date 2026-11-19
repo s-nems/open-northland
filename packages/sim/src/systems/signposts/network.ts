@@ -35,6 +35,7 @@ import {
 } from '../../nav/node-circle.js';
 import { NO_COMPONENT, type NodeId, type TerrainGraph } from '../../nav/terrain/index.js';
 import { isCarrierJobRow, isDruidJob, isFighterJob, isHunterJob, isScoutJob } from '../readviews/index.js';
+import type { RankFrom } from '../spatial/walk-rank.js';
 import {
   floodMayEnter,
   GenerationalCache,
@@ -359,9 +360,9 @@ class WalkConfinement implements NavigationLimit, WalkLengths {
     return (this.walk() ?? this.byDistance())?.mayAllowNear?.(x, y, radius + 1) ?? true;
   }
 
-  /** Itself while a walk starts from the spot; a spot judged by distance measures none. */
-  walkLengths(): WalkLengths | null {
-    return this.walk() === null ? null : this;
+  /** Whether a walk starts from the spot; a spot judged by distance measures none. */
+  measuresWalk(): boolean {
+    return this.walk() !== null;
   }
 
   get from(): NodeId {
@@ -378,6 +379,30 @@ class WalkConfinement implements NavigationLimit, WalkLengths {
     if (walk === null) return NO_WALK;
     return walk.ownWalkSteps(this.terrain.xOf(node), this.terrain.yOf(node), within);
   }
+}
+
+/**
+ * What a search by the settler `limit` confines ranks its candidates from on `here`, the spot the limit
+ * was asked at: the walk the limit measures from there, or the spot itself, by distance, under a limit
+ * that measures no walk from it. The answer holds until the next world write.
+ */
+export function rankFromSpot(limit: NavigationLimit | null | undefined, here: NodeId): RankFrom {
+  return limit instanceof WalkConfinement && limit.from === here && limit.measuresWalk() ? limit : here;
+}
+
+/** {@link rankFromSpot} for a settler of `jobType` and `player` on `node`, for a search ranked from another
+ *  node than the one its seeker stands on: a flag, a door, a mooring. */
+export function rankFromNode(
+  world: World,
+  content: ContentSet,
+  terrain: TerrainGraph,
+  jobType: number | null,
+  player: number | undefined,
+  node: NodeId,
+): RankFrom {
+  if (player === undefined) return node;
+  const limit = jobLimitAt(world, content, terrain, jobType, player, terrain.xOf(node), terrain.yOf(node));
+  return rankFromSpot(limit, node);
 }
 
 /** A box holding no node. */

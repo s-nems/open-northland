@@ -36,7 +36,7 @@ import {
   startDrop,
   startPickup,
 } from '../../atomics/start.js';
-import type { PlannerContext } from '../../planner/context.js';
+import { type PlannerContext, planRank } from '../../planner/context.js';
 import { interactionCell, QUALIFIES, unclaimedStockOf } from '../../targets/index.js';
 import { unreachableGoalVeto } from '../../unreachable-goals.js';
 
@@ -194,6 +194,7 @@ function nearestStorageFor(plan: PlannerContext, goodType: number, door: NodeId)
       plan.limit ?? undefined,
       unreachableGoalVeto(world, ctx, e),
       sameSideAs(world, plan.owner),
+      planRank(plan, door),
     );
   return hit?.entity ?? null;
 }
@@ -269,13 +270,14 @@ function nearestCargoSource(
   const forms = goods.flatMap((good) => sourceFormsOf(ctx.content, good));
   for (const phase of phases) {
     const goodsGate = targets.bands.goodsGate(phase.origin, plan.owner, gate);
+    const rank = planRank(plan, phase.origin);
     let best: (CargoSource & { readonly distance: number }) | null = null;
     for (const goodType of forms) {
       const accept = (e2: Entity): boolean =>
         phase.accept(e2) && unclaimedStockOf(world, ctx, plan.supply, e2, goodType) > 0;
       const hit = targets.bands
         .holding(goodType)
-        .nearest(phase.origin, (e2) => (accept(e2) ? QUALIFIES : null), goodsGate, avoid, onSide);
+        .nearest(phase.origin, (e2) => (accept(e2) ? QUALIFIES : null), goodsGate, avoid, onSide, rank);
       if (hit !== null && (best === null || hit.distance < best.distance)) {
         best = { entity: hit.entity, goodType, distance: hit.distance };
       }

@@ -33,9 +33,6 @@ export interface SpatialGate {
   /** False only when no node within Manhattan `radius` of `(x, y)` is allowed, so a search can drop a
    *  candidate before resolving the exact cell it would be reached at. A gate without it is asked per node. */
   mayAllowNear?(x: number, y: number, radius: number): boolean;
-  /** The walk the gate measures its area by, for a search that ranks its candidates by the walk to them;
-   *  null while it measures none. Asked per search: the answer holds until the next world write. */
-  walkLengths?(): WalkLengths | null;
 }
 
 /** The steps of the shortest walk from one node to each node a walk of bounded length reaches. */

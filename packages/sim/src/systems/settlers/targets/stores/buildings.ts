@@ -4,6 +4,7 @@ import type { Entity, World } from '../../../../ecs/world.js';
 import { hexDistanceBetween } from '../../../../nav/halfcell.js';
 import type { SpatialGate } from '../../../../nav/node-circle.js';
 import type { NodeId, TerrainGraph } from '../../../../nav/terrain/index.js';
+import type { RankFrom } from '../../../spatial/walk-rank.js';
 import type { TargetBands } from '../bands.js';
 import { ACCEPT_ALL, type InteractionCellIndex, QUALIFIES } from '../cell-index.js';
 
@@ -14,9 +15,9 @@ export const TEMPLE_PREFERRED_RANGE = 40;
 /**
  * Where a devout settler with no holy fire at home walks to pray: the nearest of its player's finished
  * temples, unless it lies beyond {@link TEMPLE_PREFERRED_RANGE} and a headquarters is no farther. The
- * candidates are ranked by this index's length order with the shared ascending-cell-id tie-break and
- * compared in map points, an approximation of the original's hex-distance search on the settler's own
- * continent. Null when neither is found. `gate` is the settler's signpost confinement: a site outside its
+ * candidates are ranked by this index's length order from `rank` with the shared ascending-cell-id
+ * tie-break and compared in map points, an approximation of the original's hex-distance search on the
+ * settler's own continent. Null when neither is found. `gate` is the settler's signpost confinement: a site outside its
  * allowed area is not one it knows the way to.
  */
 export function nearestPrayerSite(
@@ -30,17 +31,19 @@ export function nearestPrayerSite(
   /** The settler's failed-goal veto. */
   avoid?: (cell: NodeId) => boolean,
   acceptsSite?: (entity: Entity) => boolean,
+  /** What the sites are ranked from. */
+  rank: RankFrom = here,
 ): Entity | null {
   const onSide = sameSideAs(world, owner);
   const accepts =
     acceptsSite === undefined ? ACCEPT_ALL : (entity: Entity) => (acceptsSite(entity) ? QUALIFIES : null);
-  const temple = bands.prayerSites(PRAYER_SITE.temple).nearest(here, accepts, gate, avoid, onSide);
+  const temple = bands.prayerSites(PRAYER_SITE.temple).nearest(here, accepts, gate, avoid, onSide, rank);
   const templePoints =
     temple === null ? Number.POSITIVE_INFINITY : mapPointsBetween(terrain, here, temple.cell);
   if (temple !== null && templePoints <= TEMPLE_PREFERRED_RANGE) return temple.entity;
   const headquarters = bands
     .prayerSites(PRAYER_SITE.headquarters)
-    .nearest(here, accepts, gate, avoid, onSide);
+    .nearest(here, accepts, gate, avoid, onSide, rank);
   if (headquarters !== null && mapPointsBetween(terrain, here, headquarters.cell) <= templePoints) {
     return headquarters.entity;
   }
@@ -68,6 +71,8 @@ export function nearestBuilderSite(
   avoidSite?: (site: Entity) => boolean,
   /** Additional side-effect-free task qualification for builder allocation. */
   acceptsSite: (site: Entity) => boolean = () => true,
+  /** What the sites are ranked from. */
+  rank: RankFrom = here,
 ): Entity | null {
   // `gate` is the builder's signpost confinement: a site outside its allowed area is left unbuilt. Another
   // side's sites are skipped whole by the side split.
@@ -78,6 +83,7 @@ export function nearestBuilderSite(
       gate,
       undefined,
       sameSideAs(world, owner),
+      rank,
     )?.entity ?? null
   );
 }

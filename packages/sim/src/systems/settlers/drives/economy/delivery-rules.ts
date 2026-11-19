@@ -22,6 +22,7 @@ import { holdsSiteClaim, isSoloSite } from '../../../economy/site-claim.js';
 import { constructionWorkCells, routeRegions } from '../../../footprint/index.js';
 import { templeFuelGoods } from '../../../readviews/index.js';
 import { landReachAt } from '../../../signposts/index.js';
+import type { RankFrom } from '../../../spatial/walk-rank.js';
 import {
   bankedSlot,
   buildingProduces,
@@ -31,7 +32,7 @@ import {
   type SupplyTally,
   stockCapacity,
 } from '../../../stores/index.js';
-import type { PlannerContext } from '../../planner/context.js';
+import { type PlannerContext, planRank } from '../../planner/context.js';
 import {
   boundWorkplaceTarget,
   nearestStoreFor,
@@ -81,6 +82,8 @@ export const DELIVERY_RULES: readonly DeliveryRule[] = [
  *  stand, by that stand. */
 export interface DeliverySearchArea {
   readonly gate: SpatialGate;
+  /** What a rule ranks its sinks from: the settler's own spot. */
+  readonly rank: RankFrom;
   readonly avoid: ((cell: NodeId) => boolean) | undefined;
   readonly avoidSite: ((site: Entity) => boolean) | undefined;
 }
@@ -90,6 +93,7 @@ export function deliverySearchArea(plan: PlannerContext): DeliverySearchArea {
   const avoid = unreachableGoalVeto(world, ctx, entity);
   return {
     gate: plan.limit ?? landReachAt(terrain, here),
+    rank: planRank(plan),
     avoid,
     avoidSite: unreachableSiteStand(world, ctx, terrain, targets.yard.blocked, here, avoid),
   };
@@ -168,6 +172,7 @@ function toStorageOffFarm(plan: PlannerContext, goodType: number, area: Delivery
     /* excludeProducers */ true,
     area.gate,
     area.avoid,
+    area.rank,
   );
   return store ?? 'no-sink';
 }
@@ -222,6 +227,7 @@ function toNeedingConstructionSite(
       undefined,
       // Another player's sites are never in need of this load, so their side is skipped whole.
       sameSideAs(world, owner),
+      area.rank,
     )?.entity ?? null
   );
 }
@@ -280,7 +286,7 @@ function toStorageUnderMinimum(
   return (
     targets.bands
       .sinksFor(goodType, false)
-      .nearest(here, storage, area.gate, area.avoid, sameSideAs(world, owner))?.entity ?? null
+      .nearest(here, storage, area.gate, area.avoid, sameSideAs(world, owner), area.rank)?.entity ?? null
   );
 }
 
@@ -312,6 +318,7 @@ function toNearbyRecipeConsumer(
       area.gate,
       area.avoid,
       sameSideAs(world, owner),
+      area.rank,
     )?.entity ?? null
   );
 }
@@ -323,7 +330,17 @@ function toNearestCapableStore(
   area: DeliverySearchArea,
 ): DeliveryVerdict {
   const { world, here, owner, targets } = plan;
-  return nearestStoreFor(targets.bands, world, here, goodType, owner, false, area.gate, area.avoid);
+  return nearestStoreFor(
+    targets.bands,
+    world,
+    here,
+    goodType,
+    owner,
+    false,
+    area.gate,
+    area.avoid,
+    area.rank,
+  );
 }
 
 function boundWorkplace(plan: PlannerContext): Entity | undefined {

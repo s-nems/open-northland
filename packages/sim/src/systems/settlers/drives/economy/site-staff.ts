@@ -1,7 +1,7 @@
 import { Building, JobAssignment, UnderConstruction } from '../../../../components/index.js';
 import type { Entity } from '../../../../ecs/world.js';
 import { atOrWalk } from '../../atomics/start.js';
-import type { PlannerContext } from '../../planner/context.js';
+import { type PlannerContext, planRank } from '../../planner/context.js';
 import type { PlannerSpacing } from '../../planner/spacing.js';
 import { claimWorkCell, deStackIdle } from '../spacing.js';
 import { fetchNeededMaterial } from './site-supply.js';
@@ -25,7 +25,7 @@ export function planSiteStaff(
   const site = boundConstructionSite(plan);
   if (site === null) return false;
   if (fetchNeededMaterial(plan, spacing, site)) return true;
-  const stand = claimWorkCell(world, terrain, e, here, site, spacing, plan.limit);
+  const stand = claimWorkCell(world, terrain, e, here, site, spacing, planRank(plan));
   if (stand === null) deStackIdle(world, ctx, terrain, e, hx, hy, spacing);
   else atOrWalk(world, e, here, stand, () => {});
   return true;

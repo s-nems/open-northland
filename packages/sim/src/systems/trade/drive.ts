@@ -6,6 +6,7 @@ import {
   ownerOf,
   Position,
   Rider,
+  Settler,
   Stockpile,
   sameSideAs,
   TRADE_LIMIT_NONE,
@@ -20,7 +21,7 @@ import { contentIndex } from '../../core/content-index.js';
 import { ONE } from '../../core/fixed.js';
 import type { DeepReadonly, Entity, World } from '../../ecs/world.js';
 import { type HalfCellNode, hexDistance, nodeOfPosition } from '../../nav/halfcell.js';
-import type { TerrainGraph } from '../../nav/terrain/index.js';
+import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { ContentContext, SystemContext } from '../context.js';
 import { interactionNode, vehicleAnchor } from '../footprint/index.js';
 import { interactionNodeId } from '../footprint/interaction.js';
@@ -41,7 +42,9 @@ import { QUALIFIES } from '../settlers/targets/cell-index.js';
 import { interactionCell, unclaimedStockOf } from '../settlers/targets/index.js';
 import { LendableTally, storageLendable } from '../settlers/targets/stores/storage-reserve.js';
 import { isUnreachableGoal, unreachableGoals } from '../settlers/unreachable-goals.js';
+import { navigationLimitFor, rankFromNode } from '../signposts/index.js';
 import { settlementReachAt } from '../signposts/settlement-reach.js';
+import type { RankFrom } from '../spatial/walk-rank.js';
 import { keepsOwnStock, lowestStockedGood, mayFetchGoodFrom, type SupplyTally } from '../stores/index.js';
 import { haulingCartLiftTicks, parkHaulingCart } from '../vehicles/hauling-cart.js';
 import { activeAgreement } from './agreements.js';
@@ -724,10 +727,25 @@ function storeTaking(
     return form !== undefined && roomFor(world, ctx, e, form) - pending > 0;
   };
   const storehouse = (e: Entity) => (takes(e) ? QUALIFIES : null);
-  const nearest = scope
-    .sinks(good)
-    .nearest(door, storehouse, reach, (cell) => isUnreachableGoal(failed, cell), sameSideAs(world, player));
+  const rank = traderRankFrom(world, ctx, terrain, trader, player, door);
+  const veto = (cell: NodeId): boolean => isUnreachableGoal(failed, cell);
+  const nearest = scope.sinks(good).nearest(door, storehouse, reach, veto, sameSideAs(world, player), rank);
   return nearest?.entity ?? null;
+}
+
+/** What `trader`, of `player`, ranks the stores round a stop's `door` from: its walk from the door, or the
+ *  door, by distance, for a trader nothing confines. */
+function traderRankFrom(
+  world: World,
+  ctx: SystemContext,
+  terrain: TerrainGraph,
+  trader: Entity,
+  player: number,
+  door: NodeId,
+): RankFrom {
+  if (navigationLimitFor(world, ctx.content, terrain, trader) === null) return door;
+  const jobType = world.tryGet(trader, Settler)?.jobType ?? null;
+  return rankFromNode(world, ctx.content, terrain, jobType, player, door);
 }
 
 /** Unloading `good` at the stop's own house, into the store {@link storeTaking} names; null with none. */

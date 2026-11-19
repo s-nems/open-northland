@@ -1,8 +1,9 @@
 import type { Entity, World } from '../../../ecs/world.js';
 import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
 import type { SystemContext } from '../../context.js';
-import type { NavigationLimit } from '../../signposts/index.js';
+import { type NavigationLimit, rankFromNode, rankFromSpot } from '../../signposts/index.js';
 import type { GossipCandidates } from '../../social/index.js';
+import type { RankFrom } from '../../spatial/walk-rank.js';
 import type { SupplyTally } from '../../stores/index.js';
 import type { TargetCandidates } from '../targets/index.js';
 
@@ -36,6 +37,20 @@ export interface PlannerContext extends PlannerWorker {
   /** Tick-shared lazy chat-candidate buckets, so a rung that parks a settler with nothing to do can
    *  offer it the same idle chat the bottom rung runs. */
   readonly gossipCandidates: GossipCandidates;
+}
+
+/**
+ * What `plan`'s settler ranks a search's candidates from at `node`: its own spot unless given, or a flag,
+ * a door or a mooring it works outward from. The walk its confinement measures from there, or the node, by
+ * distance, for a settler nothing confines and a spot no walk starts from.
+ */
+export function planRank(
+  plan: Pick<PlannerContext, 'world' | 'ctx' | 'terrain' | 'jobType' | 'owner' | 'here' | 'limit'>,
+  node: NodeId = plan.here,
+): RankFrom {
+  if (plan.limit === null) return node;
+  if (node === plan.here) return rankFromSpot(plan.limit, node);
+  return rankFromNode(plan.world, plan.ctx.content, plan.terrain, plan.jobType, plan.owner, node);
 }
 
 /** A {@link PlannerContext} whose per-settler fields the ladder rewrites for each plan, so a pass

@@ -3,7 +3,7 @@ import { isTempleFuel } from '../../../readviews/index.js';
 import { isCarrierJob } from '../../../stores/index.js';
 import { carryCapacityOf } from '../../../vehicles/hauling-cart.js';
 import { walkPickupBatch } from '../../atomics/start.js';
-import type { PlannerContext } from '../../planner/context.js';
+import { type PlannerContext, planRank } from '../../planner/context.js';
 import type { IdleStands } from '../../planner/idle-replan.js';
 import { nearestWorkplaceOutput } from '../../targets/index.js';
 import { unreachableGoalVeto } from '../../unreachable-goals.js';
@@ -79,6 +79,7 @@ export function planCarrierHaul(plan: PlannerContext, anyHaulable: boolean): boo
         plan.supply,
         plan.limit ?? undefined,
         unreachableGoalVeto(world, ctx, e),
+        planRank(plan),
       )
     : null;
   if (haul === null) return false;

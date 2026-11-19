@@ -1,7 +1,7 @@
 import { footprintCellDx } from '@open-northland/data';
 import type { BlockOverlay } from './block-overlay.js';
 import { HEX_NEIGHBOUR_OFFSETS, hexDistanceBetween, type NodeArea } from './halfcell.js';
-import type { NodeBox, SpatialGate } from './node-circle.js';
+import { NO_WALK, type NodeBox, type SpatialGate } from './node-circle.js';
 import type { NodeId, TerrainGraph } from './terrain/index.js';
 
 /** A cloneable, bounded piece of the half-cell grid. */
@@ -132,6 +132,20 @@ export function enteredCost(costs: FloodCosts, x: number, y: number): number {
   if (dx < 0 || dy < 0 || dx >= costs.width || dy >= costs.height) return NOT_ENTERED;
   const value = costs.values[dy * costs.width + dx] as number;
   return value === costs.unset ? NOT_ENTERED : value;
+}
+
+/** The steps to `(x, y)` in the `lengths` of a step-counted flood, to a node no walk stands on from the
+ *  nearest neighbour one does, or {@link NO_WALK}. */
+export function walkLengthTo(lengths: FloodCosts, x: number, y: number): number {
+  const own = enteredCost(lengths, x, y);
+  if (own !== NOT_ENTERED) return own;
+  let beside = NOT_ENTERED;
+  const dxs = (y & 1) === 0 ? HEX_DX_EVEN : HEX_DX_ODD;
+  for (let k = 0; k < HEX_DY.length; k++) {
+    const cost = enteredCost(lengths, x + (dxs[k] as number), y + (HEX_DY[k] as number));
+    if (cost < beside) beside = cost;
+  }
+  return beside === NOT_ENTERED ? NO_WALK : beside + 1;
 }
 
 /** Whether the flood traced by `search` read `(x, y)`: entered it, or inspected it from an entered
@@ -423,7 +437,6 @@ export function intersectReach(a: SpatialGate | undefined, b: SpatialGate | null
   if (b === null) return a;
   if (a === undefined || a === b) return b;
   const near = a.mayAllowNear !== undefined || b.mayAllowNear !== undefined;
-  const walked = a.walkLengths !== undefined ? a : b.walkLengths !== undefined ? b : undefined;
   return {
     bounds: b.bounds,
     allowsNode: (node) => a.allowsNode(node) && b.allowsNode(node),
@@ -431,6 +444,5 @@ export function intersectReach(a: SpatialGate | undefined, b: SpatialGate | null
       mayAllowNear: (x: number, y: number, radius: number) =>
         (a.mayAllowNear?.(x, y, radius) ?? true) && (b.mayAllowNear?.(x, y, radius) ?? true),
     }),
-    ...(walked !== undefined && { walkLengths: () => walked.walkLengths?.() ?? null }),
   };
 }

@@ -8,7 +8,6 @@ import {
   leastRankLength,
   nearestRankedCell,
   rankSweepRadius,
-  walkRanking,
 } from '../../../src/systems/spatial/walk-rank.js';
 import { testContent } from '../../fixtures/content.js';
 import { grassNodeMap } from '../../fixtures/terrain.js';
@@ -32,22 +31,17 @@ describe('ranking cells by the walk to them', () => {
     maxSteps: NEAR_DETOUR_STEPS,
     stepsTo: (node: NodeId) => (node === near ? NEAR_DETOUR_STEPS : node === far ? FAR_STEPS : NO_WALK),
   };
-  const gate = {
-    bounds: { minX: 0, maxX: terrain.width - 1, minY: 0, maxY: terrain.height - 1 },
-    allowsNode: () => true,
-    walkLengths: () => walk,
-  };
-
   it('takes the shorter walk over the shorter line, and a walked cell over an unwalked one', () => {
     expect(nearestCell(terrain, [near, far, farther], from)).toBe(near);
-    expect(nearestRankedCell(terrain, walk, [near, far, farther], from)).toBe(far);
-    expect(nearestRankedCell(terrain, walk, [near, farther], from)).toBe(near);
-    expect(nearestRankedCell(terrain, walk, [near, far], from, (cell) => cell !== far)).toBe(near);
+    expect(nearestRankedCell(terrain, from, [near, far, farther])).toBe(near);
+    expect(nearestRankedCell(terrain, walk, [near, far, farther])).toBe(far);
+    expect(nearestRankedCell(terrain, walk, [near, farther])).toBe(near);
+    expect(nearestRankedCell(terrain, walk, [near, far], (cell) => cell !== far)).toBe(near);
   });
 
   it('ranks unwalked cells among themselves by distance', () => {
     const beyond = terrain.nodeAt(30, 4);
-    expect(nearestRankedCell(terrain, walk, [beyond, farther], from)).toBe(farther);
+    expect(nearestRankedCell(terrain, walk, [beyond, farther])).toBe(farther);
   });
 
   it('bounds a walk by distance from both sides, on even and odd rows alike', () => {
@@ -69,12 +63,5 @@ describe('ranking cells by the walk to them', () => {
       }
     }
     expect(broken).toEqual([]);
-  });
-
-  it('ranks by the walk only from the node the walk starts at', () => {
-    expect(walkRanking(gate, from)).toBe(walk);
-    expect(walkRanking(gate, near)).toBeUndefined();
-    expect(walkRanking(gate, from, near)).toBeUndefined();
-    expect(walkRanking({ ...gate, walkLengths: () => null }, from)).toBeUndefined();
   });
 });

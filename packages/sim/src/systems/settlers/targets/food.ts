@@ -16,6 +16,7 @@ import { builtHomeType, HOME_ERRAND_RANGE_NODES, homeUsedBy, isHome } from '../.
 import { routeRegions } from '../../footprint/index.js';
 import { goodsSearchLimitAt } from '../../signposts/reach.js';
 import { hexNodeDistance } from '../../spatial/metric.js';
+import type { RankFrom } from '../../spatial/walk-rank.js';
 import type { SupplyTally } from '../../stores/index.js';
 import { isUnreachableGoal, unreachableGoals } from '../unreachable-goals.js';
 import type { TargetCandidates } from './candidates.js';
@@ -127,7 +128,7 @@ export type MealTarget = (
  *    past its reach fails the need; here a meal still inside the walk reach is taken instead, a far
  *    larder on the same terms as a store.
  *
- * Project rule: each search ranks by the walk the eater's confinement measures, else by Manhattan
+ * Project rule: each search ranks by `rank`, the walk the eater's confinement measures or else Manhattan
  * distance, then cell and entity id, where the original takes the first hit of its resistance-weighted
  * flood. Other families' larders and another player's stocks stay private; a bush is anyone's, save one
  * another forager is already walking to.
@@ -141,6 +142,8 @@ export function chooseMeal(
   here: NodeId,
   eater: Entity,
   gate?: SpatialGate,
+  /** What every search ranks its meals from. */
+  rank: RankFrom = here,
 ): MealTarget | null {
   const memo = unreachableGoals(world, ctx, eater);
   const component = terrain.componentOf(here);
@@ -179,7 +182,7 @@ export function chooseMeal(
   const owner = ownerOf(world, eater);
   const onSide = sameSideAs(world, owner);
   const nearest = (accept: (e: Entity) => Qualified<Meal> | null, within?: SpatialGate) =>
-    targets.mealCells.nearest(here, accept, within, avoid, onSide);
+    targets.mealCells.nearest(here, accept, within, avoid, onSide, rank);
   const reach =
     goodsSearchLimitAt(world, ctx.content, terrain, owner, terrain.xOf(here), terrain.yOf(here)) ??
     hexDisc(terrain, here, GOODS_SEARCH_RANGE_NODES);

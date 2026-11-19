@@ -32,6 +32,7 @@ import type { Entity } from '../../../src/ecs/world.js';
 import { cellAnchorNode, hexDistanceBetween, Simulation } from '../../../src/index.js';
 import { nodeOfPosition, positionOfNode } from '../../../src/nav/halfcell.js';
 import { NO_WALK } from '../../../src/nav/node-circle.js';
+import { walkLengthTo } from '../../../src/nav/range-search.js';
 import type { NodeId, TerrainGraph } from '../../../src/nav/terrain/index.js';
 import {
   createSignpost,
@@ -44,10 +45,9 @@ import { CUT_OFF_CHECK_TICKS } from '../../../src/systems/settlers/drives/cut-of
 import { LOST_GUIDE_DELAY_TICKS } from '../../../src/systems/settlers/drives/lost-guide.js';
 import { ACCEPT_ALL, InteractionCellIndex } from '../../../src/systems/settlers/targets/cell-index.js';
 import { interactionCell } from '../../../src/systems/settlers/targets/index.js';
-import { jobLimitAt } from '../../../src/systems/signposts/index.js';
-import { walkLengthsFrom, walkLengthTo } from '../../../src/systems/signposts/walk-length.js';
+import { rankFromSpot, walkLengthsFrom } from '../../../src/systems/signposts/index.js';
 import { manhattan } from '../../../src/systems/spatial/metric.js';
-import { gateRankedBy } from '../../../src/systems/spatial/walk-rank.js';
+import { rankWalk } from '../../../src/systems/spatial/walk-rank.js';
 import { TEST_MANIFEST, testContent } from '../../fixtures/content.js';
 import { ctxOf } from '../../fixtures/context.js';
 import { grassCellMap as grassMap, waterColumnMap } from '../../fixtures/terrain.js';
@@ -405,55 +405,12 @@ describe('setSignpostNavigation + moveUnit - the confinement rule', () => {
 
       const limit = navigationLimitFor(sim.world, sim.content, terrain, u) ?? undefined;
       expect(limit?.allowsNode(cellOf(across))).toBe(true);
-      const lengths = limit?.walkLengths?.();
+      const lengths = rankWalk(rankFromSpot(limit, here));
       expect(lengths?.stepsTo(cellOf(upTheBank))).toBe(rangeBetween(EAST_CELL, UP_THE_BANK_CELL));
       expect(lengths?.stepsTo(cellOf(across))).toBeGreaterThan(rangeBetween(EAST_CELL, UP_THE_BANK_CELL));
-      expect(index.nearest(here, ACCEPT_ALL, limit)?.entity).toBe(upTheBank);
-      // Without the confinement the straight line still ranks.
-      expect(index.nearest(here, ACCEPT_ALL)?.entity).toBe(across);
-    });
-
-    it('ON: a search ranking from a door ranks by the walk from that door', () => {
-      const FORD_ROWS = 2;
-      const UP_THE_BANK_CELL = { x: 33, y: 5 };
-      const AWAY_CELL = { x: 36, y: 8 };
-      const sim = new Simulation({
-        seed: 5,
-        content: testContent(),
-        map: waterColumnMap(40, 12, STRAIT_CELL_COLUMN, FORD_ROWS),
-      });
-      sim.enqueueSetup({ kind: 'setSignpostNavigation', enabled: true });
-      sim.step();
-      const terrain = sim.terrain;
-      if (terrain === undefined) throw new Error('mapped sim');
-      const u = unitOnCell(sim, AWAY_CELL, WOODCUTTER);
-      const here = cellNode(terrain, AWAY_CELL);
-      const door = cellNode(terrain, EAST_CELL);
-      const store = (cell: { x: number; y: number }): Entity => {
-        const anchor = cellAnchorNode(cell.x, cell.y);
-        const e = sim.world.create();
-        sim.world.add(e, Position, positionOfNode(anchor.hx, anchor.hy));
-        return e;
-      };
-      const across = store(WEST_CELL);
-      const upTheBank = store(UP_THE_BANK_CELL);
-      const index = new InteractionCellIndex(sim.world, ctxOf(sim), terrain, [across, upTheBank]);
-
-      const limit = navigationLimitFor(sim.world, sim.content, terrain, u);
-      if (limit === null) throw new Error('a confined trade');
-      const fromDoor = jobLimitAt(
-        sim.world,
-        sim.content,
-        terrain,
-        WOODCUTTER,
-        P0,
-        terrain.xOf(door),
-        terrain.yOf(door),
-      );
-      // The settler's own walk is measured from where it stands, so the door's straight line ranks.
-      expect(index.nearest(here, ACCEPT_ALL, limit, undefined, undefined, door)?.entity).toBe(across);
-      const ranked = gateRankedBy(limit, fromDoor);
-      expect(index.nearest(here, ACCEPT_ALL, ranked, undefined, undefined, door)?.entity).toBe(upTheBank);
+      expect(index.nearest(here, ACCEPT_ALL, limit, undefined, undefined, lengths)?.entity).toBe(upTheBank);
+      // Ranked from the node alone, the straight line decides.
+      expect(index.nearest(here, ACCEPT_ALL, limit)?.entity).toBe(across);
     });
 
     it('ON: a walk length asked under a cap equals the full walk, or is none past the cap', () => {
@@ -472,8 +429,9 @@ describe('setSignpostNavigation + moveUnit - the confinement rule', () => {
       const u = unitOnCell(sim, EAST_CELL, WOODCUTTER);
       const from = cellAnchorNode(EAST_CELL.x, EAST_CELL.y);
       const full = walkLengthsFrom(sim.world, sim.content, terrain, from.hx, from.hy, WALK_ROUTE_STEPS - 1);
-      const lengths = navigationLimitFor(sim.world, sim.content, terrain, u)?.walkLengths?.();
-      if (full === null || lengths === undefined || lengths === null) throw new Error('a walk starts here');
+      const here = terrain.nodeAt(from.hx, from.hy);
+      const lengths = rankWalk(rankFromSpot(navigationLimitFor(sim.world, sim.content, terrain, u), here));
+      if (full === null || lengths === undefined) throw new Error('a walk starts here');
       const wrong: string[] = [];
       // Short caps first, so each longer one is answered by a search deepened from the last.
       for (const cap of CAPS) {

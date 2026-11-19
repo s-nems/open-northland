@@ -34,7 +34,7 @@ import {
 import { noteOrderedMealUnserved } from '../../orders/meal-break.js';
 import { atomicDuration } from '../../readviews/animations.js';
 import { isEdibleFoodIn, jobNeedsReligion } from '../../readviews/index.js';
-import type { NavigationLimit } from '../../signposts/index.js';
+import { type NavigationLimit, rankFromSpot } from '../../signposts/index.js';
 import type { SupplyTally } from '../../stores/index.js';
 import { MEAL_UNITS } from '../atomics/effects/goods/index.js';
 import {
@@ -291,6 +291,7 @@ export function planNeeds(
         stands.set(candidate, stand);
         return true;
       },
+      rankFromSpot(limit, here),
     );
     if (site !== null) {
       const stand = stands.get(site);
@@ -354,7 +355,9 @@ function seekMeal(
   if (seek && eatCarried(world, ctx, e, settler, load)) return true;
   if (seek && eatAtPost(world, ctx, e, settler)) return true;
   const walks = seek && (hunger >= NEED_CRITICAL_THRESHOLD || !onAlert());
-  const food = walks ? chooseMeal(targets, world, ctx, supply, terrain, here, e, limit ?? undefined) : null;
+  const food = walks
+    ? chooseMeal(targets, world, ctx, supply, terrain, here, e, limit ?? undefined, rankFromSpot(limit, here))
+    : null;
   if (food !== null) {
     // The claim covers the walk: an eater that has arrived takes the serving itself.
     if (food.kind === 'store') {

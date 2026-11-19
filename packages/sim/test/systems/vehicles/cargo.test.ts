@@ -563,6 +563,39 @@ describe('the carrier rung', () => {
     expect(pileAmount(s, WOOD)).toBe(3);
   });
 
+  it('fetches from the pile with the shorter walk from the door, not the shorter line across a river', () => {
+    const FORD_ROWS = 2;
+    /** East of the river at node column 60, twelve rows above its ford. */
+    const cartAt = { hx: 66, hy: 44 };
+    const across = { hx: 54, hy: 44 };
+    const upTheBank = { hx: 86, hy: 44 };
+    const fetchedFrom = (confined: boolean): string => {
+      const s = new Simulation({
+        seed: 3,
+        content: testContent(),
+        map: waterColumnMap(MAP_NODES / 2, MAP_NODES / 4, 30, FORD_ROWS),
+      });
+      s.enqueueSetup({ kind: 'setNeedsEnabled', enabled: false });
+      s.enqueueSetup({ kind: 'setSignpostNavigation', enabled: confined });
+      const cart = spawnCart(s, cartAt);
+      attachCarrier(s, cart, { hx: cartAt.hx + 2, hy: cartAt.hy });
+      dropPile(s, WOOD, across, 1);
+      dropPile(s, WOOD, upTheBank, 1);
+      want(s, cart, WOOD, 1);
+      s.run(TRIP_TICKS * 6);
+      expect(line(s, cart, WOOD)).toEqual({ current: 1, wanted: 1, reserved: 1 });
+      const left = [...s.world.query(Stockpile, Position)].filter(
+        (e) => !s.world.has(e, Building) && (s.world.get(e, Stockpile).amounts.get(WOOD) ?? 0) > 0,
+      );
+      return left
+        .map((e) => (s.world.get(e, Position).x > s.world.get(cart, Position).x ? 'east' : 'west'))
+        .join();
+    };
+    expect(fetchedFrom(true)).toBe('west');
+    // With no walk measured the line decides, and the pile across the river goes first.
+    expect(fetchedFrom(false)).toBe('east');
+  });
+
   it('drops the booking at the door when the request was cleared meanwhile and places the unit elsewhere', () => {
     const s = sim();
     const cart = spawnCart(s);

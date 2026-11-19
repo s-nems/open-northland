@@ -5,7 +5,13 @@ import type { Entity, World } from '../../ecs/world.js';
 import { type TileBox, TileBuckets } from '../../inspect/tile-buckets.js';
 import { hexDistanceBetween } from '../../nav/halfcell.js';
 import { NO_WALK, type NodeBox, type SpatialGate } from '../../nav/node-circle.js';
-import { type ReachArea, type ReachSearch, reachBox, reachContains } from '../../nav/range-search.js';
+import {
+  type ReachArea,
+  type ReachSearch,
+  reachBox,
+  reachContains,
+  walkLengthTo,
+} from '../../nav/range-search.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import { walkStepsBetween } from '../../nav/walk-steps.js';
 import { interactionNode } from '../footprint/interaction.js';
@@ -24,7 +30,6 @@ import {
   terrainReach,
   WALK_REACH_SHAPE,
 } from './terrain-reach.js';
-import { walkLengthTo } from './walk-length.js';
 
 /** What a cache's answers depend on beyond the terrain: the walk-block mask version, the mirrored road
  *  revision, the signpost network revision and the door revision. */
@@ -360,9 +365,18 @@ export function goodsSearchLimitAt(
   player: number | undefined,
   hx: number,
   hy: number,
-): ReachLimit | null {
+): GoodsSearchLimit | null {
   if (!signpostNavigationEnabled(world) || player === undefined) return null;
   return reachLimitAt(world, content, terrain, player, hx, hy, GOODS_SEARCH_SHAPE);
+}
+
+/** A goods search as a gate: it spends ground resistance, so it measures no walk. */
+export interface GoodsSearchLimit extends SpatialGate {
+  mayAllowNear(x: number, y: number, radius: number): boolean;
+  /** The flood-free half of `allowsNode`: inside the hex range or under a caught group. */
+  catchesNode(node: NodeId): boolean;
+  /** The player's network list the search's groups derive from. */
+  readonly sites: readonly SignpostSite[] | undefined;
 }
 
 /**

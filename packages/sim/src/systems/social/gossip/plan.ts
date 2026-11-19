@@ -27,6 +27,7 @@ import {
 import { type Fixed, fx, ONE, ZERO } from '../../../core/fixed.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import { nodeHxOfPosition, nodeHyOfPosition, type nodesAdjacent } from '../../../nav/halfcell.js';
+import { walkLengthTo } from '../../../nav/range-search.js';
 import type { SystemContext } from '../../context.js';
 import { carriesNeeds, NEED_DRIVE_THRESHOLD, needLevel } from '../../lifecycle/needs/index.js';
 import { NEED_RESERVE_UNITS, needBar } from '../../lifecycle/needs/scale.js';
@@ -35,7 +36,7 @@ import { REFERENCE_STEP_TICKS } from '../../movement/walk-cost.js';
 import { atomicDuration } from '../../readviews/animations.js';
 import { isFighterJob } from '../../readviews/index.js';
 import { IDLE_MEDIUM_ATOMIC_ID, IDLE_SHORT_ATOMIC_IDS } from '../../settlers/atomics/start.js';
-import { walkLengthsFrom, walkLengthTo } from '../../signposts/walk-length.js';
+import { walkLengthsFrom } from '../../signposts/index.js';
 import { type GossipCandidates, NO_PARTNER } from './candidates.js';
 import { endChat } from './drive.js';
 

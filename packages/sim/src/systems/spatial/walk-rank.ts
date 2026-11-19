@@ -1,5 +1,4 @@
-import type { SpatialGate, WalkLengths } from '../../nav/node-circle.js';
-import { NO_WALK } from '../../nav/node-circle.js';
+import { NO_WALK, type WalkLengths } from '../../nav/node-circle.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import { closer, hexNodeDistance, manhattan, nearestCell } from './metric.js';
 
@@ -12,30 +11,18 @@ const ROW_PAIR_STEPS = 2;
 const ROW_PAIR_SPAN = 3;
 const FIRST_STEP_EXTRA_SPAN = 1;
 
-/** The walk a search ranking from `rank` ranks by, or undefined to rank by Manhattan distance: `gate`
- *  measures none, or measures it from another node. */
-export function walkRanking(
-  gate: SpatialGate | null | undefined,
-  here: NodeId,
-  rank: NodeId = here,
-): WalkLengths | undefined {
-  const walk = gate?.walkLengths?.() ?? null;
-  return walk !== null && walk.from === rank ? walk : undefined;
+/** What a nearest-candidate search ranks from: a node, by Manhattan distance, or a walk, by its steps from
+ *  the node it is measured from. */
+export type RankFrom = NodeId | WalkLengths;
+
+/** The node `rank` ranks from. */
+export function rankOrigin(rank: RankFrom): NodeId {
+  return typeof rank === 'number' ? rank : rank.from;
 }
 
-/** `gate` measuring the walk `measured` does, for a search that ranks from another node than the one its
- *  gate is asked from, as a workshop's supply ranks from its door. */
-export function gateRankedBy(gate: SpatialGate, measured: SpatialGate | null): SpatialGate {
-  if (measured?.walkLengths === undefined) return gate;
-  const near = gate.mayAllowNear?.bind(gate);
-  return {
-    get bounds() {
-      return gate.bounds;
-    },
-    allowsNode: (node) => gate.allowsNode(node),
-    ...(near !== undefined && { mayAllowNear: near }),
-    walkLengths: () => measured.walkLengths?.() ?? null,
-  };
+/** The walk `rank` ranks by, or undefined to rank by Manhattan distance. */
+export function rankWalk(rank: RankFrom): WalkLengths | undefined {
+  return typeof rank === 'number' ? undefined : rank;
 }
 
 /**
@@ -89,15 +76,16 @@ export function rankSweepRadius(walk: WalkLengths | undefined, length: number): 
   return Math.max(length - BEYOND_WALK, farthestSpan(walk.maxSteps));
 }
 
-/** {@link nearestCell} from `from` by rank length under `walk`, with the same `(length, id)` tie-break
- *  and lazy `accept`. */
+/** {@link nearestCell} from `rank` by rank length, with the same `(length, id)` tie-break and lazy
+ *  `accept`. */
 export function nearestRankedCell(
   terrain: TerrainGraph,
-  walk: WalkLengths | undefined,
+  rank: RankFrom,
   candidates: readonly NodeId[],
-  from: NodeId,
   accept?: (cell: NodeId) => boolean,
 ): NodeId | null {
+  const from = rankOrigin(rank);
+  const walk = rankWalk(rank);
   if (walk === undefined) return nearestCell(terrain, candidates, from, accept);
   let best: NodeId | null = null;
   let bestLength = Number.POSITIVE_INFINITY;
@@ -105,8 +93,9 @@ export function nearestRankedCell(
   for (const cell of candidates) {
     const span = manhattan(terrain, from, cell);
     if (!closer(leastRankLengthTo(terrain, walk, cell, span), cell, bestLength, bestCell)) continue;
+    if (accept !== undefined && !accept(cell)) continue;
     const length = rankLength(walk, cell, span, bestLength);
-    if (!closer(length, cell, bestLength, bestCell) || (accept !== undefined && !accept(cell))) continue;
+    if (!closer(length, cell, bestLength, bestCell)) continue;
     best = cell;
     bestLength = length;
     bestCell = cell;

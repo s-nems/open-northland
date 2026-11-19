@@ -20,9 +20,11 @@ import { closer, manhattan } from '../../spatial/metric.js';
 import {
   leastRankLength,
   leastRankLengthTo,
+  type RankFrom,
   rankLength,
+  rankOrigin,
   rankSweepRadius,
-  walkRanking,
+  rankWalk,
 } from '../../spatial/walk-rank.js';
 import { CellGrid } from './cell-grid.js';
 import { interactionCell } from './workplaces.js';
@@ -139,9 +141,9 @@ function sideKeyOf(world: World, e: Entity): number {
  * `accept`" by the `(length, cell-id, entity-id)` order as a bounded node-ring search. Built per tick
  * over a band, or kept across ticks through {@link add} and {@link remove}.
  *
- * The length is {@link rankLength}: the Manhattan distance from the ranking origin, or the steps of the
- * walk a query's gate measures from `here` when it ranks from there. The sweeps run by distance, so under a
- * walk they prune by the least length a distance allows ({@link leastRankLength}).
+ * The length is {@link rankLength} under the query's {@link RankFrom}: the Manhattan distance from the
+ * ranking origin, or the steps of the walk measured from it. The sweeps run by distance, so under a walk
+ * they prune by the least length a distance allows ({@link leastRankLength}).
  *
  * A seeker-independent interaction cell (a building door) is bucketed by that cell. A seeker-dependent
  * one (a loose ground pile) is bucketed by the candidate's own node and resolved per query: its cell lies
@@ -359,20 +361,21 @@ export class InteractionCellIndex {
     /** Rejects a candidate owned by another player. It must read nothing but the candidate's
      *  {@link Owner}, as {@link sameSideAs} does: a search asks it once per owner side. */
     onSide?: (e: Entity) => boolean,
-    /** The ranking origin, a flag centre for a carrier working outward from its flag; `here` stays the
-     *  route start the interaction cell, sealing and veto are judged from. */
-    rank: NodeId = here,
+    /** What the candidates are ranked from, a flag centre for a carrier working outward from its flag;
+     *  `here` stays the route start the interaction cell, sealing and veto are judged from. */
+    rank: RankFrom = here,
   ): NearestByCell<P> | null {
     const sets = this.setsOn(onSide);
-    const walk = walkRanking(gate, here, rank);
+    const origin = rankOrigin(rank);
+    const walk = rankWalk(rank);
     // Typed by assertion: reassigned in the loop, so flow narrowing must not pin it to null.
     let door = null as NearestByCell<P> | null;
     for (const set of sets) {
-      door = nearerOf(door, this.doorNearest(set, here, rank, accept, gate, avoid, walk, door?.distance));
+      door = nearerOf(door, this.doorNearest(set, here, origin, accept, gate, avoid, walk, door?.distance));
     }
     let best = door;
     for (const set of sets) {
-      best = nearerOf(best, this.looseNearest(set, here, rank, accept, gate, avoid, walk, best?.distance));
+      best = nearerOf(best, this.looseNearest(set, here, origin, accept, gate, avoid, walk, best?.distance));
     }
     return best;
   }
@@ -387,9 +390,11 @@ export class InteractionCellIndex {
     accept: (e: Entity) => Qualified<P> | null,
     gate?: SpatialGate,
     avoid?: (cell: NodeId) => boolean,
+    rank: RankFrom = here,
   ): NearestByCell<P> | null {
-    const walk = walkRanking(gate, here);
-    return this.linearNearest(field, here, accept, gate, avoid, here, walk, Number.POSITIVE_INFINITY, count);
+    const unbounded = Number.POSITIVE_INFINITY;
+    const walk = rankWalk(rank);
+    return this.linearNearest(field, here, accept, gate, avoid, rankOrigin(rank), walk, unbounded, count);
   }
 
   /** Every candidate of `field` that {@link nearestAmong} could pick, each with its resolved cell, in the
@@ -402,9 +407,11 @@ export class InteractionCellIndex {
     accept: (e: Entity) => Qualified<P> | null,
     gate?: SpatialGate,
     avoid?: (cell: NodeId) => boolean,
+    rank: RankFrom = here,
   ): NearestByCell<P>[] {
     const { world, ctx, terrain } = this;
-    const walk = walkRanking(gate, here);
+    const origin = rankOrigin(rank);
+    const walk = rankWalk(rank);
     const ranked: NearestByCell<P>[] = [];
     for (let i = 0; i < count; i++) {
       const e = field[i];
@@ -417,7 +424,7 @@ export class InteractionCellIndex {
       if (gate !== undefined && !gate.allowsNode(cell)) continue;
       if (vetoed(avoid, here, cell)) continue;
       if (door === undefined && this.pileCellSealed(e, here, cell)) continue;
-      const distance = rankLength(walk, cell, manhattan(terrain, here, cell));
+      const distance = rankLength(walk, cell, manhattan(terrain, origin, cell));
       ranked.push({ entity: e, cell, distance, payload: hit.payload });
     }
     return ranked.sort((a, b) => a.distance - b.distance || a.cell - b.cell || a.entity - b.entity);
@@ -431,11 +438,13 @@ export class InteractionCellIndex {
     gate?: SpatialGate,
     avoid?: (cell: NodeId) => boolean,
     onSide?: (e: Entity) => boolean,
+    rank: RankFrom = here,
   ): NearestByCell<P> | null {
-    const walk = walkRanking(gate, here);
+    const origin = rankOrigin(rank);
+    const walk = rankWalk(rank);
     let best = null as NearestByCell<P> | null;
     for (const set of this.setsOn(onSide)) {
-      best = nearerOf(best, this.doorNearest(set, here, here, accept, gate, avoid, walk, best?.distance));
+      best = nearerOf(best, this.doorNearest(set, here, origin, accept, gate, avoid, walk, best?.distance));
     }
     return best;
   }
@@ -447,12 +456,14 @@ export class InteractionCellIndex {
     gate?: SpatialGate,
     avoid?: (cell: NodeId) => boolean,
     onSide?: (e: Entity) => boolean,
+    rank: RankFrom = here,
   ): NearestByCell<P> | null {
     // Typed by assertion: reassigned in the loop, so flow narrowing must not pin it to null.
     let best = null as NearestByCell<P> | null;
-    const walk = walkRanking(gate, here);
+    const origin = rankOrigin(rank);
+    const walk = rankWalk(rank);
     for (const set of this.setsOn(onSide)) {
-      best = nearerOf(best, this.looseNearest(set, here, here, accept, gate, avoid, walk, best?.distance));
+      best = nearerOf(best, this.looseNearest(set, here, origin, accept, gate, avoid, walk, best?.distance));
     }
     return best;
   }
@@ -875,21 +886,21 @@ function boundsReach(gate: SpatialGate, x: number, y: number): number {
 
 /**
  * The `(length, cell-id, entity-id)` winner over `list`, where `resolve` maps a candidate to its
- * interaction cell or to null to skip it. `rank` is the ranking origin, usually the seeker but a flag
- * centre when a bound gatherer works outward from its flag, so a candidate may be ranked from a
- * different node than the one its interaction cell resolves against.
+ * interaction cell or to null to skip it. `rank` is what the candidates are ranked from, usually the
+ * seeker but a flag centre when a bound gatherer works outward from its flag, so a candidate may be ranked
+ * from a different node than the one its interaction cell resolves against.
  */
 export function nearestByCell<P = null>(
   terrain: TerrainGraph,
   list: readonly Entity[],
-  rank: NodeId,
+  rank: RankFrom,
   resolve: (entity: Entity) => CellMatch<P> | null,
   /** Rejects a candidate owned by another player before `resolve` runs. Scans over unowned map features
    *  (standing resources, ground heaps) omit it. */
   onSide?: (e: Entity) => boolean,
-  /** Ranks by the steps of this walk from `rank` instead of Manhattan distance. */
-  walk?: WalkLengths,
 ): NearestByCell<P> | null {
+  const origin = rankOrigin(rank);
+  const walk = rankWalk(rank);
   let bestEntity: Entity | undefined;
   let bestMatch: CellMatch<P> | null = null;
   let bestDist = Number.POSITIVE_INFINITY;
@@ -901,7 +912,7 @@ export function nearestByCell<P = null>(
     const match = resolve(entity);
     if (match === null) continue;
     const { cell } = match;
-    const distance = rankLength(walk, cell, manhattan(terrain, rank, cell), bestDist);
+    const distance = rankLength(walk, cell, manhattan(terrain, origin, cell), bestDist);
     if (closer(distance, cell, bestDist, bestCell)) {
       bestEntity = entity;
       bestMatch = match;

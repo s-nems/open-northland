@@ -5,7 +5,7 @@ import type { SystemContext } from '../../../context.js';
 import { jobLimitAt, type NavigationLimit, spotsReaching } from '../../../signposts/index.js';
 import { neededConstructionGoods } from '../../../stores/index.js';
 import { atOrWalk, startPickup } from '../../atomics/start.js';
-import type { PlannerContext } from '../../planner/context.js';
+import { type PlannerContext, planRank } from '../../planner/context.js';
 import type { PlannerSpacing } from '../../planner/spacing.js';
 import { FILED_STRIDE } from '../../targets/cell-index.js';
 import {
@@ -98,6 +98,7 @@ export function constructionMaterialResolver(
         plan.supply,
         plan.limit ?? undefined,
         fetcherAvoid(plan, rejectSource),
+        planRank(plan),
       );
       rankedByGood.set(goodType, ranked);
     }
@@ -366,6 +367,7 @@ function materialSource(
         plan.supply,
         plan.limit ?? undefined,
         avoid,
+        planRank(plan),
       );
   return source === null ? null : lendingSource(plan, source, goodType);
 }

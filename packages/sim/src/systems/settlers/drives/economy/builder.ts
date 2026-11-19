@@ -36,7 +36,7 @@ import {
   jobCanBuild,
   startAtomic,
 } from '../../atomics/start.js';
-import type { PlannerContext } from '../../planner/context.js';
+import { type PlannerContext, planRank } from '../../planner/context.js';
 import { type IdleStands, ownedByMachine, standsStillForMachine } from '../../planner/idle-replan.js';
 import type { PlannerSpacing } from '../../planner/spacing.js';
 import { FILED_STRIDE } from '../../targets/cell-index.js';
@@ -145,7 +145,16 @@ export function planBuilder(
     accepts: (site: Entity) => boolean,
     limit = plan.limit,
   ): Entity | null =>
-    nearestBuilderSite(sites, world, here, settler.owner, limit ?? undefined, avoidSite, accepts);
+    nearestBuilderSite(
+      sites,
+      world,
+      here,
+      settler.owner,
+      limit ?? undefined,
+      avoidSite,
+      accepts,
+      planRank(plan),
+    );
 
   // A road site's stone paves its pending neighbours too, so a builder takes its own claim or the nearest
   // site of the owner's stone plan, a planned filler or a spare one only while no better one is its to
@@ -235,6 +244,8 @@ export function planBuilder(
             here,
             (site) => (avoidSite?.(site) !== true && accepts(site) ? QUALIFIES : null),
             plan.limit ?? undefined,
+            undefined,
+            planRank(plan),
           )?.entity ?? null,
       );
     }
@@ -444,7 +455,7 @@ function anyTaskSite(
   const { world, here, targets, owner, limit } = plan;
   const hasTask = siteHasTask(claims, materials, standableSite(plan, spacing, limit));
   const found = (sites: InteractionCellIndex): Entity | null =>
-    nearestBuilderSite(sites, world, here, owner, limit ?? undefined, avoidSite, hasTask);
+    nearestBuilderSite(sites, world, here, owner, limit ?? undefined, avoidSite, hasTask, planRank(plan));
   return (
     found(targets.constructionSiteCells) ??
     (claims.wallMayHaveTask(materials.canSource) ? found(targets.wallSiteCells) : null) ??
@@ -557,6 +568,7 @@ function repairNearest(
       plan.limit ?? undefined,
       avoidSite,
       qualifies,
+      planRank(plan),
     );
   if (site === null || !startRepair(plan, spacing, site)) return false;
   repairs.join(site, e);
@@ -630,7 +642,7 @@ function startHammer(
 ): boolean {
   const { world, ctx, terrain, entity: e, here } = plan;
   if (!claims.hasHammerWork(site)) return false;
-  const stand = claimWorkCell(world, terrain, e, here, site, spacing, plan.limit);
+  const stand = claimWorkCell(world, terrain, e, here, site, spacing, planRank(plan));
   if (stand === null || !claims.claimHammer(site)) return false;
   const buildAtomic = world.has(site, Palisade)
     ? BUILD_WALL_ATOMIC_ID
@@ -652,7 +664,7 @@ function startHammer(
 
 function waitAtSite(plan: PlannerContext, spacing: PlannerSpacing, site: Entity): void {
   const { world, terrain, entity: e, here } = plan;
-  const stand = claimWorkCell(world, terrain, e, here, site, spacing, plan.limit);
+  const stand = claimWorkCell(world, terrain, e, here, site, spacing, planRank(plan));
   if (stand !== null) atOrWalk(world, e, here, stand, () => {});
 }
 

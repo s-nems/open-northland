@@ -1,10 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { Simulation } from '../../src/index.js';
 import { NodeMask } from '../../src/nav/block-overlay.js';
-import { floodReach } from '../../src/nav/range-search.js';
+import { floodReach, walkLengthTo } from '../../src/nav/range-search.js';
 import type { NodeId } from '../../src/nav/terrain/index.js';
 import { walkStepsBetween } from '../../src/nav/walk-steps.js';
-import { walkLengthTo } from '../../src/systems/signposts/walk-length.js';
 import { testContent } from '../fixtures/content.js';
 import { waterColumnMap } from '../fixtures/terrain.js';
 

@@ -1,9 +1,14 @@
 import { hexDistanceBetween } from '../../../nav/halfcell.js';
-import type { WalkLengths } from '../../../nav/node-circle.js';
 import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
 import { dynamicBlockOverlay, routeRegions } from '../../footprint/index.js';
 import { manhattan } from '../../spatial/metric.js';
-import { leastRankLengthTo, rankLength } from '../../spatial/walk-rank.js';
+import {
+  leastRankLengthTo,
+  type RankFrom,
+  rankLength,
+  rankOrigin,
+  rankWalk,
+} from '../../spatial/walk-rank.js';
 import type { PlannerContext } from '../planner/context.js';
 import { isUnreachableGoal, unreachableGoals } from '../unreachable-goals.js';
 
@@ -52,24 +57,26 @@ export function collectorStanceGates(
       !regions.unroutable(here, cell));
 }
 
-/** Select the closest eligible approach without consuming the harvest stance draw, by Manhattan distance
- *  from `here` or by the steps of `walk`. `passes` is pure, so it runs only for a cell that may come nearer
- *  than the best so far. */
+/** Select the closest eligible approach without consuming the harvest stance draw, by its length from
+ *  `rank`, the lower cell on a tie. `passes` is pure, so it runs only for a cell that may come nearer than
+ *  the best so far. */
 export function nearestEligibleStance(
-  plan: Pick<PlannerContext, 'terrain' | 'here'>,
+  terrain: TerrainGraph,
+  rank: RankFrom,
   pool: readonly NodeId[],
   passes: (cell: NodeId) => boolean,
-  /** Skip every cell ranking past this length from `here`. */
+  /** Skip every cell ranking past this length. */
   maxLength = Number.POSITIVE_INFINITY,
-  walk?: WalkLengths,
 ): NodeId | undefined {
+  const from = rankOrigin(rank);
+  const walk = rankWalk(rank);
   let best: NodeId | undefined;
   let length = maxLength;
   for (let i = 0; i < pool.length; i++) {
     const cell = pool[i];
     if (cell === undefined) continue;
-    const span = manhattan(plan.terrain, plan.here, cell);
-    const least = leastRankLengthTo(plan.terrain, walk, cell, span);
+    const span = manhattan(terrain, from, cell);
+    const least = leastRankLengthTo(terrain, walk, cell, span);
     if (least > length || (least === length && best !== undefined && cell >= best)) continue;
     if (!passes(cell)) continue;
     const exact = rankLength(walk, cell, span, length);

@@ -175,7 +175,7 @@ describe('bounded harvest scan', () => {
     // Caught up before the watch: the resource index reads every node it files, not the scan.
     expect(plan.targets.resources).toHaveLength(trees.length + 1);
 
-    const found = nearestHarvestableFor(plan, { within: { center: node(sim, 20, 10), radius: 8 } });
+    const found = nearestHarvestableFor(plan, { bound: { center: node(sim, 20, 10), radius: 8 } });
     expect(found?.entity).toBe(carcass);
   });
 
@@ -191,7 +191,8 @@ describe('bounded harvest scan', () => {
     resourceAt(sim, cx - radius - offset - 1, cy, WOOD, CHOP, [{ dx: offset, dy: 0 }]);
     const plan = planFor(sim, WOODCUTTER, cx, cy);
 
-    const found = nearestHarvestableFor(plan, { area: { center: node(sim, cx, cy), radius } });
+    const flag = node(sim, cx, cy);
+    const found = nearestHarvestableFor(plan, { bound: { center: flag, radius }, rank: flag });
     expect(found).toEqual({ entity: edge, cell: node(sim, cx + radius, cy), dist: radius });
   });
 });
@@ -209,12 +210,12 @@ describe('harvest scan by work cell', () => {
     // Its anchor lies beyond the nearest one, but its work cell reaches back to two nodes out.
     const reaching = resourceAt(sim, cx + offset + 2, cy, WOOD, CHOP, [{ dx: -offset, dy: 0 }]);
     const plan = planFor(sim, WOODCUTTER, cx, cy);
-    const area = { center: node(sim, cx, cy), radius: farReach + offset };
+    const area = { bound: { center: node(sim, cx, cy), radius: farReach + offset }, rank: node(sim, cx, cy) };
 
-    const found = nearestHarvestableFor(plan, { area });
+    const found = nearestHarvestableFor(plan, area);
     expect(found).toEqual({ entity: reaching, cell: node(sim, cx + 2, cy), dist: 2 });
     // A diagnostic walks every candidate the old way and lands on the same node.
-    expect(nearestHarvestableFor(plan, { area, diagnostic: { eligibleInArea: false } })).toEqual(found);
+    expect(nearestHarvestableFor(plan, { ...area, diagnostic: { eligibleInArea: false } })).toEqual(found);
   });
 });
 
@@ -260,21 +261,21 @@ describe('harvest scan sources', () => {
   const WALK_UNREACHED_ONE_IN = 6;
   const WALK_DETOUR_SPAN = 30;
 
-  /** A walk from `here` whose lengths scatter over the hex distance, the least a walk can take, so a
-   *  search that prunes by distance where the walk decides misses the full scan's winner. */
-  function walkFrom(here: NodeId): () => WalkLengths {
-    const [hx, hy] = [here % WIDE_W, Math.floor(here / WIDE_W)];
-    const walk: WalkLengths = {
-      from: here,
+  /** A walk from `from` whose lengths scatter over the hex distance, the least a walk can take, so a
+   *  search that prunes by distance where the walk decides misses the full scan's winner. A length past
+   *  the asked cap is not told, as the real walk's is not. */
+  function walkFrom(from: NodeId): WalkLengths {
+    const [hx, hy] = [from % WIDE_W, Math.floor(from / WIDE_W)];
+    return {
+      from,
       maxSteps: WALK_MAX_STEPS,
-      stepsTo: (n) => {
+      stepsTo: (n, within = WALK_MAX_STEPS) => {
         if (n % WALK_UNREACHED_ONE_IN === 0) return NO_WALK;
         const direct = hexDistanceBetween(hx, hy, n % WIDE_W, Math.floor(n / WIDE_W));
         const steps = direct + ((n * 7919) % WALK_DETOUR_SPAN);
-        return steps > WALK_MAX_STEPS ? NO_WALK : steps;
+        return steps > Math.min(within, WALK_MAX_STEPS) ? NO_WALK : steps;
       },
     };
-    return () => walk;
   }
 
   it.each([1])(
@@ -309,9 +310,7 @@ describe('harvest scan sources', () => {
             const y = Math.floor(cell / WIDE_W);
             return x >= bounds.minX && x <= bounds.maxX && y >= bounds.minY && y <= bounds.maxY;
           };
-          // Every other gate measures a walk, so the same searches also run under the walk's order.
-          const limit = { bounds, allowsNode };
-          plan = { ...plan, limit: q % 2 === 0 ? limit : { ...limit, walkLengths: walkFrom(here) } };
+          plan = { ...plan, limit: { bounds, allowsNode } };
         }
         const area =
           roll(4) === 0
@@ -320,10 +319,10 @@ describe('harvest scan sources', () => {
                 radius: AREA_RADIUS.min + roll(AREA_RADIUS.span),
               }
             : undefined;
-        const opts = {
-          exclude,
-          ...(area === undefined ? {} : roll(2) === 0 ? { area } : { within: area }),
-        };
+        // Ranked from the seeker or from the area's centre, as a flag is, and every third query by a walk
+        // from there, so the same searches also run under the walk's order.
+        const origin = area !== undefined && roll(2) === 0 ? area.center : here;
+        const opts = { exclude, bound: area, rank: q % 3 === 0 ? walkFrom(origin) : origin };
         const full = nearestHarvestableFor(plan, { ...opts, diagnostic: { eligibleInArea: false } });
         expect(nearestHarvestableFor(plan, opts), `query ${q}`).toEqual(full);
         expect(

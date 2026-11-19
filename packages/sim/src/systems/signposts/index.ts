@@ -7,6 +7,8 @@ export {
   type NavigationLimit,
   navigationLimitFor,
   networkLimitAt,
+  rankFromNode,
+  rankFromSpot,
   type SignpostSite,
   signpostNetwork,
   signpostNetworkRevision,
@@ -24,3 +26,4 @@ export {
 export { plannedSignposts, plannedSignpostsVersion, type SignpostSpot } from './planned.js';
 export { goodsSearchGate, landReachAt, settlementReachAt } from './settlement-reach.js';
 export { warmPostReaches } from './terrain-reach.js';
+export { walkLengthsFrom } from './walk-length.js';

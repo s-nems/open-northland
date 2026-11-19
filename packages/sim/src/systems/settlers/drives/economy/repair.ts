@@ -7,7 +7,7 @@ import type { SystemContext } from '../../../context.js';
 import { repairCrewLimit } from '../../../economy/repair.js';
 import { atomicDuration } from '../../../readviews/animations.js';
 import { atOrWalk, BUILD_HOUSE_ATOMIC_ID, BUILD_WALL_ATOMIC_ID, startAtomic } from '../../atomics/start.js';
-import type { PlannerContext } from '../../planner/context.js';
+import { type PlannerContext, planRank } from '../../planner/context.js';
 import type { PlannerSpacing } from '../../planner/spacing.js';
 import { claimWorkCell } from '../spacing.js';
 
@@ -72,7 +72,7 @@ export class RepairCrews {
  *  clip its segments are raised with. */
 export function startRepair(plan: PlannerContext, spacing: PlannerSpacing, site: Entity): boolean {
   const { world, ctx, terrain, entity: e, here } = plan;
-  const stand = claimWorkCell(world, terrain, e, here, site, spacing, plan.limit);
+  const stand = claimWorkCell(world, terrain, e, here, site, spacing, planRank(plan));
   if (stand === null) return false;
   const atomic = world.has(site, Palisade) ? BUILD_WALL_ATOMIC_ID : BUILD_HOUSE_ATOMIC_ID;
   atOrWalk(world, e, here, stand, () =>
