@@ -1,4 +1,5 @@
 import type { DiplomacyState } from '@open-northland/sim';
+import { seatNumber } from '../../game/match/seat-names.js';
 import { messages } from '../../i18n/index.js';
 import type { NationEmblemPainter } from '../dom/diplomacy-window/emblems.js';
 import { GLYPH } from '../dom/icons.js';
@@ -93,7 +94,7 @@ export function createNationPlaque(
     element: root,
     update: (nation, viewer) => {
       player = nation.hasPage ? nation.player : null;
-      const shownName = nation.name ?? `${messages().hud.player} ${nation.player}`;
+      const shownName = nation.name ?? `${messages().hud.player} ${seatNumber(nation.player)}`;
       write(name, shownName);
       setClass(root, 'on-dipmap-plaque--own', nation.own);
       setClass(root, 'on-dipmap-plaque--passive', !nation.hasPage);

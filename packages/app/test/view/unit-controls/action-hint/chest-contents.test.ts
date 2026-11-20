@@ -10,6 +10,7 @@ import {
   SUCCESSFUL_IF,
 } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
+import { seatNumber } from '../../../../src/game/match/seat-names.js';
 import { sandboxContent } from '../../../../src/game/sandbox/index.js';
 import { jobDisplayName } from '../../../../src/hud/details-panel/model/context.js';
 import { goodName, messages } from '../../../../src/i18n/index.js';
@@ -96,7 +97,9 @@ describe('the chest contents label', () => {
       ]),
     ];
     const words = messages().hud.chestScript;
-    const seats = [FIRST_SEAT, SECOND_SEAT].map((seat) => `${messages().hud.player} ${seat}`).join(', ');
+    const seats = [FIRST_SEAT, SECOND_SEAT]
+      .map((seat) => `${messages().hud.player} ${seatNumber(seat)}`)
+      .join(', ');
     expect(chestContentsLabel(naming(script), chest('wooden', SCRIPTED_CHEST))).toBe(
       `${seats}: ${words.needsFrozen} · ${jobDisplayName(CONTENT, CIVILIST)} ×${SPAWNED}`,
     );

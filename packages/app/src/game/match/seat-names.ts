@@ -4,6 +4,11 @@ import { formatMessage, messages } from '../../i18n/index.js';
 import { playerNameMap } from '../map/roster.js';
 import { computerLevelsOf } from './session-roles.js';
 
+/** A seat's number as the player reads it: from one, as the lobby numbers the seats. */
+export function seatNumber(player: number): number {
+  return player + 1;
+}
+
 /** `name` with the computer's level beside it, "Wikingowie 1 (Trudny)". */
 export function withComputerLevel(name: string, level: ComputerDifficulty): string {
   const copy = messages();
@@ -31,7 +36,7 @@ export function seatNameMap(
   const authored = playerNameMap(script, lang);
   const lobby = messages().mainMenu.lobby;
   const slotName = (player: number): string =>
-    authored(player) ?? formatMessage(lobby.playerSlotLabel, { n: player + 1 });
+    authored(player) ?? formatMessage(lobby.playerSlotLabel, { n: seatNumber(player) });
   const leveled = new Map<number, string>();
   for (const [player, level] of computerLevelsOf(session)) {
     leveled.set(player, withComputerLevel(slotName(player), level));

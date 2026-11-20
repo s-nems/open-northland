@@ -1,5 +1,6 @@
 import type { UiCue } from '@open-northland/audio';
 import type { DiplomacyState } from '@open-northland/sim';
+import { seatNumber } from '../../../game/match/seat-names.js';
 import { formatMessage, messages, tribeName } from '../../../i18n/index.js';
 import type { ToolWindow } from '../../tool-panel/window-shell.js';
 import type { GoodIconPainter } from '../good-art.js';
@@ -245,7 +246,7 @@ export function createDiplomacyWindow(deps: DiplomacyWindowDeps): DiplomacyWindo
     for (const nation of rows) {
       const view = nations.get(nation.player);
       if (view === undefined) continue;
-      write(view.name, nation.name ?? `${messages().hud.player} ${nation.player}`);
+      write(view.name, nation.name ?? `${messages().hud.player} ${seatNumber(nation.player)}`);
       write(view.stance, copy.stances[nation.towardYou]);
       setAttribute(view.stance, 'data-stance', nation.towardYou);
       write(view.tribute, nation.tributes.length > 0 ? `${copy.tributes}: ${nation.tributes.length}` : '');
@@ -263,7 +264,7 @@ export function createDiplomacyWindow(deps: DiplomacyWindowDeps): DiplomacyWindo
     write(feedback, orders.failed ? copy.failed : '');
     setHidden(feedback, !orders.failed);
     if (row === undefined) return;
-    write(title, row.name ?? `${messages().hud.player} ${row.player}`);
+    write(title, row.name ?? `${messages().hud.player} ${seatNumber(row.player)}`);
     write(tribe, row.tribe === undefined ? '' : tribeName(row.tribe));
     const emblemKey = `${row.player}:${row.tribe}:${row.colour}`;
     if (portraitKey !== emblemKey) {

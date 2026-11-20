@@ -62,6 +62,8 @@ interface Chip {
   readonly soldiers: HTMLElement;
   readonly mark: HTMLElement;
   standing: SeatStanding | null;
+  /** The seat's name the chip's label last said, which follows who sits in it. */
+  name: string;
 }
 
 const MARK_GLYPH: Readonly<Record<SeatStatus, string>> = {
@@ -240,7 +242,7 @@ export function createObserverStandings(deps: ObserverStandingsDeps): ObserverSt
     const mark = document.createElement('span');
     mark.className = 'on-standing__mark';
     button.append(swatch, figures, mark);
-    const chip: Chip = { player, button, people, soldiers, mark, standing: null };
+    const chip: Chip = { player, button, people, soldiers, mark, standing: null, name: '' };
     button.addEventListener('mouseenter', () => show(chip));
     button.addEventListener('focus', () => show(chip));
     button.addEventListener('click', () => {
@@ -268,7 +270,15 @@ export function createObserverStandings(deps: ObserverStandingsDeps): ObserverSt
     const was = chip.standing;
     chip.standing = standing;
     const { total, soldiers } = standing.people;
-    if (was?.people.total === total && was.people.soldiers === soldiers && was.status === standing.status)
+    const name = labelOf(chip.player);
+    const named = name === chip.name;
+    chip.name = name;
+    if (
+      named &&
+      was?.people.total === total &&
+      was.people.soldiers === soldiers &&
+      was.status === standing.status
+    )
       return;
     write(chip.people, String(total));
     write(chip.soldiers, String(soldiers));
@@ -277,7 +287,7 @@ export function createObserverStandings(deps: ObserverStandingsDeps): ObserverSt
       chip.mark.innerHTML = MARK_GLYPH[standing.status];
     }
     const said = formatMessage(observerCopy.standing, {
-      name: labelOf(chip.player),
+      name,
       people: total,
       soldiers,
     });

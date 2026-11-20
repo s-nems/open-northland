@@ -84,9 +84,8 @@ describe('observer picker', () => {
     picker.refresh();
     expect(button.querySelector('b')?.textContent).toBe('Duchy 1');
     button.click();
-    expect(options.slice(2).map((o) => o.querySelector('.on-seat__name')?.textContent)).toEqual([
-      'Duchy 1',
-      withSeatNick('Ania', 'Duchy 3'),
-    ]);
+    const reopened = ['Duchy 1', withSeatNick('Ania', 'Duchy 3')];
+    expect(options.slice(2).map((o) => o.querySelector('.on-seat__name')?.textContent)).toEqual(reopened);
+    expect(options.slice(2).map((o) => o.getAttribute('aria-label'))).toEqual(reopened);
   });
 });

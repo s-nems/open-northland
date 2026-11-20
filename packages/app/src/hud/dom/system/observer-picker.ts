@@ -1,5 +1,5 @@
 import type { ObserverSeatEntry } from '../../../game/match/observer-seats.js';
-import { withComputerLevel, withSeatNick } from '../../../game/match/seat-names.js';
+import { seatNumber, withComputerLevel, withSeatNick } from '../../../game/match/seat-names.js';
 import { PLAYERS_SIGHT, type ViewerSeat, type WatchTarget } from '../../../game/viewer-seat.js';
 import { messages } from '../../../i18n/index.js';
 import { teamSwatchHex } from '../../../view/accessibility/team-colour.js';
@@ -31,16 +31,14 @@ export interface ObserverPicker {
   dispose(): void;
 }
 
-/** A seat's name as the spectator's HUD shows it. Seats are numbered from one, as the lobby numbers
- *  them; a name several seats share (a map's "Duchy" ×6) carries the number too, so the seats stay
- *  distinguishable beyond their swatch. The nick of the person sitting a seat leads its name, and a
- *  computer's seat carries its level. */
+/** A seat's name as the spectator's HUD shows it. A name several seats share (a map's "Duchy" ×6)
+ *  carries the seat's number too, so the seats stay distinguishable beyond their swatch. The nick of
+ *  the person sitting a seat leads its name, and a computer's seat carries its level. */
 export function observerSeatLabels(
   seats: readonly ObserverSeatEntry[],
   nickOf?: (player: number) => string | undefined,
 ): (seat: number) => string {
   const copy = messages().hud;
-  const seatNumber = (seat: number): number => seat + 1;
   const nameCount = new Map<string, number>();
   for (const { name } of seats) {
     if (name !== undefined) nameCount.set(name, (nameCount.get(name) ?? 0) + 1);

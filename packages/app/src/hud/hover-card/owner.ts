@@ -8,7 +8,7 @@ import type { HoverOwner } from './model.js';
 export interface HoverOwnerContext {
   /** The viewer's own things, or every one on the whole map, keep their store and their plain card. */
   readonly viewer: ViewerSeat;
-  /** The roster's authored seat name; absent, the card numbers the seat. */
+  /** The seat's name in play (`seatNameMap`); absent, the card numbers the seat. */
   readonly seatNameOf?: ((player: number) => string | undefined) | undefined;
   /** The viewer seat's stance toward `owner`; absent, the card names the owner without one. */
   readonly diplomacyStance?: ((owner: number) => DiplomacyState) | undefined;

@@ -1,5 +1,6 @@
 import type { DiplomacyState } from '@open-northland/sim';
 import type { UiString } from '../../../content/gui/gfx.js';
+import { seatNumber } from '../../../game/match/seat-names.js';
 import { messages } from '../../../i18n/index.js';
 
 export interface DiplomacyGood {
@@ -65,7 +66,7 @@ const PLAYER_STRING_ID = 361;
 
 /** An authored roster name, else the numbered fallback: many maps leave a slot unnamed. */
 export function playerLabel(uiString: UiString, player: number, name: string | null | undefined): string {
-  return name ?? `${uiString('miscwindow', PLAYER_STRING_ID, messages().hud.player)} ${player}`;
+  return name ?? `${uiString('miscwindow', PLAYER_STRING_ID, messages().hud.player)} ${seatNumber(player)}`;
 }
 
 /** The selected tab resolved against the live row set: a selection whose player vanished (or was never
