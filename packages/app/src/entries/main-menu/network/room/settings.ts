@@ -1,6 +1,6 @@
 import type { SessionWorld } from '@open-northland/lockstep';
 import type { RoomView } from '@open-northland/net-protocol';
-import { sessionOreYield } from '../../../../game/map/variant.js';
+import { mapOreYield } from '../../../../game/match/session-rules.js';
 import { messages } from '../../../../i18n/index.js';
 import { node } from '../../dom.js';
 import { gameRuleControls } from '../../lobby-controls/rules.js';
@@ -37,7 +37,9 @@ export function roomSettings(deps: NetworkRoomDeps) {
     dayNight: { label: lobby.dayNightLabel, modes: lobby.dayNightModes },
     storage: lobby.storage,
     papers: lobby.papers,
-    standardOreYield: () => (world === null ? null : sessionOreYield(world)),
+    // The map's own default, as the room's map list knows it; a map it does not list counts the
+    // authored stock as standard.
+    standardOreYield: () => (world === null ? null : mapOreYield(deps.mapPreview?.(world)?.roomDefaults)),
     basicYield: lobby.basicYield,
     oreYield: lobby.oreYield,
     // A room plays a map with a multiplayer lobby, so it always offers the peace.

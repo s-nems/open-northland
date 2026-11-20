@@ -67,17 +67,6 @@ describe('game session descriptor', () => {
     }
   });
 
-  it('carries a map variant and refuses one without a map', () => {
-    const variant = session({ world: { kind: 'map', mapId: 'specjalna_forteca', variant: 'ragnarok' } });
-    expect(roundTrip(variant)).toEqual(variant);
-    expect(() => roundTrip(session({ world: { kind: 'map', mapId: '', variant: 'ragnarok' } }))).toThrow(
-      /world.variant/,
-    );
-    expect(() => roundTrip(session({ world: { kind: 'map', mapId: 'zatoka', variant: '' } }))).toThrow(
-      /world.variant/,
-    );
-  });
-
   it('preserves a chosen civilization and omits it when the map keeps its own', () => {
     const configured = session({
       seats: [

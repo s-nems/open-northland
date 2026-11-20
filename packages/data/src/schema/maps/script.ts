@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { MapModules } from '../../map-modules/schema.js';
 import { UnitForm } from '../actors/tribes.js';
 import { Provenance } from '../record.js';
 import { MapText } from './strings.js';
@@ -426,6 +427,8 @@ export const MapScript = z.strictObject({
   /** The `[misc_weather]` rectangles in file order, applied at map load before any script write. */
   weather: z.array(MapWeatherRectangle).default([]),
   missions: z.array(MapMission).default([]),
+  /** The rules this engine adds over the script, from the folder's `opennorthland.json`. */
+  modules: MapModules.optional(),
   source: Provenance.optional(),
 });
 export type MapScript = z.infer<typeof MapScript>;

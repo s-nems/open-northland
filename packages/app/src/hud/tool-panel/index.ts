@@ -328,7 +328,7 @@ export interface ToolPanelController {
   openMission(page?: number): void;
   /** The on-screen info lines a map script writes for the seat, top to bottom. */
   setInfoLines(lines: readonly MissionInfoRow[]): void;
-  /** The match mode marked under the goal slip, as a map variant names it; null for none. */
+  /** The match mode marked under the goal slip, as a map's mode names it; null for none. */
   setModeMark(text: string | null): void;
   /** Hide the info lines with the rest of the HUD. Hiding closes the open windows, so none is left
    *  taking presses unseen; a window opened while hidden shows. */

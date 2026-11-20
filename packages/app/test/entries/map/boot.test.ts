@@ -71,7 +71,6 @@ function plan(hostWorld: () => Promise<HostedMapWorld>, staged = true): MapBootP
   return {
     hostWorld,
     mapId: null,
-    variant: null,
     stagedSave: staged ? STAGED : null,
     sessionFor: () => SESSION,
   };

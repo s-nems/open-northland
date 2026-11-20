@@ -12,7 +12,7 @@ export const plGame = {
     escalation: {
       nextAttack: 'Następny atak za {time}',
       attackRunning: 'Atak trwa',
-      modeMark: 'Tryb {variant}',
+      modeMark: 'Tryb {mode}',
     },
     armyOrderLimit:
       'Zaznacz najwyżej {limit} jednostek do jednego rozkazu. Żadna jednostka nie otrzymała tego rozkazu.',

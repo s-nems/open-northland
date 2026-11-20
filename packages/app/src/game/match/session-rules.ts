@@ -1,4 +1,4 @@
-import { RESOURCE_YIELD_GOODS } from '@open-northland/data';
+import { type MapRoomDefaults, RESOURCE_YIELD_GOODS } from '@open-northland/data';
 import {
   DAY_NIGHT_MODES,
   type DayNightMode,
@@ -66,11 +66,15 @@ export function resourceYieldParam(
   return RESOURCE_YIELD_FACTORS.find((factor) => String(factor) === value) ?? null;
 }
 
-/** A variant's ore richness as a session factor; throws on a value the session cannot carry. */
-export function resourceYieldFactor(value: number): ResourceYieldFactor {
-  const factor = RESOURCE_YIELD_FACTORS.find((known) => known === value);
-  if (factor === undefined) throw new Error(`${value} is not a resource yield factor`);
-  return factor;
+/** The ore richness a lobby starts at for a map with these room defaults, and counts as its standard;
+ *  null keeps the authored stock. */
+export function mapOreYield(defaults: MapRoomDefaults | undefined): ResourceYieldFactor | null {
+  return defaults?.oreYield ?? null;
+}
+
+/** A new room's `rules` with the ore richness its map starts at, where the launch names none. */
+export function withMapOreYield(rules: SessionRules, defaults: MapRoomDefaults | undefined): SessionRules {
+  return { ...rules, oreYield: rules.oreYield ?? mapOreYield(defaults) };
 }
 
 /** The factor each map-placed good's stock starts at under `rules`, by content good id; a good left out

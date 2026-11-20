@@ -1,9 +1,8 @@
-import type { ContentSet, MapVariantLandscapeObject, TerrainObjects } from '@open-northland/data';
+import type { ContentSet, TerrainObjects } from '@open-northland/data';
 import { type Entity, type ResourceNodeSpec, type Simulation, systems } from '@open-northland/sim';
 import type { ContentIr } from '../../content/ir/rows.js';
 import { mapPalisadeSpawns } from '../../content/map/palisades.js';
 import {
-  harvestGoodByObjectName,
   type MapResourceSpawn,
   mapBerryBushSpawns,
   mapChestSpawns,
@@ -154,43 +153,6 @@ export function spawnMapResources(
     );
   }
   return { spawned, placementByEntity };
-}
-
-/**
- * Direct scene assembly, valid pre-tick-0 only: a map variant's own harvestable objects, after every
- * authored one, sized like a map placement of the same object. They join no static sprite, so the live
- * pool draws them. Throws on an object no gatherer works, a variant written against other content.
- */
-export function spawnVariantLandscapeObjects(
-  sim: Simulation,
-  ir: ContentIr,
-  objects: readonly MapVariantLandscapeObject[],
-  depositYield: Readonly<Record<string, number>>,
-): Entity[] {
-  const goodByName = harvestGoodByObjectName(ir);
-  const spawned: Entity[] = [];
-  for (const { object, hx, hy, level } of objects) {
-    const ref = goodByName.get(object);
-    const g = ref === undefined ? undefined : GATHERER_BY_GOOD_ID.get(ref.goodId);
-    if (ref === undefined || g === undefined)
-      throw new Error(`a map variant places ${object}, which no gatherer works`);
-    const growth = level !== undefined && level <= ref.states ? { level, states: ref.states } : undefined;
-    const sized = withRecordDeposit(resourceSpecFor(g, hx, hy), {
-      ...(growth !== undefined ? { growth } : {}),
-      ...(ref.maxValency !== undefined ? { maxValency: ref.maxValency } : {}),
-    });
-    // A tree laid below full growth grows from that valency and blocks as it.
-    const sapling = sized.felling === true ? growth?.level : undefined;
-    const e = systems.createResourceNode(sim.world, sim.content, {
-      ...withDepositYield(sized, depositYield[ref.goodId] ?? 1),
-      gfxIndex: ref.gfxIndex,
-      ...(sapling !== undefined ? { blockLevel: sapling } : {}),
-    });
-    if (e === null) continue;
-    if (sapling !== undefined) systems.startTreeGrowth(sim.world, sim.content, e, sapling);
-    spawned.push(e);
-  }
-  return spawned;
 }
 
 /**

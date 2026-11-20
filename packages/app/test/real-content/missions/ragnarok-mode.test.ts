@@ -1,10 +1,10 @@
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import {
-  applyMapVariantStrings,
-  findMapVariant,
   type MapModules,
+  type MapScript,
   type MapSiege,
-  type MapVariant,
+  MapStrings,
   mapLobbySlots,
   TerrainMapFile,
 } from '@open-northland/data';
@@ -16,150 +16,97 @@ import {
   nodeOfPosition,
   type Simulation,
   systems,
+  TICKS_PER_SECOND,
 } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import type { ContentIr } from '../../../src/content/ir/rows.js';
 import { buildMapWorld } from '../../../src/entries/map/world.js';
-import { mapSessionWorld, variantMap, variantMapScript } from '../../../src/game/map/variant.js';
-import { mapScriptWorld, resolveMissionScript } from '../../../src/game/world/mission-script.js';
-import { hasRealIr, loadContentUnderTest, rawIrUnderTest } from '../helpers.js';
+import { mapScriptWorld } from '../../../src/game/world/mission-script.js';
+import { contentDir, hasRealIr, loadContentUnderTest, rawIrUnderTest } from '../helpers.js';
 import { realMapPath, realMapScript, realMapSessionWorld } from '../real-map-world.js';
 
-const MAP_ID = 'specjalna_forteca';
+/** Ragnarök, the fortress map played as a siege: a map of its own whose script carries the modules. */
+const MAP_ID = 'specjalna_forteca_ragnarok';
 const AUTHORED_PLAYER_SEATS = [0, 1, 2, 3];
 const VILLAGE_SEATS = [4, 5];
-/** The fortress's refill pulse, the villages' take-over missions, then the raider waves: the 60-minute
- *  start and a generate and restart pair for each of the six raider seats, by authored index. */
-const REFILL_MISSIONS = [3, 4];
-const TAKE_OVER_MISSIONS = [9, 10];
-const FIRST_WAVE_MISSION = 11;
-const WAVE_MISSIONS = 13;
 /** Owner ruling: Lord Usurper stands a fifth taller than his men. */
 const LORD_SCALE_PCT = 120;
-const DROPPED_MISSIONS = [
-  ...REFILL_MISSIONS,
-  ...TAKE_OVER_MISSIONS,
-  ...Array.from({ length: WAVE_MISSIONS }, (_, i) => FIRST_WAVE_MISSION + i),
-];
 
-function scripts() {
-  const authored = realMapScript(MAP_ID);
-  if (authored === null) throw new Error(`no decoded script for ${MAP_ID}`);
-  return { authored, ragnarok: variantMapScript(authored, mapSessionWorld(MAP_ID, 'ragnarok')) };
+const shipped = (): boolean => hasRealIr() && existsSync(realMapPath(MAP_ID));
+
+function script(): MapScript {
+  const found = realMapScript(MAP_ID);
+  if (found === null) throw new Error(`no decoded script for ${MAP_ID}`);
+  return found;
 }
 
-describe.runIf(hasRealIr())('Ragnarök on specjalna_forteca', () => {
+function realMap(): TerrainMapFile {
+  return TerrainMapFile.parse(JSON.parse(readFileSync(realMapPath(MAP_ID), 'utf8')));
+}
+
+function realMapStrings(): MapStrings {
+  return MapStrings.parse(
+    JSON.parse(readFileSync(resolve(contentDir(), `maps/${MAP_ID}.strings.json`), 'utf8')),
+  );
+}
+
+describe.runIf(shipped())('Ragnarök as shipped', () => {
   it('opens the two villages as player seats', () => {
-    const { authored, ragnarok } = scripts();
-    const claimable = (script: typeof authored) =>
-      mapLobbySlots(script)
-        .filter((slot) => slot.claimable)
-        .map((slot) => slot.player);
+    const claimable = mapLobbySlots(script())
+      .filter((slot) => slot.claimable)
+      .map((slot) => slot.player);
 
-    expect(claimable(authored)).toEqual(AUTHORED_PLAYER_SEATS);
-    expect(claimable(ragnarok)).toEqual([...AUTHORED_PLAYER_SEATS, ...VILLAGE_SEATS]);
-  });
-
-  it('neutralises the refill pulse, take-over missions and raider waves without renumbering the script', () => {
-    const { authored, ragnarok } = scripts();
-
-    expect(ragnarok.missions.map((m) => m.debugName)).toEqual(authored.missions.map((m) => m.debugName));
-    const emptied = ragnarok.missions.flatMap((m, i) =>
-      m.goals.length === 0 && m.results.length === 0 ? [i] : [],
-    );
-    expect(emptied).toEqual(DROPPED_MISSIONS);
-    // Seat 4's headquarters held every trade agreement the map authors.
-    expect(authored.tradeAgreements.length).toBeGreaterThan(0);
-    expect(ragnarok.tradeAgreements).toEqual([]);
-  });
-
-  it('resolves the patched script with no name the authored one did not leave unresolved', () => {
-    const { authored, ragnarok } = scripts();
-    const ir = rawIrUnderTest() as ContentIr;
-    const before = resolveMissionScript(authored.missions, ir);
-    const after = resolveMissionScript(ragnarok.missions, ir);
-
-    expect(after.unknownOpcodes).toBe(before.unknownOpcodes);
-    expect(after.tokenMismatches).toBe(before.tokenMismatches);
-    expect(after.unresolvedNames).toEqual(before.unresolvedNames);
+    expect(claimable).toEqual([...AUTHORED_PLAYER_SEATS, ...VILLAGE_SEATS]);
   });
 });
 
-describe.runIf(hasRealIr())('a Ragnarök world on specjalna_forteca', () => {
-  const SEARCH = 'map=specjalna_forteca&player=4&missions=off&seed=7';
-  const PLAIN_SEAT = 4;
-  const PLAIN_HEADQUARTERS = { x: 250, y: 112 };
-  /** How far from the plain's headquarters its placed clay and trees stand at the most, in map points:
-   *  the north cedars stand across the lake. */
-  const PLAIN_REACH = 65;
-  /** How near a placed object no building of the seat's may stand, in map points: its houses' bodies. */
-  const BUILDING_CLEARANCE = 6;
+describe.runIf(shipped())('the plain’s deposits on a Ragnarök world', () => {
+  /** The map's last mission lays the plain's clay pits and cedars in the match's first seconds. */
+  const DEPOSITS_MISSION = 'Plain clay pit and cedars';
+  const CLAY_PITS = 20;
+  const CEDARS = 34;
+  /** A `SetLandscape` result line: the opcode, the point's two coordinates, then the object's name. */
+  const POINT_X = 1;
+  const POINT_Y = 2;
+  /** Long enough for the opening page's pass and the next one, which reaches the last mission. */
+  const FIRST_PASSES_TICKS = 5 * TICKS_PER_SECOND;
 
-  /** The map as authored and as Ragnarök starts it. */
-  const worlds = () =>
-    Promise.all([realMapSessionWorld(`?${SEARCH}`), realMapSessionWorld(`?${SEARCH}&variant=ragnarok`)]);
+  it('lays every clay pit and cedar of the last mission as a harvestable resource with stock', async () => {
+    const mission = script().missions.at(-1);
+    expect(mission?.debugName).toBe(DEPOSITS_MISSION);
+    const laid = (mission?.results ?? []).filter((line) => line.values[0] === 'SetLandscape');
+    expect(laid).toHaveLength(CLAY_PITS + CEDARS);
 
-  function nodeOf(sim: Simulation, e: Entity) {
-    const at = sim.world.get(e, components.Position);
-    return nodeOfPosition(at.x, at.y);
-  }
-
-  function goodType(sim: Simulation, id: string): number {
-    const good = sim.content.goods.find((g) => g.id === id);
-    if (good === undefined) throw new Error(`no good ${id}`);
-    return good.typeId;
-  }
-
-  it('gives the plain clay and a grove near its headquarters, on free ground its people reach', async () => {
-    const placed = findMapVariant(MAP_ID, 'ragnarok')?.landscapeObjects ?? [];
-    const [authored, ragnarok] = await worlds();
-    const terrain = ragnarok.terrain;
-    if (terrain === undefined) throw new Error('no terrain');
-    const mud = goodType(ragnarok, 'mud');
-    const wood = goodType(ragnarok, 'wood');
-    const at = (sim: Simulation, hx: number, hy: number) =>
-      [...sim.world.query(components.Resource, components.Position)].filter((e) => {
-        const node = nodeOf(sim, e);
-        return node.hx === hx && node.hy === hy;
-      });
-    const home = [...ragnarok.world.query(components.Person, components.Owner)].find(
-      (e) => ragnarok.world.get(e, components.Owner).player === PLAIN_SEAT,
-    );
-    if (home === undefined) throw new Error('the plain has no people');
-    const homeNode = nodeOf(ragnarok, home);
-    const land = terrain.componentOf(terrain.nodeAt(homeNode.hx, homeNode.hy));
-    const buildings = [...ragnarok.world.query(components.Building, components.Position)].map((e) =>
-      nodeOf(ragnarok, e),
-    );
-
-    const kinds = new Map<number, number>();
-    for (const { object, hx, hy } of placed) {
-      const label = `${object} at ${hx},${hy}`;
-      expect(
-        hexDistanceBetween(hx, hy, PLAIN_HEADQUARTERS.x, PLAIN_HEADQUARTERS.y),
-        label,
-      ).toBeLessThanOrEqual(PLAIN_REACH);
-      // Open land the map left empty, off every house, with a walkable neighbour on the plain's land.
-      expect(at(authored, hx, hy), label).toEqual([]);
-      const node = terrain.nodeAt(hx, hy);
-      expect(terrain.isWalkable(node) && terrain.isBuildable(node), label).toBe(true);
-      for (const b of buildings)
-        expect(hexDistanceBetween(hx, hy, b.hx, b.hy), label).toBeGreaterThanOrEqual(BUILDING_CLEARANCE);
-      expect(terrain.componentOf(terrain.nodeAt(hx + 1, hy)), label).toBe(land);
-      const [node0, ...more] = at(ragnarok, hx, hy);
-      expect(more, label).toEqual([]);
-      const kind = node0 === undefined ? -1 : ragnarok.world.get(node0, components.Resource).goodType;
-      kinds.set(kind, (kinds.get(kind) ?? 0) + 1);
+    const sim = await realMapSessionWorld(`?map=${MAP_ID}&player=0&seed=7`);
+    sim.run(FIRST_PASSES_TICKS);
+    const goodOf = (id: string) => sim.content.goods.find((good) => good.id === id)?.typeId ?? -1;
+    const byNode = new Map<string, Entity[]>();
+    for (const e of sim.world.query(components.Resource, components.Position)) {
+      const at = sim.world.get(e, components.Position);
+      const node = nodeOfPosition(at.x, at.y);
+      const key = `${node.hx},${node.hy}`;
+      byNode.set(key, [...(byNode.get(key) ?? []), e]);
     }
-    expect([...kinds.keys()].sort()).toEqual([mud, wood].sort());
+    const kinds = new Map<number, number>();
+    for (const line of laid) {
+      const key = `${line.values[POINT_X]},${line.values[POINT_Y]}`;
+      const [node, ...more] = byNode.get(key) ?? [];
+      expect(node, key).toBeDefined();
+      expect(more, key).toEqual([]);
+      if (node === undefined) continue;
+      const resource = sim.world.get(node, components.Resource);
+      expect(resource.remaining, key).toBeGreaterThan(0);
+      kinds.set(resource.goodType, (kinds.get(resource.goodType) ?? 0) + 1);
+    }
+    expect(Object.fromEntries(kinds)).toEqual({ [goodOf('mud')]: CLAY_PITS, [goodOf('wood')]: CEDARS });
   });
 });
 
-describe.runIf(hasRealIr())('every player seat of a Ragnarök world', () => {
+describe.runIf(shipped())('every player seat of a Ragnarök world', () => {
   const PLAYER_SEATS = [...AUTHORED_PLAYER_SEATS, ...VILLAGE_SEATS];
   const FORTRESS_SIDE = [6, 7, 8, 9, 10, 11, 12];
   /** Idle seats keep their soldiers, which a computer seat would demobilize at the first turn. */
-  const SEARCH = `?map=${MAP_ID}&player=0&idle=1,2,3,4,5&seed=7&variant=ragnarok`;
+  const SEARCH = `?map=${MAP_ID}&player=0&idle=1,2,3,4,5&seed=7`;
   /** The most map points any of seat 0's people stands from its headquarters. */
   const START_REACH = 20;
   /** How near its headquarters no one stands, in map points: the house's body. */
@@ -236,12 +183,9 @@ describe.runIf(hasRealIr())('every player seat of a Ragnarök world', () => {
     for (const seat of PLAYER_SEATS) expect(startOf(sim, seat), `seat ${seat}`).toEqual(seat0);
 
     // The gatherers' authored picks, which the counters above do not show.
-    const map = variantMap(
-      TerrainMapFile.parse(JSON.parse(readFileSync(realMapPath(MAP_ID), 'utf8'))),
-      mapSessionWorld(MAP_ID, 'ragnarok'),
-    );
+    const map = realMap();
     const picks = (seat: number) =>
-      (map?.entities?.humans ?? [])
+      (map.entities?.humans ?? [])
         .filter((h) => h.player === seat)
         .map((h) => `${h.role} ${h.producedGood ?? ''}`)
         .sort();
@@ -249,8 +193,8 @@ describe.runIf(hasRealIr())('every player seat of a Ragnarök world', () => {
   });
 
   it('shows each seat the fortress at the start', () => {
-    const reveals = scripts()
-      .ragnarok.missions.flatMap((m) => m.results)
+    const reveals = script()
+      .missions.flatMap((m) => m.results)
       .filter((line) => line.values[0] === 'ExploreArea' && line.values.slice(2).join() === '245,246,40')
       .map((line) => Number(line.values[1]));
     expect([...new Set(reveals)].sort()).toEqual(PLAYER_SEATS);
@@ -287,7 +231,7 @@ describe.runIf(hasRealIr())('every player seat of a Ragnarök world', () => {
   });
 });
 
-describe.runIf(hasRealIr())('a Ragnarök attack on specjalna_forteca', () => {
+describe.runIf(shipped())('a Ragnarök attack', () => {
   const FORTRESS = 6;
   const HUMAN_SEAT = 0;
   const COMPUTER_SEATS = [1, 2, 3];
@@ -308,7 +252,7 @@ describe.runIf(hasRealIr())('a Ragnarök attack on specjalna_forteca', () => {
   const GARRISON_REACH = 40;
 
   function ragnarok(): MapModules & { readonly siege: MapSiege } {
-    const modules = findMapVariant(MAP_ID, 'ragnarok')?.modules;
+    const modules = script().modules;
     const siege = modules?.siege;
     if (modules === undefined || siege === undefined) throw new Error('Ragnarök runs no siege');
     return { ...modules, siege };
@@ -342,18 +286,16 @@ describe.runIf(hasRealIr())('a Ragnarök attack on specjalna_forteca', () => {
   ): Promise<Simulation> {
     const ir = rawIrUnderTest() as ContentIr;
     const { merge } = await loadContentUnderTest();
-    const authoredMap = TerrainMapFile.parse(JSON.parse(readFileSync(realMapPath(MAP_ID), 'utf8')));
-    const map = variantMap(authoredMap, mapSessionWorld(MAP_ID, 'ragnarok'));
-    const { ragnarok: script } = scripts();
+    const shippedScript = script();
     return buildMapWorld({
       seed: 7,
-      map,
+      map: realMap(),
       ir,
       content: { content: merge.content },
       machineSeats: [...COMPUTER_SEATS, ...FORTRESS_SIDE],
       absentSeats,
       assistantSeats: [0],
-      script: { ...mapScriptWorld(script, ir), modules },
+      script: { ...mapScriptWorld(shippedScript, ir), modules },
       ...NO_RULE_OVERRIDES,
       missions: false,
       berryBushes: false,
@@ -803,10 +745,6 @@ describe.runIf(hasRealIr())('a Ragnarök attack on specjalna_forteca', () => {
     expect(goods.get(eq.armor?.goodType ?? -1)).toBe('armor_plate');
     const amulets = eq.misc.flatMap((slot) => (slot === null ? [] : [goods.get(slot.goodType)]));
     expect(amulets.sort()).toEqual(['amulet_crithit', 'amulet_defense', 'amulet_strength']);
-    const strings = applyMapVariantStrings(
-      { pol: {}, eng: {} },
-      findMapVariant(MAP_ID, 'ragnarok') as MapVariant,
-    );
-    expect(strings?.pol?.[String(lord.nameStringId)]).toBe('Lord Uzurpator');
+    expect(realMapStrings().pol?.[String(lord.nameStringId)]).toBe('Lord Uzurpator');
   }, 300_000);
 });

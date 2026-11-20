@@ -12,7 +12,7 @@ export const itGame = {
     escalation: {
       nextAttack: 'Prossimo attacco tra {time}',
       attackRunning: 'Attacco in corso',
-      modeMark: 'Modalità {variant}',
+      modeMark: 'Modalità {mode}',
     },
     armyOrderLimit:
       'Seleziona al massimo {limit} unità per un ordine. Nessuna unità ha ricevuto questo ordine.',

@@ -91,17 +91,15 @@ describe('lobbyOptionsCard', () => {
     document.querySelector<HTMLButtonElement>('.main-menu__advanced-done')?.click();
   });
 
-  it('names an active variant in the summary but leaves it out of the reset', () => {
+  it("lists the map's mode rows first on the card and counts a mode's ore richness as standard", () => {
     const held: LobbyOptions = { ...initialLobbyOptions(new URLSearchParams(), false), oreYield: 3 };
-    const card = lobbyOptionsCard(held, false, {
-      variantChanges: () => ['Ragnarök'],
-      standardOreYield: () => 3,
-    }).element;
+    const mode = document.createElement('div');
+    const card = lobbyOptionsCard(held, false, { modes: [mode], standardOreYield: () => 3 }).element;
     document.body.append(card);
     onTestFinished(() => card.remove());
     const { advanced } = messages().mainMenu.lobby;
-    expect(card.querySelector('.main-menu__advanced-entry')?.textContent).toContain(advanced.changed);
-    expect(card.querySelector('.main-menu__advanced-summary')?.textContent).toBe('Ragnarök');
+    expect(card.children[1]).toBe(mode);
+    expect(card.querySelector('.main-menu__advanced-entry')?.textContent).not.toContain(advanced.changed);
     card.querySelector<HTMLButtonElement>('.main-menu__advanced-entry')?.click();
     const reset = [...document.querySelectorAll<HTMLButtonElement>('.main-menu__advanced button')].find(
       (button) => button.textContent === advanced.reset,

@@ -1,4 +1,4 @@
-import { MAP_TEXT_LANGUAGES } from '@open-northland/data';
+import { MAP_ADDITIONS_FILE, MAP_TEXT_LANGUAGES } from '@open-northland/data';
 
 /** The names a map folder's files go by, matched lower-cased. One owner, so the readers and the
  *  filter that keeps an archive's map files agree on what a map folder holds. */
@@ -53,6 +53,7 @@ export function hltPageFile(id: number): string {
 const MAP_FOLDER_FILES: ReadonlySet<string> = new Set([
   MAP_DAT_FILE,
   MAP_CIF_FILE,
+  MAP_ADDITIONS_FILE,
   ...STATIC_OBJECT_FILES,
   ...HEADER_FILES,
   ...SCRIPT_FILES,

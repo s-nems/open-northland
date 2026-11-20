@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 import {
   defaultMapPreview,
   filterItems,
+  foldMapModes,
   initialMapSelectMemory,
   listedIn,
   type MapSelectItem,
@@ -361,6 +362,50 @@ describe('filterItems', () => {
     expect(filterItems(items, 'single', 'all', 'zatoka')).toEqual([arena]);
     expect(filterItems(items, 'single', 'all', 'gringo')).toEqual([]); // search never surfaces a sub-mission
     expect(filterItems(items, 'single', 'all', 'nic takiego')).toEqual([]);
+  });
+});
+
+describe('foldMapModes', () => {
+  const entry = (id: string, kind: 'mod' | 'user', mode?: string) =>
+    mapItem(
+      {
+        id,
+        name: { eng: id },
+        provenance: { kind, folder: id },
+        fingerprint: TINY_FINGERPRINT,
+        picture: false,
+        minimap: false,
+        ...(mode === undefined
+          ? {}
+          : { mode: { of: 'fortress', name: { eng: mode }, detail: { eng: 'Harder.' } } }),
+      },
+      'eng',
+    );
+
+  it('attaches a mode of a listed base from the same source to the base, by name', () => {
+    const folded = foldMapModes([
+      entry('fortress_siege', 'mod', 'Siege'),
+      entry('fortress', 'mod'),
+      entry('fortress_ragnarok', 'mod', 'Ragnarök'),
+      entry('valley', 'mod'),
+    ]);
+    expect(folded.map((item) => item.id)).toEqual(['fortress', 'valley']);
+    expect(folded[0]?.modes.map((mode) => mode.mode)).toEqual([
+      { of: 'fortress', name: 'Ragnarök', detail: 'Harder.' },
+      { of: 'fortress', name: 'Siege', detail: 'Harder.' },
+    ]);
+    expect(folded[1]?.modes).toEqual([]);
+  });
+
+  it('finds a base map by the name of a mode it offers', () => {
+    const folded = foldMapModes([entry('fortress', 'mod'), entry('fortress_siege', 'mod', 'Siege')]);
+    expect(filterItems(folded, 'single', 'all', 'siege').map((item) => item.id)).toEqual(['fortress']);
+  });
+
+  it('keeps a mode as a row of its own when its base is absent or came from another source', () => {
+    const imported = entry('fortress_ragnarok', 'user', 'Ragnarök');
+    expect(foldMapModes([entry('fortress', 'mod'), imported])).toEqual([entry('fortress', 'mod'), imported]);
+    expect(foldMapModes([imported]).map((item) => item.title)).toEqual(['fortress_ragnarok']);
   });
 });
 

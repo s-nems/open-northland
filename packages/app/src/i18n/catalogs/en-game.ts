@@ -12,7 +12,7 @@ export const enGame = {
     escalation: {
       nextAttack: 'Next attack in {time}',
       attackRunning: 'Attack under way',
-      modeMark: '{variant} mode',
+      modeMark: '{mode} mode',
     },
     armyOrderLimit: 'Select at most {limit} units for one order. No units received this order.',
     diplomacyMap: {

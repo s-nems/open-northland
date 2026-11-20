@@ -170,6 +170,7 @@ export function mapScriptWorld(script: MapScript | null, rows: AuthoredJoinRows 
   const humanPalettes = script?.humanPalettes ?? [];
   const tradeAgreements = script?.tradeAgreements ?? [];
   const weather = script?.weather ?? [];
+  const modules = script?.modules;
   const roster =
     script !== null && script.players.length > 0 ? { participants: scriptMatchParticipants(script) } : {};
   const setup = {
@@ -182,6 +183,7 @@ export function mapScriptWorld(script: MapScript | null, rows: AuthoredJoinRows 
     tradeAgreements,
     weather,
     ...roster,
+    ...(modules === undefined ? {} : { modules }),
   };
   if (script === null || rows === null || script.missions.length === 0) {
     // A scriptless or unresolvable script still carries the map's authored unit form to the sim.

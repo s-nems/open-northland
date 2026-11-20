@@ -11,7 +11,7 @@ export const chsGame = {
     escalation: {
       nextAttack: '下次进攻：{time} 后',
       attackRunning: '进攻进行中',
-      modeMark: '{variant}模式',
+      modeMark: '{mode}模式',
     },
     armyOrderLimit: '一道命令最多只能选择 {limit} 个单位。没有任何单位收到这道命令。',
     diplomacyMap: {

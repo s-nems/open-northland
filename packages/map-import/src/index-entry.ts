@@ -23,7 +23,7 @@ export interface MapsIndexSource {
 
 /** One map's `maps-index.json` row, the menu's view of it without loading the map. */
 export function mapsIndexEntry(map: MapsIndexSource): MapsIndexEntry {
-  const { provenance, campaign, name, description, mapTypes, multiplayerOnly } = map.meta;
+  const { provenance, campaign, name, description, mapTypes, multiplayerOnly, mode, roomDefaults } = map.meta;
   const players = map.script === undefined ? [] : mapLobbySlots(map.script);
   const relations = map.script === undefined ? [] : mapSeatRelations(map.script);
   return {
@@ -41,5 +41,7 @@ export function mapsIndexEntry(map: MapsIndexSource): MapsIndexEntry {
     ...(map.script?.multiplayer?.fixedColors === true ? { fixedColors: true } : {}),
     ...(mapTypes === undefined ? {} : { mapTypes }),
     ...(multiplayerOnly === true ? { multiplayerOnly: true } : {}),
+    ...(mode === undefined ? {} : { mode }),
+    ...(roomDefaults === undefined ? {} : { roomDefaults }),
   };
 }

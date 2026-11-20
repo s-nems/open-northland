@@ -229,11 +229,6 @@ export const itSurfaces = {
         on: 'Crescono col tempo',
         off: 'Disattivati',
       },
-      variantNames: { ragnarok: 'Ragnarök' },
-      variantDetails: {
-        ragnarok:
-          'Una modalità più difficile: la fortezza attacca a scadenze fisse con eserciti sempre più grandi e sbarchi dal mare, i suoi guerrieri hanno un equipaggiamento migliore e i giacimenti rendono di più.',
-      },
       weatherLabel: 'Meteo',
       weatherModes: {
         map: {

@@ -1,6 +1,6 @@
 import { rm } from 'node:fs/promises';
 import { join } from 'node:path';
-import type { MapMeta, MapScript } from '@open-northland/data';
+import { MAP_ADDITIONS_FILE, type MapMeta, type MapScript } from '@open-northland/data';
 import {
   type ConvertedMap,
   convertMapFolder,
@@ -151,7 +151,8 @@ export async function convertMapDatTree(
       );
       map = withAuthoredForm(map);
     } catch (err) {
-      if (!(err instanceof MapImportError)) throw err;
+      // A pack map's own additions file is ours to keep valid: a broken one fails the build.
+      if (!(err instanceof MapImportError) || tree.files.has(`${key}/${MAP_ADDITIONS_FILE}`)) throw err;
       console.warn(`[pipeline] skipped map.dat ${err.message}`);
       continue;
     }

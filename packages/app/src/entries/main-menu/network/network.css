@@ -117,7 +117,7 @@
   color: var(--muted);
   font-size: calc(var(--u) * 15);
 }
-/* A map variant's switch reads at the form's text size, as the room's settings rows do. */
+/* A map mode's switch reads at the form's text size, as the room's settings rows do. */
 .network-menu__create .main-menu__lobby-option-row {
   font: inherit;
 }

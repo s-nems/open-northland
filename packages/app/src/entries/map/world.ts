@@ -3,7 +3,6 @@ import type {
   MapDiplomacy,
   MapScript,
   MapSpecialItem,
-  MapVariantLandscapeObject,
   TerrainMapFile,
 } from '@open-northland/data';
 import {
@@ -38,7 +37,6 @@ import {
   spawnMapFields,
   spawnMapGroundGoods,
   spawnMapResources,
-  spawnVariantLandscapeObjects,
   type WorldContentOptions,
 } from '../../game/sandbox/index.js';
 import {
@@ -99,8 +97,6 @@ export interface MapWorldOptions extends SimSessionRules {
   readonly demoOwner?: number;
   /** True as the entry runs it. The headless harness turns bushes off for scenarios that ignore food. */
   readonly berryBushes?: boolean;
-  /** The map variant's own harvestable objects, placed after the map's. */
-  readonly landscapeObjects?: readonly MapVariantLandscapeObject[];
 }
 
 export interface MapWorld {
@@ -341,7 +337,6 @@ function spawnHarvestables(
     new Set(options.absentSeats),
   );
   const bushes = options.berryBushes === false ? null : spawnMapBerryBushes(sim, map.objects, ir);
-  spawnVariantLandscapeObjects(sim, ir, options.landscapeObjects ?? [], depositYield);
   return {
     harvestablePlacements: [...resources.placementByEntity, ...(bushes?.placementByEntity ?? [])],
     pooledPlacements: [

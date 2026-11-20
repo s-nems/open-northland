@@ -17,6 +17,22 @@ const origin = { kind: 'user' } as const;
 const handle = () => verifyMapDocuments('island', MAP, { players: [] });
 const expected = () => ({ mapId: 'island', fingerprint: handle().fingerprint, provenance: origin });
 const wire = (value: unknown) => bytesToBase64(gzipSync(JSON.stringify(value)));
+/** The envelope a room sends for the island map, with `change` applied. */
+const envelope = (change: Record<string, unknown> = {}) => ({
+  version: 3,
+  mapId: 'island',
+  map: MAP,
+  script: { players: [] },
+  strings: null,
+  briefing: null,
+  meta: null,
+  ...change,
+});
+const WORDS = {
+  strings: { pol: { '7': 'Wyspa' } },
+  briefing: { texts: { pol: { '0': [{ kind: 'blank', lines: 1 }] } } },
+  meta: { name: { pol: 'Wyspa' } },
+};
 /** A run of text gzip cannot shrink, so its envelope stays as large as the text. */
 function incompressibleText(length: number): string {
   const LETTERS = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
@@ -39,6 +55,14 @@ describe('verified map documents and bounded transfer', () => {
     expect(received.fingerprint).toBe(mapDocumentsFingerprint({ map: MAP, script: { players: [] } }));
     expect(readVerifiedMapDocuments(received)).toEqual(readVerifiedMapDocuments(source));
     expect(() => readVerifiedMapDocuments(received, 'different')).toThrow();
+  });
+  it("carries the map's strings, briefing and meta outside its fingerprint", async () => {
+    await expect(decodeMapTransfer(wire(envelope()), expected())).resolves.toMatchObject({ mapId: 'island' });
+    const source = verifyMapDocuments('island', MAP, { players: [] }, WORDS);
+    expect(source.fingerprint).toBe(handle().fingerprint);
+    const received = await decodeMapTransfer(await encodeMapTransfer(source, origin), expected());
+    expect(readVerifiedMapDocuments(received)).toMatchObject(WORDS);
+    expect(readVerifiedMapDocuments(handle())).toMatchObject({ strings: null, briefing: null, meta: null });
   });
   it('owns both source and returned values; forged handles cannot reach boot', () => {
     const map = structuredClone(MAP);
@@ -70,17 +94,15 @@ describe('verified map documents and bounded transfer', () => {
     await expect(decodeMapTransfer(blob, { ...expected(), fingerprint: 'wrong' })).rejects.toThrow();
     for (const value of [
       null,
-      { version: 1, mapId: 'island', map: MAP, script: null },
-      { version: 2, mapId: 'island', map: MAP, script: { players: 'bad' } },
-      { version: 2, mapId: 'island', map: MAP, script: null, extra: true },
+      envelope({ version: 2 }),
+      envelope({ script: { players: 'bad' } }),
+      envelope({ extra: true }),
+      envelope({ strings: { pol: 'not a table' } }),
+      { version: 3, mapId: 'island', map: MAP, script: { players: [] } },
     ]) {
       await expect(decodeMapTransfer(wire(value), expected())).rejects.toThrow();
     }
-    const plain = bytesToBase64(
-      new TextEncoder().encode(
-        JSON.stringify({ version: 2, mapId: 'island', map: MAP, script: { players: [] } }),
-      ),
-    );
+    const plain = bytesToBase64(new TextEncoder().encode(JSON.stringify(envelope())));
     await expect(decodeMapTransfer(plain, expected())).rejects.toThrow(/not gzip/);
     await expect(decodeMapTransfer('not base64', expected())).rejects.toThrow();
     await expect(decodeMapTransfer(bytesToBase64(new Uint8Array([255])), expected())).rejects.toThrow();
@@ -112,5 +134,24 @@ describe('verified map documents and bounded transfer', () => {
       loadVerifiedMapDocuments('island', async () => new Response('', { status: 500 })),
     ).rejects.toThrow();
     await expect(loadVerifiedMapDocuments('island', async () => new Response('{broken'))).rejects.toThrow();
+  });
+  it('plays a local text document that is not its schema as absent', async () => {
+    const files: Record<string, unknown> = {
+      '/maps/island.json': MAP,
+      '/maps/island.script.json': { players: [] },
+      '/maps/island.strings.json': { pol: 'not a table' },
+      '/maps/island.meta.json': WORDS.meta,
+    };
+    const local = await loadVerifiedMapDocuments('island', async (path) =>
+      Object.hasOwn(files, String(path))
+        ? new Response(JSON.stringify(files[String(path)]))
+        : new Response('', { status: 404 }),
+    );
+    if (local === null) throw new Error('no local map');
+    expect(readVerifiedMapDocuments(local)).toMatchObject({
+      strings: null,
+      briefing: null,
+      meta: WORDS.meta,
+    });
   });
 });

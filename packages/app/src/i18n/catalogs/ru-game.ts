@@ -12,7 +12,7 @@ export const ruGame = {
     escalation: {
       nextAttack: 'Следующая атака через {time}',
       attackRunning: 'Идёт атака',
-      modeMark: 'Режим {variant}',
+      modeMark: 'Режим {mode}',
     },
     armyOrderLimit:
       'Выберите не более {limit} юнитов для одного приказа. Ни один юнит не получил этот приказ.',

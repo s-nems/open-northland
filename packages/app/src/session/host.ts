@@ -163,7 +163,7 @@ export interface SessionHost {
   /** A goal table's ranking, winners first; empty under any other rule. */
   matchRanking(): readonly MatchRank[];
   missionStatus(): readonly MissionStatus[];
-  /** A map variant's siege schedule as it stands; null on a map without one. */
+  /** A map's siege schedule as it stands; null on a map without one. */
   mapEscalation(): MapEscalationView | null;
 
   // Per tick.

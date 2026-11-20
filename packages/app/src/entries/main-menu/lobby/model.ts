@@ -1,9 +1,4 @@
-import {
-  applyMapVariantSlots,
-  findMapVariant,
-  isMultiplayerMapType,
-  type MapVariantKind,
-} from '@open-northland/data';
+import { isMultiplayerMapType } from '@open-northland/data';
 import {
   type ComputerDifficulty,
   type DayNightMode,
@@ -25,9 +20,9 @@ import {
   LOBBY_FOG_MODES,
   type LobbyFogModeName,
 } from '../../../game/fog.js';
-import { mapSessionWorld } from '../../../game/map/variant.js';
 import {
   dayNightModeParam,
+  mapOreYield,
   onOffParam,
   resourceYieldParam,
   storageCapacityParam,
@@ -41,6 +36,7 @@ import {
   sessionSearch,
 } from '../../../game/match/session-url.js';
 import { formatSearch } from '../../../view/params.js';
+import type { MapSelectItem } from '../map-select/model.js';
 import {
   absentSeats,
   authoredVacantMode,
@@ -191,7 +187,6 @@ export function lobbySession(
   players: readonly MapPlayerSlot[],
   options: LobbyOptions,
   seed: number,
-  variant: MapVariantKind | null = null,
 ): GameSession {
   const lists = {
     computer: new Set(state.seat === null ? [] : computerSeats(state, players)),
@@ -225,7 +220,7 @@ export function lobbySession(
     seats.push({ player: localSeat, mode: 'human', color: localSeat });
   }
   return {
-    world: mapSessionWorld(mapId, variant),
+    world: { kind: 'map', mapId },
     seed,
     seats: orderedSeats(seats),
     localSeat,
@@ -241,17 +236,19 @@ export function lobbyStartEntry(
   players: readonly MapPlayerSlot[],
   options: LobbyOptions,
   seed: number,
-  variant: MapVariantKind | null = null,
 ): string {
-  return formatSearch(sessionSearch(lobbySession(mapId, state, players, options, seed, variant), players));
+  return formatSearch(sessionSearch(lobbySession(mapId, state, players, options, seed), players));
 }
 
-/** The seat rows a map index entry lists, as `variant` of the map offers them. */
-export function lobbyPlayers(
-  mapId: string,
-  players: readonly MapPlayerSlot[],
-  variant: MapVariantKind | null,
-): readonly MapPlayerSlot[] {
-  const found = variant === null ? null : findMapVariant(mapId, variant);
-  return found === null ? players : applyMapVariantSlots(players, found);
+/** A lobby's ore richness after its map changes from `from` to `to` (a mode switched on or off), with
+ *  the player's own choice (`own`) it gives back when the new map brings no default; a choice made over
+ *  a map's own default is the player's too. */
+export function oreYieldAcrossMaps(
+  from: Pick<MapSelectItem, 'roomDefaults'>,
+  to: Pick<MapSelectItem, 'roomDefaults'>,
+  choice: { readonly oreYield: ResourceYieldFactor | null; readonly own: ResourceYieldFactor | null },
+): { oreYield: ResourceYieldFactor | null; own: ResourceYieldFactor | null } {
+  const fromOre = mapOreYield(from.roomDefaults);
+  const own = fromOre === null || choice.oreYield !== fromOre ? choice.oreYield : choice.own;
+  return { oreYield: mapOreYield(to.roomDefaults) ?? own, own };
 }

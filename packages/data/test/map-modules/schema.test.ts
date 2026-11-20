@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { MAP_VARIANTS, MapGearSchedule, MapSiege } from '../../src/index.js';
+import { MapGearSchedule, MapSiege } from '../../src/index.js';
+import { MODULES } from './fixture.js';
 
-const committed = MAP_VARIANTS.find((row) => row.modules?.siege !== undefined)?.modules;
-if (committed?.siege === undefined || committed.gearSchedule === undefined)
-  throw new Error('no committed siege and gear to vary');
-const siege = committed.siege;
-const gear = committed.gearSchedule;
+if (MODULES.siege === undefined || MODULES.gearSchedule === undefined)
+  throw new Error('no fixture siege and gear to vary');
+const siege = MODULES.siege;
+const gear = MODULES.gearSchedule;
 /** One man past the most an attack may send on foot over all its targets. */
 const OVER_LAUNCH_MEN = 1001;
 
@@ -13,7 +13,7 @@ describe('MapSiege', () => {
   it('refuses a schedule out of order, a seat targeted twice, a raider that is no raider or a refill above its max', () => {
     const { attacks, guard, stronghold } = siege;
     const [target, other] = attacks.targets;
-    if (target === undefined || other === undefined) throw new Error('no two committed targets to vary');
+    if (target === undefined || other === undefined) throw new Error('no two fixture targets to vary');
     for (const bad of [
       { attacks: { ...attacks, launches: [...attacks.launches].reverse() } },
       { attacks: { ...attacks, targets: [target, target] } },

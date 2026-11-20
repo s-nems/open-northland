@@ -14,7 +14,6 @@ import { components } from '@open-northland/sim';
 import { PLAYER_COLOR_COUNT } from '../../catalog/roster.js';
 import { floatParam, formatSearch, HUMAN_TRIBE_PARAM, intParam, seatListParam } from '../../view/params.js';
 import { fogModeName } from '../fog.js';
-import { MAP_VARIANT_PARAM, mapSessionWorld, mapVariantParam } from '../map/variant.js';
 import { RESOURCE_YIELD_PARAMS, sessionRuleOverrides } from './session-rules.js';
 
 /**
@@ -76,16 +75,15 @@ export function mapIdParam(params: URLSearchParams): string | null {
   return params.get('map');
 }
 
-/** The session a `?map=` search describes, under the map variant `?variant=` names. The roster
+/** The session a `?map=` search describes. The roster
  *  supplies each seat's authored colour, which `?colors=` then overrides; `?tribes=` names the seats
  *  played as another civilization, `?tribe=` the person's own seat's civilization unless `?tribes=`
  *  names that seat, and `?difficulty=` how hard each computer seat plays. A search naming no seed
- *  draws one. The roster must be the variant's own. */
+ *  draws one. */
 export function mapSession(params: URLSearchParams, roster: readonly SessionRosterSlot[]): GameSession {
   const localSeat = claimableLocalSeat(localSeatParam(params), roster);
-  const mapId = mapIdParam(params);
   return {
-    world: mapSessionWorld(mapId ?? '', mapVariantParam(params, mapId)),
+    world: { kind: 'map', mapId: mapIdParam(params) ?? '' },
     seed: seedParam(params) ?? drawSessionSeed(),
     seats: rosterSeats(params, roster, localSeat),
     localSeat,
@@ -121,7 +119,6 @@ export function sessionSearch(
     params.set('scene', session.world.sceneId);
   } else {
     if (session.world.mapId !== '') params.set('map', session.world.mapId);
-    if (session.world.variant !== undefined) params.set(MAP_VARIANT_PARAM, session.world.variant);
     params.set('player', String(session.localSeat));
     const authored = new Map(roster.map((slot) => [slot.player, slot.colorId]));
     const recoloured = session.seats

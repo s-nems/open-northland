@@ -13,7 +13,7 @@ describe('mountSiegePresentation', () => {
     let nowMs = 0;
     const siege = mountSiegePresentation({
       host: { mapEscalation: () => null },
-      variant: null,
+      modeName: null,
       plane,
       mapText: () => 'Ships are landing!',
       setAttackNight: () => {},

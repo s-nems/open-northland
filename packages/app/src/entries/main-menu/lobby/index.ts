@@ -1,12 +1,12 @@
-import { isMultiplayerMapType, type MapVariantKind } from '@open-northland/data';
-import { chosenMapVariantParam, oreYieldAcrossVariants, variantOreYield } from '../../../game/map/variant.js';
+import { isMultiplayerMapType } from '@open-northland/data';
+import { mapOreYield } from '../../../game/match/session-rules.js';
 import { drawSessionSeed } from '../../../game/match/session-url.js';
 import { messages } from '../../../i18n/index.js';
 import type { LaunchEntry } from '../../../launch.js';
 import { targetSearch } from '../../../view/target-search.js';
 import { mapItemLineup, seatStanceReader } from '../lineup/model.js';
 import { lineupRoster, lineupTitle, relationLine } from '../lineup/view.js';
-import { mapVariantToggles } from '../lobby-controls/variant.js';
+import { mapModeToggles } from '../lobby-controls/mode.js';
 import { createMapDetailsCard } from '../map-select/card.js';
 import type { MapSelectItem } from '../map-select/model.js';
 import type { MenuScreen, MountedScreen } from '../model.js';
@@ -14,10 +14,10 @@ import { screenHead } from '../screen-head.js';
 import { localSeatElements } from './local-seats.js';
 import {
   initialLobbyState,
-  lobbyPlayers,
   lobbySlotRows,
   lobbyStartEntry,
   localLobbyOptions,
+  oreYieldAcrossMaps,
 } from './model.js';
 import { lobbyOptionsCard } from './options-card.js';
 import {
@@ -32,6 +32,8 @@ import {
   setVacantMode,
 } from './roster-state.js';
 
+/** The lobby of `item`, a base map whose modes it offers as switches; the chosen mode or the base is the
+ *  played map the roster, the details card and the launch read. */
 export function lobbyScreen(
   item: MapSelectItem,
   open: (screen: MenuScreen) => void,
@@ -98,43 +100,37 @@ export function lobbyScreen(
 
   const search = new URLSearchParams(window.location.search);
   const options = localLobbyOptions(search, item.types);
-  let variant: MapVariantKind | null = chosenMapVariantParam(search, item.id);
-  // The player's own ore richness, given back when a variant that brings its own is turned off.
+  let played = item;
+  // The player's own ore richness, given back when a mode that brings its own is turned off.
   let ownOreYield = options.oreYield;
-  options.oreYield ??= variantOreYield(item.id, variant);
-  let players = lobbyPlayers(item.id, item.players, variant);
-  let lineup = mapItemLineup(item, players);
-  const stance = seatStanceReader(item.relations);
-  // A variant can open seats the authored map reserves, so each map mode keeps its own roster.
-  const rosterKey = (): string => (variant === null ? item.id : `${item.id}:${variant}`);
+  options.oreYield ??= mapOreYield(item.roomDefaults);
+  let players = played.players;
+  let lineup = mapItemLineup(played, players);
+  let stance = seatStanceReader(played.relations);
+  // A mode is a map of its own with its own seats, so each keeps its own roster.
+  const rosterKey = (): string => played.id;
 
   const start = document.createElement('button');
   start.type = 'button';
   start.className = 'main-menu__primary main-menu__lobby-start';
   start.textContent = lobby.start;
-  const variantToggles = mapVariantToggles(
-    item.id,
-    { names: lobby.variantNames, details: lobby.variantDetails, writeDetails: true },
-    variant,
-    (next) => {
-      const ore = oreYieldAcrossVariants(item.id, variant, next, {
-        oreYield: options.oreYield,
-        own: ownOreYield,
-      });
-      options.oreYield = ore.oreYield;
-      ownOreYield = ore.own;
-      variant = next;
-      optionsCard.paint();
-      players = lobbyPlayers(item.id, item.players, variant);
-      lineup = mapItemLineup(item, players);
-      pickerSlot = null;
-      update(rosters.get(rosterKey()) ?? initialLobbyState(players));
-    },
-  );
+  const modeToggles = mapModeToggles(item, null, (mode) => {
+    const next = mode ?? item;
+    const ore = oreYieldAcrossMaps(played, next, { oreYield: options.oreYield, own: ownOreYield });
+    options.oreYield = ore.oreYield;
+    ownOreYield = ore.own;
+    played = next;
+    optionsCard.paint();
+    card.show(played);
+    players = played.players;
+    lineup = mapItemLineup(played, players);
+    stance = seatStanceReader(played.relations);
+    pickerSlot = null;
+    update(rosters.get(rosterKey()) ?? initialLobbyState(players));
+  });
   const optionsCard = lobbyOptionsCard(options, isMultiplayerMapType(item.types), {
-    variants: variantToggles,
-    variantChanges: () => (variant === null ? [] : [lobby.variantNames[variant]]),
-    standardOreYield: () => variantOreYield(item.id, variant),
+    modes: modeToggles,
+    standardOreYield: () => mapOreYield(played.roomDefaults),
   });
   launchPanel.append(optionsCard.element, start);
   side.append(card.root, launchPanel);
@@ -192,10 +188,10 @@ export function lobbyScreen(
   const renderSeats = (): void => {
     // replaceChildren drops keyboard focus to <body>, so focus returns to the rebuilt control
     // carrying the same data-focus key.
-    const active = document.activeElement;
-    const key = refocus ?? (active instanceof HTMLElement ? (active.dataset.focus ?? null) : null);
+    const focused = document.activeElement;
+    const key = refocus ?? (focused instanceof HTMLElement ? (focused.dataset.focus ?? null) : null);
     refocus = null;
-    const seats = localSeatElements(item, state, pickerSlot, {
+    const seats = localSeatElements(played, state, pickerSlot, {
       togglePicker(player) {
         pickerSlot = pickerSlot === player ? null : player;
         renderSeats();
@@ -271,7 +267,7 @@ export function lobbyScreen(
 
   start.addEventListener('click', () => {
     if (!start.disabled)
-      launch(targetSearch(lobbyStartEntry(item.id, state, players, options, drawSessionSeed(), variant)));
+      launch(targetSearch(lobbyStartEntry(played.id, state, players, options, drawSessionSeed())));
   });
 
   return {

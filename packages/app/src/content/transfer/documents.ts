@@ -1,4 +1,11 @@
-import { MapScript, mapDocumentsFingerprint, parseTerrainMap } from '@open-northland/data';
+import {
+  MapBriefing,
+  MapMeta,
+  MapScript,
+  MapStrings,
+  mapDocumentsFingerprint,
+  parseTerrainMap,
+} from '@open-northland/data';
 import { MAX_BLOB_BYTES } from '@open-northland/net-protocol';
 import { type ContentFetch, contentFetch } from '../url.js';
 
@@ -9,7 +16,15 @@ export interface VerifiedMapDocuments {
   readonly mapId: string;
   readonly fingerprint: string;
 }
-interface Documents {
+/** The map's words, which travel with it so every player reads them: its string table, briefing pages
+ *  and meta. They change no rule, so the fingerprint leaves them out; an absent one is null. */
+export interface MapTextDocuments {
+  readonly strings: unknown;
+  readonly briefing: unknown;
+  readonly meta: unknown;
+}
+const NO_TEXT_DOCUMENTS: MapTextDocuments = { strings: null, briefing: null, meta: null };
+interface Documents extends MapTextDocuments {
   readonly map: unknown;
   readonly script: unknown;
 }
@@ -17,6 +32,9 @@ interface Documents {
 interface ParsedDocuments {
   readonly map: ReturnType<typeof parseTerrainMap>;
   readonly script: ReturnType<typeof MapScript.parse> | null;
+  readonly strings: MapStrings | null;
+  readonly briefing: MapBriefing | null;
+  readonly meta: MapMeta | null;
 }
 interface Retained {
   readonly raw: Documents;
@@ -41,10 +59,17 @@ function deepFreeze<T>(value: T): T {
   return value;
 }
 
-/** Own the exact raw documents whose fingerprint was verified, including unknown script fields. */
-export function verifyMapDocuments(mapId: string, map: unknown, script: unknown): VerifiedMapDocuments {
+/** Own the exact raw documents whose fingerprint was verified, including unknown script fields, and
+ *  the map's text beside them. Throws on a text document that is not its schema's. */
+export function verifyMapDocuments(
+  mapId: string,
+  map: unknown,
+  script: unknown,
+  words: MapTextDocuments = NO_TEXT_DOCUMENTS,
+): VerifiedMapDocuments {
   validMapId(mapId);
-  const text = JSON.stringify({ map, script });
+  const { strings, briefing, meta } = words;
+  const text = JSON.stringify({ map, script, strings, briefing, meta });
   if (
     text.length > MAX_MAP_DOCUMENT_BYTES ||
     new TextEncoder().encode(text).byteLength > MAX_MAP_DOCUMENT_BYTES
@@ -55,8 +80,14 @@ export function verifyMapDocuments(mapId: string, map: unknown, script: unknown)
   const parsed = deepFreeze({
     map: parseTerrainMap(raw.map),
     script: raw.script === null ? null : MapScript.parse(raw.script),
+    strings: raw.strings === null ? null : MapStrings.parse(raw.strings),
+    briefing: raw.briefing === null ? null : MapBriefing.parse(raw.briefing),
+    meta: raw.meta === null ? null : MapMeta.parse(raw.meta),
   });
-  const handle = Object.freeze({ mapId, fingerprint: mapDocumentsFingerprint(raw) });
+  const handle = Object.freeze({
+    mapId,
+    fingerprint: mapDocumentsFingerprint({ map: raw.map, script: raw.script }),
+  });
   retained.set(handle, { raw, parsed });
   return handle;
 }
@@ -112,9 +143,17 @@ export async function loadVerifiedMapDocuments(
   fetchImpl: ContentFetch = contentFetch,
 ): Promise<VerifiedMapDocuments | null> {
   validMapId(mapId);
-  const [map, script] = await Promise.all([
-    readDocument(`/maps/${mapId}.json`, fetchImpl),
-    readDocument(`/maps/${mapId}.script.json`, fetchImpl),
-  ]);
-  return map === null ? null : verifyMapDocuments(mapId, map, script);
+  const [map, script, strings, briefing, meta] = await Promise.all(
+    ['.json', '.script.json', '.strings.json', '.briefing.json', '.meta.json'].map((suffix) =>
+      readDocument(`/maps/${mapId}${suffix}`, fetchImpl),
+    ),
+  );
+  if (map === null) return null;
+  // A local text document that is not its schema's plays as absent, as a single-player boot reads it.
+  const words = {
+    strings: MapStrings.safeParse(strings).success ? strings : null,
+    briefing: MapBriefing.safeParse(briefing).success ? briefing : null,
+    meta: MapMeta.safeParse(meta).success ? meta : null,
+  };
+  return verifyMapDocuments(mapId, map, script, words);
 }

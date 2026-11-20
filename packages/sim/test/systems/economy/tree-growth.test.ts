@@ -42,7 +42,7 @@ describe('tree growth', () => {
     expect(sim.world.get(tree, ResourceFootprint)).toEqual({ gfx: TREE_GFX, level: TREE_MAX_LEVEL });
   });
 
-  it('keeps a full-grown yield above the valency, as a map variant scales it, until the tree is fellable', () => {
+  it('keeps a full-grown yield above the valency, as a resource setting scales it, until the tree is fellable', () => {
     const sim = new Simulation({ seed: 1, content: treeContent(), map: grassNodeMap(MAP_NODES, MAP_NODES) });
     const wood = 2 * TREE_MAX_LEVEL;
     const tree = treeAt(sim, TREE_NODE, TREE_NODE, 2, { wood });

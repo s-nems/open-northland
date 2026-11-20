@@ -62,6 +62,8 @@ export const MapsIndexEntry = z.strictObject({
   mapTypes: MapMeta.shape.mapTypes,
   /** `[misc_maptype]` `mapmultiplayeronly`. Present only when true. */
   multiplayerOnly: z.literal(true).optional(),
+  mode: MapMeta.shape.mode,
+  roomDefaults: MapMeta.shape.roomDefaults,
 });
 export type MapsIndexEntry = z.infer<typeof MapsIndexEntry>;
 

@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { MapRoomDefaults } from '../../map-modules/additions.js';
 import { MapProvenance } from './provenance.js';
 import { MapText } from './strings.js';
 
@@ -18,6 +19,15 @@ export function isMultiplayerMapType(types: readonly number[]): boolean {
 
 /** `CLEAN_MAP_TYPE_MAXIMUM`: the first code a `maptype` line may not carry. */
 export const MAP_TYPE_LIMIT = 7;
+
+/** A map that is another map played by other rules (`opennorthland.json`): the id that map's folder
+ *  converts to, and this mode's name and one-line description. */
+export const MapMode = z.strictObject({
+  of: z.string().min(1),
+  name: MapText,
+  detail: MapText.optional(),
+});
+export type MapMode = z.infer<typeof MapMode>;
 
 /** A map's metadata sidecar: optional strings, music and menu listing, and the provenance the
  *  pipeline always writes (a hand-edited sidecar without it counts as unknown). Not strict, so a
@@ -41,5 +51,8 @@ export const MapMeta = z.object({
     .optional(),
   /** `[misc_maptype]` `mapmultiplayeronly`: a multiplayer map kept out of the single-player list. */
   multiplayerOnly: z.boolean().optional(),
+  mode: MapMode.optional(),
+  /** The room settings a lobby starts at when the map is chosen. */
+  roomDefaults: MapRoomDefaults.optional(),
 });
 export type MapMeta = z.infer<typeof MapMeta>;

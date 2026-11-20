@@ -80,11 +80,6 @@ export interface GameRuleControlOptions {
   /** The ore richness the window's reset restores, read at each change; absent restores the authored
    *  stock. */
   readonly standardOreYield?: () => ResourceYieldFactor | null;
-  /** Rows of the map's own, such as its variant toggles, listed first under the game rules. */
-  readonly mapRows?: readonly HTMLElement[];
-  /** What the map's own rows hold that differs from the map as authored, named first in the entry's
-   *  summary; the reset leaves them alone. */
-  readonly mapChanges?: () => readonly string[];
   /** Holds the card's rules in the window too, first under the game rules, for a screen that shows only
    *  the entry. Its summary and reset then cover them, with fog of war and the allies' shared map off as
    *  the standard. */
@@ -469,7 +464,6 @@ export function gameRuleControls(options: GameRuleControlOptions) {
       {
         title: options.advanced.rulesGroup,
         rows: [
-          ...(options.mapRows ?? []),
           ...(inWindow ? basicElements : []),
           ...progression.elements,
           ...needs.elements,
@@ -542,7 +536,7 @@ export function gameRuleControls(options: GameRuleControlOptions) {
       ]
         .filter((rule) => rule.changed)
         .map((rule) => ('choice' in rule ? `${rule.label}: ${rule.choice}` : rule.label));
-      advanced.update([...(options.mapChanges?.() ?? []), ...changes], disabled, note, changes.length > 0);
+      advanced.update(changes, disabled, note, changes.length > 0);
     },
     /** The room refused the last settings change; drop what the fog pair composed on top of it. */
     rejected: fog.reject,

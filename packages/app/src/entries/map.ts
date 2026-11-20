@@ -2,7 +2,6 @@ import { isSpectator, localPlayerOf } from '@open-northland/lockstep';
 import { scheduleFaultDrills } from '../diag/capture/drills.js';
 import { hasDebugFlag } from '../diag/debug-flags.js';
 import { diag, HASH_TRACE_DEBUG_FLAG } from '../diag/index.js';
-import { MAP_VARIANT_PARAM, mapVariantParam, mapVariantsSelectable } from '../game/map/variant.js';
 import { drawSessionSeed, mapIdParam, mapSession, seedParam } from '../game/match/session-url.js';
 import { endpointPort } from '../session/worker/port.js';
 import { startWorkerSession, type WorkerSession } from '../session/worker/worker-session.js';
@@ -47,11 +46,6 @@ export async function renderMap(canvas: HTMLCanvasElement, params: URLSearchPara
   // Held outside the boot so a boot that fails after the worker stood up still ends it.
   const booted: { session: WorkerSession<MapWorldPlacements> | null } = { session: null };
   const stagedSave = staged.save;
-  // A fresh launch chooses its variant, which only a dev server allows; a staged save keeps its own.
-  if (stagedSave === null && !mapVariantsSelectable() && params.has(MAP_VARIANT_PARAM)) {
-    params.delete(MAP_VARIANT_PARAM);
-    replaceEntryUrl(formatSearch(params));
-  }
   const hostWorld = async (inputs: MapWorldDocuments): Promise<WorkerMapWorld> => {
     const worker = new Worker(new URL('./map/sim-worker.ts', import.meta.url), { type: 'module' });
     const port = endpointPort(worker, () => worker.terminate());
@@ -82,7 +76,6 @@ export async function renderMap(canvas: HTMLCanvasElement, params: URLSearchPara
   const world = await assembleMapWorld(canvas, params, {
     hostWorld,
     mapId,
-    variant: mapVariantParam(params, mapId),
     stagedSave,
     sessionFor: (roster) => mapSession(params, roster),
   }).catch((err: unknown) => {

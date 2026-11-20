@@ -213,11 +213,6 @@ export const enSurfaces = {
         on: 'Rise over time',
         off: 'Disabled',
       },
-      variantNames: { ragnarok: 'Ragnarök' },
-      variantDetails: {
-        ragnarok:
-          'A harder mode: the fortress attacks on a schedule with ever larger armies and sea landings, its warriors get better gear, and deposits yield more.',
-      },
       weatherLabel: 'Weather',
       weatherModes: {
         map: { label: 'Map', detail: 'Only the weather the map itself sets.' },

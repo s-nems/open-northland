@@ -52,6 +52,22 @@ export function assertMapModulesFitMap(modules: MapModules, size: MapCells, know
   }
 }
 
+/** Every id of the map's string table the modules name: their notices' lines and their heroes' names. */
+export function mapModulesStringIds(modules: MapModules): number[] {
+  const { siege, gearSchedule, heroes } = modules;
+  const notices = [
+    siege?.attacks.notice,
+    ...(siege?.attacks.launches ?? []).map((launch) => launch.notice),
+    siege?.landings?.notice,
+    ...(gearSchedule?.steps ?? []).map((step) => step.notice),
+  ];
+  const ids = [
+    ...notices.flatMap((notice) => (notice === undefined ? [] : [notice.title, notice.detail])),
+    ...(heroes?.placed ?? []).map((hero) => hero.nameStringId),
+  ];
+  return [...new Set(ids.filter((id) => id !== undefined))];
+}
+
 type Point = readonly [string, number, number];
 
 function pointsOf(modules: MapModules): Point[] {

@@ -24,11 +24,8 @@
   `src/catalog/`: committed tables no source file supplies.
 - `src/map-modules/`: the rules a map adds to its script (siege, gear schedule, heroes, death drops,
   demobilized start), each module versioned on its own, naming content by slug and text by map string
-  id, and the check that they fit a map and its content. Outside `IR_VERSION`, like the variants.
-- `src/map-variants/`: committed per-map variants (one file each, a long briefing text beside it),
-  their schema, the script patch and starting settlers they apply, the briefing pages they rewrite,
-  the map strings they add, and the map modules they carry. A variant is our own authored data,
-  outside `IR_VERSION`; it names missions by `debuginfo` label and never renumbers them.
+  id; the schema of a map folder's `opennorthland.json` (modules, mode, room defaults); and the check
+  that modules fit a map and its content. Imported modules sit in `MapScript.modules`, under `IR_VERSION`.
 - `src/` root: lookups and pure helpers over parsed content.
 
 Tests mirror `src/`; `test/schema/` holds the schema tests flat.

@@ -22,8 +22,7 @@ import { petNamesOf } from '../../game/character-names/pet-names.js';
 import { briefingMatchObjectives, briefingPage, mapBriefFallback } from '../../game/map/mission-brief.js';
 import { playerTribe } from '../../game/map/roster.js';
 import { mapStartFocus } from '../../game/map/start.js';
-import { mapStringLookup } from '../../game/map/strings.js';
-import { sessionMapVariant } from '../../game/map/variant.js';
+import { localizedMapText, mapStringLookup } from '../../game/map/strings.js';
 import { observerSeats } from '../../game/match/observer-seats.js';
 import { hasEliminationGoal, playersDecidedBeforeEnd } from '../../game/match/participants.js';
 import { seatNameMap } from '../../game/match/seat-names.js';
@@ -335,7 +334,7 @@ export async function presentMapWorld(
     saveEntrySearch: formatSearch(sessionSearch(session, script === null ? [] : mapLobbySlots(script))),
     introAtStart: runtime.introAtStart && host.missions === undefined,
     musicType: meta?.musicType ?? null,
-    mapVariant: sessionMapVariant(session.world),
+    modeName: localizedMapText(meta?.mode?.name, currentLocale()) ?? null,
     missionBriefSource: {
       matchObjectives: briefingMatchObjectives(host.missions),
       page: (id) => briefingPage(world.briefing, currentLocale(), id),

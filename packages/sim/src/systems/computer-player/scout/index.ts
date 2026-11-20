@@ -82,8 +82,8 @@ export const SMALL_START_SCOUT_FROM_TICKS = minutesToTicks(15);
 
 /** Owner ruling: a seat starts small under this many adult men, heroes not counted (soldiers are, since
  *  the seat turns its start soldiers into civilians). battle_for_the_four_hills_multiplayer seats start
- *  with 7, ciezka_wspolpraca's with 9, both specjalna_forteca variants' with 10, the other measured maps'
- *  with 11-13. */
+ *  with 7, ciezka_wspolpraca's with 9, specjalna_forteca's and its Ragnarök mode's with 10, the other
+ *  measured maps' with 11-13. */
 export const SMALL_START_MEN = 10;
 
 /** Whether `player`'s seat holds off its scout at `ctx.tick` (owner ruling): before

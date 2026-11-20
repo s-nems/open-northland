@@ -172,18 +172,6 @@ describe('sessionSearch', () => {
     expect(mapSession(sessionSearch(parsed, ROSTER), ROSTER)).toEqual(parsed);
   });
 
-  it('round-trips a map variant and drops one the map does not ship', () => {
-    const ragnarok = session('map=specjalna_forteca&variant=ragnarok&seed=3');
-    expect(ragnarok.world).toEqual({ kind: 'map', mapId: 'specjalna_forteca', variant: 'ragnarok' });
-    expect(sessionSearch(ragnarok, ROSTER).get('variant')).toBe('ragnarok');
-    expect(mapSession(sessionSearch(ragnarok, ROSTER), ROSTER)).toEqual(ragnarok);
-    expect(session('map=zatoka&variant=ragnarok&seed=3').world).toEqual({ kind: 'map', mapId: 'zatoka' });
-    expect(session('map=specjalna_forteca&variant=nope&seed=3').world).toEqual({
-      kind: 'map',
-      mapId: 'specjalna_forteca',
-    });
-  });
-
   it('writes only what the person chose, and always the seat and the seed', () => {
     const parsed = session('map=zatoka&seed=9');
     expect(sessionSearch(parsed, ROSTER).toString()).toBe('map=zatoka&player=0&computer=2&seed=9');

@@ -2,9 +2,9 @@ import { createHash } from 'node:crypto';
 import { readdir, readFile } from 'node:fs/promises';
 import { basename, join, relative, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { MAP_PLAYER_SLOTS } from '@open-northland/data';
+import { MAP_PLAYER_SLOTS, type MapObject, type MapObjectEdit } from '@open-northland/data';
 import type { CifLine } from '@open-northland/formats/cif';
-import type { MapDatTerrainFile } from '@open-northland/map-import';
+import { applyMapObjectEdits, type MapDatTerrainFile, sameMapObject } from '@open-northland/map-import';
 
 /** The named fixes to single mod files, one JSON file each; this package's AGENTS.md sets the rules. */
 export const CORRECTIONS_DIR = fileURLToPath(new URL('../corrections/', import.meta.url));
@@ -27,20 +27,6 @@ interface LineEdit {
 }
 
 /** One placed landscape object: its `[GfxLandscape]` `EditName`, `lmlv` level and `lmlp` owner (null neutral). */
-export interface MapObject {
-  readonly type: string;
-  readonly level: number;
-  readonly owner: number | null;
-}
-
-/** The object at half-cell node `hx,hy` changed from `from` to `to`; null on either side is no object. */
-interface ObjectEdit {
-  readonly hx: number;
-  readonly hy: number;
-  readonly from: MapObject | null;
-  readonly to: MapObject | null;
-}
-
 interface CorrectionHeader {
   /** The correction's file name without `.json`. */
   readonly id: string;
@@ -62,7 +48,7 @@ export interface LineCorrection extends CorrectionHeader {
 /** Edits to a `map.dat`'s decoded landscape objects. */
 interface ObjectCorrection extends CorrectionHeader {
   readonly format: 'mapdat';
-  readonly objects: readonly ObjectEdit[];
+  readonly objects: readonly MapObjectEdit[];
 }
 
 /** A fix to the mod file `file`, applied only while its bytes still hash to `sha256`. */
@@ -198,7 +184,7 @@ export async function loadSourceCorrections(dir: string, dataRoot: string): Prom
     correctObjects(file, bytes, terrain) {
       const correction = byFile.get(file.toLowerCase());
       if (correction?.format !== 'mapdat') return terrain.objects;
-      const corrected = applyObjectEdits(correction.objects, terrain, refuse(correction, bytes));
+      const corrected = applyMapObjectEdits(correction.objects, terrain, refuse(correction, bytes));
       applied.add(correction.id);
       return corrected;
     },
@@ -211,54 +197,6 @@ export async function loadSourceCorrections(dir: string, dataRoot: string): Prom
       }
     },
   };
-}
-
-/**
- * The terrain's objects with `edits` applied, still in row-major half-cell order; the terrain is not
- * mutated. Each edit names a node on the map, its `from` describes what the node holds now, and its `to`
- * names an object type the map already places, so a misspelt name cannot pass as applied.
- */
-function applyObjectEdits(
-  edits: readonly ObjectEdit[],
-  { width, height, objects }: MapDatTerrainFile,
-  fail: (why: string) => never,
-): MapDatTerrainFile['objects'] {
-  if (objects === undefined) return fail('the map has no landscape objects');
-  const { types, placements, levels, owners } = objects;
-  if (levels === undefined || owners === undefined) return fail('the map lacks its lmlv or lmlp lane');
-  const at = new Map<string, MapObject & { readonly hx: number; readonly hy: number }>();
-  for (let i = 0; i < placements.length / 3; i++) {
-    const [hx, hy, typeIndex] = placements.slice(i * 3, i * 3 + 3) as [number, number, number];
-    const type = types[typeIndex] ?? fail(`placement ${i} names no type`);
-    at.set(`${hx},${hy}`, { hx, hy, type, level: levels[i] ?? 0, owner: owners[i] ?? null });
-  }
-  for (const { hx, hy, from, to } of edits) {
-    const node = `${hx},${hy}`;
-    if (hx >= width * 2 || hy >= height * 2)
-      fail(`half-cell (${node}) lies outside the ${width}x${height} map`);
-    if (to !== null && !types.includes(to.type)) fail(`the map places no "${to.type}"`);
-    const held = at.get(node) ?? null;
-    if (!sameObject(held, from))
-      fail(`half-cell (${node}) holds ${describeObject(held)}, not ${describeObject(from)}`);
-    if (to === null) at.delete(node);
-    else at.set(node, { hx, hy, ...to });
-  }
-  const sorted = [...at.values()].sort((a, b) => a.hy - b.hy || a.hx - b.hx);
-  return {
-    types: [...types],
-    placements: sorted.flatMap(({ hx, hy, type }) => [hx, hy, types.indexOf(type)]),
-    levels: sorted.map(({ level }) => level),
-    owners: sorted.map(({ owner }) => owner),
-  };
-}
-
-function describeObject(object: MapObject | null): string {
-  return object === null ? 'no object' : `${object.type} level ${object.level} owner ${object.owner}`;
-}
-
-function sameObject(held: MapObject | null, expected: MapObject | null): boolean {
-  if (held === null || expected === null) return held === expected;
-  return held.type === expected.type && held.level === expected.level && held.owner === expected.owner;
 }
 
 /** The corrected bytes, or why the correction no longer fits the file. */
@@ -417,10 +355,10 @@ function parseCorrection(id: string, raw: unknown): SourceCorrection {
   };
 }
 
-function parseObjectEdits(raw: unknown, fail: (why: string) => never): ObjectEdit[] {
+function parseObjectEdits(raw: unknown, fail: (why: string) => never): MapObjectEdit[] {
   if (!Array.isArray(raw) || raw.length === 0) return fail('objects must list at least one edit');
   const nodes = new Set<string>();
-  return raw.map((edit: unknown): ObjectEdit => {
+  return raw.map((edit: unknown): MapObjectEdit => {
     const record =
       objectWithKeys(edit, OBJECT_EDIT_KEYS) ?? fail('each object edit has "hx", "hy", "from", "to"');
     const { hx, hy } = record;
@@ -432,7 +370,7 @@ function parseObjectEdits(raw: unknown, fail: (why: string) => never): ObjectEdi
     nodes.add(node);
     const from = parseMapObject(record.from, fail);
     const to = parseMapObject(record.to, fail);
-    if (sameObject(from, to)) fail(`the edit at half-cell (${node}) changes nothing`);
+    if (sameMapObject(from, to)) fail(`the edit at half-cell (${node}) changes nothing`);
     return { hx, hy, from, to };
   });
 }

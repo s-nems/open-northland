@@ -12,7 +12,7 @@ export const deGame = {
     escalation: {
       nextAttack: 'Nächster Angriff in {time}',
       attackRunning: 'Angriff läuft',
-      modeMark: '{variant}-Modus',
+      modeMark: '{mode}-Modus',
     },
     armyOrderLimit:
       'Wähle höchstens {limit} Einheiten für einen Befehl aus. Keine Einheit hat diesen Befehl erhalten.',

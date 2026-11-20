@@ -5,6 +5,7 @@ import { MAP_SCENES, SCENES } from '../../../scenes/index.js';
 import { createMapDetailsCard, metaLine, narratorBadge, paintMapThumb } from './card.js';
 import {
   filterItems,
+  foldMapModes,
   listedIn,
   type MapContentTab,
   type MapFilter,
@@ -265,12 +266,15 @@ export function mapPicker(options: MapPickerOptions): MapPicker {
       // A navigation away detaches the list, and a newer load supersedes this one.
       if (!body.isConnected || load !== loads) return;
       mapsLoaded = true;
-      const maps = sources
-        .map((source) => mapSourceItem(source, api))
-        .filter((item) => options.include?.(item) ?? true);
+      // A mode lists under its base map, which offers it as a switch, when this menu lists both.
+      const maps = foldMapModes(
+        sources
+          .map((source) => mapSourceItem(source, api))
+          .filter((item) => (options.include?.(item) ?? true) && listedIn(item, options.listing)),
+      );
       items = [...maps, ...scenes];
       renderList();
-      options.onMaps?.(maps.filter((item) => listedIn(item, options.listing)));
+      options.onMaps?.(maps);
     });
   };
   loadMaps();

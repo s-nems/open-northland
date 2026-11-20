@@ -648,7 +648,7 @@ export type SimEvent =
       readonly notice?: MapNotice;
     }
   | {
-      /** The running attack is over: the variant's dead share of its men fell, the men against a seat
+      /** The running attack is over: the siege's dead share of its men fell, the men against a seat
        *  with nothing left to attack counted lost (`defeated`), or its time ran out (`expired`). */
       readonly kind: 'mapEscalationAttackEnded';
       readonly wave: number;

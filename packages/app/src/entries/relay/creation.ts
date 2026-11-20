@@ -1,15 +1,9 @@
 import { mapLobbySlots } from '@open-northland/data';
 import { MAX_ROOM_NAME_LENGTH, type RoomSeatSetup, type RoomSettings } from '@open-northland/net-protocol';
-import { loadMapScript } from '../../content/map/loader.js';
+import { loadMapMeta, loadMapScript } from '../../content/map/loader.js';
 import { mapFetch } from '../../content/map-source/index.js';
 import { assertMultiplayerMap } from '../../game/map/multiplayer.js';
-import {
-  chosenMapVariantParam,
-  mapSessionWorld,
-  variantMapScript,
-  withVariantOreYield,
-} from '../../game/map/variant.js';
-import { sessionRuleOverrides } from '../../game/match/session-rules.js';
+import { sessionRuleOverrides, withMapOreYield } from '../../game/match/session-rules.js';
 import { DEFAULT_SESSION_SPEED, drawSessionSeed, seedParam } from '../../game/match/session-url.js';
 import { floatParam } from '../../view/params.js';
 import {
@@ -24,19 +18,19 @@ interface RoomCreation {
   readonly seats: readonly RoomSeatSetup[];
 }
 
-/** The room a creator opens for a map under the variant the search chooses: its script's roster, with the
- *  authored AI seats kept as AI where the map allows it and every other seat open, and the search's
- *  seed, rules and tempo. */
+/** The room a creator opens for a map: its script's roster, with the authored AI seats kept as AI where
+ *  the map allows it and every other seat open, and the search's seed, rules and tempo, the ore
+ *  richness defaulting to the map's own. */
 export async function roomCreation(params: URLSearchParams, mapId: string): Promise<RoomCreation> {
-  const world = mapSessionWorld(mapId, chosenMapVariantParam(params, mapId));
-  const script = variantMapScript(await loadMapScript(mapId, await mapFetch(mapId)), world);
+  const files = await mapFetch(mapId);
+  const [script, meta] = await Promise.all([loadMapScript(mapId, files), loadMapMeta(mapId, files)]);
   assertMultiplayerMap(script);
   return {
     settings: {
       name: mapId.slice(0, MAX_ROOM_NAME_LENGTH),
-      world,
+      world: { kind: 'map', mapId },
       seed: seedParam(params) ?? drawSessionSeed(),
-      rules: withVariantOreYield(sessionRuleOverrides(params), world),
+      rules: withMapOreYield(sessionRuleOverrides(params), meta?.roomDefaults),
       speed: floatParam(params, 'speed', DEFAULT_SESSION_SPEED),
     },
     seats: (script === null ? [] : mapLobbySlots(script)).map((slot) => ({

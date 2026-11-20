@@ -5,10 +5,8 @@ import { gameRuleControls } from '../lobby-controls/rules.js';
 import { type LobbyOptions, lobbyRules } from './model.js';
 
 export interface LobbyOptionsCardExtras {
-  /** The toggles of the variants the map ships, first in the advanced window's game rules. */
-  readonly variants?: readonly HTMLElement[];
-  /** What the variant toggles hold, named first in the advanced entry's summary. */
-  readonly variantChanges?: () => readonly string[];
+  /** The toggles of the map's modes, first on the card. */
+  readonly modes?: readonly HTMLElement[];
   /** The ore richness the advanced window's reset restores; absent restores the authored stock. */
   readonly standardOreYield?: () => ResourceYieldFactor | null;
   /** Runs after each change the card writes into the options. */
@@ -60,8 +58,6 @@ export function lobbyOptionsCard(
     basicYield: lobby.basicYield,
     oreYield: lobby.oreYield,
     ...(extras.standardOreYield === undefined ? {} : { standardOreYield: extras.standardOreYield }),
-    ...(extras.variants === undefined ? {} : { mapRows: extras.variants }),
-    ...(extras.variantChanges === undefined ? {} : { mapChanges: extras.variantChanges }),
     ...(multiplayerMap ? { peace: lobby.peace } : {}),
     advanced: entryOnly
       ? { ...lobby.advanced, label: lobby.settingsTitle, title: lobby.settingsTitle }
@@ -90,7 +86,7 @@ export function lobbyOptionsCard(
     controls.update(lobbyRules(options), false);
   }
   paint();
-  if (!entryOnly) card.append(title, ...controls.basicElements);
+  if (!entryOnly) card.append(title, ...(extras.modes ?? []), ...controls.basicElements);
   card.append(...controls.advancedElements);
   return { element: card, paint, dispose: controls.dispose };
 }

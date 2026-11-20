@@ -1,6 +1,6 @@
 # Network protocol
 
-The wire contract between a game client and the relay server, version `PROTOCOL_VERSION = 74` in
+The wire contract between a game client and the relay server, version `PROTOCOL_VERSION = 75` in
 `packages/net-protocol`. A change one side of the current version could not honour (a message shape, or
 the value set of a validated field such as the fog mode ids) bumps the version; the relay refuses a
 `hello` that names another.
@@ -86,9 +86,8 @@ line carries it. A duplicate nick within a room gets a numeric suffix
 one more free observer row.
 
 `settings` is `{ name, world, seed, rules, speed, kickedSeatMode?, initialSave?, mapOrigin?, catalogMap? }`;
-`world` and `rules` are the session descriptor's, and the world is fixed for the room's life. A map
-world's optional `variant` names one of the map's committed variants (`packages/data/src/map-variants/`),
-which also decides the seats the creator lists. Alliances
+`world` and `rules` are the session descriptor's, and the world is fixed for the room's life. A map's
+mode is a map of its own, so a room playing one names the mode's map id. Alliances
 come from the map's diplomacy and in-game diplomacy; while the rules' `alliedVision` is on, the sim joins
 mutual friends into one fog mask and follows later stance changes, so allies explore, see and meet as one
 in every fog mode. The rules' `peace` (30, 45, 60, 75, 90, 120 or 180 minutes, or null) opens a peace from the

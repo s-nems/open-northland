@@ -167,7 +167,7 @@ function joinsSide(
   );
 }
 
-/** A multiplayer map's lineup over `players`, its roster as the chosen variant offers it. A
+/** A multiplayer map's lineup over `players`, its roster as the played map offers it. A
  *  single-player map is played by one person against its script, so it has none. */
 export function mapItemLineup(
   item: MapSelectItem,

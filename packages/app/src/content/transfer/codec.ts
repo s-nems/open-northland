@@ -23,7 +23,9 @@ export function mapDeliveryAllowed(provenance: Pick<MapProvenance, 'kind'> | nul
 
 /** The envelope's JSON travels and is cached as its gzip, base64 encoded; the relay limit bounds the
  *  compressed bytes. */
-const MAP_ENVELOPE_VERSION = 2;
+const MAP_ENVELOPE_VERSION = 3;
+/** The envelope's keys: the two fingerprinted documents and the map's text documents. */
+const ENVELOPE_KEYS = ['version', 'mapId', 'map', 'script', 'strings', 'briefing', 'meta'];
 /** The envelope's own keys and map id beside documents already bounded by the local limit. */
 const ENVELOPE_OVERHEAD_BYTES = 1024;
 const MAX_ENVELOPE_BYTES = MAX_MAP_DOCUMENT_BYTES + ENVELOPE_OVERHEAD_BYTES;
@@ -69,14 +71,15 @@ export async function decodeMapTransfer(
   if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) throw new Error('Invalid map envelope');
   const record = raw as Record<string, unknown>;
   if (
-    Object.keys(record).some((key) => !['version', 'mapId', 'map', 'script'].includes(key)) ||
+    Object.keys(record).some((key) => !ENVELOPE_KEYS.includes(key)) ||
+    ENVELOPE_KEYS.some((key) => !Object.hasOwn(record, key)) ||
     record.version !== MAP_ENVELOPE_VERSION ||
-    record.mapId !== expected.mapId ||
-    !Object.hasOwn(record, 'script')
+    record.mapId !== expected.mapId
   ) {
     throw new Error('Map envelope does not match room');
   }
-  const handle = verifyMapDocuments(expected.mapId, record.map, record.script);
+  const { strings, briefing, meta } = record;
+  const handle = verifyMapDocuments(expected.mapId, record.map, record.script, { strings, briefing, meta });
   if (handle.fingerprint !== expected.fingerprint) throw new Error('Map fingerprint does not match creator');
   return handle;
 }

@@ -110,7 +110,7 @@ const CLIENT_MESSAGES: readonly ClientMessage[] = [
   },
   {
     kind: 'createRoom',
-    settings: { ...settings, world: { kind: 'map', mapId: 'specjalna_forteca', variant: 'ragnarok' } },
+    settings: { ...settings, world: { kind: 'map', mapId: 'specjalna_forteca_ragnarok' } },
     seats: [{ player: 4, mode: 'computer', claimable: true, offers: ['computer', 'idle'], color: 7 }],
   },
   { kind: 'createRoom', settings, seats: [], password: 'tajne hasło' },

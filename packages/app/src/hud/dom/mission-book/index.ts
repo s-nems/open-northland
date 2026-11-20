@@ -71,7 +71,7 @@ export interface MissionBook extends ToolWindow {
   refresh(): void;
   /** Live script messages and goal counters for the watched seat. */
   setInfoLines(rows: readonly MissionInfoRow[]): void;
-  /** The match mode the slip marks under it the whole match, as a map variant names it; null for none. */
+  /** The match mode the slip marks under it the whole match, as a map's mode names it; null for none. */
   setModeMark(text: string | null): void;
   /** The world views the open book shows, for the renderer to paint under its holes. */
   views(): readonly BookView[];

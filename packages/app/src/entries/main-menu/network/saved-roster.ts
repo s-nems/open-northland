@@ -8,7 +8,6 @@ import {
 } from '@open-northland/lockstep';
 import type { RoomSeatSetup } from '@open-northland/net-protocol';
 import type { SaveGame } from '@open-northland/sim';
-import { mapSessionWorld, mapVariantParam } from '../../../game/map/variant.js';
 import {
   dayNightModeParam,
   type ResourceYieldRule,
@@ -28,13 +27,11 @@ export function savedRoster(save: SaveGame) {
   return saved;
 }
 
-/** The map world a save was played on, its variant included: a relayed save's descriptor, else a
- *  single-player launch search. */
+/** The map world a save was played on: a relayed save's descriptor, else the save's own map. */
 export function savedMapWorld(save: SaveGame, mapId: string): SessionWorld {
   const saved = savedRoster(save);
   if (saved !== null) return saved.descriptor.world;
-  const entry = save.header.entry === null ? null : new URLSearchParams(save.header.entry);
-  return mapSessionWorld(mapId, entry === null ? null : mapVariantParam(entry, mapId));
+  return { kind: 'map', mapId };
 }
 
 /** The seats a save was played with: a relayed save's descriptor, else its single-player launch search.

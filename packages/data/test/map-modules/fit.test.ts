@@ -1,19 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import {
-  assertMapModulesFitMap,
-  MAP_VARIANTS,
-  type MapModules,
-  type MapModulesContentNames,
-} from '../../src/index.js';
+import { assertMapModulesFitMap, type MapModules, type MapModulesContentNames } from '../../src/index.js';
+import { MODULES } from './fixture.js';
 
 /** In cells: a 20 x 10 half-cell grid. */
 const SIZE = { width: 10, height: 5 };
-const committed = MAP_VARIANTS.find((row) => row.modules?.siege !== undefined)?.modules;
-if (committed?.siege === undefined) throw new Error('no committed siege to vary');
-const modules: MapModules = committed;
-const siege = committed.siege;
+const modules: MapModules = MODULES;
+if (MODULES.siege === undefined) throw new Error('no fixture siege to vary');
+const siege = MODULES.siege;
 const [firstTarget] = siege.attacks.targets;
-if (firstTarget === undefined) throw new Error('no committed target to vary');
+if (firstTarget === undefined) throw new Error('no fixture target to vary');
 const target = firstTarget;
 const onMap = { x: 1, y: 1 };
 const landing = { spawnX: 1, spawnY: 1, ...onMap };
@@ -21,7 +16,7 @@ const off = { x: 20, y: 0 };
 
 type Siege = NonNullable<MapModules['siege']>;
 
-/** The committed modules moved onto the small map, their siege changed by `change`. */
+/** The fixture modules moved onto the small map, their siege changed by `change`. */
 function fitted(change: (fit: Siege) => Siege = (fit) => fit, heroAt = onMap): MapModules {
   const fit: Siege = {
     ...siege,
@@ -39,12 +34,12 @@ function fitted(change: (fit: Siege) => Siege = (fit) => fit, heroAt = onMap): M
   };
 }
 
-/** A map's sixteen seats, so every seat the committed modules name is on it. */
+/** A map's sixteen seats, so every seat the fixture modules name is on it. */
 const SEAT_COUNT = 16;
 const SEATS = new Set(Array.from({ length: SEAT_COUNT }, (_, seat) => seat));
 const nameSet = (...slugs: (string | undefined)[]) =>
   new Set(slugs.flatMap((s) => (s === undefined ? [] : [s])));
-/** Every slug the committed modules name. */
+/** Every slug the fixture modules name. */
 const NAMES: MapModulesContentNames = {
   jobs: nameSet(
     ...siege.jobMix.map((row) => row.job),

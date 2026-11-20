@@ -1,4 +1,6 @@
 import type {
+  MapProvenance,
+  MapRoomDefaults,
   MapSeatRelation,
   MapsIndexEntry,
   MapsIndexPlayerSlot,
@@ -79,6 +81,21 @@ export interface MapSelectItem {
   readonly minimap: boolean;
   /** The languages the map's briefing narrator speaks; empty when it ships no voices. */
   readonly narration: readonly MapTextLanguage[];
+  /** Where the map came from; `unknown` for a scene and for an entry that does not say. */
+  readonly provenance: MapProvenance['kind'];
+  /** The map is another map (`of`, its id) played by other rules: the mode's name and one-line
+   *  description in the item's language. */
+  readonly mode?: MapSelectMode;
+  /** The room settings a lobby starts at when this map is chosen. */
+  readonly roomDefaults?: MapRoomDefaults;
+  /** The modes {@link foldMapModes} attached to this base map, by name. */
+  readonly modes: readonly MapSelectItem[];
+}
+
+export interface MapSelectMode {
+  readonly of: string;
+  readonly name: string;
+  readonly detail?: string;
 }
 
 /** The row a map lists as, its title and description read in `lang`. */
@@ -88,6 +105,7 @@ export function mapItem(entry: MapsIndexEntry, lang: MapTextLanguage = currentLo
   // The converted mod identifies its tutorial as campaign 100. Using campaign metadata keeps the
   // menu stable when a source folder or generated id is renamed.
   const tutorialStep = entry.campaign?.campaignId === 100 ? entry.campaign.missionId : undefined;
+  const mode = entry.mode === undefined ? undefined : mapSelectMode(entry.mode, entry.id, lang);
   return {
     kind: 'map',
     id: entry.id,
@@ -103,7 +121,51 @@ export function mapItem(entry: MapsIndexEntry, lang: MapTextLanguage = currentLo
     picture: entry.picture,
     minimap: entry.minimap,
     narration: narratedLanguages(entry.voices),
+    provenance: entry.provenance?.kind ?? 'unknown',
+    ...(mode === undefined ? {} : { mode }),
+    ...(entry.roomDefaults === undefined ? {} : { roomDefaults: entry.roomDefaults }),
+    modes: [],
   };
+}
+
+function mapSelectMode(
+  mode: NonNullable<MapsIndexEntry['mode']>,
+  id: string,
+  lang: MapTextLanguage,
+): MapSelectMode {
+  const detail = localizedMapText(mode.detail, lang);
+  return {
+    of: mode.of,
+    name: localizedMapText(mode.name, lang) ?? id,
+    ...(detail === undefined ? {} : { detail }),
+  };
+}
+
+/**
+ * The list with each mode attached to its base map: a mode whose base is in `items` and came from the
+ * same kind of source leaves the list and joins the base's `modes`, sorted by name. A mode whose base
+ * is absent or came from elsewhere, such as a locally imported copy, stays a row of its own.
+ */
+export function foldMapModes(items: readonly MapSelectItem[]): readonly MapSelectItem[] {
+  const bases = new Map(items.map((item) => [item.id, item]));
+  const modesOf = new Map<string, MapSelectItem[]>();
+  for (const item of items) {
+    const base = item.mode === undefined ? undefined : bases.get(item.mode.of);
+    if (base === undefined || base.mode !== undefined || base.provenance !== item.provenance) continue;
+    modesOf.set(base.id, [...(modesOf.get(base.id) ?? []), item]);
+  }
+  if (modesOf.size === 0) return items;
+  const folded = new Set([...modesOf.values()].flat());
+  const compare = compareLabels();
+  return items.flatMap((item) => {
+    if (folded.has(item)) return [];
+    const modes = modesOf.get(item.id);
+    if (modes === undefined) return [item];
+    const byName = [...modes].sort(
+      (a, b) => compare(a.mode?.name ?? a.title, b.mode?.name ?? b.title) || a.id.localeCompare(b.id),
+    );
+    return [{ ...item, modes: byName }];
+  });
 }
 
 /**
@@ -137,6 +199,8 @@ export function sceneItem(id: string, title: string, summary: string): MapSelect
     picture: false,
     minimap: false,
     narration: [],
+    provenance: 'unknown',
+    modes: [],
   };
 }
 
@@ -228,9 +292,14 @@ function matchesFilter(item: MapSelectItem, filter: MapFilter): boolean {
   }
 }
 
+function searchTextOf(item: MapSelectItem): string {
+  return [item.title, item.id, ...item.modes.map((mode) => mode.mode?.name ?? mode.title)].join('\n');
+}
+
 /**
  * The rows a menu shows: those the listing takes, under the chosen tab (`all` is every map but the
- * tutorial lessons, never a scene). Search finds every typed word in the title or the id stem.
+ * tutorial lessons, never a scene). Search finds every typed word in the title, the id stem or the
+ * name of a mode the row offers.
  */
 export function filterItems(
   items: readonly MapSelectItem[],
@@ -240,8 +309,7 @@ export function filterItems(
 ): readonly MapSelectItem[] {
   const words = searchWords(query);
   const matches = items.filter(
-    (item) =>
-      listedIn(item, listing) && matchesFilter(item, filter) && hasWords(`${item.title}\n${item.id}`, words),
+    (item) => listedIn(item, listing) && matchesFilter(item, filter) && hasWords(searchTextOf(item), words),
   );
   if (filter === 'scenes') return matches;
   if (filter === 'tutorial') return matches.sort((a, b) => (a.tutorialStep ?? 0) - (b.tutorialStep ?? 0));

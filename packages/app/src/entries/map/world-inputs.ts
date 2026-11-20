@@ -1,16 +1,10 @@
 import type { ContentSet, MapScript, TerrainMapFile } from '@open-northland/data';
-import {
-  assertMapModulesFitMap,
-  assertMapVariantFitsMap,
-  type MapModulesContentNames,
-  mapLobbySlots,
-} from '@open-northland/data';
+import { assertMapModulesFitMap, type MapModulesContentNames, mapLobbySlots } from '@open-northland/data';
 import { type GameSession, localPlayerOf, parseSavedSessionMetadata } from '@open-northland/lockstep';
 import { DESCRIPTOR_WORLD } from '@open-northland/net-protocol';
 import { type Entity, parseSaveGame, type SaveGame } from '@open-northland/sim';
 import { buildingFootprints } from '../../content/ir/joins.js';
 import type { ContentIr } from '../../content/ir/rows.js';
-import { sessionMapVariant, variantMap, variantScriptWorld } from '../../game/map/variant.js';
 import { resolveAiControlPolicy } from '../../game/match/ai-control-policy.js';
 import { sessionMapScript } from '../../game/match/seat-tribes.js';
 import { assertMapSessionSeats } from '../../game/match/session-roster.js';
@@ -31,7 +25,6 @@ import { buildMapWorld, restoreMapWorld } from './world.js';
 export interface MapWorldInputs {
   readonly map: TerrainMapFile | null;
   readonly ir: ContentIr | null;
-  /** The script as the session's map variant plays it. */
   readonly script: MapScript | null;
   /** Real decoded content; null runs the sandbox catalog. */
   readonly content: ContentSet | null;
@@ -54,20 +47,15 @@ const NO_PLACEMENTS: MapWorldPlacements = { harvestablePlacements: [], pooledPla
 
 /** Build or restore the world standing at a tick boundary; throws when a save does not fit it. */
 export function buildMapWorldFromInputs(inputs: MapWorldInputs): BuiltWorld<MapWorldPlacements> {
-  const { ir, script, session, save } = inputs;
-  const variant = sessionMapVariant(session.world);
-  if (variant !== null && inputs.map !== null) {
-    assertMapVariantFitsMap(variant, inputs.map);
-    if (variant.modules !== undefined)
-      assertMapModulesFitMap(variant.modules, inputs.map, {
-        seats: script === null ? null : new Set(script.players.map((row) => row.player)),
-        names: contentNamesOf(ir),
-      });
-  }
-  const map = variantMap(inputs.map, session.world);
+  const { ir, map, script, session, save } = inputs;
+  if (script?.modules !== undefined && map !== null)
+    assertMapModulesFitMap(script.modules, map, {
+      seats: new Set(script.players.map((row) => row.player)),
+      names: contentNamesOf(ir),
+    });
   // The render layers read the raw map; the sim runs on the collision resolution of the same map.
   const seated = sessionMapScript(session, script, ir);
-  const missionWorld = variantScriptWorld(seated.world, session.world);
+  const missionWorld = seated.world;
   const worldOptions = {
     script: missionWorld,
     map,
@@ -86,7 +74,6 @@ export function buildMapWorldFromInputs(inputs: MapWorldInputs): BuiltWorld<MapW
   const world = buildMapWorld({
     ...worldOptions,
     ...sessionWorldOptions(session, script, missionWorld),
-    landscapeObjects: variant?.landscapeObjects ?? [],
     seed: session.seed,
     missions: inputs.missions,
     seatTribes: seated.remap,

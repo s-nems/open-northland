@@ -60,11 +60,11 @@ export interface MapEscalationProgress {
   catapults: MapEscalationCatapultRecord[] | null;
   /** The ships under way, in launch order. */
   landings: MapEscalationLandingRecord[];
-  /** Each targeted seat's aim, in the variant's target order; a seat without a record has not been aimed at yet. */
+  /** Each targeted seat's aim, in the siege's target order; a seat without a record has not been aimed at yet. */
   focus: MapEscalationFocusRecord[];
   /** Whether the start's computer seats were looked at for soldiers to turn civilian. */
   demobilized: boolean;
-  /** The defenders placed at match start, in the variant's order, a dead one kept; null before. */
+  /** The defenders placed at match start, in the siege's order, a dead one kept; null before. */
   heroes: Entity[] | null;
 }
 

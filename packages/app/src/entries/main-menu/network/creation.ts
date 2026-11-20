@@ -9,7 +9,7 @@ import {
   readVerifiedMapDocuments,
 } from '../../../content/transfer/index.js';
 import { assertMultiplayerMap } from '../../../game/map/multiplayer.js';
-import { mapSessionWorld, variantMapScript, withVariantOreYield } from '../../../game/map/variant.js';
+import { withMapOreYield } from '../../../game/match/session-rules.js';
 import { DEFAULT_SESSION_SPEED, drawSessionSeed, mapSession } from '../../../game/match/session-url.js';
 import { initialLobbyOptions, lobbyRules } from '../lobby/model.js';
 import {
@@ -37,11 +37,8 @@ export async function prepareRoomCreation(choice: CreateChoice, params: URLSearc
   const cached = local === null ? await loadPersistedMap(mapId) : null;
   const handle = local ?? cached?.handle ?? null;
   if (handle === null) throw new Error('Missing map');
-  const world =
-    save === null
-      ? mapSessionWorld(mapId, choice.kind === 'map' ? choice.variant : null)
-      : savedMapWorld(save, mapId);
-  const script = variantMapScript(readVerifiedMapDocuments(handle).script, world);
+  const world = save === null ? ({ kind: 'map', mapId } as const) : savedMapWorld(save, mapId);
+  const script = readVerifiedMapDocuments(handle).script;
   assertMultiplayerMap(script);
   const metadata = playable?.entry;
   const players = script === null ? [] : mapLobbySlots(script);
@@ -80,7 +77,7 @@ export async function prepareRoomCreation(choice: CreateChoice, params: URLSearc
   const savedSession = save === null ? null : savedRoster(save);
   const rules =
     save === null
-      ? withVariantOreYield(lobbyRules(initialLobbyOptions(params, ROOM_ALLIED_VISION)), world)
+      ? withMapOreYield(lobbyRules(initialLobbyOptions(params, ROOM_ALLIED_VISION)), metadata?.roomDefaults)
       : await validateNetworkSave(save, handle);
   // The saving client's fog memory is its own seat's alone: every member would download it for nothing.
   const initial: PreparedNetworkSave | null =

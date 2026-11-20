@@ -211,11 +211,6 @@ export const chsSurfaces = {
         on: '随时间增长',
         off: '关闭',
       },
-      variantNames: { ragnarok: '诸神黄昏' },
-      variantDetails: {
-        ragnarok:
-          '更难的模式：要塞按时间表发动进攻，军队规模不断扩大，并从海上登陆；其战士获得更好的装备，矿藏产出也更多。',
-      },
       weatherLabel: '天气',
       weatherModes: {
         map: { label: '地图', detail: '仅使用地图自身设定的天气。' },

@@ -21,13 +21,6 @@ describe('worldTitle', () => {
     expect(worldTitle({ kind: 'scene', sceneId: 'sandbox' }, mapNames, 'eng')).toBe('Open sandbox');
   });
 
-  it('adds the variant’s localized label for a room that plays one', () => {
-    const ragnarok = { kind: 'map', mapId: 'arabian', variant: 'ragnarok' } as const;
-    expect(worldTitle(ragnarok, mapNames, 'eng')).toBe('ARABIAN ISLANDS · Ragnarök');
-    expect(worldTitle({ ...ragnarok, mapId: 'unlisted' }, mapNames, 'rus')).toBe('unlisted · Рагнарёк');
-    expect(worldTitle({ ...ragnarok, variant: 'unknown' }, mapNames, 'pol')).toBe('ARABSKIE WYSPY · unknown');
-  });
-
   it('falls back to the id before the map listing answers or for an unknown world', () => {
     expect(worldTitle({ kind: 'map', mapId: 'unlisted' }, new Map(), 'eng')).toBe('unlisted');
     expect(worldTitle({ kind: 'scene', sceneId: 'no-such-scene' }, mapNames, 'eng')).toBe('no-such-scene');

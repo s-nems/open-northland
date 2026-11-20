@@ -16,7 +16,6 @@ function hostFailing(error: Error, multiplayer = false): Promise<null> {
   const plan: MapBootPlan<never> = {
     hostWorld: () => Promise.reject(error),
     mapId: 'forest',
-    variant: null,
     stagedSave: { header: { tick: 40, mapId: 'forest', view: null }, presentation: null },
     sessionFor: () => ({}) as GameSession,
     multiplayer,

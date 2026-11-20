@@ -46,7 +46,7 @@ const MAX_PENDING = 300;
 const SIGNPOST_REACH = 6;
 /** A pick takes its unit on the stroke that lands. */
 const PICK_STROKES = 1;
-/** A mushroom holding this many picks, as a map variant's richer yield lays one. */
+/** A mushroom holding this many picks, as a richer resource setting lays one. */
 const PICKS = 2;
 const TREE_REGROWTH = {
   kind: 'tree',

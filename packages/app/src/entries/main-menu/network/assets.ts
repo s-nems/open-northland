@@ -19,7 +19,6 @@ import {
   readVerifiedMapDocuments,
   type VerifiedMapDocuments,
 } from '../../../content/transfer/index.js';
-import { variantMapScript } from '../../../game/map/variant.js';
 import { type PreparedNetworkSave, validateNetworkSave } from './save.js';
 
 interface AssetServices {
@@ -66,10 +65,7 @@ export function roomAssets(
     onVerified(handle) {
       if (disposed || room?.state !== 'lobby') return;
       map = handle;
-      const script =
-        handle === null
-          ? null
-          : variantMapScript(readVerifiedMapDocuments(handle).script, room.settings.world);
+      const script = handle === null ? null : readVerifiedMapDocuments(handle).script;
       const previousSlots = mapSlots;
       mapSlots = script === null ? null : mapLobbySlots(script);
       mapRelations = script === null ? null : mapSeatRelations(script);

@@ -21,6 +21,7 @@ import {
   type RuleSection,
 } from '@open-northland/formats/ini';
 import { DecodeLimitError } from '@open-northland/formats/limit';
+import { additionsMeta, readMapAdditions, scriptWithModules, terrainWithObjectEdits } from './additions.js';
 import { cutsceneIdsOf, type ResolvedBriefing, resolveMapBriefing } from './briefing.js';
 import { sha256Hex } from './digest.js';
 import { errorMessage, MapImportError } from './errors.js';
@@ -264,6 +265,8 @@ export async function convertMapFolder(
     const objects = options.correctObjects(sourceFile(MAP_DAT_FILE), dat, terrain);
     terrain = objects === undefined ? rest : { ...rest, objects };
   }
+  const additions = readMapAdditions(folder);
+  if (additions !== undefined) terrain = terrainWithObjectEdits(folder, additions, terrain);
 
   report('entities');
   const unknownVerbs = new Set<string>();
@@ -312,7 +315,11 @@ export async function convertMapFolder(
     kind: typeof options.provenance === 'function' ? options.provenance(folder.path) : options.provenance,
     folder: folder.path,
   };
-  const meta: MapMeta = { ...resolveMapMeta(folder, cifSections, stringTables), provenance };
+  const meta: MapMeta = {
+    ...resolveMapMeta(folder, cifSections, stringTables),
+    ...(additions === undefined ? {} : additionsMeta(folder, additions, stringTables)),
+    provenance,
+  };
 
   report('script');
   let script: MapScript | undefined;
@@ -322,6 +329,7 @@ export async function convertMapFolder(
     // A schema-invalid script degrades that map to no roster rather than aborting the batch.
     folder.warn(`script undecodable: ${errorMessage(err)}`);
   }
+  if (additions !== undefined) script = scriptWithModules(folder, additions, script, terrain, stringTables);
 
   report('briefing');
   const availableCharacters = Math.min(

@@ -11,7 +11,6 @@ import {
   serializeSaveGame,
 } from '@open-northland/sim';
 import type { FogModeName } from '../src/game/fog.js';
-import { mapSessionWorld, mapVariantParam, variantMapScript } from '../src/game/map/variant.js';
 import { mapIdParam, mapSession, seedParam, sessionSearch } from '../src/game/match/session-url.js';
 import { loadContentUnderTest } from '../test/real-content/helpers.js';
 import { realMapScript, realMapWorldOfSession } from '../test/real-content/real-map-world.js';
@@ -148,7 +147,7 @@ function queryOf(raw: string): string {
 }
 
 /**
- * The session a browser would boot for `search`, against the roster of the map variant it names. Keys the `?map=`
+ * The session a browser would boot for `search`, against the roster of the map it names. Keys the `?map=`
  * entry does not read, such as `lang`, are ignored. Only the defaults differ from the browser's: fog
  * {@link BENCH_FOG} and seed {@link DEFAULT_SEED} when the search names none.
  */
@@ -162,10 +161,7 @@ export function benchSession(search: URLSearchParams): BenchSession {
       throw new Error(`the session names seed '${params.get('seed')}', which is no seed`);
     params.set('seed', `${DEFAULT_SEED}`);
   }
-  const script = variantMapScript(
-    realMapScript(mapId),
-    mapSessionWorld(mapId, mapVariantParam(params, mapId)),
-  );
+  const script = realMapScript(mapId);
   const roster = script === null ? [] : mapLobbySlots(script);
   const game = mapSession(params, roster);
   return { mapId, game, search: decodeURIComponent(sessionSearch(game, roster).toString()) };

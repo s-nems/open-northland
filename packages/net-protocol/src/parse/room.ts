@@ -142,11 +142,8 @@ function parseSessionWorld(value: unknown, at: string): SessionWorld {
   const raw = asRecord(value, at);
   const kind = asOneOf(raw.kind, ['map', 'scene'], `${at}.kind`);
   switch (kind) {
-    case 'map': {
-      const mapId = parseLine(raw.mapId, `${at}.mapId`, MAX_WORLD_ID_LENGTH);
-      if (raw.variant === undefined) return { kind, mapId };
-      return { kind, mapId, variant: parseLine(raw.variant, `${at}.variant`, MAX_WORLD_ID_LENGTH) };
-    }
+    case 'map':
+      return { kind, mapId: parseLine(raw.mapId, `${at}.mapId`, MAX_WORLD_ID_LENGTH) };
     case 'scene':
       return { kind, sceneId: parseLine(raw.sceneId, `${at}.sceneId`, MAX_WORLD_ID_LENGTH) };
     default:

@@ -3,11 +3,11 @@ import { describe, expect, it } from 'vitest';
 import {
   initialLobbyOptions,
   initialLobbyState,
-  lobbyPlayers,
   lobbySession,
   lobbySlotRows,
   lobbyStartEntry,
   localLobbyOptions,
+  oreYieldAcrossMaps,
 } from '../../../../src/entries/main-menu/lobby/model.js';
 import {
   claimSeat,
@@ -51,34 +51,20 @@ describe('initialLobbyState', () => {
   });
 });
 
-describe('lobbyPlayers', () => {
-  /** Forteca's two villages: map AI seats the authored map reserves and Ragnarök opens. */
-  const VILLAGES = [4, 5];
-  const forteca = [
-    slot(0, { claimable: true }),
-    ...VILLAGES.map((player) => slot(player, { aiAllowed: true, noneAllowed: false })),
-  ];
+describe('oreYieldAcrossMaps', () => {
+  const BASE = {};
+  const MODE = { roomDefaults: { oreYield: 3 } } as const;
+  const PLAYER_CHOICE = 5;
 
-  it('opens the seats a picked variant offers, and launches the variant', () => {
-    const players = lobbyPlayers('specjalna_forteca', forteca, 'ragnarok');
-    const state = initialLobbyState(players);
-
-    expect(lobbySlotRows(players, state).map((row) => row.kind)).toEqual(['yours', 'open', 'open']);
-    expect(lobbySlotRows(forteca, initialLobbyState(forteca)).map((row) => row.kind)).toEqual([
-      'yours',
-      'scenario',
-      'scenario',
-    ]);
-    const session = lobbySession('specjalna_forteca', state, players, OPTIONS, SEED, 'ragnarok');
-    expect(session.world).toEqual({ kind: 'map', mapId: 'specjalna_forteca', variant: 'ragnarok' });
-    expect(session.seats.filter((seat) => VILLAGES.includes(seat.player)).map((seat) => seat.mode)).toEqual([
-      'computer',
-      'computer',
-    ]);
+  it('takes the mode default when a mode turns on, and gives the player choice back when it turns off', () => {
+    const on = oreYieldAcrossMaps(BASE, MODE, { oreYield: PLAYER_CHOICE, own: null });
+    expect(on).toEqual({ oreYield: 3, own: PLAYER_CHOICE });
+    expect(oreYieldAcrossMaps(MODE, BASE, on)).toEqual({ oreYield: PLAYER_CHOICE, own: PLAYER_CHOICE });
   });
 
-  it('keeps the roster of a map without that variant', () => {
-    expect(lobbyPlayers('zatoka', forteca, 'ragnarok')).toBe(forteca);
+  it('keeps a choice made over a mode default as the player own', () => {
+    const off = oreYieldAcrossMaps(MODE, BASE, { oreYield: 2, own: null });
+    expect(off).toEqual({ oreYield: 2, own: 2 });
   });
 });
 

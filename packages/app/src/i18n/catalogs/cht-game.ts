@@ -11,7 +11,7 @@ export const chtGame = {
     escalation: {
       nextAttack: '下次進攻：{time} 後',
       attackRunning: '進攻進行中',
-      modeMark: '{variant}模式',
+      modeMark: '{mode}模式',
     },
     armyOrderLimit: '一道命令最多只能選取 {limit} 個單位。沒有任何單位收到這道命令。',
     diplomacyMap: {

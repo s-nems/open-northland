@@ -16,7 +16,6 @@ import {
   type VerifiedMapDocuments,
 } from '../../../content/transfer/index.js';
 import { assertMultiplayerMap } from '../../../game/map/multiplayer.js';
-import { variantMap, variantMapScript, variantScriptWorld } from '../../../game/map/variant.js';
 import { sessionMapScript } from '../../../game/match/seat-tribes.js';
 import { decodeSaveText, type SaveBytes } from '../../../view/runtime/save-load/codec.js';
 import { evaluateSaveDocument } from '../../../view/runtime/save-load/evaluate.js';
@@ -25,7 +24,6 @@ import { authoredVacantMode, vacantOffers } from '../lobby/roster-state.js';
 import {
   restoreSavedSeats,
   savedDayNightMode,
-  savedMapWorld,
   savedResourceYield,
   savedSessionSeats,
   savedWeatherMode,
@@ -42,10 +40,7 @@ export async function validateNetworkSave(save: SaveGame, handle: VerifiedMapDoc
   if (save.header.mapId !== handle.mapId) throw new Error('Save belongs to another map');
   const [ir, runtime] = await Promise.all([loadIr(), loadRuntimeRealContent()]);
   if (ir === null || runtime === null) throw new Error('Missing game content');
-  const documents = readVerifiedMapDocuments(handle);
-  const world = savedMapWorld(save, handle.mapId);
-  const map = variantMap(documents.map, world);
-  const script = variantMapScript(documents.script, world);
+  const { map, script } = readVerifiedMapDocuments(handle);
   assertMultiplayerMap(script);
   const slots = script === null ? [] : mapLobbySlots(script);
   restoreSavedSeats(
@@ -64,7 +59,7 @@ export async function validateNetworkSave(save: SaveGame, handle: VerifiedMapDoc
       map,
       ir,
       playerRoster: seated.script?.players ?? [],
-      script: variantScriptWorld(seated.world, world),
+      script: seated.world,
       content: { content: runtime.content, footprints: buildingFootprints(ir) },
     },
     save,

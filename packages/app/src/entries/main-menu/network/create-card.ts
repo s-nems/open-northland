@@ -1,4 +1,3 @@
-import type { MapVariantKind } from '@open-northland/data';
 import { MAX_ROOM_NAME_LENGTH, MAX_ROOM_PASSWORD_LENGTH } from '@open-northland/net-protocol';
 import { errorText } from '../../../diag/error-text.js';
 import { quietPasswordField, quietTextField } from '../../../hud/dom/parts/text-field.js';
@@ -9,7 +8,7 @@ import { browserSaveStore } from '../../../view/runtime/save-load/store-browser.
 import { worldNameIndex } from '../../../view/runtime/save-load/world-names.js';
 import { segControl } from '../../../view/settings/controls.js';
 import { node } from '../dom.js';
-import { mapVariantToggles } from '../lobby-controls/variant.js';
+import { mapModeToggles } from '../lobby-controls/mode.js';
 import { metaLine, paintMapThumb } from '../map-select/card.js';
 import type { MapSelectItem } from '../map-select/model.js';
 import { button, field } from './parts.js';
@@ -19,8 +18,8 @@ import type { RoomSave } from './save-pick.js';
 export type CreateChoice = (
   | {
       readonly kind: 'map';
+      /** The chosen map, or the chosen mode of it. */
       readonly mapId: string;
-      readonly variant: MapVariantKind | null;
       readonly name: string;
     }
   | { readonly kind: 'save'; readonly bytes: SaveBytes; readonly name: string }
@@ -95,9 +94,9 @@ export function createRoomCard(options: CreateCardOptions) {
   /** The chosen slot's picture, released when the choice changes. */
   let savePicture: string | null = null;
   const mapPick = pickField(copy.map, copy.changeMap, options.pickMap);
-  // The variant toggles of a map that ships variants; empty for any other.
-  const variantField = node('div');
-  let chosenVariant: MapVariantKind | null = null;
+  // The mode toggles of a map that has modes; empty for any other.
+  const modeField = node('div');
+  let chosenMode: MapSelectItem | null = null;
   const status = node('p', 'network-menu__notice');
   status.setAttribute('role', 'status');
   const store = browserSaveStore();
@@ -109,7 +108,7 @@ export function createRoomCard(options: CreateCardOptions) {
   const sync = (): void => {
     savePick.field.hidden = source !== 'save';
     mapPick.field.hidden = source !== 'map';
-    variantField.hidden = source !== 'map';
+    modeField.hidden = source !== 'map';
     for (const input of [name, password, mapPick.change, savePick.change]) input.disabled = !enabled || busy;
     for (const segment of mode.root.querySelectorAll('button')) segment.disabled = !enabled || busy;
     submit.disabled = !enabled || busy || (source === 'map' ? chosen === null : chosenSave === null);
@@ -138,7 +137,7 @@ export function createRoomCard(options: CreateCardOptions) {
       if (source === 'map')
         return chosen === null
           ? null
-          : { kind: 'map', mapId: chosen.id, variant: chosenVariant, name: name.value.trim(), ...locked() };
+          : { kind: 'map', mapId: (chosenMode ?? chosen).id, name: name.value.trim(), ...locked() };
       if (chosenSave === null) return null;
       const bytes = chosenSave.kind === 'file' ? chosenSave.bytes : await store.read(chosenSave.slot.id);
       if (bytes === null) throw new Error(copy.saveInvalid);
@@ -151,7 +150,7 @@ export function createRoomCard(options: CreateCardOptions) {
     field(copy.roomPassword, password),
     sourceField,
     mapPick.field,
-    variantField,
+    modeField,
     savePick.field,
     submit,
     status,
@@ -171,19 +170,13 @@ export function createRoomCard(options: CreateCardOptions) {
     setMap(item: MapSelectItem | null) {
       chosen = item;
       mapsEmpty = item === null;
-      chosenVariant = null;
-      const lobby = messages().mainMenu.lobby;
-      variantField.replaceChildren(
+      chosenMode = null;
+      modeField.replaceChildren(
         ...(item === null
           ? []
-          : mapVariantToggles(
-              item.id,
-              { names: lobby.variantNames, details: lobby.variantDetails },
-              chosenVariant,
-              (next) => {
-                chosenVariant = next;
-              },
-            )),
+          : mapModeToggles(item, chosenMode, (next) => {
+              chosenMode = next;
+            })),
       );
       mapPick.name.textContent = item?.title ?? copy.noMaps;
       mapPick.meta.textContent = item === null ? '' : metaLine(item);

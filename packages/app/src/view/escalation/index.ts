@@ -1,4 +1,4 @@
-import type { MapNotice, MapVariant } from '@open-northland/data';
+import type { MapNotice } from '@open-northland/data';
 import type { SimEvent } from '@open-northland/sim';
 import type { MissionInfoRow } from '../../game/map/info-lines.js';
 import { createCentreNotice } from '../../hud/dom/centre-notice.js';
@@ -16,8 +16,9 @@ import {
 
 export interface SiegePresentationDeps {
   readonly host: Pick<SessionHost, 'mapEscalation'>;
-  /** The variant the session plays, which names the mode mark and the attack notice; null for none. */
-  readonly variant: MapVariant | null;
+  /** The localized name of the mode the played map is, which the mode mark shows; null for a map that
+   *  is no mode. */
+  readonly modeName: string | null;
   readonly plane: HTMLElement;
   /** The map's own strings by id, in the player's map text language; the notices' words. */
   readonly mapText: (stringId: number) => string | undefined;
@@ -30,7 +31,7 @@ export interface SiegePresentationDeps {
   readonly now: () => number;
 }
 
-/** How a map variant's siege shows: the mode mark on the goal slip, its centre-screen notices, the music and the night of an
+/** How a map's siege shows: the mode mark on the goal slip, its centre-screen notices, the music and the night of an
  *  attack, and the countdown lines at the head of the goal panel's rows. */
 export interface SiegePresentation {
   onEvents(events: readonly SimEvent[]): void;
@@ -54,10 +55,9 @@ export function mountSiegePresentation(deps: SiegePresentationDeps): SiegePresen
       if (events.some((event) => event.kind === 'mapEscalationAttackLaunched')) deps.playAttackMusic();
     },
     frame() {
-      if (!marked && deps.variant !== null) {
+      if (!marked && deps.modeName !== null) {
         marked = true;
-        const variant = messages().mainMenu.lobby.variantNames[deps.variant.kind];
-        deps.setModeMark(formatMessage(messages().hud.escalation.modeMark, { variant }));
+        deps.setModeMark(formatMessage(messages().hud.escalation.modeMark, { mode: deps.modeName }));
       }
       const running = deps.host.mapEscalation()?.attackRunning === true;
       if (running !== night) {

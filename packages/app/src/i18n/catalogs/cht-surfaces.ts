@@ -211,11 +211,6 @@ export const chtSurfaces = {
         on: '隨時間增加',
         off: '停用',
       },
-      variantNames: { ragnarok: '諸神黃昏' },
-      variantDetails: {
-        ragnarok:
-          '更難的模式：要塞按時間表發動進攻，軍隊規模不斷擴大，並從海上登陸；其戰士獲得更好的裝備，礦藏產出也更多。',
-      },
       weatherLabel: '天氣',
       weatherModes: {
         map: { label: '地圖', detail: '只有地圖本身設定的天氣。' },

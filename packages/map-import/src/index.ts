@@ -39,4 +39,5 @@ export {
 } from './overlays.js';
 export { collectPagePictures, type PagePictures } from './pictures.js';
 export { type MapDatTerrainFile, mapDatToTerrain } from './terrain/index.js';
+export { applyMapObjectEdits, sameMapObject } from './terrain/object-edits.js';
 export { isMapTreePath, type MapTree, treeFromFolder } from './tree.js';
