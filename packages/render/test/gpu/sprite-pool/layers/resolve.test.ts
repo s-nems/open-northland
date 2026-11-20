@@ -20,6 +20,10 @@ const shadowSource = {} as TextureSource;
 const withoutGroundOverlays = (layers: readonly ResolvedLayer[] | null): readonly ResolvedLayer[] =>
   (layers ?? []).filter((l) => l.groundFoot !== 'shade' && l.groundFoot !== 'cover');
 
+/** A resolve without a site's finished body, which only its selection outline draws. */
+const drawnStages = (layers: readonly ResolvedLayer[] | null): readonly ResolvedLayer[] =>
+  (layers ?? []).filter((l) => l.outlineOnly !== true);
+
 /** A resolve with each ground overlay's first strip standing for all of its strips. */
 const oneStripEach = (layers: readonly ResolvedLayer[] | null): readonly ResolvedLayer[] =>
   (layers ?? []).filter((l) => (l.footStrip ?? 0) === 0);
@@ -271,8 +275,16 @@ describe('resolveLayers - construction reveal: per-pixel with time data, crop fa
     families: { houses: sheetTimes !== undefined ? { source, atlas, times: sheetTimes } : { source, atlas } },
   });
 
+  it('carries the finished body under the stages for the outline alone, from the first percent', () => {
+    const layers = resolveLayers(sheetWith(undefined), { ...site, builtPct: 0 }, 0) ?? [];
+    expect(layers.map((l) => [l.frame.x, l.outlineOnly, l.alpha, l.boundsExempt])).toEqual([
+      [70, true, 0, true],
+      [85, undefined, undefined, undefined],
+    ]);
+  });
+
   it('with a time sheet, every active stage reveals per-pixel in its own window - the finished bob too', () => {
-    const layers = resolveLayers(sheetWith(times), site, 0) ?? [];
+    const layers = drawnStages(resolveLayers(sheetWith(times), site, 0));
     expect(layers.map((l) => [l.frame.x, l.reveal, l.revealWindow, l.times === times])).toEqual([
       [85, 0.3, [0, 60], true],
       [70, 0.3, [20, 100], true],
@@ -283,9 +295,28 @@ describe('resolveLayers - construction reveal: per-pixel with time data, crop fa
     ['without one', undefined],
     ['with one that is zero under every frame', zeroTimes],
   ])('%s, scaffold stages crop-reveal and the finished bob waits for completion', (_, sheetTimes) => {
-    const layers = resolveLayers(sheetWith(sheetTimes), site, 0) ?? [];
+    const layers = drawnStages(resolveLayers(sheetWith(sheetTimes), site, 0));
     expect(layers.map((l) => [l.frame.x, l.reveal, l.revealWindow ?? null, l.times ?? null])).toEqual([
       [85, 0.3, null, null],
+    ]);
+  });
+
+  it("carries an upgrade's next-tier body for the outline alone, over the old body it keeps", () => {
+    const NEXT_TIER = 14;
+    const upgrading: SpriteSheet = {
+      ...sheetWith(undefined),
+      bindings: {
+        settler: 1,
+        resource: 1,
+        building: { ...building, byType: { ...building.byType, [NEXT_TIER]: { layer: 'houses', bob: 85 } } },
+      },
+    };
+    const { builtPct: _, ...built } = site;
+    const upgrade: DrawItem = { ...built, upgradePct: 0, upgradeTypeId: NEXT_TIER };
+    const layers = withoutGroundOverlays(resolveLayers(upgrading, upgrade, 0));
+    expect(layers.map((l) => [l.frame.x, l.outlineOnly ?? false])).toEqual([
+      [70, false],
+      [85, true],
     ]);
   });
 });
@@ -657,7 +688,7 @@ describe('resolveLayers - cast shadows draw under the body from the atlas shadow
 
   it('keeps the construction stack shadow-less (stage shadows are the shadowBobId lane)', () => {
     const site: DrawItem = { ...finished, builtPct: 30 };
-    const layers = resolveLayers(sheet, site, 0) ?? [];
+    const layers = drawnStages(resolveLayers(sheet, site, 0));
     expect(layers.map((l) => [l.frame.x, l.source === shadowSource])).toEqual([[60, false]]);
   });
 

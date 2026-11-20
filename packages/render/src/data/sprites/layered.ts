@@ -161,6 +161,18 @@ export function resolveUpgradeConstructionDraws(
   return constructionStack(binding, item, item.upgradeTypeId, item.upgradePct);
 }
 
+/** The finished body an upgrading building becomes: its target type's body in its own tribe skin, or
+ *  `null` when it is not upgrading or the target draws no body there. */
+export function resolveUpgradeTargetDraw(
+  binding: number | BuildingTypeBinding,
+  item: DrawItem,
+): BuildingDraw | null {
+  if (typeof binding === 'number' || item.upgradePct === undefined || item.upgradeTypeId === undefined)
+    return null;
+  const body = byTypeFor(binding, item, (t) => t.byType, item.upgradeTypeId);
+  return body === undefined ? null : unwrapBobRef(body);
+}
+
 /** Whether the drawing tribe's upgrade rows show this upgrade: they hold only the next tier's body, so
  *  a site skipping tiers rises as its target's construction stack instead. */
 export function raisesUpgradeRows(binding: number | BuildingTypeBinding, item: DrawItem): boolean {

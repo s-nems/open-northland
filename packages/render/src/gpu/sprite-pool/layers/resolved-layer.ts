@@ -38,6 +38,9 @@ export interface ResolvedLayer {
   /** Fades from opaque at this build progress (a whole percent) to clear at 100: an upgrade site's old
    *  body giving way to the next tier rising around it. */
   readonly fadeOutFromPct?: number;
+  /** A site's finished body, bound at zero {@link alpha} so that only its selection outline shows: the
+   *  hover and the selection trace the building the site becomes. Always also {@link boundsExempt}. */
+  readonly outlineOnly?: true;
   /** Excluded from the entity's stamped bounds: a building's animated state overlay (the mill's rotor)
    *  breathes in size and offset per frame and must not move the box. It still draws and still
    *  pixel-hit-tests. */

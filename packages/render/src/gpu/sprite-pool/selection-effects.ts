@@ -1,7 +1,7 @@
 import { Container, Matrix, type ObservablePoint, Texture } from 'pixi.js';
 import type { AtlasFrame } from '../../data/sprites/index.js';
 import { PalettedSprite } from '../paletted-sprite/index.js';
-import { OutlineSprite, SelectionGraphics } from '../selection/sprite-effect.js';
+import { GhostOutlineSprite, OutlineSprite, SelectionGraphics } from '../selection/sprite-effect.js';
 import {
   LIFT_TONE_CODE,
   type SelectionStyle,
@@ -129,17 +129,19 @@ export class SelectionEffects {
     inputs.wide = wide;
     inputs.bodySerial = bodySerial ?? Number.NaN;
     let count = 0;
+    const target = tracesTarget(pe);
     for (const pass of wide ? WIDE_OUTLINE_PASSES : OUTLINE_PASSES) {
       const reach = pass.radius / zoom;
       const colour = pass.colour ?? outlineColour;
       for (let i = 0; i < pe.sprites.length; i++) {
         const body = pe.sprites[i];
-        if (body === undefined || !body.visible || body.alpha === 0 || (!pe.paletted && pe.pickExempt[i]))
-          continue;
+        if (body === undefined || !body.visible || (!pe.paletted && pe.pickExempt[i])) continue;
+        if (target ? !isOutlineOnly(pe, i) : body.alpha === 0) continue;
         if ('glow' in body && body.glow === true) continue;
-        const quad = outlineQuadAt(outline, count++);
+        // The finished body draws at zero alpha, so its outline is a ring with the inside clear.
+        const quad = outlineQuadAt(outline, count++, target);
         if (quad.tint !== colour) quad.tint = colour;
-        quad.alpha = body.alpha;
+        quad.alpha = target ? 1 : body.alpha;
         let texture: Texture;
         if (body instanceof PalettedSprite) {
           const frame = body.frame;
@@ -218,12 +220,29 @@ export class SelectionEffects {
   }
 }
 
-/** The outline quad at `index` among `outline`'s children, minted over whatever stood there. */
-function outlineQuadAt(outline: Container<OutlineSprite | SelectionGraphics>, index: number): OutlineSprite {
+/** Whether `pe` slot `i` holds a site's finished body, drawn only by its outline. */
+function isOutlineOnly(pe: PooledEntity, i: number): boolean {
+  return !pe.paletted && pe.slotLayers[i]?.outlineOnly === true;
+}
+
+/** Whether `pe` is a site whose outline traces the finished building alone, not the stages standing. */
+function tracesTarget(pe: PooledEntity): boolean {
+  if (pe.paletted) return false;
+  for (let i = 0; i < pe.sprites.length; i++) if (isOutlineOnly(pe, i)) return true;
+  return false;
+}
+
+/** The outline quad at `index` among `outline`'s children, a `ring` or a filled one, minted over whatever
+ *  stood there. */
+function outlineQuadAt(
+  outline: Container<OutlineSprite | SelectionGraphics>,
+  index: number,
+  ring: boolean,
+): OutlineSprite {
   const held = outline.children[index];
-  if (held instanceof OutlineSprite) return held;
+  if (held instanceof OutlineSprite && held instanceof GhostOutlineSprite === ring) return held;
   held?.destroy();
-  const quad = worldBatched(new OutlineSprite());
+  const quad = worldBatched(ring ? new GhostOutlineSprite() : new OutlineSprite());
   outline.addChildAt(quad, index);
   return quad;
 }

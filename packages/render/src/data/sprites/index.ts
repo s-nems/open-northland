@@ -28,6 +28,7 @@ export {
   resolveStockpileDraw,
   resolveUpgradeConstructionDraws,
   resolveUpgradeDraws,
+  resolveUpgradeTargetDraw,
 } from './layered.js';
 export type {
   AuthoredBuildingDraw,

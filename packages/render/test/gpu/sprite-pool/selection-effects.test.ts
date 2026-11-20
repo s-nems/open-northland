@@ -6,7 +6,7 @@ import { LIFT_TONE_CODE, targetFlashLight } from '../../../src/gpu/selection/sty
 import { createPooled } from '../../../src/gpu/sprite-pool/pooled-entity.js';
 import { SelectionEffects } from '../../../src/gpu/sprite-pool/selection-effects.js';
 import { TextureCache } from '../../../src/gpu/textures/texture-cache.js';
-import { SELECTION_TONE_BAND } from '../../../src/gpu/world-batch/shader.js';
+import { SELECTION_GHOST_OUTLINE, SELECTION_TONE_BAND } from '../../../src/gpu/world-batch/shader.js';
 import { syntheticHumanLut } from '../../support/human-palettes.js';
 import { useHeadlessShaderContext } from '../../support/shader-context.js';
 
@@ -62,6 +62,35 @@ it('outlines the visible body, excludes shadows, and releases the outline when t
   effects.clear(pe);
   expect(body.selectionEffect).toBe(0);
   expect(pe.container.children).toEqual([shadow, body]);
+  pe.container.destroy({ children: true });
+  textures.clear();
+});
+
+it("traces a site's finished body alone, as a ring with its inside clear", () => {
+  const textures = new TextureCache();
+  const effects = new SelectionEffects(textures);
+  const pe = createPooled('building', undefined);
+  if (pe.paletted) throw new Error('Expected a plain building');
+  const finished = new SelectionSprite(Texture.WHITE);
+  finished.alpha = 0;
+  const stage = new SelectionSprite(Texture.WHITE);
+  pe.sprites.push(finished, stage);
+  pe.pickExempt.push(false, false);
+  const layer = {
+    source: Texture.WHITE.source,
+    frame: { x: 0, y: 0, width: 1, height: 1, offsetX: 0, offsetY: 0 },
+    scale: 1,
+  };
+  pe.slotLayers.push({ ...layer, alpha: 0, outlineOnly: true, boundsExempt: true }, layer);
+  pe.container.addChild(finished, stage);
+  effects.update(pe, 'outline', 1, 0);
+  const quads = (pe.container.children[0]?.children ?? []) as OutlineSprite[];
+  // One quad per pass, each over the finished body; the rising stage gets none.
+  expect(quads).toHaveLength(2);
+  expect(quads.map((quad) => [quad.alpha, quad.selectionEffect])).toEqual([
+    [1, SELECTION_GHOST_OUTLINE],
+    [1, SELECTION_GHOST_OUTLINE],
+  ]);
   pe.container.destroy({ children: true });
   textures.clear();
 });

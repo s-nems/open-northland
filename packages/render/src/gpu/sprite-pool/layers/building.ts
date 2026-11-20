@@ -1,6 +1,7 @@
 import { clamp01 } from '../../../data/math.js';
 import type { DrawItem } from '../../../data/scene/index.js';
 import {
+  type BuildingDraw,
   bobKey,
   type ConstructionDraw,
   finishedBuildingBobKeys,
@@ -11,6 +12,7 @@ import {
   resolveConstructionDraws,
   resolveUpgradeConstructionDraws,
   resolveUpgradeDraws,
+  resolveUpgradeTargetDraw,
 } from '../../../data/sprites/index.js';
 import { buildingLandscapeOverlays } from '../../../data/sprites/layered.js';
 import type { BuildingLandscapeOverlayRef } from '../../../data/sprites/layered-bindings.js';
@@ -24,6 +26,8 @@ const landscapeLayers = new WeakMap<BuildingLandscapeOverlayRef, Map<number, Res
 const overlayRecords = new WeakMap<ResolvedLayer, ResolvedLayer>();
 /** An old body part's fading twin, for an upgrade site whose next-tier body is a construction stage. */
 const fadingRecords = new WeakMap<ResolvedLayer, ResolvedLayer>();
+/** A finished body's {@link ResolvedLayer.outlineOnly} twin. */
+const outlineRecords = new WeakMap<ResolvedLayer, ResolvedLayer>();
 
 /**
  * Where such an upgrade's old body starts fading, so the parts of it the next tier does not cover are
@@ -63,8 +67,9 @@ export function damageScaffoldLayers(
 type StagePart = 'all' | 'body' | 'work';
 
 /**
- * Append a building's atlas layers: an under-construction building's active construction-stage stack in
- * stacking order, or a finished building's named-family body plus {@link pushBuildingExtras}. True when
+ * Append a building's atlas layers: an under-construction building's finished body for its outline alone,
+ * then its active construction-stage stack in stacking order, or a finished building's named-family body
+ * plus {@link pushBuildingExtras}. True when
  * drawn, false for the placeholder, or the default building-layer bob id with nothing appended: the
  * `kindLayers` body then draws it and appends the extras, while the sheet-global body draws none.
  */
@@ -74,9 +79,12 @@ export function pushBuildingLayers(
   item: DrawItem,
   tick: number,
 ): boolean | number {
-  const stack = resolveConstructionDraws(sheet.bindings.building, item);
-  if (stack !== null && pushRevealingStages(out, sheet, stack, item.builtPct, 'all')) return true;
   const draw = resolveBuildingDraw(sheet.bindings.building, item);
+  const stack = resolveConstructionDraws(sheet.bindings.building, item);
+  if (stack !== null) {
+    pushOutlineOnly(out, sheet, draw);
+    if (pushRevealingStages(out, sheet, stack, item.builtPct, 'all')) return true;
+  }
   // An unloaded family falls through to the default building layer - deliberately unlike the
   // construction path, which drops the stage instead.
   if (!hasLoadedFamily(sheet, draw)) return draw.bob;
@@ -90,8 +98,9 @@ export function pushBuildingLayers(
 /**
  * The layers above a finished building's body: its animated state overlay (the mill's rotor), its open
  * door and, for an
- * upgrading building that keeps its old-tier body, the target tier's foundation and timber stages, then
- * its next-tier body from the upgrade rows or else from the construction stack's body stage.
+ * upgrading building that keeps its old-tier body, the target tier's finished body for its outline alone,
+ * the target tier's foundation and timber stages, then its next-tier body from the upgrade rows or else
+ * from the construction stack's body stage.
  */
 export function pushBuildingExtras(out: LayerBuffer, sheet: SpriteSheet, item: DrawItem, tick: number): void {
   const overlayDraw = resolveBuildingOverlayDraw(sheet.bindings.building, item, tick);
@@ -124,6 +133,8 @@ export function pushBuildingExtras(out: LayerBuffer, sheet: SpriteSheet, item: D
     const resolved = layeredLayerFor(sheet, 'building', doorDraw);
     if (resolved !== null) out.push(boundsExemptLayerFor(resolved));
   }
+  const target = resolveUpgradeTargetDraw(sheet.bindings.building, item);
+  if (target !== null) pushOutlineOnly(out, sheet, target);
   // The target's foundation and timber rise in front of the old body, then the next-tier body over them.
   const construction = resolveUpgradeConstructionDraws(sheet.bindings.building, item);
   if (construction !== null) pushRevealingStages(out, sheet, construction, item.upgradePct, 'work');
@@ -151,6 +162,18 @@ function fadingLayerFor(of: ResolvedLayer): ResolvedLayer {
     fadingRecords.set(of, record);
   }
   return record;
+}
+
+/** Append `draw`'s finished body as an {@link ResolvedLayer.outlineOnly} layer; an unloaded family adds none. */
+function pushOutlineOnly(out: LayerBuffer, sheet: SpriteSheet, draw: BuildingDraw): void {
+  const body = layeredLayerFor(sheet, 'building', draw);
+  if (body === null) return;
+  let record = outlineRecords.get(body);
+  if (record === undefined) {
+    record = { ...body, alpha: 0, outlineOnly: true, boundsExempt: true };
+    outlineRecords.set(body, record);
+  }
+  out.push(record);
 }
 
 function boundsExemptLayerFor(of: ResolvedLayer): ResolvedLayer {
