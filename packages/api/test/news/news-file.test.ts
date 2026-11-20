@@ -72,7 +72,8 @@ describe('news endpoint', () => {
     await publish(FIRST);
     expect(await news()).toEqual(FIRST);
     await publish({ schema: 1, entries: [{ title: { pol: 'Bez angielskiego' } }] });
-    expect(await news()).toEqual(FIRST);
+    // Requests arriving together share one reload, so the refusal is logged once.
+    expect(await Promise.all([news(), news()])).toEqual([FIRST, FIRST]);
     expect(await news()).toEqual(FIRST);
     await publish(' '.repeat(NEWS_FILE_MAX_BYTES + 1));
     expect(await news()).toEqual(FIRST);

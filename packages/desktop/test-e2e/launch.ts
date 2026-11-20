@@ -1,6 +1,6 @@
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { _electron, type ElectronApplication } from 'playwright';
+import { _electron, type ConsoleMessage, type ElectronApplication } from 'playwright';
 import { CURSOR_CONFINE_ENV } from '../src/cursor/confine.js';
 import { API_URL_ENV, initialGameUrl, SITE_URL_ENV } from '../src/protocol/routing.js';
 
@@ -10,6 +10,11 @@ export const packageRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..'
 export const E2E_API_URL = 'http://127.0.0.1:18799';
 /** The shell's first page with that override for both servers. */
 export const START_URL = initialGameUrl('app://game/index.html', E2E_API_URL, E2E_API_URL);
+/** The main menu's news and release feed at that port: their failed loads are the expected outcome. */
+const E2E_NEWS_SOURCES: readonly string[] = [`${E2E_API_URL}/v1/news`, `${E2E_API_URL}/releases/feed.json`];
+/** A console error worth failing a test on: anything but a news source the dead port refused. */
+export const unexpectedConsoleError = (message: ConsoleMessage): boolean =>
+  message.type() === 'error' && !E2E_NEWS_SOURCES.includes(message.location().url);
 /** The menu in English, silent and windowed; every page a test opens keeps the `api` parameter. */
 export const MENU = `${START_URL}&lang=eng&sound=off&fullscreen=off`;
 

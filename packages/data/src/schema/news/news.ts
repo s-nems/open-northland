@@ -33,14 +33,11 @@ export const NewsLink = z.strictObject({
 });
 export type NewsLink = z.infer<typeof NewsLink>;
 
-/** ISO-8601 date and time with an offset or `Z`; seconds and fractions are optional. */
-const INSTANT = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?(?:Z|[+-]\d{2}:\d{2})$/;
-
-/** An instant with its offset, so the owner's local time cannot be read in the player's zone. */
-const instant = z
-  .string()
-  .regex(INSTANT, 'expected a date-time with an offset, like 2026-11-25T19:00+01:00')
-  .refine((value) => !Number.isNaN(Date.parse(value)), 'not a real date-time');
+/** An instant with its offset, so the owner's local time cannot be read in the player's zone;
+ *  seconds are optional. */
+const instant = z.union([z.iso.datetime({ offset: true }), z.iso.datetime({ offset: true, precision: -1 })], {
+  error: 'expected a real date-time with an offset, like 2026-11-25T19:00+01:00',
+});
 
 export const NewsEntry = z
   .strictObject({

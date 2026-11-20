@@ -13,7 +13,7 @@ describe('news date labels', () => {
     expect(formatUntilStart(new Date(2026, 10, 28, 9, 0).getTime(), now, 'pl')).toBe('za 3 dni');
   });
 
-  it('writes a release date as its calendar day in any zone', () => {
+  it('writes a release date as its calendar day, read in UTC', () => {
     expect(formatCalendarDate('2026-11-14', 'en')).toBe('Nov 14, 2026');
   });
 });

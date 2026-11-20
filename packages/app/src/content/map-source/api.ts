@@ -29,6 +29,18 @@ export function apiBase(raw: string | null | undefined): string | null {
   }
 }
 
+/**
+ * Browser harnesses drive the game under automation; whatever runs there reaches a live server only
+ * when the URL names one with `param`.
+ */
+export function automationWithoutServer(
+  param: string,
+  search: string = window.location.search,
+  webdriver: boolean = navigator.webdriver,
+): boolean {
+  return webdriver && apiBase(new URLSearchParams(search).get(param)) === null;
+}
+
 /** `?api=` first, then the build's `ON_API_URL`, then the production server. */
 export function apiBaseUrl(search: string = window.location.search): string {
   return (

@@ -17,10 +17,15 @@ function isMissing(error: unknown): boolean {
   return error instanceof Error && 'code' in error && error.code === 'ENOENT';
 }
 
+/** A file the server cannot read keeps one identity per error code, so it is logged once. */
+function unreadable(error: unknown): string {
+  return `unreadable:${error instanceof Error && 'code' in error ? String(error.code) : errorMessage(error)}`;
+}
+
 /**
  * The news file, read again whenever its identity (inode, size, mtime) changes, so an edit or an
- * atomic rename shows on the next request. An invalid file keeps the last good news and is logged
- * once per identity. A missing file serves no news.
+ * atomic rename shows on the next request. An invalid or unreadable file keeps the last good news
+ * and is logged once per identity. A missing file serves no news.
  */
 export class NewsFile {
   private identity: string | null = null;
@@ -36,18 +41,22 @@ export class NewsFile {
 
   async current(): Promise<Body> {
     if (this.loading !== null) return this.loading;
-    let identity: string;
-    try {
-      identity = identityOf(await stat(this.path));
-    } catch (error) {
-      if (!isMissing(error)) throw error;
-      identity = MISSING;
-    }
+    const identity = await this.identityNow();
     if (identity === this.identity) return this.body;
+    // Another request may have started the reload while this one waited for its stat.
+    if (this.loading !== null) return this.loading;
     this.loading = this.reload().finally(() => {
       this.loading = null;
     });
     return this.loading;
+  }
+
+  private async identityNow(): Promise<string> {
+    try {
+      return identityOf(await stat(this.path));
+    } catch (error) {
+      return isMissing(error) ? MISSING : unreadable(error);
+    }
   }
 
   private async reload(): Promise<Body> {
@@ -55,30 +64,33 @@ export class NewsFile {
     try {
       handle = await open(this.path);
     } catch (error) {
-      if (!isMissing(error)) throw error;
+      if (!isMissing(error)) return this.refuse(unreadable(error), errorMessage(error));
       this.identity = MISSING;
       this.body = EMPTY_BODY;
       return this.body;
     }
     try {
       const stats = await handle.stat();
-      this.identity = identityOf(stats);
+      const identity = identityOf(stats);
       const tooLarge = newsSizeProblem(stats.size);
       const result: Validated<NewsDocument> =
         tooLarge === null ? parseNewsBytes(await handle.readFile()) : { ok: false, reason: tooLarge };
-      if (result.ok) {
-        this.lastGood = jsonBody(result.value);
-        this.body = this.lastGood;
-      } else {
-        this.body = this.lastGood;
-        this.log('news refused', { file: this.path, reason: result.reason });
-      }
-    } catch (error) {
+      if (!result.ok) return this.refuse(identity, result.reason);
+      this.identity = identity;
+      this.lastGood = jsonBody(result.value);
       this.body = this.lastGood;
-      this.log('news refused', { file: this.path, reason: errorMessage(error) });
+      return this.body;
+    } catch (error) {
+      return this.refuse(unreadable(error), errorMessage(error));
     } finally {
       await handle.close();
     }
+  }
+
+  private refuse(identity: string, reason: string): Body {
+    this.identity = identity;
+    this.body = this.lastGood;
+    this.log('news refused', { file: this.path, reason });
     return this.body;
   }
 }

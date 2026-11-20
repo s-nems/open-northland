@@ -7,7 +7,7 @@ import { test } from 'vitest';
 import { ORIGINAL_GAME_CHECK_ENV, ORIGINAL_GAME_DIR_ENV } from '../src/original-game/detect.js';
 import { ORIGINAL_GAME_STATE_FILE } from '../src/original-game/state.js';
 import { libraryHead } from '../test/original-game/fixture.js';
-import { launchShell, MENU, START_URL } from './launch.js';
+import { launchShell, MENU, START_URL, unexpectedConsoleError } from './launch.js';
 
 const STEAM_PAGE = 'https://store.steampowered.com/app/351870/';
 
@@ -50,7 +50,7 @@ test('shows the gate in the window when detection misses, and opens the menu on 
     page.setDefaultTimeout(30_000);
     page.on('pageerror', (error) => errors.push(String(error)));
     page.on('console', (message) => {
-      if (message.type() === 'error') errors.push(message.text());
+      if (unexpectedConsoleError(message)) errors.push(message.text());
     });
     await page.waitForURL(START_URL);
     await page.goto(MENU);

@@ -3,7 +3,7 @@
  * the session's limits do, keeps one dialog on screen, and retries what the outbox holds.
  */
 import type { ReportError } from '@open-northland/data';
-import { apiBase, apiBaseUrl } from '../../content/map-source/api.js';
+import { API_PARAM, apiBaseUrl, automationWithoutServer } from '../../content/map-source/api.js';
 import { reloadDocument } from '../../view/platform/navigation-guard.js';
 import { readStoredSettings } from '../../view/settings/store.js';
 import { serializeDiagnosticsBundle } from '../bundle.js';
@@ -36,7 +36,6 @@ import { postReport } from './send.js';
 
 /** The outbox waits for the page to settle after a start before it tries again. */
 const STARTUP_FLUSH_DELAY_MS = 5000;
-const API_PARAM = 'api';
 
 interface OpenDialog {
   readonly dialog: ReportDialog;
@@ -65,15 +64,12 @@ const courier = new Courier({
   },
 });
 
-/**
- * Browser harnesses drive the game under automation without naming a report server; whatever
- * breaks there must not reach the live one by itself. Naming one with `?api=` sends as usual.
- */
+/** Whatever breaks under automation reaches the live report server only when `?api=` names one. */
 export function automationWithoutApi(
   search: string = window.location.search,
   webdriver: boolean = navigator.webdriver,
 ): boolean {
-  return webdriver && apiBase(new URLSearchParams(search).get(API_PARAM)) === null;
+  return automationWithoutServer(API_PARAM, search, webdriver);
 }
 
 function automaticSending(): boolean {

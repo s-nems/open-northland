@@ -5,7 +5,7 @@ import {
   validateNewsDocument,
   validateReleaseFeed,
 } from '@open-northland/data';
-import { API_PARAM, apiBase, apiBaseUrl } from '../../../content/map-source/api.js';
+import { API_PARAM, apiBase, apiBaseUrl, automationWithoutServer } from '../../../content/map-source/api.js';
 import { diag } from '../../../diag/index.js';
 import type { MenuNews } from './model.js';
 
@@ -61,8 +61,7 @@ export async function loadMenuNews(
   signal: AbortSignal,
   env: NewsSourceEnv = browserEnv(),
 ): Promise<MenuNews> {
-  const params = new URLSearchParams(env.search);
-  const named = (param: string): boolean => !env.automated || apiBase(params.get(param)) !== null;
+  const named = (param: string): boolean => !automationWithoutServer(param, env.search, env.automated);
   const [news, feed] = await Promise.all([
     named(API_PARAM)
       ? fetchValidated<NewsDocument>(newsUrl(apiBaseUrl(env.search)), validateNewsDocument, env, signal)

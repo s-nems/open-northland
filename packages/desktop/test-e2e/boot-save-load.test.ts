@@ -10,7 +10,7 @@ import { resolveShellRoots } from '../src/paths.js';
 import { FIRST_RUN_WINDOW_STATE, WINDOW_STATE_FILE } from '../src/window/state.js';
 import { libraryHead } from '../test/original-game/fixture.js';
 import { installedMapFixture } from './installed-map.js';
-import { launchShell, MENU, packageRoot, START_URL } from './launch.js';
+import { launchShell, MENU, packageRoot, START_URL, unexpectedConsoleError } from './launch.js';
 
 const roots = resolveShellRoots({
   packaged: false,
@@ -80,7 +80,7 @@ test('boots app://, lists map previews, and restores a save and the window mode 
     page.setDefaultTimeout(30_000);
     page.on('pageerror', (error) => errors.push(String(error)));
     page.on('console', (message) => {
-      if (message.type() === 'error') errors.push(message.text());
+      if (unexpectedConsoleError(message)) errors.push(message.text());
     });
     // Assert the shell's own initial route before pinning language and display preferences.
     await page.waitForURL(START_URL);
