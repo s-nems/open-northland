@@ -1,4 +1,4 @@
-import { isSpectator } from '@open-northland/lockstep';
+import { isSpectator, NO_RULE_OVERRIDES } from '@open-northland/lockstep';
 import { FOG_MODE } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import {
@@ -44,13 +44,9 @@ describe('mapSession', () => {
     expect(parsed.localSeat).toBe(1);
     expect(parsed.seed).toBe(42);
     expect(parsed.rules).toEqual({
+      ...NO_RULE_OVERRIDES,
       fog: FOG_MODE.RECON_FOG_OF_WAR,
-      progression: null,
       needs: false,
-      weather: null,
-      dayNight: null,
-      alliedVision: null,
-      peace: null,
       storageCapacity: 3,
     });
     expect(parsed.speed).toBe(2);
@@ -64,14 +60,7 @@ describe('mapSession', () => {
     expect(new Set([1, 2, 3, 4].map(() => session('map=zatoka').seed)).size).toBeGreaterThan(1);
     expect(parsed.speed).toBe(1);
     expect(parsed.rules).toEqual({
-      fog: null,
-      progression: null,
-      needs: null,
-      weather: null,
-      dayNight: null,
-      alliedVision: null,
-      peace: null,
-      storageCapacity: null,
+      ...NO_RULE_OVERRIDES,
     });
   });
 
@@ -166,14 +155,8 @@ describe('sceneSession', () => {
     expect(parsed.seed).toBe(11);
     expect(parsed.seats).toEqual([]);
     expect(parsed.rules).toEqual({
-      fog: null,
+      ...NO_RULE_OVERRIDES,
       progression: false,
-      needs: null,
-      weather: null,
-      dayNight: null,
-      alliedVision: null,
-      peace: null,
-      storageCapacity: null,
     });
   });
 });

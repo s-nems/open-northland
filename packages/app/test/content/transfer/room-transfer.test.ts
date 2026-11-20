@@ -1,3 +1,4 @@
+import { NO_RULE_OVERRIDES } from '@open-northland/lockstep';
 import type { RoomView } from '@open-northland/net-protocol';
 import { expect, it, vi } from 'vitest';
 import {
@@ -19,16 +20,7 @@ function room(): RoomView {
       name: 'room',
       world: { kind: 'map', mapId: 'island' },
       seed: 1,
-      rules: {
-        fog: 1,
-        progression: null,
-        needs: false,
-        weather: null,
-        dayNight: null,
-        alliedVision: null,
-        peace: null,
-        storageCapacity: null,
-      },
+      rules: { ...NO_RULE_OVERRIDES, fog: 1, needs: false },
       speed: 1,
       mapOrigin: 'user',
     },

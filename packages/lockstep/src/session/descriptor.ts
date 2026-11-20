@@ -94,6 +94,18 @@ export interface SessionRules {
   readonly storageCapacity: StorageCapacityFactor | null;
 }
 
+/** Rules that override nothing: the world plays every rule it set for itself. */
+export const NO_RULE_OVERRIDES: SessionRules = Object.freeze({
+  fog: null,
+  progression: null,
+  needs: null,
+  weather: null,
+  dayNight: null,
+  alliedVision: null,
+  peace: null,
+  storageCapacity: null,
+});
+
 /**
  * One serializable description of what is being played: enough for any client to assemble the same
  * world from the same content, and nothing the world identity already pins.

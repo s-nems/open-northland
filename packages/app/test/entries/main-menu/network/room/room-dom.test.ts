@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { MAP_TYPE } from '@open-northland/data';
+import { NO_RULE_OVERRIDES } from '@open-northland/lockstep';
 import { PROTOCOL_VERSION, type RoomView } from '@open-northland/net-protocol';
 import { afterEach, describe, expect, it, onTestFinished, vi } from 'vitest';
 import { type MapSelectItem, mapItem } from '../../../../../src/entries/main-menu/map-select/model.js';
@@ -27,16 +28,7 @@ function lobby(): RoomView {
       name: 'Expedition',
       world: { kind: 'map', mapId: 'test' },
       seed: 1,
-      rules: {
-        fog: null,
-        progression: null,
-        needs: null,
-        weather: null,
-        dayNight: null,
-        alliedVision: null,
-        peace: null,
-        storageCapacity: null,
-      },
+      rules: NO_RULE_OVERRIDES,
       speed: 1,
       kickedSeatMode: 'idle',
     },

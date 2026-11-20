@@ -1,5 +1,5 @@
 import { type MapDiplomacy, MapScript } from '@open-northland/data';
-import type { GameSession } from '@open-northland/lockstep';
+import { type GameSession, NO_RULE_OVERRIDES } from '@open-northland/lockstep';
 import { components, FOG_MODE, TICKS_PER_MINUTE } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import { buildMapWorld } from '../../../src/entries/map/world.js';
@@ -11,16 +11,7 @@ const SESSION: GameSession = {
   seed: 7,
   localSeat: 0,
   speed: 1,
-  rules: {
-    fog: FOG_MODE.CLASSIC,
-    progression: null,
-    needs: null,
-    weather: null,
-    dayNight: null,
-    alliedVision: true,
-    peace: null,
-    storageCapacity: null,
-  },
+  rules: { ...NO_RULE_OVERRIDES, fog: FOG_MODE.CLASSIC, alliedVision: true },
   seats: [
     { player: 0, mode: 'human', color: 0 },
     { player: 1, mode: 'human', color: 1 },

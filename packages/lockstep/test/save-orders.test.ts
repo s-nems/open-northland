@@ -10,7 +10,13 @@ import {
 } from '@open-northland/sim';
 import { expect, it } from 'vitest';
 import { testContent } from '../../sim/test/fixtures/content.js';
-import { applyInitialSaveSeats, LockstepDriver, LoopbackTransport, type TickFrame } from '../src/index.js';
+import {
+  applyInitialSaveSeats,
+  LockstepDriver,
+  LoopbackTransport,
+  NO_RULE_OVERRIDES,
+  type TickFrame,
+} from '../src/index.js';
 
 it('restores paused transport orders after endogenous commands without changing the continuing run', () => {
   const content = testContent();
@@ -76,16 +82,7 @@ it('a new human seat supersedes the old room AI takeover while retaining player 
     localSeat: 1,
     speed: 1,
     seats: [{ player: 1, mode: 'human', color: 1 }],
-    rules: {
-      fog: null,
-      progression: null,
-      needs: null,
-      weather: null,
-      dayNight: null,
-      alliedVision: null,
-      peace: null,
-      storageCapacity: null,
-    },
+    rules: NO_RULE_OVERRIDES,
   });
   resumed.run(3);
   expect(components.isMachinePlayer(resumed.world, 1)).toBe(false);
@@ -122,16 +119,7 @@ it('a resumed room keeps the saved handlers and module toggles of a seat that st
       { player: 7, mode: 'computer', color: 7 },
       { player: 8, mode: 'computer', color: 8 },
     ],
-    rules: {
-      fog: null,
-      progression: null,
-      needs: null,
-      weather: null,
-      dayNight: null,
-      alliedVision: null,
-      peace: null,
-      storageCapacity: null,
-    },
+    rules: NO_RULE_OVERRIDES,
   });
   resumed.run(2);
   expect(components.computerModuleRuns(resumed.world, 6, 'military')).toBe(false);
@@ -203,16 +191,7 @@ it('removes local continuation grants and queued grants before a saved multiplay
     localSeat: 1,
     speed: 1,
     seats: [0, 1, 2].map((player) => ({ player, mode: 'human', color: player })),
-    rules: {
-      fog: null,
-      progression: null,
-      needs: null,
-      weather: null,
-      dayNight: null,
-      alliedVision: null,
-      peace: null,
-      storageCapacity: null,
-    },
+    rules: NO_RULE_OVERRIDES,
   });
   resumed.run(3);
   expect(components.hasMatchContinuation(resumed.world)).toBe(false);

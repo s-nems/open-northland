@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { NO_RULE_OVERRIDES } from '@open-northland/lockstep';
 import {
   type HallChatLine,
   type OnlinePlayer,
@@ -30,16 +31,7 @@ function room(state: RoomView['state']): RoomView {
       name: 'Expedition',
       world: { kind: 'map', mapId: 'forest' },
       seed: 1,
-      rules: {
-        fog: null,
-        progression: null,
-        needs: null,
-        weather: null,
-        dayNight: null,
-        alliedVision: null,
-        peace: null,
-        storageCapacity: null,
-      },
+      rules: NO_RULE_OVERRIDES,
       speed: 1,
       kickedSeatMode: 'idle',
     },

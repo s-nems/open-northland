@@ -1,3 +1,4 @@
+import { NO_RULE_OVERRIDES } from '@open-northland/lockstep';
 import type { RoomSettings } from '@open-northland/net-protocol';
 import { Relay } from '@open-northland/net-server';
 import { restoreSimulation } from '@open-northland/sim';
@@ -12,16 +13,7 @@ const SETTINGS: RoomSettings = {
   name: 'donor',
   world: { kind: 'scene', sceneId: 'fixture' },
   seed: 7,
-  rules: {
-    fog: null,
-    progression: null,
-    needs: null,
-    weather: null,
-    dayNight: null,
-    alliedVision: null,
-    peace: null,
-    storageCapacity: null,
-  },
+  rules: NO_RULE_OVERRIDES,
   speed: 1,
 };
 /** Long enough for the smoothed trips and the reserve to settle before the upload. */

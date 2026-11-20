@@ -1,5 +1,5 @@
 import { fileURLToPath } from 'node:url';
-import type { GameSession } from '@open-northland/lockstep';
+import { type GameSession, NO_RULE_OVERRIDES } from '@open-northland/lockstep';
 import { type RoomSeatSetup, type RoomSettings, TICKS_PER_SECOND } from '@open-northland/net-protocol';
 import { MIN_GOVERNED_SPEED, Relay } from '@open-northland/net-server';
 import { afterAll, beforeAll, expect, it } from 'vitest';
@@ -38,16 +38,7 @@ const SETTINGS: RoomSettings = {
   name: 'Zastój',
   world: { kind: 'map', mapId: 'zatoka' },
   seed: 7,
-  rules: {
-    fog: null,
-    progression: null,
-    needs: null,
-    weather: null,
-    dayNight: null,
-    alliedVision: null,
-    peace: null,
-    storageCapacity: null,
-  },
+  rules: NO_RULE_OVERRIDES,
   speed: SESSION_SPEED,
 };
 const HOSTED_NICK = 'Bartek';

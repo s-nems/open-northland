@@ -1,5 +1,5 @@
 import { MapScript } from '@open-northland/data';
-import type { GameSession, SessionSeat } from '@open-northland/lockstep';
+import { type GameSession, NO_RULE_OVERRIDES, type SessionSeat } from '@open-northland/lockstep';
 import {
   components,
   type Entity,
@@ -246,16 +246,7 @@ describe('a session with a changed seat', () => {
     seed: 7,
     seats,
     localSeat: 0,
-    rules: {
-      fog: null,
-      progression: null,
-      needs: null,
-      weather: null,
-      dayNight: null,
-      alliedVision: null,
-      peace: null,
-      storageCapacity: null,
-    },
+    rules: NO_RULE_OVERRIDES,
     speed: 1,
   });
 

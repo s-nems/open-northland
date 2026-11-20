@@ -1,3 +1,4 @@
+import { NO_RULE_OVERRIDES } from '@open-northland/lockstep';
 import { LINK_QUIET_MS } from '@open-northland/net-client';
 import {
   type ChatLine,
@@ -55,16 +56,7 @@ const ROOM: RoomView = {
     name: 'las',
     world: { kind: 'map', mapId: 'las' },
     seed: 7,
-    rules: {
-      fog: null,
-      progression: null,
-      needs: null,
-      weather: null,
-      dayNight: null,
-      alliedVision: null,
-      peace: null,
-      storageCapacity: null,
-    },
+    rules: NO_RULE_OVERRIDES,
     speed: REQUESTED_SPEED,
   },
   seats: [],

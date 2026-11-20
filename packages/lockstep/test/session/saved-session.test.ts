@@ -1,19 +1,15 @@
 import { describe, expect, it } from 'vitest';
-import { createSavedSessionMetadata, type GameSession, parseSavedSessionMetadata } from '../../src/index.js';
+import {
+  createSavedSessionMetadata,
+  type GameSession,
+  NO_RULE_OVERRIDES,
+  parseSavedSessionMetadata,
+} from '../../src/index.js';
 
 const descriptor: GameSession = {
   world: { kind: 'map', mapId: 'fixture' },
   seed: 7,
-  rules: {
-    fog: 1,
-    progression: false,
-    needs: true,
-    weather: 'winter',
-    dayNight: null,
-    alliedVision: null,
-    peace: null,
-    storageCapacity: null,
-  },
+  rules: { ...NO_RULE_OVERRIDES, fog: 1, progression: false, needs: true, weather: 'winter' },
   speed: 2,
   localSeat: 0,
   kickedSeatMode: 'idle',

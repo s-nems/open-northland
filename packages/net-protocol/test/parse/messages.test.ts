@@ -1,4 +1,4 @@
-import type { GameSession } from '@open-northland/lockstep';
+import { type GameSession, NO_RULE_OVERRIDES } from '@open-northland/lockstep';
 import { describe, expect, it } from 'vitest';
 import {
   type ClientMessage,
@@ -39,16 +39,7 @@ const settings: RoomSettings = {
   name: 'Zatoka o świcie',
   world: { kind: 'map', mapId: 'zatoka' },
   seed: 7,
-  rules: {
-    fog: 1,
-    progression: null,
-    needs: false,
-    weather: 'winter',
-    dayNight: null,
-    alliedVision: null,
-    peace: null,
-    storageCapacity: null,
-  },
+  rules: { ...NO_RULE_OVERRIDES, fog: 1, needs: false, weather: 'winter' },
   speed: 1,
 };
 

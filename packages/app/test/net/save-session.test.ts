@@ -1,4 +1,4 @@
-import { type GameSession, parseSavedSessionMetadata } from '@open-northland/lockstep';
+import { type GameSession, NO_RULE_OVERRIDES, parseSavedSessionMetadata } from '@open-northland/lockstep';
 import { RelayClient } from '@open-northland/net-client';
 import { DESCRIPTOR_WORLD, type RoomView } from '@open-northland/net-protocol';
 import { Simulation } from '@open-northland/sim';
@@ -13,16 +13,7 @@ it('captures the current public roster and refuses an old world after resync', a
     seed: 7,
     localSeat: 0,
     speed: 1,
-    rules: {
-      fog: null,
-      progression: null,
-      needs: null,
-      weather: null,
-      dayNight: null,
-      alliedVision: null,
-      peace: null,
-      storageCapacity: null,
-    },
+    rules: NO_RULE_OVERRIDES,
     seats: [
       { player: 0, mode: 'human', color: 3 },
       { player: 1, mode: 'human', color: 4 },

@@ -1,4 +1,5 @@
 import { connect, createServer, type Socket } from 'node:net';
+import { NO_RULE_OVERRIDES } from '@open-northland/lockstep';
 import { RelaySocket } from '@open-northland/net-client';
 import { startRelayHost } from '@open-northland/net-server';
 import { Simulation } from '@open-northland/sim';
@@ -98,16 +99,7 @@ it('recovers when a stalled upload releases a valid catch-up acknowledgement bur
         name: 'catch-up burst',
         world: { kind: 'scene', sceneId: 'fixture' },
         seed: 3,
-        rules: {
-          fog: null,
-          progression: null,
-          needs: null,
-          weather: null,
-          dayNight: null,
-          alliedVision: null,
-          peace: null,
-          storageCapacity: null,
-        },
+        rules: NO_RULE_OVERRIDES,
         speed: 8,
       },
       clients.map((_, player) => ({

@@ -1,3 +1,4 @@
+import { NO_RULE_OVERRIDES } from '@open-northland/lockstep';
 import { RelaySocket } from '@open-northland/net-client';
 import { startRelayHost } from '@open-northland/net-server';
 import { type GroupDestination, playerCommand, restoreSimulation } from '@open-northland/sim';
@@ -87,16 +88,7 @@ it('carries a 1000-soldier move, paused redirects and a reconnect through real W
         name: 'army sockets',
         world: { kind: 'scene', sceneId: 'fixture' },
         seed: 7,
-        rules: {
-          fog: null,
-          progression: null,
-          needs: null,
-          weather: null,
-          dayNight: null,
-          alliedVision: null,
-          peace: null,
-          storageCapacity: null,
-        },
+        rules: NO_RULE_OVERRIDES,
         speed: 2,
       },
       clients.map((_, player) => ({

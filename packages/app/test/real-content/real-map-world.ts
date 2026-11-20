@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { type ContentSet, MapScript, mapLobbySlots } from '@open-northland/data';
-import type { GameSession, SessionRules } from '@open-northland/lockstep';
+import { type GameSession, NO_RULE_OVERRIDES, type SessionRules } from '@open-northland/lockstep';
 import type { SaveGame, Simulation } from '@open-northland/sim';
 import type { ContentIr } from '../../src/content/ir/rows.js';
 import { buildMapWorld, restoreMapWorld } from '../../src/entries/map/world.js';
@@ -107,6 +107,7 @@ export async function realMapWorld(options: RealMapWorldOptions): Promise<RealMa
         neverDies: script === null ? [] : neverDiesSeats(script),
       })
     ).filter((seat) => !options.absentSeats?.includes(seat)),
+    ...NO_RULE_OVERRIDES,
     fog: options.rules?.fog ?? null,
     progression: options.rules?.progression ?? null,
     needs: options.rules?.needs ?? null,

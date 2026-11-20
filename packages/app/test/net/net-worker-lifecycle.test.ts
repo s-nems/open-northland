@@ -1,3 +1,4 @@
+import { NO_RULE_OVERRIDES } from '@open-northland/lockstep';
 import type { RelayLinkEvents } from '@open-northland/net-client';
 import { type ClientMessage, PROTOCOL_VERSION, type RoomView } from '@open-northland/net-protocol';
 import { describe, expect, it, vi } from 'vitest';
@@ -18,16 +19,7 @@ const LOBBY: RoomView = {
     name: 'Room',
     world: { kind: 'map', mapId: 'forest' },
     seed: 1,
-    rules: {
-      fog: null,
-      progression: null,
-      needs: null,
-      weather: null,
-      dayNight: null,
-      alliedVision: null,
-      peace: null,
-      storageCapacity: null,
-    },
+    rules: NO_RULE_OVERRIDES,
     speed: 1,
   },
   seats: [

@@ -1,4 +1,5 @@
 import { MapScript } from '@open-northland/data';
+import { NO_RULE_OVERRIDES } from '@open-northland/lockstep';
 import { exportSaveGame, parseSaveGame, serializeSaveGame } from '@open-northland/sim';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ContentIr } from '../../../src/content/ir/rows.js';
@@ -24,11 +25,7 @@ function parentSave() {
     seed: 7,
     machineSeats: [],
     assistantSeats: [],
-    fog: null,
-    needs: null,
-    alliedVision: null,
-    peace: null,
-    storageCapacity: null,
+    ...NO_RULE_OVERRIDES,
     missions: null,
     progression: null,
   });

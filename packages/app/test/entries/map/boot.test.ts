@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import type { GameSession } from '@open-northland/lockstep';
+import { type GameSession, NO_RULE_OVERRIDES } from '@open-northland/lockstep';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { HostedMapWorld, MapBootPlan } from '../../../src/entries/map/boot.js';
 
@@ -51,16 +51,7 @@ const SESSION: GameSession = {
   seed: 1,
   seats: [{ player: 0, color: 0, mode: 'human' }],
   localSeat: 0,
-  rules: {
-    fog: null,
-    progression: null,
-    needs: null,
-    weather: null,
-    dayNight: null,
-    alliedVision: null,
-    peace: null,
-    storageCapacity: null,
-  },
+  rules: NO_RULE_OVERRIDES,
   speed: 1,
 };
 const STAGED = { header: { tick: 40, mapId: null, view: null }, presentation: null };

@@ -1,5 +1,5 @@
 import type { TerrainMapFile } from '@open-northland/data';
-import { LockstepDriver, LoopbackTransport } from '@open-northland/lockstep';
+import { LockstepDriver, LoopbackTransport, NO_RULE_OVERRIDES } from '@open-northland/lockstep';
 import { exportSaveGame, type MissionScript, type SimEvent, SUCCESSFUL_IF } from '@open-northland/sim';
 import { expect, it } from 'vitest';
 import type { ContentIr } from '../../../src/content/ir/rows.js';
@@ -39,12 +39,7 @@ const options = {
   content: {},
   machineSeats: [],
   assistantSeats: [],
-  fog: null,
-  progression: null,
-  needs: null,
-  alliedVision: null,
-  peace: null,
-  storageCapacity: null,
+  ...NO_RULE_OVERRIDES,
   missions: null,
   script: { missions },
 };

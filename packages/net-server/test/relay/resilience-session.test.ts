@@ -1,4 +1,4 @@
-import type { GameSession } from '@open-northland/lockstep';
+import { type GameSession, NO_RULE_OVERRIDES } from '@open-northland/lockstep';
 import { type DisputeRecord, prepareInitialSave } from '@open-northland/net-client';
 import { type RoomSettings, TICK_MS } from '@open-northland/net-protocol';
 import {
@@ -43,16 +43,7 @@ const SETTINGS: RoomSettings = {
   name: 'fixture',
   world: { kind: 'scene', sceneId: 'fixture' },
   seed: 5,
-  rules: {
-    fog: null,
-    progression: null,
-    needs: null,
-    weather: null,
-    dayNight: null,
-    alliedVision: null,
-    peace: null,
-    storageCapacity: null,
-  },
+  rules: NO_RULE_OVERRIDES,
   speed: 1,
 };
 const SEATS = [

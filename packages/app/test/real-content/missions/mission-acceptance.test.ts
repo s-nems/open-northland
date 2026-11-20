@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { MapScript, TerrainMapFile } from '@open-northland/data';
+import { NO_RULE_OVERRIDES } from '@open-northland/lockstep';
 import {
   components,
   exportSaveGame,
@@ -50,12 +51,7 @@ describe.runIf(hasRealIr())('scripted story-map acceptance', () => {
       machineSeats: [],
       assistantSeats: [0],
       script: mapScriptWorld(script, ir),
-      fog: null,
-      progression: null,
-      needs: null,
-      alliedVision: null,
-      peace: null,
-      storageCapacity: null,
+      ...NO_RULE_OVERRIDES,
       missions: null,
       berryBushes: true,
     };

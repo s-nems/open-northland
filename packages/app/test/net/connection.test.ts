@@ -1,4 +1,4 @@
-import type { GameSession } from '@open-northland/lockstep';
+import { type GameSession, NO_RULE_OVERRIDES } from '@open-northland/lockstep';
 import { RelayRefusal } from '@open-northland/net-client';
 import { PROTOCOL_VERSION, type RoomView } from '@open-northland/net-protocol';
 import { packSnapshotDelta } from '@open-northland/sim';
@@ -17,16 +17,7 @@ const ROOM: RoomView = {
     name: 'Room',
     world: { kind: 'map', mapId: 'forest' },
     seed: 1,
-    rules: {
-      fog: null,
-      progression: null,
-      needs: null,
-      weather: null,
-      dayNight: null,
-      alliedVision: null,
-      peace: null,
-      storageCapacity: null,
-    },
+    rules: NO_RULE_OVERRIDES,
     speed: 1,
   },
   seats: [
@@ -59,16 +50,7 @@ const SESSION: GameSession = {
   seed: 1,
   seats: [{ player: 0, color: 0, mode: 'human' }],
   localSeat: 0,
-  rules: {
-    fog: null,
-    progression: null,
-    needs: null,
-    weather: null,
-    dayNight: null,
-    alliedVision: null,
-    peace: null,
-    storageCapacity: null,
-  },
+  rules: NO_RULE_OVERRIDES,
   speed: 1,
 };
 const FACTS: RelayFacts = {

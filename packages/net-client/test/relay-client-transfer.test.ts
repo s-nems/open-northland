@@ -1,4 +1,4 @@
-import type { GameSession } from '@open-northland/lockstep';
+import { type GameSession, NO_RULE_OVERRIDES } from '@open-northland/lockstep';
 import { RelayClient, type WorldPort } from '@open-northland/net-client';
 import { DESCRIPTOR_WORLD, PROTOCOL_VERSION } from '@open-northland/net-protocol';
 import { Simulation } from '@open-northland/sim';
@@ -13,16 +13,7 @@ const SESSION: GameSession = {
     { player: 1, mode: 'human', color: 1 },
   ],
   localSeat: 0,
-  rules: {
-    fog: null,
-    progression: null,
-    needs: null,
-    weather: null,
-    dayNight: null,
-    alliedVision: null,
-    peace: null,
-    storageCapacity: null,
-  },
+  rules: NO_RULE_OVERRIDES,
   speed: 1,
 };
 const CACHED_TICK = 40;

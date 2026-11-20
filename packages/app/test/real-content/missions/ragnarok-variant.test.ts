@@ -7,6 +7,7 @@ import {
   mapLobbySlots,
   TerrainMapFile,
 } from '@open-northland/data';
+import { NO_RULE_OVERRIDES } from '@open-northland/lockstep';
 import {
   components,
   type Entity,
@@ -369,12 +370,7 @@ describe.runIf(hasRealIr())('a Ragnarök attack on specjalna_forteca', () => {
       absentSeats,
       assistantSeats: [0],
       script: { ...mapScriptWorld(script, ir), escalation },
-      fog: null,
-      progression: null,
-      needs: null,
-      alliedVision: null,
-      peace: null,
-      storageCapacity: null,
+      ...NO_RULE_OVERRIDES,
       missions: false,
       berryBushes: false,
     }).sim;

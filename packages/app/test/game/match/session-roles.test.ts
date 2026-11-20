@@ -1,4 +1,4 @@
-import { type GameSession, OBSERVER_SEAT } from '@open-northland/lockstep';
+import { type GameSession, NO_RULE_OVERRIDES, OBSERVER_SEAT } from '@open-northland/lockstep';
 import { describe, expect, it } from 'vitest';
 import { sessionRoles } from '../../../src/game/match/session-roles.js';
 import { mapSession } from '../../../src/game/match/session-url.js';
@@ -50,16 +50,7 @@ describe('sessionRoles', () => {
         { player: 2, mode: 'computer', color: 2 },
       ],
       localSeat: 1,
-      rules: {
-        fog: null,
-        progression: null,
-        needs: null,
-        weather: null,
-        dayNight: null,
-        alliedVision: null,
-        peace: null,
-        storageCapacity: null,
-      },
+      rules: NO_RULE_OVERRIDES,
       speed: 1,
     };
     const roles = sessionRoles(relayed, []);

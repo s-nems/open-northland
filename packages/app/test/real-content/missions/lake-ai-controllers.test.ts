@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { MapScript, TerrainMapFile } from '@open-northland/data';
+import { NO_RULE_OVERRIDES } from '@open-northland/lockstep';
 import { components, exportSaveGame, serializeSaveGame, systems } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import type { ContentIr } from '../../../src/content/ir/rows.js';
@@ -29,12 +30,7 @@ describe.runIf(hasRealIr())('Lake of the Mists controller coexistence', () => {
       machineSeats: SEATS,
       assistantSeats: [0],
       script: mapScriptWorld(script, ir),
-      fog: null,
-      progression: null,
-      needs: null,
-      alliedVision: null,
-      peace: null,
-      storageCapacity: null,
+      ...NO_RULE_OVERRIDES,
       missions: false,
       berryBushes: true,
     };

@@ -1,3 +1,4 @@
+import { NO_RULE_OVERRIDES } from '@open-northland/lockstep';
 import { prepareInitialSave } from '@open-northland/net-client';
 import type { RoomSettings } from '@open-northland/net-protocol';
 import { Relay } from '@open-northland/net-server';
@@ -14,16 +15,7 @@ const SETTINGS: RoomSettings = {
   name: 'result',
   world: { kind: 'scene', sceneId: 'result' },
   seed: 7,
-  rules: {
-    fog: null,
-    progression: null,
-    needs: null,
-    weather: null,
-    dayNight: null,
-    alliedVision: null,
-    peace: null,
-    storageCapacity: null,
-  },
+  rules: NO_RULE_OVERRIDES,
   speed: 1,
 };
 const SEATS = [

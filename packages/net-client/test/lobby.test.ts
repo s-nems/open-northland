@@ -1,3 +1,4 @@
+import { NO_RULE_OVERRIDES } from '@open-northland/lockstep';
 import { RelayClient } from '@open-northland/net-client';
 import {
   type ClientMessage,
@@ -33,16 +34,7 @@ const ROOM: RoomView = {
     name: 'Forest',
     world: { kind: 'map', mapId: 'forest' },
     seed: 7,
-    rules: {
-      fog: null,
-      progression: null,
-      needs: null,
-      weather: null,
-      dayNight: null,
-      alliedVision: null,
-      peace: null,
-      storageCapacity: null,
-    },
+    rules: NO_RULE_OVERRIDES,
     speed: 1,
   },
   seats: [

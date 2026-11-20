@@ -1,4 +1,5 @@
 import type { TerrainMapFile } from '@open-northland/data';
+import { NO_RULE_OVERRIDES } from '@open-northland/lockstep';
 import { exportSaveGame, type MissionScript, SUCCESSFUL_IF, systems } from '@open-northland/sim';
 import { expect, it } from 'vitest';
 import type { ContentIr } from '../../../src/content/ir/rows.js';
@@ -44,12 +45,7 @@ it('fresh and restored map worlds share editable landscape input and saved terra
     content: {},
     machineSeats: [],
     assistantSeats: [],
-    fog: null,
-    progression: null,
-    needs: null,
-    alliedVision: null,
-    peace: null,
-    storageCapacity: null,
+    ...NO_RULE_OVERRIDES,
     missions: true,
     script: { missions },
   };
@@ -121,12 +117,7 @@ it('razes an authored wall a script removes from the landscape', () => {
     content: {},
     machineSeats: [],
     assistantSeats: [],
-    fog: null,
-    progression: null,
-    needs: null,
-    alliedVision: null,
-    peace: null,
-    storageCapacity: null,
+    ...NO_RULE_OVERRIDES,
     missions: true,
     script: { missions: removal },
   });

@@ -1,3 +1,4 @@
+import { NO_RULE_OVERRIDES } from '@open-northland/lockstep';
 import { type LobbySettings, sameLobbySettings } from '@open-northland/net-protocol';
 import { describe, expect, it } from 'vitest';
 
@@ -5,16 +6,7 @@ const BASE: LobbySettings = {
   name: 'Zatoka',
   seed: 7,
   speed: 1,
-  rules: {
-    fog: null,
-    progression: null,
-    needs: null,
-    weather: null,
-    dayNight: null,
-    alliedVision: null,
-    peace: null,
-    storageCapacity: null,
-  },
+  rules: NO_RULE_OVERRIDES,
 };
 
 describe('lobby settings comparison', () => {

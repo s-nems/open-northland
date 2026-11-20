@@ -1,3 +1,4 @@
+import { NO_RULE_OVERRIDES } from '@open-northland/lockstep';
 import { expect, it } from 'vitest';
 import type { ContentIr } from '../../../src/content/ir/rows.js';
 import {
@@ -34,12 +35,7 @@ it('boots transferred authored map and roster with the same world hash', async (
       assistantSeats: [],
       playerRoster: script?.players ?? [],
       diplomacy: script?.diplomacy ?? [],
-      fog: null,
-      needs: null,
-      progression: null,
-      alliedVision: null,
-      peace: null,
-      storageCapacity: null,
+      ...NO_RULE_OVERRIDES,
     });
   });
   const [creator, guest] = worlds;

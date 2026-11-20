@@ -5,7 +5,7 @@ import {
   WERESNAKE_TRIBE,
   WEREWOLF_TRIBE,
 } from '@open-northland/data';
-import { applyInitialSaveSeats } from '@open-northland/lockstep';
+import { applyInitialSaveSeats, NO_RULE_OVERRIDES } from '@open-northland/lockstep';
 import { components, exportSaveGame, type World } from '@open-northland/sim';
 import { expect, it } from 'vitest';
 import { buildMapWorld } from '../../../src/entries/map/world.js';
@@ -30,12 +30,7 @@ it('seats the computer player as the map’s [AIData] toggles say', () => {
     content: {},
     machineSeats: [1, 2, 3, 4],
     assistantSeats: [],
-    fog: null,
-    progression: null,
-    needs: null,
-    alliedVision: null,
-    peace: null,
-    storageCapacity: null,
+    ...NO_RULE_OVERRIDES,
     script: {
       ai: [
         {
@@ -96,12 +91,7 @@ it('gives a monster tribe’s machine seat the map AI controller alone', () => {
     content: {},
     machineSeats: [1, 2],
     assistantSeats: [],
-    fog: null,
-    progression: null,
-    needs: null,
-    alliedVision: null,
-    peace: null,
-    storageCapacity: null,
+    ...NO_RULE_OVERRIDES,
     playerRoster: [
       { player: 1, type: 'ai', tribeId: WERESNAKE_TRIBE, colorId: 1 },
       { player: 2, type: 'ai', tribeId: WEREWOLF_TRIBE, colorId: 2 },
@@ -142,12 +132,7 @@ it('starts the assistant switches for the seats a person or the computer player 
     content: {},
     machineSeats: [COMPUTER, SCRIPTED_CAMP, DISABLED],
     assistantSeats: [PERSON, COMPUTER, SCRIPTED_CAMP, DISABLED],
-    fog: null,
-    progression: null,
-    needs: null,
-    alliedVision: null,
-    peace: null,
-    storageCapacity: null,
+    ...NO_RULE_OVERRIDES,
     script: {
       ai: [
         {

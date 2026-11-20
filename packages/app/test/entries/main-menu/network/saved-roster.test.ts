@@ -1,4 +1,4 @@
-import { createSavedSessionMetadata, type GameSession } from '@open-northland/lockstep';
+import { createSavedSessionMetadata, type GameSession, NO_RULE_OVERRIDES } from '@open-northland/lockstep';
 import type { RoomSeatSetup } from '@open-northland/net-protocol';
 import { exportSaveGame } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
@@ -15,16 +15,7 @@ const descriptor: GameSession = {
   seed: 7,
   localSeat: 0,
   speed: 2,
-  rules: {
-    fog: null,
-    progression: null,
-    needs: null,
-    weather: null,
-    dayNight: null,
-    alliedVision: null,
-    peace: null,
-    storageCapacity: null,
-  },
+  rules: NO_RULE_OVERRIDES,
   seats: [
     { player: 0, mode: 'human', color: 3, tribe: 7 },
     { player: 1, mode: 'computer', color: 4 },

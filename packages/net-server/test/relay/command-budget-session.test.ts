@@ -1,3 +1,4 @@
+import { NO_RULE_OVERRIDES } from '@open-northland/lockstep';
 import { MAX_COMMANDS_PER_TICK, MAX_ENVELOPE_BYTES, type RoomSettings } from '@open-northland/net-protocol';
 import { Relay } from '@open-northland/net-server';
 import { playerCommand, Simulation } from '@open-northland/sim';
@@ -14,16 +15,7 @@ const settings: RoomSettings = {
   name: 'command budget',
   world: { kind: 'scene', sceneId: 'fixture' },
   seed: SEED,
-  rules: {
-    fog: null,
-    progression: null,
-    needs: null,
-    weather: null,
-    dayNight: null,
-    alliedVision: null,
-    peace: null,
-    storageCapacity: null,
-  },
+  rules: NO_RULE_OVERRIDES,
   speed: 1,
 };
 /** A wall line of twenty edges: its anchor and twenty nodes, one gesture each, in one click. */

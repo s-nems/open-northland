@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import type { GameSession } from '@open-northland/lockstep';
+import { type GameSession, NO_RULE_OVERRIDES } from '@open-northland/lockstep';
 import { RelayRefusal } from '@open-northland/net-client';
 import type { ServerMessage } from '@open-northland/net-protocol';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -44,16 +44,7 @@ const session: GameSession = {
   seed: 1,
   seats: [{ player: LOCAL_SEAT, color: 0, mode: 'human' }],
   localSeat: LOCAL_SEAT,
-  rules: {
-    fog: null,
-    progression: null,
-    needs: null,
-    weather: null,
-    dayNight: null,
-    alliedVision: null,
-    peace: null,
-    storageCapacity: null,
-  },
+  rules: NO_RULE_OVERRIDES,
   speed: 1,
 };
 

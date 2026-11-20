@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { MapScript, mapLobbySlots, TerrainMapFile } from '@open-northland/data';
-import type { PeaceMinutes } from '@open-northland/lockstep';
+import { NO_RULE_OVERRIDES, type PeaceMinutes } from '@open-northland/lockstep';
 import {
   components,
   type Entity,
@@ -71,12 +71,8 @@ async function fortressWorld(
     peaceSeats: [PERSON, ...LOBBY_SEATS],
     assistantSeats: [0],
     script: mapScriptWorld(script, ir),
-    fog: null,
-    progression: null,
-    needs: null,
-    alliedVision: null,
+    ...NO_RULE_OVERRIDES,
     peace,
-    storageCapacity: null,
     missions: false,
     berryBushes: true,
   };

@@ -1,4 +1,4 @@
-import type { GameSession } from '@open-northland/lockstep';
+import { type GameSession, NO_RULE_OVERRIDES } from '@open-northland/lockstep';
 import {
   type AdoptedWorld,
   DISPUTE_WINDOW_TICKS,
@@ -29,16 +29,7 @@ const SESSION: GameSession = {
     { player: 1, mode: 'human', color: 1 },
   ],
   localSeat: 0,
-  rules: {
-    fog: null,
-    progression: null,
-    needs: null,
-    weather: null,
-    dayNight: null,
-    alliedVision: null,
-    peace: null,
-    storageCapacity: null,
-  },
+  rules: NO_RULE_OVERRIDES,
   speed: 1,
 };
 const RESTORED_TICK = 40;

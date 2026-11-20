@@ -1,3 +1,4 @@
+import { NO_RULE_OVERRIDES } from '@open-northland/lockstep';
 import type { LobbySettings, RoomView } from '@open-northland/net-protocol';
 import { describe, expect, it, vi } from 'vitest';
 import { roomSettingsQueue } from '../../../../../src/entries/main-menu/network/room/settings-queue.js';
@@ -6,16 +7,7 @@ const original: LobbySettings = {
   name: 'Forest',
   seed: 123,
   speed: 1,
-  rules: {
-    fog: null,
-    needs: null,
-    progression: null,
-    weather: null,
-    dayNight: null,
-    alliedVision: null,
-    peace: null,
-    storageCapacity: null,
-  },
+  rules: NO_RULE_OVERRIDES,
 };
 function view(settings: LobbySettings = original): RoomView {
   return {
@@ -54,16 +46,7 @@ describe('lobby settings replacement queue', () => {
       ...original,
       speed: 2,
       kickedSeatMode: 'computer',
-      rules: {
-        fog: 0,
-        needs: false,
-        progression: true,
-        weather: null,
-        dayNight: null,
-        alliedVision: null,
-        peace: null,
-        storageCapacity: null,
-      },
+      rules: { ...NO_RULE_OVERRIDES, fog: 0, needs: false, progression: true },
     });
     expect(sent[1]).not.toHaveProperty('world');
     expect(sent[1]).not.toHaveProperty('mapOrigin');
@@ -135,14 +118,8 @@ describe('lobby settings replacement queue', () => {
         return;
       }
       expect(sent[1]?.rules).toEqual({
+        ...NO_RULE_OVERRIDES,
         fog: 0,
-        needs: null,
-        progression: null,
-        weather: null,
-        dayNight: null,
-        alliedVision: null,
-        peace: null,
-        storageCapacity: null,
       });
     },
   );

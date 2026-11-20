@@ -1,4 +1,4 @@
-import type { GameSession } from '@open-northland/lockstep';
+import { type GameSession, NO_RULE_OVERRIDES } from '@open-northland/lockstep';
 import type { RoomSettings } from '@open-northland/net-protocol';
 import { Relay } from '@open-northland/net-server';
 import { type SaveGame, Simulation } from '@open-northland/sim';
@@ -23,16 +23,7 @@ const SETTINGS: RoomSettings = {
   world: { kind: 'map', mapId: 'zatoka' },
   mapOrigin: 'user',
   seed: 13,
-  rules: {
-    fog: null,
-    progression: null,
-    needs: null,
-    weather: null,
-    dayNight: null,
-    alliedVision: null,
-    peace: null,
-    storageCapacity: null,
-  },
+  rules: NO_RULE_OVERRIDES,
   speed: 1,
 };
 const SEATS = [0, 1].map((player) => ({

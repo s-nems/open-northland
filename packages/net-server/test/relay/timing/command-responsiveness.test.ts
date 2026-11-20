@@ -1,3 +1,4 @@
+import { NO_RULE_OVERRIDES } from '@open-northland/lockstep';
 import { Relay } from '@open-northland/net-server';
 import { playerCommand, Simulation } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
@@ -50,16 +51,7 @@ describe('relay command responsiveness', () => {
         name: 'latency',
         world: { kind: 'scene', sceneId: 'fixture' },
         seed: 3,
-        rules: {
-          fog: null,
-          progression: null,
-          needs: null,
-          weather: null,
-          dayNight: null,
-          alliedVision: null,
-          peace: null,
-          storageCapacity: null,
-        },
+        rules: NO_RULE_OVERRIDES,
         speed: scenario.speed,
       },
       seats: clients.map((_, player) => ({

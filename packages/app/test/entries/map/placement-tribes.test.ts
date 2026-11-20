@@ -1,3 +1,4 @@
+import { NO_RULE_OVERRIDES } from '@open-northland/lockstep';
 import { components, exportSaveGame, type Simulation, serializeSaveGame } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import { buildMapWorld, restoreMapWorld } from '../../../src/entries/map/world.js';
@@ -12,12 +13,7 @@ const BASE_OPTIONS = {
   demoOwner: 0,
   machineSeats: [],
   assistantSeats: [],
-  fog: null,
-  progression: null,
-  needs: null,
-  alliedVision: null,
-  peace: null,
-  storageCapacity: null,
+  ...NO_RULE_OVERRIDES,
 } as const;
 
 function contentWithOtherTribe() {

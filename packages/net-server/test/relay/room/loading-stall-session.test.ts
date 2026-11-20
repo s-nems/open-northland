@@ -1,3 +1,4 @@
+import { NO_RULE_OVERRIDES } from '@open-northland/lockstep';
 import type { DepartedSeatMode, RoomSettings } from '@open-northland/net-protocol';
 import { LOADING_STALL_MS, Relay } from '@open-northland/net-server';
 import type { Simulation } from '@open-northland/sim';
@@ -17,16 +18,7 @@ const SETTINGS: RoomSettings = {
   name: 'fixture',
   world: { kind: 'scene', sceneId: 'fixture' },
   seed: 5,
-  rules: {
-    fog: null,
-    progression: null,
-    needs: null,
-    weather: null,
-    dayNight: null,
-    alliedVision: null,
-    peace: null,
-    storageCapacity: null,
-  },
+  rules: NO_RULE_OVERRIDES,
   speed: 1,
 };
 const SEATS = [0, 1, 2].map((player) => ({

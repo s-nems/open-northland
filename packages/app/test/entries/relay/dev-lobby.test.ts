@@ -1,3 +1,4 @@
+import { NO_RULE_OVERRIDES } from '@open-northland/lockstep';
 import { PROTOCOL_VERSION, type RoomView } from '@open-northland/net-protocol';
 import { describe, expect, it } from 'vitest';
 import { devLobbyAction } from '../../../src/entries/relay/dev-lobby.js';
@@ -13,16 +14,7 @@ const SETTINGS: RoomView['settings'] = {
   name: 'las',
   world: { kind: 'map', mapId: 'las' },
   seed: 7,
-  rules: {
-    fog: null,
-    progression: null,
-    needs: null,
-    weather: null,
-    dayNight: null,
-    alliedVision: null,
-    peace: null,
-    storageCapacity: null,
-  },
+  rules: NO_RULE_OVERRIDES,
   speed: 1,
 };
 

@@ -5,6 +5,7 @@ import {
   humanSeatsOf,
   isSpectator,
   machineSeatsOf,
+  NO_RULE_OVERRIDES,
   orderedSeats,
   PEACE_MINUTES,
   parseGameSession,
@@ -28,16 +29,7 @@ function session(over: Partial<GameSession> = {}): GameSession {
       { player: 2, mode: 'idle', color: 9 },
     ],
     localSeat: 0,
-    rules: {
-      fog: 1,
-      progression: true,
-      needs: null,
-      weather: 'map',
-      dayNight: null,
-      alliedVision: null,
-      peace: null,
-      storageCapacity: null,
-    },
+    rules: { ...NO_RULE_OVERRIDES, fog: 1, progression: true, weather: 'map' },
     speed: 1,
     ...over,
   };
@@ -148,16 +140,7 @@ describe('game session descriptor', () => {
     expect(() =>
       parseGameSession(
         session({
-          rules: {
-            fog: 9,
-            progression: null,
-            needs: null,
-            weather: null,
-            dayNight: null,
-            alliedVision: null,
-            peace: null,
-            storageCapacity: null,
-          },
+          rules: { ...NO_RULE_OVERRIDES, fog: 9 },
         }),
       ),
     ).toThrow(/rules.fog/);

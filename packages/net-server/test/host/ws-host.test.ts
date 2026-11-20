@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { connect as connectTcp } from 'node:net';
+import { NO_RULE_OVERRIDES } from '@open-northland/lockstep';
 import {
   CLOSE_SERVICE_RESTART,
   MAX_SPEED,
@@ -23,16 +24,7 @@ const SETTINGS: RoomSettings = {
   name: 'socket',
   world: { kind: 'scene', sceneId: 'fixture' },
   seed: 3,
-  rules: {
-    fog: null,
-    progression: null,
-    needs: null,
-    weather: null,
-    dayNight: null,
-    alliedVision: null,
-    peace: null,
-    storageCapacity: null,
-  },
+  rules: NO_RULE_OVERRIDES,
   // The fastest clock: the run is paced by wall time over real sockets.
   speed: MAX_SPEED,
 };

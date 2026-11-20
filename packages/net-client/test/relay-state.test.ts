@@ -1,4 +1,4 @@
-import type { GameSession } from '@open-northland/lockstep';
+import { type GameSession, NO_RULE_OVERRIDES } from '@open-northland/lockstep';
 import { RelayClient, RelayState } from '@open-northland/net-client';
 import {
   type ChatLine,
@@ -13,16 +13,7 @@ const SESSION: GameSession = {
   seed: 3,
   seats: [{ player: 0, mode: 'human', color: 0 }],
   localSeat: 0,
-  rules: {
-    fog: null,
-    progression: null,
-    needs: null,
-    weather: null,
-    dayNight: null,
-    alliedVision: null,
-    peace: null,
-    storageCapacity: null,
-  },
+  rules: NO_RULE_OVERRIDES,
   speed: 1,
 };
 

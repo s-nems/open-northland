@@ -1,4 +1,4 @@
-import type { GameSession } from '@open-northland/lockstep';
+import { type GameSession, NO_RULE_OVERRIDES } from '@open-northland/lockstep';
 import { LINK_REPLACE_MS, RelaySocket, TRANSFER_REPLACE_MS } from '@open-northland/net-client';
 import { type ClientMessage, type RoomSettings, TICKS_PER_SECOND } from '@open-northland/net-protocol';
 import { Relay } from '@open-northland/net-server';
@@ -22,16 +22,7 @@ const SETTINGS: RoomSettings = {
   name: 'half-open',
   world: { kind: 'scene', sceneId: 'fixture' },
   seed: 13,
-  rules: {
-    fog: null,
-    progression: null,
-    needs: null,
-    weather: null,
-    dayNight: null,
-    alliedVision: null,
-    peace: null,
-    storageCapacity: null,
-  },
+  rules: NO_RULE_OVERRIDES,
   speed: 1,
 };
 const SEATS = [0, 1].map((player) => ({

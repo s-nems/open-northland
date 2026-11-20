@@ -1,3 +1,4 @@
+import { NO_RULE_OVERRIDES } from '@open-northland/lockstep';
 import {
   exportSaveGame,
   FOG_MODE,
@@ -27,12 +28,7 @@ const BASE_OPTIONS = {
   content: {},
   machineSeats: [],
   assistantSeats: [0],
-  fog: null,
-  progression: null,
-  needs: null,
-  alliedVision: null,
-  peace: null,
-  storageCapacity: null,
+  ...NO_RULE_OVERRIDES,
   missions: null,
 } as const;
 

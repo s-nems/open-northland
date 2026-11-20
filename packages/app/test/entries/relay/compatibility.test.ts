@@ -1,3 +1,4 @@
+import { NO_RULE_OVERRIDES } from '@open-northland/lockstep';
 import { type LobbyCompatibility, PROTOCOL_VERSION, type RoomView } from '@open-northland/net-protocol';
 import { describe, expect, it, vi } from 'vitest';
 import {
@@ -23,16 +24,7 @@ function room(id: string, compatibility: LobbyCompatibility | null = null): Room
       name: id,
       world: { kind: 'map', mapId: id },
       seed: 1,
-      rules: {
-        fog: null,
-        progression: null,
-        needs: null,
-        weather: null,
-        dayNight: null,
-        alliedVision: null,
-        peace: null,
-        storageCapacity: null,
-      },
+      rules: NO_RULE_OVERRIDES,
       speed: 1,
     },
     seats: [

@@ -1,3 +1,4 @@
+import { NO_RULE_OVERRIDES } from '@open-northland/lockstep';
 import type { RoomView } from '@open-northland/net-protocol';
 import { expect, it, vi } from 'vitest';
 import { createMapCache } from '../../../src/content/transfer/cache.js';
@@ -82,16 +83,7 @@ function runningRoom(fingerprint: string): RoomView {
       name: 'r',
       world: { kind: 'map', mapId: 'island' },
       seed: 7,
-      rules: {
-        fog: null,
-        progression: null,
-        needs: null,
-        weather: null,
-        dayNight: null,
-        alliedVision: null,
-        peace: null,
-        storageCapacity: null,
-      },
+      rules: NO_RULE_OVERRIDES,
       speed: 1,
       mapOrigin: 'user',
     },

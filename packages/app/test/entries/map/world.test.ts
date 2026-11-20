@@ -1,3 +1,4 @@
+import { NO_RULE_OVERRIDES } from '@open-northland/lockstep';
 import { components, FOG_MODE, FOG_STATE } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import type { ContentIr } from '../../../src/content/ir/rows.js';
@@ -15,12 +16,7 @@ const NO_SESSION_FLAGS = {
   content: {},
   machineSeats: [],
   assistantSeats: [],
-  fog: null,
-  progression: null,
-  needs: null,
-  alliedVision: null,
-  peace: null,
-  storageCapacity: null,
+  ...NO_RULE_OVERRIDES,
   missions: null,
 } as const;
 

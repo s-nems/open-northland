@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { mapLobbySlots } from '@open-northland/data';
-import { type GameSession, humanSeatsOf, machineSeatsOf } from '@open-northland/lockstep';
+import { type GameSession, humanSeatsOf, machineSeatsOf, NO_RULE_OVERRIDES } from '@open-northland/lockstep';
 import type { RoomSeatSetup, RoomSettings } from '@open-northland/net-protocol';
 import { Relay } from '@open-northland/net-server';
 import { playerCommand, type SaveGame, type Simulation } from '@open-northland/sim';
@@ -42,14 +42,7 @@ const LINKS = [
   { latencyMs: 250, jitterMs: 80 },
 ];
 const RULES = {
-  fog: null,
-  progression: null,
-  needs: null,
-  weather: null,
-  dayNight: null,
-  alliedVision: null,
-  peace: null,
-  storageCapacity: null,
+  ...NO_RULE_OVERRIDES,
 };
 /** Virtual time for a lobby step to cross the slowest link twice, with margin. */
 const LOBBY_SETTLE_MS = 800;

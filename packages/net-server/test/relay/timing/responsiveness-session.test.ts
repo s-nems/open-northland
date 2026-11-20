@@ -1,3 +1,4 @@
+import { NO_RULE_OVERRIDES } from '@open-northland/lockstep';
 import type { ResponsivenessMode } from '@open-northland/net-protocol';
 import { Relay } from '@open-northland/net-server';
 import { playerCommand, Simulation } from '@open-northland/sim';
@@ -29,16 +30,7 @@ it('changes shared pacing repeatedly while eight clients apply every command and
       name: 'pacing',
       world: { kind: 'scene', sceneId: 'fixture' },
       seed: 5,
-      rules: {
-        fog: null,
-        progression: null,
-        needs: null,
-        weather: null,
-        dayNight: null,
-        alliedVision: null,
-        peace: null,
-        storageCapacity: null,
-      },
+      rules: NO_RULE_OVERRIDES,
       speed: 1,
     },
     seats: clients.map((_, player) => ({

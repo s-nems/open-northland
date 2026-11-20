@@ -1,5 +1,5 @@
 import type { MessageChannel } from 'node:worker_threads';
-import type { GameSession } from '@open-northland/lockstep';
+import { type GameSession, NO_RULE_OVERRIDES } from '@open-northland/lockstep';
 import type { RelayLinkEvents } from '@open-northland/net-client';
 import { type ClientMessage, DESCRIPTOR_WORLD } from '@open-northland/net-protocol';
 import type { MapWorkerBoot, MapWorldPlacements } from '../../../src/entries/map/world-inputs.js';
@@ -24,16 +24,7 @@ export const SANDBOX_SESSION: GameSession = {
   seed: 1,
   seats: [{ player: 0, color: 0, mode: 'human' }],
   localSeat: 0,
-  rules: {
-    fog: null,
-    progression: null,
-    needs: null,
-    weather: null,
-    dayNight: null,
-    alliedVision: null,
-    peace: null,
-    storageCapacity: null,
-  },
+  rules: NO_RULE_OVERRIDES,
   speed: 1,
 };
 

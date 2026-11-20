@@ -1,4 +1,5 @@
 import { existsSync } from 'node:fs';
+import { NO_RULE_OVERRIDES } from '@open-northland/lockstep';
 import {
   components,
   type Entity,
@@ -49,16 +50,7 @@ describe.runIf(hasRealIr() && existsSync(realMapPath(MAP_ID)))(
         mapId: MAP_ID,
         machineSeats: [],
         humanSeats: [HUMAN_SEAT],
-        rules: {
-          fog: null,
-          progression: false,
-          needs: null,
-          weather: null,
-          dayNight: null,
-          alliedVision: null,
-          peace: null,
-          storageCapacity: null,
-        },
+        rules: { ...NO_RULE_OVERRIDES, progression: false },
       });
       const house = typeIdOf(ir.buildings, 'home_level_00');
       const hqType = typeIdOf(ir.buildings, 'headquarters');
