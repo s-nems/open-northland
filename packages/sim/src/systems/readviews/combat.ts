@@ -52,6 +52,17 @@ export function weaponDamageVsMaterial(weapon: Pick<WeaponType, 'damage'>, mater
   return weapon.damage[String(material)] ?? 0;
 }
 
+/** The damage column a wild animal takes, in our data pack. A weapon without one hits an animal with its
+ *  leather column, as every weapon does in the original data. */
+export const WILDLIFE_DAMAGE_COLUMN = 8;
+
+/** {@link weaponDamageVsMaterial} against a wild animal. */
+export function weaponDamageVsWildlife(weapon: Pick<WeaponType, 'damage'>): number {
+  return (
+    weapon.damage[String(WILDLIFE_DAMAGE_COLUMN)] ?? weaponDamageVsMaterial(weapon, ARMOR_MATERIAL.LEATHER)
+  );
+}
+
 /** An `[armortype]` record's damage column: its `materialType`, or its `typeId` where the record carries
  *  none (the two coincide for the 4 base armors). */
 function materialOfRecord(armor: ArmorType): number {

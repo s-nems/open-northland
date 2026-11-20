@@ -570,7 +570,7 @@ export const ECONOMY: ArticleGroup = {
           h: 'Mucchi a terra',
         },
         {
-          p: 'Un mucchio a terra non è di nessuno, e chiunque può prenderlo. La tua gente lascia stare un mucchio che giace a portata di un arciere in piedi su una torre nemica, {{shortBow.towerMax}} esagoni con un arco corto e {{longBow.towerMax}} con un arco lungo, così nessuno va a prenderlo sotto il suo tiro. Una torre nemica senza arciere non tiene lontano nessuno. Un tuo ordine di indossare un equipaggiamento manda comunque un uomo lì, e così una bandierina di lavoro che pianti per un trasportatore. Dove un trasportatore raccoglie i mucchi: [[article:work-flag|Bandierina di lavoro]].',
+          p: 'Un mucchio a terra non è di nessuno, e chiunque può prenderlo. La tua gente lascia stare un mucchio che giace a portata di un arciere in piedi su una torre nemica, {{shortBow.towerMax}} esagoni dal muro più vicino della torre con un arco corto e {{longBow.towerMax}} con un arco lungo, così nessuno va a prenderlo sotto il suo tiro. Una torre nemica senza arciere non tiene lontano nessuno. Un tuo ordine di indossare un equipaggiamento manda comunque un uomo lì, e così una bandierina di lavoro che pianti per un trasportatore. Dove un trasportatore raccoglie i mucchi: [[article:work-flag|Bandierina di lavoro]].',
         },
       ],
       see: [

@@ -47,6 +47,7 @@ import {
   WILD_VICTIM_TIERS,
   wildPursuit,
 } from './targeting.js';
+import { postReachDistance, postSearchBand, postSpan } from './tower-post.js';
 import { gaveUp, givenUpTargets, vetoOf } from './unreachable-targets.js';
 import { bandNodeCount, type WeaponBand, withinBand } from './weapon-band.js';
 import type { ArmedWith } from './weapons.js';
@@ -102,6 +103,8 @@ export class EngagementSpecs {
         givenUp: readonly UnreachableTarget[] | undefined;
         anchor: NodeId;
         kind: 'advance' | 'post' | 'defend' | 'ignore';
+        /** The tower a `post` unit mans, which its reach counts from. */
+        post: Entity | null;
       }
     | undefined;
   private readonly reachable = (t: Entity): boolean => {
@@ -118,6 +121,13 @@ export class EngagementSpecs {
       i.weapon,
       hexNodeDistance(this.terrain, i.here, combatTargetNode(this.world, this.ctx, this.terrain, i.here, t)),
     );
+  };
+  /** Whether `t` stands within a garrison's band of its post's nearest wall. */
+  private readonly inPostReach = (t: Entity): boolean => {
+    const i = this.current();
+    if (i.post === null) return false;
+    const mark = combatTargetNode(this.world, this.ctx, this.terrain, i.here, t);
+    return withinBand(i.weapon, postReachDistance(this.world, this.ctx, this.terrain, i.post, mark));
   };
   /** Whether `t` stands on the ground a defender guards around its anchor. */
   private readonly nearAnchor = (t: Entity): boolean =>
@@ -144,17 +154,13 @@ export class EngagementSpecs {
     const i = this.current();
     if (i.kind === 'defend' && !this.nearAnchor(t)) return false;
     if (i.kind === 'ignore' && !this.inBand(t)) return false;
+    if (i.kind === 'post' && !this.inPostReach(t)) return false;
     return this.advanceAccept(t);
   };
   // A held hostile stays the target until its stance leash or reach rejects it.
   private readonly keep = (t: Entity): boolean => {
     const i = this.current();
-    if (i.kind === 'post')
-      return (
-        this.hostile(t) &&
-        this.reachable(t) &&
-        inReachOf(this.terrain, this.world, this.ctx, i.here, t, i.weapon.maxRange)
-      );
+    if (i.kind === 'post') return this.hostile(t) && this.reachable(t) && this.inPostReach(t);
     // Hostility first: it also drops a target with no position, such as a rider inside a vehicle.
     if (!this.hostile(t)) return false;
     if (
@@ -240,7 +246,7 @@ export class EngagementSpecs {
               isFighterJob(ctx.content, attacker.jobType)
             ? 'ignore'
             : 'advance';
-    this.input ??= { e, here, attacker, weapon, bank, givenUp, anchor, kind };
+    this.input ??= { e, here, attacker, weapon, bank, givenUp, anchor, kind, post: stance.post };
     const input = this.input;
     input.e = e;
     input.here = here;
@@ -250,6 +256,7 @@ export class EngagementSpecs {
     input.givenUp = givenUp;
     input.anchor = anchor;
     input.kind = kind;
+    input.post = stance.post;
     if (
       owned &&
       stance.post === null &&
@@ -297,12 +304,16 @@ export class EngagementSpecs {
       } else spec.defend = null;
       // Original behavior: advancing acquisition includes the bow's dead zone; IGNORE strikes in place.
       spec.minDist = kind === 'post' || kind === 'ignore' ? weapon.minRange : 0;
+      // A garrison's band counts from its post's walls, which stand up to the post's span off its own node.
+      const span = stance.post === null ? 0 : postSpan(world, ctx, terrain, stance.post);
       spec.searchRadius =
-        kind === 'post' || kind === 'ignore'
-          ? weapon.maxRange
-          : kind === 'defend'
-            ? hexNodeDistance(terrain, here, anchor) + DEFEND_RADIUS_NODES
-            : SIGHT_RADIUS_NODES;
+        kind === 'post'
+          ? weapon.maxRange + span
+          : kind === 'ignore'
+            ? weapon.maxRange
+            : kind === 'defend'
+              ? hexNodeDistance(terrain, here, anchor) + DEFEND_RADIUS_NODES
+              : SIGHT_RADIUS_NODES;
       // Off its anchor a defender's band covers far more than the ground it guards.
       if (kind === 'defend' && spec.searchRadius > DEFEND_RADIUS_NODES) {
         this.guarded.x = terrain.xOf(anchor);
@@ -310,10 +321,10 @@ export class EngagementSpecs {
         spec.narrow = this.guarded;
       } else spec.narrow = null;
       spec.player = isHunterJob(ctx.content, attacker.jobType) ? null : (viewer ?? null);
-      spec.hold.band = weapon;
+      spec.hold.band = kind === 'post' ? postSearchBand(weapon, span) : weapon;
       // A step past the band takes the enemy about to step into it; a garrison never steps.
       this.look.minRange = weapon.minRange;
-      this.look.maxRange = kind === 'post' ? weapon.maxRange : weapon.maxRange + 1;
+      this.look.maxRange = kind === 'post' ? weapon.maxRange + span : weapon.maxRange + 1;
       spec.hold.contact = stance.post === null && !isRangedWeapon(weapon.weapon);
       return spec;
     }
@@ -367,18 +378,6 @@ export class EngagementSpecs {
 
 /** A search that admits nothing, over the seeker's own node alone. */
 const NO_SEARCH = { accept: (): boolean => false, searchRadius: 0 } as const;
-
-/** Whether `t`'s combat node lies within `reach` map points of `here`. */
-function inReachOf(
-  terrain: TerrainGraph,
-  world: World,
-  ctx: SystemContext,
-  here: NodeId,
-  t: Entity,
-  reach: number,
-): boolean {
-  return hexNodeDistance(terrain, here, combatTargetNode(world, ctx, terrain, here, t)) <= reach;
-}
 
 export interface EngageSpec {
   /** The nearest search's per-candidate hostility/predation filter. */

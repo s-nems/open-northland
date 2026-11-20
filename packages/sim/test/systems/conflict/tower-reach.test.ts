@@ -55,6 +55,10 @@ const HEADQUARTERS_TYPE = 1;
 /** A wood-to-plank workshop with a carrier slot. */
 const TWIN_MILL_TYPE = 8;
 const TOWER_TYPE = 92;
+/** A tower three nodes wide along its row, so its walls stand apart from its anchor. */
+const WIDE_TOWER_TYPE = 93;
+/** The node of {@link WIDE_TOWER_TYPE}'s east wall, counted from its anchor along the row. */
+const WIDE_TOWER_EAST_NODE = 2;
 const WOOD = 1;
 const SHOES = 8;
 const ARROW_MUNITION = 1;
@@ -97,6 +101,21 @@ function towerContent(): ContentSet {
         ],
         stock: [],
         footprint: { blocked: [{ dx: 0, dy: 0 }], door: { dx: 0, dy: 1 } },
+      },
+      {
+        typeId: WIDE_TOWER_TYPE,
+        id: 'wide_tower',
+        kind: 'tower',
+        workers: [{ jobType: SOLDIER_JOB, count: 1 }],
+        stock: [],
+        footprint: {
+          blocked: [
+            { dx: 0, dy: 0 },
+            { dx: 1, dy: 0 },
+            { dx: WIDE_TOWER_EAST_NODE, dy: 0 },
+          ],
+          door: { dx: 0, dy: 1 },
+        },
       },
     ],
     weapons: [
@@ -141,9 +160,9 @@ function placed(sim: Simulation, x: number, y: number, owner?: number): Entity {
 }
 
 /** An empty tower: nobody stands on its post. */
-function towerAt(sim: Simulation, x: number, y: number, owner = ENEMY): Entity {
+function towerAt(sim: Simulation, x: number, y: number, owner = ENEMY, buildingType = TOWER_TYPE): Entity {
   const e = placed(sim, x, y, owner);
-  sim.world.add(e, Building, { buildingType: TOWER_TYPE, tribe: VIKING, built: ONE, level: 0 });
+  sim.world.add(e, Building, { buildingType, tribe: VIKING, built: ONE, level: 0 });
   return e;
 }
 
@@ -258,6 +277,17 @@ describe('the ground under an enemy tower', () => {
 
     expect(underFire(sim, atReach)).toBe(true);
     expect(underFire(sim, past)).toBe(false);
+  });
+
+  it("counts a bowman's reach from the tower's nearest wall, as his shot does", () => {
+    const sim = freshSim();
+    const tower = towerAt(sim, 0, 0, ENEMY, WIDE_TOWER_TYPE);
+    takePost(sim.world, bowmanFor(sim, tower), tower);
+    const atReach = pileAlongRow(sim, WIDE_TOWER_EAST_NODE + TOWER_REACH, WOOD);
+    const past = pileAlongRow(sim, WIDE_TOWER_EAST_NODE + TOWER_REACH + 1, WOOD);
+
+    expect(pileUnderEnemyTowers(sim.world, ctxOf(sim), HUMAN, atReach)).toBe(true);
+    expect(pileUnderEnemyTowers(sim.world, ctxOf(sim), HUMAN, past)).toBe(false);
   });
 
   it('is covered only while a bowman whose owner fights the fetcher stands on the post', () => {

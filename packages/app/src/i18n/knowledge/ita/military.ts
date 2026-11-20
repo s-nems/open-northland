@@ -239,7 +239,10 @@ export const MILITARY: ArticleGroup = {
           h: 'Postazione sulla torre',
         },
         {
-          list: ['Un arciere in postazione non può essere colpito. Un nemico può tirare solo alla torre.'],
+          list: [
+            'Un arciere in postazione non può essere colpito. Un nemico può tirare solo alla torre.',
+            "La gittata sulla torre si conta dal muro più vicino della torre. Sulla torre ogni arco arriva almeno lontano quanto l'arco che tira più lontano a terra.",
+          ],
         },
       ],
       see: ['article:exp-combat', 'article:defence', 'building:tower_00', 'building:tower_01'],

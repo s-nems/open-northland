@@ -21,8 +21,8 @@ import {
   hexNeighboursOf,
   positionOfNode,
 } from '../../../src/nav/halfcell.js';
-import { targetMaterial } from '../../../src/systems/conflict/weapons.js';
-import { ARMOR_MATERIAL, WEAPON_MAIN_TYPE } from '../../../src/systems/index.js';
+import { targetMaterial, weaponDamageVsTarget } from '../../../src/systems/conflict/weapons.js';
+import { ARMOR_MATERIAL, WEAPON_MAIN_TYPE, WILDLIFE_DAMAGE_COLUMN } from '../../../src/systems/index.js';
 import { landedDamage } from '../../../src/systems/settlers/atomics/effects/combat/hit/damage.js';
 import type { PendingHitReaction } from '../../../src/systems/settlers/atomics/effects/combat/hit/reaction.js';
 import { resolveCombatHit } from '../../../src/systems/settlers/atomics/effects/combat/hit/resolution.js';
@@ -147,6 +147,17 @@ describe('landedDamage - animals and buildings', () => {
     const wolf = fighterAtNode(sim, VICTIM.hx, VICTIM.hy, WOLF_TRIBE, null, { armorClass: CHAIN_CLASS });
     expect(targetMaterial(sim.world, ctxOf(sim), wolf)).toBe(ARMOR_MATERIAL.LEATHER);
     expect(blowFrom(sim, striker, wolf, WEST)).toBe(BASE);
+  });
+
+  it("an animal takes a weapon's animal column, the leather one where the weapon has none", () => {
+    const { sim } = setup();
+    const wolf = fighterAtNode(sim, VICTIM.hx, VICTIM.hy, WOLF_TRIBE, null);
+    const leather = targetMaterial(sim.world, ctxOf(sim), wolf);
+    const bow = { damage: { [String(ARMOR_MATERIAL.LEATHER)]: 245, [String(WILDLIFE_DAMAGE_COLUMN)]: 525 } };
+    expect(weaponDamageVsTarget(sim.world, bow, wolf, leather)).toBe(525);
+    expect(
+      weaponDamageVsTarget(sim.world, { damage: { [String(ARMOR_MATERIAL.LEATHER)]: 245 } }, wolf, leather),
+    ).toBe(245);
   });
 
   it('a building takes the house column, a zero base does nothing, and no side or armor counts', () => {

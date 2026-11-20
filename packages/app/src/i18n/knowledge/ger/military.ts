@@ -235,6 +235,7 @@ export const MILITARY: ArticleGroup = {
         {
           list: [
             'Einen Bogenschützen auf dem Posten kann niemand treffen. Feinde können nur auf den Turm schießen.',
+            'Die Reichweite auf dem Turm zählt ab der nächsten Turmwand. Auf dem Turm reicht jeder Bogen mindestens so weit wie der am weitesten schießende Bogen am Boden.',
           ],
         },
       ],

@@ -230,7 +230,10 @@ export const MILITARY: ArticleGroup = {
           h: '箭塔岗位',
         },
         {
-          list: ['岗位上的弓手打不到，敌人只能射箭塔。'],
+          list: [
+            '岗位上的弓手打不到，敌人只能射箭塔。',
+            '塔上的射程从箭塔最近的墙算起。塔上的每种弓至少能射到地面上射得最远的弓那么远。',
+          ],
         },
       ],
       see: ['article:exp-combat', 'article:defence', 'building:tower_00', 'building:tower_01'],

@@ -5,7 +5,6 @@ import type { ArticleDataBlock } from '../../../knowledge/articles.js';
 import { buildingHitpoints } from '../../../knowledge/base.js';
 import { weaponGroups, weaponLabel } from '../../../knowledge/calculator.js';
 import {
-  ANIMAL_TARGET,
   type BlowModifiers,
   type CombatTarget,
   combatTargets,
@@ -221,14 +220,7 @@ function matrix(context: KnowledgeContext): HTMLElement {
     }).host,
   );
   const foot = element('p', 'kn-foot');
-  const animalLike = combatTargets(context.base).find((target) => target.column === ANIMAL_TARGET.column);
-  write(
-    foot,
-    formatMessage(copy.matrixFoot, {
-      hitpoints: formatFactNumber(HUMAN_HITPOINTS),
-      blocking: animalLike?.blocking ?? 0,
-    }),
-  );
+  write(foot, formatMessage(copy.matrixFoot, { hitpoints: formatFactNumber(HUMAN_HITPOINTS) }));
   host.append(controls, slot, foot);
   refresh();
   return host;

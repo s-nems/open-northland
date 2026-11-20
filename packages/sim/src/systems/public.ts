@@ -112,7 +112,7 @@ export {
   ANIMAL_AGGRO_RADIUS_NODES,
   SIGHT_RADIUS_NODES,
 } from './conflict/targeting.js';
-export { TOWER_RANGE_BONUS_NODES } from './conflict/tower-post.js';
+export { postedBowReach } from './conflict/tower-post.js';
 export { VEHICLE_PRIORITY_REACH_POINTS, VEHICLE_SCAN_RADIUS_POINTS } from './conflict/vehicle-targets.js';
 export { HOUSE_DAMAGE_PER_WALL_VALENCY, SHIP_SIEGE_DAMAGE_FACTOR } from './conflict/weapons.js';
 export { BERRY_REGROW_TICKS, BERRY_STAGE_TICKS, createBerryBush } from './economy/berries.js';
@@ -320,7 +320,7 @@ export {
 } from './readviews/buildings.js';
 // The weapon and armour classes the data's `mainType` carries, which the HUD groups soldiers by.
 export { ARMOR_MAIN_TYPE } from './readviews/classes/armor.js';
-export { ARMOR_MATERIAL, WEAPON_MAIN_TYPE } from './readviews/combat.js';
+export { ARMOR_MATERIAL, WEAPON_MAIN_TYPE, WILDLIFE_DAMAGE_COLUMN } from './readviews/combat.js';
 export { heroMayChangeSlot } from './readviews/equip-pick.js';
 export { EDIBLE_FORM_BY_DISH, edibleGoodFormOf, isFoodIn } from './readviews/food.js';
 // The content-derived job roles, so the profession picker and the action ring offer exactly what the

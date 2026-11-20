@@ -23,10 +23,11 @@ const CRITICAL_HIT = EQUIP_CLASS_BY_SLUG.get('amulet_crithit')?.criticalHit;
 
 export type TargetId = keyof Messages['knowledge']['targets'];
 
-/** What a blow lands on: `column` keys the weapon's `damage` record. */
+/** What a blow lands on: `column` keys the weapon's `damage` record, `fallback` where it has none. */
 export interface CombatTarget {
   readonly id: TargetId;
   readonly column: string;
+  readonly fallback?: string;
   readonly person: boolean;
   readonly vehicle: boolean;
   /** The armour good a person target wears, by id. */
@@ -64,10 +65,12 @@ const PERSON_TARGETS: readonly { id: TargetId; material: number; good: string }[
   { id: 'plate', material: ARMOR_MATERIAL.PLATE, good: 'armor_plate' },
 ];
 
-/** An animal takes the leather column with neither direction nor blocking. */
+/** An animal takes the animal column, or the leather one where a weapon has none, with neither direction
+ *  nor blocking. */
 export const ANIMAL_TARGET: CombatTarget = {
   id: 'animal',
-  column: String(ARMOR_MATERIAL.LEATHER),
+  column: String(systems.WILDLIFE_DAMAGE_COLUMN),
+  fallback: String(ARMOR_MATERIAL.LEATHER),
   person: false,
   vehicle: false,
   good: null,
@@ -183,7 +186,9 @@ export function blowSteps(
   modifiers: BlowModifiers = NO_MODIFIERS,
 ): readonly BlowStep[] {
   const { person } = target;
-  const base = weapon.damage[target.column] ?? 0;
+  const base =
+    weapon.damage[target.column] ??
+    (target.fallback === undefined ? 0 : (weapon.damage[target.fallback] ?? 0));
   const directed = person ? systems.directedDamage(base, modifiers.direction) : base;
   const blocked = person ? directed - target.blocking : directed;
   const experienced = gainsFightExperience(weapon, target);

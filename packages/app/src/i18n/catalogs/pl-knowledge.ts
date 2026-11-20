@@ -508,7 +508,7 @@ export const plKnowledge = {
     matrixRange: 'Zasięg',
     matrixCadence: 'Cios co',
     matrixFoot:
-      'Człowiek ma {hitpoints} zdrowia. Zwierzę liczy się jak skórzana zbroja, ale bez odjęcia {blocking}. Cel nie ma doświadczenia w walce.',
+      'Człowiek ma {hitpoints} zdrowia. Obrażenia, jakie zwierzę dostaje od każdej broni, pokazuje jego karta. Cel nie ma doświadczenia w walce.',
     directions: { front: 'Przód', backSide: 'Bok z tyłu ×1,25', behind: 'Tył ×1,5' },
     armourName: 'Pancerz',
     armourWeight: 'Ciężar',

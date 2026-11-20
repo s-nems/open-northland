@@ -46,7 +46,9 @@ export {
   armorMaterialForClass,
   armorMaterialForGood,
   WEAPON_MAIN_TYPE,
+  WILDLIFE_DAMAGE_COLUMN,
   weaponDamageVsMaterial,
+  weaponDamageVsWildlife,
   weaponGoodsByStrength,
   weaponKey,
 } from './combat.js';

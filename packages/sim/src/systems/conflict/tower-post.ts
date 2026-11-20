@@ -1,3 +1,4 @@
+import type { ContentSet } from '@open-northland/data';
 import {
   Building,
   Garrison,
@@ -8,23 +9,26 @@ import {
   Weapon,
 } from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
-import type { ContentContext } from '../context.js';
-import { isFighterJob, isRangedWeapon } from '../readviews/index.js';
+import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
+import type { ContentContext, MapContext } from '../context.js';
+import { houseBow, isFighterJob, isRangedWeapon, WEAPON_MAIN_TYPE } from '../readviews/index.js';
+import { hexNodeDistance, nearestHexCell } from '../spatial/metric.js';
+import { entityNode } from '../spatial/nodes.js';
 import { buildingWorkerJobs } from '../stores/index.js';
+import { buildingBodyNodes } from './target-node.js';
 import { attackerWeapon, type WeaponReach } from './weapons.js';
 
 // The tower post: which one a fighter is entitled to man, whether it is manning one right now, and what
 // manning does to its reach.
 
 /**
- * How much reach (map points) a manned post adds to a garrison's bow, for spotting a target
- * and for the shot alike: the short bow's extracted `maximumrange 15` reaches 20 from the tower, the long
- * bow's 23 reaches 28. Original behavior; a posted man with a melee weapon gains nothing. Intentional
- * deviation: the original grants it to a posted bowman wherever he stands; here only one standing on his
- * post has it, since the reach comes from the tower and a man shooting that far on his walk up would look
- * wrong.
+ * How much reach (map points) a manned post adds to a garrison's bow, for spotting a target and for the shot
+ * alike. A posted bow reaches at least as far as the farthest bow a person carries
+ * ({@link farthestHandBowReach}), so no archer on the ground outranges a manned tower. The reach counts from
+ * the post's nearest wall, the face an attacker measures its own reach to. Only a man standing on his post
+ * has it; a posted man with a melee weapon gains no bonus.
  */
-export const TOWER_RANGE_BONUS_NODES = 5;
+export const TOWER_RANGE_BONUS_NODES = 4;
 
 /**
  * The post `e` is entitled to man: the built building its {@link JobAssignment} binds it to,
@@ -80,24 +84,30 @@ export function holdsPost(world: World, ctx: ContentContext, e: Entity, post: En
   return jobType != null && towerPostFor(world, ctx, e, jobType) === post;
 }
 
-/** A garrison's reach band: a bow's far reach plus {@link TOWER_RANGE_BONUS_NODES}, and no near dead zone
- *  (original behavior - the post shoots at whatever stands under its wall). */
-export function garrisonReach(held: WeaponReach): WeaponReach {
+/** A garrison's reach band, counted from its post's nearest wall ({@link postReachDistance}): a bow's far
+ *  reach plus {@link TOWER_RANGE_BONUS_NODES}, at least {@link farthestHandBowReach}, and no near dead zone
+ *  (the post shoots at whatever stands under its wall). */
+export function garrisonReach(content: ContentSet, held: WeaponReach): WeaponReach {
   let reach = garrisonReaches.get(held);
   if (reach === undefined) {
     reach = isRangedWeapon(held.weapon)
-      ? { ...held, minRange: 0, maxRange: held.maxRange + TOWER_RANGE_BONUS_NODES }
+      ? {
+          ...held,
+          minRange: 0,
+          maxRange: postedBowReach(content, held.maxRange),
+        }
       : { ...held, minRange: 0 };
     garrisonReaches.set(held, reach);
   }
   return reach;
 }
 
-/** Each held reach's garrison band, so a posted fighter's pass allocates none. */
+/** Each held reach's garrison band, so a posted fighter's pass allocates none. Held reaches are per content. */
 const garrisonReaches = new WeakMap<WeaponReach, WeaponReach>();
 
-/** How far `e`, manning a post ({@link mannedPostOf}), shoots from it in map points: the
- *  {@link garrisonReach} of the bow he holds, the band his combat search and swing read. 0 without a bow. */
+/** How far `e`, manning a post ({@link mannedPostOf}), shoots in map points from its nearest wall
+ *  ({@link postReachDistance}): the {@link garrisonReach} of the bow he holds, the band his combat search and
+ *  swing read. 0 without a bow. */
 export function postShotReach(world: World, ctx: ContentContext, e: Entity): number {
   const settler = world.get(e, Settler);
   const held = attackerWeapon(
@@ -107,5 +117,80 @@ export function postShotReach(world: World, ctx: ContentContext, e: Entity): num
     world.tryGet(e, Weapon)?.weaponTypeId,
     settler.humanForm,
   );
-  return held !== null && isRangedWeapon(held.weapon) ? garrisonReach(held).maxRange : 0;
+  return held !== null && isRangedWeapon(held.weapon) ? garrisonReach(ctx.content, held).maxRange : 0;
 }
+
+/** The {@link garrisonReach} of a bow that reaches `maxRange` on the ground. */
+export function postedBowReach(content: ContentSet, maxRange: number): number {
+  return Math.max(maxRange + TOWER_RANGE_BONUS_NODES, farthestHandBowReach(content));
+}
+
+/** The farthest any bow a person carries reaches in `content`, the house bow a building fires aside. */
+export function farthestHandBowReach(content: ContentSet): number {
+  let farthest = farthestHandBows.get(content);
+  if (farthest === undefined) {
+    farthest = 0;
+    for (const weapon of content.weapons) {
+      const tribe = weapon.tribeType;
+      if (weapon.mainType !== WEAPON_MAIN_TYPE.BOW) continue;
+      if (tribe !== undefined && houseBow(content, tribe) === weapon) continue;
+      farthest = Math.max(farthest, weapon.maxRange);
+    }
+    farthestHandBows.set(content, farthest);
+  }
+  return farthest;
+}
+
+const farthestHandBows = new WeakMap<ContentSet, number>();
+
+/** The map-point distance a garrison's reach counts to `mark`: from the nearest wall of `post`. */
+export function postReachDistance(
+  world: World,
+  ctx: MapContext,
+  terrain: TerrainGraph,
+  post: Entity,
+  mark: NodeId,
+): number {
+  const walls = buildingBodyNodes(world, ctx, terrain, post);
+  return hexNodeDistance(
+    terrain,
+    nearestHexCell(terrain, walls, mark) ?? entityNode(world, terrain, post),
+    mark,
+  );
+}
+
+/** How much farther than its {@link garrisonReach} a posted man's search from his own node must look: the
+ *  distance from where he stands, the post's own node, to its farthest wall. */
+export function postSpan(world: World, ctx: MapContext, terrain: TerrainGraph, post: Entity): number {
+  const walls = buildingBodyNodes(world, ctx, terrain, post);
+  let span = postSpans.get(walls);
+  if (span === undefined) {
+    const at = entityNode(world, terrain, post);
+    span = 0;
+    for (const wall of walls) span = Math.max(span, hexNodeDistance(terrain, at, wall));
+    postSpans.set(walls, span);
+  }
+  return span;
+}
+
+/** Each held body's {@link postSpan}: a body is held until its building moves or changes, so the span is too. */
+const postSpans = new WeakMap<readonly NodeId[], number>();
+
+/** `band` widened by `span`: the ground a posted man's search from his own node covers, within which
+ *  {@link postReachDistance} decides what his {@link garrisonReach} takes. */
+export function postSearchBand(band: WeaponReach, span: number): WeaponReach {
+  if (span === 0) return band;
+  let bySpan = searchBands.get(band);
+  if (bySpan === undefined) {
+    bySpan = new Map();
+    searchBands.set(band, bySpan);
+  }
+  let widened = bySpan.get(span);
+  if (widened === undefined) {
+    widened = { ...band, maxRange: band.maxRange + span };
+    bySpan.set(span, widened);
+  }
+  return widened;
+}
+
+const searchBands = new WeakMap<WeaponReach, Map<number, WeaponReach>>();

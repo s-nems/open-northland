@@ -109,7 +109,7 @@ export const WEAPON_FACTS: Readonly<Record<string, Fact>> = Object.fromEntries(
 const towerMax = (id: string): Fact =>
   whole((base) => {
     const max = weaponRow(base, VIKING, id)?.maxRange;
-    return max === undefined ? undefined : max + systems.TOWER_RANGE_BONUS_NODES;
+    return max === undefined ? undefined : systems.postedBowReach(base.content, max);
   });
 
 const standoff = (id: string): Fact => whole((base) => standoffOf(base, VIKING, id));
@@ -172,7 +172,7 @@ function strayReach(range: number, skill: number): number {
 
 const longestBowShot = (base: KnowledgeBase): FactValue => {
   const max = weaponRow(base, VIKING, 'long_bow')?.maxRange;
-  return max === undefined ? undefined : max + systems.TOWER_RANGE_BONUS_NODES;
+  return max === undefined ? undefined : systems.postedBowReach(base.content, max);
 };
 
 const strayFact = (range: FactReader, skill: number): Fact =>

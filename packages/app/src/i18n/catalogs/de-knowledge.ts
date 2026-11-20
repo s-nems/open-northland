@@ -544,7 +544,7 @@ export const deKnowledge = {
     matrixRange: 'Reichweite',
     matrixCadence: 'Schlag alle',
     matrixFoot:
-      'Ein Mensch hat {hitpoints} Gesundheit. Ein Tier zählt als Lederrüstung, aber ohne den Abzug von {blocking}. Das Ziel hat keine Kampferfahrung.',
+      'Ein Mensch hat {hitpoints} Gesundheit. Welchen Schaden ein Tier von jeder Waffe nimmt, zeigt seine Karte. Das Ziel hat keine Kampferfahrung.',
     directions: {
       front: 'Vorne',
       backSide: 'Hintere Flanke ×1,25',

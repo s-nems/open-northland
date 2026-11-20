@@ -20,7 +20,6 @@ import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { System, SystemContext } from '../context.js';
 import { landStrandedDrops } from '../economy/goods-evict.js';
 import { grantFightExperience, WHOLE_CLIP } from '../progression/index.js';
-import { weaponDamageVsMaterial } from '../readviews/index.js';
 import {
   applyPendingHitReactions,
   type PendingHitReaction,
@@ -33,7 +32,7 @@ import { passIndexOf } from './combat-index.js';
 import { targetBodyNodes } from './target-node.js';
 import { isStructureTarget, mayTarget } from './targeting.js';
 import { wallsCoveringNode } from './wall-cover.js';
-import { damageVsTarget, hitSoundVsMaterial, targetMaterial } from './weapons.js';
+import { damageVsTarget, hitSoundVsMaterial, targetMaterial, weaponDamageVsTarget } from './weapons.js';
 
 type Flight = NonNullable<(typeof Projectile)['__value']>;
 
@@ -170,7 +169,13 @@ function strike(
 ): ReturnType<typeof resolveCombatHit> {
   const material = targetMaterial(world, ctx, victim);
   const blow = {
-    damage: damageVsTarget(world, ctx, victim, weaponDamageVsMaterial(proj, material), proj.impact !== null),
+    damage: damageVsTarget(
+      world,
+      ctx,
+      victim,
+      weaponDamageVsTarget(world, proj, victim, material),
+      proj.impact !== null,
+    ),
     weaponMainType: proj.weaponMainType,
     hitSoundType: hitSoundVsMaterial(proj, material) ?? null,
     from: { x: proj.originX, y: proj.originY },

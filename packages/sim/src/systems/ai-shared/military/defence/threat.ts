@@ -21,7 +21,7 @@ import { hexDistanceBetween, nodeHxOfPosition, nodeHyOfPosition } from '../../..
 import type { TerrainGraph } from '../../../../nav/terrain/index.js';
 import { deckReachOf } from '../../../conflict/deck-fire.js';
 import { SIGHT_RADIUS_NODES } from '../../../conflict/targeting.js';
-import { garrisonReach, mannedPostOf, standsAtPost } from '../../../conflict/tower-post.js';
+import { garrisonReach, mannedPostOf, postSpan, standsAtPost } from '../../../conflict/tower-post.js';
 import { attackerWeapon, vehicleWeapon } from '../../../conflict/weapons.js';
 import type { SystemContext } from '../../../context.js';
 import { ownedFighters } from '../../../movement/collision/owned-fighters.js';
@@ -553,7 +553,8 @@ export function enemyPosts(
     const y = terrain.yOf(at);
     // Out of sight he is not listed, but his record stays for when he is seen again.
     if (sight !== null && !playerSeesNode(sight, player, x, y)) continue;
-    const reach = garrisonReach(held).maxRange;
+    // His reach counts from the tower's nearest wall; from where he stands it spans the tower too.
+    const reach = garrisonReach(ctx.content, held).maxRange + postSpan(world, ctx, terrain, tower);
     let post = kept.get(e);
     if (post === undefined || post.tower !== tower || post.x !== x || post.y !== y || post.reach !== reach) {
       post = { tower, target: tower, x, y, reach };

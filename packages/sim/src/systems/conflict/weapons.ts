@@ -40,6 +40,8 @@ import {
   isAreaWeapon,
   isRangedWeapon,
   isShipVehicle,
+  weaponDamageVsMaterial,
+  weaponDamageVsWildlife,
 } from '../readviews/index.js';
 
 // The combat weapon layer: what an attacker fights with, which armor material a target presents, and the
@@ -199,7 +201,8 @@ function withReach(weapon: WeaponType): WeaponReach {
  * The armor material tier a target presents: the column a weapon's `damagevalue[material]` selects. A
  * worn `Equipment.armor` good overrides a scene-stamped {@link Armor} tier without falling back to it,
  * and protects regardless of `degreeOfUse` (armor never wears). Original behavior: a building takes the
- * house column, a vehicle the wood column and every animal the leather one, whatever the beast.
+ * house column, a vehicle the wood column and every animal the leather one, whatever the beast; an animal's
+ * damage reads its own column ({@link weaponDamageVsTarget}), its hit sound the leather one.
  */
 export function targetMaterial(world: World, ctx: SystemContext, target: Entity): number {
   if (world.has(target, Building) || world.has(target, Palisade)) return ARMOR_MATERIAL.HOUSE;
@@ -210,6 +213,19 @@ export function targetMaterial(world: World, ctx: SystemContext, target: Entity)
   const armor = world.tryGet(target, Armor);
   if (armor === undefined) return ARMOR_MATERIAL.NONE; // bare target - the unarmored column
   return armorMaterialForClass(ctx.content, armor.armorClass);
+}
+
+/** The damage `weapon` deals `target` of armor `material` ({@link targetMaterial}): a wild animal takes the
+ *  animal column ({@link weaponDamageVsWildlife}), everything else its material's. */
+export function weaponDamageVsTarget(
+  world: World,
+  weapon: Pick<WeaponType, 'damage'>,
+  target: Entity,
+  material: number,
+): number {
+  return isWildlife(world, target)
+    ? weaponDamageVsWildlife(weapon)
+    : weaponDamageVsMaterial(weapon, material);
 }
 
 /** How much of a blow's HOUSE damage takes one valency off a wall. */

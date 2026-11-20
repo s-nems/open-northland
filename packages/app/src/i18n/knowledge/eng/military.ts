@@ -233,7 +233,10 @@ export const MILITARY: ArticleGroup = {
           h: 'Tower post',
         },
         {
-          list: ["An archer on post can't be hit. An enemy can shoot only at the tower."],
+          list: [
+            "An archer on post can't be hit. An enemy can shoot only at the tower.",
+            "Reach on a tower counts from the tower's nearest wall. On a tower every bow reaches at least as far as the farthest-shooting bow on the ground.",
+          ],
         },
       ],
       see: ['article:exp-combat', 'article:defence', 'building:tower_00', 'building:tower_01'],

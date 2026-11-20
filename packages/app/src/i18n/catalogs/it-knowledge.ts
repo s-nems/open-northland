@@ -543,7 +543,7 @@ export const itKnowledge = {
     matrixRange: 'Gittata',
     matrixCadence: 'Colpo ogni',
     matrixFoot:
-      'Una persona ha {hitpoints} di salute. Un animale conta come armatura di cuoio, ma senza sottrarre i {blocking}. Il bersaglio non ha esperienza in combattimento.',
+      'Una persona ha {hitpoints} di salute. Il danno che un animale subisce da ogni arma è sulla sua scheda. Il bersaglio non ha esperienza in combattimento.',
     directions: {
       front: 'Fronte',
       backSide: 'Fianco posteriore ×1,25',

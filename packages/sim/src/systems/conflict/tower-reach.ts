@@ -8,22 +8,25 @@ import {
   Position,
   Weapon,
 } from '../../components/index.js';
+import type { Fixed } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
 import { hexDistanceBetween, nodeHxOfPosition, nodeHyOfPosition } from '../../nav/halfcell.js';
-import type { ContentContext } from '../context.js';
+import type { ContentContext, MapContext } from '../context.js';
 import { isLoosePile } from '../stores/index.js';
 import { mannedPostsOf } from './manned-posts.js';
+import { buildingBodyNodes } from './target-node.js';
 import { mannedPostOf, postShotReach } from './tower-post.js';
 
 /**
  * Whether `e` is a loose pile ({@link isLoosePile}) a bowman manning a tower shoots at: within his
- * {@link postShotReach} of the post, and his player fights `player` ({@link fightsPlayer}). Owner ruling: a
+ * {@link postShotReach} of the post's nearest wall ({@link postReachDistance}), and his player fights
+ * `player` ({@link fightsPlayer}). Owner ruling: a
  * settler's own pickups pass over it, since walking up to it means being shot at; an empty tower keeps
  * nobody away. False for a building and for an unowned `player`.
  */
 export function pileUnderEnemyTowers(
   world: World,
-  ctx: ContentContext,
+  ctx: MapContext,
   player: number | undefined,
   e: Entity,
 ): boolean {
@@ -37,9 +40,18 @@ export function pileUnderEnemyTowers(
   const hy = nodeHyOfPosition(p.x, p.y);
   for (const bowman of fire.bowmen) {
     if ((shooters & (1 << bowman.owner)) === 0) continue;
-    if (hexDistanceBetween(bowman.hx, bowman.hy, hx, hy) <= bowman.reach) return true;
+    if (nearestWallDistance(bowman.walls, hx, hy) <= bowman.reach) return true;
   }
   return false;
+}
+
+/** The map-point distance from (`hx`, `hy`) to the nearest of `walls`, node coordinates in pairs. */
+function nearestWallDistance(walls: readonly number[], hx: number, hy: number): number {
+  let nearest = Number.POSITIVE_INFINITY;
+  for (let i = 0; i < walls.length; i += 2) {
+    nearest = Math.min(nearest, hexDistanceBetween(walls[i] ?? 0, walls[i + 1] ?? 0, hx, hy));
+  }
+  return nearest;
 }
 
 /** A number that only rises, and moves whenever a {@link pileUnderEnemyTowers} answer may change for a pile
@@ -61,11 +73,11 @@ export function towerFireRevision(world: World, ctx: ContentContext): number {
   );
 }
 
-/** A bowman standing on his post: his player, his post's anchor node and how far he shoots from it. */
+/** A bowman standing on his post: his player, his post's wall nodes as `x, y` pairs (its anchor without a
+ *  map) and how far he shoots from the nearest of them. */
 interface PostedBowman {
   readonly owner: number;
-  readonly hx: number;
-  readonly hy: number;
+  readonly walls: readonly number[];
   readonly reach: number;
 }
 
@@ -73,7 +85,7 @@ interface PostedBowman {
  *  registered verifier re-derives it from the garrisons. */
 interface TowerFire {
   readonly revision: number;
-  readonly ctx: ContentContext;
+  readonly ctx: MapContext;
   readonly bowmen: readonly PostedBowman[];
   /** By player, the players of the bowmen who fight that player, as a slot mask, filled on first ask. */
   readonly shooters: Map<number, number>;
@@ -81,10 +93,10 @@ interface TowerFire {
 
 const towerFires = new WeakMap<World, TowerFire>();
 
-function towerFireOf(world: World, ctx: ContentContext): TowerFire {
+function towerFireOf(world: World, ctx: MapContext): TowerFire {
   const revision = towerFireRevision(world, ctx);
   const held = towerFires.get(world);
-  if (held !== undefined && held.revision === revision) return held;
+  if (held !== undefined && held.revision === revision && held.ctx.terrain === ctx.terrain) return held;
   if (held === undefined) world.registerCacheVerifier('towerFire', () => verifyTowerFire(world));
   const bowmen: PostedBowman[] = [];
   mannedPostsOf(world, ctx.content).forEachManning((e, post) => keepBowman(world, ctx, bowmen, e, post));
@@ -98,18 +110,23 @@ function towerFireOf(world: World, ctx: ContentContext): TowerFire {
  * the tower's. A dying bowman counts until he is gone: hitpoints move with every blow, too often for the
  * list to key on.
  */
-function keepBowman(
-  world: World,
-  ctx: ContentContext,
-  bowmen: PostedBowman[],
-  e: Entity,
-  post: Entity,
-): void {
+function keepBowman(world: World, ctx: MapContext, bowmen: PostedBowman[], e: Entity, post: Entity): void {
   const reach = postShotReach(world, ctx, e);
   const owner = ownerOf(world, e);
   const at = world.tryGet(post, Position);
   if (reach === 0 || owner === undefined || at === undefined) return;
-  bowmen.push({ owner, hx: nodeHxOfPosition(at.x, at.y), hy: nodeHyOfPosition(at.x, at.y), reach });
+  bowmen.push({ owner, walls: postWalls(world, ctx, post, at.x, at.y), reach });
+}
+
+/** The nodes {@link postReachDistance} measures `post`'s reach from, as `x, y` pairs: its walls on the map,
+ *  its anchor (`x`, `y`) without one. */
+function postWalls(world: World, ctx: MapContext, post: Entity, x: Fixed, y: Fixed): readonly number[] {
+  const terrain = ctx.terrain;
+  const walls = terrain === undefined ? [] : buildingBodyNodes(world, ctx, terrain, post);
+  if (terrain === undefined || walls.length === 0) return [nodeHxOfPosition(x, y), nodeHyOfPosition(x, y)];
+  const pairs: number[] = [];
+  for (const wall of walls) pairs.push(terrain.xOf(wall), terrain.yOf(wall));
+  return pairs;
 }
 
 /** The players of `fire`'s bowmen who fight `player`, one way: a bowman shoots at whom his player fights, and
@@ -140,7 +157,7 @@ function verifyTowerFire(world: World): string[] {
   }
   const key = (bowmen: readonly PostedBowman[]): string =>
     bowmen
-      .map(({ owner, hx, hy, reach }) => `${owner}:${hx}:${hy}:${reach}`)
+      .map(({ owner, walls, reach }) => `${owner}:${walls.join(',')}:${reach}`)
       .sort()
       .join(' ');
   return key(fire.bowmen) === key(fresh) ? [] : ['towerFire holds stale bowmen'];

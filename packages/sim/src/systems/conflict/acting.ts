@@ -43,8 +43,8 @@ import type { CombatIndex } from './combat-index.js';
 import { asleepOnDuty } from './engage-combatant.js';
 import { DEFEND_RADIUS_NODES } from './engagement.js';
 import { ANIMAL_AGGRO_RADIUS_NODES, SIGHT_RADIUS_NODES, wildPursuit } from './targeting.js';
-import { TOWER_RANGE_BONUS_NODES } from './tower-post.js';
-import { attackerWeapon } from './weapons.js';
+import { garrisonReach, postSpan } from './tower-post.js';
+import { attackerWeapon, type WeaponReach } from './weapons.js';
 
 /**
  * Whether `e` may act in this combat pass. False proves `engageCombatant` would leave it with no write and
@@ -104,9 +104,9 @@ export function mayEngage(
   const x = terrain.xOf(here);
   const y = terrain.yOf(here);
   // A manned post searches its weapon's reach raised by the tower, and neither flees nor walks back.
-  if (garrisoned && index.mannedPost(world, ctx, e) !== null) {
-    return index.othersWithin(owner.player, x, y, reachOf(world, ctx, e) + TOWER_RANGE_BONUS_NODES);
-  }
+  const post = garrisoned ? index.mannedPost(world, ctx, e) : null;
+  if (post !== null)
+    return index.othersWithin(owner.player, x, y, postedSearchReach(world, ctx, terrain, e, post));
   // Every owned search stays inside this, bar a guard's search further out.
   let radius = PRESENCE_RADIUS;
   const reachGuard = mode === MILITARY_MODE.IGNORE && isFighterJob(ctx.content, settler.jobType);
@@ -190,8 +190,9 @@ export function idleAtPost(
   index: CombatIndex,
   e: Entity,
 ): boolean {
-  if (index.mannedPost(world, ctx, e) === null) return false;
-  const reach = reachOf(world, ctx, e) + TOWER_RANGE_BONUS_NODES;
+  const post = index.mannedPost(world, ctx, e);
+  if (post === null) return false;
+  const reach = postedSearchReach(world, ctx, terrain, e, post);
   if (index.clearOfStrangers(e, reach)) return true;
   const owner = world.tryGet(e, Owner);
   if (owner === undefined) return false;
@@ -248,6 +249,23 @@ function holdsLadderState(world: World, e: Entity): boolean {
 
 /** How far `e`'s weapon strikes in map points, 0 when it holds none. */
 function reachOf(world: World, ctx: SystemContext, e: Entity): number {
+  return heldReach(world, ctx, e)?.maxRange ?? 0;
+}
+
+function heldReach(world: World, ctx: SystemContext, e: Entity): WeaponReach | null {
   const { tribe, jobType, humanForm } = world.get(e, Settler);
-  return attackerWeapon(ctx, tribe, jobType, world.tryGet(e, Weapon)?.weaponTypeId, humanForm)?.maxRange ?? 0;
+  return attackerWeapon(ctx, tribe, jobType, world.tryGet(e, Weapon)?.weaponTypeId, humanForm);
+}
+
+/** How far from his own node in map points posted `e` on `post` looks: his {@link garrisonReach} from the
+ *  post's walls and the post's span; 0 when he holds no weapon. */
+function postedSearchReach(
+  world: World,
+  ctx: SystemContext,
+  terrain: TerrainGraph,
+  e: Entity,
+  post: Entity,
+): number {
+  const held = heldReach(world, ctx, e);
+  return held === null ? 0 : garrisonReach(ctx.content, held).maxRange + postSpan(world, ctx, terrain, post);
 }

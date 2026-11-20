@@ -233,7 +233,10 @@ export const MILITARY: ArticleGroup = {
           h: 'Posterunek na wieży',
         },
         {
-          list: ['Łucznika na posterunku nie da się trafić. Wróg może strzelać tylko do wieży.'],
+          list: [
+            'Łucznika na posterunku nie da się trafić. Wróg może strzelać tylko do wieży.',
+            'Zasięg na wieży liczy się od najbliższej ściany wieży. Na wieży każdy łuk sięga co najmniej tak daleko, jak najdalej strzelający łuk na ziemi.',
+          ],
         },
       ],
       see: ['article:exp-combat', 'article:defence', 'building:tower_00', 'building:tower_01'],

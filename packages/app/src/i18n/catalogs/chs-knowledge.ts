@@ -500,7 +500,7 @@ export const chsKnowledge = {
     matrixWeapon: '武器',
     matrixRange: '范围',
     matrixCadence: '攻击间隔',
-    matrixFoot: '人有{hitpoints}点生命值。动物按皮甲计算，但不减去{blocking}。目标没有战斗经验。',
+    matrixFoot: '人有{hitpoints}点生命值。动物受到每种武器的伤害见它的卡片。目标没有战斗经验。',
     directions: { front: '正面', backSide: '后侧 ×1.25', behind: '背后 ×1.5' },
     armourName: '护甲',
     armourWeight: '重量',

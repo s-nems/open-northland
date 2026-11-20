@@ -29,7 +29,7 @@ import type { NodeId } from '../../../src/nav/terrain/index.js';
 import { garrisonReach, TOWER_RANGE_BONUS_NODES } from '../../../src/systems/conflict/tower-post.js';
 import { plannerSystem } from '../../../src/systems/index.js';
 import { razeBuilding } from '../../../src/systems/lifecycle/cleanup.js';
-import { MILITARY_MODE } from '../../../src/systems/readviews/index.js';
+import { MILITARY_MODE, WEAPON_MAIN_TYPE } from '../../../src/systems/readviews/index.js';
 import { resolveCombatHit } from '../../../src/systems/settlers/atomics/effects/combat/hit/resolution.js';
 import { testContent } from '../../fixtures/content.js';
 import { ctxOf, grassMap } from '../../fixtures/needs.js';
@@ -59,7 +59,7 @@ const SHOES_GOOD = 8;
 /** Enough for a fetch across the map and the walk back up the tower. */
 const GEAR_ERRAND_TICKS = 800;
 /** The garrison bow: `maxRange 4` plain, so a target at 8 nodes is reachable only from the tower
- *  (4 + {@link TOWER_RANGE_BONUS_NODES} = 9) - the bonus, not the bow, is what lands the shot. */
+ *  (4 + {@link TOWER_RANGE_BONUS_NODES} = 8) - the bonus, not the bow, is what lands the shot. */
 const GARRISON_BOW_RANGE = 4;
 const ARROW_MUNITION = 1;
 /** Well over the drive threshold - a garrison this hungry leaves the tower for the larder. */
@@ -465,9 +465,31 @@ describe('garrisonReach', () => {
   });
   const sword = WeaponType.parse({ typeId: 2, id: 'sword', minRange: 1, maxRange: 2 });
 
+  const bows = (...ranges: readonly [string, number][]): ContentSet =>
+    parseContentSet({
+      ...testContent(),
+      weapons: ranges.map(([id, maxRange], typeId) => ({
+        typeId,
+        id,
+        tribeType: VIKING,
+        mainType: WEAPON_MAIN_TYPE.BOW,
+        munitionType: ARROW_MUNITION,
+        maxRange,
+      })),
+    });
+
   it('lengthens a bow by the tower bonus and drops every dead zone', () => {
-    expect(garrisonReach(band(bow))).toMatchObject({ minRange: 0, maxRange: 15 + TOWER_RANGE_BONUS_NODES });
-    expect(garrisonReach(band(sword))).toMatchObject({ minRange: 0, maxRange: 2 });
+    const content = bows(['bow', 15]);
+    expect(garrisonReach(content, band(bow))).toMatchObject({
+      minRange: 0,
+      maxRange: 15 + TOWER_RANGE_BONUS_NODES,
+    });
+    expect(garrisonReach(content, band(sword))).toMatchObject({ minRange: 0, maxRange: 2 });
+  });
+
+  it('reaches at least as far as the farthest bow a person carries, the house bow aside', () => {
+    const content = bows(['bow', 15], ['long_bow', 26], ['house_bow', 29]);
+    expect(garrisonReach(content, band(bow)).maxRange).toBe(26);
   });
 });
 
@@ -477,6 +499,7 @@ describe('the tower garrison - shooting from cover', () => {
   const TOWER_X = 6;
   const ROW = 3;
   const ENEMY_X = TOWER_X + GARRISON_BOW_RANGE;
+  const WALLED_TOWER_X = 12;
 
   /** A standing enemy that soaks the shots without dying or shooting back. */
   function standingTarget(sim: Simulation, x: number): Entity {
@@ -497,6 +520,17 @@ describe('the tower garrison - shooting from cover', () => {
     // band cannot cover it. Standing still throughout is what proves the reach did, not a step forward.
     expect(lowestHitpoints(sim, 200, shotAt)).toBeLessThan(TOUGH);
     expect(tileOf(sim, garrison)).toEqual(post);
+  });
+
+  it("counts its reach from the tower's nearest wall, not from where it stands", () => {
+    // Four nodes of wall west of the post: a target 12 nodes off the post stands 8 off that wall.
+    const sim = simWithTower([0, -1, -2, -3, -4].map((dx) => ({ dx, dy: 0 })));
+    const tower = towerAt(sim, WALLED_TOWER_X, ROW);
+    const garrison = settlerAt(sim, SOLDIER_JOB, WALLED_TOWER_X + 4, ROW);
+    manTheTower(sim, garrison, tower);
+    const shotAt = standingTarget(sim, WALLED_TOWER_X - 6);
+
+    expect(lowestHitpoints(sim, 200, shotAt)).toBeLessThan(TOUGH);
   });
 
   it('wakes on its post to shoot a raider who comes into range', () => {
@@ -526,7 +560,7 @@ describe('the tower garrison - shooting from cover', () => {
     const post = tileOf(sim, soldier);
     // Past the boosted band (9 nodes) but inside a soldier's 16-node sight: on open ground this is
     // exactly the target an ATTACK-stance soldier marches at.
-    const outOfBand = GARRISON_BOW_RANGE + TOWER_RANGE_BONUS_NODES + 3; // nodes, a whole number of cells
+    const outOfBand = GARRISON_BOW_RANGE + TOWER_RANGE_BONUS_NODES + 4; // nodes, a whole number of cells
     standingTarget(sim, TOWER_X + outOfBand / 2); // one cell is two nodes
 
     run(sim, 200);
@@ -707,8 +741,8 @@ describe('the tower garrison - a besieger it shoots', () => {
   const BESIEGER_X = HOUSE_X + 1;
   /** An enemy fighter of the tower's side, farther from the besieger than the tower. */
   const FAR_FIGHTER_X = BESIEGER_X + 8;
-  /** One step past the garrison's boosted band: 10 nodes, 5 cells along a row. */
-  const STEP_PAST_REACH_X = TOWER_X + (GARRISON_BOW_RANGE + TOWER_RANGE_BONUS_NODES + 1) / 2;
+  /** Past the garrison's boosted band: 10 nodes, 5 cells along a row. */
+  const STEP_PAST_REACH_X = TOWER_X + (GARRISON_BOW_RANGE + TOWER_RANGE_BONUS_NODES + 2) / 2;
   /** A besieger inside the garrison's reach but a walk from the tower, with an unmanned headquarters of the
    *  tower's side a cell behind it: the original rescan of a walk finds the headquarters nearer. */
   const WALKER_X = TOWER_X + 4;

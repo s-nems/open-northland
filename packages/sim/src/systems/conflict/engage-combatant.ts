@@ -41,7 +41,6 @@ import {
   MILITARY_MODE,
   type MilitaryMode,
   stanceFights,
-  weaponDamageVsMaterial,
 } from '../readviews/index.js';
 import { atomicHoldsSettler } from '../settlers/atomics/busy.js';
 import { turnBackFromCoinDrill } from '../settlers/drives/coin-drill-coins.js';
@@ -58,7 +57,7 @@ import { noteDrivenOff } from './offenders.js';
 import type { CombatPass } from './pass.js';
 import { combatTargetNode } from './target-node.js';
 import { hostileAnimalNow, isValidOrderedTarget, isValidTarget, wildPursuit } from './targeting.js';
-import { garrisonReach, standsAtPost, towerPostFor } from './tower-post.js';
+import { garrisonReach, postReachDistance, standsAtPost, towerPostFor } from './tower-post.js';
 import { withinBand } from './weapon-band.js';
 import {
   type ArmedWith,
@@ -67,6 +66,7 @@ import {
   startAttack,
   targetMaterial,
   wallBlowDamage,
+  weaponDamageVsTarget,
 } from './weapons.js';
 
 /**
@@ -191,7 +191,7 @@ function fight(
   const { index, slots, stance } = pass;
   // The boosted band is what the search, the reach test and the swing all read, so a garrison cannot
   // acquire past what it can actually hit.
-  const weapon = stance.post === null ? held : garrisonReach(held);
+  const weapon = stance.post === null ? held : garrisonReach(ctx.content, held);
 
   if (preySearchResting(world, ctx, e, attacker.jobType, stance)) return;
 
@@ -215,7 +215,18 @@ function fight(
     return;
   }
 
-  const { target, dist } = found;
+  const { target } = found;
+  // A garrison's reach counts from its post's nearest wall.
+  const dist =
+    stance.post === null
+      ? found.dist
+      : postReachDistance(
+          world,
+          ctx,
+          terrain,
+          stance.post,
+          combatTargetNode(world, ctx, terrain, here, target),
+        );
   // A soldier the fight takes between two coin-drill repetitions steps out of the barracks to it.
   turnBackFromCoinDrill(world, ctx, e);
   if (spec.hold !== undefined || spec.animalSeeker === true) holdEnemy(world, ctx, e, target);
@@ -524,7 +535,7 @@ function swingAt(
   // experience raises the blow as it lands, with his amulets (`landedDamage`). A ranged swing's shot
   // resolves the column again against whatever it strikes.
   const material = targetMaterial(world, ctx, target);
-  const base = weaponDamageVsMaterial(weapon.weapon, material);
+  const base = weaponDamageVsTarget(world, weapon.weapon, target, material);
   const damage = world.has(target, Palisade) ? wallBlowDamage(base) : base;
   const blow = { damage, hitSoundType: hitSoundVsMaterial(weapon.weapon, material) };
   startAttack(world, ctx, attacker, e, target, blow, weapon.weapon);

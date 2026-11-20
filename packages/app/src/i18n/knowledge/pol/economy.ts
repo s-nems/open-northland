@@ -557,7 +557,7 @@ export const ECONOMY: ArticleGroup = {
           h: 'Stosy na ziemi',
         },
         {
-          p: 'Stos na ziemi jest niczyj, może go wziąć każdy. Twoi ludzie omijają stos leżący w zasięgu łucznika stojącego na wrogiej wieży, {{shortBow.towerMax}} hexów z krótkim łukiem i {{longBow.towerMax}} z długim, żeby nikt nie szedł po niego pod jego ostrzał. Wroga wieża bez łucznika nikogo nie odstrasza. Tam posyła człowieka nadal Twój własny rozkaz założenia przedmiotu, a także flaga robocza, którą postawisz Tragarzowi. Skąd Tragarz zbiera stosy: [[article:work-flag|Flaga robocza]].',
+          p: 'Stos na ziemi jest niczyj, może go wziąć każdy. Twoi ludzie omijają stos leżący w zasięgu łucznika stojącego na wrogiej wieży, {{shortBow.towerMax}} hexów od najbliższej ściany wieży z krótkim łukiem i {{longBow.towerMax}} z długim, żeby nikt nie szedł po niego pod jego ostrzał. Wroga wieża bez łucznika nikogo nie odstrasza. Tam posyła człowieka nadal Twój własny rozkaz założenia przedmiotu, a także flaga robocza, którą postawisz Tragarzowi. Skąd Tragarz zbiera stosy: [[article:work-flag|Flaga robocza]].',
         },
       ],
       see: [
