@@ -87,9 +87,9 @@ function nearestShelterWithRoom(
   let bestDistance = 0;
   for (const site of shelters.get(player) ?? NO_SHELTERS) {
     if (site.free <= 0) continue;
-    // Rank on straight-line distance and resolve a door only for a candidate that beats the running best:
-    // the door resolve walks the footprint's approach cells, too much to pay for every site on the list.
-    // Under a walk the door is what the walk is measured to, and no walk undercuts its hex distance.
+    // By straight line a door is resolved only for a candidate that beats the running best: the resolve
+    // walks the footprint's approach cells. Under a walk every site with room pays it, since the door is
+    // what the walk is measured to, and no walk undercuts the door's hex distance.
     let distance = Math.abs(site.hx - fromHx) + Math.abs(site.hy - fromHy);
     if (walk === undefined && best !== null && distance >= bestDistance) continue;
     const door = interactionCell(world, ctx, terrain, site.entity, here);
