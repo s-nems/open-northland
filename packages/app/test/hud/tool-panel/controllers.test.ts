@@ -1,7 +1,7 @@
 import type { UiCue } from '@open-northland/audio';
 import type { Command, Entity, Paper } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
-import { BYZANTINE } from '../../../src/catalog/unit-variants.js';
+import { BYZANTINE } from '../../../src/catalog/civilizations.js';
 import { WONDER_TRIBE } from '../../../src/catalog/wonders.js';
 import {
   type BuildingAvailability,

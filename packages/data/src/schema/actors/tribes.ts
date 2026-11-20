@@ -51,23 +51,6 @@ export const JobRequirement = z.strictObject({
 });
 export type JobRequirement = z.infer<typeof JobRequirement>;
 
-/** The two forms a class can take. `native` is the class as the source data describes it, the form the
- *  map places and a script spawns; `human` is the form a trained unit takes. Unset fields keep source
- *  data. */
-export const UnitForm = z.enum(['native', 'human']);
-export type UnitForm = z.infer<typeof UnitForm>;
-
-/** Authored unit rules for one form of a tribe's class (`unit-variants.ts`). */
-export const UnitVariant = z.strictObject({
-  jobType: TypeId,
-  form: UnitForm,
-  hitpoints: z.number().int().positive(),
-  animationJobType: TypeId.optional(),
-  graphicsJobType: TypeId.optional(),
-  weapon: z.strictObject({ tribeType: TypeId, typeId: TypeId }).optional(),
-});
-export type UnitVariant = z.infer<typeof UnitVariant>;
-
 /** Authored monster rules (`catalog/creatures.ts` in the app): the tribe is a monster, whose blows take a
  *  weapon's monster column. Unset fields keep the common rule: 5000 hitpoints, a fighter starting in DEFEND. */
 export const MonsterRules = z.strictObject({
@@ -80,7 +63,6 @@ export const TribeType = z.strictObject({
   typeId: TypeId,
   id: z.string(),
   name: z.string().optional(),
-  unitVariants: z.array(UnitVariant).optional(),
   monster: MonsterRules.optional(),
   /** Reset weapon type (original behavior: a person's weapon resets to type 1). Keeping it equipped
    *  across a monster's body-form job changes is an approximation, not traced for all five body jobs. */

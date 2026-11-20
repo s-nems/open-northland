@@ -678,10 +678,10 @@ it('aligns the long axis of settled droplets with their travel on the projected 
 });
 
 it('keeps creature pigment at death and sizes 20000 HP dragon wounds without suppressing ordinary hits', () => {
-  const dragon = { tribe: 3, jobType: 32 };
+  const dragon = { tribe: 42, jobType: 31 };
   const [human, wolf, snake, beast, graze, fatal] = makeBloodMarks(
     [
-      { ...shot, targetMaxHealth: 5000, targetIdentity: { tribe: 3, jobType: 32, humanForm: true } },
+      { ...shot, targetMaxHealth: 5000, targetIdentity: { tribe: 3, jobType: 32 } },
       { ...shot, targetMaxHealth: 5000, targetIdentity: { tribe: 6, jobType: 30 } },
       { ...shot, targetMaxHealth: 5000, targetIdentity: { tribe: 5, jobType: 30 } },
       { ...shot, targetMaxHealth: 20000, targetIdentity: dragon },

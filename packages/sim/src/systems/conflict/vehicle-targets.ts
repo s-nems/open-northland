@@ -332,6 +332,6 @@ function vehicleTargetRank(
 function shootsAtRange(world: World, ctx: SystemContext, t: Entity): boolean {
   const settler = world.get(t, Settler);
   const worn = world.tryGet(t, Weapon)?.weaponTypeId;
-  const armed = attackerWeapon(ctx, settler.tribe, settler.jobType, worn, settler.humanForm);
+  const armed = attackerWeapon(ctx, settler.tribe, settler.jobType, worn);
   return armed !== null && isRangedWeapon(armed.weapon);
 }

@@ -44,8 +44,7 @@ import { detachScriptedRider } from './vehicles.js';
 const ANIMAL_HANDOVER_CAP = 50;
 
 /** Hand every human stamped with the id to `player`, cut loose from what it held under its old owner
- *  ({@link cutLoose}). A unit keeps its form (`lifecycle/unit-form.ts`): a script's dragons stay dragons
- *  in the receiver's hands. Returns the humans handed. */
+ *  ({@link cutLoose}). Returns the humans handed. */
 export function handHumansToPlayer(pass: MissionPass, id: number, player: number): readonly Handed[] {
   if (!isValidPlayer(player)) return [];
   const handed = withOwners(pass.world, scriptedHumans(pass.world, id));

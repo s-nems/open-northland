@@ -51,7 +51,7 @@ function drillsAsSoldier(
   weaponTypeId: number | undefined,
 ): boolean {
   if (!isSoldierJob(content, settler.jobType)) return false;
-  const armed = attackerWeapon({ content }, settler.tribe, settler.jobType, weaponTypeId, settler.humanForm);
+  const armed = attackerWeapon({ content }, settler.tribe, settler.jobType, weaponTypeId);
   const mainType = armed === null ? undefined : weaponClassOf(armed.weapon);
   return mainType === undefined || fightExperienceTypeFor(mainType) !== FIGHT_EXPERIENCE_TYPE.CATAPULT;
 }

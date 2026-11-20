@@ -130,13 +130,13 @@ function fightRow(
   const sharePct = Math.trunc(
     (systems.personalFightPoints(experience) * PERCENT) / systems.FIGHT_EXPERIENCE_FULL,
   );
-  const settler = comps.Settler as { tribe?: unknown; jobType?: unknown; humanForm?: unknown } | undefined;
+  const settler = comps.Settler as { tribe?: unknown; jobType?: unknown } | undefined;
   const tribe = num(settler?.tribe);
   const effects =
     ctx.fightEffects === undefined || tribe === undefined
       ? undefined
       : ctx.fightEffects(
-          { tribe, jobType: num(settler?.jobType) ?? null, humanForm: settler?.humanForm === true },
+          { tribe, jobType: num(settler?.jobType) ?? null },
           num((comps.Weapon as { weaponTypeId?: unknown } | undefined)?.weaponTypeId),
           experience,
         );

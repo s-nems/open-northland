@@ -194,7 +194,6 @@ export function enqueuePlacements(sim: Simulation, placements: readonly Authored
         ...(equipment !== undefined ? { equipment } : {}),
         ...(experience.length > 0 ? { experience } : {}),
         ...(p.gatherGood !== undefined ? { gatherGood: p.gatherGood } : {}),
-        ...(p.humanForm === true ? { humanForm: true } : {}),
         ...(p.nameStringId !== undefined ? { nameStringId: p.nameStringId } : {}),
         ...(p.paletteRecipes !== undefined ? { paletteRecipes: p.paletteRecipes } : {}),
         ...(p.home !== undefined ? { home: p.home } : {}),

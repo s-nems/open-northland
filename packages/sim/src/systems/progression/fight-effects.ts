@@ -41,13 +41,7 @@ export function fightExperienceEffects(
   wornWeaponTypeId: number | undefined,
   experience: ReadonlyMap<number, number>,
 ): FightExperienceEffects {
-  const held = attackerWeapon(
-    { content },
-    settler.tribe,
-    settler.jobType,
-    wornWeaponTypeId,
-    settler.humanForm === true,
-  );
+  const held = attackerWeapon({ content }, settler.tribe, settler.jobType, wornWeaponTypeId);
   const units = personalFightUnits(experience);
   const takenCutPct = percentOff(withTakenBonuses(PROBE_BLOW, units));
   if (held === null) return { dealtPct: null, takenCutPct, accuracyPct: null };

@@ -6,25 +6,22 @@ export interface BloodAppearance {
   readonly volume: number;
 }
 
-/** Authored presentation: red humans, dark red werewolves, slate-blue weresnakes and burgundy dragons.
- * The form tells the dragon from the Byzantine wooden spearman in his human form. */
-const CREATURE_BLOOD: readonly (BloodAppearance & Partial<components.SettlerIdentity>)[] = [
-  { tribe: 5, palette: 2, volume: 1 },
-  { tribe: 6, palette: 1, volume: 1.5 },
-  { tribe: 3, jobType: 32, humanForm: false, palette: 3, volume: 2.5 },
+/** The monster `[tribetype]` ids, as the data pack numbers them. */
+const WERESNAKE_TRIBE = 5;
+const WEREWOLF_TRIBE = 6;
+const DRAGON_TRIBE = 42;
+
+/** Authored presentation: red humans, dark red werewolves, slate-blue weresnakes and burgundy dragons. */
+const CREATURE_BLOOD: readonly (BloodAppearance & { readonly tribe: number })[] = [
+  { tribe: WERESNAKE_TRIBE, palette: 2, volume: 1 },
+  { tribe: WEREWOLF_TRIBE, palette: 1, volume: 1.5 },
+  { tribe: DRAGON_TRIBE, palette: 3, volume: 2.5 },
 ];
 const HUMAN_BLOOD: BloodAppearance = { palette: 0, volume: 1 };
 
 export function bloodAppearance(identity: components.SettlerIdentity | undefined): BloodAppearance {
   if (identity === undefined) return HUMAN_BLOOD;
-  return (
-    CREATURE_BLOOD.find(
-      (rule) =>
-        rule.tribe === identity.tribe &&
-        (rule.jobType === undefined || rule.jobType === identity.jobType) &&
-        (rule.humanForm === undefined || rule.humanForm === (identity.humanForm === true)),
-    ) ?? HUMAN_BLOOD
-  );
+  return CREATURE_BLOOD.find((rule) => rule.tribe === identity.tribe) ?? HUMAN_BLOOD;
 }
 
 /** Linear transforms shared by textures and procedural stains. Neutral adds an achromatic

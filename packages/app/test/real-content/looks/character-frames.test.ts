@@ -23,11 +23,9 @@ import {
   JOB_TRADER,
   SOLDIER_JOB_MAX,
 } from '../../../src/catalog/jobs.js';
-import { BYZANTINE_SPEAR_VARIANTS } from '../../../src/catalog/unit-variants.js';
 import { humanSequences } from '../../../src/content/ir/joins.js';
 import type { ContentIr } from '../../../src/content/ir/rows.js';
 import { FACING } from '../../../src/content/settler-gfx/index.js';
-import { withHumanFormCharacters } from '../../../src/content/sprite-sheet/unit-variants.js';
 import type { WorldTribes } from '../../../src/game/world-tribes.js';
 import { characterTablesUnderTest, hasRealIr, rawIrUnderTest } from '../helpers.js';
 
@@ -158,22 +156,6 @@ describe.runIf(hasRealIr())('every settler look draws its head', () => {
       if (good === undefined) throw new Error(`missing ${slug}`);
       expect(table?.byWeaponGood?.[good.typeId]).toBe(character);
     }
-  });
-
-  it("gives the wooden spear's human form the complete human look while keeping the native dragon", () => {
-    const raw = tables.get(BYZANTINE);
-    if (raw === undefined) throw new Error('missing Byzantine table');
-    const table = withHumanFormCharacters(raw, BYZANTINE_SPEAR_VARIANTS);
-    const playable = table.human?.byJob[JOB_SOLDIER_SPEAR_WOODEN];
-    const iron = raw.byJob[JOB_SOLDIER_SPEAR];
-    expect(playable?.body).toBe(iron?.body);
-    expect(playable?.binding).toBe(iron?.binding);
-    expect(playable?.heads).toHaveLength(2);
-    expect(playable?.paletteJobType).toBe(JOB_SOLDIER_SPEAR);
-    expect(table.byJob[JOB_SOLDIER_SPEAR_WOODEN]?.heads ?? []).toHaveLength(0);
-    const good = (rawIrUnderTest() as ContentIr).goods?.find((row) => row.id === 'spear_wooden');
-    if (good === undefined) throw new Error('missing wooden spear');
-    expect(table.human?.byWeaponGood?.[good.typeId]).toBe(playable);
   });
 
   it('overlays a head on every body frame each look can play', () => {

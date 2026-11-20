@@ -1139,11 +1139,8 @@ authored people the script will hand it. Things of another people stay that peop
 gives a viking seat saracen allies keeps them saracen, and a seat's own authored franks stay franks.
 A hero keeps his people, a monster or an animal its kind, and a house type the chosen people have no
 graphics for (the wonders) its tribe; a vehicle takes the chosen people. A soldier moved to
-the chosen people takes the human form of its class where the class has one (`UnitForm`): the choice turns
-the map's soldiers into soldiers of the chosen people, never into its creatures, so a viking wooden
-spearman played as byzantine is a spearman, while the byzantine wooden spearmen a map places or a script
-gives stay what their map means: dragons on a map authored with the dragon, men on a map of a campaign
-authored before it (`authoredForm` in `script.json`, set by the pipeline). A house
+the chosen people becomes that people's soldier of the same class. The dragon a map places or a script
+gives as a byzantine wooden spearman joins as the dragon tribe, a monster, so it stays a dragon. A house
 a handover delivers also keeps its tribe when the two peoples stand its type on different footprint
 cells, since its placement stands; the seat's own houses and spawns are placed fresh. A thing a
 re-tribed seat hands another keeps its giver's choice. Other

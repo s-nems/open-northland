@@ -499,7 +499,6 @@ const COMMAND_PAYLOAD: { readonly [K in Command['kind']]: PayloadSpec<Extract<Co
         maxLength: SCRIPTED_LOOK_MAX_RECIPES,
       },
       hitpoints: 'integer',
-      humanForm: 'boolean',
       armorClass: 'integer',
       weaponTypeId: 'integer',
       equipment: EQUIPMENT,

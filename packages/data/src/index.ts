@@ -81,5 +81,3 @@ function generatedVersion(raw: object): number | undefined {
 export function parseTerrainMap(raw: unknown): TerrainMapFile {
   return TerrainMapFile.parse(raw);
 }
-
-export { hasHumanForm, type UnitIdentity, unitVariantFor } from './unit-variants.js';

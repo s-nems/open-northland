@@ -27,7 +27,6 @@ import { readSourceFile, type SourceRoots } from '../roots.js';
 import { correctMapStrings } from '../string-corrections.js';
 import { MAPS_DIR } from './content-tree.js';
 import { writePagePictures } from './hypertext-pictures.js';
-import { withAuthoredForm } from './maps/authored-form.js';
 import { type MapDatConversion, mapOverlaySource, summarizeConversion } from './maps/index.js';
 
 /** Served at `/campaigns/<id>/`, the root `campaigns-index.json` names its pictures and films under. */
@@ -114,7 +113,7 @@ async function convertCampaignMap(
     throw new Error(
       `${folder}: map.cif names campaign ${converted.meta.campaign?.campaignId}, not ${campaign.campaignId}`,
     );
-  return withAuthoredForm(converted);
+  return converted;
 }
 
 /** Copies one pack file of the campaign into `campaigns/<id>/` and returns the URL the app fetches it at. */

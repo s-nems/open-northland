@@ -158,13 +158,7 @@ export function palisadeBarring(
 ): Breach | null {
   const settler = world.tryGet(e, Settler);
   if (settler === undefined || !world.has(e, Owner)) return null;
-  const arms = attackerWeapon(
-    ctx,
-    settler.tribe,
-    settler.jobType,
-    world.tryGet(e, Weapon)?.weaponTypeId,
-    settler.humanForm,
-  );
+  const arms = attackerWeapon(ctx, settler.tribe, settler.jobType, world.tryGet(e, Weapon)?.weaponTypeId);
   if (arms === null || wallBlowDamage(weaponDamageVsMaterial(arms.weapon, ARMOR_MATERIAL.HOUSE)) === 0) {
     return null;
   }

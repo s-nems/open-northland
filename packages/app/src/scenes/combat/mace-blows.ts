@@ -1,8 +1,8 @@
 import type { HalfCellNode, Simulation } from '@open-northland/sim';
 import { cellAnchorNode, components, systems } from '@open-northland/sim';
 import { grassTerrain } from '../../catalog/buildings.js';
+import { BYZANTINE } from '../../catalog/civilizations.js';
 import { JOB_SOLDIER_BROADSWORD, JOB_SOLDIER_SWORD } from '../../catalog/jobs.js';
-import { BYZANTINE } from '../../catalog/unit-variants.js';
 import { ENEMY_PLAYER, HUMAN_PLAYER, PRIMARY_TRIBE } from '../../game/rules.js';
 import { spawnSettlerAtNode } from '../../game/sandbox/index.js';
 import type { SceneDefinition } from '../types.js';

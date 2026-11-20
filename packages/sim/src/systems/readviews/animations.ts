@@ -1,4 +1,4 @@
-import { type AtomicAnimation, type ContentSet, unitVariantFor } from '@open-northland/data';
+import type { AtomicAnimation, ContentSet } from '@open-northland/data';
 import type { SettlerIdentity } from '../../components/index.js';
 import { contentIndex } from '../../core/content-index.js';
 import { CIVILIST_JOB } from '../lifecycle/ageclass.js';
@@ -196,8 +196,6 @@ const UNBOUND: ClipBinding = { name: undefined, clip: undefined };
 const CLIP_KEY_TRIBE_SPAN = 1 << 8;
 const CLIP_KEY_JOB_SPAN = 1 << 10;
 const CLIP_KEY_ATOMIC_SPAN = 1 << 11;
-/** The form's two values, the unit variant it picks. */
-const CLIP_KEY_FORM_SPAN = 2;
 
 /** The flat memo key of a settler's clip join, or -1 when a field falls outside its span. */
 function clipBindingKey(settler: SettlerIdentity, atomicId: number): number {
@@ -213,8 +211,7 @@ function clipBindingKey(settler: SettlerIdentity, atomicId: number): number {
     !Number.isInteger(atomicId)
   )
     return -1;
-  const form = settler.humanForm === true ? 1 : 0;
-  return ((atomicId * CLIP_KEY_JOB_SPAN + job) * CLIP_KEY_TRIBE_SPAN + tribe) * CLIP_KEY_FORM_SPAN + form;
+  return (atomicId * CLIP_KEY_JOB_SPAN + job) * CLIP_KEY_TRIBE_SPAN + tribe;
 }
 
 function clipBindingFor(content: ContentSet, settler: SettlerIdentity, atomicId: number): ClipBinding {
@@ -322,8 +319,7 @@ export function boundAtomicAnimation(
   atomicId: number,
 ): string | undefined {
   if (settler.jobType === null) return undefined;
-  const jobType = unitVariantFor(content, settler)?.animationJobType ?? settler.jobType;
-  return contentIndex(content).atomicBindingsByTribe.get(settler.tribe)?.get(jobType)?.get(atomicId);
+  return contentIndex(content).atomicBindingsByTribe.get(settler.tribe)?.get(settler.jobType)?.get(atomicId);
 }
 
 const adultAnimalJobs = new WeakMap<ContentSet, number | null>();

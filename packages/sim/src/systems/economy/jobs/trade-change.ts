@@ -1,4 +1,3 @@
-import { hasHumanForm } from '@open-northland/data';
 import {
   Armor,
   AssistantRecruit,
@@ -29,7 +28,6 @@ import {
   SiteAssignment,
   Stance,
   SupplyRun,
-  setSettlerForm,
   setSettlerJob,
   TrainingOrder,
   Weapon,
@@ -38,7 +36,6 @@ import { contentIndex } from '../../../core/content-index.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import { nodeOfPosition, positionOfNode } from '../../../nav/halfcell.js';
 import type { SystemContext } from '../../context.js';
-import { resizeUnitHealth, unitHitpoints } from '../../lifecycle/unit-health.js';
 // Deliberately the module, not `orders/index.js`: that barrel re-exports `orders/work/employment.js`, which
 // imports this package's barrel, so a barrel import would close an import cycle.
 import { anchorAtFeet, moveAnchor, stampDefaultStance } from '../../orders/combat.js';
@@ -73,7 +70,6 @@ export function applyTradeChange(world: World, ctx: SystemContext, e: Entity, jo
     if (world.has(e, Weapon)) world.mut(e, Weapon).weaponTypeId = armedClass.typeId;
     else world.add(e, Weapon, { weaponTypeId: armedClass.typeId });
   }
-  const previousHitpoints = unitHitpoints(ctx.content, world.get(e, Settler));
   const fighterAnchor = isFighterJob(ctx.content, world.get(e, Settler).jobType)
     ? (world.tryGet(e, Stance)?.anchorCell ?? null)
     : null;
@@ -84,9 +80,6 @@ export function applyTradeChange(world: World, ctx: SystemContext, e: Entity, jo
   }
   rememberCurrentJob(world, e, jobType);
   setSettlerJob(world, e, jobType);
-  // A trained unit takes its class's human form; only the map and a script field the native one.
-  setSettlerForm(world, e, hasHumanForm(ctx.content, world.get(e, Settler).tribe, jobType));
-  resizeUnitHealth(world, e, previousHitpoints, unitHitpoints(ctx.content, world.get(e, Settler)));
   world.remove(e, TrainingOrder); // a trade change calls off a drill errand
   world.remove(e, GraduateWait); // and a school wait: the trade it was trained for is gone
   world.remove(e, NeedOrder); // and any need the player ordered the old trade to answer

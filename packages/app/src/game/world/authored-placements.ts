@@ -61,9 +61,6 @@ export type AuthoredPlacement =
       missionId?: number;
       /** The `sethuman` behaviour mask, carried verbatim; no system reads the bits yet. */
       behaviourFlags?: number;
-      /** The seat's people choice moved this soldier to the chosen people: it spawns in the human form of
-       *  a class that has one (`UnitForm`), never as the people's creature. */
-      humanForm?: true;
       /** Starting experience (`setexpierence`), verbatim: track ids and `needfor*`-unit amounts. */
       experience?: readonly { track: number; amount: number }[];
       /** The map's `[misc_humannames]` name for this settler, as a string id in the map's own table. */

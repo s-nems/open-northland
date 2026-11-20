@@ -2,11 +2,7 @@ import type { TextureSource } from 'pixi.js';
 import { describe, expect, it } from 'vitest';
 import type { DrawItem } from '../../../../src/data/scene/index.js';
 import { resolveSettlerBobId } from '../../../../src/data/sprites/settler.js';
-import {
-  characterGaitRate,
-  humanCharacter,
-  settlerCharacterOf,
-} from '../../../../src/gpu/sprite-pool/layers/character.js';
+import { characterGaitRate, settlerCharacterOf } from '../../../../src/gpu/sprite-pool/layers/character.js';
 import { type MotionTrack, trackMotion } from '../../../../src/gpu/sprite-pool/presentation/motion.js';
 import type { SettlerCharacterSet } from '../../../../src/gpu/textures/sprite-sheet.js';
 
@@ -46,20 +42,6 @@ function fresh(): MotionTrack {
 }
 
 describe('measured walk travel', () => {
-  it('draws the native and human forms of the same equipped profession together', () => {
-    const dragon = { body, binding: { idle: 11, moving: 12 } };
-    const human = { body, binding: { idle: 21, moving: 22 } };
-    const table: SettlerCharacterSet = {
-      default: human,
-      byJob: { 32: dragon },
-      byWeaponGood: { 39: dragon },
-      human: { default: human, byJob: { 32: human }, byWeaponGood: { 39: human } },
-    };
-    expect(humanCharacter(table, 3, 32, false, 39, 1, false)).toBe(dragon);
-    expect(humanCharacter(table, 3, 32, false, 39, 2, true)).toBe(human);
-    expect(humanCharacter(table, 3, 32, false, undefined, 3)).toBe(dragon);
-    expect(humanCharacter(table, 3, 32, false, undefined, 3, true)).toBe(human);
-  });
   it('keeps phase tied to distance across speed changes, turns and catch-up ticks', () => {
     const track = fresh();
     const rate = characterGaitRate({ characters }, item);

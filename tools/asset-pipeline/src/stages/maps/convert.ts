@@ -20,7 +20,6 @@ import { collectSourceFiles, readSourceFile, type SourceRoots } from '../../root
 import { correctMapStrings } from '../../string-corrections.js';
 import { MAPS_DIR } from '../content-tree.js';
 import { writePagePictures } from '../hypertext-pictures.js';
-import { withAuthoredForm } from './authored-form.js';
 import { mapOverlaySource } from './overlays.js';
 import { mapProvenanceKind, takesSourceLanguageOverlays } from './provenance.js';
 
@@ -149,7 +148,6 @@ export async function convertMapDatTree(
         },
         { index, total: folders.length },
       );
-      map = withAuthoredForm(map);
     } catch (err) {
       // A pack map's own additions file is ours to keep valid: a broken one fails the build.
       if (!(err instanceof MapImportError) || tree.files.has(`${key}/${MAP_ADDITIONS_FILE}`)) throw err;

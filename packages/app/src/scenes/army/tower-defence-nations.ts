@@ -1,10 +1,9 @@
 import type { Entity, Simulation } from '@open-northland/sim';
 import { components } from '@open-northland/sim';
 import { grassTerrain, VIKING } from '../../catalog/buildings.js';
-import { CIVILIZATIONS, EGYPTIAN, FRANK, SARACEN } from '../../catalog/civilizations.js';
+import { BYZANTINE, CIVILIZATIONS, EGYPTIAN, FRANK, SARACEN } from '../../catalog/civilizations.js';
 import { shelterCapacityById } from '../../catalog/defence.js';
 import { JOB_CIVILIST, JOB_WOMAN } from '../../catalog/jobs.js';
-import { BYZANTINE } from '../../catalog/unit-variants.js';
 import { ENEMY_PLAYER, HUMAN_PLAYER } from '../../game/rules.js';
 import {
   BUILDING_WAREHOUSE_02,

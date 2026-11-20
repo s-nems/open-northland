@@ -65,6 +65,6 @@ function deckBowOf(world: World, ctx: SystemContext, e: Entity): MissileWeapon |
   if (settler === undefined || !isSoldierJob(ctx.content, settler.jobType)) return null;
   if ((world.tryGet(e, Health)?.hitpoints ?? 0) <= 0) return null;
   const worn = world.tryGet(e, Weapon)?.weaponTypeId;
-  const bow = attackerWeapon(ctx, settler.tribe, settler.jobType, worn, settler.humanForm)?.weapon;
+  const bow = attackerWeapon(ctx, settler.tribe, settler.jobType, worn)?.weapon;
   return bow !== undefined && bow.mainType === WEAPON_MAIN_TYPE.BOW && loosesMissile(bow) ? bow : null;
 }

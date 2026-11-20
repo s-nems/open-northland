@@ -92,9 +92,8 @@ const SETTLER_SCREEN_MARKS: Reach = {
 
 /** The fields of a look table, checked against the interface so a new one cannot be missed. */
 const TABLE_FIELDS: {
-  readonly [K in keyof ByJobTable<SettlerCharacter>]-?: 'table' | 'looks' | 'look' | 'none';
+  readonly [K in keyof ByJobTable<SettlerCharacter>]-?: 'looks' | 'look' | 'none';
 } = {
-  human: 'table',
   byJob: 'looks',
   youngByJob: 'looks',
   fixedByJob: 'looks',
@@ -231,8 +230,7 @@ function settlerReach(sheet: SpriteSheet): KindReach {
       if (value === undefined) continue;
       const field = TABLE_FIELDS[key];
       if (field === 'none') continue;
-      if (field === 'table') table(value as ByJobTable<SettlerCharacter>);
-      else if (field === 'look') look(value as SettlerCharacter);
+      if (field === 'look') look(value as SettlerCharacter);
       else for (const char of Object.values(value as Record<number, SettlerCharacter>)) look(char);
     }
   };

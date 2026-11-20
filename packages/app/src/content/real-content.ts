@@ -16,7 +16,6 @@ import { shelterCapacityFor } from '../catalog/defence.js';
 import { FARMING_BALANCE_BY_ID } from '../catalog/farming.js';
 import { GATHERING_BALANCE_BY_ID } from '../catalog/gathering.js';
 import { NAV_LANDSCAPE_TYPES } from '../catalog/terrain.js';
-import { withUnitVariants } from '../catalog/unit-variants.js';
 import { diag } from '../diag/index.js';
 import { EQUIP_CLASS_BY_SLUG } from '../game/sandbox/combat.js';
 import { loadIrRaw } from './ir/load.js';
@@ -182,7 +181,7 @@ export function mergeRealContent(real: ContentSet): RealContentMerge {
       buildings,
       landscape,
       weapons,
-      tribes: real.tribes.map((tribe) => withUnitVariants(withMonsterRules(tribe), weapons)),
+      tribes: real.tribes.map(withMonsterRules),
     }),
     unbalancedGoods,
     unfarmedFieldGoods,

@@ -100,13 +100,7 @@ function fightingWeapon(
   e: Entity,
   settler: SettlerIdentity,
 ): WeaponType | null {
-  const armed = attackerWeapon(
-    ctx,
-    settler.tribe,
-    settler.jobType,
-    world.tryGet(e, Weapon)?.weaponTypeId,
-    settler.humanForm,
-  );
+  const armed = attackerWeapon(ctx, settler.tribe, settler.jobType, world.tryGet(e, Weapon)?.weaponTypeId);
   if (armed === null) return null;
   const weaponClass = weaponClassOf(armed.weapon);
   return weaponClass !== undefined && BARE_HANDED.has(weaponClass) ? null : armed.weapon;

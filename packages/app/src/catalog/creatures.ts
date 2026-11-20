@@ -9,7 +9,7 @@ import {
 import { JOB_SOLDIER_UNARMED } from './jobs.js';
 
 /** Original behavior: the dragon's hitpoint pool. */
-const DRAGON_HITPOINTS = 20000;
+export const DRAGON_HITPOINTS = 20000;
 
 /**
  * The monster tribes by `[tribetype]` slug, and their rules. Original behavior: a weresnake or werewolf
@@ -37,6 +37,8 @@ export function withMonsterTribes(content: ContentSet): ContentSet {
 
 export const MONSTER_TRIBE_WERESNAKE = 5;
 export const MONSTER_TRIBE_WEREWOLF = 6;
+/** The dragon's own `[tribetype]` in our data pack. */
+export const MONSTER_TRIBE_DRAGON = 42;
 export const MONSTER_TRIBES: ReadonlySet<number> = new Set([MONSTER_TRIBE_WERESNAKE, MONSTER_TRIBE_WEREWOLF]);
 
 /** `weapontype` id 1, the claw/fist slot a monster's natural weapon binds at (tribe-scoped, extracted). */

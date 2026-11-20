@@ -1,7 +1,7 @@
 import { hexDistanceBetween, systems, TICKS_PER_SECOND } from '@open-northland/sim';
 import { VIKING } from '../../../catalog/buildings.js';
 import { FRANK } from '../../../catalog/civilizations.js';
-import { BYZANTINE_SPEAR_VARIANTS } from '../../../catalog/unit-variants.js';
+import { DRAGON_HITPOINTS } from '../../../catalog/creatures.js';
 import {
   CLOSED_GATE_LOGIC_ID,
   POST_STRENGTH,
@@ -364,7 +364,7 @@ export const COMBAT_FACTS: Readonly<Record<string, Fact>> = {
   'tower2.mead': whole((base) => stockOf(base, 'tower_01', 'mead')),
   'tower2.food': whole((base) => stockOf(base, 'tower_01', 'food_simple')),
   'tower2.weapon': whole((base) => stockOf(base, 'tower_01', 'bow_short')),
-  'dragon.hitpoints': whole(BYZANTINE_SPEAR_VARIANTS.find((row) => row.form === 'native')?.hitpoints ?? 0),
+  'dragon.hitpoints': whole(DRAGON_HITPOINTS),
   'catapult.searchRadius': whole(systems.VEHICLE_SCAN_RADIUS_POINTS),
   'catapult.leash': whole(systems.VEHICLE_DEFENCE_LEASH_POINTS),
   'catapult.priorityReach': whole((base) => {

@@ -1,8 +1,7 @@
 import { buildingHitpointsFor, sameBuildingFootprintCells } from '@open-northland/data';
-import { Building, ownerOf, Person, Settler, Vehicle } from '../../../components/index.js';
+import { Building, ownerOf, Person, Settler, setSettlerTribe, Vehicle } from '../../../components/index.js';
 import { contentIndex } from '../../../core/content-index.js';
 import type { Entity, World } from '../../../ecs/world.js';
-import { changeUnitTribe } from '../../lifecycle/unit-form.js';
 import { resizeUnitHealth } from '../../lifecycle/unit-health.js';
 import { isHeroJob } from '../../readviews/jobs.js';
 import type { MissionPass } from '../pass.js';
@@ -71,7 +70,7 @@ function retribe(
   if (settler !== undefined) {
     if (!world.has(e, Person) || !ours(settler.tribe) || isHeroJob(ctx.content, settler.jobType))
       return false;
-    changeUnitTribe(world, ctx.content, e, seat.chosen);
+    setSettlerTribe(world, e, seat.chosen);
     return true;
   }
   const vehicle = world.tryGet(e, Vehicle);

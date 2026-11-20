@@ -167,8 +167,6 @@ export interface DrawItem extends Readonly<StaticDrawFields> {
   /** For a settler: its `Settler.jobType`, the body/head look key (the original's `[jobbasegraphics]`
    *  job → body/head join). Omitted when the settler has no job. */
   readonly jobType?: number;
-  /** For a settler: it is in its class's human form (`Settler.humanForm`), drawn from the human looks. */
-  readonly humanForm?: boolean;
   /**
    * For a settler: the `typeId` of the good in its `Equipment.weapon` slot, so the drawn weapon follows
    * the slot rather than the job. `null` when the settler carries an `Equipment` whose weapon slot is
@@ -323,7 +321,6 @@ export function newDrawItem(
     engaged: undefined,
     running: undefined,
     jobType: undefined,
-    humanForm: undefined,
     weaponGood: undefined,
     armorGood: undefined,
     young: undefined,

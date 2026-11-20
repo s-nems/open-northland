@@ -223,13 +223,7 @@ function fighterBuffsOf(
 /** A live fighter's points as anyone who sees him can read them: weapon, armour, amulets, hitpoints. */
 export function unitPoints(world: World, ctx: SystemContext, e: Entity): number {
   const settler = world.get(e, Settler);
-  const armed = attackerWeapon(
-    ctx,
-    settler.tribe,
-    settler.jobType,
-    world.tryGet(e, Weapon)?.weaponTypeId,
-    settler.humanForm,
-  );
+  const armed = attackerWeapon(ctx, settler.tribe, settler.jobType, world.tryGet(e, Weapon)?.weaponTypeId);
   return fighterPoints(
     ctx.content,
     armed?.weapon ?? null,

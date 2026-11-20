@@ -112,13 +112,7 @@ const garrisonReaches = new WeakMap<WeaponReach, WeaponReach>();
  *  swing read. 0 without a bow. */
 export function postShotReach(world: World, ctx: ContentContext, e: Entity): number {
   const settler = world.get(e, Settler);
-  const held = attackerWeapon(
-    ctx,
-    settler.tribe,
-    settler.jobType,
-    world.tryGet(e, Weapon)?.weaponTypeId,
-    settler.humanForm,
-  );
+  const held = attackerWeapon(ctx, settler.tribe, settler.jobType, world.tryGet(e, Weapon)?.weaponTypeId);
   return held !== null && isRangedWeapon(held.weapon) ? garrisonReach(ctx.content, held).maxRange : 0;
 }
 

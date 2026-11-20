@@ -176,7 +176,6 @@ describe('seatTribeRemap', () => {
       objectId: 0,
     });
     const script: MissionScript = {
-      authoredForm: 'human',
       missions: [
         {
           successfullIf: 0,
@@ -233,7 +232,6 @@ describe('seatTribeRemap', () => {
         SARACEN,
       ],
     );
-    expect(seated.authoredForm).toBe('human');
     expect(seated.seatTribes).toEqual([
       { player: 0, authored: VIKING, chosen: SARACEN, drawnBuildings: [BARRACKS] },
     ]);

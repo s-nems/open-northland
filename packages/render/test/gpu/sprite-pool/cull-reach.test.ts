@@ -61,7 +61,6 @@ describe('kindReaches - settlers', () => {
       'a fixed look': { byJob: {}, fixedByJob: { 7: tall }, default: SMALL },
       'a weapon look': { byJob: {}, byWeaponGood: { 40: tall }, default: SMALL },
       'an unarmed look': { byJob: {}, unarmedByJob: { 7: tall }, default: SMALL },
-      'a human form': { byJob: {}, default: SMALL, human: { byJob: { 2: tall }, default: SMALL } },
       "another tribe's look": {
         byJob: {},
         default: SMALL,

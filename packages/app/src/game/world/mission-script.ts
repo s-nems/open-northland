@@ -197,13 +197,7 @@ export function mapScriptWorld(script: MapScript | null, rows: AuthoredJoinRows 
     ...(modules === undefined ? {} : { modules }),
   };
   if (script === null || rows === null || script.missions.length === 0) {
-    // A scriptless or unresolvable script still carries the map's authored unit form to the sim.
-    const authoredForm = script?.authoredForm;
-    return {
-      ...setup,
-      ...(authoredForm === undefined ? {} : { missions: { missions: [], authoredForm } }),
-      ...multiplayerVictory(script, NO_VERDICTS),
-    };
+    return { ...setup, ...multiplayerVictory(script, NO_VERDICTS) };
   }
   const join = resolveMissionScript(script.missions, rows);
   if (join.unknownOpcodes > 0 || join.tokenMismatches > 0 || join.unresolvedNames.length > 0) {
@@ -218,10 +212,7 @@ export function mapScriptWorld(script: MapScript | null, rows: AuthoredJoinRows 
   const verdicts = { won: names('MissionWon'), failed: names('MissionFailed') };
   return {
     ...setup,
-    missions: {
-      ...join.script,
-      ...(script.authoredForm === undefined ? {} : { authoredForm: script.authoredForm }),
-    },
+    missions: join.script,
     ...(multiplayerVictory(script, verdicts) ?? { victory: 'script' }),
   };
 }

@@ -261,8 +261,8 @@ function reachOf(world: World, ctx: Pick<SystemContext, 'content'>, e: Entity): 
 }
 
 function heldReach(world: World, ctx: Pick<SystemContext, 'content'>, e: Entity): WeaponReach | null {
-  const { tribe, jobType, humanForm } = world.get(e, Settler);
-  return attackerWeapon(ctx, tribe, jobType, world.tryGet(e, Weapon)?.weaponTypeId, humanForm);
+  const { tribe, jobType } = world.get(e, Settler);
+  return attackerWeapon(ctx, tribe, jobType, world.tryGet(e, Weapon)?.weaponTypeId);
 }
 
 /** How far from his own node in map points posted `e` on `post` looks: his {@link garrisonReach} from the

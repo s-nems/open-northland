@@ -1,16 +1,20 @@
 import { cellAnchorNode, components, type Simulation, systems } from '@open-northland/sim';
 import { grassTerrain } from '../../catalog/buildings.js';
-import { JOB_SOLDIER_SPEAR_WOODEN, JOB_SOLDIER_SWORD, JOB_SOLDIER_UNARMED } from '../../catalog/jobs.js';
-import { BYZANTINE, BYZANTINE_SPEAR_VARIANTS } from '../../catalog/unit-variants.js';
+import {
+  MONSTER_TRIBE_DRAGON,
+  MONSTER_TRIBE_WERESNAKE,
+  MONSTER_TRIBE_WEREWOLF,
+} from '../../catalog/creatures.js';
+import { JOB_SOLDIER_SWORD, JOB_SOLDIER_UNARMED } from '../../catalog/jobs.js';
 import { spawnSettlerAtNode } from '../../game/sandbox/index.js';
 import type { SceneDefinition } from '../types.js';
 
 const ENDURANCE = 1_000_000;
 const SUBJECTS = [
   { tribe: 1, jobType: JOB_SOLDIER_UNARMED },
-  { tribe: 6, jobType: JOB_SOLDIER_UNARMED },
-  { tribe: 5, jobType: JOB_SOLDIER_UNARMED },
-  { tribe: BYZANTINE, jobType: JOB_SOLDIER_SPEAR_WOODEN },
+  { tribe: MONSTER_TRIBE_WEREWOLF, jobType: JOB_SOLDIER_UNARMED },
+  { tribe: MONSTER_TRIBE_WERESNAKE, jobType: JOB_SOLDIER_UNARMED },
+  { tribe: MONSTER_TRIBE_DRAGON, jobType: JOB_SOLDIER_UNARMED },
 ];
 
 function build(sim: Simulation): void {
@@ -24,12 +28,6 @@ function build(sim: Simulation): void {
       sim.names,
     );
     if (target === null) throw new Error('Missing creature blood subject');
-    // The fallback catalog has generic human HP; exercise the same dragon pool in both entries.
-    const variant = BYZANTINE_SPEAR_VARIANTS.find(
-      (rule) => rule.form === 'native' && rule.jobType === subject.jobType,
-    );
-    if (subject.tribe === BYZANTINE && variant?.hitpoints !== undefined)
-      sim.world.mut(target, components.Health).max = variant.hitpoints;
     const attacker = spawnSettlerAtNode(sim, JOB_SOLDIER_SWORD, node, 0);
     for (const entity of [attacker, target]) {
       // Keep the comparison running without inflating the HP reference used by visible wounds.
@@ -45,7 +43,7 @@ export const creatureBloodScene: SceneDefinition = {
   id: 'creature-blood',
   seed: 84,
   terrain: grassTerrain(25, 19),
-  graphicTribes: [1, 6, 5, 3],
+  graphicTribes: [1, MONSTER_TRIBE_WEREWOLF, MONSTER_TRIBE_WERESNAKE, MONSTER_TRIBE_DRAGON],
   initialZoom: 1.25,
   build,
   runTicks: 240,
@@ -60,12 +58,10 @@ export const creatureBloodScene: SceneDefinition = {
           subjects.length === 4 &&
           subjects.every((e) => {
             const hp = sim.world.get(e, components.Health);
-            const identity = sim.world.get(e, components.Settler);
-            return (
-              hp.hitpoints > 0 &&
-              hp.hitpoints < ENDURANCE &&
-              (identity.tribe !== BYZANTINE || (identity.humanForm !== true && hp.max === 20000))
-            );
+            const pool = sim.content.tribes.find(
+              (t) => t.typeId === sim.world.get(e, components.Settler).tribe,
+            )?.monster?.hitpoints;
+            return hp.hitpoints > 0 && hp.hitpoints < ENDURANCE && (pool === undefined || hp.max === pool);
           })
         );
       },

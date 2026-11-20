@@ -108,7 +108,6 @@ describe('admin spawn command mapping', () => {
       y: 9,
       tribe: PRIMARY_TRIBE,
       owner: 1,
-      humanForm: true,
       hitpoints: 250,
       weaponTypeId: WEAPON_SWORD,
       armorClass: 3,
@@ -131,7 +130,6 @@ describe('admin spawn command mapping', () => {
       y: 3,
       tribe: PRIMARY_TRIBE,
       owner: 1,
-      humanForm: true,
       weaponTypeId: WEAPON_FISTS,
     });
   });

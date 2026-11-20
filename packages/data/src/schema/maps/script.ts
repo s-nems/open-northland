@@ -1,6 +1,5 @@
 import { z } from 'zod';
 import { MapModules } from '../../map-modules/schema.js';
-import { UnitForm } from '../actors/tribes.js';
 import { Provenance } from '../record.js';
 import { MapText } from './strings.js';
 
@@ -420,10 +419,6 @@ export const MapScript = z.strictObject({
   humanPalettes: z.array(MapHumanPalette).default([]),
   /** The `[misc_tradeagreement]` rows in file order, when the map ships the section. */
   tradeAgreements: z.array(MapTradeAgreement).default([]),
-  /** The form the map's authored units take where a class has two (`UnitForm`): `human` on a map authored
-   *  before the data gave the class its creature form, so its placed and scripted men stay men. Absent
-   *  is `native`. */
-  authoredForm: UnitForm.optional(),
   /** The `[misc_weather]` rectangles in file order, applied at map load before any script write. */
   weather: z.array(MapWeatherRectangle).default([]),
   missions: z.array(MapMission).default([]),

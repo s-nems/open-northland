@@ -1,4 +1,4 @@
-import { type ContentSet, unitVariantFor, type WeaponType } from '@open-northland/data';
+import type { ContentSet, WeaponType } from '@open-northland/data';
 import {
   Armor,
   addCurrentAtomic,
@@ -79,10 +79,9 @@ export function attackerWeapon(
   tribe: number,
   jobType: number | null,
   wornWeaponTypeId?: number,
-  humanForm = false,
 ): WeaponReach | null {
-  const key = armingKey(tribe, jobType, wornWeaponTypeId, humanForm);
-  if (key === null) return resolveWeapon(ctx, tribe, jobType, wornWeaponTypeId, humanForm);
+  const key = armingKey(tribe, jobType, wornWeaponTypeId);
+  if (key === null) return resolveWeapon(ctx, tribe, jobType, wornWeaponTypeId);
   let resolved = armings.get(ctx.content);
   if (resolved === undefined) {
     resolved = new Map();
@@ -90,7 +89,7 @@ export function attackerWeapon(
   }
   const held = resolved.get(key);
   if (held !== undefined) return held;
-  const weapon = resolveWeapon(ctx, tribe, jobType, wornWeaponTypeId, humanForm);
+  const weapon = resolveWeapon(ctx, tribe, jobType, wornWeaponTypeId);
   resolved.set(key, weapon);
   return weapon;
 }
@@ -100,13 +99,12 @@ export function attackerWeapon(
 const armings = new WeakMap<ContentSet, Map<number, WeaponReach | null>>();
 
 /** The values each part of an {@link armingKey} packs into, absent as 0 and id `n` as `n + 1`. The tribe,
- *  job and worn weapon spans and the form bit multiply to {@link SMALL_INTEGER_SPAN}, so the map stores
- *  every key unboxed. Content ids sit far below each span; a larger one resolves uncached. */
-const ARMING_TRIBE_SPAN = 2 ** 9;
+ *  job and worn weapon spans multiply to {@link SMALL_INTEGER_SPAN}, so the map stores every key unboxed.
+ *  Content ids sit far below each span; a larger one resolves uncached. */
+const ARMING_TRIBE_SPAN = 2 ** 10;
 const ARMING_JOB_SPAN = 2 ** 10;
 const ARMING_WORN_SPAN = 2 ** 10;
-const ARMING_FORM_SPAN = 2;
-if (ARMING_TRIBE_SPAN * ARMING_JOB_SPAN * ARMING_WORN_SPAN * ARMING_FORM_SPAN !== SMALL_INTEGER_SPAN) {
+if (ARMING_TRIBE_SPAN * ARMING_JOB_SPAN * ARMING_WORN_SPAN !== SMALL_INTEGER_SPAN) {
   throw new Error('the arming key spans must multiply to the small-integer range');
 }
 
@@ -115,16 +113,12 @@ function armingKey(
   tribe: number,
   jobType: number | null,
   wornWeaponTypeId: number | undefined,
-  humanForm: boolean,
 ): number | null {
   const tribePart = armingPart(tribe, ARMING_TRIBE_SPAN);
   const jobPart = jobType === null ? 0 : armingPart(jobType, ARMING_JOB_SPAN);
   const wornPart = wornWeaponTypeId === undefined ? 0 : armingPart(wornWeaponTypeId, ARMING_WORN_SPAN);
   if (tribePart === null || jobPart === null || wornPart === null) return null;
-  return (
-    ((tribePart * ARMING_JOB_SPAN + jobPart) * ARMING_WORN_SPAN + wornPart) * ARMING_FORM_SPAN +
-    (humanForm ? 1 : 0)
-  );
+  return (tribePart * ARMING_JOB_SPAN + jobPart) * ARMING_WORN_SPAN + wornPart;
 }
 
 function armingPart(id: number, span: number): number | null {
@@ -136,16 +130,8 @@ function resolveWeapon(
   tribe: number,
   jobType: number | null,
   wornWeaponTypeId: number | undefined,
-  humanForm: boolean,
 ): WeaponReach | null {
   const index = contentIndex(ctx.content);
-  const variant = unitVariantFor(ctx.content, { tribe, jobType, humanForm });
-  const classType =
-    jobType === null ? undefined : index.weaponsByTribeAndJob.get(tribe)?.get(jobType)?.typeId;
-  if (variant?.weapon !== undefined && (wornWeaponTypeId === undefined || wornWeaponTypeId === classType)) {
-    const weapon = index.weaponsByTribeAndTypeId.get(variant.weapon.tribeType)?.get(variant.weapon.typeId);
-    return weapon === undefined ? null : withReach(weapon);
-  }
   // Worn weapon (own tribe + typeId) overrides the class default; an unresolved worn id leaves it unarmed.
   if (wornWeaponTypeId !== undefined) {
     const worn = index.weaponsByTribeAndTypeId.get(tribe)?.get(wornWeaponTypeId);

@@ -1,6 +1,10 @@
 import type { ContentSet } from '@open-northland/data';
 import { type Command, systems } from '@open-northland/sim';
-import { MONSTER_TRIBE_WERESNAKE, MONSTER_TRIBE_WEREWOLF } from '../../catalog/creatures.js';
+import {
+  MONSTER_TRIBE_DRAGON,
+  MONSTER_TRIBE_WERESNAKE,
+  MONSTER_TRIBE_WEREWOLF,
+} from '../../catalog/creatures.js';
 import {
   JOB_ARCHER,
   JOB_ARCHER_LONG,
@@ -16,7 +20,6 @@ import {
   JOB_SOLDIER_UNARMED,
   JOB_WOMAN,
 } from '../../catalog/jobs.js';
-import { BYZANTINE } from '../../catalog/unit-variants.js';
 import {
   GATHERERS,
   WEAPON_BROADSWORD,
@@ -135,8 +138,7 @@ export interface SoldierSpawnOptions extends PersonSpawnOptions {
 
 /**
  * A soldier spawn: the weapon's class and wielded weapon, the armor's class, and both goods in their
- * equipment slots, so the settler panel shows what it fights with. A soldier preset is a human soldier,
- * so a class with a creature form spawns its human form; the creature presets spawn the creatures.
+ * equipment slots, so the settler panel shows what it fights with.
  */
 export function soldierSpawnCommand(opts: SoldierSpawnOptions): Command {
   // Shared with the scene and map spawns; bare hands leave the slot empty.
@@ -153,7 +155,6 @@ export function soldierSpawnCommand(opts: SoldierSpawnOptions): Command {
     y: opts.y,
     tribe: opts.tribe,
     owner: opts.player,
-    humanForm: true,
     ...(opts.hitpoints > 0 ? { hitpoints: opts.hitpoints } : {}),
     weaponTypeId: opts.weapon.weaponTypeId,
     ...(armor !== null ? { armorClass: armor.armorClass } : {}),
@@ -201,7 +202,7 @@ export const CREATURE_PRESETS: readonly CreaturePreset[] = [
   { id: 'weresnakeLion', tribe: MONSTER_TRIBE_WERESNAKE, jobType: JOB_SOLDIER_SPEAR_WOODEN },
   { id: 'weresnakeWolf', tribe: MONSTER_TRIBE_WERESNAKE, jobType: JOB_SOLDIER_SPEAR },
   { id: 'weresnakeBear', tribe: MONSTER_TRIBE_WERESNAKE, jobType: JOB_SOLDIER_BROADSWORD },
-  { id: 'dragon', tribe: BYZANTINE, jobType: JOB_SOLDIER_SPEAR_WOODEN },
+  { id: 'dragon', tribe: MONSTER_TRIBE_DRAGON, jobType: JOB_SOLDIER_UNARMED },
 ];
 
 export function creatureSpawnCommand(
@@ -215,7 +216,6 @@ export function creatureSpawnCommand(
     y: opts.y,
     tribe: preset.tribe,
     owner: opts.player,
-    humanForm: false,
     ...(opts.hitpoints > 0 ? { hitpoints: opts.hitpoints } : {}),
   };
 }

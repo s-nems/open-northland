@@ -96,13 +96,7 @@ function mayStrikeBack(
   if (world.has(e, PlayerOrder) || world.has(e, AttackOrder) || world.has(e, Fleeing)) return false;
   if (world.has(e, Sheltering) || hasMissionBehaviour(world, e, MISSION_BEHAVIOUR.PASSIVE)) return false;
   if (!struck && world.tryGet(e, CurrentAtomic)?.effect.kind === 'sleep') return false;
-  const weapon = attackerWeapon(
-    ctx,
-    settler.tribe,
-    settler.jobType,
-    world.tryGet(e, Weapon)?.weaponTypeId,
-    settler.humanForm,
-  );
+  const weapon = attackerWeapon(ctx, settler.tribe, settler.jobType, world.tryGet(e, Weapon)?.weaponTypeId);
   return weapon !== null && isValidTarget(world, ctx, e, settler, attacker);
 }
 

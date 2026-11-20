@@ -4,7 +4,6 @@ import { components, FOG_MODE, TICKS_PER_MINUTE } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import { buildMapWorld } from '../../../src/entries/map/world.js';
 import { sessionWorldOptions } from '../../../src/game/match/session-world.js';
-import { mapScriptWorld } from '../../../src/game/world/mission-script.js';
 
 const SESSION: GameSession = {
   world: { kind: 'map', mapId: 'synthetic' },
@@ -28,12 +27,6 @@ const AUTHORED: readonly MapDiplomacy[] = [
 ];
 
 describe('session world options', () => {
-  it("carries the map's authored unit form to the world build", () => {
-    expect(mapScriptWorld(MapScript.parse({ authoredForm: 'human' }), null).missions?.authoredForm).toBe(
-      'human',
-    );
-    expect(mapScriptWorld(MapScript.parse({}), null).missions).toBeUndefined();
-  });
   it('counts every roster seat the lobby left on the map, idle ones included, whatever decides', () => {
     const absent: GameSession = {
       ...SESSION,

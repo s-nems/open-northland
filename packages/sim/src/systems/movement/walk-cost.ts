@@ -1,4 +1,4 @@
-import { type ContentSet, type UnitVariant, unitVariantFor } from '@open-northland/data';
+import type { ContentSet } from '@open-northland/data';
 import {
   Armor,
   bootsDegreeOfUse,
@@ -158,7 +158,6 @@ export function walkStepModifiersOf(
   const fatigue = needs === undefined ? undefined : needLevel(needs, 'fatigue', tick);
   const index = contentIndex(content);
   const job = settler?.jobType ?? null;
-  const variant = settler === undefined ? undefined : unitVariantFor(content, settler);
   out.shoes = equipment?.boots != null && hasLiveBoots(world, e, equipment);
   out.stepTicksSaved = equipment === undefined ? 0 : carriedStepTicksSaved(world, content, e, equipment);
   out.carrying = isCarryingGood(world, e);
@@ -170,7 +169,7 @@ export function walkStepModifiersOf(
   out.equipmentWeight =
     settler === undefined || isHeroJob(content, job)
       ? 0
-      : equipmentWeight(world, e, index, equipment, settler.tribe, job, variant);
+      : equipmentWeight(world, e, index, equipment, settler.tribe, job);
   return out;
 }
 
@@ -181,7 +180,6 @@ function equipmentWeight(
   equipment: Readonly<EquipmentData> | undefined,
   tribe: number,
   job: number | null,
-  variant: UnitVariant | undefined,
 ): number {
   const weaponType = world.tryGet(e, Weapon)?.weaponTypeId;
   const classWeapon = job === null ? undefined : index.weaponsByTribeAndJob.get(tribe)?.get(job);
@@ -193,10 +191,6 @@ function equipmentWeight(
       : equipment?.weapon == null || equipment.weapon.goodType === classWeapon?.goodType
         ? classWeapon
         : index.weaponByTribeAndGoodType.get(tribe)?.get(equipment.weapon.goodType);
-  const variantWeapon =
-    variant?.weapon !== undefined && (weaponType === undefined || weaponType === classWeapon?.typeId)
-      ? index.weaponsByTribeAndTypeId.get(variant.weapon.tribeType)?.get(variant.weapon.typeId)
-      : undefined;
   const armorClass = world.tryGet(e, Armor)?.armorClass;
   const armor =
     equipment?.armor != null
@@ -204,5 +198,5 @@ function equipmentWeight(
       : armorClass === undefined
         ? undefined
         : index.armor.get(armorClass);
-  return (variantWeapon?.weight ?? weapon?.weight ?? 0) + (armor?.weight ?? 0);
+  return (weapon?.weight ?? 0) + (armor?.weight ?? 0);
 }

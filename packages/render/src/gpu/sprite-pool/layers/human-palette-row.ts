@@ -59,15 +59,7 @@ export function humanPaletteIdentity(
   if (item.tribe !== undefined && characters.animals?.tribes.has(item.tribe) === true) return false;
   if (isUnseenHuman(characters, item)) return false;
   const young = item.young === true;
-  const character = humanCharacter(
-    characters,
-    item.tribe,
-    item.jobType,
-    young,
-    item.weaponGood,
-    item.ref,
-    item.humanForm,
-  );
+  const character = humanCharacter(characters, item.tribe, item.jobType, young, item.weaponGood, item.ref);
   if (character.indexed === false) return false;
   const table = (item.tribe !== undefined ? characters.byTribe?.[item.tribe] : undefined) ?? characters;
   const fixed = !young && item.jobType !== undefined && table.fixedByJob?.[item.jobType] !== undefined;

@@ -86,7 +86,6 @@ describe('atomic completion pose', () => {
     { frozen: true },
     { ghost: true },
     { weaponGood: 2 },
-    { humanForm: true },
   ])('honours a new action, movement, appearance or visibility immediately: %j', (change) => {
     const track = fresh();
     atomicPose(swing, 14, track);

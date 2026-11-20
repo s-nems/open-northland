@@ -65,9 +65,6 @@ export type SpawnCommand =
       /** The settler's max hitpoint pool. Omit (or a non-positive value) for the stage-appropriate pool
        *  above. */
       readonly hitpoints?: number;
-      /** Spawn the class's human form (`UnitForm`) where it has one: a soldier the people choice converted
-       *  or a tool's stand-in for a trained one. Omit for the native form a map or script places. */
-      readonly humanForm?: boolean;
       /** A combatant's worn armor class (a `[armortype]` tier 1..4; stamps an `Armor` component), which
        *  selects the damage column an incoming hit reads. Omit (or a non-positive value) for an
        *  unarmored combatant - every hit then lands on class 0. */

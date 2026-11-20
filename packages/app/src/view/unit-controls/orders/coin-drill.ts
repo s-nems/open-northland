@@ -63,15 +63,13 @@ export function mayCoinDrillAtHouse(
   if (!isSettler(settler) || !isPlayerControllable(settler)) return false;
   if (house.owner !== ownerPlayerOf(settler)) return false;
   if (isBarredFromExperience(settler) || coinDrillHouseOf(settler) === house.id) return false;
-  const identity = settler.components.Settler as
-    | { tribe?: unknown; jobType?: unknown; humanForm?: unknown }
-    | undefined;
+  const identity = settler.components.Settler as { tribe?: unknown; jobType?: unknown } | undefined;
   const tribe = num(identity?.tribe);
   if (tribe === undefined) return false;
   const weapon = num((settler.components.Weapon as { weaponTypeId?: unknown } | undefined)?.weaponTypeId);
   return systems.mayCoinDrill(
     content,
-    { tribe, jobType: num(identity?.jobType) ?? null, humanForm: identity?.humanForm === true },
+    { tribe, jobType: num(identity?.jobType) ?? null },
     weapon,
     settlerExperienceOf(settler.components),
   );

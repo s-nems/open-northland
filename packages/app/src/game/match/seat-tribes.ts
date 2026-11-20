@@ -161,14 +161,14 @@ function spawned(player: number, missionId: number, at: FlowingThing['at']): Flo
   return { owner: player, missionId, at };
 }
 
-/** A resolved spawn line takes the tribe its thing will end with, and a moved human the human form of its
- *  class (`UnitForm`); any other line naming a player and a tribe or a house follows its seat. */
+/** A resolved spawn line takes the tribe its thing will end with; any other line naming a player and a
+ *  tribe or a house follows its seat. */
 function seatedResult(op: MissionResultOp, remap: SeatTribeRemap): MissionResultOp {
   switch (op.opcode) {
     case 'SetHuman':
     case 'SetHumanX': {
       const tribe = remap.human(spawned(op.player, op.humanId, op.point), op.job, op.tribe);
-      return tribe === op.tribe ? op : { ...op, tribe, humanForm: true };
+      return tribe === op.tribe ? op : { ...op, tribe };
     }
     case 'SetVehicle': {
       const tribe = remap.vehicle(spawned(op.player, op.vehicleId, op.point), op.tribe);
@@ -266,7 +266,7 @@ export function seatedPlacements(
     }
     if (p.kind === 'human') {
       const tribe = remap.human(thing, p.jobType, p.tribe);
-      return tribe === p.tribe ? p : { ...p, tribe, humanForm: true };
+      return tribe === p.tribe ? p : { ...p, tribe };
     }
     return { ...p, tribe: remap.vehicle(thing, p.tribe) };
   });

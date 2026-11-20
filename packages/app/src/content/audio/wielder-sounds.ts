@@ -1,6 +1,6 @@
 import type { WielderSounds } from '@open-northland/audio';
+import { BYZANTINE } from '../../catalog/civilizations.js';
 import { JOB_SOLDIER_BROADSWORD, JOB_SOLDIER_SWORD } from '../../catalog/jobs.js';
-import { BYZANTINE } from '../../catalog/unit-variants.js';
 
 /** The swing groups the sword soldiers' attack clips cue before the blow. */
 const GROUP_SWORD_SHORT_SWING = 'Weapon Sword Short';
