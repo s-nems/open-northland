@@ -42,7 +42,7 @@ export const SITE_URL_ENV = 'ON_SITE_URL';
 export function initialGameUrl(
   gameUrl: string,
   apiOverride: string | undefined,
-  siteOverride?: string | undefined,
+  siteOverride: string | undefined,
 ): string {
   const url = new URL(gameUrl);
   for (const [param, raw] of [

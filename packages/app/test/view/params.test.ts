@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { entrySearch } from '../../src/view/params.js';
+import { entrySearch, menuSearch } from '../../src/view/params.js';
 
 describe('entrySearch', () => {
   it('records only the world and seat selection, dropping settings and diagnostic pins', () => {
@@ -16,5 +16,13 @@ describe('entrySearch', () => {
   it('keeps a scene selection and reports null when nothing selects a world or seat', () => {
     expect(entrySearch(new URLSearchParams('scene=sandbox&sound=off'))).toBe('?scene=sandbox');
     expect(entrySearch(new URLSearchParams('lang=pol&speed=3'))).toBeNull();
+  });
+});
+
+describe('menuSearch', () => {
+  it('keeps the server overrides across a game, so the next menu reads the same sources', () => {
+    expect(
+      menuSearch(new URLSearchParams('map=twierdza&api=http://127.0.0.1:8790&site=http://127.0.0.1:4321')),
+    ).toBe('?api=http%3A%2F%2F127.0.0.1%3A8790&site=http%3A%2F%2F127.0.0.1%3A4321');
   });
 });

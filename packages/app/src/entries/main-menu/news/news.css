@@ -37,7 +37,6 @@
   flex-direction: column;
   gap: calc(var(--news-u) * var(--news-block-gap));
   overflow: hidden;
-  pointer-events: auto;
 }
 
 .main-menu__news-entries {
@@ -64,15 +63,19 @@
   text-align: right;
 }
 
+/* Only the heading and the blocks take the pointer: the column's empty room may reach over the
+   brand block or the nav. */
 .main-menu__news-column > *,
 .main-menu__news-body > * {
   flex: none;
+  pointer-events: auto;
 }
 
 .main-menu__news-body {
   display: flex;
   flex-direction: column;
   gap: inherit;
+  pointer-events: none;
 }
 
 .main-menu__news-body[hidden] {

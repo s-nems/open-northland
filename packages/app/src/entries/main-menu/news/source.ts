@@ -9,15 +9,15 @@ import { API_PARAM, apiBase, apiBaseUrl, automationWithoutServer } from '../../.
 import { diag } from '../../../diag/index.js';
 import type { MenuNews } from './model.js';
 
-export const NEWS_REQUEST_TIMEOUT_MS = 10_000;
+const NEWS_REQUEST_TIMEOUT_MS = 10_000;
 /** The website whose release feed the menu reads unless `?site=` names another. */
-export const DEFAULT_SITE_URL = 'https://opennorthland.org';
+const DEFAULT_SITE_URL = 'https://opennorthland.org';
 const SITE_PARAM = 'site';
 
-export const newsUrl = (api: string): string => `${api}/v1/news`;
-export const releaseFeedUrl = (site: string): string => `${site}/releases/feed.json`;
+const newsUrl = (api: string): string => `${api}/v1/news`;
+const releaseFeedUrl = (site: string): string => `${site}/releases/feed.json`;
 
-export function siteBaseUrl(search: string = window.location.search): string {
+function siteBaseUrl(search: string): string {
   return apiBase(new URLSearchParams(search).get(SITE_PARAM)) ?? DEFAULT_SITE_URL;
 }
 

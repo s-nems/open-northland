@@ -90,6 +90,7 @@ describe('release versions', () => {
     expect(compareReleaseVersions('0.10.0', '0.9.3')).toBeGreaterThan(0);
     expect(compareReleaseVersions('0.7.0', '0.7.0')).toBe(0);
     expect(compareReleaseVersions('0.8.0-rc.1', '0.8.0')).toBeLessThan(0);
+    expect(compareReleaseVersions('0.8.0-rc.10', '0.8.0-rc.9')).toBeGreaterThan(0);
     expect(compareReleaseVersions('1.0.0', '0.99.99')).toBeGreaterThan(0);
   });
 
@@ -148,7 +149,7 @@ describe('news panel model', () => {
 });
 
 describe('unseen column content', () => {
-  const news = (...entries: readonly NewsEntry[]) => ({ schema: 1 as const, entries });
+  const news = (...entries: readonly NewsEntry[]) => ({ schema: 1 as const, entries: [...entries] });
   const newsMarks = (entries: readonly NewsEntry[], lang: 'eng' | 'pol' = 'eng') =>
     newsColumnMarks(newsPanelModel({ news: news(...entries), feed: null }, NOW, lang, DESKTOP));
   const versionMarks = (feed: ReleaseFeed, build = DESKTOP) =>

@@ -3,6 +3,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   type MenuNews,
+  newsColumnMarks,
   newsPanelModel,
   versionsColumnMarks,
 } from '../../../../src/entries/main-menu/news/model.js';
@@ -10,6 +11,10 @@ import { mountNewsPanel, type NewsColumnStore } from '../../../../src/entries/ma
 import type { MenuNewsColumns } from '../../../../src/view/settings/store.js';
 
 const NOW = Date.parse('2026-11-25T12:00:00Z');
+const MINUTE_MS = 60_000;
+/** The showmatch below starts at 18:00 UTC and shows for three hours. */
+const AFTER_SHOWMATCH = Date.parse('2026-11-25T21:01:00Z');
+const BROWSER = { version: '0.6.0', browser: true };
 const NEWS: MenuNews = {
   news: {
     schema: 1,
@@ -41,6 +46,7 @@ beforeEach(() => {
   Object.defineProperty(document, 'fonts', { configurable: true, value: { ready: Promise.resolve() } });
 });
 afterEach(() => {
+  vi.useRealTimers();
   vi.unstubAllGlobals();
   document.body.replaceChildren();
 });
@@ -138,7 +144,27 @@ describe('news panel', () => {
     expect(versions.querySelector('[role="img"]')?.getAttribute('aria-label')).toBe('Nowe');
     versions.click();
     expect(dotShown(versions)).toBe(false);
-    expect(store.columns.versions.seen).not.toEqual(seenBefore);
+    expect(store.columns.versions.seen).toEqual(
+      versionsColumnMarks(newsPanelModel(NEWS, NOW, 'pol', BROWSER)),
+    );
     dispose();
+  });
+
+  it('drops an entry that ended at the next minute without marking its folded column', async () => {
+    vi.useFakeTimers();
+    let nowMs = NOW;
+    const seen = newsColumnMarks(newsPanelModel(NEWS, NOW, 'pol', BROWSER));
+    const store = memoryStore({ ...EXPANDED, news: { collapsed: true, seen } });
+    const host = document.createElement('div');
+    document.body.append(host);
+    const dispose = mountNewsPanel(host, Promise.resolve(NEWS), () => nowMs, store);
+    await Promise.resolve();
+    nowMs = AFTER_SHOWMATCH;
+    vi.advanceTimersByTime(MINUTE_MS);
+    const titles = [...host.querySelectorAll('.main-menu__news-title')].map((node) => node.textContent);
+    expect(titles).toEqual(['Notatki']);
+    expect(dotShown(heading(host, 'entries'))).toBe(false);
+    dispose();
+    expect(vi.getTimerCount()).toBe(0);
   });
 });

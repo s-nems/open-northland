@@ -73,9 +73,9 @@ describe('links the game opens', () => {
 
   it('passes the server overrides to the first page as ?api= and ?site=', () => {
     const game = 'app://game/index.html';
-    expect(initialGameUrl(game, undefined)).toBe(game);
-    expect(initialGameUrl(game, 'file:///x')).toBe(game);
-    expect(initialGameUrl(game, 'http://127.0.0.1:8790')).toBe(
+    expect(initialGameUrl(game, undefined, undefined)).toBe(game);
+    expect(initialGameUrl(game, 'file:///x', undefined)).toBe(game);
+    expect(initialGameUrl(game, 'http://127.0.0.1:8790', undefined)).toBe(
       'app://game/index.html?api=http%3A%2F%2F127.0.0.1%3A8790%2F',
     );
     expect(initialGameUrl(game, undefined, 'http://127.0.0.1:8791')).toBe(

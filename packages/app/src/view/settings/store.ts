@@ -98,14 +98,15 @@ export type MenuNewsColumn = 'news' | 'versions';
 
 export interface MenuNewsColumnState {
   readonly collapsed: boolean;
-  /** Marks of the items the player last saw in the column expanded (`news/model.ts` `columnMarks`). */
+  /** Marks of the items the player last saw in the column expanded (`news/model.ts`
+   *  `newsColumnMarks`, `versionsColumnMarks`). */
   readonly seen: readonly string[];
 }
 
 export type MenuNewsColumns = Readonly<Record<MenuNewsColumn, MenuNewsColumnState>>;
 
 /** More marks than a column can show at once are never stored. */
-export const MAX_SEEN_MARKS = 8;
+const MAX_SEEN_MARKS = 8;
 /** A mark is a 32-bit hash in hex. */
 export const SEEN_MARK_DIGITS = 8;
 const SEEN_MARK = new RegExp(`^[0-9a-f]{${SEEN_MARK_DIGITS}}$`);

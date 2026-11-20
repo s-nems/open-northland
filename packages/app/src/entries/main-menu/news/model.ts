@@ -117,7 +117,7 @@ export function compareReleaseVersions(a: string, b: string): number {
   if (left.pre === right.pre) return 0;
   if (left.pre === null) return 1;
   if (right.pre === null) return -1;
-  return left.pre < right.pre ? -1 : 1;
+  return left.pre.localeCompare(right.pre, 'en', { numeric: true });
 }
 
 /** The newest release when a desktop build older than it runs; never for a build without a release

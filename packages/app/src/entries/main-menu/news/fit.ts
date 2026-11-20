@@ -11,22 +11,19 @@ const overflows = (column: HTMLElement): boolean => column.scrollHeight > column
 
 /** Hides, and takes out of Tab order and the accessibility tree, each block that reaches past its
  *  column's height cap and every block after it, so a short window drops whole blocks instead of
- *  cutting one. An unfolded column left without blocks hides its heading too. */
+ *  cutting one. The heading stays while it fits itself, so a column unfolded without room for a
+ *  block can still be folded again. */
 function retireHiddenBlocks(column: HTMLElement): void {
   const [heading, body] = childElements(column);
   if (heading === undefined || body === undefined) return;
-  if (body.hidden) {
-    heading.inert = false;
-    return;
-  }
   const limit = column.getBoundingClientRect().bottom;
-  const blocks = childElements(body);
-  let fits = true;
-  for (const block of blocks) {
+  heading.inert = heading.getBoundingClientRect().bottom > limit;
+  if (body.hidden) return;
+  let fits = !heading.inert;
+  for (const block of childElements(body)) {
     fits &&= block.getBoundingClientRect().bottom <= limit;
     block.inert = !fits;
   }
-  heading.inert = blocks.every((block) => block.inert);
 }
 
 /** Shrinks the panel's content and its margins step by step while a column overflows its room, the

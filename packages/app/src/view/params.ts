@@ -17,6 +17,7 @@ export const CARRIED_PARAMS = [
   'sound',
   'debug',
   'api',
+  'site',
 ] as const;
 export type CarriedParam = (typeof CARRIED_PARAMS)[number];
 

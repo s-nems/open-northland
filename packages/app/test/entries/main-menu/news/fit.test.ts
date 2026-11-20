@@ -33,6 +33,12 @@ describe('news panel fit', () => {
     expect(blocks.map((block) => block.inert)).toEqual([false, false]);
   });
 
+  it('keeps the heading of a column without room for any block', () => {
+    const { panel, heading, blocks } = panelOf(80, (fit) => Math.max(100 * fit, 90), [90]);
+    fitPanel(panel);
+    expect([heading.inert, blocks[0]?.inert]).toEqual([false, true]);
+  });
+
   it('stops once the floor holds and drops the blocks past the cap', () => {
     const { panel, heading, blocks, fitNow } = panelOf(80, (fit) => Math.max(100 * fit, 90), [50, 90]);
     fitPanel(panel);
