@@ -122,12 +122,15 @@ export class EngagementSpecs {
       hexNodeDistance(this.terrain, i.here, combatTargetNode(this.world, this.ctx, this.terrain, i.here, t)),
     );
   };
-  /** Whether `t` stands within a garrison's band of its post's nearest wall. */
+  /** Whether `t` stands within a garrison's band, from its post's nearest wall for a bow. */
   private readonly inPostReach = (t: Entity): boolean => {
     const i = this.current();
     if (i.post === null) return false;
     const mark = combatTargetNode(this.world, this.ctx, this.terrain, i.here, t);
-    return withinBand(i.weapon, postReachDistance(this.world, this.ctx, this.terrain, i.post, mark));
+    return withinBand(
+      i.weapon,
+      postReachDistance(this.world, this.ctx, this.terrain, i.post, i.weapon, i.here, mark),
+    );
   };
   /** Whether `t` stands on the ground a defender guards around its anchor. */
   private readonly nearAnchor = (t: Entity): boolean =>
@@ -304,8 +307,8 @@ export class EngagementSpecs {
       } else spec.defend = null;
       // Original behavior: advancing acquisition includes the bow's dead zone; IGNORE strikes in place.
       spec.minDist = kind === 'post' || kind === 'ignore' ? weapon.minRange : 0;
-      // A garrison's band counts from its post's walls, which stand up to the post's span off its own node.
-      const span = stance.post === null ? 0 : postSpan(world, ctx, terrain, stance.post);
+      // A garrison's bow reaches from its post's walls, which stand up to the post's span off its own node.
+      const span = stance.post === null ? 0 : postSpan(world, ctx, terrain, stance.post, weapon);
       spec.searchRadius =
         kind === 'post'
           ? weapon.maxRange + span

@@ -142,7 +142,7 @@ describe('landedDamage - a person struck from each side', () => {
 });
 
 describe('landedDamage - animals and buildings', () => {
-  it('an animal takes the leather column, from any side and with no blockingValue', () => {
+  it('an animal presents the leather material and takes a blow from any side with no blockingValue', () => {
     const { sim, striker } = setup();
     const wolf = fighterAtNode(sim, VICTIM.hx, VICTIM.hy, WOLF_TRIBE, null, { armorClass: CHAIN_CLASS });
     expect(targetMaterial(sim.world, ctxOf(sim), wolf)).toBe(ARMOR_MATERIAL.LEATHER);

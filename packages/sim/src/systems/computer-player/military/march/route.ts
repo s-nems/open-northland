@@ -18,8 +18,8 @@ import { nodeOf } from './geometry.js';
  *  base around it. */
 export const GATHER_STANDOFF_NODES = 40;
 
-/** How far from an enemy tower (hex) the wave gathers: the house bow's extracted 29 hex reach, the longest
- *  a tower post shoots, and a few cells to spare. */
+/** How far from an enemy tower (hex) the wave gathers: past the 29 hex of a defence-mode building's house bow
+ *  and the 30 of a posted long bow, both counted from the tower's walls, with a few cells to spare. */
 export const GATHER_TOWER_CLEARANCE_HEX = 36;
 
 /** The step of the straight line a wave walks when no path leads to its objective. */

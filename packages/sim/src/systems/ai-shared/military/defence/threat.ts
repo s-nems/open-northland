@@ -554,7 +554,7 @@ export function enemyPosts(
     // Out of sight he is not listed, but his record stays for when he is seen again.
     if (sight !== null && !playerSeesNode(sight, player, x, y)) continue;
     // His reach counts from the tower's nearest wall; from where he stands it spans the tower too.
-    const reach = garrisonReach(ctx.content, held).maxRange + postSpan(world, ctx, terrain, tower);
+    const reach = garrisonReach(ctx.content, held).maxRange + postSpan(world, ctx, terrain, tower, held);
     let post = kept.get(e);
     if (post === undefined || post.tower !== tower || post.x !== x || post.y !== y || post.reach !== reach) {
       post = { tower, target: tower, x, y, reach };

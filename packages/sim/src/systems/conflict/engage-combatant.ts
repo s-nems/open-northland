@@ -216,7 +216,7 @@ function fight(
   }
 
   const { target } = found;
-  // A garrison's reach counts from its post's nearest wall.
+  // A garrison's bow reaches from its post's nearest wall.
   const dist =
     stance.post === null
       ? found.dist
@@ -225,6 +225,8 @@ function fight(
           ctx,
           terrain,
           stance.post,
+          weapon,
+          here,
           combatTargetNode(world, ctx, terrain, here, target),
         );
   // A soldier the fight takes between two coin-drill repetitions steps out of the barracks to it.

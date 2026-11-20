@@ -1,4 +1,4 @@
-import type { ContentSet } from '@open-northland/data';
+import { type ContentSet, footprintCellDx } from '@open-northland/data';
 import {
   Building,
   Garrison,
@@ -9,8 +9,10 @@ import {
   Weapon,
 } from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
+import { hexDistanceBetween } from '../../nav/halfcell.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { ContentContext, MapContext } from '../context.js';
+import { type HouseKey, houseFootprintOf } from '../footprint/geometry.js';
 import { houseBow, isFighterJob, isRangedWeapon, WEAPON_MAIN_TYPE } from '../readviews/index.js';
 import { hexNodeDistance, nearestHexCell } from '../spatial/metric.js';
 import { entityNode } from '../spatial/nodes.js';
@@ -23,10 +25,10 @@ import { attackerWeapon, type WeaponReach } from './weapons.js';
 
 /**
  * How much reach (map points) a manned post adds to a garrison's bow, for spotting a target and for the shot
- * alike. A posted bow reaches at least as far as the farthest bow a person carries
- * ({@link farthestHandBowReach}), so no archer on the ground outranges a manned tower. The reach counts from
- * the post's nearest wall, the face an attacker measures its own reach to. Only a man standing on his post
- * has it; a posted man with a melee weapon gains no bonus.
+ * alike. Owner rule: a posted bow reaches at least as far as the farthest bow a person carries
+ * ({@link farthestHandBowReach}), so no archer on the ground outranges a manned tower, and its reach counts
+ * from the post's nearest wall, the face an attacker measures its own reach to. Only a man standing on his
+ * post has it; a posted man with a melee weapon gains neither.
  */
 export const TOWER_RANGE_BONUS_NODES = 4;
 
@@ -143,14 +145,18 @@ export function farthestHandBowReach(content: ContentSet): number {
 
 const farthestHandBows = new WeakMap<ContentSet, number>();
 
-/** The map-point distance a garrison's reach counts to `mark`: from the nearest wall of `post`. */
+/** The map-point distance to `mark` that the reach of a man on `post` holding `held` counts: from the post's
+ *  nearest wall for a bow, from where he stands, `from`, for a melee weapon. */
 export function postReachDistance(
   world: World,
   ctx: MapContext,
   terrain: TerrainGraph,
   post: Entity,
+  held: WeaponReach,
+  from: NodeId,
   mark: NodeId,
 ): number {
+  if (!isRangedWeapon(held.weapon)) return hexNodeDistance(terrain, from, mark);
   const walls = buildingBodyNodes(world, ctx, terrain, post);
   return hexNodeDistance(
     terrain,
@@ -159,9 +165,16 @@ export function postReachDistance(
   );
 }
 
-/** How much farther than its {@link garrisonReach} a posted man's search from his own node must look: the
- *  distance from where he stands, the post's own node, to its farthest wall. */
-export function postSpan(world: World, ctx: MapContext, terrain: TerrainGraph, post: Entity): number {
+/** How much farther than its {@link garrisonReach} the search from his own node of a man on `post` holding
+ *  `held` must look: for a bow, the distance from where he stands, the post's own node, to its farthest wall. */
+export function postSpan(
+  world: World,
+  ctx: MapContext,
+  terrain: TerrainGraph,
+  post: Entity,
+  held: WeaponReach,
+): number {
+  if (!isRangedWeapon(held.weapon)) return 0;
   const walls = buildingBodyNodes(world, ctx, terrain, post);
   let span = postSpans.get(walls);
   if (span === undefined) {
@@ -172,6 +185,22 @@ export function postSpan(world: World, ctx: MapContext, terrain: TerrainGraph, p
   }
   return span;
 }
+
+/** {@link postSpan} of a `house` off the map: the farthest of its footprint walls from its anchor, on
+ *  either anchor row parity. */
+export function houseSpan(content: ContentSet, house: HouseKey): number {
+  const cells = houseFootprintOf(content, house)?.blocked ?? [];
+  let span = 0;
+  for (const hy of ANCHOR_ROWS) {
+    for (const cell of cells) {
+      span = Math.max(span, hexDistanceBetween(0, hy, footprintCellDx(hy, cell), hy + cell.dy));
+    }
+  }
+  return span;
+}
+
+/** An anchor row of each parity, the only part of an anchor a footprint's shape depends on. */
+const ANCHOR_ROWS = [0, 1] as const;
 
 /** Each held body's {@link postSpan}: a body is held until its building moves or changes, so the span is too. */
 const postSpans = new WeakMap<readonly NodeId[], number>();

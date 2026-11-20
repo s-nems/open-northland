@@ -170,9 +170,21 @@ function strayReach(range: number, skill: number): number {
   return hexDistanceBetween(0, 0, side, side);
 }
 
+/** The viking towers, whose posts shoot farthest from where their men stand. */
+const VIKING_TOWERS = ['tower_00', 'tower_01'] as const;
+
+/** The farthest a posted long bow shoots from where its man stands: its reach from the tower's nearest wall
+ *  plus the widest tower's span, the distance its scatter grows with. */
 const longestBowShot = (base: KnowledgeBase): FactValue => {
   const max = weaponRow(base, VIKING, 'long_bow')?.maxRange;
-  return max === undefined ? undefined : systems.postedBowReach(base.content, max);
+  if (max === undefined) return undefined;
+  let span = 0;
+  for (const id of VIKING_TOWERS) {
+    const buildingType = buildingOf(base, id)?.typeId;
+    if (buildingType !== undefined)
+      span = Math.max(span, systems.houseSpan(base.content, { buildingType, tribe: VIKING }));
+  }
+  return systems.postedBowReach(base.content, max) + span;
 };
 
 const strayFact = (range: FactReader, skill: number): Fact =>

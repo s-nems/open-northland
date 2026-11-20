@@ -267,5 +267,7 @@ function postedSearchReach(
   post: Entity,
 ): number {
   const held = heldReach(world, ctx, e);
-  return held === null ? 0 : garrisonReach(ctx.content, held).maxRange + postSpan(world, ctx, terrain, post);
+  return held === null
+    ? 0
+    : garrisonReach(ctx.content, held).maxRange + postSpan(world, ctx, terrain, post, held);
 }

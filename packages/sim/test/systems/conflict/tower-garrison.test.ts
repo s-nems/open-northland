@@ -38,8 +38,9 @@ import { needsOf, setNeeds } from '../../fixtures/settler.js';
 /**
  * The tower garrison: a bow soldier posted to a watchtower walks in, holds it, and shoots from cover at
  * the tower's extended reach without ever stepping out. `houses.ini` gives the towers exactly these posts
- * (`logicworker 40 3`/`41 3` on `tower 00`, 4/4 on `tower 01`). The reach bonus is the original's; the
- * shelter from enemy fire is the approximation the feature names (see `systems/conflict/tower-post.ts`).
+ * (`logicworker 40 3`/`41 3` on `tower 00`, 4/4 on `tower 01`). The reach bonus and its origin at the
+ * tower's nearest wall are owner rules; the shelter from enemy fire is the approximation the feature names
+ * (see `systems/conflict/tower-post.ts`).
  *
  * The fixture mirrors that shape at fixture scale: a `tower` kind employing the base soldier class plus a
  * hauler, and a bow for that class whose plain reach is short enough that the tower's bonus is what decides.
@@ -523,14 +524,17 @@ describe('the tower garrison - shooting from cover', () => {
   });
 
   it("counts its reach from the tower's nearest wall, not from where it stands", () => {
-    // Four nodes of wall west of the post: a target 12 nodes off the post stands 8 off that wall.
+    // Four nodes of wall west of the post: a target 12 nodes west of the post stands 8 off that wall, one
+    // 12 nodes east stands 12 off the nearest wall, the post itself.
     const sim = simWithTower([0, -1, -2, -3, -4].map((dx) => ({ dx, dy: 0 })));
     const tower = towerAt(sim, WALLED_TOWER_X, ROW);
     const garrison = settlerAt(sim, SOLDIER_JOB, WALLED_TOWER_X + 4, ROW);
     manTheTower(sim, garrison, tower);
-    const shotAt = standingTarget(sim, WALLED_TOWER_X - 6);
+    const west = standingTarget(sim, WALLED_TOWER_X - 6);
+    const east = standingTarget(sim, WALLED_TOWER_X + 6);
 
-    expect(lowestHitpoints(sim, 200, shotAt)).toBeLessThan(TOUGH);
+    expect(lowestHitpoints(sim, 200, west)).toBeLessThan(TOUGH);
+    expect(sim.world.get(east, Health).hitpoints).toBe(TOUGH);
   });
 
   it('wakes on its post to shoot a raider who comes into range', () => {
@@ -558,7 +562,7 @@ describe('the tower garrison - shooting from cover', () => {
     const soldier = settlerAt(sim, SOLDIER_JOB, 2, ROW);
     manTheTower(sim, soldier, tower);
     const post = tileOf(sim, soldier);
-    // Past the boosted band (9 nodes) but inside a soldier's 16-node sight: on open ground this is
+    // Past the boosted band (8 nodes) but inside a soldier's 16-node sight: on open ground this is
     // exactly the target an ATTACK-stance soldier marches at.
     const outOfBand = GARRISON_BOW_RANGE + TOWER_RANGE_BONUS_NODES + 4; // nodes, a whole number of cells
     standingTarget(sim, TOWER_X + outOfBand / 2); // one cell is two nodes

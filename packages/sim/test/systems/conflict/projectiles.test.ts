@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   Armor,
   AttackOrder,
+  addWildlife,
   Building,
   CurrentAtomic,
   Felling,
@@ -44,7 +45,7 @@ import {
   slowedFightUnits,
   stampResourceFootprintData,
 } from '../../../src/systems/index.js';
-import { ARMOR_MATERIAL } from '../../../src/systems/readviews/index.js';
+import { ARMOR_MATERIAL, WILDLIFE_DAMAGE_COLUMN } from '../../../src/systems/readviews/index.js';
 import { ctxOf } from '../../fixtures/context.js';
 import { addSettlerOfTribe } from '../../fixtures/settler.js';
 import { grassCellMap as grassMap } from '../../fixtures/terrain.js';
@@ -86,6 +87,10 @@ const CHAIN = 3; // an armor class whose column the bow lists apart from a bare 
 const BOW_DAMAGE_VS_CHAIN = 12;
 const BOW_HIT_SOUND_VS_CHAIN = 88; // the arrow's impact group id on a chain-armored target
 const BOW_DAMAGE_VS_HOUSE = 5;
+/** The bow's animal column; it lists no leather column, so a wild animal takes only this. */
+const BOW_DAMAGE_VS_WILDLIFE = 21;
+/** A tribe the content gives no record: a beast of it is wildlife by its components alone. */
+const WOLF = 9;
 /** An armor class on the chain column whose `blockingValue` takes a whole arrow. */
 const PROOF_CHAIN = 4;
 /** The bow's weapon class, which keys the fight bucket a shot trains. */
@@ -136,6 +141,7 @@ function content(): ContentSet {
           '0': BOW_DAMAGE,
           [CHAIN]: BOW_DAMAGE_VS_CHAIN,
           [ARMOR_MATERIAL.HOUSE]: BOW_DAMAGE_VS_HOUSE,
+          [WILDLIFE_DAMAGE_COLUMN]: BOW_DAMAGE_VS_WILDLIFE,
         },
         hitSounds: { '0': BOW_HIT_SOUND, [CHAIN]: BOW_HIT_SOUND_VS_CHAIN },
       },
@@ -381,6 +387,23 @@ describe('projectiles - frozen flight chord + on-contact damage', () => {
     expect(soundType).toBe(BOW_HIT_SOUND_VS_CHAIN);
     expect(wound).toMatchObject({ damage: BOW_DAMAGE_VS_CHAIN, targetMaxHealth: TARGET_HP });
     expect(sim.world.get(target, Health).hitpoints).toBe(TARGET_HP);
+  });
+
+  it("strikes a wild animal standing where it comes down with the bow's animal column", () => {
+    const sim = new Simulation({ seed: 1, content: content(), map: grassMap(28, 3) });
+    marksmanAt(sim, 0, 1);
+    const target = fighterAt(sim, 8, 1, FRANK, IDLE);
+
+    stepToLaunch(sim);
+    const shot = shotInFlight(sim);
+    sim.world.mut(target, Position).x = fx.fromInt(11);
+    const beast = sim.world.create();
+    sim.world.add(beast, Position, { x: fx.fromInt(8), y: fx.fromInt(1) });
+    addWildlife(sim.world, beast, WOLF);
+    sim.world.add(beast, Health, { hitpoints: TARGET_HP, max: TARGET_HP });
+    for (let i = 0; i < 20 && sim.world.isAlive(shot); i++) sim.step();
+
+    expect(sim.world.get(beast, Health).hitpoints).toBe(TARGET_HP - BOW_DAMAGE_VS_WILDLIFE);
   });
 
   it('passes over its own side where it comes down', () => {
