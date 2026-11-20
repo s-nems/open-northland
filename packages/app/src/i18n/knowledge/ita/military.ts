@@ -268,14 +268,14 @@ export const MILITARY: ArticleGroup = {
               [
                 'Attacco',
                 'Intorno a sé',
-                '{{stance.search}}',
+                "{{stance.search}} o la portata dell'arma, se maggiore",
                 'Il bersaglio muore o è irraggiungibile',
                 "Attacca l'aggressore",
               ],
               [
                 'Difesa',
                 'Intorno alla sua posizione',
-                '{{stance.search}}',
+                "{{stance.search}} o la portata dell'arma, se maggiore",
                 'Il bersaglio si allontana più di {{stance.defendLeash}} dalla posizione',
                 "Attacca l'aggressore",
               ],

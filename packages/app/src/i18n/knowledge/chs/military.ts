@@ -256,11 +256,17 @@ export const MILITARY: ArticleGroup = {
           table: {
             head: ['姿态', '索敌位置', '半径', '放弃条件', '受击时'],
             rows: [
-              ['进攻', '自身周围', '{{stance.search}}', '目标死亡或无法到达', '冲向攻击者'],
+              [
+                '进攻',
+                '自身周围',
+                '{{stance.search}}，武器射程更远时按射程',
+                '目标死亡或无法到达',
+                '冲向攻击者',
+              ],
               [
                 '防御',
                 '驻守点周围',
-                '{{stance.search}}',
+                '{{stance.search}}，武器射程更远时按射程',
                 '目标离驻守点超过{{stance.defendLeash}}',
                 '冲向攻击者',
               ],

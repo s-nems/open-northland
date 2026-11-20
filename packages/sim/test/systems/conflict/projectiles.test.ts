@@ -18,6 +18,7 @@ import {
   Resource,
   Resting,
   SettlerProgress,
+  Stance,
   Stockpile,
   Stump,
   setMissionBehaviour,
@@ -45,7 +46,11 @@ import {
   slowedFightUnits,
   stampResourceFootprintData,
 } from '../../../src/systems/index.js';
-import { ARMOR_MATERIAL, WILDLIFE_DAMAGE_COLUMN } from '../../../src/systems/readviews/index.js';
+import {
+  ARMOR_MATERIAL,
+  MILITARY_MODE,
+  WILDLIFE_DAMAGE_COLUMN,
+} from '../../../src/systems/readviews/index.js';
 import { ctxOf } from '../../fixtures/context.js';
 import { addSettlerOfTribe } from '../../fixtures/settler.js';
 import { grassCellMap as grassMap } from '../../fixtures/terrain.js';
@@ -965,6 +970,26 @@ describe('projectiles - the first thing on the landing point', () => {
     expect(sim.world.get(second, Health).hitpoints).toBe(TARGET_HP - BOW_DAMAGE); // the one loosed at
     expect(sim.world.get(first, Health).hitpoints).toBe(TARGET_HP);
   });
+});
+
+describe('projectiles - a standing bow shoots whatever enters its reach', () => {
+  /** 20 map points on a row: past the 18 a defender guards and a soldier sights, at the bow's farthest. */
+  const FAR_TILES = 10;
+
+  it.each([MILITARY_MODE.DEFEND, MILITARY_MODE.ATTACK])(
+    'shoots from where it stands under stance %s',
+    (mode) => {
+      const sim = new Simulation({ seed: 1, content: content(), map: grassMap(24, 1) });
+      const archer = marksmanAt(sim, 0, 0);
+      sim.world.add(archer, Owner, { player: 0 });
+      sim.world.add(archer, Stance, { mode, anchorCell: null });
+      const target = fighterAt(sim, FAR_TILES, 0, FRANK, IDLE);
+      sim.world.add(target, Owner, { player: 1 });
+      stepToLaunch(sim);
+      expect(projectiles(sim)).toHaveLength(1);
+      expect(sim.world.has(archer, MoveGoal)).toBe(false);
+    },
+  );
 });
 
 describe('projectiles - the standoff an archer closes to', () => {

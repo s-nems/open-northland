@@ -107,19 +107,21 @@ export function mayEngage(
   const post = garrisoned ? index.mannedPost(world, ctx, e) : null;
   if (post !== null)
     return index.othersWithin(owner.player, x, y, postedSearchReach(world, ctx, terrain, e, post));
-  // Every owned search stays inside this, bar a guard's search further out.
-  let radius = PRESENCE_RADIUS;
-  const reachGuard = mode === MILITARY_MODE.IGNORE && isFighterJob(ctx.content, settler.jobType);
-  if (guardsAnchor(ctx.content, mode, settler.jobType)) {
-    // With nothing to fight, a guard walks back to its anchor and drops its route state.
-    if (awayFromAnchor(world, ctx, terrain, e, here)) return true;
-    if (reachGuard) radius = Math.max(radius, reachOf(world, ctx, e));
-  }
+  // With nothing to fight, a guard walks back to its anchor and drops its route state.
+  if (guardsAnchor(ctx.content, mode, settler.jobType) && awayFromAnchor(world, ctx, terrain, e, here))
+    return true;
+  // Every owned search stays inside this, bar a fighter's weapon reach where that is longer: a fighter
+  // takes up whatever enters its reach.
+  const radius = isFighterJob(ctx.content, settler.jobType)
+    ? Math.max(PRESENCE_RADIUS, reachOf(world, ctx, e))
+    : PRESENCE_RADIUS;
+  if (radius > PRESENCE_RADIUS && index.clearOfStrangers(e, radius)) return false;
   return index.othersWithin(owner.player, x, y, radius);
 }
 
-/** The stores whose membership, or whose values for {@link READY_VALUES}, can change {@link readinessOf}.
- *  A job change arrives through the settler trade log instead of a Settler value feed. */
+/** The stores whose membership, or whose values for {@link READY_VALUES}, can change {@link readinessOf} or
+ *  {@link searchesPastPresence}. A job change arrives through the settler trade log instead of a Settler
+ *  value feed. */
 export const READY_MEMBERSHIP: readonly Component<unknown>[] = [
   Settler,
   Health,
@@ -140,8 +142,9 @@ export const READY_MEMBERSHIP: readonly Component<unknown>[] = [
   PathFollow,
   PathRoute,
   Stranded,
+  Weapon,
 ];
-export const READY_VALUES: readonly Component<unknown>[] = [Owner, Stance, CurrentAtomic];
+export const READY_VALUES: readonly Component<unknown>[] = [Owner, Stance, CurrentAtomic, Weapon];
 
 /** How a combatant might pass {@link mayEngage} wherever it stands ({@link readinessOf}). */
 export type Readiness = 'ready' | 'posted' | 'none';
@@ -206,15 +209,20 @@ export const PRESENCE_RADIUS = Math.max(SIGHT_RADIUS_NODES, DEFEND_RADIUS_NODES)
 
 /**
  * Whether owned unit `e` in a player slot may ask {@link mayEngage}'s presence test past
- * {@link PRESENCE_RADIUS}: a garrison, whose manned post searches its reach raised by the tower, or an IGNORE
- * guard, which searches its weapon's reach. Read off `e`'s own {@link READY_MEMBERSHIP} stores alone.
+ * {@link PRESENCE_RADIUS}: a garrison, whose manned post searches its reach raised by the tower, an IGNORE
+ * guard, which searches its weapon's reach, or a fighter whose weapon reaches past that radius. Read off
+ * `e`'s own {@link READY_MEMBERSHIP} stores alone.
  */
-export function searchesPastPresence(world: World, content: ContentSet, e: Entity): boolean {
+export function searchesPastPresence(world: World, ctx: Pick<SystemContext, 'content'>, e: Entity): boolean {
   const owner = world.tryGet(e, Owner);
   if (owner === undefined || !isValidPlayer(owner.player)) return false;
   if (world.has(e, Garrison)) return true;
   const { jobType } = world.get(e, Settler);
-  return isFighterJob(content, jobType) && stanceMode(world, content, e, jobType) === MILITARY_MODE.IGNORE;
+  if (!isFighterJob(ctx.content, jobType)) return false;
+  return (
+    stanceMode(world, ctx.content, e, jobType) === MILITARY_MODE.IGNORE ||
+    reachOf(world, ctx, e) > PRESENCE_RADIUS
+  );
 }
 
 /** Whether a unit under `mode` holds a guard's anchor: DEFEND, or IGNORE on a fighter. */
@@ -248,11 +256,11 @@ function holdsLadderState(world: World, e: Entity): boolean {
 }
 
 /** How far `e`'s weapon strikes in map points, 0 when it holds none. */
-function reachOf(world: World, ctx: SystemContext, e: Entity): number {
+function reachOf(world: World, ctx: Pick<SystemContext, 'content'>, e: Entity): number {
   return heldReach(world, ctx, e)?.maxRange ?? 0;
 }
 
-function heldReach(world: World, ctx: SystemContext, e: Entity): WeaponReach | null {
+function heldReach(world: World, ctx: Pick<SystemContext, 'content'>, e: Entity): WeaponReach | null {
   const { tribe, jobType, humanForm } = world.get(e, Settler);
   return attackerWeapon(ctx, tribe, jobType, world.tryGet(e, Weapon)?.weaponTypeId, humanForm);
 }

@@ -262,14 +262,14 @@ export const MILITARY: ArticleGroup = {
               [
                 'Attack',
                 'Around himself',
-                '{{stance.search}}',
+                "{{stance.search}}, or the weapon's reach if longer",
                 "Target dies or can't be reached",
                 'Goes for the attacker',
               ],
               [
                 'Defence',
                 'Around his standing point',
-                '{{stance.search}}',
+                "{{stance.search}}, or the weapon's reach if longer",
                 'Target moves more than {{stance.defendLeash}} from the standing point',
                 'Goes for the attacker',
               ],

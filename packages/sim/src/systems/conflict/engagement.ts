@@ -56,9 +56,16 @@ import type { ArmedWith } from './weapons.js';
 export { stanceMode };
 
 /** DEFEND stance - how far (map points) from its anchor a defender looks for an enemy. Original behavior.
- *  The pick ranks what it finds by distance from the defender, where the original ranks it from the anchor
- *  (approximation: they differ only while the defender stands off its anchor). */
+ *  Owner rule: a weapon that reaches farther guards its reach instead ({@link guardRadius}), so a bow
+ *  standing guard shoots whatever enters its range. The pick ranks what it finds by distance from the
+ *  defender, where the original ranks it from the anchor (approximation: they differ only while the
+ *  defender stands off its anchor). */
 export const DEFEND_RADIUS_NODES = 18;
+
+/** How far (map points) from its anchor a defender armed with `weapon` takes up an enemy. */
+export function guardRadius(weapon: WeaponBand): number {
+  return Math.max(DEFEND_RADIUS_NODES, weapon.maxRange);
+}
 
 /** DEFEND stance - how far (map points) from its anchor an enemy a defender already holds may go before it
  *  lets it go and walks back. Original behavior. */
@@ -133,9 +140,13 @@ export class EngagementSpecs {
     );
   };
   /** Whether `t` stands on the ground a defender guards around its anchor. */
-  private readonly nearAnchor = (t: Entity): boolean =>
-    hexNodeDistance(this.terrain, this.current().anchor, entityNode(this.world, this.terrain, t)) <=
-    DEFEND_RADIUS_NODES;
+  private readonly nearAnchor = (t: Entity): boolean => {
+    const i = this.current();
+    return (
+      hexNodeDistance(this.terrain, i.anchor, entityNode(this.world, this.terrain, t)) <=
+      guardRadius(i.weapon)
+    );
+  };
   /** The ground of the defender being resolved: {@link nearAnchor} as a search reads it. */
   private readonly guarded = { x: 0, y: 0, radius: DEFEND_RADIUS_NODES, holds: this.nearAnchor };
   // Original behavior: the search has no sight or fog check; hostility (war only for two players) and
@@ -309,18 +320,22 @@ export class EngagementSpecs {
       spec.minDist = kind === 'post' || kind === 'ignore' ? weapon.minRange : 0;
       // A garrison's bow reaches from its post's walls, which stand up to the post's span off its own node.
       const span = stance.post === null ? 0 : postSpan(world, ctx, terrain, stance.post, weapon);
+      const guardReach = guardRadius(weapon);
+      // Owner rule: an advancing fighter takes up whatever its weapon reaches, a bow's reach past its
+      // sight included.
       spec.searchRadius =
         kind === 'post'
           ? weapon.maxRange + span
           : kind === 'ignore'
             ? weapon.maxRange
             : kind === 'defend'
-              ? hexNodeDistance(terrain, here, anchor) + DEFEND_RADIUS_NODES
-              : SIGHT_RADIUS_NODES;
+              ? hexNodeDistance(terrain, here, anchor) + guardReach
+              : Math.max(SIGHT_RADIUS_NODES, weapon.maxRange);
       // Off its anchor a defender's band covers far more than the ground it guards.
-      if (kind === 'defend' && spec.searchRadius > DEFEND_RADIUS_NODES) {
+      if (kind === 'defend' && spec.searchRadius > guardReach) {
         this.guarded.x = terrain.xOf(anchor);
         this.guarded.y = terrain.yOf(anchor);
+        this.guarded.radius = guardReach;
         spec.narrow = this.guarded;
       } else spec.narrow = null;
       spec.player = isHunterJob(ctx.content, attacker.jobType) ? null : (viewer ?? null);

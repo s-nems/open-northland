@@ -29,6 +29,8 @@ class ReadyUnits {
 
   /** The settlers whose job changed since the last sync. */
   private readonly jobChanges: Set<Entity>;
+  /** The content the reach checks resolve weapons against. */
+  private readonly ctx: Pick<SystemContext, 'content'>;
 
   constructor(
     world: World,
@@ -36,6 +38,7 @@ class ReadyUnits {
     private readonly feed: ChangeFeed,
   ) {
     this.jobChanges = settlerTradeLog(world, 'combatReady');
+    this.ctx = { content };
   }
 
   sync(world: World): ReadonlySet<Entity> {
@@ -59,7 +62,7 @@ class ReadyUnits {
     for (const e of world.query(Settler, Health, Position)) {
       if (pending.has(e)) continue;
       const readiness = readinessOf(world, this.content, e);
-      const wide = readiness !== 'posted' && searchesPastPresence(world, this.content, e);
+      const wide = readiness !== 'posted' && searchesPastPresence(world, this.ctx, e);
       if (
         (readiness === 'ready') !== this.ready.has(e) ||
         (readiness === 'posted') !== this.posted.has(e) ||
@@ -84,7 +87,7 @@ class ReadyUnits {
     else this.ready.delete(e);
     if (readiness === 'posted') this.posted.add(e);
     else this.posted.delete(e);
-    if (combatant && readiness !== 'posted' && searchesPastPresence(world, this.content, e)) this.wide.add(e);
+    if (combatant && readiness !== 'posted' && searchesPastPresence(world, this.ctx, e)) this.wide.add(e);
     else this.wide.delete(e);
   }
 

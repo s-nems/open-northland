@@ -262,14 +262,14 @@ export const MILITARY: ArticleGroup = {
               [
                 'Angriff',
                 'Um sich herum',
-                '{{stance.search}}',
+                '{{stance.search}} oder die Reichweite der Waffe, wenn größer',
                 'Ziel stirbt oder ist unerreichbar',
                 'Geht auf den Angreifer los',
               ],
               [
                 'Verteidigung',
                 'Um den Haltepunkt',
-                '{{stance.search}}',
+                '{{stance.search}} oder die Reichweite der Waffe, wenn größer',
                 'Ziel entfernt sich mehr als {{stance.defendLeash}} vom Haltepunkt',
                 'Geht auf den Angreifer los',
               ],
