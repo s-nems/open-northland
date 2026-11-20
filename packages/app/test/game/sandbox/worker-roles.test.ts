@@ -100,7 +100,7 @@ describe('classification is independent of the id space (raw real vs sandbox-reb
 });
 
 describe('assignmentPriority over real building slots', () => {
-  it('a warehouse offers only its carrier - the gatherer slots are never hand-assigned (the hunter bug)', () => {
+  it('a warehouse offers a settler without a trade only its carrier, never a gatherer slot', () => {
     expect(assignmentPriority(WAREHOUSE_SLOTS)).toEqual([REAL_JOB.carrier]);
   });
 
@@ -131,31 +131,29 @@ describe('assignmentPriorityFor keeps the settler`s current trade', () => {
     expect(assignmentPriorityFor(REAL_JOB.hunter, MILL_SLOTS)).toEqual([REAL_JOB.miller, REAL_JOB.carrier]);
   });
 
-  it('offers a collector the workshop TRADE first, its gatherer slot second', () => {
-    // A real pottery offers collector + potter + carrier. Aiming a collector at a workshop means "become
-    // its tradesman" in the original, so the potter slot leads; the sim's `needforjob` gate decides
-    // whether this collector earned it, and its own gatherer slot is the next fallback (the building
-    // becomes its delivery target), with the carrier last.
+  it('keeps a collector at a workshop in its own gatherer slot, ahead of the craft and the carrier', () => {
     const POTTERY_SLOTS = [
       { jobType: REAL_JOB.collector, count: 1 },
       { jobType: REAL_JOB.potter, count: 1 },
       { jobType: REAL_JOB.carrier, count: 1 },
     ];
     expect(assignmentPriorityFor(REAL_JOB.collector, POTTERY_SLOTS)).toEqual([
-      REAL_JOB.potter,
       REAL_JOB.collector,
+      REAL_JOB.potter,
       REAL_JOB.carrier,
     ]);
   });
 
-  it('a hunter right-clicking a warehouse is bound to its gatherer slots, its own slot first', () => {
-    // The warehouse offers collector/fisher/hunter gatherer slots + a carrier. A hunter prefers the exact
-    // hunter slot, then the other gatherer slots, then the carrier fallback.
+  it('posts a gatherer at a warehouse in its own trade, with the carrier as the fallback', () => {
     expect(assignmentPriorityFor(REAL_JOB.hunter, WAREHOUSE_SLOTS)).toEqual([
       REAL_JOB.hunter,
-      REAL_JOB.collector,
-      REAL_JOB.fisher,
       REAL_JOB.carrier,
+    ]);
+    // A raw collector lines up with the sandbox's rebased collector slot.
+    const rebasedWarehouse = WAREHOUSE_SLOTS.map((s) => ({ jobType: rebaseSlotJob(s.jobType) }));
+    expect(assignmentPriorityFor(REAL_JOB.collector, rebasedWarehouse)).toEqual([
+      rebaseSlotJob(REAL_JOB.collector),
+      rebaseSlotJob(REAL_JOB.carrier),
     ]);
   });
 

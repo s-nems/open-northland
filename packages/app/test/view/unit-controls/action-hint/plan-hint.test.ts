@@ -31,7 +31,7 @@ const buildingType = (slug: string): number => {
 const SMITHY = buildingType('work_smithy_00');
 const SMITH_JOB = 1013;
 const CARRIER_JOB = 24;
-/** Only a gatherer's post, which the right click never fills. */
+/** Only a gatherer's post, which takes no settler outside that trade. */
 const GATHERERS_ONLY = buildingType('work_joinery_00');
 /** A home for one family. */
 const HUT = BUILDING_HOME_00;
@@ -188,6 +188,10 @@ describe('the right-click hint', () => {
     ];
     const noPlace = { tone: 'refusal', refusal: 'noFreePlaces' };
     expect(hintOf([settler(1, JOB_IDLE), ...staff, house(SMITHY)], [1], ON_BUILDING)).toEqual(noPlace);
+    // The carrier's post is taken and the smith's trade is refused to this man.
+    const carrierOnly = [settler(1, JOB_IDLE), staff[1] as Ent, house(SMITHY)];
+    expect(hintOf(carrierOnly, [1], ON_BUILDING, { jobChoice: () => false })).toEqual(noPlace);
+    expect(hintOf(carrierOnly, [1], ON_BUILDING)).toMatchObject(action('work', null));
     const family = settler(STAFF, JOB_IDLE, { Residence: { home: BUILDING } });
     expect(hintOf([settler(1, JOB_IDLE), family, house(HUT)], [1], ON_BUILDING)).toEqual(noPlace);
     expect(hintOf([settler(1, JOB_IDLE), house(HUT)], [1], ON_BUILDING)).toMatchObject(action('live'));

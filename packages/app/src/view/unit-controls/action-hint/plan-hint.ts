@@ -370,9 +370,10 @@ function buildingDefOf(ctx: HintContext, building: number) {
 /**
  * The workers the sim tries at a workplace, as its group placement picks them: the unemployed while
  * any is, otherwise everyone not already working there. Each takes the first trade of its list with a
- * free slot, as far as the job-choice answers confirm it may take that trade; a worker it cannot
- * confirm leaves the new trade unnamed. Every tried worker whose trades are all full is refused, and
- * so is a group of whom the sim takes nobody: women and children take no post.
+ * free slot that the job-choice answers do not refuse it, as the sim falls through a trade the worker
+ * has not earned; a worker it cannot confirm leaves the new trade unnamed. Every tried worker left with
+ * no such trade is refused, and so is a group of whom the sim takes nobody: women and children take no
+ * post.
  */
 function workersHint(ctx: HintContext, building: number, workers: readonly BuildingWorker[]): PlanHint {
   const def = buildingDefOf(ctx, building);
@@ -394,9 +395,22 @@ function workersHint(ctx: HintContext, building: number, workers: readonly Build
     const slot = slots.find((s) => s.jobType === jobType);
     return slot === undefined ? 0 : slot.count - (staffed.get(jobType) ?? 0);
   };
-  if (tried.every((worker) => worker.jobPriority.every((jobType) => room(jobType) <= 0)))
+  if (tried.every((worker) => worker.jobPriority.every((jobType) => !mayTake(ctx, worker, jobType, room))))
     return refusal('noFreePlaces');
   return action('work', null, newTradeOf(ctx, tried, staffed, room));
+}
+
+/** Whether `worker` may take a free `jobType` slot: its own trade always, another unless refused. */
+function mayTake(
+  ctx: HintContext,
+  worker: BuildingWorker,
+  jobType: number,
+  room: (jobType: number) => number,
+): boolean {
+  if (room(jobType) <= 0) return false;
+  const self = entityById(ctx.snapshot, worker.unit.ref);
+  if (self !== undefined && settlerJobType(self) === jobType) return true;
+  return ctx.answers.jobChoice(worker.unit.ref, jobType) !== false;
 }
 
 /** The one trade every seated worker ends up in, when it changes someone's and every pick is known. */
@@ -411,7 +425,7 @@ function newTradeOf(
   for (const worker of tried) {
     const self = entityById(ctx.snapshot, worker.unit.ref);
     const current = self === undefined ? undefined : settlerJobType(self);
-    const jobType = worker.jobPriority.find((job) => room(job) > 0);
+    const jobType = worker.jobPriority.find((job) => mayTake(ctx, worker, job, room));
     if (jobType === undefined) continue;
     if (systems.isFighterJob(ctx.content, jobType) && current !== jobType) return null;
     if (jobType !== current) {

@@ -45,9 +45,10 @@ export function workerRoleOf(jobType: number): WorkerRole {
 }
 
 /**
- * The jobs a player-directed `assignWorker` may bind here, most-preferred first. The sim binds the
- * first open one, so the trailing carrier is the original's "make him a tradesman, else a hauler"
- * fallback. Gatherer and garrison slots are never a right-click target.
+ * The jobs a player-directed `assignWorker` may bind here for a settler without a trade, most-preferred
+ * first. The sim binds the first open one, so the trailing carrier is the original's "make him a
+ * tradesman, else a hauler" fallback. Gatherer and garrison slots take only a settler already in that
+ * trade.
  */
 export function assignmentPriority(slots: readonly { readonly jobType: number }[] | undefined): number[] {
   const craftsmen: number[] = [];
@@ -68,18 +69,10 @@ function isFighterJobType(currentJob: number): boolean {
   return soldier >= SOLDIER_JOB_MIN && soldier <= SOLDIER_JOB_MAX;
 }
 
-function gathererSlots(slots: readonly { readonly jobType: number }[] | undefined): number[] {
-  return (slots ?? [])
-    .map((slot) => slot.jobType)
-    .filter((jobType) => workerRoleOf(jobType) === 'gatherer')
-    .sort((a, b) => a - b);
-}
-
 /**
- * Assignment priority for one settler here: its current trade first, then the building default. A
- * clean-room approximation, not observed original behavior. A gatherer keeps the craft slots ahead of
- * its own, so aiming one at a workshop asks it to take up the trade and the sim's `needforjob` gate
- * decides.
+ * Assignment priority for one settler here: a building that employs its current trade posts it in that
+ * trade, gatherers included (owner ruling); otherwise the building default applies. Slots match by
+ * canonical trade, so a sandbox-rebased slot seats its raw twin.
  */
 export function assignmentPriorityFor(
   currentJob: number | undefined,
@@ -87,18 +80,12 @@ export function assignmentPriorityFor(
 ): number[] {
   const base = assignmentPriority(slots);
   if (currentJob === undefined || currentJob === JOB_IDLE) return base;
-  if (workerRoleOf(currentJob) === 'gatherer') {
-    const gatherers = gathererSlots(slots);
-    if (gatherers.length === 0) return base;
-    const offeredExactly = gatherers.includes(currentJob);
-    const ordered = offeredExactly ? [currentJob, ...gatherers.filter((j) => j !== currentJob)] : gatherers;
-    const crafts = base.filter((jobType) => workerRoleOf(jobType) === 'craftsman');
-    return [...crafts, ...ordered, ...base.filter((jobType) => !crafts.includes(jobType))];
-  }
-  const offered = (slots ?? []).some((slot) => slot.jobType === currentJob);
+  const trade = canonicalJobType(currentJob);
+  const own = (slots ?? [])
+    .map((slot) => slot.jobType)
+    .filter((jobType) => canonicalJobType(jobType) === trade);
   // A fighter gets his own post or nothing: falling through to a tower's or storehouse's hauler slot would
   // leave the fighter band, and `applyTradeChange` disarms a settler that does.
-  if (isFighterJobType(currentJob)) return offered ? [currentJob] : [];
-  if (!offered || base[0] === currentJob) return base;
-  return [currentJob, ...base.filter((jobType) => jobType !== currentJob)];
+  if (isFighterJobType(currentJob)) return own;
+  return [...own, ...base.filter((jobType) => !own.includes(jobType))];
 }

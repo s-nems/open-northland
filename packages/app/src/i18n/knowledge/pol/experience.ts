@@ -253,6 +253,7 @@ export const EXPERIENCE: ArticleGroup = {
         {
           list: [
             'Prawy klik na budynku ("Pracuj tutaj") od razu zmienia zawód i daje miejsce pracy.',
+            'Osadnik, którego zawód budynek zatrudnia, zachowuje ten zawód i zajmuje jego miejsce, także Zbieracz, Myśliwy i Rybak.',
             'Osadnik, który nie spełnia wymogu tego zawodu, zajmuje w budynku wolne miejsce Tragarza, jeśli jest.',
             'Żołnierz bierze tylko miejsce w swoim zawodzie.',
             '"Usuń miejsce pracy" i zburzenie budynku nie odbierają zawodu.',
