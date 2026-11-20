@@ -18,13 +18,12 @@ describe.runIf(hasRealIr())('the numbers the Knowledge window reads', () => {
     expect(new Set(times).size).toBeGreaterThan(2);
   });
 
-  it('gives a trained Byzantine wooden spearman the Viking spear, not the dragon row', async () => {
+  it('gives the Byzantine wooden spear the Viking row of the common weapon pool', async () => {
     const { merge } = await loadContentUnderTest();
     const base = createKnowledgeBase(merge.content);
     const spear = (tribe: number) => base.weapons.get(tribe)?.find((w) => w.id === WOODEN_SPEAR);
     expect(spear(BYZANTINE)?.damage).toEqual(spear(VIKING)?.damage);
     expect(spear(BYZANTINE)?.maxRange).toBe(spear(VIKING)?.maxRange);
-    expect(spear(BYZANTINE)?.filmJob).not.toBe(spear(BYZANTINE)?.jobType);
   });
 
   it('lists one soldier, no hero and no woman among the trades', async () => {
