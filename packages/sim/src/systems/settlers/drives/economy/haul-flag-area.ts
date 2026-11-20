@@ -1,3 +1,4 @@
+import { isMachinePlayer } from '../../../../components/index.js';
 import type { Entity } from '../../../../ecs/world.js';
 import type { SpatialGate } from '../../../../nav/node-circle.js';
 import type { NodeId, TerrainGraph } from '../../../../nav/terrain/index.js';
@@ -26,6 +27,18 @@ export function haulFlagArea(plan: PlannerContext): HaulFlagArea | null {
   if (live === undefined) return null;
   const center = entityNode(world, terrain, live.flag);
   return { flag: live.flag, center, gate: workAreaGate(terrain, center, live.radius, limit) };
+}
+
+/**
+ * The player whose enemies' manned towers keep `plan`'s carrier off a ground pile (`pileUnderEnemyTowers`),
+ * or undefined for one working a flag while a human holds its seat, inside the flag's area. Owner ruling:
+ * a human's flag is the order to work there, under fire or not; a computer seat plants its carriers' flags
+ * itself.
+ */
+export function towerShyOwner(plan: PlannerContext): number | undefined {
+  const { world, entity, owner } = plan;
+  if (owner === undefined || liveHaulFlag(world, entity) === undefined) return owner;
+  return isMachinePlayer(world, owner) ? owner : undefined;
 }
 
 /** The nodes within Manhattan `radius` of `center`, as a gatherer's work area spans, and inside the

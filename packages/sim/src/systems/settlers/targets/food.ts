@@ -116,8 +116,9 @@ export type MealTarget = (
  *    larder's lowest stocked edible. Owner's rule: not beyond the walk range (see the constant), so a
  *    settler working far from home eats near its work.
  * 2. The nearest of its own side's stocked food outside a home - a storehouse, a kitchen's loaves, a
- *    farm's meat, a pile on the ground but not under an enemy tower - inside the goods search reach ({@link goodsSearchLimitAt}: the
- *    original's local search and the signposts it finds), and a ripe bush within {@link BUSH_AT_HAND_NODES}.
+ *    farm's meat, a pile on the ground but not under an enemy tower - inside the goods search reach
+ *    ({@link goodsSearchLimitAt}: the original's local search and the signposts it finds), and a ripe bush
+ *    within {@link BUSH_AT_HAND_NODES}.
  *    Every home is skipped. Project rule: without signpost navigation the other goods searches run
  *    unbounded, while the reach here stays the original's range as a plain disc, so the bush rule below
  *    holds in every mode.

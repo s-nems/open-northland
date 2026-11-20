@@ -894,9 +894,9 @@ export const itContent = {
         "Una bottega del vasaio saracena con il suo vasaio, il palo dell'insegna piantato lontano accanto alla porta e mucchi di legna pieni tutt'intorno al palo. L'insegna del vasaio resta visibile sopra ogni mucchio: le merci a terra si disegnano sotto tutto ciò che sta in piedi.",
     },
     'piles-under-towers': {
-      title: 'Equipaggiamento sotto una torre nemica',
+      title: 'Equipaggiamento sotto le torri nemiche',
       summary:
-        "Il tuo quartier generale con due trasportatori e, poco lontano, una torre nemica vuota accanto al quartier generale nemico. Spade e cotte di maglia dei caduti giacciono in due fasce: quella vicina fuori dalla portata della torre, quella lontana sotto di essa. I trasportatori raccolgono la fascia vicina e lasciano l'equipaggiamento sotto la torre, anche se giace nella loro area di raccolta.",
+        "Il tuo quartier generale con due trasportatori, a nord una torre nemica vuota e, più a est, una con un arciere accanto al quartier generale nemico. Spade e cotte di maglia dei caduti giacciono in due fasce: quella vicina sotto la torre vuota, quella lontana a portata dell'arciere. I trasportatori raccolgono la fascia vicina e lasciano quella lontana, anche se giace nella loro area di raccolta. Pianta una bandierina di lavoro per un trasportatore vicino alla fascia lontana e ci andrà sotto il tiro.",
     },
     signposts: {
       title: 'Cartelli',

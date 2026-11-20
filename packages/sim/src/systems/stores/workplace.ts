@@ -152,13 +152,13 @@ export function refillingGoodsOf(world: World, ctx: ContentContext, building: En
 }
 
 /** The job types a building type's worker slots name (`logicworker <job> <count>`). */
-export function buildingWorkerJobs(world: World, ctx: SystemContext, building: Entity): ReadonlySet<number> {
+export function buildingWorkerJobs(world: World, ctx: ContentContext, building: Entity): ReadonlySet<number> {
   const typeId = knownBuildingTypeId(world, ctx, building);
   if (typeId === undefined) return EMPTY_JOBS;
   return contentIndex(ctx.content).workerJobsByBuilding.get(typeId) ?? EMPTY_JOBS;
 }
 
-function knownBuildingTypeId(world: World, ctx: SystemContext, building: Entity): number | undefined {
+function knownBuildingTypeId(world: World, ctx: ContentContext, building: Entity): number | undefined {
   const b = world.tryGet(building, Building);
   if (b === undefined) return undefined;
   return contentIndex(ctx.content).buildings.get(b.buildingType)?.typeId;

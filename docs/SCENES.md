@@ -82,8 +82,9 @@ man's home, a home with a child and a bakery with its baker and carrier. Compare
 on the buildings, and the settlers' team colours, across the colours.
 
 `?scene=piles-under-towers` gives your headquarters two carriers and lays the gear of the fallen in two
-bands toward an empty enemy tower. Watch the carriers bring in the near band and never walk out to the far
-one under the tower's reach, though it lies inside their pickup area.
+bands: the near one under an empty enemy tower, the far one in reach of an enemy bowman on another. Watch
+the carriers bring in the near band and never walk out to the far one, though it lies inside their pickup
+area. Plant a work flag for one carrier by the far band: he goes for it under fire.
 
 `?scene=clay-gatherers` places two collectors per civilization beside a clay deposit, in rows:
 viking, frank, byzantine, saracen, egyptian. Watch both heads through the shovel cycle and the return

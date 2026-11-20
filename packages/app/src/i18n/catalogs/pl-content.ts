@@ -881,9 +881,9 @@ export const plContent = {
         'Saraceński warsztat garncarski ze swoim garncarzem, słupek z tarczą stoi daleko obok drzwi, a wokół słupka leżą pełne stosy drewna. Tarcza garncarza zostaje widoczna nad każdym stosem: towary na ziemi rysują się pod wszystkim, co stoi.',
     },
     'piles-under-towers': {
-      title: 'Sprzęt pod wrogą wieżą',
+      title: 'Sprzęt pod wrogimi wieżami',
       summary:
-        'Twoja Kwatera główna z dwoma tragarzami, a niedaleko pusta wroga wieża obok wrogiej Kwatery głównej. Miecze i kolczugi poległych leżą w dwóch pasach: bliższy poza zasięgiem wieży, dalszy pod nią. Tragarze zbierają bliższy pas, a sprzęt pod wieżą zostawiają, choć leży w ich obszarze zbierania.',
+        'Twoja Kwatera główna z dwoma tragarzami, na północy pusta wroga wieża, a dalej na wschodzie wieża z łucznikiem obok wrogiej Kwatery głównej. Miecze i kolczugi poległych leżą w dwóch pasach: bliższy pod pustą wieżą, dalszy w zasięgu łucznika. Tragarze zbierają bliższy pas, a dalszy zostawiają, choć leży w ich obszarze zbierania. Postaw tragarzowi flagę roboczą przy dalszym pasie, a pójdzie po niego mimo ostrzału.',
     },
     signposts: {
       title: 'Drogowskazy',

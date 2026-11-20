@@ -88,7 +88,7 @@ export function settlementGround(
     if (sameFoodClass(ctx, form, good)) bands.push(holding(form));
   const owners = world.componentGeneration(Owner);
   const ownerValues = world.componentValueGeneration(Owner);
-  const towerFire = towerFireRevision(world);
+  const towerFire = towerFireRevision(world, ctx);
   let byKey = heldGrounds.get(world);
   if (byKey === undefined) {
     byKey = new Map();

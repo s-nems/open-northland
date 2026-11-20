@@ -5,12 +5,13 @@ import {
   Position,
   Settler,
   UnderConstruction,
+  Weapon,
 } from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
-import type { SystemContext } from '../context.js';
+import type { ContentContext } from '../context.js';
 import { isFighterJob, isRangedWeapon } from '../readviews/index.js';
 import { buildingWorkerJobs } from '../stores/index.js';
-import type { WeaponReach } from './weapons.js';
+import { attackerWeapon, type WeaponReach } from './weapons.js';
 
 // The tower post: which one a fighter is entitled to man, whether it is manning one right now, and what
 // manning does to its reach.
@@ -32,7 +33,7 @@ export const TOWER_RANGE_BONUS_NODES = 5;
  * that is not a posted fighter. Re-derived rather than remembered, so a garrison whose tower fell or whose
  * trade changed stops qualifying the same tick.
  */
-export function towerPostFor(world: World, ctx: SystemContext, e: Entity, jobType: number): Entity | null {
+export function towerPostFor(world: World, ctx: ContentContext, e: Entity, jobType: number): Entity | null {
   if (!isFighterJob(ctx.content, jobType)) return null;
   const workplace = world.tryGet(e, JobAssignment)?.workplace;
   if (workplace === undefined || !world.isAlive(workplace)) return null;
@@ -63,18 +64,18 @@ export function standsAtPost(world: World, e: Entity): Entity | null {
 
 /** Whether `e` is holding its post: standing on it ({@link standsAtPost}) and still entitled to it
  *  ({@link towerPostFor}). */
-export function isManningPost(world: World, ctx: SystemContext, e: Entity): boolean {
+export function isManningPost(world: World, ctx: ContentContext, e: Entity): boolean {
   return mannedPostOf(world, ctx, e) !== null;
 }
 
 /** The post `e` is holding ({@link isManningPost}), or null. */
-export function mannedPostOf(world: World, ctx: SystemContext, e: Entity): Entity | null {
+export function mannedPostOf(world: World, ctx: ContentContext, e: Entity): Entity | null {
   const post = standsAtPost(world, e);
   return post !== null && holdsPost(world, ctx, e, post) ? post : null;
 }
 
 /** Whether `e`, standing on `post` ({@link standsAtPost}), is still entitled to it ({@link towerPostFor}). */
-export function holdsPost(world: World, ctx: SystemContext, e: Entity, post: Entity): boolean {
+export function holdsPost(world: World, ctx: ContentContext, e: Entity, post: Entity): boolean {
   const jobType = world.tryGet(e, Settler)?.jobType;
   return jobType != null && towerPostFor(world, ctx, e, jobType) === post;
 }
@@ -94,3 +95,17 @@ export function garrisonReach(held: WeaponReach): WeaponReach {
 
 /** Each held reach's garrison band, so a posted fighter's pass allocates none. */
 const garrisonReaches = new WeakMap<WeaponReach, WeaponReach>();
+
+/** How far `e`, manning a post ({@link mannedPostOf}), shoots from it in map points: the
+ *  {@link garrisonReach} of the bow he holds, the band his combat search and swing read. 0 without a bow. */
+export function postShotReach(world: World, ctx: ContentContext, e: Entity): number {
+  const settler = world.get(e, Settler);
+  const held = attackerWeapon(
+    ctx,
+    settler.tribe,
+    settler.jobType,
+    world.tryGet(e, Weapon)?.weaponTypeId,
+    settler.humanForm,
+  );
+  return held !== null && isRangedWeapon(held.weapon) ? garrisonReach(held).maxRange : 0;
+}

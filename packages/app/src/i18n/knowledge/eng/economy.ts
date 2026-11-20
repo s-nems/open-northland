@@ -560,7 +560,7 @@ export const ECONOMY: ArticleGroup = {
           h: 'Piles on the ground',
         },
         {
-          p: 'A pile on the ground belongs to nobody, and anyone can take it. Your people leave a pile lying within {{tower.groundReach}} hexes of a finished enemy tower, manned or empty, so nobody walks under its fire for it. Only your own order to put on a piece of gear sends a man there. Where a Carrier picks up piles: [[article:work-flag|Work flag]].',
+          p: 'A pile on the ground belongs to nobody, and anyone can take it. Your people leave a pile lying within the shot of a bowman standing on an enemy tower, {{shortBow.towerMax}} hexes with a short bow and {{longBow.towerMax}} with a long bow, so nobody walks under his fire for it. An enemy tower with no bowman on it keeps nobody away. Your own order to put on a piece of gear still sends a man there, and so does a work flag you plant for a Carrier. Where a Carrier picks up piles: [[article:work-flag|Work flag]].',
         },
       ],
       see: [

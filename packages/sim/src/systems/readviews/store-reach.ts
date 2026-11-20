@@ -18,9 +18,9 @@ const MAX_DIAGNOSTIC_STORES = 128;
 /**
  * Where a worker's side has stores for an errand, against the area its search covers: at least one inside
  * it (`inReach`), only ones outside it (`outOfReach`), none at all (`none`), or neither provable
- * (`undecided`): more than one diagnosis weighs with none of those inside, or an input only its owner's
- * storage minimum holds back. So the diagnosis never claims what it cannot prove. A search nothing confines
- * finds every store in reach.
+ * (`undecided`): more than one diagnosis weighs with none of those inside, an input only its owner's
+ * storage minimum holds back, or one an enemy tower's fire keeps the fetch off. So the diagnosis never
+ * claims what it cannot prove. A search nothing confines finds every store in reach.
  */
 export type StoreReach = 'inReach' | 'outOfReach' | 'none' | 'undecided';
 
@@ -66,32 +66,40 @@ export function inputReach(
   // A store the fetch lifts from: one lending a unit past its owner's storage minimum, or a self-filling
   // house of the good, never the workplace's own shelf nor a pile under an enemy tower. Units other walkers
   // claimed are not held back, as their claims come and go.
+  const stocks = (e: Entity): boolean =>
+    e !== workplace && unclaimedStockOf(world, ctx, undefined, e, goodType) > 0;
   const lends = (e: Entity): boolean =>
-    e !== workplace &&
-    (unclaimedStockOf(world, ctx, undefined, e, goodType) > 0
+    stocks(e)
       ? !pileUnderEnemyTowers(world, ctx, owner, e)
-      : refillingGoodsOf(world, ctx, e).includes(goodType));
+      : refillingGoodsOf(world, ctx, e).includes(goodType);
+  // A pile that would lend but for an enemy tower's fire: no signpost brings it within the fetch, so the
+  // side's stock proves nothing about the input and the case stays undecided.
+  const covered = (e: Entity): boolean => stocks(e) && pileUnderEnemyTowers(world, ctx, owner, e);
   const terrain = ctx.terrain;
   const here = terrain === undefined ? null : nodeOf(world, terrain, operator);
   if (terrain === undefined || here === null) {
-    const stored = reachAmong(world, operator, kept(stock.holders(goodType), lends), null);
+    const holders = stock.holders(goodType);
+    const stored = reachAmong(world, operator, kept(holders, lends), null);
     const found = stored === 'none' ? reachAmong(world, operator, producers, null) : stored;
-    return found === 'none' ? unsourced(stock, owner, goodType) : found;
+    if (found !== 'none') return found;
+    if (reachAmong(world, operator, kept(holders, covered), null) !== 'none') return 'undecided';
+    return unsourced(stock, owner, goodType);
   }
   const door = interactionCell(world, ctx, terrain, workplace, here);
   const limit = navigationLimitFor(world, ctx.content, terrain, operator) ?? undefined;
   const gate = goodsSearchGate(world, ctx.content, terrain, owner, door, limit);
   const band = heldBands(world, ctx, terrain).supplying(goodType);
   band.sync();
-  const lender = (e: Entity) => (lends(e) ? QUALIFIES : null);
+  const onSide = sameSideAs(world, owner);
+  const qualifies = (keep: (e: Entity) => boolean) => (e: Entity) => (keep(e) ? QUALIFIES : null);
   // Ranked by distance: the answer read is only whether one lends.
-  if (band.index.nearest(here, door, lender, gate, undefined, sameSideAs(world, owner)) !== null) {
-    return 'inReach';
-  }
+  if (band.index.nearest(here, door, qualifies(lends), gate, undefined, onSide) !== null) return 'inReach';
   const produced = reachAmong(world, operator, producers, (source) =>
     gate.allowsNode(interactionCell(world, ctx, terrain, source, here)),
   );
   if (produced !== 'none') return produced;
+  if (band.index.nearest(here, door, qualifies(covered), gate, undefined, onSide) !== null)
+    return 'undecided';
   const stocked =
     owner === undefined
       ? stock.holders(goodType).size + stock.refillers(goodType).size > 0

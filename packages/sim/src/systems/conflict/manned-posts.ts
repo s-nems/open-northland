@@ -8,7 +8,7 @@ import {
   UnderConstruction,
 } from '../../components/index.js';
 import type { ChangeFeed, Component, Entity, World } from '../../ecs/world.js';
-import type { SystemContext } from '../context.js';
+import type { ContentContext, SystemContext } from '../context.js';
 import { mannedPostOf } from './tower-post.js';
 
 /** The stores {@link mannedPostOf} reads of a garrison and of its post, bar Position: a write to one of
@@ -42,9 +42,12 @@ export class MannedPosts {
   /** {@link ROLE_GARRISON} and {@link ROLE_POST} by entity id, so a walker's entry costs one array read. */
   private roles = new Uint8Array(0);
   private built = false;
-  private ctx: SystemContext | undefined;
+  private changes = 0;
+  private ctx: ContentContext | undefined;
   private readonly changed = (e: Entity): void => {
     const role = this.roleOf(e);
+    // A manning man's own record written may change the bow he holds.
+    if (this.manning.has(e)) this.changes++;
     if ((role & ROLE_POST) !== 0) this.placeMenOf(e);
     if ((role & ROLE_GARRISON) !== 0 || this.world.has(e, Garrison)) this.place(e);
   };
@@ -62,7 +65,7 @@ export class MannedPosts {
   ) {}
 
   /** Bring the kept answers up to the world as it stands. */
-  sync(ctx: SystemContext): void {
+  sync(ctx: ContentContext): void {
     this.ctx = ctx;
     const lost = !this.built || this.feed.drain(this.changed) || this.places.drain(this.moved);
     if (!lost) return;
@@ -72,8 +75,15 @@ export class MannedPosts {
     this.manning.clear();
     this.menOf.clear();
     this.roles.fill(0);
+    this.changes++;
     for (const e of this.world.query(Garrison)) this.place(e);
     this.built = true;
+  }
+
+  /** A count that only rises, and moves as of the last {@link sync} whenever a {@link mannedPost} answer may
+   *  have changed or a manning man's own record was written: a memo of who shoots from where keys on it. */
+  get revision(): number {
+    return this.changes;
   }
 
   /** {@link mannedPostOf}, read off the last {@link sync} unless `e` or its post was written since. */
@@ -152,11 +162,15 @@ export class MannedPosts {
       if (post !== undefined) this.track(e, post);
     }
     if (post === undefined || this.ctx === undefined) return;
-    if (mannedPostOf(this.world, this.ctx, e) !== null) this.manning.add(e);
+    const manning = mannedPostOf(this.world, this.ctx, e) !== null;
+    if (manning === this.manning.has(e)) return;
+    if (manning) this.manning.add(e);
     else this.manning.delete(e);
+    this.changes++;
   }
 
   private track(e: Entity, post: Entity): void {
+    this.changes++;
     this.postOf.set(e, post);
     this.setRole(e, ROLE_GARRISON, true);
     this.setRole(post, ROLE_POST, true);
@@ -166,6 +180,7 @@ export class MannedPosts {
   }
 
   private untrack(e: Entity, post: Entity): void {
+    this.changes++;
     this.postOf.delete(e);
     this.manning.delete(e);
     this.setRole(e, ROLE_GARRISON, false);

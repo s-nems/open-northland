@@ -145,8 +145,8 @@ function nextCartPickup(
   return workshopCartPickup(plan, workplace, seatClaims, beside, room, mixes);
 }
 
-/** A store's porter: the nearest heap of its own pickup area, else a heap or finished output close by, never
- *  a heap under an enemy tower. */
+/** A store's porter: the nearest heap of its own pickup area, else a heap or finished output close by. A heap
+ *  under an enemy tower only inside a human's flag (`towerShyOwner`). */
 function storeCartPickup(
   plan: PlannerContext,
   room: number,

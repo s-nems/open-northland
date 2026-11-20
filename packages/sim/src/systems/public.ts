@@ -113,7 +113,6 @@ export {
   SIGHT_RADIUS_NODES,
 } from './conflict/targeting.js';
 export { TOWER_RANGE_BONUS_NODES } from './conflict/tower-post.js';
-export { towerShotReach } from './conflict/tower-reach.js';
 export { VEHICLE_PRIORITY_REACH_POINTS, VEHICLE_SCAN_RADIUS_POINTS } from './conflict/vehicle-targets.js';
 export { HOUSE_DAMAGE_PER_WALL_VALENCY, SHIP_SIEGE_DAMAGE_FACTOR } from './conflict/weapons.js';
 export { BERRY_REGROW_TICKS, BERRY_STAGE_TICKS, createBerryBush } from './economy/berries.js';

@@ -27,7 +27,7 @@ import {
   unclaimedStockOf,
 } from '../../../targets/index.js';
 import { unreachableGoalVeto } from '../../../unreachable-goals.js';
-import type { HaulFlagArea } from '../haul-flag-area.js';
+import { type HaulFlagArea, towerShyOwner } from '../haul-flag-area.js';
 
 // The producer supply scans: a worker fetches the recipe inputs its workplace is short on and hauls the
 // finished output out, so the loop closes without a dedicated carrier. Every choice is recipe-driven and
@@ -173,11 +173,13 @@ export function nearestMissingInputSource(
         : targets.bands.supplying(goodType);
     // An empty band finds nothing whatever the gate, so its goods limit is never asked.
     const band = supplying?.hasCandidates() === true ? supplying : null;
+    // Only the search inside the flag's area takes a pile under fire on the player's flag.
+    const shy = area === undefined ? plan.owner : towerShyOwner(plan);
     // The workplace never supplies itself; a self-filling house qualifies empty or claimed.
     const source = (e: Entity): Qualified<boolean> | null => {
       if (e === workplace) return null;
       if (unclaimedStockOf(world, ctx, plan.supply, e, goodType) > 0) {
-        return pileUnderEnemyTowers(world, ctx, plan.owner, e) ? null : LENDS;
+        return pileUnderEnemyTowers(world, ctx, shy, e) ? null : LENDS;
       }
       return refillingGoodsOf(world, ctx, e).includes(goodType) ? REFILLS : null;
     };

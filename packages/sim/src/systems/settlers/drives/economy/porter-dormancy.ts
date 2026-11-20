@@ -43,6 +43,7 @@ import { collectSupplyTally } from '../../../stores/index.js';
 import type { PlannerContext } from '../../planner/context.js';
 import { collectTargets } from '../../targets/index.js';
 import { unreachableGoals } from '../../unreachable-goals.js';
+import { towerShyOwner } from './haul-flag-area.js';
 import { porterPickupTarget } from './haul-targets.js';
 
 /**
@@ -69,6 +70,8 @@ interface DormantEntry {
   readonly confined: boolean;
   /** The porter's unlimited-walk-range bit, which lifts its confinement. */
   readonly unlimitedRange: boolean;
+  /** {@link towerShyOwner}, which a seat handed between human and computer flips past `porterScanVersion`. */
+  readonly towerShy: number | undefined;
 }
 
 /** A failed scan with what its reach searches may have read: the nodes, or null for a scan no signpost
@@ -132,7 +135,7 @@ const dormancyByWorld = new WeakMap<World, PorterDormancy>();
  * Generations only grow, so the sum is strictly monotonic and any tracked change moves it. Settler-local
  * inputs are compared per entry instead.
  */
-function porterScanVersion(world: World): number {
+function porterScanVersion(world: World, ctx: SystemContext): number {
   return (
     world.componentValueGeneration(Stockpile) +
     world.componentValueGeneration(Building) + // the home upgrade swaps buildingType in place
@@ -159,7 +162,7 @@ function porterScanVersion(world: World): number {
     world.componentGeneration(Owner) +
     landscapeTopologyRevision(world) +
     roadRevision(world) + // the goods search reach floods over road resistance
-    towerFireRevision(world) // a pile under an enemy tower is passed over
+    towerFireRevision(world, ctx) // a pile a manned enemy tower shoots at is passed over
   );
 }
 
@@ -168,7 +171,7 @@ function entryFor(plan: PlannerContext): DormantEntry {
   const { world, entity } = plan;
   const flag = liveHaulFlag(world, entity);
   return {
-    version: porterScanVersion(world),
+    version: porterScanVersion(world, plan.ctx),
     node: plan.here,
     jobType: plan.jobType,
     tribe: plan.tribe,
@@ -177,6 +180,7 @@ function entryFor(plan: PlannerContext): DormantEntry {
     flagNode: flag === undefined ? null : entityNode(world, plan.terrain, flag.flag),
     confined: signpostNavigationEnabled(world),
     unlimitedRange: hasMissionBehaviour(world, entity, MISSION_BEHAVIOUR.UNLIMITED_WALK_RANGE),
+    towerShy: towerShyOwner(plan),
   };
 }
 
@@ -190,7 +194,8 @@ function sameEntry(a: DormantEntry, b: DormantEntry): boolean {
     a.workplace === b.workplace &&
     a.flagNode === b.flagNode &&
     a.confined === b.confined &&
-    a.unlimitedRange === b.unlimitedRange
+    a.unlimitedRange === b.unlimitedRange &&
+    a.towerShy === b.towerShy
   );
 }
 
