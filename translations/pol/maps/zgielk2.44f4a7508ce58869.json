@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "map": "zgielk2",
+  "basis": {
+    "lang": "pol",
+    "digest": "320b98e1764acf5883e098d167163c654d04563cbade527d89a824b6bfd9882d"
+  },
+  "strings": {
+    "3": "%d z 12 krów złapanych",
+    "4": "%d z 12 krów złapanych",
+    "5": "%d z 12 krów złapanych",
+    "6": "%d z 12 krów złapanych",
+    "7": "%d z 12 owiec złapanych",
+    "8": "%d z 12 owiec złapanych",
+    "9": "%d z 12 owiec złapanych",
+    "91": "%d z 12 owiec złapanych"
+  },
+  "briefings": {}
+}
