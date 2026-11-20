@@ -35,6 +35,21 @@ an overlay language the pack also ships: where the pack carries Italian text, it
 repository's `ita` overlays per map, per object-table id, for the history book and for a campaign title
 ([translations contract](../translations/AGENTS.md)).
 
+The pack's combat rules differ from the original data in these ways:
+
+- Every row of `rules/types/weapons.ini` has `damagevalue` columns past the armour materials: column 8
+  is what a wild animal takes, column 9 what a monster takes. A row without column 8 hits an animal
+  with its leather column; one without column 9 hits a monster with the column of the material it wears.
+- The basic weapons of every nation carry the Viking values. Hero rows keep their own values.
+- `rules/tribes/tribetypes.ini` has tribe 42 `dragon`, a monster like the weresnake (5) and the
+  werewolf (6): fighter job 31, natural weapon at weapon type 1, no trade it can be trained into.
+  A map placement or script spawn of a Byzantine `soldier_spear_wooden` (tribe 3, job 32) joins as
+  the dragon; a trade opcode naming job 32 still means the trainable Byzantine wooden spearman.
+  The dragon's hitpoints and every monster's starting stance are engine rules in
+  `packages/app/src/catalog/creatures.ts`.
+- The sabre and axe soldier trades (jobs 36 to 39) and the axe hero (46) are absent. A map naming
+  them gets the short or long sword soldier and Bjarni (`packages/data/src/catalog/legacy-unit-names.ts`).
+
 The initial materials derive from CNMod 1.3.2. That is provenance, not the pack identity or an
 assumption made by the conversion stages. The pack builder translates upstream paths before
 publication; the engine reads only the pack layout.

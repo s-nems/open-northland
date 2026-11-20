@@ -50,7 +50,8 @@ export const JOB_DRUID = 30;
 export const JOB_SOLDIER_UNARMED = 31; // soldier_unarmed - the fists warrior
 // The same job under the name the profession picker offers; a weapon specializes it into a class.
 export const JOB_SOLDIER = JOB_SOLDIER_UNARMED;
-export const JOB_SOLDIER_SPEAR_WOODEN = 32; // soldier_spear_wooden
+// soldier_spear_wooden. A Byzantine one a map places or a script spawns joins as the dragon tribe.
+export const JOB_SOLDIER_SPEAR_WOODEN = 32;
 export const JOB_SOLDIER_SPEAR = 33; // soldier_spear_iron
 export const JOB_SOLDIER_SWORD = 34; // soldier_sword_short
 export const JOB_SOLDIER_BROADSWORD = 35; // soldier_sword_long
