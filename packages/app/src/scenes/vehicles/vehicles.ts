@@ -68,6 +68,7 @@ const FRANK_ROW: readonly Spawn[] = [
   { type: VEHICLE_OXCART, x: 9, y: 9, facing: WALK_DIRECTION.S },
   { type: VEHICLE_CATAPULT, x: 13, y: 9, facing: WALK_DIRECTION.SW },
   { type: VEHICLE_SHIP_SMALL, x: 18, y: 12, facing: WALK_DIRECTION.E },
+  { type: VEHICLE_SHIP_BIG, x: 18, y: 16, facing: WALK_DIRECTION.NE },
 ];
 /** The wreck: a viking catapult killed a second in, so its ruins spread over its seven-node footprint
  *  while the browser watches (the scene entry runs tick 1 before its frame loop collects events). */

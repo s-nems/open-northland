@@ -14,7 +14,7 @@ import { seatArchetype } from '../../build-order/order/seat-order.js';
 import { lineWayClear } from './sea-danger.js';
 import { TRADE_SHIP_ID } from './trade-ship.js';
 
-/** Whether `seat`'s tribe may build the trade ship: of the five tribes only the Vikings list its good. */
+/** Whether `seat`'s tribe may build the trade ship, which a map can forbid. */
 export function mayBuildTradeShip(world: World, ctx: SystemContext, seat: number): boolean {
   const tribe = playerPlacementTribes(world, seat)?.[0];
   const good = goodTypeByContentId(ctx.content, TRADE_SHIP_ID);

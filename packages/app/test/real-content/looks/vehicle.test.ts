@@ -21,12 +21,14 @@ import {
 
 /**
  * The shipped `vehicleGraphics` rows over the REAL baked atlases: every row binds a look, and the data
- * holes docs/formats/VEHICLES.md names resolve the way the renderer expects (the viking big ship sails
- * on its empty hull, the byzantine carts stand while moving, Egypt draws viking vehicles).
+ * holes docs/formats/VEHICLES.md names resolve the way the renderer expects (every big ship sails
+ * on the viking empty hull, the byzantine carts stand while moving, Egypt draws viking vehicles).
  */
 
 const VIKING = 1;
+const FRANK = 2;
 const BYZANTINE = 3;
+const SARACEN = 4;
 const EGYPT = 7;
 const OXCART = 2;
 const SHIP_BIG = 4;
@@ -66,11 +68,13 @@ describe.runIf(hasRealIr())('the vehicle looks over the decoded content', () => 
     }
   });
 
-  it('sails the viking big ship on its empty hull, its loaded hull having no baked frames', () => {
-    const look = binding?.byTribe[VIKING]?.[SHIP_BIG];
-    expect(look?.layer).toBe('ve_test_ship.human_ship01');
-    expect(look?.moving).toBeDefined();
-    expect(look?.loadedMoving).toBeUndefined();
+  it("sails every nation's big ship on the viking empty hull, its loaded hull having no baked frames", () => {
+    for (const tribe of [VIKING, FRANK, BYZANTINE, SARACEN]) {
+      const look = binding?.byTribe[tribe]?.[SHIP_BIG];
+      expect(look?.layer, `${tribe}`).toBe('ve_test_ship.human_ship01');
+      expect(look?.moving, `${tribe}`).toBeDefined();
+      expect(look?.loadedMoving, `${tribe}`).toBeUndefined();
+    }
   });
 
   it('drives the byzantine ox cart on the viking drive, and fires the viking catapult', () => {

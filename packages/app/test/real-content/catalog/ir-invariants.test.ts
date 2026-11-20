@@ -131,6 +131,24 @@ describe.runIf(hasRealIr())('real IR invariants', () => {
     }
   });
 
+  it("every tribe allowed a vehicle's good draws that vehicle's yard", async () => {
+    // A yard a tribe has no record for borrows the world's base tribe's, or the default house where that
+    // tribe lacks one too, so every tribe that may build a vehicle carries its own yard graphics.
+    const { real } = await loadContentUnderTest();
+    const ir = rawIrUnderTest() as ContentIr;
+    const yardOf = new Map(
+      real.goods.flatMap((g) => (g.vehicleHouse === undefined ? [] : [[g.typeId, g.vehicleHouse]])),
+    );
+    const drawn = new Set((ir.buildingBobs ?? []).map((row) => `${row.tribeId}:${row.typeId}`));
+    const missing = real.tribes.flatMap((tribe) =>
+      (tribe.permissions?.good ?? []).flatMap((good) => {
+        const yard = yardOf.get(good);
+        return yard === undefined || drawn.has(`${tribe.typeId}:${yard}`) ? [] : [`${tribe.id} ${yard}`];
+      }),
+    );
+    expect(missing).toEqual([]);
+  });
+
   it('the vehicle table has unique slugs and every type its animation job', async () => {
     const { real } = await loadContentUnderTest();
     const ids = real.vehicles.map((v) => v.id);

@@ -68,6 +68,9 @@ type 6, the ox-less cart. The worker producing that good:
 4. when the site reaches the finished state the house is freed and a vehicle of `logicvehicletype`
    spawns at the house position for the same player and tribe, with mission id 0.
 
+In the data pack every tribe allowed the small ship's good (61) is allowed the big ship's good (62)
+too, so all five nations build both ships (owner's choice).
+
 Failure reasons 8 (no spot) and 9 (a parked vehicle blocks every ring point) raise the
 `vehicleSiteNotFound` / `vehicleSiteOccupied` messages. Chest kind `[` spawns a catapult for the
 opener. Map scripts and `SetVehicle` are the other spawn sources.
@@ -732,10 +735,10 @@ sequences: `vehicles_bullcart_wait` 0+48, `_walk` 48+96, `_empty_wait` 144+1,
 The IR's `vehicleGraphics` lane joins the body binding of each `(tribe, vehicleType)` with the
 vehicle job's records, resolved to bob ids of that body: `clips` per action and `gaits` per hauled
 good (ships author `wood` as the loaded hull and carry `turnFrames`). Holes in the shipped data,
-which the renderer needs fallbacks for: Egypt (tribe 7) has no vehicle binding at all; only Viking
-and Frank have a big-ship binding, and the Viking one is the 32-frame `ve_test_ship.bmd` whose rows
-still index the 98-frame `LS_vehicles` layout, so its loaded hull (bobs 66..94) has no frame,
-while the Frank one has hulls but no gait; the ox-less cart has records for Viking and Frank only; the handcart's drive reuses
+which the renderer needs fallbacks for: Egypt (tribe 7) has no vehicle binding at all; every other
+tribe binds the Viking big ship with its records (the data pack's, owner's choice), the 32-frame
+`ve_test_ship.bmd` whose rows still index the 98-frame `LS_vehicles` layout, so its loaded hull
+(bobs 66..94) has no frame; the ox-less cart has records for Viking and Frank only; the handcart's drive reuses
 `vehicles_bullcart_walk`; Byzantine carts and the Saracen ox cart have a wait but no drive. The
 yards' `[GfxHouse]` records have two holes the `houses` correction fixes: the Egyptian and
 Byzantine catapult yards name bob 32 of `CR_Veh_Body_00.bmd`, an ox-cart frame, where the other
@@ -743,7 +746,8 @@ tribes name bob 32 of `ls_vehicles.bmd`, the catapult; every ship yard names `ls
 as its shadow, whose bob 4 is empty, where `ls_houses_vehicles_s.bmd` holds that bob's shadow. Every
 ship yard draws the same single stage, bob 4 of `ls_houses_vehicles.bmd`, a viking longship rising by its
 time mask: the small yard for all five tribes (the Viking record in palette `Ship_house`, the other four
-in `caves`, the Frank record written twice) and the big yard, which only the Vikings have a record for.
+in `caves`, the Frank record written twice) and the big yard, the Viking record in palette `Ship_house`
+copied to the other four by the data pack (owner's choice).
 
 Open Northland draws a vehicle as one `vehicle` draw item bound per `(tribe, vehicleType)` from the
 lane (`packages/app/src/content/vehicle-gfx`, `packages/render/src/data/sprites/vehicle.ts`), with

@@ -1138,7 +1138,7 @@ a lobby choice). That seat's authored people become the chosen people, and so do
 authored people the script will hand it. Things of another people stay that people: a scenario that
 gives a viking seat saracen allies keeps them saracen, and a seat's own authored franks stay franks.
 A hero keeps his people, a monster or an animal its kind, and a house type the chosen people have no
-graphics for (the viking big ship, the wonders) its tribe; a vehicle takes the chosen people. A soldier moved to
+graphics for (the wonders) its tribe; a vehicle takes the chosen people. A soldier moved to
 the chosen people takes the human form of its class where the class has one (`UnitForm`): the choice turns
 the map's soldiers into soldiers of the chosen people, never into its creatures, so a viking wooden
 spearman played as byzantine is a spearman, while the byzantine wooden spearmen a map places or a script

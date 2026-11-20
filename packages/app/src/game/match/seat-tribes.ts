@@ -35,7 +35,7 @@ import {
  * a seat handed to it whole, a handed id or area, a spawn for any of these - takes the chosen people
  * when it is of the seat's authored people; a thing of another people stays that people, as do a hero
  * (Bjarni stays a viking), a monster, an animal and a building type the chosen civilization has no
- * graphics for (the viking big ship, the wonders).
+ * graphics for (the wonders).
  */
 export interface SeatTribeRemap {
   readonly changed: boolean;

@@ -1,7 +1,7 @@
 {
   "reason": "Skórzana zbroja (towar 34) ma u wszystkich pięciu ludów tylko needforgood 34 5 41 (5 powtórzeń doświadczenia 'krawiec ogólne'), bez linii trainforgood. To jedyny wyrób rzemieślnika w danych z takim progiem i bez kursu w szkole, więc krawiec ze szkoły umie tylko tuniki. Traktujemy to jako brak w danych i dopisujemy kurs obok kursu tuniki: trainforgood 34 5 77, z liczbą lekcji równą progowi doświadczenia. Decyzja właściciela; oryginał uczy skórzanej zbroi tylko przez pracę. Garncarnia 3 (typ 22) dostaje u wszystkich pięciu ludów wymagania z oryginału: garncarza, rolnika, zbieracza i kamieniarza oraz znajomość pszenicy, drewna, gliny, kamienia, kolumn, cegieł, dachówek i naczyń (decyzja właściciela: garncarnia ma trzy poziomy). Mod podmienił je na wymagania muru, które przechodzą razem z allowhouse i wierszem jobEnablesHouse zbieracza na nowy typ muru 56: zbieracz, kamieniarz i kamień.",
   "file": "rules/tribes/tribetypes.ini",
-  "sha256": "d47e87b0241e5dafb587aaefd26c864677418e442c58abcea306d9c666bddb13",
+  "sha256": "9c6cfded3a6d23583d1ce4bd1408600dbc73ad25ba2937c9bb8393ca56548a80",
   "lines": [
     {
       "from": "trainforgood 33 10 77",
@@ -44,12 +44,12 @@
       "to": "toBuildHouseNeedJob 56 8"
     },
     {
-      "line": 1574,
+      "line": 1575,
       "from": "jobEnablesHouse 8 22",
       "to": "jobEnablesHouse 8 56"
     },
     {
-      "line": 1953,
+      "line": 1954,
       "from": "toBuildHouseNeedJob 22 8",
       "to": [
         "toBuildHouseNeedJob 22 11",
@@ -59,17 +59,17 @@
       ]
     },
     {
-      "line": 1991,
+      "line": 1992,
       "from": "toBuildHouseNeedJob 22 8",
       "to": "toBuildHouseNeedJob 56 8"
     },
     {
-      "line": 2619,
+      "line": 2622,
       "from": "jobEnablesHouse 8 22",
       "to": "jobEnablesHouse 8 56"
     },
     {
-      "line": 2998,
+      "line": 3001,
       "from": "toBuildHouseNeedJob 22 8",
       "to": [
         "toBuildHouseNeedJob 22 11",
@@ -79,17 +79,17 @@
       ]
     },
     {
-      "line": 3036,
+      "line": 3039,
       "from": "toBuildHouseNeedJob 22 8",
       "to": "toBuildHouseNeedJob 56 8"
     },
     {
-      "line": 3676,
+      "line": 3682,
       "from": "jobEnablesHouse 8 22",
       "to": "jobEnablesHouse 8 56"
     },
     {
-      "line": 4055,
+      "line": 4061,
       "from": "toBuildHouseNeedJob 22 8",
       "to": [
         "toBuildHouseNeedJob 22 11",
@@ -99,17 +99,17 @@
       ]
     },
     {
-      "line": 4093,
+      "line": 4099,
       "from": "toBuildHouseNeedJob 22 8",
       "to": "toBuildHouseNeedJob 56 8"
     },
     {
-      "line": 4734,
+      "line": 4741,
       "from": "jobEnablesHouse 8 22",
       "to": "jobEnablesHouse 8 56"
     },
     {
-      "line": 5113,
+      "line": 5120,
       "from": "toBuildHouseNeedJob 22 8",
       "to": [
         "toBuildHouseNeedJob 22 11",
@@ -119,7 +119,7 @@
       ]
     },
     {
-      "line": 5151,
+      "line": 5158,
       "from": "toBuildHouseNeedJob 22 8",
       "to": "toBuildHouseNeedJob 56 8"
     }
