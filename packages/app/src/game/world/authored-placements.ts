@@ -231,12 +231,13 @@ export function resolveAuthoredPlacements(
     else recipes.push(recipe);
   }
   for (const h of entities.humans) {
-    const jobType = joins.job(h.role);
-    const tribe = joins.tribe(h.tribe);
-    if (jobType === undefined || tribe === undefined || !inBounds(h.hx, h.hy)) {
+    const authoredJob = joins.job(h.role);
+    const authoredTribe = joins.tribe(h.tribe);
+    if (authoredJob === undefined || authoredTribe === undefined || !inBounds(h.hx, h.hy)) {
       skipped++;
       continue;
     }
+    const { tribe, job: jobType } = joins.unit(authoredTribe, authoredJob);
     const nameStringId = h.missionId === undefined ? undefined : nameByHumanId.get(h.missionId);
     if (h.missionId !== undefined && nameStringId !== undefined) nameByHumanId.delete(h.missionId);
     const paletteRecipes = h.missionId === undefined ? undefined : recipesByHumanId.get(h.missionId);

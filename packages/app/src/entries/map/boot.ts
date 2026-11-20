@@ -281,7 +281,7 @@ export async function assembleMapWorld<H extends HostedMapWorld>(
     // exactly the seats' and the authored entities' tribes.
     const seating = sessionSeating(session, script, ir ?? {});
     const fielded = worldTribes(
-      script === null ? null : { players: seating.players, missions: script.missions },
+      script === null ? null : { players: seating.players, missions: script.missions, ai: script.ai },
       loaded?.entities,
       ir ?? {},
       seating.remap,

@@ -1,7 +1,11 @@
-import type { MapMission } from '@open-northland/data';
+import { type MapMission, MapScript } from '@open-northland/data';
 import { SUCCESSFUL_IF } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
-import { type AuthoredJoinRows, resolveMissionScript } from '../../../src/game/world/index.js';
+import {
+  type AuthoredJoinRows,
+  mapScriptWorld,
+  resolveMissionScript,
+} from '../../../src/game/world/index.js';
 
 /**
  * The map-script join: `[MissionData]` lines become typed opcodes with every content name already a
@@ -181,5 +185,68 @@ describe('resolveMissionScript', () => {
     expect(tokenMismatches).toBe(1);
     expect(script.missions[0]?.goals).toEqual([{ opcode: 'True' }]);
     expect(script.missions[1]?.results).toEqual([{ opcode: 'ActivateMission', missionIndex: 3 }]);
+  });
+});
+
+describe('the dragon a map authors as a Byzantine wooden spearman', () => {
+  const BYZANTINE = 3;
+  const DRAGON = 42;
+  const SOLDIER_UNARMED = 31;
+  const SOLDIER_SPEAR_WOODEN = 32;
+  const rows: AuthoredJoinRows = {
+    jobs: [
+      { typeId: SOLDIER_UNARMED, id: 'soldier_unarmed' },
+      { typeId: SOLDIER_SPEAR_WOODEN, id: 'soldier_spear_wooden' },
+    ],
+    tribes: [
+      { typeId: BYZANTINE, id: 'byzantine' },
+      { typeId: DRAGON, id: 'dragon' },
+    ],
+  };
+
+  it('spawns as the dragon, by name or id, while a trade line keeps the Byzantine trade', () => {
+    const { script } = resolveMissionScript(
+      resultsOf(
+        ['SetHuman', '1', 'byzantine', 'soldier_spear_wooden', '10', '20', '105', '0'],
+        ['SetHumanX', '1', '3', '32', '10', '20', '106', '0', '2'],
+        ['AllowJob', '1', 'byzantine', 'soldier_spear_wooden'],
+      ),
+      rows,
+    );
+    expect(script.missions[0]?.results).toMatchObject([
+      { opcode: 'SetHuman', tribe: DRAGON, job: SOLDIER_UNARMED },
+      { opcode: 'SetHumanX', tribe: DRAGON, job: SOLDIER_UNARMED },
+      { opcode: 'AllowJob', tribe: BYZANTINE, job: SOLDIER_SPEAR_WOODEN },
+    ]);
+  });
+
+  it('is raised as the dragon by a createCreatures task', () => {
+    const task = {
+      kind: 'createCreatures',
+      priority: 1,
+      condition: 0,
+      tribe: BYZANTINE,
+      job: SOLDIER_SPEAR_WOODEN,
+      x: 4,
+      y: 4,
+      missionId: 7,
+      count: 2,
+      once: true,
+    };
+    const script = MapScript.parse({
+      ai: [
+        {
+          player: 1,
+          allDisabled: false,
+          computerDisabled: false,
+          disabledComputerModules: [],
+          tasks: [task],
+        },
+      ],
+    });
+    expect(mapScriptWorld(script, rows).ai?.[0]?.tasks[0]).toMatchObject({
+      tribe: DRAGON,
+      job: SOLDIER_UNARMED,
+    });
   });
 });

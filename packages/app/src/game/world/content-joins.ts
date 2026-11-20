@@ -1,4 +1,4 @@
-import { LEGACY_HOUSE_NAMES } from '@open-northland/data';
+import { LEGACY_HOUSE_NAMES, LEGACY_JOBS, LEGACY_UNITS } from '@open-northland/data';
 
 /** The decoded body choices of one authored house, in palette order. */
 export interface AuthoredBuildingGraphics {
@@ -122,7 +122,13 @@ export interface ContentJoins {
   buildingKind(typeId: number): string | undefined;
   /** A house type named without a level, the way a mission script writes it. */
   buildingType(name: string): number | undefined;
+  /** A trade by name; a retired trade's name the content lacks ({@link LEGACY_JOBS}) as its replacement. */
   job(name: string): number | undefined;
+  /** A trade id as a map authors it; a retired trade's id the content lacks as its replacement. */
+  jobId(id: number): number;
+  /** The tribe and trade a placed or spawned settler takes: a {@link LEGACY_UNITS} pair as the tribe the
+   *  content plays it as, anything else, or a pair whose target the content lacks, unchanged. */
+  unit(tribe: number, job: number): AuthoredUnit;
   tribe(name: string): number | undefined;
   /** An animal tribe, keyed by slug and by display name: `setanimal` authors either. */
   species(name: string): number | undefined;
@@ -133,6 +139,12 @@ export interface ContentJoins {
   landscape(name: string): number | undefined;
   /** A good by name, or by the bare `goodtype` id maps rarely author (`addgoods 49 1000`). */
   good(name: string): number | undefined;
+}
+
+/** A settler's resolved tribe and trade. */
+export interface AuthoredUnit {
+  readonly tribe: number;
+  readonly job: number;
 }
 
 export function contentJoins(rows: AuthoredJoinRows): ContentJoins {
@@ -180,6 +192,15 @@ export function contentJoins(rows: AuthoredJoinRows): ContentJoins {
   }
   addLegacyHouseNames(bobByNameLevel, buildingByName);
   const jobByName = byNormalizedName(rows.jobs ?? []);
+  const jobIds = new Set((rows.jobs ?? []).flatMap((j) => (j.typeId === undefined ? [] : [j.typeId])));
+  const legacyJobById = new Map<number, number>();
+  for (const legacy of LEGACY_JOBS) {
+    const target = jobByName.get(normalizeRoleKey(legacy.target));
+    const slug = normalizeRoleKey(legacy.name);
+    if (target === undefined) continue;
+    if (!jobByName.has(slug)) jobByName.set(slug, target);
+    if (!jobIds.has(legacy.typeId)) legacyJobById.set(legacy.typeId, target);
+  }
   // Two records share the `oxcart` name; the original's name lookup walks the type ids in order, so
   // the ox cart (2) wins over the ox-less cart (6), whatever order the table lists them in.
   const vehicleByName = byNormalizedName(
@@ -190,6 +211,16 @@ export function contentJoins(rows: AuthoredJoinRows): ContentJoins {
     if (t.id === undefined || t.typeId === undefined) continue;
     const key = catalogKey(t.id);
     if (!tribeByName.has(key)) tribeByName.set(key, t.typeId);
+  }
+  const unitByPair = new Map<string, AuthoredUnit>();
+  for (const { from, to } of LEGACY_UNITS) {
+    const fromTribe = tribeByName.get(catalogKey(from.tribe));
+    const fromJob = jobByName.get(normalizeRoleKey(from.job));
+    const tribe = tribeByName.get(catalogKey(to.tribe));
+    const job = jobByName.get(normalizeRoleKey(to.job));
+    if (fromTribe === undefined || fromJob === undefined || tribe === undefined || job === undefined)
+      continue;
+    unitByPair.set(unitKey(fromTribe, fromJob), { tribe, job });
   }
   const animalTribes = new Set<number>();
   const ambientTribes = new Set<number>();
@@ -222,6 +253,8 @@ export function contentJoins(rows: AuthoredJoinRows): ContentJoins {
     buildingKind: (typeId) => kindByType.get(typeId),
     buildingType: (name) => buildingByName.get(normalizeRoleKey(name)),
     job: (name) => jobByName.get(normalizeRoleKey(name)),
+    jobId: (id) => legacyJobById.get(id) ?? id,
+    unit: (tribe, job) => unitByPair.get(unitKey(tribe, job)) ?? { tribe, job },
     tribe: (name) => tribeByName.get(catalogKey(name)),
     species: (name) => speciesByKey.get(normalizeRoleKey(name)),
     ambientSpecies: (name) => ambientSpeciesByKey.get(normalizeRoleKey(name)),
@@ -234,6 +267,10 @@ export function contentJoins(rows: AuthoredJoinRows): ContentJoins {
       return goodTypeIds.has(asId) ? asId : undefined;
     },
   };
+}
+
+function unitKey(tribe: number, job: number): string {
+  return `${tribe}:${job}`;
 }
 
 /** Both the slug and the display name key one record, since maps author either. */

@@ -1,6 +1,7 @@
 import {
   decodeMissionGoal,
   decodeMissionResult,
+  type MapAiSeat,
   type MapMission,
   type MapScript,
   type MissionDecodeWarning,
@@ -125,7 +126,17 @@ function resolveNames<T extends object>(op: T, joins: ContentJoins, dropped: Dro
       out[field] = typeId ?? UNRESOLVED_NAME;
     } else out[field] = value;
   }
-  return out as ResolvedOp<T>;
+  return spawnedUnit(out, joins) as ResolvedOp<T>;
+}
+
+const SPAWN_OPCODES: ReadonlySet<unknown> = new Set(['SetHuman', 'SetHumanX']);
+
+/** A spawn line's settler takes the tribe and trade an authored placement of it does
+ *  ({@link ContentJoins.unit}); every other line keeps its names as resolved. */
+function spawnedUnit(op: Record<string, unknown>, joins: ContentJoins): Record<string, unknown> {
+  if (!SPAWN_OPCODES.has(op.opcode) || typeof op.tribe !== 'number' || typeof op.job !== 'number') return op;
+  const { tribe, job } = joins.unit(op.tribe, op.job);
+  return tribe === op.tribe && job === op.job ? op : { ...op, tribe, job };
 }
 
 /**
@@ -152,7 +163,7 @@ function isNameRef(value: unknown): value is MissionNameRef {
 }
 
 function resolveRef(field: string, ref: MissionNameRef, joins: ContentJoins, dropped: DropName): number {
-  if (ref.ref === 'id') return ref.id;
+  if (ref.ref === 'id') return field === 'job' ? joins.jobId(ref.id) : ref.id;
   const id = isNameField(field) ? NAME_JOINS[field](joins, ref.name) : undefined;
   if (id !== undefined) return id;
   dropped(ref.name);
@@ -165,7 +176,7 @@ export function mapScriptWorld(script: MapScript | null, rows: AuthoredJoinRows 
   const permissionRows = permissions !== undefined ? { permissions } : {};
   const diplomacy = script?.diplomacy ?? [];
   const relationFlags = script?.relationFlags ?? [];
-  const ai = script?.ai ?? [];
+  const ai = rows === null ? (script?.ai ?? []) : createdUnits(script?.ai ?? [], contentJoins(rows));
   const humanNames = script?.humanNames ?? [];
   const humanPalettes = script?.humanPalettes ?? [];
   const tradeAgreements = script?.tradeAgreements ?? [];
@@ -213,6 +224,19 @@ export function mapScriptWorld(script: MapScript | null, rows: AuthoredJoinRows 
     },
     ...(multiplayerVictory(script, verdicts) ?? { victory: 'script' }),
   };
+}
+
+/** A seat's `createCreatures` tasks raise their settlers the way an authored placement does
+ *  ({@link ContentJoins.unit}), a retired trade id as its replacement. */
+function createdUnits(seats: readonly MapAiSeat[], joins: ContentJoins): readonly MapAiSeat[] {
+  return seats.map((seat) => ({
+    ...seat,
+    tasks: seat.tasks.map((task) => {
+      if (task.kind !== 'createCreatures') return task;
+      const { tribe, job } = joins.unit(task.tribe, joins.jobId(task.job));
+      return tribe === task.tribe && job === task.job ? task : { ...task, tribe, job };
+    }),
+  }));
 }
 
 const NO_VERDICTS = { won: false, failed: false } as const;

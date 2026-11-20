@@ -23,6 +23,7 @@ const rows: AuthoredJoinRows = {
     { typeId: 6, id: 'werewolf' },
     { typeId: 20, id: 'wolves' },
   ],
+  animals: [{ tribeType: 20, hitpointsAdult: 3000 }],
   buildingBobs: [
     { editName: 'viking home', level: 0, typeId: 6, tribeId: VIKING },
     { editName: 'Egypt Tower', level: 0, typeId: 40, tribeId: EGYPT },
@@ -89,5 +90,47 @@ describe('worldTribes', () => {
       ],
     });
     expect(worldTribes(script, entities({}), rows)).toEqual([VIKING, SARACEN, 5, 6]);
+  });
+
+  it('loads the dragon a map authors as a Byzantine wooden spearman, raised by its AI too', () => {
+    const DRAGON = 42;
+    const dragonRows: AuthoredJoinRows = {
+      ...rows,
+      tribes: [...(rows.tribes ?? []), { typeId: 3, id: 'byzantine' }, { typeId: DRAGON, id: 'dragon' }],
+      jobs: [
+        { typeId: 31, id: 'soldier_unarmed' },
+        { typeId: 32, id: 'soldier_spear_wooden' },
+      ],
+    };
+    const placed = entities({
+      humans: [{ tribe: 'byzantine', role: 'soldier_spear_wooden', player: 0, hx: 2, hy: 2 }],
+    });
+    expect(worldTribes(seats(SARACEN), placed, dragonRows)).toEqual([VIKING, SARACEN, DRAGON]);
+    const raised = MapScript.parse({
+      players: seats(SARACEN).players,
+      ai: [
+        {
+          player: 0,
+          allDisabled: false,
+          computerDisabled: false,
+          disabledComputerModules: [],
+          tasks: [
+            {
+              kind: 'createCreatures',
+              priority: 1,
+              condition: 0,
+              tribe: 3,
+              job: 32,
+              x: 4,
+              y: 4,
+              missionId: 7,
+              count: 1,
+              once: true,
+            },
+          ],
+        },
+      ],
+    });
+    expect(worldTribes(raised, entities({}), dragonRows)).toEqual([VIKING, SARACEN, DRAGON]);
   });
 });

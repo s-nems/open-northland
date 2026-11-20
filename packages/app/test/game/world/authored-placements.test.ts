@@ -163,6 +163,29 @@ describe('resolveAuthoredPlacements', () => {
     expect(skipped).toBe(0);
   });
 
+  it('places a Byzantine wooden spearman as the dragon tribe the content carries', () => {
+    const DRAGON = 42;
+    const rows: AuthoredJoinRows = {
+      ...AUTHORED_ROWS,
+      jobs: [
+        { typeId: 31, id: 'soldier_unarmed' },
+        { typeId: 32, id: 'soldier_spear_wooden' },
+      ],
+      tribes: [
+        ...(AUTHORED_ROWS.tribes ?? []),
+        { typeId: 3, id: 'byzantine' },
+        { typeId: DRAGON, id: 'dragon' },
+      ],
+    };
+    const humans = [{ tribe: 'Byzantine', role: 'soldier spear wooden', player: 0, hx: 3, hy: 5 }];
+    const { placements } = resolveAuthoredPlacements(
+      { buildings: [], humans, animals: [] },
+      rows,
+      authoredMap(),
+    );
+    expect(placements).toEqual([{ kind: 'human', jobType: 31, tribe: DRAGON, x: 3, y: 5, owner: 0 }]);
+  });
+
   it('joins setanimal species to animal tribes (id OR name, animals row required), one placement each', () => {
     const rows: AuthoredJoinRows = {
       ...AUTHORED_ROWS,

@@ -5,6 +5,7 @@ export * from './catalog/animal-locomotion.js';
 export * from './catalog/carried-load-band.js';
 export * from './catalog/learned-good-includes.js';
 export * from './catalog/legacy-house-names.js';
+export * from './catalog/legacy-unit-names.js';
 export * from './catalog/resource-yield-goods.js';
 export * from './fingerprint/content.js';
 export * from './fingerprint/fnv.js';
