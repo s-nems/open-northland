@@ -398,10 +398,11 @@ export class CombatGrid {
   /**
    * The cells whose neighbourhood of `radius` map points holds an undiscounted member or two owners: a
    * query of at most `radius` from any node in any other cell sees one owner at most and nothing
-   * undiscounted. Kept per change; a new radius re-derives every cell once.
+   * undiscounted. Kept per change at the widest radius asked so far, which serves every narrower one, so
+   * callers asking different radii never re-derive it per pass; a wider radius re-derives every cell once.
    */
   strangerCellsWithin(radius: number): ReadonlySet<CoarseCell> {
-    const reach = Math.ceil(radius / COARSE_CELL_NODES);
+    const reach = Math.max(this.nearCells ?? 0, Math.ceil(radius / COARSE_CELL_NODES));
     if (reach !== this.nearCells) {
       this.nearCells = reach;
       for (const cell of this.cells) if (cell !== undefined) this.markNearDirty(cell);

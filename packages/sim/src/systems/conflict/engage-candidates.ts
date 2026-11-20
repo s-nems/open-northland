@@ -7,6 +7,7 @@ import {
   PRESENCE_RADIUS,
   READY_MEMBERSHIP,
   READY_VALUES,
+  reachPastPresence,
   readinessOf,
   searchesPastPresence,
 } from './acting.js';
@@ -15,15 +16,20 @@ import type { CombatIndex } from './combat-index.js';
 import { EpochMarks } from './epoch-marks.js';
 
 /**
- * The combatants by {@link readinessOf}, the `ready` and the `posted`, and those of the rest
- * {@link searchesPastPresence} names (`wide`), kept per world from a change feed over the stores both
- * read, so a pass costs the units whose state changed rather than every combatant. Derived state, never
- * hashed; the registered verifier re-derives it.
+ * The combatants by {@link readinessOf}, the `ready` and the `posted`, those of the rest
+ * {@link searchesPastPresence} names (`wide`) and the other fighters with a {@link reachPastPresence}
+ * (`reaching`), kept per world from a change feed over the stores they read, so a pass costs the units
+ * whose state changed rather than every combatant. Derived state, never hashed; the registered verifier
+ * re-derives it.
  */
 class ReadyUnits {
   private readonly ready = new Set<Entity>();
   readonly posted = new Set<Entity>();
   readonly wide = new Set<Entity>();
+  readonly reaching = new Set<Entity>();
+  /** No `reaching` member reaches farther (map points): the most any placed since the last rebuild did,
+   *  so one that left never lowers it below the truth. */
+  reachingRadius = 0;
   /** Whether the set was ever built; until then the feed's entries describe nothing held. */
   private built = false;
 
@@ -62,16 +68,19 @@ class ReadyUnits {
     for (const e of world.query(Settler, Health, Position)) {
       if (pending.has(e)) continue;
       const readiness = readinessOf(world, this.content, e);
-      const wide = readiness !== 'posted' && searchesPastPresence(world, this.ctx, e);
+      const wide = readiness !== 'posted' && searchesPastPresence(world, e);
+      const reach = readiness === 'posted' || wide ? 0 : reachPastPresence(world, this.ctx, e);
       if (
         (readiness === 'ready') !== this.ready.has(e) ||
         (readiness === 'posted') !== this.posted.has(e) ||
-        wide !== this.wide.has(e)
+        wide !== this.wide.has(e) ||
+        reach > 0 !== this.reaching.has(e) ||
+        reach > this.reachingRadius
       ) {
         return [`combatReadyUnits holds a stale entry for ${e} - it changed without a feed entry`];
       }
     }
-    for (const held of [this.ready, this.posted, this.wide]) {
+    for (const held of [this.ready, this.posted, this.wide, this.reaching]) {
       for (const e of held) {
         if (!pending.has(e) && !isCombatant(world, e))
           return [`combatReadyUnits still holds ${e}, no longer a combatant`];
@@ -87,14 +96,22 @@ class ReadyUnits {
     else this.ready.delete(e);
     if (readiness === 'posted') this.posted.add(e);
     else this.posted.delete(e);
-    if (combatant && readiness !== 'posted' && searchesPastPresence(world, this.ctx, e)) this.wide.add(e);
+    const wide = combatant && readiness !== 'posted' && searchesPastPresence(world, e);
+    if (wide) this.wide.add(e);
     else this.wide.delete(e);
+    const reach = combatant && readiness !== 'posted' && !wide ? reachPastPresence(world, this.ctx, e) : 0;
+    if (reach > 0) {
+      this.reaching.add(e);
+      this.reachingRadius = Math.max(this.reachingRadius, reach);
+    } else this.reaching.delete(e);
   }
 
   private rebuild(world: World): void {
     this.ready.clear();
     this.posted.clear();
     this.wide.clear();
+    this.reaching.clear();
+    this.reachingRadius = 0;
     for (const e of world.query(Settler, Health, Position)) this.place(world, e);
     this.built = true;
   }
@@ -113,8 +130,8 @@ function readyUnitsOf(world: World, content: ContentSet): ReadyUnits {
 
 /**
  * The combatants a combat pass asks `mayEngage` about, in ascending id: the owned units with a stranger
- * within {@link PRESENCE_RADIUS}, the units searching past it, the garrisons not {@link idleAtPost}, and
- * the kept ready set. Every other combatant proves `mayEngage` false. Read after the queued alarms are
+ * within {@link PRESENCE_RADIUS}, the long-reach fighters with one within their reach, the units searching
+ * past it wherever they stand, the garrisons not {@link idleAtPost}, and the kept ready set. Every other combatant proves `mayEngage` false. Read after the queued alarms are
  * answered, since an alarm hands its answerers ladder state.
  */
 export function engageCandidates(world: World, ctx: SystemContext, index: CombatIndex): EngageCandidates {
@@ -124,6 +141,8 @@ export function engageCandidates(world: World, ctx: SystemContext, index: Combat
   const units = readyUnitsOf(world, ctx.content);
   const ready = units.sync(world);
   let count = index.unitsNearStrangers(PRESENCE_RADIUS, gathered, 0);
+  if (units.reaching.size > 0)
+    count = index.unitsNearStrangers(units.reachingRadius, gathered, count, units.reaching);
   units.wide.forEach((e) => {
     gathered[count++] = e;
   });
@@ -157,7 +176,8 @@ export interface EngageCandidates {
   /** The `i`th candidate, ascending by id. */
   candidateAt(i: number): Entity;
   /** Whether owned unit `e` needs its presence test run: the index found a stranger within
-   *  {@link PRESENCE_RADIUS} of it, it searches past that, or it is a garrison not idle at its post. One in
+   *  {@link PRESENCE_RADIUS} of it or within its reach past that, it searches past that wherever it stands,
+   *  or it is a garrison not idle at its post. One in
    *  a player slot for which none holds proves every `othersWithin` test false. */
   nearStranger(e: Entity): boolean;
 }

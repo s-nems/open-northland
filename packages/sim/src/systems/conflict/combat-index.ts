@@ -437,11 +437,12 @@ export class CombatIndex {
   }
 
   /**
-   * Write to `out` from index `at` every owned unit in a slot whose {@link othersWithin} is true at `radius`
-   * map points from its node. Only a cell whose neighbourhood of that reach holds an undiscounted member or
-   * a player at war with one of its owners is walked. Unordered; returns the new count.
+   * Write to `out` from index `at` every owned unit in a slot, of `only` when given, whose
+   * {@link othersWithin} is true at `radius` map points from its node. Only a cell whose neighbourhood of
+   * that reach holds an undiscounted member or a player at war with one of its owners is walked.
+   * Unordered; returns the new count.
    */
-  unitsNearStrangers(radius: number, out: Entity[], at: number): number {
+  unitsNearStrangers(radius: number, out: Entity[], at: number, only?: ReadonlySet<Entity>): number {
     let count = at;
     for (const cell of this.grid.strangerCellsWithin(radius)) {
       const { units, nearMask, nearUndiscounted } = cell;
@@ -459,7 +460,7 @@ export class CombatIndex {
       for (let i = 0; i < units.count; i++) {
         const unit = units.members[i];
         const bit = units.bit[i] ?? 0;
-        if (unit === undefined || (bit & listed) === 0) continue;
+        if (unit === undefined || (bit & listed) === 0 || (only !== undefined && !only.has(unit))) continue;
         if (
           (bit & sure) !== 0 ||
           this.someCell(

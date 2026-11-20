@@ -50,8 +50,9 @@ import { attackerWeapon, type WeaponReach } from './weapons.js';
  * Whether `e` may act in this combat pass. False proves `engageCombatant` would leave it with no write and
  * no draw: every rung it reaches either returns or drops state it does not hold, and the target search
  * finds nothing. Asked in the pass's own order, so it reads each unit as the ladder would. `nearStranger`
- * false says the index's `unitsNearStrangers` did not list `e` within {@link PRESENCE_RADIUS} and it does not
- * {@link searchesPastPresence}, so an owned unit in a player slot fails every presence test without asking it.
+ * false says the index's `unitsNearStrangers` did not list `e` within {@link PRESENCE_RADIUS}, nor within its
+ * {@link reachPastPresence}, and it does not {@link searchesPastPresence}, so an owned unit in a player slot
+ * fails every presence test without asking it.
  */
 export function mayEngage(
   world: World,
@@ -119,9 +120,9 @@ export function mayEngage(
   return index.othersWithin(owner.player, x, y, radius);
 }
 
-/** The stores whose membership, or whose values for {@link READY_VALUES}, can change {@link readinessOf} or
- *  {@link searchesPastPresence}. A job change arrives through the settler trade log instead of a Settler
- *  value feed. */
+/** The stores whose membership, or whose values for {@link READY_VALUES}, can change {@link readinessOf},
+ *  {@link searchesPastPresence} or {@link reachPastPresence}. A job change arrives through the settler
+ *  trade log instead of a Settler value feed. */
 export const READY_MEMBERSHIP: readonly Component<unknown>[] = [
   Settler,
   Health,
@@ -209,20 +210,25 @@ export const PRESENCE_RADIUS = Math.max(SIGHT_RADIUS_NODES, DEFEND_RADIUS_NODES)
 
 /**
  * Whether owned unit `e` in a player slot may ask {@link mayEngage}'s presence test past
- * {@link PRESENCE_RADIUS}: a garrison, whose manned post searches its reach raised by the tower, an IGNORE
- * guard, which searches its weapon's reach, or a fighter whose weapon reaches past that radius. Read off
- * `e`'s own {@link READY_MEMBERSHIP} stores alone.
+ * {@link PRESENCE_RADIUS} wherever it stands: a garrison, whose manned post searches its reach raised by
+ * the tower. Read off `e`'s own {@link READY_MEMBERSHIP} stores alone.
  */
-export function searchesPastPresence(world: World, ctx: Pick<SystemContext, 'content'>, e: Entity): boolean {
+export function searchesPastPresence(world: World, e: Entity): boolean {
   const owner = world.tryGet(e, Owner);
-  if (owner === undefined || !isValidPlayer(owner.player)) return false;
-  if (world.has(e, Garrison)) return true;
-  const { jobType } = world.get(e, Settler);
-  if (!isFighterJob(ctx.content, jobType)) return false;
-  return (
-    stanceMode(world, ctx.content, e, jobType) === MILITARY_MODE.IGNORE ||
-    reachOf(world, ctx, e) > PRESENCE_RADIUS
-  );
+  return owner !== undefined && isValidPlayer(owner.player) && world.has(e, Garrison);
+}
+
+/**
+ * How far past {@link PRESENCE_RADIUS} owned fighter `e` in a player slot searches: its weapon's reach in
+ * map points when that is longer, else 0. Its presence test passes only with a stranger inside that reach.
+ * Read off `e`'s own {@link READY_MEMBERSHIP} stores alone.
+ */
+export function reachPastPresence(world: World, ctx: Pick<SystemContext, 'content'>, e: Entity): number {
+  const owner = world.tryGet(e, Owner);
+  if (owner === undefined || !isValidPlayer(owner.player)) return 0;
+  if (!isFighterJob(ctx.content, world.get(e, Settler).jobType)) return 0;
+  const reach = reachOf(world, ctx, e);
+  return reach > PRESENCE_RADIUS ? reach : 0;
 }
 
 /** Whether a unit under `mode` holds a guard's anchor: DEFEND, or IGNORE on a fighter. */

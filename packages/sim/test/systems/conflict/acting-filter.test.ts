@@ -78,10 +78,12 @@ const POST_BOW_RANGE = 30;
 const POST_BOW_MIN_RANGE = 2;
 const TOWER_HITPOINTS = 1_000_000;
 /** A bow reaching past the coarse neighbourhood the index rounds its presence listing up to, so only the
- *  far-searcher set can draw an IGNORE archer to an enemy at its reach. */
+ *  listing at the long-reach fighters' reach can draw an archer to an enemy at its reach. */
 const FAR_BOW_RANGE = 56;
 /** Half-cell columns between the IGNORE archer and an enemy on its row, inside {@link FAR_BOW_RANGE}. */
 const FAR_ENEMY_OFFSET = 48;
+/** Half-cell columns an enemy on an archer's row stands inside its reach, still past the presence radius. */
+const IN_REACH_MARGIN = 8;
 
 /** The fixture content with a tower posting the soldier class, armed with a bow of reach `maxRange`. */
 function postContent(maxRange = POST_BOW_RANGE): ContentSet {
@@ -318,6 +320,33 @@ describe('combat pass - who may engage', () => {
     }
     expect(target).toBe(enemy);
   });
+
+  it.each([POST_BOW_RANGE, FAR_BOW_RANGE])(
+    'leaves a standing archer of reach %i out until an enemy enters that reach, then it engages',
+    (reach) => {
+      const sim = new Simulation({ seed: 7, content: postContent(reach), map: grassMap(64, 64) });
+      setDiplomacyStance(sim.world, P0, P1, 'enemy');
+      setDiplomacyStance(sim.world, P1, P0, 'enemy');
+      const archer = combatantAtNode(sim, 20, 20, P0, MILITARY_MODE.ATTACK, { jobType: SOLDIER_JOB });
+      combatantAtNode(sim, 20, 20 + 2 * FAR_BOW_RANGE, P1, MILITARY_MODE.IGNORE);
+      const ctx = ctxOf(sim);
+      const drawn = (): Entity[] => {
+        const ready = engageCandidates(sim.world, ctx, new CombatIndex(sim.world, ctx, terrainOf(sim)));
+        return Array.from({ length: ready.count }, (_, i) => ready.candidateAt(i));
+      };
+      expect(drawn()).not.toContain(archer);
+      const enemy = combatantAtNode(sim, 20 + reach - IN_REACH_MARGIN, 20, P1, MILITARY_MODE.IGNORE);
+      expect(drawn()).toContain(archer);
+      let target: Entity | undefined;
+      for (let t = 0; t < TICKS && target === undefined; t++) {
+        outsideCandidatesRefused(sim);
+        sim.step();
+        expect(sim.world.verifyCaches()).toEqual([]);
+        target = sim.world.tryGet(archer, Engagement)?.target;
+      }
+      expect(target).toBe(enemy);
+    },
+  );
 });
 
 function terrainOf(sim: Simulation): TerrainGraph {
