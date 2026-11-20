@@ -20,13 +20,8 @@ const REPORT_INTERVAL_MS = 1000;
 const BAR_STYLE = [
   'position:fixed',
   'top:64px',
-  // Both insets with auto margins centre a shrink-to-fit bar that may grow to nearly the full width;
-  // `left:50%` would cap it at half the window and stack a long stage list into a tall column.
-  'left:0',
-  'right:0',
-  'margin:0 auto',
-  'width:fit-content',
-  'max-width:calc(100vw - 32px)',
+  'left:50%',
+  'transform:translateX(-50%)',
   'display:flex',
   'flex-direction:column',
   'align-items:center',
