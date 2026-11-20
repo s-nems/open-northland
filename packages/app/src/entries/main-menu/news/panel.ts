@@ -100,7 +100,7 @@ function panelElement(model: NewsPanelModel, nowMs: number): HTMLElement {
   if (model.releases.length > 0) versions.push(releasesElement(model.releases, tag));
   const panel = element('section', 'main-menu__news');
   panel.setAttribute('aria-label', copy.heading);
-  // A column without blocks is left out, so the other one stands at the left edge.
+  // A column without blocks is left out.
   if (model.entries.length > 0) {
     panel.append(
       columnElement(

@@ -1,42 +1,50 @@
-/* The main screen's news panel (news/panel.ts), in the top-left corner above the brand block: on its
-   left edge, as far from the top as the block stands from the bottom (menu.css .main-menu__home).
-   News entries and the versions stand in two top-aligned columns, together no wider than the left
-   half of a 16:9 frame. Each column is capped to the room above the brand block; panel.ts hides the
-   blocks that reach past the cap, so a short window drops whole blocks instead of cutting one. */
+/* The main screen's news panel (news/panel.ts). News entries stand in the top-left corner above the
+   brand block, on its left edge and as far from the top as the block stands from the bottom
+   (menu.css .main-menu__home). The versions stand in the top-right corner on the nav's right edge,
+   below the fullscreen prompt's slot (fullscreen-prompt.css) and above the nav. Each column is capped
+   to its room; panel.ts hides the blocks that reach past the cap, so a short window drops whole
+   blocks instead of cutting one. */
 
 .main-menu__news {
   /* The brand block's height in design units: eyebrow 19 + 20, logo 336, version 28 + 18. */
   --news-brand-height: 421;
+  /* The desktop's eight nav items, its tallest nav: 8 x (30 + 2 x 6) + 7 x 22 gaps. */
+  --news-nav-height: 490;
+  /* The fullscreen prompt's top 64 and height 46, plus a gap. */
+  --news-prompt-clear: 142;
   --news-edge: 96;
-  --news-left: 120;
-  /* Space kept free above the brand block; it also holds an eyebrow that wraps to a second line. */
-  --news-brand-gap: 40;
+  --news-side: 120;
+  /* Space kept free above the brand block or the nav; it also holds an eyebrow that wraps. */
+  --news-floor-gap: 40;
   --news-block-gap: 18;
-  --news-column-gap: 72;
-  /* The middle of the 1920-unit reference frame, which the panel's right edge never passes. */
-  --news-right-limit: 960;
   position: absolute;
-  top: calc(var(--u) * var(--news-edge));
-  bottom: calc(var(--u) * (2 * var(--news-edge) + var(--news-brand-height) + var(--news-brand-gap)));
-  left: calc(var(--u) * var(--news-left));
-  max-width: calc(var(--u) * (var(--news-right-limit) - var(--news-left)));
-  display: flex;
-  align-items: flex-start;
-  gap: calc(var(--u) * var(--news-column-gap));
+  inset: 0;
+  pointer-events: none;
 }
 
 .main-menu__news-column {
+  position: absolute;
   display: flex;
   flex-direction: column;
   gap: calc(var(--u) * var(--news-block-gap));
-  min-width: 0;
-  max-height: 100%;
   overflow: hidden;
+  pointer-events: auto;
 }
 
 .main-menu__news-entries {
-  flex: none;
+  top: calc(var(--u) * var(--news-edge));
+  bottom: calc(var(--u) * (2 * var(--news-edge) + var(--news-brand-height) + var(--news-floor-gap)));
+  left: calc(var(--u) * var(--news-side));
   width: calc(var(--u) * 460);
+}
+
+.main-menu__news-versions {
+  top: calc(var(--u) * var(--news-prompt-clear));
+  bottom: calc(var(--u) * (var(--news-edge) + var(--news-nav-height) + var(--news-floor-gap)));
+  right: calc(var(--u) * var(--news-side));
+  max-width: calc(var(--u) * 460);
+  align-items: flex-end;
+  text-align: right;
 }
 
 .main-menu__news-column > * {
@@ -167,6 +175,7 @@
 
 .main-menu__news-release-list {
   display: grid;
+  justify-content: end;
   grid-template-columns: repeat(3, max-content);
   align-items: baseline;
   gap: calc(var(--u) * 6) calc(var(--u) * 18);
