@@ -6,6 +6,7 @@ import {
   PROJECTILE_ARC_PEAK_MAX_PX,
   SHOT_STRIKE_HEIGHT_PX,
 } from '../../../../src/data/scene/index.js';
+import { projectileArc } from '../../../../src/data/scene/projectiles/arc.js';
 import { headingValency } from '../../../../src/data/sprites/index.js';
 import { buildScene, ONE, tileToScreen } from '../../../../src/index.js';
 import { entity, FLAT_3x2, snapshotOf } from '../../../support/fixtures.js';
@@ -110,6 +111,24 @@ describe('buildScene - projectile arc & aim', () => {
     const payload = projectileFrom(target, ox, oy);
     return { Projectile: { ...(payload.Projectile as Record<string, unknown>), cover } };
   }
+
+  it('leaves from its launch spot off the release point and still comes down on the aim', () => {
+    const origin = { x: 0, y: 1 };
+    const aim = { x: 4, y: 1 };
+    const launch = { dx: 30, dy: -10, height: 60, falls: false };
+    const from = tileToScreen(origin.x, origin.y);
+    const to = tileToScreen(aim.x, aim.y);
+    const loosed = projectileArc(origin, aim, origin, launch);
+    expect([loosed.x, loosed.y, loosed.lift]).toEqual([
+      from.x + launch.dx,
+      from.y + launch.dy,
+      launch.height,
+    ]);
+    const landed = projectileArc(aim, aim, origin, launch);
+    expect(landed.x).toBeCloseTo(to.x);
+    expect(landed.y).toBeCloseTo(to.y);
+    expect(landed.lift).toBeCloseTo(SHOT_STRIKE_HEIGHT_PX);
+  });
 
   it('drops a garrison shot down the gallery height: full at the bow, nearly spent near the mark', () => {
     // Over the same 2-cell chord as the lob above: a shot still at the tower (p = 0) hangs at the

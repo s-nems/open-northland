@@ -1,6 +1,6 @@
 import type { TextureSource } from 'pixi.js';
 import type { CartRecipe, CharacterPalette } from '../../data/palettes/human-palettes.js';
-import type { InHouseProgramLookup } from '../../data/scene/index.js';
+import type { FiringPostLookup, InHouseProgramLookup } from '../../data/scene/index.js';
 import type {
   BuildTimeSheet,
   ByJobTable,
@@ -145,4 +145,6 @@ export interface SpriteSheet {
   readonly inHousePrograms?: InHouseProgramLookup;
   /** Persistent holy-fire effects anchored to mature homes. */
   readonly holyFire?: import('../../data/scene/holy-fire.js').HolyFireLookup;
+  /** The measured firing posts garrison shots leave from. */
+  readonly firingPosts?: FiringPostLookup;
 }

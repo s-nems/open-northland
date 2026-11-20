@@ -1,5 +1,5 @@
 import type { FootprintCell } from '@open-northland/data';
-import type { ErasedRegion } from '@open-northland/render';
+import type { ErasedRegion, FiringPost } from '@open-northland/render';
 import { BUILDING_HOME_03, BUILDING_HOME_04 } from '../game/sandbox/ids/buildings.js';
 import { VIKING } from './buildings.js';
 
@@ -48,6 +48,21 @@ export const PLACED_GARRISON_MASTS: ReadonlyMap<string, PlacedGarrisonMast> = ne
   ['saracen tower', { x: 29, y: -267 }],
   // The middle of the flat wooden roof.
   ['Egypt Tower', { x: 6, y: -228 }],
+]);
+
+/**
+ * The level each tower record's garrison shoots from in defence mode, keyed by `EditName` for every level
+ * of the record, in bob-anchor px (+y down): the middle of the firing level and the radius of the ring the
+ * archers stand on. Approximation: placed on each drawn body by eye, the viking gallery and the windows
+ * under its stone tower's roof, the frank and byzantine battlements, the saracen windows under the dome
+ * and the egypt roof platform.
+ */
+export const TOWER_FIRING_POSTS: ReadonlyMap<string, FiringPost> = new Map([
+  ['viking tower', { x: -4, y: -146, halfWidth: 38 }],
+  ['frank tower', { x: -5, y: -212, halfWidth: 50 }],
+  ['byzantine tower', { x: 3, y: -225, halfWidth: 42 }],
+  ['saracen tower', { x: 28, y: -162, halfWidth: 26 }],
+  ['Egypt Tower', { x: 0, y: -195, halfWidth: 50 }],
 ]);
 
 /**

@@ -16,7 +16,7 @@ export function readProjectileAim(components: Readonly<Record<string, unknown>>)
 }
 
 /** The building a garrison shot was loosed from (`Projectile.cover`), or `null` for a shot from open
- *  ground - the scene reads only which of the two arc shapes to draw. */
+ *  ground - the scene leaves the shot from that building's firing post. */
 export function readProjectileCover(components: Readonly<Record<string, unknown>>): number | null {
   return readNumFieldOrNull(components, 'Projectile', 'cover');
 }

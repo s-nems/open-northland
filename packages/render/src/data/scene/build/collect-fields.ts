@@ -5,7 +5,8 @@ import { type ElevationField, terrainLiftAt } from '../../terrain/index.js';
 import { drawPassOf, spriteDepth } from '../depth.js';
 import { type MutableDrawItem, type MutableSpriteDrawItem, newDrawItem } from '../draw-item.js';
 import type { InHouseOverlay } from '../in-house.js';
-import { COVER_LAUNCH_HEIGHT_PX, projectileArc } from '../projectiles/arc.js';
+import { BOW_LAUNCH, projectileArc } from '../projectiles/arc.js';
+import { type LaunchContext, shotLaunchOf } from '../projectiles/launch.js';
 import { SIGNPOST_BOARD_FRAMES, signpostBoardSteps, signpostBoards } from '../signpost-boards.js';
 import {
   assignStaticFields,
@@ -25,7 +26,6 @@ import {
   readOwnerPlayer,
   readProducing,
   readProjectileAim,
-  readProjectileCover,
   readProjectileMunition,
   readProjectileOrigin,
   readProjectileSiege,
@@ -205,22 +205,26 @@ export function pushEffectItems(
 }
 
 /**
- * Put a projectile on its stable projected release chord, point it along the arc, and return its
- * ballistic height in screen px.
+ * Put projectile `ref` on its stable projected release chord from where it leaves, point it along the arc,
+ * and return its ballistic height in screen px.
  */
 export function assignProjectileArc(
   item: MutableDrawItem,
+  ref: number,
   components: Readonly<Record<string, unknown>>,
   current: { x: number; y: number },
+  launch: LaunchContext,
 ): number {
   const to = readProjectileAim(components);
   if (to === null) return 0;
-  const origin = readProjectileOrigin(components);
+  const raw = readProjectileOrigin(components);
+  const aim = { x: to.x / ONE, y: to.y / ONE };
+  const origin = raw === null ? null : { x: raw.x / ONE, y: raw.y / ONE };
   const arc = projectileArc(
     current,
-    { x: to.x / ONE, y: to.y / ONE },
-    origin === null ? null : { x: origin.x / ONE, y: origin.y / ONE },
-    readProjectileCover(components) === null ? 0 : COVER_LAUNCH_HEIGHT_PX,
+    aim,
+    origin,
+    origin === null ? BOW_LAUNCH : shotLaunchOf(launch, ref, components, origin, aim),
   );
   item.x = arc.x;
   item.y = arc.y;

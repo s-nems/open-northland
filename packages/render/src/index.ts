@@ -104,6 +104,8 @@ export {
   buildScene,
   buildSpriteScene,
   type DrawItem,
+  type FiringPost,
+  type FiringPostLookup,
   type HolyFireBinding,
   type HolyFireLookup,
   type HouseBodyOf,

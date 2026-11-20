@@ -10,6 +10,7 @@ import {
   BUILDING_SCALE,
   buildCraftFxBinding,
   craftFxAtlasStems,
+  firingPostLookup,
   HOUSE_ATLAS,
   resolveCraftFxRefs,
   TREE_ATLAS,
@@ -265,6 +266,7 @@ export async function loadHumanSpriteSheet(
     // What a worker performs inside its workplace; an unchoreographed trade stays hidden in there.
     inHousePrograms: inHouseProgramLookup(ir, goods),
     ...(craftFxBinding?.byName[HOLY_FIRE_EFFECT_NAME] !== undefined ? { holyFire: holyFireLookup(ir) } : {}),
+    firingPosts: firingPostLookup(ir),
     ...(characters !== undefined ? { characters } : {}),
     ...(vehicles.palette !== undefined ? { vehiclePalette: vehicles.palette } : {}),
     // Human palette LUT: present ⇒ the characters are the indexed atlas and the pool paints each through

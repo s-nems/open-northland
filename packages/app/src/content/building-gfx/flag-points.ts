@@ -1,8 +1,9 @@
-import type { ErasedRegion } from '@open-northland/render';
+import type { ErasedRegion, FiringPost, FiringPostLookup } from '@open-northland/render';
 import {
   GARRISON_FINIALS,
   PLACED_GARRISON_MASTS,
   type PlacedGarrisonMast,
+  TOWER_FIRING_POSTS,
 } from '../../catalog/building-tweaks.js';
 import type { WorldTribes } from '../../game/world-tribes.js';
 import type { BuildingBobRow, BuildingFlagPointRow, ContentIr } from '../ir/rows.js';
@@ -47,6 +48,17 @@ export function soldierFlagPointByType(
   const authored = perType?.buildingSoldierFlagPoints ?? [];
   const rows = [...authored, ...placedMastRows(perType?.buildingBobs ?? [], authored)];
   return pointsByType(rows, tribeId, GARRISON_FINIALS);
+}
+
+/** The firing post of each `(tribe, typeId)` whose house rows name a record `TOWER_FIRING_POSTS` measures;
+ *  any other building keeps the renderer's default post. */
+export function firingPostLookup(ir: ContentIr | null): FiringPostLookup {
+  const posts = new Map<string, FiringPost>();
+  for (const { tribeId, typeId, editName } of perTypeHouseRows(ir)?.buildingBobs ?? []) {
+    const post = editName === undefined ? undefined : TOWER_FIRING_POSTS.get(editName);
+    if (post !== undefined) posts.set(`${tribeId}:${typeId}`, post);
+  }
+  return (tribe, buildingType) => posts.get(`${tribe}:${buildingType}`);
 }
 
 /** A mast row per level of each tower record the catalog places a mast on, unless the record's

@@ -25,6 +25,7 @@ import {
 import { type HolyFireLookup, holyFireOverlays } from '../holy-fire.js';
 import type { InHousePose, InHouseProgramLookup } from '../in-house.js';
 import { palisadeLayoutOf } from '../palisades/connections.js';
+import { type FiringPostLookup, ShotLaunches } from '../projectiles/launch.js';
 import {
   craftAnchorOf,
   inHouseDrawAt,
@@ -119,6 +120,8 @@ export interface SpriteSceneOptions {
   readonly inHousePrograms?: InHouseProgramLookup | undefined;
   /** Source-authored home anchors and the resolved looping flame effect. */
   readonly holyFire?: HolyFireLookup | undefined;
+  /** The measured firing posts garrison shots leave from. */
+  readonly firingPosts?: FiringPostLookup | undefined;
 }
 
 /**
@@ -229,6 +232,8 @@ export class IncrementalScene {
   others: readonly SpriteDrawItem[] = [];
   othersSnapshot: WorldSnapshot | null = null;
   readonly anchors = new CullAnchors();
+  /** Where each arrow in flight left from, kept until it lands. */
+  readonly launches = new ShotLaunches();
   inputs: StaticInputs | null = null;
   touched: TouchedIds | null = null;
   /** Whether the last build spliced the run rather than rebuilding it. */
@@ -240,6 +245,7 @@ export class IncrementalScene {
     this.others = [];
     this.othersSnapshot = null;
     this.anchors.reset();
+    this.launches.clear();
     this.inputs = null;
     this.touched = null;
   }
@@ -378,6 +384,7 @@ function collectScene(
     playerColourOf,
     inHousePrograms,
     holyFire,
+    firingPosts,
   } = opts;
   const list = order?.list ?? new DrawList();
   list.begin();
@@ -394,7 +401,9 @@ function collectScene(
     elevation,
     playerColourOf,
     palisades: palisadeLayoutOf(snapshot, elevation),
+    launch: { snapshot, posts: firingPosts, held: incremental?.launches },
   };
+  incremental?.launches.forgetLanded(snapshot);
 
   memo?.begin(elevation, playerColourOf);
   const anchors = incremental?.anchors;

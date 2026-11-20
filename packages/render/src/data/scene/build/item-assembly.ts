@@ -4,6 +4,7 @@ import { drawPassOf, spriteDepth } from '../depth.js';
 import { type EntityKind, type MutableSpriteDrawItem, newDrawItem } from '../draw-item.js';
 import { flagOwnerOf } from '../flag-owner.js';
 import { assignPalisadeFields, type PalisadeLayout } from '../palisades/connections.js';
+import type { LaunchContext } from '../projectiles/launch.js';
 import type { SettlerPose } from '../settler-pose.js';
 import {
   assignStaticFields,
@@ -31,6 +32,7 @@ export interface SceneBuild {
   readonly elevation: ElevationField | undefined;
   readonly playerColourOf: ((player: number) => number) | undefined;
   readonly palisades: PalisadeLayout;
+  readonly launch: LaunchContext;
 }
 
 export function assembleItem(
@@ -94,7 +96,7 @@ export function assembleItem(
       );
       break;
     case 'projectile':
-      arcLift = assignProjectileArc(item, components, { x: tileX, y: tileY });
+      arcLift = assignProjectileArc(item, entity.id, components, { x: tileX, y: tileY }, build.launch);
       break;
     case 'stockpile':
     case 'grounddrop': {

@@ -2,9 +2,14 @@ import { hasFieldFarmAtomics } from '@open-northland/data';
 import { cadaverGoodCycle, systems } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import { HARVEST_CADAVER_ATOMIC } from '../../../src/catalog/atomics.js';
-import { GARRISON_FINIALS, PLACED_GARRISON_MASTS } from '../../../src/catalog/building-tweaks.js';
+import {
+  GARRISON_FINIALS,
+  PLACED_GARRISON_MASTS,
+  TOWER_FIRING_POSTS,
+} from '../../../src/catalog/building-tweaks.js';
 import { NAV_LANDSCAPE_TYPES } from '../../../src/catalog/terrain.js';
 import {
+  firingPostLookup,
   flagPointByType,
   soldierFlagPointByType,
   VIKING_TRIBE,
@@ -457,6 +462,22 @@ describe.runIf(hasRealIr())('real IR invariants', () => {
     for (const row of ir.buildingBobs ?? []) {
       if (!mastedTypes.has(row.typeId)) continue;
       expect(soldierFlagPointByType(ir, row.tribeId).has(row.typeId), row.editName).toBe(true);
+    }
+  });
+
+  it('measures a firing post on every civilization tower', () => {
+    const ir = rawIrUnderTest() as ContentIr;
+    const posts = firingPostLookup(ir);
+    const towers = new Set((ir.buildingSoldierFlagPoints ?? []).map((row) => row.typeId));
+    // A renamed record would loose its garrison's arrows from the default post, low on most towers.
+    for (const name of TOWER_FIRING_POSTS.keys()) {
+      expect(
+        ir.buildingBobs?.some((row) => row.editName === name && towers.has(row.typeId)),
+        name,
+      ).toBe(true);
+    }
+    for (const row of ir.buildingBobs ?? []) {
+      if (towers.has(row.typeId)) expect(posts(row.tribeId, row.typeId), row.editName).toBeDefined();
     }
   });
 
