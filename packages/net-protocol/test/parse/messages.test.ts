@@ -1,4 +1,5 @@
-import { type GameSession, NO_RULE_OVERRIDES } from '@open-northland/lockstep';
+import type { GameSession } from '@open-northland/lockstep';
+import { NO_RULE_OVERRIDES } from '@open-northland/lockstep';
 import { describe, expect, it } from 'vitest';
 import {
   type ClientMessage,
@@ -278,6 +279,15 @@ describe('client messages', () => {
         seats: [],
       },
       /rules\.storageCapacity/,
+    ],
+    [
+      'a yield factor the lobby does not offer',
+      {
+        kind: 'createRoom',
+        settings: { ...settings, rules: { ...settings.rules, oreYield: 4 } },
+        seats: [],
+      },
+      /rules\.oreYield/,
     ],
     [
       'rules without a weather mode',

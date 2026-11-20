@@ -1,6 +1,6 @@
 # Network protocol
 
-The wire contract between a game client and the relay server, version `PROTOCOL_VERSION = 71` in
+The wire contract between a game client and the relay server, version `PROTOCOL_VERSION = 72` in
 `packages/net-protocol`. A change one side of the current version could not honour (a message shape, or
 the value set of a validated field such as the fog mode ids) bumps the version; the relay refuses a
 `hello` that names another.
@@ -92,7 +92,9 @@ come from the map's diplomacy and in-game diplomacy; while the rules' `alliedVis
 mutual friends into one fog mask and follows later stance changes, so allies explore, see and meet as one
 in every fog mode. The rules' `peace` (30, 45, 60, 75, 90, 120 or 180 minutes, or null) opens a peace from the
 match start among every human, idle and lobby computer seat. The rules' `storageCapacity` (2, 3 or 5, or null for
-the content's sizes) multiplies the slots of every storage building, the headquarters and the storehouses.
+the content's sizes) multiplies the slots of every storage building, the headquarters and the storehouses. The
+rules' `basicYield` and `oreYield` (2, 3 or 5, or null for the authored stock) multiply what the map's wood,
+mushroom, clay and stone nodes, and its iron and gold deposits, start with when each client builds the world.
 `seats` lists the world's seats in ascending order:
 
 | Field | Meaning |

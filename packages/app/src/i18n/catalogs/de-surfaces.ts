@@ -200,12 +200,24 @@ export const deSurfaces = {
           'Vervielfacht den Platz für jede Ware in den Lagerhäusern und im Hauptquartier. Werkstätten fassen so viel wie sonst.',
         factor: '×{factor}',
       },
+      basicYield: {
+        label: 'Grundrohstoffe',
+        detail:
+          'Vervielfacht Holz, Pilze, Lehm und Stein, mit denen die Bäume, Pilze und Vorkommen der Karte beginnen.',
+        factor: '×{factor}',
+      },
+      oreYield: {
+        label: 'Erzvorkommen',
+        detail: 'Vervielfacht Eisen und Gold in den Vorkommen der Karte.',
+        factor: '×{factor}',
+      },
       advanced: {
         label: 'Erweitert',
         title: 'Erweiterte Einstellungen',
         standard: 'Standard',
         changed: 'Geändert',
         rulesGroup: 'Spielregeln',
+        resourcesGroup: 'Rohstoffe',
         worldGroup: 'Welt',
         reset: 'Standardwerte wiederherstellen',
         done: 'Fertig',

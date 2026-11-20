@@ -170,10 +170,8 @@ const HALF_HOUR = 30 * MINUTE;
 const HOUR = 60 * MINUTE;
 /** The house mission object id the plain's headquarters is placed with, which its trade rows name. */
 const PLAIN_HEADQUARTERS = 1;
-/** How many times its authored stock each map-placed node starts with: the rare goods tripled, the
- *  building goods (a tree's trunk, a stone deposit) doubled. */
-const RARE_YIELD = 3;
-const BUILDING_YIELD = 2;
+/** Owner ruling: choosing the variant sets the iron and gold deposits to three times their stock. */
+const ORE_YIELD = 3;
 
 /** Owner ruling: every player seat starts as seat 0 does, with its people, papers and diplomacy locks.
  *  The map hands the villages a few civilians and seats 1-3 a girl where seat 0 has a second boy. */
@@ -344,14 +342,7 @@ export const SPECJALNA_FORTECA_RAGNAROK: MapVariantInput = {
     ],
   },
   startSeats: START_SEATS,
-  depositYield: {
-    gold: RARE_YIELD,
-    iron: RARE_YIELD,
-    mushroom: RARE_YIELD,
-    wood: BUILDING_YIELD,
-    stone: BUILDING_YIELD,
-    mud: BUILDING_YIELD,
-  },
+  oreYield: ORE_YIELD,
   landscapeObjects: [
     ...placed(PLAIN_CLAY_PIT, CLAY_OBJECTS),
     ...placed(PLAIN_GROVE, CEDAR_OBJECTS),

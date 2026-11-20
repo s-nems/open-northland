@@ -165,7 +165,7 @@ export function spawnVariantLandscapeObjects(
   sim: Simulation,
   ir: ContentIr,
   objects: readonly MapVariantLandscapeObject[],
-  depositYield: Readonly<Record<string, number>> = {},
+  depositYield: Readonly<Record<string, number>>,
 ): Entity[] {
   const goodByName = harvestGoodByObjectName(ir);
   const spawned: Entity[] = [];

@@ -1,8 +1,8 @@
 import { DEFAULT_FOG_MODE, LOBBY_FOG_MODES } from '../game/fog.js';
 import { type CarriedParam, carriedParams, formatSearch } from './params.js';
 
-/** World rules a scene or a campaign mission authors for itself, so a carried menu choice never
- *  reaches one. */
+/** World rules a scene authors for itself and a campaign mission takes from the campaign card, so a
+ *  carried menu choice never reaches either. */
 const WORLD_RULE_PARAMS: readonly CarriedParam[] = ['fog', 'progression', 'needs', 'weathermode', 'daynight'];
 
 /**
@@ -15,8 +15,8 @@ export function targetSearch(entry: string, current = new URLSearchParams(window
   return layeredSearch(entryParams, current, entryParams.has('scene'));
 }
 
-/** A campaign mission's launch search: the mission plays its map's own rules, whatever the last game
- *  in the menu chose. */
+/** A campaign mission's launch search: the mission plays the rules its entry names, whatever the last
+ *  game in the menu chose. */
 export function missionTargetSearch(
   entry: string,
   current = new URLSearchParams(window.location.search),

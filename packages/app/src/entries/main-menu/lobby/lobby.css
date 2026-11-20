@@ -627,6 +627,12 @@
 
 .main-menu__advanced .main-menu__lobby-option-row {
   align-items: flex-start;
+  /* A step under the card's rows: the window lists many rules, each with its detail. */
+  font-size: calc(var(--u) * 20);
+}
+
+.main-menu__advanced .main-menu__dialog-title {
+  font-size: calc(var(--u) * 28);
 }
 
 /* Done keeps the right edge while the reset is hidden. */
@@ -637,6 +643,10 @@
 .main-menu__advanced .main-menu__seg-btn {
   min-width: calc(var(--u) * 40);
   text-align: center;
+}
+
+.main-menu__advanced-actions .main-menu__ghost {
+  font-size: calc(var(--u) * 20);
 }
 
 .main-menu__advanced-actions .main-menu__ghost:disabled {

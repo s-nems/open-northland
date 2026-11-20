@@ -51,10 +51,7 @@ const NO_PLACEMENTS: MapWorldPlacements = { harvestablePlacements: [], pooledPla
 export function buildMapWorldFromInputs(inputs: MapWorldInputs): BuiltWorld<MapWorldPlacements> {
   const { ir, script, session, save } = inputs;
   const variant = sessionMapVariant(session.world);
-  if (variant !== null && inputs.map !== null) {
-    const goods = ir?.goods === undefined ? null : new Set(ir.goods.map((good) => good.id));
-    assertMapVariantFitsMap(variant, inputs.map, goods);
-  }
+  if (variant !== null && inputs.map !== null) assertMapVariantFitsMap(variant, inputs.map);
   const map = variantMap(inputs.map, session.world);
   // The render layers read the raw map; the sim runs on the collision resolution of the same map.
   const seated = sessionMapScript(session, script, ir);
@@ -77,7 +74,6 @@ export function buildMapWorldFromInputs(inputs: MapWorldInputs): BuiltWorld<MapW
   const world = buildMapWorld({
     ...worldOptions,
     ...sessionWorldOptions(session, script, missionWorld),
-    depositYield: variant?.depositYield ?? {},
     landscapeObjects: variant?.landscapeObjects ?? [],
     seed: session.seed,
     missions: inputs.missions,

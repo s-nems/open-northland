@@ -356,7 +356,7 @@ export const ECONOMY: ArticleGroup = {
           },
         },
         {
-          p: 'A felled tree stays as a log with {{gather.treeYield}} pieces, and the Extractor carries them off 1 at a time. Every piece from a rock or deposit drops on the ground beside it.',
+          p: 'A felled tree stays as a log with {{gather.treeYield}} pieces, and the Extractor carries them off 1 at a time. Every piece from a rock or deposit drops on the ground beside it. The advanced settings "Basic resources" and "Ore deposits", chosen before the game starts, multiply the stock of the trees, mushrooms, rocks and deposits the map places at the start.',
         },
         {
           h: 'Iron and Gold',

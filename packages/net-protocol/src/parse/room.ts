@@ -2,6 +2,7 @@ import type {
   ComputerDifficulty,
   DayNightMode,
   PeaceMinutes,
+  ResourceYieldFactor,
   SeatMode,
   SessionRules,
   SessionWorld,
@@ -21,6 +22,7 @@ import {
   MAX_TRIBE_ID,
   MAX_WORLD_ID_LENGTH,
   PEACE_MINUTES,
+  RESOURCE_YIELD_FACTORS,
   STORAGE_CAPACITY_FACTORS,
 } from '../limits.js';
 import type {
@@ -178,7 +180,15 @@ function parseSessionRules(value: unknown, at: string): SessionRules {
       raw.storageCapacity === null
         ? null
         : parseStorageCapacity(raw.storageCapacity, `${at}.storageCapacity`),
+    basicYield: raw.basicYield === null ? null : parseResourceYield(raw.basicYield, `${at}.basicYield`),
+    oreYield: raw.oreYield === null ? null : parseResourceYield(raw.oreYield, `${at}.oreYield`),
   };
+}
+
+function parseResourceYield(value: unknown, at: string): ResourceYieldFactor {
+  const factor = RESOURCE_YIELD_FACTORS.find((known) => known === value);
+  if (factor === undefined) throw new Error(`${at}: ${String(value)} is not a yield factor`);
+  return factor;
 }
 
 function parseStorageCapacity(value: unknown, at: string): StorageCapacityFactor {

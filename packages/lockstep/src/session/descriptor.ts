@@ -74,6 +74,11 @@ export const STORAGE_CAPACITY_FACTORS = [2, 3, 5] as const;
 
 export type StorageCapacityFactor = (typeof STORAGE_CAPACITY_FACTORS)[number];
 
+/** The factors a session may multiply the stock of map-placed resources by, beyond their authored amounts. */
+export const RESOURCE_YIELD_FACTORS = [2, 3, 5] as const;
+
+export type ResourceYieldFactor = (typeof RESOURCE_YIELD_FACTORS)[number];
+
 /** The world rules the session overrides; null keeps whatever the world set for itself. */
 export interface SessionRules {
   /** A `FOG_MODE` id. */
@@ -92,6 +97,11 @@ export interface SessionRules {
   readonly peace: PeaceMinutes | null;
   /** What the storage buildings' slots are multiplied by (`setStorageCapacity`); null keeps the world's. */
   readonly storageCapacity: StorageCapacityFactor | null;
+  /** What the map-placed wood, mushrooms, clay and stone start with, times their authored amount; null
+   *  keeps that amount. Read when the world is built. */
+  readonly basicYield: ResourceYieldFactor | null;
+  /** The same for the map-placed iron and gold. */
+  readonly oreYield: ResourceYieldFactor | null;
 }
 
 /** Rules that override nothing: the world plays every rule it set for itself. */
@@ -104,6 +114,8 @@ export const NO_RULE_OVERRIDES: SessionRules = Object.freeze({
   alliedVision: null,
   peace: null,
   storageCapacity: null,
+  basicYield: null,
+  oreYield: null,
 });
 
 /**
@@ -284,7 +296,16 @@ function parseRules(value: unknown): SessionRules {
     alliedVision: nullableBoolean(raw.alliedVision, 'rules.alliedVision'),
     peace: parsePeace(raw.peace),
     storageCapacity: parseStorageCapacity(raw.storageCapacity),
+    basicYield: parseResourceYield(raw.basicYield, 'basicYield'),
+    oreYield: parseResourceYield(raw.oreYield, 'oreYield'),
   };
+}
+
+function parseResourceYield(value: unknown, field: string): ResourceYieldFactor | null {
+  if (value === null) return null;
+  const factor = RESOURCE_YIELD_FACTORS.find((known) => known === value);
+  if (factor === undefined) throw new Error(`rules.${field} must name a yield factor or be null`);
+  return factor;
 }
 
 function parseStorageCapacity(value: unknown): StorageCapacityFactor | null {

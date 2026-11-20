@@ -82,11 +82,11 @@ export const MapVariant = z.strictObject({
   /** The seats whose start the variant copies from another seat's. A copied settler is placed as if the
    *  map authored it, so an absent seat's stay out too. */
   startSeats: z.array(MapVariantStartSeat).default([]),
-  /** Each map-placed node of the named good (a content good id) starts with its authored amount times
-   *  this factor: a deposit's stock, a tree's felled trunk, a picked plant's yield. */
-  depositYield: z.record(z.string().min(1), z.number().int().min(1)).default({}),
+  /** The ore richness a lobby sets when the variant is chosen, a session `oreYield` factor; absent leaves
+   *  the rule as the lobby holds it. */
+  oreYield: z.number().int().min(2).optional(),
   /** Placed at world assembly after every authored object, so authored nodes keep their entity ids; their
-   *  stock takes the variant's yield like the map's own. */
+   *  stock takes the session's yield like the map's own. */
   landscapeObjects: z.array(MapVariantLandscapeObject).default([]),
   /** The briefing pages the variant replaces, to tell what it changes. */
   briefingPages: MapVariantBriefingPages.optional(),

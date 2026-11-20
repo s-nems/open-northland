@@ -9,6 +9,7 @@ import {
   orderedSeats,
   PEACE_MINUTES,
   parseGameSession,
+  RESOURCE_YIELD_FACTORS,
   STORAGE_CAPACITY_FACTORS,
   seatColourOf,
   WEATHER_MODES,
@@ -149,7 +150,7 @@ describe('game session descriptor', () => {
   it('reads every day and night mode and null, and refuses an unknown or missing one', () => {
     const rules = { fog: null, progression: null, needs: null, weather: null };
     for (const dayNight of [...DAY_NIGHT_MODES, null]) {
-      const full = { ...rules, dayNight, alliedVision: null, peace: null, storageCapacity: null };
+      const full = { ...NO_RULE_OVERRIDES, dayNight };
       expect(roundTrip(session({ rules: full })).rules.dayNight).toBe(dayNight);
     }
     expect(() => parseGameSession({ ...session(), rules: { ...rules, dayNight: 'dusk' } })).toThrow(
@@ -160,16 +161,7 @@ describe('game session descriptor', () => {
 
   it('reads every weather mode and null, and refuses an unknown or missing one', () => {
     for (const weather of [...WEATHER_MODES, null]) {
-      const rules = {
-        fog: null,
-        progression: null,
-        needs: null,
-        weather,
-        dayNight: null,
-        alliedVision: null,
-        peace: null,
-        storageCapacity: null,
-      };
+      const rules = { ...NO_RULE_OVERRIDES, weather };
       expect(roundTrip(session({ rules })).rules.weather).toBe(weather);
     }
     const rules = { fog: null, progression: null, needs: null };
@@ -199,6 +191,21 @@ describe('game session descriptor', () => {
     );
     expect(() => parseGameSession({ ...session(), rules })).toThrow(/rules.storageCapacity/);
   });
+
+  it.each(['basicYield', 'oreYield'] as const)(
+    'reads every %s factor and null, and refuses another',
+    (field) => {
+      const { [field]: _yield, ...rules } = session().rules;
+      for (const factor of [...RESOURCE_YIELD_FACTORS, null]) {
+        const read = roundTrip(session({ rules: { ...session().rules, [field]: factor } }));
+        expect(read.rules[field]).toBe(factor);
+      }
+      expect(() => parseGameSession({ ...session(), rules: { ...rules, [field]: 1 } })).toThrow(
+        new RegExp(`rules.${field}`),
+      );
+      expect(() => parseGameSession({ ...session(), rules })).toThrow(new RegExp(`rules.${field}`));
+    },
+  );
 
   it('reads the roster the way the entry consumes it', () => {
     const colourOf = seatColourOf(session());

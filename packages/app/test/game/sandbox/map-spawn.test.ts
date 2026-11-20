@@ -6,8 +6,8 @@ import { MINES, mineFixture } from '../../support/mine-deposit.js';
 
 const { Resource, MineDeposit } = components;
 
-describe('a map variant’s deposit yield', () => {
-  it('multiplies a variant-boosted good by its factor, shrink ladder included, and no other good', () => {
+describe('a deposit yield', () => {
+  it('multiplies a boosted good by its factor, shrink ladder included, and no other good', () => {
     const factor = 3;
     const gold = MINES.find((mine) => mine.id === 'gold');
     if (gold === undefined) throw new Error('missing gold fixture');
@@ -40,7 +40,7 @@ describe('a map variant’s deposit yield', () => {
     if (node === undefined) throw new Error('nothing placed');
     expect(sim.world.get(node, Resource).remaining).toBe(gold.states * factor);
     expect(sim.world.get(node, MineDeposit).initial).toBe(gold.states * factor);
-    expect(() => spawnVariantLandscapeObjects(sim, ir, [{ object: 'fern 01', hx: 20, hy: 12 }])).toThrow(
+    expect(() => spawnVariantLandscapeObjects(sim, ir, [{ object: 'fern 01', hx: 20, hy: 12 }], {})).toThrow(
       /fern 01/,
     );
   });

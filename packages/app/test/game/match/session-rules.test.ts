@@ -1,7 +1,11 @@
 import { components, FOG_MODE, halfCellMapFromCells, Simulation } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import { grassTerrain } from '../../../src/catalog/buildings.js';
-import { applySessionRuleOverrides, sessionRuleOverrides } from '../../../src/game/match/session-rules.js';
+import {
+  applySessionRuleOverrides,
+  depositYieldOf,
+  sessionRuleOverrides,
+} from '../../../src/game/match/session-rules.js';
 import { sandboxContent } from '../../../src/game/sandbox/index.js';
 
 const MAP = grassTerrain(8, 8);
@@ -65,5 +69,24 @@ describe('the on/off session rules', () => {
     expect(sim.needsEnabled()).toBe(false);
     expect(sim.professionProgressionEnabled()).toBe(false);
     expect(sim.fogMode()).toBe(FOG_MODE.OFF);
+  });
+});
+
+describe('the resource richness rules', () => {
+  it('reads ?basicyield= and ?oreyield= as factors, an unoffered one as the authored stock', () => {
+    const rules = sessionRuleOverrides(new URLSearchParams('basicyield=5&oreyield=2'));
+    expect([rules.basicYield, rules.oreYield]).toEqual([5, 2]);
+    const bogus = sessionRuleOverrides(new URLSearchParams('basicyield=1&oreyield=4'));
+    expect([bogus.basicYield, bogus.oreYield]).toEqual([null, null]);
+  });
+
+  it('multiplies each group of goods by its own factor and leaves a null group out', () => {
+    expect(depositYieldOf({ basicYield: 2, oreYield: null })).toEqual({
+      wood: 2,
+      mushroom: 2,
+      mud: 2,
+      stone: 2,
+    });
+    expect(depositYieldOf({ basicYield: null, oreYield: 3 })).toEqual({ iron: 3, gold: 3 });
   });
 });

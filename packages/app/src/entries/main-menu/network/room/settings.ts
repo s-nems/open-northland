@@ -1,4 +1,6 @@
+import type { SessionWorld } from '@open-northland/lockstep';
 import type { RoomView } from '@open-northland/net-protocol';
+import { sessionOreYield } from '../../../../game/map/variant.js';
 import { messages } from '../../../../i18n/index.js';
 import { node } from '../../dom.js';
 import { gameRuleControls } from '../../lobby-controls/rules.js';
@@ -13,6 +15,7 @@ export function roomSettings(deps: NetworkRoomDeps) {
   const fields = node('div', 'network-room__settings');
   const hint = node('p', 'network-room__muted', copy.creatorSettings);
   root.append(node('h3', '', copy.settings), hint, fields);
+  let world: SessionWorld | null = null;
   const rules = gameRuleControls({
     inheritedLabel: copy.authored,
     fieldClassName: 'network-room__field',
@@ -33,6 +36,9 @@ export function roomSettings(deps: NetworkRoomDeps) {
     weather: { label: lobby.weatherLabel, modes: lobby.weatherModes },
     dayNight: { label: lobby.dayNightLabel, modes: lobby.dayNightModes },
     storage: lobby.storage,
+    standardOreYield: () => (world === null ? null : sessionOreYield(world)),
+    basicYield: lobby.basicYield,
+    oreYield: lobby.oreYield,
     // A room plays a map with a multiplayer lobby, so it always offers the peace.
     peace: lobby.peace,
     advanced: lobby.advanced,
@@ -53,6 +59,7 @@ export function roomSettings(deps: NetworkRoomDeps) {
       rules.dispose();
     },
     update(next: RoomView, editable: boolean): void {
+      world = next.settings.world;
       queue.update(next, editable);
       if (editable && next.settings.kickedSeatMode !== 'idle') queue.change({ kickedSeatMode: 'idle' });
       const saved = next.settings.initialSave !== undefined;

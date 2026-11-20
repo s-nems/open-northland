@@ -353,7 +353,7 @@ export const ECONOMY: ArticleGroup = {
           },
         },
         {
-          p: 'Ścięte drzewo zostaje jako pień z {{gather.treeYield}} sztukami, a Zbieracz odnosi je po 1. Każda sztuka ze skały lub złoża spada na ziemię obok.',
+          p: 'Ścięte drzewo zostaje jako pień z {{gather.treeYield}} sztukami, a Zbieracz odnosi je po 1. Każda sztuka ze skały lub złoża spada na ziemię obok. Zaawansowane ustawienia "Surowce podstawowe" i "Złoża", wybierane przed startem gry, mnożą zapas drzew, grzybów, skał i złóż, które mapa stawia na starcie.',
         },
         {
           h: 'Żelazo i Złoto',

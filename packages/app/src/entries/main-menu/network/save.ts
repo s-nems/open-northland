@@ -26,6 +26,7 @@ import {
   restoreSavedSeats,
   savedDayNightMode,
   savedMapWorld,
+  savedResourceYield,
   savedSessionSeats,
   savedWeatherMode,
 } from './saved-roster.js';
@@ -77,6 +78,8 @@ export async function validateNetworkSave(save: SaveGame, handle: VerifiedMapDoc
     alliedVision: components.alliedVisionEnabled(sim.world),
     peace: savedPeace(sim),
     storageCapacity: savedStorageCapacity(sim),
+    basicYield: savedResourceYield(save, 'basicYield'),
+    oreYield: savedResourceYield(save, 'oreYield'),
   };
 }
 

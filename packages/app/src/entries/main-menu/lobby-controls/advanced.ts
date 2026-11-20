@@ -10,6 +10,7 @@ export interface AdvancedText {
   /** The entry's state while one differs. */
   readonly changed: string;
   readonly rulesGroup: string;
+  readonly resourcesGroup: string;
   readonly worldGroup: string;
   readonly reset: string;
   readonly done: string;
@@ -127,13 +128,13 @@ export function advancedSettings(options: {
 
   return {
     elements: [entry, summary],
-    /** `changes` are the rules that differ from the standard game; `why` says, while `frozen`, why
-     *  they cannot be changed. */
-    update(changes: readonly string[], frozen: boolean, why: string): void {
+    /** `changes` are what differs from the standard game; `why` says, while `frozen`, why they cannot
+     *  be changed. `resettable` is false while the reset has none of them to restore. */
+    update(changes: readonly string[], frozen: boolean, why: string, resettable = changes.length > 0): void {
       const changed = changes.length > 0;
       // A reset that leaves nothing to reset, or a lost right to change, takes the button away from
       // under the focus; Done keeps it inside the window.
-      if (document.activeElement === reset && (frozen || !changed)) done.focus();
+      if (document.activeElement === reset && (frozen || !resettable)) done.focus();
       state.textContent = changed ? text.changed : text.standard;
       entry.classList.toggle('is-changed', changed);
       summary.textContent = changes.join(' · ');
@@ -144,7 +145,7 @@ export function advancedSettings(options: {
       box.classList.toggle('is-readonly', frozen);
       done.textContent = frozen ? text.close : text.done;
       reset.hidden = frozen;
-      reset.disabled = !changed;
+      reset.disabled = !resettable;
     },
     dispose(): void {
       detach();

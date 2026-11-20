@@ -170,12 +170,23 @@ export const chsSurfaces = {
         detail: '成倍提高仓库和大本营中每种货物的存放空间。工坊容量不变。',
         factor: '×{factor}',
       },
+      basicYield: {
+        label: '基础资源',
+        detail: '成倍提高地图上树木、蘑菇和矿藏初始的木材、蘑菇、黏土和石料储量。',
+        factor: '×{factor}',
+      },
+      oreYield: {
+        label: '矿藏',
+        detail: '成倍提高地图上矿藏中的铁和金储量。',
+        factor: '×{factor}',
+      },
       advanced: {
         label: '高级',
         title: '高级设置',
         standard: '标准',
         changed: '已更改',
         rulesGroup: '游戏规则',
+        resourcesGroup: '资源',
         worldGroup: '世界',
         reset: '恢复默认',
         done: '完成',

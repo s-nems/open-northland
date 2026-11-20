@@ -1,5 +1,6 @@
 import {
   PEACE_MINUTES as LOCKSTEP_PEACE_MINUTES,
+  RESOURCE_YIELD_FACTORS as LOCKSTEP_RESOURCE_YIELD_FACTORS,
   STORAGE_CAPACITY_FACTORS as LOCKSTEP_STORAGE_CAPACITY_FACTORS,
 } from '@open-northland/lockstep';
 import {
@@ -15,6 +16,7 @@ import {
   FOG_MODES,
   MAX_SEATS,
   PEACE_MINUTES,
+  RESOURCE_YIELD_FACTORS,
   STORAGE_CAPACITY_FACTORS,
   SYNC_DOMAINS,
   TICKS_PER_SECOND,
@@ -30,7 +32,8 @@ it('carries the same tick rate, seat count, envelope version, digest domains and
   expect([...FOG_MODES].sort()).toEqual(Object.values(FOG_MODE).sort());
 });
 
-it("carries the lobby descriptor's peace lengths and storage factors", () => {
+it("carries the lobby descriptor's peace lengths, storage factors and yield factors", () => {
   expect(PEACE_MINUTES).toEqual(LOCKSTEP_PEACE_MINUTES);
   expect(STORAGE_CAPACITY_FACTORS).toEqual(LOCKSTEP_STORAGE_CAPACITY_FACTORS);
+  expect(RESOURCE_YIELD_FACTORS).toEqual(LOCKSTEP_RESOURCE_YIELD_FACTORS);
 });

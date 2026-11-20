@@ -6,6 +6,8 @@ export interface MapVariantToggleText {
   readonly names: Readonly<Record<MapVariantKind, string>>;
   /** What each variant changes, as its row's tooltip. */
   readonly details: Readonly<Record<MapVariantKind, string>>;
+  /** Also write each detail under its name, as the advanced window shows its rules. */
+  readonly writeDetails?: boolean;
 }
 
 /** One on/off row per variant the map ships, at most one on; all off plays the map as authored. Empty
@@ -26,6 +28,12 @@ export function mapVariantToggles(
       change(chosen);
     });
     toggle.row.title = text.details[kind];
+    if (text.writeDetails === true) {
+      const detail = document.createElement('small');
+      detail.className = 'main-menu__rule-detail';
+      detail.textContent = text.details[kind];
+      toggle.label.append(detail);
+    }
     return { kind, toggle };
   });
   function paint(): void {

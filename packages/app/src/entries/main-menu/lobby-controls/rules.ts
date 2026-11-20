@@ -5,6 +5,8 @@ import {
   DEFAULT_WEATHER_MODE,
   PEACE_MINUTES,
   type PeaceMinutes,
+  RESOURCE_YIELD_FACTORS,
+  type ResourceYieldFactor,
   STORAGE_CAPACITY_FACTORS,
   type StorageCapacityFactor,
   WEATHER_MODES,
@@ -32,6 +34,10 @@ export interface GameRules {
   readonly peace: PeaceMinutes | null;
   /** Null keeps the storage buildings' own sizes. */
   readonly storageCapacity: StorageCapacityFactor | null;
+  /** Null keeps the authored stock of the map's wood, mushrooms, clay and stone. */
+  readonly basicYield: ResourceYieldFactor | null;
+  /** Null keeps the authored stock of the map's iron and gold. */
+  readonly oreYield: ResourceYieldFactor | null;
 }
 interface RuleText {
   readonly label: string;
@@ -65,7 +71,21 @@ export interface GameRuleControlOptions {
     readonly label: string;
     readonly modes: Readonly<Record<DayNightMode, RuleText>>;
   };
-  readonly storage: StorageRuleText;
+  readonly storage: FactorRuleText;
+  readonly basicYield: FactorRuleText;
+  readonly oreYield: FactorRuleText;
+  /** The ore richness the window's reset restores, read at each change; absent restores the authored
+   *  stock. */
+  readonly standardOreYield?: () => ResourceYieldFactor | null;
+  /** Rows of the map's own, such as its variant toggles, listed first under the game rules. */
+  readonly mapRows?: readonly HTMLElement[];
+  /** What the map's own rows hold that differs from the map as authored, named first in the entry's
+   *  summary; the reset leaves them alone. */
+  readonly mapChanges?: () => readonly string[];
+  /** Holds the card's rules in the window too, first under the game rules, for a screen that shows only
+   *  the entry. Its summary and reset then cover them, with fog of war and the allies' shared map off as
+   *  the standard. */
+  readonly everyRuleInWindow?: boolean;
   /** Offers the peace choice; absent for a map that plays without one. */
   readonly peace?: PeaceRuleText;
   readonly advanced: AdvancedText;
@@ -79,7 +99,8 @@ interface PeaceRuleText {
   /** A length's label, with `{minutes}`. */
   readonly minutes: string;
 }
-interface StorageRuleText {
+/** A multiplier rule's text. */
+interface FactorRuleText {
   readonly label: string;
   readonly detail: string;
   /** A factor's label, with `{factor}`. */
@@ -92,11 +113,10 @@ const NO_PEACE = 'off';
 
 const peaceChoiceId = (peace: PeaceMinutes | null): string => (peace === null ? NO_PEACE : String(peace));
 
-/** The factor the standard game stores at, which the storage rule's null plays. */
-const STANDARD_STORAGE_FACTOR = 1;
+/** The factor a multiplier rule's null plays: the content's own amounts. */
+const STANDARD_FACTOR = 1;
 
-const storageChoiceId = (factor: StorageCapacityFactor | null): string =>
-  String(factor ?? STANDARD_STORAGE_FACTOR);
+const factorChoiceId = (factor: number | null): string => String(factor ?? STANDARD_FACTOR);
 
 /** The lobby's label-and-control row, which every rule in the advanced window stands in. */
 const OPTION_ROW_CLASS = 'main-menu__lobby-option-row';
@@ -106,6 +126,7 @@ const STANDARD_ADVANCED = {
   progression: true,
   needs: true,
   storageCapacity: null,
+  basicYield: null,
   weather: DEFAULT_WEATHER_MODE,
   dayNight: DEFAULT_DAY_NIGHT_MODE,
 } as const satisfies Partial<GameRules>;
@@ -329,21 +350,36 @@ export function gameRuleControls(options: GameRuleControlOptions) {
     'advanced',
   );
   const needs = booleanRule(options.needs, true, (value) => options.onChange({ needs: value }), 'advanced');
-  const storageLabel = (factor: StorageCapacityFactor | null): string =>
-    formatMessage(options.storage.factor, { factor: factor ?? STANDARD_STORAGE_FACTOR });
-  const storageChoices: Choice<string>[] = [null, ...STORAGE_CAPACITY_FACTORS].map((factor) => ({
-    value: storageChoiceId(factor),
-    label: storageLabel(factor),
-  }));
-  const storage = segmentedRule(
-    options.storage.label,
-    storageChoices,
-    (id) =>
-      options.onChange({
-        storageCapacity: STORAGE_CAPACITY_FACTORS.find((factor) => storageChoiceId(factor) === id) ?? null,
-      }),
-    options.storage.detail,
+  /** A multiplier rule: one segment per factor, the first for null, the content's own amounts. */
+  function factorRule<F extends number>(
+    text: FactorRuleText,
+    factors: readonly F[],
+    change: (factor: F | null) => void,
+  ) {
+    const label = (factor: F | null): string =>
+      formatMessage(text.factor, { factor: factor ?? STANDARD_FACTOR });
+    const choices: Choice<string>[] = [null, ...factors].map((factor) => ({
+      value: factorChoiceId(factor),
+      label: label(factor),
+    }));
+    const control = segmentedRule(
+      text.label,
+      choices,
+      (id) => change(factors.find((factor) => factorChoiceId(factor) === id) ?? null),
+      text.detail,
+    );
+    return { ...control, label };
+  }
+  const storage = factorRule(options.storage, STORAGE_CAPACITY_FACTORS, (storageCapacity) =>
+    options.onChange({ storageCapacity }),
   );
+  const basicYield = factorRule(options.basicYield, RESOURCE_YIELD_FACTORS, (basicYield) =>
+    options.onChange({ basicYield }),
+  );
+  const oreYield = factorRule(options.oreYield, RESOURCE_YIELD_FACTORS, (oreYield) =>
+    options.onChange({ oreYield }),
+  );
+  const standardOreYield = (): ResourceYieldFactor | null => options.standardOreYield?.() ?? null;
   const weatherModes = options.weather.modes;
   const weatherChoices: Choice<WeatherMode>[] = WEATHER_MODES.map((mode) => ({
     value: mode,
@@ -367,14 +403,20 @@ export function gameRuleControls(options: GameRuleControlOptions) {
     'advanced',
   );
 
+  const inWindow = options.everyRuleInWindow === true;
+  const basicElements = [...mapElements, ...fogOfWar.elements, ...alliedVision.elements, ...peaceElements];
+
   /** The advanced rules as `rules` holds them, each flagged when the standard game plays it otherwise; a
    *  rule kept at the world's own reads standard. */
-  function advancedRead(rules: GameRules) {
+  function advancedRead(rules: GameRules, settings: FogSettings | null) {
     const weatherMode = rules.weather ?? STANDARD_ADVANCED.weather;
     const dayNightMode = rules.dayNight ?? STANDARD_ADVANCED.dayNight;
     return {
       weatherMode,
       dayNightMode,
+      // A switched-on rule reads as its name alone.
+      fogOfWar: { changed: inWindow && settings?.fogOfWar === true, label: options.fogOfWar.label },
+      alliedVision: { changed: inWindow && rules.alliedVision === true, label: options.alliedVision.label },
       progression: {
         changed: rules.progression === false,
         label: options.progression.label,
@@ -384,7 +426,17 @@ export function gameRuleControls(options: GameRuleControlOptions) {
       storage: {
         changed: rules.storageCapacity !== null,
         label: options.storage.label,
-        choice: storageLabel(rules.storageCapacity),
+        choice: storage.label(rules.storageCapacity),
+      },
+      basicYield: {
+        changed: rules.basicYield !== null,
+        label: options.basicYield.label,
+        choice: basicYield.label(rules.basicYield),
+      },
+      oreYield: {
+        changed: rules.oreYield !== standardOreYield(),
+        label: options.oreYield.label,
+        choice: oreYield.label(rules.oreYield),
       },
       weather: {
         changed: weatherMode !== STANDARD_ADVANCED.weather,
@@ -404,8 +456,15 @@ export function gameRuleControls(options: GameRuleControlOptions) {
     groups: [
       {
         title: options.advanced.rulesGroup,
-        rows: [...progression.elements, ...needs.elements, ...storage.elements],
+        rows: [
+          ...(options.mapRows ?? []),
+          ...(inWindow ? basicElements : []),
+          ...progression.elements,
+          ...needs.elements,
+          ...storage.elements,
+        ],
       },
+      { title: options.advanced.resourcesGroup, rows: [...basicYield.elements, ...oreYield.elements] },
       { title: options.advanced.worldGroup, rows: [...weather.elements, ...dayNight.elements] },
     ],
     reset(): void {
@@ -415,11 +474,17 @@ export function gameRuleControls(options: GameRuleControlOptions) {
       const restores = (rule: typeof progression): boolean =>
         rule.state.pending() === false && rule.state.claim(true);
       const change: Partial<GameRules> = {
+        ...(inWindow && fogOfWar.state.claim(false) ? { fog: fog.request({ fogOfWar: false }) } : {}),
+        ...(inWindow && alliedVision.state.claim(false) ? { alliedVision: false } : {}),
         ...(restores(progression) ? { progression: standard.progression } : {}),
         ...(restores(needs) ? { needs: standard.needs } : {}),
-        ...(storage.state.claim(storageChoiceId(standard.storageCapacity))
+        ...(storage.state.claim(factorChoiceId(standard.storageCapacity))
           ? { storageCapacity: standard.storageCapacity }
           : {}),
+        ...(basicYield.state.claim(factorChoiceId(standard.basicYield))
+          ? { basicYield: standard.basicYield }
+          : {}),
+        ...(oreYield.state.claim(factorChoiceId(standardOreYield())) ? { oreYield: standardOreYield() } : {}),
         ...(weather.state.claim(standard.weather) ? { weather: standard.weather } : {}),
         ...(dayNight.state.claim(standard.dayNight) ? { dayNight: standard.dayNight } : {}),
       };
@@ -428,8 +493,9 @@ export function gameRuleControls(options: GameRuleControlOptions) {
   });
 
   return {
-    /** The card's rows: the map, fog of war, the allies' shared map and the peace. */
-    basicElements: [...mapElements, ...fogOfWar.elements, ...alliedVision.elements, ...peaceElements],
+    /** The card's rows: the map, fog of war, the allies' shared map and the peace; none while the window
+     *  holds them. */
+    basicElements: inWindow ? [] : basicElements,
     /** The advanced entry: its button and the line naming what differs from the standard game. */
     advancedElements: advanced.elements,
     /** `note` says, while `disabled`, why nothing here can be changed. */
@@ -439,16 +505,28 @@ export function gameRuleControls(options: GameRuleControlOptions) {
       fogOfWar.update(settings?.fogOfWar ?? null, disabled);
       alliedVision.update(rules.alliedVision, disabled);
       peace?.update(peaceChoiceId(rules.peace), disabled);
-      const read = advancedRead(rules);
+      const read = advancedRead(rules, settings);
       progression.update(rules.progression, disabled, read.progression.changed);
       needs.update(rules.needs, disabled, read.needs.changed);
-      storage.update(storageChoiceId(rules.storageCapacity), disabled, read.storage.changed);
+      storage.update(factorChoiceId(rules.storageCapacity), disabled, read.storage.changed);
+      basicYield.update(factorChoiceId(rules.basicYield), disabled, read.basicYield.changed);
+      oreYield.update(factorChoiceId(rules.oreYield), disabled, read.oreYield.changed);
       weather.update(read.weatherMode, disabled, undefined, read.weather.changed);
       dayNight.update(read.dayNightMode, disabled, undefined, read.dayNight.changed);
-      const changes = [read.progression, read.needs, read.storage, read.weather, read.dayNight]
+      const changes = [
+        read.fogOfWar,
+        read.alliedVision,
+        read.progression,
+        read.needs,
+        read.storage,
+        read.basicYield,
+        read.oreYield,
+        read.weather,
+        read.dayNight,
+      ]
         .filter((rule) => rule.changed)
-        .map((rule) => `${rule.label}: ${rule.choice}`);
-      advanced.update(changes, disabled, note);
+        .map((rule) => ('choice' in rule ? `${rule.label}: ${rule.choice}` : rule.label));
+      advanced.update([...(options.mapChanges?.() ?? []), ...changes], disabled, note, changes.length > 0);
     },
     /** The room refused the last settings change; drop what the fog pair composed on top of it. */
     rejected: fog.reject,

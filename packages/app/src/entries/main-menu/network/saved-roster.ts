@@ -1,6 +1,7 @@
 import {
   type DayNightMode,
   parseSavedSessionMetadata,
+  type ResourceYieldFactor,
   type SessionSeat,
   type SessionWorld,
   type WeatherMode,
@@ -8,7 +9,12 @@ import {
 import type { RoomSeatSetup } from '@open-northland/net-protocol';
 import type { SaveGame } from '@open-northland/sim';
 import { mapSessionWorld, mapVariantParam } from '../../../game/map/variant.js';
-import { dayNightModeParam, weatherModeParam } from '../../../game/match/session-rules.js';
+import {
+  dayNightModeParam,
+  type ResourceYieldRule,
+  resourceYieldParam,
+  weatherModeParam,
+} from '../../../game/match/session-rules.js';
 import { mapSession, type SessionRosterSlot } from '../../../game/match/session-url.js';
 import { SAVED_COMPUTER_DIFFICULTY } from '../lobby/roster-state.js';
 
@@ -54,6 +60,14 @@ export function savedDayNightMode(save: SaveGame): DayNightMode | null {
   const saved = savedRoster(save);
   if (saved !== null) return saved.descriptor.rules.dayNight;
   return save.header.entry === null ? null : dayNightModeParam(new URLSearchParams(save.header.entry));
+}
+
+/** A resource richness a save's world was built under, read as {@link savedWeatherMode} reads the weather;
+ *  the restored world already holds its stock, so only the room shows it. */
+export function savedResourceYield(save: SaveGame, rule: ResourceYieldRule): ResourceYieldFactor | null {
+  const saved = savedRoster(save);
+  if (saved !== null) return saved.descriptor.rules[rule];
+  return save.header.entry === null ? null : resourceYieldParam(new URLSearchParams(save.header.entry), rule);
 }
 
 export function restoreSavedSeats(

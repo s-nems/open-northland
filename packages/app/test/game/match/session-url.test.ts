@@ -39,7 +39,9 @@ function session(search: string) {
 
 describe('mapSession', () => {
   it('reads the world, the seat, the seed, the rules and the tempo', () => {
-    const parsed = session('map=magiczny_las&player=1&seed=42&fog=recon-fow&needs=off&storage=3&speed=2');
+    const parsed = session(
+      'map=magiczny_las&player=1&seed=42&fog=recon-fow&needs=off&storage=3&basicyield=2&oreyield=5&speed=2',
+    );
     expect(parsed.world).toEqual({ kind: 'map', mapId: 'magiczny_las' });
     expect(parsed.localSeat).toBe(1);
     expect(parsed.seed).toBe(42);
@@ -48,6 +50,8 @@ describe('mapSession', () => {
       fog: FOG_MODE.RECON_FOG_OF_WAR,
       needs: false,
       storageCapacity: 3,
+      basicYield: 2,
+      oreYield: 5,
     });
     expect(parsed.speed).toBe(2);
   });

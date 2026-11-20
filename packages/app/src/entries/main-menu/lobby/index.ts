@@ -1,5 +1,5 @@
 import { isMultiplayerMapType, type MapVariantKind } from '@open-northland/data';
-import { chosenMapVariantParam } from '../../../game/map/variant.js';
+import { chosenMapVariantParam, oreYieldAcrossVariants, variantOreYield } from '../../../game/map/variant.js';
 import { drawSessionSeed } from '../../../game/match/session-url.js';
 import { messages } from '../../../i18n/index.js';
 import type { LaunchEntry } from '../../../launch.js';
@@ -99,6 +99,9 @@ export function lobbyScreen(
   const search = new URLSearchParams(window.location.search);
   const options = localLobbyOptions(search, item.types);
   let variant: MapVariantKind | null = chosenMapVariantParam(search, item.id);
+  // The player's own ore richness, given back when a variant that brings its own is turned off.
+  let ownOreYield = options.oreYield;
+  options.oreYield ??= variantOreYield(item.id, variant);
   let players = lobbyPlayers(item.id, item.players, variant);
   let lineup = mapItemLineup(item, players);
   const stance = seatStanceReader(item.relations);
@@ -111,17 +114,29 @@ export function lobbyScreen(
   start.textContent = lobby.start;
   const variantToggles = mapVariantToggles(
     item.id,
-    { names: lobby.variantNames, details: lobby.variantDetails },
+    { names: lobby.variantNames, details: lobby.variantDetails, writeDetails: true },
     variant,
     (next) => {
+      const ore = oreYieldAcrossVariants(item.id, variant, next, {
+        oreYield: options.oreYield,
+        own: ownOreYield,
+      });
+      options.oreYield = ore.oreYield;
+      ownOreYield = ore.own;
       variant = next;
+      optionsCard.paint();
       players = lobbyPlayers(item.id, item.players, variant);
       lineup = mapItemLineup(item, players);
       pickerSlot = null;
       update(rosters.get(rosterKey()) ?? initialLobbyState(players));
     },
   );
-  launchPanel.append(lobbyOptionsCard(options, isMultiplayerMapType(item.types), variantToggles), start);
+  const optionsCard = lobbyOptionsCard(options, isMultiplayerMapType(item.types), {
+    variants: variantToggles,
+    variantChanges: () => (variant === null ? [] : [lobby.variantNames[variant]]),
+    standardOreYield: () => variantOreYield(item.id, variant),
+  });
+  launchPanel.append(optionsCard.element, start);
   side.append(card.root, launchPanel);
 
   body.append(main, side);
@@ -259,5 +274,11 @@ export function lobbyScreen(
       launch(targetSearch(lobbyStartEntry(item.id, state, players, options, drawSessionSeed(), variant)));
   });
 
-  return { element: section, dispose: () => window.removeEventListener('keydown', onKeydown, true) };
+  return {
+    element: section,
+    dispose: () => {
+      window.removeEventListener('keydown', onKeydown, true);
+      optionsCard.dispose();
+    },
+  };
 }

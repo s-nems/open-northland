@@ -189,12 +189,24 @@ export const itSurfaces = {
           'Moltiplica lo spazio per ogni merce nei magazzini e nel Quartier generale. Le officine contengono quanto al solito.',
         factor: '×{factor}',
       },
+      basicYield: {
+        label: 'Risorse di base',
+        detail:
+          "Moltiplica il legno, i funghi, l'argilla e la pietra con cui iniziano gli alberi, i funghi e i giacimenti della mappa.",
+        factor: '×{factor}',
+      },
+      oreYield: {
+        label: 'Giacimenti',
+        detail: "Moltiplica il ferro e l'oro nei giacimenti della mappa.",
+        factor: '×{factor}',
+      },
       advanced: {
         label: 'Avanzate',
         title: 'Impostazioni avanzate',
         standard: 'Standard',
         changed: 'Modificate',
         rulesGroup: 'Regole di gioco',
+        resourcesGroup: 'Risorse',
         worldGroup: 'Mondo',
         reset: 'Ripristina predefiniti',
         done: 'Fatto',

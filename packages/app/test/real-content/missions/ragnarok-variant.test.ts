@@ -20,7 +20,6 @@ import { describe, expect, it } from 'vitest';
 import type { ContentIr } from '../../../src/content/ir/rows.js';
 import { buildMapWorld } from '../../../src/entries/map/world.js';
 import { mapSessionWorld, variantMap, variantMapScript } from '../../../src/game/map/variant.js';
-import { GATHERERS } from '../../../src/game/sandbox/ids/index.js';
 import { mapScriptWorld, resolveMissionScript } from '../../../src/game/world/mission-script.js';
 import { hasRealIr, loadContentUnderTest, rawIrUnderTest } from '../helpers.js';
 import { realMapPath, realMapScript, realMapSessionWorld } from '../real-map-world.js';
@@ -83,12 +82,6 @@ describe.runIf(hasRealIr())('Ragnarök on specjalna_forteca', () => {
     expect(after.tokenMismatches).toBe(before.tokenMismatches);
     expect(after.unresolvedNames).toEqual(before.unresolvedNames);
   });
-
-  it('multiplies only goods a map deposit spawns as', () => {
-    const variant = findMapVariant(MAP_ID, 'ragnarok');
-    const gathered = new Set(GATHERERS.map((g) => g.id));
-    expect(Object.keys(variant?.depositYield ?? {}).filter((good) => !gathered.has(good))).toEqual([]);
-  });
 });
 
 describe.runIf(hasRealIr())('a Ragnarök world on specjalna_forteca', () => {
@@ -110,33 +103,11 @@ describe.runIf(hasRealIr())('a Ragnarök world on specjalna_forteca', () => {
     return nodeOfPosition(at.x, at.y);
   }
 
-  /** The stock of the good's nodes the map itself places, by their placement join. */
-  function placedStock(sim: Simulation, goodType: number): number {
-    let total = 0;
-    for (const e of sim.world.query(components.Resource, components.LandscapeResource)) {
-      const resource = sim.world.get(e, components.Resource);
-      if (resource.goodType === goodType) total += resource.remaining;
-    }
-    return total;
-  }
-
   function goodType(sim: Simulation, id: string): number {
     const good = sim.content.goods.find((g) => g.id === id);
     if (good === undefined) throw new Error(`no good ${id}`);
     return good.typeId;
   }
-
-  it('starts every map-placed node of a boosted good, trees, stone and clay included, at the variant factor', async () => {
-    const yields = findMapVariant(MAP_ID, 'ragnarok')?.depositYield ?? {};
-    const [authored, ragnarok] = await worlds();
-    expect(Object.keys(yields)).toEqual(expect.arrayContaining(['gold', 'wood', 'stone', 'mud']));
-
-    for (const [good, factor] of Object.entries(yields)) {
-      const type = goodType(authored, good);
-      expect(placedStock(authored, type), good).toBeGreaterThan(0);
-      expect(placedStock(ragnarok, type), good).toBe(placedStock(authored, type) * factor);
-    }
-  });
 
   it('gives the plain clay and a grove near its headquarters, on free ground its people reach', async () => {
     const placed = findMapVariant(MAP_ID, 'ragnarok')?.landscapeObjects ?? [];

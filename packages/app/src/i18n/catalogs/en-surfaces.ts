@@ -173,12 +173,24 @@ export const enSurfaces = {
           'Multiplies the room for each good in warehouses and the Headquarters. Workshops hold as much as ever.',
         factor: '×{factor}',
       },
+      basicYield: {
+        label: 'Basic resources',
+        detail:
+          'Multiplies the wood, mushrooms, clay and stone that the trees, mushrooms and deposits on the map start with.',
+        factor: '×{factor}',
+      },
+      oreYield: {
+        label: 'Ore deposits',
+        detail: 'Multiplies the iron and gold in the deposits on the map.',
+        factor: '×{factor}',
+      },
       advanced: {
         label: 'Advanced',
         title: 'Advanced settings',
         standard: 'Standard',
         changed: 'Changed',
         rulesGroup: 'Game rules',
+        resourcesGroup: 'Resources',
         worldGroup: 'World',
         reset: 'Restore defaults',
         done: 'Done',

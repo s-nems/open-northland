@@ -250,7 +250,6 @@ describe('a start seat', () => {
 describe('assertMapVariantFitsMap', () => {
   /** In cells: a 20 x 10 half-cell grid. */
   const SIZE = { width: 10, height: 5 };
-  const GOODS = new Set(['wood']);
   const committed = MAP_VARIANTS.find((row) => row.escalation !== undefined)?.escalation;
   if (committed === undefined) throw new Error('no committed escalation to vary');
   const escalation: MapEscalation = committed;
@@ -267,18 +266,18 @@ describe('assertMapVariantFitsMap', () => {
       heroes: escalation.heroes.map((hero) => ({ ...hero, ...onMap })),
       ...(escalation.porters === undefined ? {} : { porters: { ...escalation.porters, ...onMap } }),
     };
-    return { ...VARIANT, depositYield: { wood: 2 }, escalation: change(fit) };
+    return { ...VARIANT, escalation: change(fit) };
   };
   const off = { x: 20, y: 0 };
 
-  it('passes a variant whose objects, points and goods all fit', () => {
+  it('passes a variant whose objects and points all fit', () => {
     const placed = { ...fitted((fit) => fit), landscapeObjects: [{ object: 'cedar 01', hx: 19, hy: 9 }] };
-    expect(() => assertMapVariantFitsMap(placed, SIZE, GOODS)).not.toThrow();
+    expect(() => assertMapVariantFitsMap(placed, SIZE)).not.toThrow();
   });
 
   it('refuses a placed object or an escalation point off the map', () => {
     const placed = { ...fitted((fit) => fit), landscapeObjects: [{ object: 'cedar 01', hx: 0, hy: 10 }] };
-    expect(() => assertMapVariantFitsMap(placed, SIZE, GOODS)).toThrow(/places cedar 01 at \(0, 10\)/);
+    expect(() => assertMapVariantFitsMap(placed, SIZE)).toThrow(/places cedar 01 at \(0, 10\)/);
     const [fitTarget] = fitted((fit) => fit).escalation.attacks.targets;
     if (fitTarget === undefined) throw new Error('no target');
     const offPoints = [
@@ -299,14 +298,8 @@ describe('assertMapVariantFitsMap', () => {
       fitted((fit) => (fit.porters === undefined ? fit : { ...fit, porters: { ...fit.porters, ...off } })),
     ];
     for (const variant of offPoints) {
-      expect(() => assertMapVariantFitsMap(variant, SIZE, GOODS)).toThrow(/at \(20, 0\) lies off the map/);
+      expect(() => assertMapVariantFitsMap(variant, SIZE)).toThrow(/at \(20, 0\) lies off the map/);
     }
-  });
-
-  it('refuses a deposit yield for a good the content lacks, unless no goods are known', () => {
-    const variant = { ...fitted((fit) => fit), depositYield: { gold: 3 } };
-    expect(() => assertMapVariantFitsMap(variant, SIZE, GOODS)).toThrow(/unknown good gold/);
-    expect(() => assertMapVariantFitsMap(variant, SIZE, null)).not.toThrow();
   });
 });
 

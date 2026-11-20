@@ -170,12 +170,23 @@ export const chtSurfaces = {
         detail: '成倍提高倉庫和大本營中每種貨物的存放空間。工坊容量不變。',
         factor: '×{factor}',
       },
+      basicYield: {
+        label: '基礎資源',
+        detail: '成倍提高地圖上樹木、蘑菇和礦藏初始的木材、蘑菇、黏土和石料儲量。',
+        factor: '×{factor}',
+      },
+      oreYield: {
+        label: '礦藏',
+        detail: '成倍提高地圖上礦藏中的鐵和金儲量。',
+        factor: '×{factor}',
+      },
       advanced: {
         label: '進階',
         title: '進階設定',
         standard: '標準',
         changed: '已變更',
         rulesGroup: '遊戲規則',
+        resourcesGroup: '資源',
         worldGroup: '世界',
         reset: '恢復預設值',
         done: '完成',

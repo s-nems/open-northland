@@ -11,6 +11,7 @@ const TEXT: AdvancedText = {
   standard: 'Standard',
   changed: 'Changed',
   rulesGroup: 'Game rules',
+  resourcesGroup: 'Resources',
   worldGroup: 'World',
   reset: 'Restore defaults',
   done: 'Done',

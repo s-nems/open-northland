@@ -25,7 +25,11 @@ import { playerTribe } from '../../game/map/roster.js';
 import { grantStartingPapers } from '../../game/map/starting-papers.js';
 import { resolveAiControlPolicy } from '../../game/match/ai-control-policy.js';
 import type { SeatTribeRemap } from '../../game/match/seat-tribes.js';
-import { applySessionRuleOverrides, type SimSessionRules } from '../../game/match/session-rules.js';
+import {
+  applySessionRuleOverrides,
+  depositYieldOf,
+  type SimSessionRules,
+} from '../../game/match/session-rules.js';
 import { PRIMARY_TRIBE } from '../../game/rules.js';
 import {
   resolveWorldContent,
@@ -95,8 +99,6 @@ export interface MapWorldOptions extends SimSessionRules {
   readonly demoOwner?: number;
   /** True as the entry runs it. The headless harness turns bushes off for scenarios that ignore food. */
   readonly berryBushes?: boolean;
-  /** The map variant's deposit yield factors by content good id; a good it leaves out keeps its yield. */
-  readonly depositYield?: Readonly<Record<string, number>>;
   /** The map variant's own harvestable objects, placed after the map's. */
   readonly landscapeObjects?: readonly MapVariantLandscapeObject[];
 }
@@ -322,7 +324,8 @@ function spawnHarvestables(
 ): Pick<MapWorld, 'harvestablePlacements' | 'pooledPlacements'> {
   const { map, ir } = options;
   if (map?.objects === undefined || ir === null) return { harvestablePlacements: [], pooledPlacements: [] };
-  const resources = spawnMapResources(sim, map.objects, ir, options.depositYield);
+  const depositYield = depositYieldOf(options);
+  const resources = spawnMapResources(sim, map.objects, ir, depositYield);
   const fields = spawnMapFields(sim, map.objects, ir);
   const chests = spawnMapChests(sim, map.objects, ir);
   const goods = spawnMapGroundGoods(sim, map.objects, ir);
@@ -335,7 +338,7 @@ function spawnHarvestables(
     new Set(options.absentSeats),
   );
   const bushes = options.berryBushes === false ? null : spawnMapBerryBushes(sim, map.objects, ir);
-  spawnVariantLandscapeObjects(sim, ir, options.landscapeObjects ?? [], options.depositYield);
+  spawnVariantLandscapeObjects(sim, ir, options.landscapeObjects ?? [], depositYield);
   return {
     harvestablePlacements: [...resources.placementByEntity, ...(bushes?.placementByEntity ?? [])],
     pooledPlacements: [

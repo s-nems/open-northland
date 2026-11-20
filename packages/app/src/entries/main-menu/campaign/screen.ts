@@ -22,6 +22,8 @@ import { replaceEntryUrl } from '../../../view/platform/navigation-guard.js';
 import { missionTargetSearch } from '../../../view/target-search.js';
 import { node } from '../dom.js';
 import { menuHudScale } from '../hud-scale.js';
+import { lobbyRules } from '../lobby/model.js';
+import { lobbyOptionsCard } from '../lobby/options-card.js';
 import type { MountedScreen } from '../model.js';
 import { campaignMap } from './map.js';
 import {
@@ -37,6 +39,7 @@ import {
   routeToReveal,
   unlockedStages,
 } from './model.js';
+import { CAMPAIGN_ORE_YIELD, readCampaignRules, rememberCampaignRules } from './rules.js';
 import './screen.css';
 import { contentUrl } from '../../../content/url.js';
 import { campaignTribeChoice } from './tribe-choice.js';
@@ -185,6 +188,13 @@ export function campaignTabBody(launch: LaunchEntry, silenceMusic: MusicSilencer
   let tribe: number = RECOMMENDED_CAMPAIGN_TRIBE;
   let busy = false;
   let asking = false;
+  // One card for every campaign: the rules carry over from mission to mission.
+  const rules = readCampaignRules(storage);
+  const rulesCard = lobbyOptionsCard(rules, false, {
+    entryOnly: true,
+    standardOreYield: () => CAMPAIGN_ORE_YIELD,
+    onChange: () => rememberCampaignRules(storage, rules),
+  });
 
   const setBusy = (next: boolean): void => {
     busy = next;
@@ -287,14 +297,17 @@ export function campaignTabBody(launch: LaunchEntry, silenceMusic: MusicSilencer
       const chosen = launchTribe(tribe);
       launch(
         missionTargetSearch(
-          campaignMissionQuery(
-            chosen === undefined ? { mapId, language } : { mapId, language, tribe: chosen },
-          ),
+          campaignMissionQuery({
+            mapId,
+            language,
+            rules: lobbyRules(rules),
+            ...(chosen === undefined ? {} : { tribe: chosen }),
+          }),
         ),
       );
     });
 
-    side.append(heading, list, start);
+    side.append(heading, list, rulesCard.element, start);
     aside.append(side);
     const mapColumn = node('div', 'campaign-screen__map-column');
     mapColumn.append(map.root, tribeChoice.root);
@@ -413,5 +426,11 @@ export function campaignTabBody(launch: LaunchEntry, silenceMusic: MusicSilencer
     },
     { signal: scope.signal },
   );
-  return { element: section, dispose: () => scope.abort() };
+  return {
+    element: section,
+    dispose: () => {
+      scope.abort();
+      rulesCard.dispose();
+    },
+  };
 }

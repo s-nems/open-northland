@@ -172,12 +172,24 @@ export const plSurfaces = {
           'Mnoży miejsce na każdy towar w magazynach i Kwaterze głównej. Warsztaty mieszczą tyle, co zwykle.',
         factor: '×{factor}',
       },
+      basicYield: {
+        label: 'Surowce podstawowe',
+        detail:
+          'Mnoży zapas drewna, grzybów, gliny i kamienia, z którym zaczynają drzewa, grzyby i złoża na mapie.',
+        factor: '×{factor}',
+      },
+      oreYield: {
+        label: 'Złoża',
+        detail: 'Mnoży zapas żelaza i złota w złożach na mapie.',
+        factor: '×{factor}',
+      },
       advanced: {
         label: 'Zaawansowane',
         title: 'Ustawienia zaawansowane',
         standard: 'Standardowe',
         changed: 'Zmienione',
         rulesGroup: 'Zasady gry',
+        resourcesGroup: 'Surowce',
         worldGroup: 'Świat',
         reset: 'Przywróć domyślne',
         done: 'Gotowe',

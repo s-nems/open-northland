@@ -11,7 +11,8 @@ import {
   type MapVariantKind,
   type TerrainMapFile,
 } from '@open-northland/data';
-import type { SessionWorld } from '@open-northland/lockstep';
+import type { ResourceYieldFactor, SessionRules, SessionWorld } from '@open-northland/lockstep';
+import { resourceYieldFactor } from '../match/session-rules.js';
 import type { MapScriptWorld } from '../world/build.js';
 
 /** `?variant=<kind>`: which committed variant of the map a launch plays; absent plays it as authored. */
@@ -85,4 +86,34 @@ export function variantScriptWorld(script: MapScriptWorld, world: SessionWorld):
 /** The map world a launch plays: `mapId` under `variant`, or as authored. */
 export function mapSessionWorld(mapId: string, variant: string | null): SessionWorld {
   return variant === null ? { kind: 'map', mapId } : { kind: 'map', mapId, variant };
+}
+
+/** The ore richness choosing `variant` of `mapId` sets; null for no variant or one that sets none. */
+export function variantOreYield(mapId: string, variant: string | null): ResourceYieldFactor | null {
+  const found = variant === null ? null : findMapVariant(mapId, variant);
+  return found?.oreYield === undefined ? null : resourceYieldFactor(found.oreYield);
+}
+
+/** The ore richness a session on `world` starts at by default: its variant's, else the authored stock. */
+export function sessionOreYield(world: SessionWorld): ResourceYieldFactor | null {
+  return world.kind === 'map' ? variantOreYield(world.mapId, world.variant ?? null) : null;
+}
+
+/** A lobby's ore richness after its variant changes from `from` to `to`, with the player's own choice
+ *  (`own`) it gives back when the new variant brings none; a choice made over a variant's own is the
+ *  player's too. */
+export function oreYieldAcrossVariants(
+  mapId: string,
+  from: string | null,
+  to: string | null,
+  choice: { readonly oreYield: ResourceYieldFactor | null; readonly own: ResourceYieldFactor | null },
+): { oreYield: ResourceYieldFactor | null; own: ResourceYieldFactor | null } {
+  const fromOre = variantOreYield(mapId, from);
+  const own = fromOre === null || choice.oreYield !== fromOre ? choice.oreYield : choice.own;
+  return { oreYield: variantOreYield(mapId, to) ?? own, own };
+}
+
+/** A new room's `rules` with the ore richness its world's variant brings, where the launch names none. */
+export function withVariantOreYield(rules: SessionRules, world: SessionWorld): SessionRules {
+  return { ...rules, oreYield: rules.oreYield ?? sessionOreYield(world) };
 }

@@ -366,7 +366,7 @@ export const ECONOMY: ArticleGroup = {
           },
         },
         {
-          p: "Un albero abbattuto resta a terra come tronco con {{gather.treeYield}} pezzi, e l'estrattore li porta via 1 alla volta. Ogni pezzo di una roccia o di un giacimento cade a terra lì accanto.",
+          p: "Un albero abbattuto resta a terra come tronco con {{gather.treeYield}} pezzi, e l'estrattore li porta via 1 alla volta. Ogni pezzo di una roccia o di un giacimento cade a terra lì accanto. Le impostazioni avanzate «Risorse di base» e «Giacimenti», scelte prima dell'inizio della partita, moltiplicano la scorta di alberi, funghi, rocce e giacimenti che la mappa colloca all'inizio.",
         },
         {
           h: 'Ferro e oro',

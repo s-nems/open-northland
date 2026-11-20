@@ -13,6 +13,7 @@ import {
   type GameSession,
   orderedSeats,
   type PeaceMinutes,
+  type ResourceYieldFactor,
   type SessionRules,
   type SessionSeat,
   type StorageCapacityFactor,
@@ -28,6 +29,7 @@ import { mapSessionWorld } from '../../../game/map/variant.js';
 import {
   dayNightModeParam,
   onOffParam,
+  resourceYieldParam,
   storageCapacityParam,
   weatherModeParam,
 } from '../../../game/match/session-rules.js';
@@ -65,6 +67,10 @@ export interface LobbyOptions {
   peace: PeaceMinutes | null;
   /** Null keeps the storage buildings' own sizes. */
   storageCapacity: StorageCapacityFactor | null;
+  /** Null keeps the authored stock of the map's wood, mushrooms, clay and stone. */
+  basicYield: ResourceYieldFactor | null;
+  /** Null keeps the authored stock of the map's iron and gold. */
+  oreYield: ResourceYieldFactor | null;
 }
 
 /** Progression and needs default on, so only an explicit `off` in the URL clears the box. Allied vision
@@ -81,6 +87,8 @@ export function initialLobbyOptions(params: URLSearchParams, alliedVision: boole
     alliedVision,
     peace: null,
     storageCapacity: storageCapacityParam(params),
+    basicYield: resourceYieldParam(params, 'basicYield'),
+    oreYield: resourceYieldParam(params, 'oreYield'),
   };
 }
 
@@ -95,6 +103,8 @@ export function lobbyRules(options: LobbyOptions): SessionRules {
     alliedVision: options.alliedVision,
     peace: options.peace,
     storageCapacity: options.storageCapacity,
+    basicYield: options.basicYield,
+    oreYield: options.oreYield,
   };
 }
 

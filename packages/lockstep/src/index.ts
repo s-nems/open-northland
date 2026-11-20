@@ -25,6 +25,8 @@ export {
   PEACE_MINUTES,
   type PeaceMinutes,
   parseGameSession,
+  RESOURCE_YIELD_FACTORS,
+  type ResourceYieldFactor,
   SEAT_MODES,
   type SeatMode,
   type SessionRules,

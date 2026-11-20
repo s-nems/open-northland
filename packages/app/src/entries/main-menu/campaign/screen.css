@@ -510,6 +510,58 @@
   transform: none;
 }
 
+/* The game settings (lobby/options-card.ts, entry only): one row in the panel's own style above Start,
+   opening the shared settings window. */
+.campaign-screen .main-menu__rules-entry {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--u) * 5);
+  padding-top: calc(var(--u) * 10);
+  border-top: 1px solid #7a5f4040;
+}
+
+.campaign-screen .main-menu__advanced-entry {
+  gap: calc(var(--u) * 8);
+  padding: calc(var(--u) * 7) calc(var(--u) * 10);
+  border: 1px solid var(--bronze-lo);
+  border-radius: 3px;
+  background: #c9a2620d;
+  color: var(--text-hi);
+  font: 700 calc(var(--u) * 14) / 1.2 var(--font-body);
+}
+
+.campaign-screen .main-menu__advanced-entry:hover:not(:disabled),
+.campaign-screen .main-menu__advanced-entry:focus-visible {
+  border-color: var(--bronze-hi);
+  background: #c9a2621a;
+}
+
+.campaign-screen .main-menu__advanced-entry:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.campaign-screen .main-menu__advanced-entry::after {
+  color: var(--bronze-hi);
+}
+
+.campaign-screen .main-menu__advanced-entry-state {
+  color: var(--muted);
+  font: 500 calc(var(--u) * 12) / 1.2 var(--font-body);
+}
+
+.campaign-screen .main-menu__advanced-entry.is-changed .main-menu__advanced-entry-state {
+  color: var(--bronze-hi);
+}
+
+.campaign-screen .main-menu__advanced-summary {
+  margin: 0;
+  padding-inline: calc(var(--u) * 2);
+  color: var(--muted);
+  font: 400 calc(var(--u) * 12) / 1.35 var(--font-body);
+}
+
 /* ---- Under the map: the nation centred; the alpha recovery at the panel's foot, far right ---- */
 
 .campaign-screen__map-column {

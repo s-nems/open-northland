@@ -107,13 +107,7 @@ export async function realMapWorld(options: RealMapWorldOptions): Promise<RealMa
         neverDies: script === null ? [] : neverDiesSeats(script),
       })
     ).filter((seat) => !options.absentSeats?.includes(seat)),
-    ...NO_RULE_OVERRIDES,
-    fog: options.rules?.fog ?? null,
-    progression: options.rules?.progression ?? null,
-    needs: options.rules?.needs ?? null,
-    alliedVision: options.rules?.alliedVision ?? null,
-    peace: options.rules?.peace ?? null,
-    storageCapacity: options.rules?.storageCapacity ?? null,
+    ...(options.rules ?? NO_RULE_OVERRIDES),
     berryBushes: options.berryBushes === true,
   });
   if (world.kind !== 'authored') throw new Error(`${options.mapId} resolved no authored placements`);

@@ -74,14 +74,9 @@ export function applyMapVariantScript(script: MapScript, variant: MapVariant): M
 
 /**
  * Throws when the variant does not fit the map it is played on: a placed object or an escalation point
- * off the map, whose `size` is in cells, or a deposit yield for a good `goodIds` lacks. Either means the
- * variant was written for another version of the map or its content. Null `goodIds` skips the goods.
+ * off the map, whose `size` is in cells, which means the variant was written for another version of it.
  */
-export function assertMapVariantFitsMap(
-  variant: MapVariant,
-  size: MapCells,
-  goodIds: ReadonlySet<string> | null,
-): void {
+export function assertMapVariantFitsMap(variant: MapVariant, size: MapCells): void {
   for (const row of variant.landscapeObjects) {
     if (!onMap(size, row.hx, row.hy))
       throw new Error(`${label(variant)}: places ${row.object} at (${row.hx}, ${row.hy}), off the map`);
@@ -89,10 +84,6 @@ export function assertMapVariantFitsMap(
   for (const [name, x, y] of escalationPoints(variant)) {
     if (!onMap(size, x, y))
       throw new Error(`${label(variant)}: the ${name} at (${x}, ${y}) lies off the map`);
-  }
-  if (goodIds === null) return;
-  for (const good of Object.keys(variant.depositYield)) {
-    if (!goodIds.has(good)) throw new Error(`${label(variant)}: yields more of unknown good ${good}`);
   }
 }
 

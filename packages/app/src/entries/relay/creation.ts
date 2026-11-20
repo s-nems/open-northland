@@ -3,7 +3,12 @@ import { MAX_ROOM_NAME_LENGTH, type RoomSeatSetup, type RoomSettings } from '@op
 import { loadMapScript } from '../../content/map/loader.js';
 import { mapFetch } from '../../content/map-source/index.js';
 import { assertMultiplayerMap } from '../../game/map/multiplayer.js';
-import { chosenMapVariantParam, mapSessionWorld, variantMapScript } from '../../game/map/variant.js';
+import {
+  chosenMapVariantParam,
+  mapSessionWorld,
+  variantMapScript,
+  withVariantOreYield,
+} from '../../game/map/variant.js';
 import { sessionRuleOverrides } from '../../game/match/session-rules.js';
 import { DEFAULT_SESSION_SPEED, drawSessionSeed, seedParam } from '../../game/match/session-url.js';
 import { floatParam } from '../../view/params.js';
@@ -31,7 +36,7 @@ export async function roomCreation(params: URLSearchParams, mapId: string): Prom
       name: mapId.slice(0, MAX_ROOM_NAME_LENGTH),
       world,
       seed: seedParam(params) ?? drawSessionSeed(),
-      rules: sessionRuleOverrides(params),
+      rules: withVariantOreYield(sessionRuleOverrides(params), world),
       speed: floatParam(params, 'speed', DEFAULT_SESSION_SPEED),
     },
     seats: (script === null ? [] : mapLobbySlots(script)).map((slot) => ({

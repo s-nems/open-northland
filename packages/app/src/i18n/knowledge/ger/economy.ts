@@ -356,7 +356,7 @@ export const ECONOMY: ArticleGroup = {
           },
         },
         {
-          p: 'Ein gefällter Baum bleibt als Stamm mit {{gather.treeYield}} Stück liegen, und der Abbauer trägt sie einzeln weg. Jedes Stück aus Fels oder Lagerstätte fällt daneben zu Boden.',
+          p: 'Ein gefällter Baum bleibt als Stamm mit {{gather.treeYield}} Stück liegen, und der Abbauer trägt sie einzeln weg. Jedes Stück aus Fels oder Lagerstätte fällt daneben zu Boden. Die erweiterten Einstellungen „Grundrohstoffe“ und „Erzvorkommen“, vor Spielbeginn gewählt, vervielfachen den Vorrat der Bäume, Pilze, Felsen und Lagerstätten, die die Karte zu Beginn setzt.',
         },
         {
           h: 'Eisen und Gold',

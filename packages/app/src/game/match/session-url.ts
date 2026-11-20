@@ -7,6 +7,7 @@ import {
   OBSERVER_SEAT,
   orderedSeats,
   type SeatMode,
+  type SessionRules,
   type SessionSeat,
 } from '@open-northland/lockstep';
 import { components } from '@open-northland/sim';
@@ -14,7 +15,7 @@ import { PLAYER_COLOR_COUNT } from '../../catalog/roster.js';
 import { floatParam, formatSearch, HUMAN_TRIBE_PARAM, intParam, seatListParam } from '../../view/params.js';
 import { fogModeName } from '../fog.js';
 import { MAP_VARIANT_PARAM, mapSessionWorld, mapVariantParam } from '../map/variant.js';
-import { sessionRuleOverrides } from './session-rules.js';
+import { RESOURCE_YIELD_PARAMS, sessionRuleOverrides } from './session-rules.js';
 
 /**
  * The URL adapter for a session: a `?map=` or `?scene=` search parses into a {@link GameSession}, and
@@ -161,20 +162,28 @@ export function sessionSearch(
     // Only a map takes its seed from the search; a scene's is its own, so writing one would lie.
     params.set('seed', String(session.seed));
   }
-  const fog = session.rules.fog === null ? null : fogModeName(session.rules.fog);
-  if (fog !== null) params.set('fog', fog);
-  if (session.rules.progression !== null) {
-    params.set('progression', session.rules.progression ? 'on' : 'off');
-  }
-  if (session.rules.needs !== null) params.set('needs', session.rules.needs ? 'on' : 'off');
-  if (session.rules.weather !== null) params.set('weathermode', session.rules.weather);
-  if (session.rules.dayNight !== null) params.set('daynight', session.rules.dayNight);
-  if (session.rules.alliedVision !== null)
-    params.set('alliedvision', session.rules.alliedVision ? 'on' : 'off');
-  if (session.rules.peace !== null) params.set('peace', String(session.rules.peace));
-  if (session.rules.storageCapacity !== null) params.set('storage', String(session.rules.storageCapacity));
+  writeSessionRuleParams(params, session.rules);
   if (session.speed !== DEFAULT_SESSION_SPEED) params.set('speed', String(session.speed));
   return params;
+}
+
+/** Writes the rules a session overrides as their launch params; a null rule writes none. */
+export function writeSessionRuleParams(params: URLSearchParams, rules: SessionRules): void {
+  const fog = rules.fog === null ? null : fogModeName(rules.fog);
+  if (fog !== null) params.set('fog', fog);
+  if (rules.progression !== null) {
+    params.set('progression', rules.progression ? 'on' : 'off');
+  }
+  if (rules.needs !== null) params.set('needs', rules.needs ? 'on' : 'off');
+  if (rules.weather !== null) params.set('weathermode', rules.weather);
+  if (rules.dayNight !== null) params.set('daynight', rules.dayNight);
+  if (rules.alliedVision !== null) params.set('alliedvision', rules.alliedVision ? 'on' : 'off');
+  if (rules.peace !== null) params.set('peace', String(rules.peace));
+  if (rules.storageCapacity !== null) params.set('storage', String(rules.storageCapacity));
+  for (const rule of ['basicYield', 'oreYield'] as const) {
+    const factor = rules[rule];
+    if (factor !== null) params.set(RESOURCE_YIELD_PARAMS[rule], String(factor));
+  }
 }
 
 /** `?player=N|observer`; an unusable value falls back to the default seat. */

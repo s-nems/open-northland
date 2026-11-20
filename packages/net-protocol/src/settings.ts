@@ -18,6 +18,8 @@ const RULE_FIELDS = keysOf<keyof SessionRules>({
   alliedVision: true,
   peace: true,
   storageCapacity: true,
+  basicYield: true,
+  oreYield: true,
 });
 
 export function sameSessionRules(a: SessionRules, b: SessionRules): boolean {
