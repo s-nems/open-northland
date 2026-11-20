@@ -98,7 +98,7 @@ export class DamageEffects {
   private readonly chips: Graphics[] = [];
   private readonly rubble: DamageRubble | undefined;
   private hitTick = -Infinity;
-  private readonly pose = { x: 0, y: 0, radius: 0, alpha: 0 };
+  private readonly pose = { x: 0, y: 0, radius: 0, alpha: 0, age: 0 };
   private lastHp: number | undefined;
 
   constructor(

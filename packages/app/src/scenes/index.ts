@@ -71,6 +71,7 @@ import { alchemyScene } from './economy/alchemy.js';
 import { chainScene } from './economy/chain.js';
 import { chestQueueScene } from './economy/chest-queue.js';
 import { chestsScene } from './economy/chests.js';
+import { chimneySmokeScene } from './economy/chimney-smoke.js';
 import { doorSignHeapsScene } from './economy/door-sign-heaps.js';
 import { farPostScene } from './economy/far-post.js';
 import { goodsCatalogScene } from './economy/goods-catalog.js';
@@ -260,6 +261,7 @@ export const SCENES: readonly SceneDefinition[] = [
   templeAuraScene,
   templeOilScene,
   idleWorkScene,
+  chimneySmokeScene,
   storeReachScene,
   storageFullScene,
   farPostScene,

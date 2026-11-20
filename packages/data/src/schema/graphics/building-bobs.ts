@@ -97,6 +97,25 @@ export const BuildingHolyFirePoint = z.strictObject({
 });
 export type BuildingHolyFirePoint = z.infer<typeof BuildingHolyFirePoint>;
 
+/** The fire under a chimney: a house's `hearth`, or the `forge` a workshop burns for its craft. */
+export const ChimneySmoke = z.enum(['hearth', 'forge']);
+export type ChimneySmoke = z.infer<typeof ChimneySmoke>;
+
+/** One `[GfxChimneys]` `GfxChimneyPoint <bobId> <x> <y> <smoke>` anchor: the top opening of a chimney drawn on body
+ * `bobId` of the section's `GfxBobLib`. The data pack authors the section, measured on the drawn bodies; a
+ * body may carry several chimneys and a body with no flue drawn has no row. */
+export const BuildingChimneyPoint = z.strictObject({
+  /** The body bob set, in the form the house records' `bmd` takes. */
+  bmd: z.string(),
+  bobId: z.number().int().nonnegative(),
+  /** Pixel offset from the body bob's draw anchor (+y down/toward the viewer). */
+  x: z.number().int(),
+  y: z.number().int(),
+  smoke: ChimneySmoke,
+  source: Provenance.optional(),
+});
+export type BuildingChimneyPoint = z.infer<typeof BuildingChimneyPoint>;
+
 /**
  * One `[GfxHouse]` animated state overlay: `GfxOverlay <sizeIdx> 4 <state> <x> <y> <step> <bobId…>` - a
  * sprite drawn on top of the finished body, with one frame list per state. The source uses it for the

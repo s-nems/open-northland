@@ -6,6 +6,7 @@ import {
   extractAtomicAnimations,
   extractBobSequences,
   extractBuildingBobs,
+  extractBuildingChimneyPoints,
   extractBuildingDoors,
   extractBuildingFlagPoints,
   extractBuildingFootprints,
@@ -95,6 +96,7 @@ export async function extractIniTables(roots: SourceRoots, sources: readonly Ini
   const buildingFlagPoints: ReturnType<typeof extractBuildingFlagPoints> = [];
   const buildingSoldierFlagPoints: ReturnType<typeof extractBuildingSoldierFlagPoints> = [];
   const buildingHolyFirePoints: ReturnType<typeof extractBuildingHolyFirePoints> = [];
+  const buildingChimneyPoints: ReturnType<typeof extractBuildingChimneyPoints> = [];
   const buildingGraphicsOverlays = {
     constructionCosts: new Map<number, GoodQuantity[]>(),
     hitpoints: new Map<number, ByTribe<number>>(),
@@ -111,6 +113,7 @@ export async function extractIniTables(roots: SourceRoots, sources: readonly Ini
     buildingFlagPoints.push(...extractBuildingFlagPoints(sections, src));
     buildingSoldierFlagPoints.push(...extractBuildingSoldierFlagPoints(sections, src));
     buildingHolyFirePoints.push(...extractBuildingHolyFirePoints(sections, src));
+    buildingChimneyPoints.push(...extractBuildingChimneyPoints(sections, src));
   };
 
   let ruleHouses: RuleSection[] = [];
@@ -184,6 +187,7 @@ export async function extractIniTables(roots: SourceRoots, sources: readonly Ini
     buildingFlagPoints,
     buildingSoldierFlagPoints,
     buildingHolyFirePoints,
+    buildingChimneyPoints,
     buildingGraphicsOverlays: { ...buildingGraphicsOverlays, recordFootprints },
   };
 }

@@ -665,6 +665,11 @@ export const plContent = {
       summary:
         'Świeży zbieracz przy drzewach, złożu kamienia i złożu żelaza. Kamień i glina są wyłączone, żelazo i złoto zablokowane do czasu zdobycia doświadczenia, więc lista Produkcja pokazuje obok siebie dobro zbierane, wyłączone i zablokowane, a on ścina tylko drzewa.',
     },
+    'chimney-smoke': {
+      title: 'Dym z kominów',
+      summary:
+        'Zaopatrzona piekarnia, kuźnia i garncarnia dymią z kominów, gdy ktoś pracuje w środku, i jeszcze chwilę po zakończeniu pracy. Piekarnia z pustymi półkami pozostaje zimna.',
+    },
     'idle-work': {
       title: 'Dlaczego pracownicy są bezczynni',
       summary:

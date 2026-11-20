@@ -9,6 +9,7 @@ export {
   type LiveRefs,
   type SpriteScene,
 } from './build/sprite-scene.js';
+export type { ChimneyLookup, ChimneyPoint, ChimneySmokeKind } from './chimney-smoke.js';
 export {
   drawPassDepth,
   drawPassOf,

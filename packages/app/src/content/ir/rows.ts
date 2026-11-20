@@ -1,4 +1,5 @@
 import type {
+  BuildingChimneyPoint,
   BuildingFootprint,
   BuildingHolyFirePoint,
   BuildingLandscapeOverlay,
@@ -238,6 +239,7 @@ export interface ContentIr {
    *  tower records. */
   readonly buildingSoldierFlagPoints?: readonly BuildingFlagPointRow[];
   readonly buildingHolyFirePoints?: readonly BuildingHolyFirePoint[];
+  readonly buildingChimneyPoints?: readonly BuildingChimneyPoint[];
   readonly gatheringPipeline?: readonly GatheringPipelineRow[];
   readonly landscapeGfx?: readonly LandscapeGfxRow[];
   /** The `[landscapetype]` logic table - `LandscapeGfxRow.logicType` joins onto it. */

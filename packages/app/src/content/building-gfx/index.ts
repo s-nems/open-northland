@@ -4,6 +4,7 @@
  */
 
 export * from './binding.js';
+export * from './chimneys.js';
 export * from './construction.js';
 export * from './craft-fx.js';
 export * from './doors.js';

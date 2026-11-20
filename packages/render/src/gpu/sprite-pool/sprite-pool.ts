@@ -13,6 +13,7 @@ import {
   type Viewport,
 } from '../../data/projection/index.js';
 import { SpriteDepthOrder } from '../../data/scene/build/depth-order.js';
+import { tendedHearthsOf } from '../../data/scene/chimney-smoke.js';
 import {
   buildSpriteScene,
   collectSpriteScene,
@@ -24,7 +25,12 @@ import {
   type SpriteDrawItem,
   type SpriteScene,
 } from '../../data/scene/index.js';
-import { DEFAULT_FACING, vehicleAfloat, vehicleLookFor } from '../../data/sprites/index.js';
+import {
+  DEFAULT_FACING,
+  resolveBuildingDraw,
+  vehicleAfloat,
+  vehicleLookFor,
+} from '../../data/sprites/index.js';
 import type { ElevationField } from '../../data/terrain/index.js';
 import type { ViewDetail } from '../../data/view-detail.js';
 import type { WindSway } from '../../data/weather/climate.js';
@@ -52,6 +58,7 @@ import { restoreStash, type StashedVisibility, stashHidden } from '../world-view
 import { hullDamageSeed, LayerBinder } from './bind-layers.js';
 import { FrameEpoch } from './bind-stamp.js';
 import { coatBody } from './blood-coats.js';
+import { type ChimneyHouse, ChimneySmoke } from './chimney-smoke.js';
 import { cullBox, type KindReach, type KindReaches, kindReaches } from './cull-reach.js';
 import { damageScaffoldLayers } from './layers/building.js';
 import { resolvesWithoutClock } from './layers/resolve.js';
@@ -95,6 +102,18 @@ import { SelectionEffects } from './selection-effects.js';
 const POOL_REAP_BUDGET = 32;
 
 const NO_REFS: ReadonlySet<number> = new Set();
+const NO_CHIMNEY_HOUSES: readonly ChimneyHouse[] = [];
+const NO_TENDED_HEARTHS: ReadonlyMap<number, number> = new Map();
+
+/** A finished building drawn on the map as it stands now: not a site, an upgrade or a fog ghost. */
+function standsFinished(item: SpriteDrawItem): boolean {
+  return (
+    item.builtPct === undefined &&
+    item.upgradePct === undefined &&
+    item.ghost !== true &&
+    item.portraitOnly !== true
+  );
+}
 
 /** The marked entities that draw an emphasis; a refused one draws plain. */
 function* drawnMarksOf(marks: ReadonlyMap<number, TargetTone> | undefined): Iterable<number> {
@@ -354,6 +373,8 @@ export class SpritePool {
     return pe?.attached === true ? pe : undefined;
   };
   private readonly damagedShips: DamagedShip[] = [];
+  private readonly chimneyHouses: ChimneyHouse[] = [];
+  private readonly chimneySmoke = new ChimneySmoke(() => this.buildingDamage.effectArt().smoke);
   private readonly shipDamage = new ShipDamage(() => this.buildingDamage.effectArt(), hullDamageSeed);
   private readonly shipBody = (ref: number): ShipBody | undefined => {
     const pe = this.damageSubject(ref);
@@ -405,6 +426,15 @@ export class SpritePool {
       frame.wind,
       frame.buildingDamage === true,
       frame.camera.scale ?? 1,
+    );
+    const chimneyHouses = frame.detail?.chimneySmoke === false ? NO_CHIMNEY_HOUSES : this.chimneyHouses;
+    this.chimneySmoke.draw(
+      chimneyHouses,
+      this.damageSubject,
+      // The index costs its upkeep from its first read on, so a view without chimneys never asks.
+      chimneyHouses.length > 0 ? tendedHearthsOf(frame.snapshot) : NO_TENDED_HEARTHS,
+      frame.tick + frame.alpha,
+      frame.wind,
     );
     this.sinkings.draw({
       camera: frame.camera,
@@ -1010,7 +1040,10 @@ export class SpritePool {
     this.damagedShips.length = 0;
     this.ships.length = 0;
     this.walkers.length = 0;
+    this.chimneyHouses.length = 0;
     const vehicles = this.sheet?.bindings.vehicle;
+    const houses = this.sheet?.bindings.building;
+    const chimneys = this.sheet?.chimneys;
     for (const item of items) {
       const kind = item.kind;
       if (kind === 'settler') {
@@ -1022,6 +1055,11 @@ export class SpritePool {
             hpFrac: item.hpFrac,
             ...(item.ghost === true ? { ghost: true } : {}),
           });
+        if (kind === 'building' && chimneys !== undefined && houses !== undefined && standsFinished(item)) {
+          const body = resolveBuildingDraw(houses, item);
+          const points = chimneys(body.layer, body.bob);
+          if (points !== undefined) this.chimneyHouses.push({ ref: item.ref, points });
+        }
       } else if (kind === 'vehicle' && vehicles !== undefined && item.portraitOnly !== true) {
         const look = vehicleLookFor(vehicles, item);
         if (item.hpFrac !== undefined) {
@@ -1429,6 +1467,7 @@ export class SpritePool {
    */
   destroy(): void {
     this.bloodCoats.setEnabled(false);
+    this.chimneySmoke.destroy();
     this.buildingDamage.destroy();
     this.shipDamage.destroy();
     this.sinkings.destroy();

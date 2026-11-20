@@ -103,6 +103,8 @@ export {
 export {
   buildScene,
   buildSpriteScene,
+  type ChimneyLookup,
+  type ChimneyPoint,
   type DrawItem,
   type FiringPost,
   type FiringPostLookup,

@@ -12,6 +12,7 @@ import { GfxAnimAtomic } from '../graphics/atomic-anims.js';
 import { BobSequenceSet } from '../graphics/bob-sequences.js';
 import {
   BuildingBob,
+  BuildingChimneyPoint,
   BuildingConstructionLayer,
   BuildingDoor,
   BuildingFlagPoint,
@@ -98,6 +99,8 @@ export const ContentSet = z.strictObject({
   buildingSoldierFlagPoints: z.array(BuildingFlagPoint).default([]),
   /** `[GfxHouse]` `GfxHolyFirePoint` anchors, including repeated flames on one building tier. */
   buildingHolyFirePoints: z.array(BuildingHolyFirePoint).default([]),
+  /** `[GfxChimneys]` anchors: the chimney openings of the building bodies. */
+  buildingChimneyPoints: z.array(BuildingChimneyPoint).default([]),
   tribes: z.array(TribeType).default([]),
   personalNames: z.array(PersonalNamePool).default([]),
   atomicAnimations: z.array(AtomicAnimation).default([]),

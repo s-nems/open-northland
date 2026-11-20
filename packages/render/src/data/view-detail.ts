@@ -31,6 +31,8 @@ export interface ViewDetail {
   readonly landscapeShadows: boolean;
   /** Sign chains at doors and construction stands. Garrison flags stay: they tell who holds a tower. */
   readonly buildingSigns: boolean;
+  /** The smoke over the chimneys of houses someone works or eats in. */
+  readonly chimneySmoke: boolean;
 }
 
 /** Sim ticks one shore-wave frame holds while a tier stills the environment. */
@@ -65,6 +67,7 @@ export const VIEW_DETAILS: Readonly<Record<DetailTier, ViewDetail>> = {
     amuletArcs: true,
     landscapeShadows: true,
     buildingSigns: true,
+    chimneySmoke: true,
   },
   reduced: {
     tier: 'reduced',
@@ -76,6 +79,7 @@ export const VIEW_DETAILS: Readonly<Record<DetailTier, ViewDetail>> = {
     amuletArcs: true,
     landscapeShadows: true,
     buildingSigns: true,
+    chimneySmoke: true,
   },
   sparse: {
     tier: 'sparse',
@@ -87,6 +91,7 @@ export const VIEW_DETAILS: Readonly<Record<DetailTier, ViewDetail>> = {
     amuletArcs: false,
     landscapeShadows: false,
     buildingSigns: true,
+    chimneySmoke: true,
   },
   minimal: {
     tier: 'minimal',
@@ -98,6 +103,7 @@ export const VIEW_DETAILS: Readonly<Record<DetailTier, ViewDetail>> = {
     amuletArcs: false,
     landscapeShadows: false,
     buildingSigns: false,
+    chimneySmoke: false,
   },
 };
 

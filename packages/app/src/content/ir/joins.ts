@@ -27,7 +27,8 @@ export function playerPaletteAtlasStem(bmd: string, player: number): string {
   return `${bmdAtlasBase(bmd)}.player_${String(player).padStart(2, '0')}`;
 }
 
-function bmdAtlasBase(bmd: string): string {
+/** The bob set a `bmd` path names: the stem every palette of its served atlases shares. */
+export function bmdAtlasBase(bmd: string): string {
   return bmd.slice(bmd.lastIndexOf('/') + 1).replace(/\.bmd$/i, '');
 }
 

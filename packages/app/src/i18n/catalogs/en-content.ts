@@ -667,6 +667,11 @@ export const enContent = {
       summary:
         'A novice extractor beside trees, a stone deposit and an iron deposit. Quarrystone and clay are stopped, iron and gold are locked until he gains experience, so his Production list shows a gathered, a stopped and a locked good side by side, and he fells only the trees.',
     },
+    'chimney-smoke': {
+      title: 'Smoke from chimneys',
+      summary:
+        'The stocked bakery, smithy and pottery smoke from their chimneys while someone crafts inside, and a little longer after the work stops. The bakery with bare shelves stays cold.',
+    },
     'idle-work': {
       title: 'Why workers are idle',
       summary:

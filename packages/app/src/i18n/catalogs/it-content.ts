@@ -671,6 +671,11 @@ export const itContent = {
       summary:
         'Un estrattore principiante accanto ad alberi, un giacimento di pietra e uno di ferro. Pietra grezza e argilla sono sospese, ferro e oro bloccati finché non acquisisce esperienza, quindi la sua lista Produzione mostra fianco a fianco una merce raccolta, una sospesa e una bloccata, e lui abbatte solo gli alberi.',
     },
+    'chimney-smoke': {
+      title: 'Fumo dai camini',
+      summary:
+        "Il forno, la fucina e la bottega del vasaio riforniti fumano dai camini mentre qualcuno lavora all'interno, e ancora per un po' dopo. Il forno con gli scaffali vuoti resta freddo.",
+    },
     'idle-work': {
       title: 'Perché i lavoratori sono inattivi',
       summary:

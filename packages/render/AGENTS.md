@@ -20,7 +20,7 @@ src under `test/data/` and `test/gpu/`; shared helpers live in `test/support/`.
 | `gpu/world-renderer/` | the renderer, pass order, depth-sorted layer, post effects |
 | `gpu/world-batch/` | batched world sprites, their shader and attribute buffer |
 | `gpu/textures/`, `gpu/shaders/`, `gpu/pixel-art/` | texture caches and atlas pages; program catalog and warm-up; magnifiers and page prescalers |
-| `gpu/sprite-pool/` | pooled entity sprites; `layers/` atlas layer resolution, `picking/` hit tests, `presentation/` inter-tick motion |
+| `gpu/sprite-pool/` | pooled entity sprites and the chimney smoke over houses in use; `layers/` atlas layer resolution, `picking/` hit tests, `presentation/` inter-tick motion |
 | `gpu/terrain/`, `gpu/map-objects/`, `gpu/still-mesh/`, `gpu/paletted-sprite/` | ground layers and shading; decor batch; still meshes; paletted sprites |
 | `gpu/overlays/` | marker layers over the world; `building-signs/` badges, flags and construction signs |
 | `gpu/placement/`, `gpu/selection/`, `gpu/world-views/` | placement wash, ghost and its plot, construction-site plots, planned nodes; selection styles and rings; portrait insets and map views |

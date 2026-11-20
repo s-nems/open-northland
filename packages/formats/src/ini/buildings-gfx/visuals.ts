@@ -4,6 +4,7 @@
  */
 import {
   BuildingBob,
+  BuildingChimneyPoint,
   BuildingConstructionLayer,
   BuildingDoor,
   BuildingFlagPoint,
@@ -209,6 +210,47 @@ export function extractBuildingHolyFirePoints(
           x,
           y,
           source: makeSource(src, 'GfxHouse'),
+        }),
+      );
+    }
+  }
+  return points;
+}
+
+/** The section the data pack lists chimney openings under, one per body bob set. */
+const CHIMNEY_SECTION = 'GfxChimneys';
+
+/** The fire a `GfxChimneyPoint` line's fourth value names. */
+const CHIMNEY_SMOKE = ['hearth', 'forge'] as const;
+
+/**
+ * Extracts the chimney openings, `GfxChimneyPoint <bobId> <x> <y> <smoke>` under a `[GfxChimneys]` section
+ * whose `GfxBobLib` names the body bob set; `smoke` is 0 for a hearth and 1 for a workshop fire. Repeated
+ * points on one bob are its separate chimneys.
+ */
+export function extractBuildingChimneyPoints(
+  sections: readonly RuleSection[],
+  src: SourceRef,
+): BuildingChimneyPoint[] {
+  const points: BuildingChimneyPoint[] = [];
+  for (const sec of sections) {
+    if (sec.name !== CHIMNEY_SECTION) continue;
+    const bmd = getStr(sec, 'GfxBobLib');
+    if (bmd === undefined || bmd.trim() === '') continue;
+    for (const p of findProps(sec, 'GfxChimneyPoint')) {
+      const [bobId, x, y, kind] = p.values.map((v) => Number.parseInt(v, 10));
+      if (bobId === undefined || x === undefined || y === undefined) continue;
+      if ([bobId, x, y].some((n) => Number.isNaN(n)) || bobId < 0) continue;
+      const smoke = kind === undefined ? undefined : CHIMNEY_SMOKE[kind];
+      if (smoke === undefined) continue;
+      points.push(
+        BuildingChimneyPoint.parse({
+          bmd: normalizeAssetPath(bmd),
+          bobId,
+          x,
+          y,
+          smoke,
+          source: makeSource(src, CHIMNEY_SECTION),
         }),
       );
     }

@@ -499,6 +499,15 @@ describe.runIf(hasRealIr())('real IR invariants', () => {
     }
   });
 
+  it('places every chimney on a body some finished house draws', () => {
+    const ir = rawIrUnderTest() as ContentIr;
+    const chimneys = ir.buildingChimneyPoints ?? [];
+    expect(chimneys.length).toBeGreaterThan(0);
+    const drawn = new Set((ir.buildingBobs ?? []).map((bob) => `${bob.bmd}:${bob.bobId}`));
+    for (const row of chimneys)
+      expect(drawn.has(`${row.bmd}:${row.bobId}`), `${row.bmd} ${row.bobId}`).toBe(true);
+  });
+
   it('replaces a finial only on a tower record that flies a garrison flag', () => {
     const ir = rawIrUnderTest() as ContentIr;
     // A renamed record would silently leave its finial standing under the flag.

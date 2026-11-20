@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { SMOKE_PUFF_PERIOD_TICKS, SMOKE_RISE_PX, smokePuff } from '../../../src/data/effects/index.js';
+import {
+  SMOKE_PUFF_PERIOD_TICKS,
+  SMOKE_RISE_PX,
+  smokePuff,
+  smokeWindBlow,
+} from '../../../src/data/effects/index.js';
 
 describe('smokePuff in weather wind', () => {
   const OLD_PUFF_TICK = SMOKE_PUFF_PERIOD_TICKS - 1;
@@ -21,6 +26,18 @@ describe('smokePuff in weather wind', () => {
     expect(left.x).toBeLessThan(still.x - SMOKE_RISE_PX / 2);
     expect(right.y).toBeGreaterThan(still.y);
     expect(right.y).toBeLessThan(0);
+  });
+});
+
+describe('smokeWindBlow', () => {
+  it("sums over a puff's life to the lean and flattening of a steady wind", () => {
+    const wind = { strength: 0.7, direction: -1, gust: 0.5 };
+    const calm = { ...smokePuff(3, 0, 1, 11) };
+    const windy = smokePuff(3, 0, 1, 11, wind);
+    const first = { ...smokeWindBlow(wind, 0, calm.age / 2) };
+    const rest = smokeWindBlow(wind, calm.age / 2, calm.age);
+    expect(calm.x + first.x + rest.x).toBeCloseTo(windy.x);
+    expect(calm.y + first.y + rest.y).toBeCloseTo(windy.y);
   });
 });
 

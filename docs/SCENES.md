@@ -260,6 +260,11 @@ work at the flag and carry wood, leather, meat and fish home, and the tree by th
 Select any of them to move or take away the flag from the Area row or the action ring; without it the
 extractor fells the near tree and the other two stand idle by the headquarters.
 
+`?scene=chimney-smoke` places a stocked bakery, smithy and pottery and, below them, a manned bakery
+with bare shelves. Smoke rises from each chimney of a workshop soon after its worker starts crafting
+inside, keeps rising between two products and dies down some seconds after the shelves run empty; the
+bare bakery's chimney stays cold. Change the weather to see the plumes lean with the wind.
+
 `?scene=idle-work` places three bakeries and a collector on empty grass. Ingrid's bakery lacks water
 and flour; Sigrid has bread production set to zero; Freya's bread shelf is full; Bjorn has no resources
 to collect. Select a worker or bakery and hover or keyboard-focus the status strip to read the full

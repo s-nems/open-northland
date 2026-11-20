@@ -119,7 +119,7 @@ function facedTargetOf(components: Readonly<Record<string, unknown>>): number | 
 }
 
 /** Add `step` to `id`'s reference count, dropping an id no actor references any more. */
-function countTarget(counts: Map<number, number>, id: number | null, step: number): void {
+export function countTarget(counts: Map<number, number>, id: number | null, step: number): void {
   if (id === null) return;
   const left = (counts.get(id) ?? 0) + step;
   if (left > 0) counts.set(id, left);
@@ -138,7 +138,7 @@ function countTargetsOf(counts: Map<number, number>, entity: EntitySnapshot, ste
 }
 
 /** Move one reference from `before` to `after`, leaving the counts alone when the id is unchanged. */
-function moveTarget(counts: Map<number, number>, before: number | null, after: number | null): void {
+export function moveTarget(counts: Map<number, number>, before: number | null, after: number | null): void {
   if (before === after) return;
   countTarget(counts, before, -1);
   countTarget(counts, after, 1);

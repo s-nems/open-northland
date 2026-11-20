@@ -35,6 +35,31 @@ export interface SmokePuffPose {
   readonly y: number;
   readonly radius: number;
   readonly alpha: number;
+  /** How far through its rise loop the puff is, 0 at birth to 1 at dissolve. */
+  readonly age: number;
+}
+
+/** World px a puff at the end of its rise stands downwind in a steady `wind`, signed like its direction. */
+function fullLean(wind: WindSway | undefined): number {
+  if (wind === undefined || wind.strength === 0) return 0;
+  return wind.direction * wind.strength * (1 + SMOKE_GUST_STRETCH * wind.gust) * SMOKE_WIND_DRIFT_PX;
+}
+
+/**
+ * What `wind` adds to a puff's calm pose while it ages from `from` to `to` of its loop, in emitter-local
+ * world px: the step of the lean and flattening {@link smokePuff} gives a steady wind. A producer that
+ * sums these steps per puff keeps each puff where the wind left it, so a plume never swings back when
+ * the wind drops or turns.
+ */
+export function smokeWindBlow(
+  wind: WindSway | undefined,
+  from: number,
+  to: number,
+  out = { x: 0, y: 0 },
+): { x: number; y: number } {
+  out.x = fullLean(wind) * (to ** SMOKE_WIND_BEND - from ** SMOKE_WIND_BEND);
+  out.y = SMOKE_RISE_PX * SMOKE_WIND_FLATTEN * (wind?.strength ?? 0) * (to - from);
+  return out;
 }
 
 /**
@@ -49,7 +74,7 @@ export function smokePuff(
   puff: number,
   tick: number,
   wind?: WindSway,
-  out = { x: 0, y: 0, radius: 0, alpha: 0 },
+  out = { x: 0, y: 0, radius: 0, alpha: 0, age: 0 },
 ): SmokePuffPose {
   const phase =
     (puff * SMOKE_PUFF_PERIOD_TICKS) / SMOKE_PUFFS_PER_EMITTER +
@@ -59,12 +84,9 @@ export function smokePuff(
   const t = age / SMOKE_PUFF_PERIOD_TICKS;
   const drift = (frac(seed, emitter * 13 + puff * 3) - 0.5) * 2 * SMOKE_DRIFT_PX;
   const strength = wind?.strength ?? 0;
-  const downwind =
-    strength === 0 || wind === undefined
-      ? 0
-      : wind.direction * strength * (1 + SMOKE_GUST_STRETCH * wind.gust) * SMOKE_WIND_DRIFT_PX;
-  out.x = drift * t + downwind * t ** SMOKE_WIND_BEND;
+  out.x = drift * t + fullLean(wind) * t ** SMOKE_WIND_BEND;
   out.y = -SMOKE_RISE_PX * t * (1 - SMOKE_WIND_FLATTEN * strength);
+  out.age = t;
   out.radius = SMOKE_MIN_R + (SMOKE_MAX_R - SMOKE_MIN_R) * t;
   // Both ends fade to zero, so the loop has no visible birth seam.
   out.alpha = Math.min(1, t * 4) * (1 - t * t) * SMOKE_PEAK_ALPHA;

@@ -669,6 +669,11 @@ export const deContent = {
       summary:
         'Ein unerfahrener Abbauer steht neben Bäumen, einem Stein- und einem Eisenvorkommen. Der Abbau von Bruchstein und Lehm ist gestoppt, Eisen und Gold sind gesperrt, bis er Erfahrung gewinnt. Seine Produktionsliste zeigt so eine abgebaute, eine gestoppte und eine gesperrte Ware nebeneinander, und er fällt nur die Bäume.',
     },
+    'chimney-smoke': {
+      title: 'Rauch aus Schornsteinen',
+      summary:
+        'Die versorgte Bäckerei, Schmiede und Töpferei rauchen aus ihren Schornsteinen, solange drinnen gearbeitet wird, und noch kurz danach. Die Bäckerei mit leeren Regalen bleibt kalt.',
+    },
     'idle-work': {
       title: 'Warum Arbeiter untätig sind',
       summary:

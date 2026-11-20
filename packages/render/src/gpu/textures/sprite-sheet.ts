@@ -147,4 +147,6 @@ export interface SpriteSheet {
   readonly holyFire?: import('../../data/scene/holy-fire.js').HolyFireLookup;
   /** The measured firing posts garrison shots leave from. */
   readonly firingPosts?: FiringPostLookup;
+  /** Where the building bodies' chimneys smoke from; absent draws no chimney smoke. */
+  readonly chimneys?: import('../../data/scene/chimney-smoke.js').ChimneyLookup;
 }

@@ -64,6 +64,7 @@ export {
   SMOKE_RISE_PX,
   type SmokePuffPose,
   smokePuff,
+  smokeWindBlow,
 } from './smoke.js';
 export {
   CRESTS_PER_ARM,

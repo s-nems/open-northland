@@ -66,6 +66,7 @@ export async function buildIr(roots: SourceRoots): Promise<ContentSet> {
     buildingFlagPoints,
     buildingSoldierFlagPoints,
     buildingHolyFirePoints,
+    buildingChimneyPoints,
     buildingGraphicsOverlays,
   } = await extractIniTables(roots, await resolveIniSources(roots));
   const { jobGraphics, jobChanges } = await loadJobGraphics(roots);
@@ -153,6 +154,7 @@ export async function buildIr(roots: SourceRoots): Promise<ContentSet> {
     buildingFlagPoints,
     buildingSoldierFlagPoints,
     buildingHolyFirePoints,
+    buildingChimneyPoints,
     tribes,
     personalNames: PERSONAL_NAMES.filter((pool) => tribes.some((tribe) => tribe.typeId === pool.tribe)),
     atomicAnimations,

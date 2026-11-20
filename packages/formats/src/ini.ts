@@ -30,6 +30,7 @@ export {
 export {
   type ByTribe,
   extractBuildingBobs,
+  extractBuildingChimneyPoints,
   extractBuildingDoors,
   extractBuildingFlagPoints,
   extractBuildingFootprints,

@@ -9,6 +9,7 @@ import { loadBobAtlasSet } from '../bob-atlases.js';
 import {
   BUILDING_SCALE,
   buildCraftFxBinding,
+  chimneyLookup,
   craftFxAtlasStems,
   firingPostLookup,
   HOUSE_ATLAS,
@@ -267,6 +268,7 @@ export async function loadHumanSpriteSheet(
     inHousePrograms: inHouseProgramLookup(ir, goods),
     ...(craftFxBinding?.byName[HOLY_FIRE_EFFECT_NAME] !== undefined ? { holyFire: holyFireLookup(ir) } : {}),
     firingPosts: firingPostLookup(ir),
+    chimneys: chimneyLookup(ir),
     ...(characters !== undefined ? { characters } : {}),
     ...(vehicles.palette !== undefined ? { vehiclePalette: vehicles.palette } : {}),
     // Human palette LUT: present ⇒ the characters are the indexed atlas and the pool paints each through

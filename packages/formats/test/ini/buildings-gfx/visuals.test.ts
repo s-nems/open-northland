@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   extractBuildingBobs,
+  extractBuildingChimneyPoints,
   extractBuildingDoors,
   extractBuildingFlagPoints,
   extractBuildingGraphics,
@@ -546,6 +547,39 @@ describe('extractBuildingGraphics', () => {
   });
 });
 
+describe('extractBuildingChimneyPoints', () => {
+  const src = { file: 'rules/buildings/houses.ini', layer: 'mod' as const };
+
+  it('reads every chimney of a body with its fire, under the bob set its section names', () => {
+    const points = extractBuildingChimneyPoints(
+      parseIniSections(`[GfxHouse]
+EditName "viking pottery"
+GfxChimneyPoint 7 7 7
+
+[GfxChimneys]
+GfxBobLib "data\\engine2d\\bin\\bobs\\LS_Houses_Viking2.bmd"
+GfxChimneyPoint 10 2 -128 1
+GfxChimneyPoint 10 109 -88 1
+GfxChimneyPoint 220 97 -178 0
+GfxChimneyPoint -1 3 3 1
+GfxChimneyPoint 150 4 4
+GfxChimneyPoint 150 5 5 2
+
+[GfxChimneys]
+GfxChimneyPoint 0 1 1 0
+`),
+      src,
+    );
+
+    const bmd = 'data/engine2d/bin/bobs/ls_houses_viking2.bmd';
+    expect(points.map(({ source: _source, ...point }) => point)).toEqual([
+      { bmd, bobId: 10, x: 2, y: -128, smoke: 'forge' },
+      { bmd, bobId: 10, x: 109, y: -88, smoke: 'forge' },
+      { bmd, bobId: 220, x: 97, y: -178, smoke: 'hearth' },
+    ]);
+  });
+});
+
 it('reads no house graphics from the logic-only house tables', () => {
   const src = { file: 'budynki12/houses/houses.ini', block: 'GfxHouse', layer: 'mod' as const };
   const sections = parseIniSections(HOUSES_INI);
@@ -554,6 +588,7 @@ it('reads no house graphics from the logic-only house tables', () => {
     extractBuildingOverlays,
     extractBuildingFlagPoints,
     extractBuildingHolyFirePoints,
+    extractBuildingChimneyPoints,
     extractBuildingBobs,
   ])
     expect(extract(sections, src)).toEqual([]);
