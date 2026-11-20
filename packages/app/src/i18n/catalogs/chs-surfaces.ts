@@ -219,6 +219,12 @@ export const chsSurfaces = {
       spriteSmoothingTip: '平滑本项目自制角色的边缘以及缩小显示的世界图像。不影响文字渲染。',
       postFx: '后期处理',
       postFxTip: '叠加在世界画面上的暗角和暖色调色。',
+      occlusionFill: '被遮挡单位的填充',
+      occlusionFillTip:
+        '站在建筑、城墙或树木后的单位，会以其队伍颜色的半透明填充显示在遮挡物之上。同时开启轮廓时，填充在轮廓下变浅。Tab键切换透视：按一次让屏幕上所有树木和建筑变为半透明，再按一次恢复。',
+      occlusionOutline: '被遮挡单位的轮廓',
+      occlusionOutlineTip:
+        '站在建筑、城墙或树木后的单位，会以其队伍颜色的轮廓显示在遮挡物之上。Tab键切换透视：按一次让屏幕上所有树木和建筑变为半透明，再按一次恢复。',
       integerScaling: '整数缩放',
       integerScalingTip:
         '仅以整数级缩放（½×、1×、2×、3×…），使图像的每个像素都占据整数个屏幕像素，不会被小数比例重新采样。视图在各级之间直接切换，而非平滑过渡。',
@@ -413,6 +419,7 @@ export const chsSurfaces = {
         attackMove: '攻击移动',
         dockShips: '停靠所选船只',
         hudToggle: '隐藏/显示界面',
+        revealToggle: '透视开关',
         speedCycle: '游戏速度 ×1 / ×2 / ×3',
         loadGame: '载入游戏',
         saveGame: '保存游戏',

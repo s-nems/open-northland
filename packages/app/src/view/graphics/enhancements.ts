@@ -10,6 +10,8 @@ const ENHANCEMENT_FIELDS: Readonly<Record<keyof WorldEnhancements, true>> = {
   groundedBuildings: true,
   buildingDamage: true,
   dayNight: true,
+  occlusionFill: true,
+  occlusionOutline: true,
 };
 
 /** Every enhancement the Graphics settings own. */
@@ -26,10 +28,19 @@ export function enhancementsOf(settings: WorldEnhancements): WorldEnhancements {
     groundedBuildings: settings.groundedBuildings,
     buildingDamage: settings.buildingDamage,
     dayNight: settings.dayNight,
+    occlusionFill: settings.occlusionFill,
+    occlusionOutline: settings.occlusionOutline,
   };
 }
 
 /** The renderer's detail mode under the player's distant-detail setting. */
 export function detailModeOf(distantDetail: boolean): DetailMode {
   return distantDetail ? 'full' : 'automatic';
+}
+
+/** The enhancements a mounted game draws: while the HUD chrome hides (F8), the ghost marks stay off
+ *  with the reveal and cover fades they carry, so a screenshot or a recording gets the plain world.
+ *  The stored settings keep their values; showing the chrome applies them again. */
+export function drawnEnhancementsOf(settings: WorldEnhancements, chromeHidden: boolean): WorldEnhancements {
+  return chromeHidden ? { ...settings, occlusionFill: false, occlusionOutline: false } : settings;
 }

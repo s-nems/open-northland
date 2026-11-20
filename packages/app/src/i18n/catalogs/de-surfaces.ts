@@ -261,6 +261,12 @@ export const deSurfaces = {
         'Glättet die Kanten eigener Figurengrafiken und verkleinerter Weltgrafiken. Die Textdarstellung bleibt unverändert.',
       postFx: 'Nachbearbeitung',
       postFxTip: 'Legt eine Vignette und warme Farbtöne über die Spielwelt.',
+      occlusionFill: 'Füllung verdeckter Einheiten',
+      occlusionFillTip:
+        'Zeigt eine Einheit hinter einem Gebäude, einer Mauer oder einem Baum als halbtransparente Füllung in ihrer Teamfarbe über dem Verdeckenden. Ist auch der Umriss an, wird die Füllung unter dem Umriss heller. Die Tab-Taste schaltet die Durchsicht um: ein Druck macht alle Bäume und Gebäude auf dem Bildschirm durchsichtig, ein weiterer schaltet zurück.',
+      occlusionOutline: 'Umriss verdeckter Einheiten',
+      occlusionOutlineTip:
+        'Zeigt eine Einheit hinter einem Gebäude, einer Mauer oder einem Baum als Umriss in ihrer Teamfarbe über dem Verdeckenden. Die Tab-Taste schaltet die Durchsicht um: ein Druck macht alle Bäume und Gebäude auf dem Bildschirm durchsichtig, ein weiterer schaltet zurück.',
       integerScaling: 'Ganzzahlige Skalierung',
       integerScalingTip:
         'Zoomt nur in ganzen Stufen (½×, 1×, 2×, 3×…), sodass jedes Pixel der Grafik eine ganze Zahl von Bildschirmpixeln abdeckt und nie durch einen gebrochenen Maßstab neu abgetastet wird. Die Ansicht springt zwischen den Stufen, statt zu gleiten.',
@@ -471,6 +477,7 @@ export const deSurfaces = {
         attackMove: 'Angriffsbewegung',
         dockShips: 'Ausgewählte Schiffe anlegen',
         hudToggle: 'Oberfläche aus-/einblenden',
+        revealToggle: 'Durchsicht umschalten',
         speedCycle: 'Spieltempo ×1 / ×2 / ×3',
         loadGame: 'Spiel laden',
         saveGame: 'Spiel speichern',

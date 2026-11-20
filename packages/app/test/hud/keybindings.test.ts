@@ -82,6 +82,15 @@ describe('defaults', () => {
     );
     expect(clashes).toEqual([]);
   });
+
+  it('binds the reveal toggle to Tab, which no other default claims', () => {
+    expect(DEFAULT_KEY_BINDINGS.revealToggle).toBe('Tab');
+    expect(isBindableCode('Tab')).toBe(true);
+    expect(bindingAllowedFor('revealToggle', 'Tab')).toBe(true);
+    // A stored chord round-trips through the settings, and the chip reads it as a key cap.
+    expect(parseKeyBindings({ revealToggle: 'Shift+Tab' }).revealToggle).toBe('Shift+Tab');
+    expect(keyDisplayLabel('Tab')).toBe('Tab');
+  });
 });
 
 describe('assignBinding', () => {
@@ -113,13 +122,24 @@ describe('assignBinding', () => {
 
 describe('isBindableCode', () => {
   it('accepts plain game keys', () => {
-    for (const code of ['KeyA', 'Digit5', 'Numpad0', 'ArrowLeft', 'Space', 'Comma', 'Home', 'F1', 'F10']) {
+    for (const code of [
+      'KeyA',
+      'Digit5',
+      'Numpad0',
+      'ArrowLeft',
+      'Space',
+      'Tab',
+      'Comma',
+      'Home',
+      'F1',
+      'F10',
+    ]) {
       expect(isBindableCode(code), code).toBe(true);
     }
   });
 
   it('rejects modifiers and browser-owned keys', () => {
-    for (const code of ['ShiftLeft', 'ControlLeft', 'AltRight', 'MetaLeft', 'Tab', 'Enter', 'F11', 'F12']) {
+    for (const code of ['ShiftLeft', 'ControlLeft', 'AltRight', 'MetaLeft', 'Enter', 'F11', 'F12']) {
       expect(isBindableCode(code), code).toBe(false);
     }
   });

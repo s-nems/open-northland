@@ -20,6 +20,20 @@ describe('world batch sampling', () => {
   });
 });
 
+describe('world batch program, the occlusion ghost ring', () => {
+  const programs = (['magnifying', 'unmagnified'] as const).map((sampling) =>
+    worldBatchFragment(SLOTS, WORLD_MAGNIFY_MODES.xbr, null, sampling),
+  );
+
+  it('empties an outline interior only for the ghost, whose body never draws under it', () => {
+    for (const fragment of programs) {
+      expect(fragment).toContain('const float SELECTION_GHOST_OUTLINE');
+      expect(fragment).toContain('if (vSelection < SELECTION_GHOST_OUTLINE + 0.5)');
+      expect(fragment).toContain('alpha *= over ? 1.0 - centre : 1.0;');
+    }
+  });
+});
+
 describe('world batch program, recoloured elements', () => {
   const programs = (['magnifying', 'unmagnified'] as const).map((sampling) =>
     worldBatchFragment(SLOTS, WORLD_MAGNIFY_MODES.xbr, null, sampling),

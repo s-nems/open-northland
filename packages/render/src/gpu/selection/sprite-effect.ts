@@ -1,6 +1,6 @@
 import { Graphics, Texture } from 'pixi.js';
 import { BloodSurfaceSprite } from '../blood/surface-sprite.js';
-import { SELECTION_OUTLINE } from '../world-batch/shader.js';
+import { SELECTION_GHOST_OUTLINE, SELECTION_OUTLINE } from '../world-batch/shader.js';
 
 /** One world-batch value: negative draws a tinted silhouette; non-negative packs a colour lift (see
  *  `SELECTION_TONE_BAND`). */
@@ -70,6 +70,17 @@ export class OutlineSprite extends SelectionSprite {
     reach[2] = y0;
     reach[3] = y1;
     this.onViewUpdate();
+  }
+}
+
+/**
+ * One occlusion ghost's outline pass over one body layer: the ring between the body's coverage and the
+ * offset copies (`SELECTION_GHOST_OUTLINE`), since no body draws under a ghost to fill its interior.
+ */
+export class GhostOutlineSprite extends OutlineSprite {
+  constructor() {
+    super();
+    this.selectionEffect = SELECTION_GHOST_OUTLINE;
   }
 }
 

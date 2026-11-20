@@ -218,6 +218,12 @@ export const chtSurfaces = {
       spriteSmoothingTip: '平滑本專案角色的邊緣以及縮小顯示的世界圖像。不會改變文字的算繪。',
       postFx: '後製處理',
       postFxTip: '在世界畫面上疊加暗角與暖色調色。',
+      occlusionFill: '被遮擋單位的填充',
+      occlusionFillTip:
+        '站在建築、城牆或樹木後的單位，會以其隊伍顏色的半透明填充顯示在遮擋物之上。同時開啟輪廓時，填充在輪廓下變淺。Tab鍵切換透視：按一次讓螢幕上所有樹木和建築變為半透明，再按一次恢復。',
+      occlusionOutline: '被遮擋單位的輪廓',
+      occlusionOutlineTip:
+        '站在建築、城牆或樹木後的單位，會以其隊伍顏色的輪廓顯示在遮擋物之上。Tab鍵切換透視：按一次讓螢幕上所有樹木和建築變為半透明，再按一次恢復。',
       integerScaling: '整數縮放',
       integerScalingTip:
         '僅以整數級縮放（½×、1×、2×、3×…），使圖像的每個像素都佔據整數個螢幕像素，不會被小數比例重新取樣。視圖在各級之間直接切換，而非平滑過渡。',
@@ -413,6 +419,7 @@ export const chtSurfaces = {
         attackMove: '攻擊移動',
         dockShips: '停靠所選船隻',
         hudToggle: '隱藏／顯示介面',
+        revealToggle: '透視開關',
         speedCycle: '遊戲速度 ×1 / ×2 / ×3',
         loadGame: '載入遊戲',
         saveGame: '儲存遊戲',

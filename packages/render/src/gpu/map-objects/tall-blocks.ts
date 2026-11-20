@@ -15,10 +15,13 @@ import { FULL_DETAIL, type ViewDetail } from '../../data/view-detail.js';
 import type { WindSway } from '../../data/weather/climate.js';
 import { BloodSurfaceSprite, bloodSurface } from '../blood/surface-sprite.js';
 import { FOOT_OVERLAY_STRIPS, type GroundFootPart } from '../ground-foot/index.js';
+import type { GhostOccluder } from '../sprite-pool/occlusion.js';
+import type { EntityBounds } from '../sprite-pool/pooled-entity.js';
 import { castShadowShear, setVegetationShear, vegetationShear } from '../sway/vegetation.js';
 import type { TextureCache } from '../textures/texture-cache.js';
 import { worldBatched } from '../world-batch/batcher.js';
-import { activeSway, type MapObjectSprite, objectFrameIndexAt } from './map-object-sprite.js';
+import { mapObjectPixelHit } from './map-object-pick.js';
+import { activeSway, type MapObjectSprite, objectFrameAt, objectFrameIndexAt } from './map-object-sprite.js';
 
 /** A grounded object's ground shade sorts under its cast shadow, and the cover over its foot one mark over
  *  its body: each clear of `depthKey`'s x tiebreak, so nothing on the same row slips between, and under
@@ -54,6 +57,13 @@ interface PooledObject {
   /** Whether the last bound frame was picked on the live clock or the frozen one; a flip rebinds once
    *  even mid-animation-tick. */
   lastWatched: boolean;
+  /** The painter depth the sprite sorts at, fixed at mint: the feet anchor's row, never the lift. */
+  depth: number;
+  /** The tick the bound pose was picked on, which the occluder's bounds and texels answer from; a pose
+   *  that failed to bind keeps the tick of the pose still drawn. */
+  boundTick: number;
+  /** The ghost scan's candidate for this member, minted with the sprite and restamped per update. */
+  occluder: TallOccluder | undefined;
 }
 
 /**
@@ -101,6 +111,61 @@ function placeOverlay(overlay: Sprite, texture: Texture | null, x: number, y: nu
   overlay.position.set(x, y);
 }
 
+/**
+ * One tall member as the occlusion ghost scan's static occluder: its bound pose answers the bounds and
+ * the texels the scan probes. The entry mints once per member and restamps its fields per update, since
+ * the scan walks it as a plain {@link GhostOccluder} - the box lives on, so a frame allocates none.
+ */
+class TallOccluder implements GhostOccluder {
+  /** The painter depth the pose sorts at, restamped from the member's minted key. */
+  depth = 0;
+  /** The tick the member's pose bound on: the live clock while watched, the frozen one for a ghost. */
+  tick = 0;
+  /** The bound pose's box, restamped in place; valid while {@link boxed}. Mutable, since an
+   *  {@link EntityBounds} stamps itself readonly. */
+  private readonly box: { minX: number; minY: number; maxX: number; maxY: number } = {
+    minX: 0,
+    minY: 0,
+    maxX: 0,
+    maxY: 0,
+  };
+  private boxed = false;
+
+  constructor(private readonly po: PooledObject) {}
+
+  /** The member's object record, which the occluder reads its pose through. */
+  private get obj(): MapObjectSprite {
+    return this.po.obj;
+  }
+
+  bounds(): EntityBounds | undefined {
+    return this.boxed ? this.box : undefined;
+  }
+
+  hit(wx: number, wy: number): boolean | undefined {
+    return mapObjectPixelHit(this.obj, this.tick, wx, wy);
+  }
+
+  setFade(alpha: number | undefined): void {
+    // The body and its cast shadow fade together; the grounded foot overlays belong to ground-pass
+    // objects, which never sort as occluders and never reach here.
+    const a = alpha ?? 1;
+    if (this.po.sprite !== null) this.po.sprite.alpha = a;
+    if (this.po.shadowSprite !== null) this.po.shadowSprite.alpha = a;
+  }
+
+  /** Restamp the box from the pose bound at {@link tick}, as {@link mapObjectBounds} places it. */
+  restamp(): void {
+    const frame = objectFrameAt(this.obj, this.tick);
+    this.boxed = frame !== undefined;
+    if (frame === undefined) return;
+    this.box.minX = this.obj.x + frame.offsetX * this.obj.scale;
+    this.box.minY = this.obj.y - (this.obj.lift ?? 0) + frame.offsetY * this.obj.scale;
+    this.box.maxX = this.box.minX + frame.width * this.obj.scale;
+    this.box.maxY = this.box.minY + frame.height * this.obj.scale;
+  }
+}
+
 export class TallObjectLayer {
   private readonly blocks = new Map<string, TallBlock>();
   /** Which block holds each object, so {@link remove} does not scan every block. */
@@ -112,6 +177,10 @@ export class TallObjectLayer {
   private lastDetail: ViewDetail = FULL_DETAIL;
   private lastWind: WindSway | undefined;
   private lastTextureRevision = -1;
+  /** The visible members of the last {@link update} as the ghost scan's static occluder candidates,
+   *  trimmed to the visible count each update; the scan reads it off the frame. */
+  readonly occluders: GhostOccluder[] = [];
+  private occluderCount = 0;
 
   /** Tall objects attach to `spriteLayer` so they interleave with entities in one painter order. */
   constructor(
@@ -137,6 +206,9 @@ export class TallObjectLayer {
           baseTint: 0xffffff,
           ghostTint: 0xffffff,
           lastWatched: true,
+          depth: 0,
+          boundTick: 0,
+          occluder: undefined,
         })),
       );
       for (const obj of block) this.blockByObject.set(obj, tall);
@@ -181,6 +253,8 @@ export class TallObjectLayer {
   private mint(po: PooledObject): BloodSurfaceSprite {
     const obj = po.obj;
     const depth = depthKey(obj.x, obj.y) + drawPassDepth(obj.groundPass === true ? 'ground' : 'sorted');
+    po.depth = depth;
+    po.occluder = new TallOccluder(po);
     const sprite = worldBatched(new BloodSurfaceSprite());
     sprite.scale.set(obj.scale);
     sprite.zIndex = depth;
@@ -241,6 +315,7 @@ export class TallObjectLayer {
     const frameIndex = held ? 0 : objectFrameIndexAt(obj, clock);
     const frame = obj.frames[frameIndex];
     if (frame === undefined) return false;
+    po.boundTick = clock;
     // Draw at the lifted feet; mint's zIndex kept the pre-lift `obj.y`, so depth is still by map row.
     const lift = obj.lift ?? 0;
     sprite.texture = this.textures.get(obj.source, frame);
@@ -284,6 +359,7 @@ export class TallObjectLayer {
     environmentMotion: boolean,
     wind?: WindSway,
     detail: ViewDetail = FULL_DETAIL,
+    collectOccluders: boolean = false,
   ): void {
     const detailSwitched = detail !== this.lastDetail;
     this.lastDetail = detail;
@@ -291,6 +367,7 @@ export class TallObjectLayer {
     const motionAdvanced = motionTime !== this.lastMotionTime || wind !== this.lastWind;
     const motionSwitched = environmentMotion !== this.lastEnvironmentMotion;
     const texturesChanged = this.lastTextureRevision !== this.textures.retryRevision;
+    this.occluderCount = 0;
     for (const block of this.blocks.values()) {
       if (!aabbIntersects(vp, block)) {
         if (block.attachedCount > 0) {
@@ -361,8 +438,19 @@ export class TallObjectLayer {
           po.attached = true;
           block.attachedCount++;
         }
+        // The ghost scan's static candidate: the member draws over its box in the pose it just bound,
+        // so the scan tests against that pose. A ground-pass member sorts under every entity and
+        // cannot cover one; a member whose pose failed to bind skipped the restamp and the collect.
+        // The collect runs only while the setting draws ghosts - off, the scan reads an empty list.
+        if (collectOccluders && obj.groundPass !== true && po.occluder !== undefined) {
+          po.occluder.depth = po.depth;
+          po.occluder.tick = po.boundTick;
+          po.occluder.restamp();
+          this.occluders[this.occluderCount++] = po.occluder;
+        }
       }
     }
+    this.occluders.length = this.occluderCount;
     this.lastAnimTick = tick;
     this.lastMotionTime = motionTime;
     this.lastEnvironmentMotion = environmentMotion;
@@ -381,6 +469,8 @@ export class TallObjectLayer {
     }
     this.blocks.clear();
     this.blockByObject.clear();
+    this.occluderCount = 0;
+    this.occluders.length = 0;
     this.lastAnimTick = -1;
     this.lastMotionTime = -1;
     this.lastTextureRevision = -1;

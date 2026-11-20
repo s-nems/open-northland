@@ -71,6 +71,7 @@ const SLOTS = [
   'selection',
   'bones',
   'sprites',
+  'occlusionGhosts',
   'orderMarkers',
   'constructionSigns',
   'bubbles',
