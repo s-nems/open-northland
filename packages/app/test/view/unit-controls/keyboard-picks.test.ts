@@ -2,6 +2,7 @@ import type { ContentSet } from '@open-northland/data';
 import type { EntitySnapshot } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import {
+  JOB_BUILDER,
   JOB_CHILD_MALE,
   JOB_CIVILIST,
   JOB_COLLECTOR,
@@ -82,6 +83,11 @@ const people = snapshotOf([
     TrainingOrder: { house: 20, drillTicksLeft: 10 },
     AssistantRecruit: { intent: 'trainSoldiers', armed: false, barracks: 1 },
   }),
+  person(17, JOB_BUILDER),
+  person(18, JOB_BUILDER, { SiteAssignment: { site: 1, pinned: true } }),
+  person(19, JOB_BUILDER, { BuildMode: { kind: 'roads' } }),
+  person(20, JOB_BUILDER, { SiteAssignment: { site: 1, pinned: false } }),
+  person(21, JOB_BUILDER, { TrainingOrder: { house: 1, drillTicksLeft: 10 } }),
 ]);
 
 const effect = (action: Parameters<typeof selectionKeyEffect>[0], selected: readonly number[] = []) =>
@@ -115,11 +121,29 @@ describe('selection keys', () => {
     expect(effect('selectHeroes')).toEqual({ ids: [7], add: false });
   });
 
-  it('add everyone a stepping key would pick, whole map', () => {
+  it('add the next one a stepping key would pick that is not selected yet, wrapping', () => {
+    expect(effect('addNextCivilian', [6])).toEqual({ ids: [2], add: true });
+    expect(effect('addNextCivilian', [2])).toEqual({ ids: [5], add: true });
+    expect(effect('addNextCivilian', [2, 5])).toEqual({ ids: [15], add: true });
+    expect(effect('addNextCivilian', [5, 15])).toEqual({ ids: [2], add: true });
+    expect(effect('addNextCivilian', [2, 5, 15])).toBeNull();
+    expect(effect('addNextScout', [6])?.ids).toEqual([8]);
+    expect(effect('addNextSingleWoman', [11])).toBeNull();
+  });
+
+  it('select or add everyone a stepping key would pick, whole map', () => {
+    expect(effect('selectCivilians', [6])).toEqual({ ids: [2, 5, 15], add: false });
     expect(effect('addCivilians', [6])).toEqual({ ids: [2, 5, 15], add: true });
+    expect(effect('selectScouts', [6])).toEqual({ ids: [8], add: false });
     expect(effect('addScouts', [6])).toEqual({ ids: [8], add: true });
     expect(effect('addSingleWomen', [6])).toEqual({ ids: [11], add: true });
     expect(effect('addHeroes', [6])).toEqual({ ids: [7], add: true });
+  });
+
+  it('skip a builder the player put on a site, a road, a wall or a course, but not one on the nearest site', () => {
+    expect(effect('nextBuilder', [17])).toEqual({ ids: [20], add: false });
+    expect(effect('addNextBuilder', [17])).toEqual({ ids: [20], add: true });
+    expect(effect('selectBuilders', [6])).toEqual({ ids: [17, 20], add: false });
   });
 
   it('narrow the selection to its heroes or soldiers, and change nothing when it already is', () => {

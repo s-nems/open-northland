@@ -5,6 +5,7 @@ import {
   isBoundByMarriage,
   isMarrying,
   isWildlife,
+  pinnedSiteOf,
   residenceHomeOf,
   type SnapshotEntity,
   settlerJobType,
@@ -18,11 +19,21 @@ import { residentKindOf } from '../../hud/tool-panel/residents/projection.js';
 /** The keys that pick the player's settlers off the whole map or narrow the selection to a kind. */
 export const SELECTION_KEY_ACTIONS = [
   'nextCivilian',
+  'addNextCivilian',
+  'selectCivilians',
   'addCivilians',
   'nextScout',
+  'addNextScout',
+  'selectScouts',
   'addScouts',
   'nextSingleWoman',
+  'addNextSingleWoman',
+  'selectSingleWomen',
   'addSingleWomen',
+  'nextBuilder',
+  'addNextBuilder',
+  'selectBuilders',
+  'addBuilders',
   'selectSoldiers',
   'addSoldiers',
   'selectHeroes',
@@ -55,14 +66,31 @@ function singleWomanTest(content: ContentSet): SettlerTest {
     !isMarrying(ent);
 }
 
-/** A civilian the player sent to a school or barracks keeps its trade until the course ends, so the key
- *  skips it: the player assigned it and looks for the next free one. A drill the assistant booked does not
- *  count, so the player can still pick him and send him elsewhere until he enlists. */
+/** A settler the player sent to a school or barracks keeps its trade until the course ends, so a stepping
+ *  key skips it: the player assigned it and looks for the next free one. A drill the assistant booked does
+ *  not count, so the player can still pick him and send him elsewhere until he enlists. */
+function outsidePlayerCourse(ent: SnapshotEntity): boolean {
+  const house = trainingHouseOf(ent);
+  return house === undefined || house === assistantBarracksOf(ent);
+}
+
 function freeCivilianTest(content: ContentSet): SettlerTest {
   const civilian = kindTest(content, 'civilian');
-  return (snapshot, ent) => {
-    const house = trainingHouseOf(ent);
-    return civilian(snapshot, ent) && (house === undefined || house === assistantBarracksOf(ent));
+  return (snapshot, ent) => civilian(snapshot, ent) && outsidePlayerCourse(ent);
+}
+
+/** A builder the player put on a site or on roads or walls by hand is taken, as one sent to a course is;
+ *  one that took the nearest site on its own still counts, so the player can send him elsewhere. */
+function freeBuilderTest(content: ContentSet): SettlerTest {
+  return (_, ent) => {
+    const job = settlerJobType(ent);
+    return (
+      job !== undefined &&
+      systems.jobCanBuild(content, job) &&
+      pinnedSiteOf(ent) === undefined &&
+      ent.components.BuildMode === undefined &&
+      outsidePlayerCourse(ent)
+    );
   };
 }
 
@@ -89,12 +117,20 @@ function nextAfter(candidates: readonly number[], selected: ReadonlySet<number>)
   return candidates.find((id) => id > only) ?? candidates[0];
 }
 
+/** The first unselected candidate after the highest selected one, wrapping; none once all are selected. */
+function nextUnselected(candidates: readonly number[], selected: ReadonlySet<number>): number | undefined {
+  const last = candidates.filter((id) => selected.has(id)).at(-1);
+  const unselected = candidates.filter((id) => !selected.has(id));
+  return (last === undefined ? undefined : unselected.find((id) => id > last)) ?? unselected[0];
+}
+
 /**
  * Original behavior (CnMod 1.3.2 keys included): `.` `,` and `/` select the next civilian, scout or single
  * woman after the current one, M selects every soldier and Shift+M adds them, F selects every hero, X and Y
- * keep only the heroes or the soldiers of the selection. Ours: the civilian, scout, single-woman and hero
- * keys each have an add twin, as M has, that adds everyone the key picks. Our selection keys leave the
- * camera in place; a key that finds nobody leaves the selection as it was. Null when nothing changes.
+ * keep only the heroes or the soldiers of the selection. Ours: a builder key beside them, and each of the
+ * four stepping keys has twins that add the next one not yet selected, select everyone it picks, or add
+ * them all; F has an add twin as M has. Our selection keys leave the camera in place; a key that finds
+ * nobody leaves the selection as it was. Null when nothing changes.
  */
 export function selectionKeyEffect(
   action: SelectionKeyAction,
@@ -107,6 +143,10 @@ export function selectionKeyEffect(
     const id = nextAfter(ownPeople(snapshot, player, test), selected);
     return id === undefined ? null : { ids: [id], add: false };
   };
+  const addNext = (test: SettlerTest): SelectionKeyEffect | null => {
+    const id = nextUnselected(ownPeople(snapshot, player, test), selected);
+    return id === undefined ? null : { ids: [id], add: true };
+  };
   const all = (test: SettlerTest, add: boolean): SelectionKeyEffect | null => {
     const ids = ownPeople(snapshot, player, test);
     return ids.length === 0 ? null : { ids, add };
@@ -118,16 +158,36 @@ export function selectionKeyEffect(
   switch (action) {
     case 'nextCivilian':
       return next(freeCivilianTest(content));
+    case 'addNextCivilian':
+      return addNext(freeCivilianTest(content));
+    case 'selectCivilians':
+      return all(freeCivilianTest(content), false);
     case 'addCivilians':
       return all(freeCivilianTest(content), true);
     case 'nextScout':
       return next(scoutTest(content));
+    case 'addNextScout':
+      return addNext(scoutTest(content));
+    case 'selectScouts':
+      return all(scoutTest(content), false);
     case 'addScouts':
       return all(scoutTest(content), true);
     case 'nextSingleWoman':
       return next(singleWomanTest(content));
+    case 'addNextSingleWoman':
+      return addNext(singleWomanTest(content));
+    case 'selectSingleWomen':
+      return all(singleWomanTest(content), false);
     case 'addSingleWomen':
       return all(singleWomanTest(content), true);
+    case 'nextBuilder':
+      return next(freeBuilderTest(content));
+    case 'addNextBuilder':
+      return addNext(freeBuilderTest(content));
+    case 'selectBuilders':
+      return all(freeBuilderTest(content), false);
+    case 'addBuilders':
+      return all(freeBuilderTest(content), true);
     case 'selectSoldiers':
       return all(kindTest(content, 'soldier'), false);
     case 'addSoldiers':
