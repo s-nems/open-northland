@@ -1,42 +1,50 @@
 /* The main screen's news panel (news/panel.ts), in the top-left corner above the brand block: on its
-   left edge, as far from the top as the block stands from the bottom (menu.css .main-menu__home). */
+   left edge, as far from the top as the block stands from the bottom (menu.css .main-menu__home).
+   News entries and the versions stand in two top-aligned columns, together no wider than the left
+   half of a 16:9 frame. Each column is capped to the room above the brand block; panel.ts hides the
+   blocks that reach past the cap, so a short window drops whole blocks instead of cutting one. */
 
 .main-menu__news {
   /* The brand block's height in design units: eyebrow 19 + 20, logo 336, version 28 + 18. */
   --news-brand-height: 421;
   --news-edge: 96;
+  --news-left: 120;
   /* Space kept free above the brand block; it also holds an eyebrow that wraps to a second line. */
   --news-brand-gap: 40;
   --news-block-gap: 18;
+  --news-column-gap: 72;
+  /* The middle of the 1920-unit reference frame, which the panel's right edge never passes. */
+  --news-right-limit: 960;
   position: absolute;
   top: calc(var(--u) * var(--news-edge));
-  left: calc(var(--u) * 120);
-  width: calc(var(--u) * 460);
-  max-height: calc(
-    100% -
-    var(--u) *
-    (2 * var(--news-edge) + var(--news-brand-height) + var(--news-brand-gap))
-  );
-  /* A capped column that wraps moves each block that no longer fits into a second column, which the
-     clip hides: a short window drops whole blocks instead of cutting one. */
+  bottom: calc(var(--u) * (2 * var(--news-edge) + var(--news-brand-height) + var(--news-brand-gap)));
+  left: calc(var(--u) * var(--news-left));
+  max-width: calc(var(--u) * (var(--news-right-limit) - var(--news-left)));
   display: flex;
-  flex-flow: column wrap;
+  align-items: flex-start;
+  gap: calc(var(--u) * var(--news-column-gap));
+}
+
+.main-menu__news-column {
+  display: flex;
+  flex-direction: column;
   gap: calc(var(--u) * var(--news-block-gap));
+  min-width: 0;
+  max-height: 100%;
   overflow: hidden;
 }
 
-/* An empty first column, so even the first block can wrap away instead of standing clipped. */
-.main-menu__news::before {
-  content: "";
-  width: 100%;
-  margin-bottom: calc(var(--u) * var(--news-block-gap) * -1);
+.main-menu__news-entries {
+  flex: none;
+  width: calc(var(--u) * 460);
 }
 
-.main-menu__news > *,
-.main-menu__news-lead > * {
+.main-menu__news-column > * {
   flex: none;
-  box-sizing: border-box;
-  width: 100%;
+}
+
+.main-menu__news-column > [inert] {
+  visibility: hidden;
 }
 
 .main-menu__news.is-entering {
@@ -47,13 +55,6 @@
   .main-menu__news.is-entering {
     animation: none;
   }
-}
-
-/* The heading travels with the first block, so it never stands alone. */
-.main-menu__news-lead {
-  display: flex;
-  flex-direction: column;
-  gap: calc(var(--u) * var(--news-block-gap));
 }
 
 .main-menu__news-heading {
@@ -77,6 +78,7 @@
 
 .main-menu__news-notice {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: calc(var(--u) * 16);
@@ -161,19 +163,6 @@
 .main-menu__news-changelog:focus-visible {
   color: var(--accent-bright);
   border-bottom-color: var(--accent);
-}
-
-.main-menu__news-releases {
-  display: flex;
-  flex-direction: column;
-  gap: calc(var(--u) * 10);
-}
-
-.main-menu__news-releases-heading {
-  font: 600 calc(var(--u) * 14) / 1 var(--font-body);
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  color: var(--text-label);
 }
 
 .main-menu__news-release-list {

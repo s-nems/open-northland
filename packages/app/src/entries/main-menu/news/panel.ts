@@ -73,7 +73,6 @@ function noticeElement(notice: UpdateNotice): HTMLElement {
 
 function releasesElement(releases: readonly ReleaseView[], tag: string): HTMLElement {
   const copy = messages().mainMenu.news;
-  const block = element('div', 'main-menu__news-releases');
   const list = element('ul', 'main-menu__news-release-list');
   for (const release of releases) {
     const row = element('li', 'main-menu__news-release');
@@ -84,32 +83,53 @@ function releasesElement(releases: readonly ReleaseView[], tag: string): HTMLEle
     );
     list.append(row);
   }
-  block.append(element('div', 'main-menu__news-releases-heading', copy.releases), list);
-  return block;
+  return list;
+}
+
+function columnElement(className: string, heading: string, blocks: readonly HTMLElement[]): HTMLElement {
+  const column = element('div', `main-menu__news-column ${className}`);
+  column.append(element('div', 'main-menu__news-heading', heading), ...blocks);
+  return column;
 }
 
 function panelElement(model: NewsPanelModel, nowMs: number): HTMLElement {
   const copy = messages().mainMenu.news;
   const tag = bcp47Tag();
-  const blocks: HTMLElement[] = [];
-  if (model.notice !== null) blocks.push(noticeElement(model.notice));
-  for (const entry of model.entries) blocks.push(entryElement(entry, nowMs, tag));
-  if (model.releases.length > 0) blocks.push(releasesElement(model.releases, tag));
+  const versions: HTMLElement[] = [];
+  if (model.notice !== null) versions.push(noticeElement(model.notice));
+  if (model.releases.length > 0) versions.push(releasesElement(model.releases, tag));
   const panel = element('section', 'main-menu__news');
   panel.setAttribute('aria-label', copy.heading);
-  const [first, ...rest] = blocks;
-  const lead = element('div', 'main-menu__news-lead');
-  lead.append(element('div', 'main-menu__news-heading', copy.heading));
-  if (first !== undefined) lead.append(first);
-  panel.append(lead, ...rest);
+  // A column without blocks is left out, so the other one stands at the left edge.
+  if (model.entries.length > 0) {
+    panel.append(
+      columnElement(
+        'main-menu__news-entries',
+        copy.heading,
+        model.entries.map((entry) => entryElement(entry, nowMs, tag)),
+      ),
+    );
+  }
+  if (versions.length > 0) panel.append(columnElement('main-menu__news-versions', copy.releases, versions));
   return panel;
 }
 
-/** The panel's CSS wraps each block that no longer fits out of sight; this keeps those out of Tab
- *  order and the accessibility tree too. */
+const childElements = (parent: HTMLElement): HTMLElement[] =>
+  [...parent.children].filter((child): child is HTMLElement => child instanceof HTMLElement);
+
+/** Hides, and takes out of Tab order and the accessibility tree, each block that reaches past its
+ *  column's height cap and every block after it, so a short window drops whole blocks instead of
+ *  cutting one. A column left without blocks hides its heading too. */
 function retireHiddenBlocks(panel: HTMLElement): void {
-  for (const block of panel.children) {
-    if (block instanceof HTMLElement) block.inert = block.offsetLeft >= panel.clientWidth;
+  for (const column of childElements(panel)) {
+    const limit = column.getBoundingClientRect().bottom;
+    const [heading, ...blocks] = childElements(column);
+    let fits = true;
+    for (const block of blocks) {
+      fits &&= block.getBoundingClientRect().bottom <= limit;
+      block.inert = !fits;
+    }
+    if (heading !== undefined) heading.inert = blocks.every((block) => block.inert);
   }
 }
 
@@ -128,7 +148,7 @@ export function mountNewsPanel(
   let timer: ReturnType<typeof setInterval> | undefined;
   let shown: HTMLElement | null = null;
   let shownKeys = '';
-  // A window or interface scale change resizes the panel, which may hide or reveal blocks.
+  // A window or interface scale change resizes the columns, which may hide or reveal blocks.
   const resizes = new ResizeObserver(() => {
     if (shown !== null) retireHiddenBlocks(shown);
   });
@@ -147,13 +167,11 @@ export function mountNewsPanel(
     }
     const next = panelIsEmpty(model) ? null : panelElement(model, nowMs);
     if (shown === null && next !== null) next.classList.add('is-entering');
-    if (shown !== null) {
-      resizes.unobserve(shown);
-      shown.remove();
-    }
+    resizes.disconnect();
+    shown?.remove();
     if (next !== null) {
       host.append(next);
-      resizes.observe(next);
+      for (const column of childElements(next)) resizes.observe(column);
     }
     shown = next;
     shownKeys = keys;

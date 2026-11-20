@@ -45,11 +45,12 @@ async function mounted(news: MenuNews): Promise<{ host: HTMLElement; dispose: ()
 }
 
 describe('news panel', () => {
-  it('lists the entries under the heading and opens every link outside the game', async () => {
+  it('lists the entries and the releases under their headings and opens every link outside the game', async () => {
     const { host, dispose } = await mounted(NEWS);
     const titles = [...host.querySelectorAll('.main-menu__news-title')].map((node) => node.textContent);
     expect(titles).toEqual(['Pokaz', 'Notes']);
-    expect(host.querySelector('.main-menu__news-lead .main-menu__news-heading')?.textContent).toBe('Nowości');
+    const headings = [...host.querySelectorAll('.main-menu__news-column > .main-menu__news-heading')];
+    expect(headings.map((heading) => heading.textContent)).toEqual(['Nowości', 'Ostatnie wersje']);
     const links = [...host.querySelectorAll('a')];
     expect(links.map((link) => link.textContent)).toEqual(['Więcej', 'Lista zmian']);
     for (const link of links) expect([link.target, link.rel]).toEqual(['_blank', 'noopener noreferrer']);
