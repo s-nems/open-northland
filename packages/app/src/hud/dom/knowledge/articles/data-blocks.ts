@@ -7,7 +7,6 @@ import { weaponGroups, weaponLabel } from '../../../knowledge/calculator.js';
 import {
   type BlowModifiers,
   type CombatTarget,
-  combatTargets,
   HIT_DIRECTION,
   HUMAN_HITPOINTS,
   hitsToKill,

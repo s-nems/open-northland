@@ -58,7 +58,7 @@ export const byzantineSpearsScene: SceneDefinition = {
       },
     },
     {
-      label: 'a dragon stands beside them with its own tribe\'s hitpoints where the content gives them',
+      label: "a dragon stands beside them with its own tribe's hitpoints where the content gives them",
       predicate: (sim) => {
         const dragons = [...sim.world.query(components.Settler, components.Health)].filter((e) =>
           isDragon(sim, e),

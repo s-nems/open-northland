@@ -14,8 +14,8 @@ import {
   STRENGTH_PCT,
   stepSeconds,
   targetName,
-  weaponTableTargets,
   weaponOf,
+  weaponTableTargets,
 } from '../../../knowledge/combat.js';
 import {
   cadenceText,
