@@ -323,7 +323,7 @@ describe('SpritePool - a unit a standing sprite hides shows as an occlusion ghos
     pool.destroy();
   });
 
-  it('fades the standing sprite that hides a settler while the reveal key holds, and restores it', () => {
+  it('fades every occluder in view while the reveal toggle is on, and restores them', () => {
     const layer = new Container();
     const pool = new SpritePool(layer, new TextureCache(), undefined);
     pool.reconcile({ ...frame(snapshotOf([settler(1, 0, 0), house(2, 0, 0.4)])), fadeOccluders: true });
@@ -332,6 +332,39 @@ describe('SpritePool - a unit a standing sprite hides shows as an occlusion ghos
     expect(pool.containerOf(1)?.alpha).toBe(1);
     pool.reconcile({ ...frame(snapshotOf([settler(1, 0, 0), house(2, 0, 0.4)])), tick: 1 });
     expect(pool.containerOf(2)?.alpha).toBe(1);
+    pool.destroy();
+  });
+
+  it('fades every occluder on the screen while the reveal toggle is on, covered or not', () => {
+    const layer = new Container();
+    const pool = new SpritePool(layer, new TextureCache(), undefined);
+    // A house and a tree in the open hide nobody: the per-unit asks leave them plain, the toggle
+    // fades them with everything else.
+    const open = snapshotOf([settler(1, 0, 0), house(2, 0, -0.4), tree(3, 4, -0.4)]);
+    pool.reconcile({ ...frame(open), fadeOccluders: true });
+    expect(pool.containerOf(2)?.alpha).toBe(OCCLUDER_FADE_ALPHA);
+    expect(pool.containerOf(3)?.alpha).toBe(OCCLUDER_FADE_ALPHA);
+    // The unit itself is no occluder and stays opaque.
+    expect(pool.containerOf(1)?.alpha).toBe(1);
+    // Toggling off restores everything.
+    pool.reconcile({ ...frame(open), tick: 1 });
+    expect(pool.containerOf(2)?.alpha).toBe(1);
+    expect(pool.containerOf(3)?.alpha).toBe(1);
+    pool.destroy();
+  });
+
+  it('fades every occluder with no unit on screen, and undoes them when the toggle lifts', () => {
+    const layer = new Container();
+    const pool = new SpritePool(layer, new TextureCache(), undefined);
+    const lonely = snapshotOf([house(2, 0, 0), tree(3, 4, 0)]);
+    pool.reconcile({ ...frame(lonely), fadeOccluders: true });
+    expect(pool.containerOf(2)?.alpha).toBe(OCCLUDER_FADE_ALPHA);
+    expect(pool.containerOf(3)?.alpha).toBe(OCCLUDER_FADE_ALPHA);
+    // No unit drew, so no ghost stamp rides along.
+    expect(pool.occlusionGhosts.container.children.length).toBe(0);
+    pool.reconcile({ ...frame(lonely), tick: 1 });
+    expect(pool.containerOf(2)?.alpha).toBe(1);
+    expect(pool.containerOf(3)?.alpha).toBe(1);
     pool.destroy();
   });
 
@@ -551,7 +584,7 @@ describe('SpritePool - a unit a standing sprite hides shows as an occlusion ghos
     pool.destroy();
   });
 
-  it('fades the cover while the reveal key holds with only the fill setting on', () => {
+  it('fades the cover while the reveal toggle is on with only the fill setting on', () => {
     const layer = new Container();
     const pool = new SpritePool(layer, new TextureCache(), undefined);
     const covered = snapshotOf([settler(1, 0, 0), house(2, 0, 0.4)]);

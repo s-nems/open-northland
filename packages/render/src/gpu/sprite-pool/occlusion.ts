@@ -22,10 +22,11 @@ import { frameTransform, placeOutline } from './selection-effects.js';
  * the colour their unit's body wears — the team step of the entity's own composed palette row — so
  * friends and foes read apart through the cover; where no colour resolves they keep {@link GHOST_TINT}.
  *
- * On top of the marks, the view can ask to see through a cover: while the hold-to-reveal key is down,
- * a selected unit hides behind one, or the cursor rests near a covered unit, the sprites that hide it
- * draw translucent ({@link OCCLUDER_FADE_ALPHA}) until the ask lifts, which the scan undoes itself —
- * a cover fades only while some covered unit asks for it.
+ * On top of the marks, the view can ask to see through: the reveal toggle fades every occluder the
+ * frame registered — every tree, wall and house on the screen, covered units or not — to
+ * {@link OCCLUDER_FADE_ALPHA} at once, until it is toggled off; a selected unit hides behind one, or
+ * the cursor rests near a covered unit, fades only the sprites that hide it. Each ask lifts itself —
+ * the scan undoes a fade that no ask renews.
  *
  * Approximation, not observed original behaviour: the original's hidden-unit rendering has no readable
  * source here. The fill and ring alphas, the reach, the coverage samples and the fade's alpha and proximity are tuned
@@ -49,9 +50,10 @@ export interface GhostOccluder {
   /** Whether the bound pose's art covers the world point; `undefined` keeps the box verdict, as the
    *  picker does where its pixels are unreadable. */
   hit(wx: number, wy: number): boolean | undefined;
-  /** Fade the occluder's drawn art to `alpha`, or `undefined` restores it: the scan fades a sprite
-   *  that hides a resident the view asks to see through. Absent keeps the candidate unfadeable - the
-   *  scan still rings the unit over it. */
+  /** Fade the occluder's drawn art to `alpha`, or `undefined` restores it: the scan fades an
+   *  occluder the view asks to see through - a cover of a hidden resident, or every one of them
+   *  while the reveal toggle is on. Absent keeps the candidate unfadeable - the scan still rings
+   *  the unit over it. */
   setFade?(alpha: number | undefined): void;
 }
 
@@ -68,8 +70,9 @@ export interface OccluderFade {
   /** The cursor's world position: a covered unit within {@link OCCLUDER_FADE_PROXIMITY} of it fades
    *  its covers. Absent while the pointer leaves the canvas or a tool claims it. */
   readonly pointer: { readonly x: number; readonly y: number } | undefined;
-  /** The hold-to-reveal key held down: every covered unit's covers fade. */
-  readonly held: boolean;
+  /** The reveal toggle on: every occluder this frame registered fades, whether or not a unit hides
+   *  behind it. */
+  readonly revealAll: boolean;
 }
 
 /** How translucent a standing sprite draws while it hides a resident the view asks to see through (the
@@ -263,7 +266,7 @@ export class OcclusionGhosts {
    * own - never the scene item's oracle sort key, which lives on a different scale and would bury
    * every static tree behind a row's worth of key.
    *
-   * `fade` carries the view's asks to see through a cover - the reveal key, a selected unit, the
+   * `fade` carries the view's asks to see through - the reveal toggle, a selected unit, the
    * cursor resting near one - and absent fades nothing, which also undoes the last scan's fades.
    * `marks` picks what a ghost draws.
    */
@@ -305,9 +308,13 @@ export class OcclusionGhosts {
         this.occluderDepth[at] = pooledDepth(pe, item);
       }
     }
-    // No unit drew: nothing probes the grid, so it stays as the last probing scan left it, to be
-    // marked and evicted against that scan next time; the sweep alone frees the vanished units' stamps.
-    if (this.unitCount === 0) {
+    const revealAll = this.fade?.revealAll === true;
+    // No unit drew and no toggle asks: nothing probes the grid, so it stays as the last probing
+    // scan left it, to be marked and evicted against that scan next time; the sweep alone frees the
+    // vanished units' stamps. A lifted ask undoes the last fades even here, which would otherwise
+    // leave a toggle-off or a left selection stuck translucent until a unit returns.
+    if (this.unitCount === 0 && !revealAll) {
+      this.restoreFades();
       this.sweepStamps();
       return;
     }
@@ -316,6 +323,9 @@ export class OcclusionGhosts {
       if (pe !== undefined) this.mark(pe, undefined, pe, this.occluderDepth[o] ?? 0, pe.bounds);
     }
     for (const occ of staticOccluders) this.mark(occ, occ, undefined, occ.depth, occ.bounds());
+    // While the marks still hold this scan's slots: the toggle's ask fades every registered
+    // occluder at once, before the eviction swaps the marks for the next scan.
+    if (revealAll) this.fadeAllMarked();
     this.evictUnmarked();
     for (let u = 0; u < this.unitCount; u++) {
       const pe = this.unitPe[u];
@@ -530,12 +540,12 @@ export class OcclusionGhosts {
     return covers.length > 0;
   }
 
-  /** Whether this scan should know which sprites cover `pe`: the reveal key holds, its unit is
-   *  selected or the cursor rests within the fade's proximity of its anchor. */
+  /** Whether this scan should know which sprites cover `pe`: its unit is selected or the cursor
+   *  rests within the fade's proximity of its anchor. The reveal toggle's ask needs no per-unit
+   *  answer - `fadeAllMarked` fades every occluder once per scan instead. */
   private fadesFor(pe: PooledEntity): boolean {
     const fade = this.fade;
     if (fade === undefined) return false;
-    if (fade.held === true) return true;
     const ref = pe.bound.item?.ref;
     if (ref !== undefined && fade.selection?.has(ref) === true) return true;
     const pointer = fade.pointer;
@@ -558,6 +568,23 @@ export class OcclusionGhosts {
       }
     }
     this.covers.length = 0;
+  }
+
+  /** Fade every occluder this scan registered: the reveal toggle is on, so the whole view's trees,
+   *  walls and houses go translucent at once, whether or not some unit hides behind them. Called
+   *  while `marked` still holds this scan's slots, so the walk needs no grid probe; the restore
+   *  reads the same noted sets the per-unit fade fills. */
+  private fadeAllMarked(): void {
+    for (const slot of this.marked) {
+      const pe = slot.pe;
+      if (pe !== undefined) {
+        if (!pe.container.destroyed) pe.container.alpha = OCCLUDER_FADE_ALPHA;
+        this.fadedNowPes.add(pe);
+      } else if (slot.occ?.setFade !== undefined) {
+        slot.occ.setFade(OCCLUDER_FADE_ALPHA);
+        this.fadedNowStatic.add(slot.occ);
+      }
+    }
   }
 
   /** Restore every occluder the last scan faded that this one did not, then hand the sets over for

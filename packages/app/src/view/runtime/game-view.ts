@@ -1464,8 +1464,9 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
 
     cleanup.push(() => worldHover.destroy());
 
-    // Holding the reveal key fades the sprites that hide a resident, so a look behind them costs no
-    // click; the frame loop reads the held state each frame.
+    // Toggling the reveal key fades every standing sprite on the screen - tree, wall or house,
+    // whether or not a unit hides behind one - so a look around costs no click; the frame loop reads
+    // the toggle each frame.
     const revealKey = createRevealKey();
     cleanup.push(() => revealKey.dispose());
 
@@ -1645,7 +1646,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       ...(mapPing === undefined ? {} : { mapPings: mapPing.live }),
       rallyColourOf: (player) => pingColour(deps.playerColourOf?.(player) ?? player),
       worldHover,
-      fadeOccluders: revealKey.held,
+      fadeOccluders: revealKey.toggled,
       geometryDebug: debugMounts.geometryDebug,
       overlayFrame,
       signpostOverlayFrame,

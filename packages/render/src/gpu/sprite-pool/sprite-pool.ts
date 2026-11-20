@@ -656,8 +656,8 @@ export class SpritePool {
 
   /** The occlusion ghost pass: scan and stamp when the setting draws them, otherwise leave nothing.
    *  The sheet's animal tribes ride along so the scan leaves wildlife unghosted, and the frame's fade
-   *  asks - the reveal key, a selected hidden unit, the cursor's world position - ride along so the
-   *  scan can draw the covers translucent. */
+   *  asks - the reveal toggle, a selected hidden unit, the cursor's world position - ride along so
+   *  the scan can draw the occluders translucent. */
   private ghostPass(frame: PoolFrame): void {
     const fill = frame.occlusionFill === true;
     const ring = frame.occlusionOutline === true;
@@ -673,7 +673,7 @@ export class SpritePool {
         {
           selection: frame.selection,
           pointer: frame.pointerWorld,
-          held: frame.fadeOccluders === true,
+          revealAll: frame.fadeOccluders === true,
         },
         { fill, ring },
       );

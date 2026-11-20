@@ -94,7 +94,7 @@ export interface FrameLoopDeps {
   /** The colour a player's rally banner wears. */
   readonly rallyColourOf: (player: number) => number;
   readonly worldHover: WorldHover;
-  /** Whether the hold-to-reveal key is down: standing sprites that hide a resident fade. */
+  /** Whether the reveal toggle is on: every standing sprite on the screen fades. */
   readonly fadeOccluders: () => boolean;
   readonly geometryDebug: GeometryDebugOverlay;
   readonly overlayFrame: ReturnType<typeof makeOverlayFrameSource>;
