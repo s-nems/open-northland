@@ -43,6 +43,7 @@ import { buildingEnabled } from '../progression/index.js';
 import { cancelRoadSitesUnder } from '../roads/sites.js';
 import { wakeCrewInside } from '../settlers/planner/idle-replan.js';
 import { displaceSignpostsFromFootprint } from '../signposts/index.js';
+import { stockCapacity } from '../stores/index.js';
 import { evictVehiclesFromFootprint } from '../vehicles/evict.js';
 
 /**
@@ -207,7 +208,8 @@ export function assembleBuilding(
     if (hitpoints !== undefined) world.add(e, Health, { hitpoints: 1, max: hitpoints });
   } else if (stockFill !== 'empty') {
     for (const slot of type.stock) {
-      if (stockFill === 'full' || slot.input) amounts.set(slot.goodType, slot.capacity);
+      if (stockFill === 'full' || slot.input)
+        amounts.set(slot.goodType, stockCapacity(world, ctx, e, slot.goodType));
     }
   }
   if (!underConstruction) {

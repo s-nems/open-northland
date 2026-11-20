@@ -154,8 +154,8 @@ interface AuthoredPlaceBuildingFields {
   readonly force?: boolean;
   /** Skip only the tech gate; the ground rule still decides (the admin tools' finished building). */
   readonly ignoreTechnology?: boolean;
-  /** Seed every stock slot of a fully-built placement to its capacity. Ignored for an `underConstruction`
-   *  site, whose hold accumulates delivered materials instead. */
+  /** Seed every stock slot of a fully-built placement to its capacity, the storage factor included.
+   *  Ignored for an `underConstruction` site, whose hold accumulates delivered materials instead. */
   readonly fillStock?: boolean;
   /** Authored starting stock (a decoded map's `addgoods`): each entry adds `amount` × `good` on top of
    *  whatever `fillStock` put in the stockpile. Ignored for an `underConstruction`

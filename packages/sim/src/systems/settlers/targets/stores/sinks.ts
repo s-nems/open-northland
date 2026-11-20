@@ -6,6 +6,7 @@ import {
   Position,
   RoadSite,
   Stockpile,
+  storageCapacityFactor,
   UnderConstruction,
   Upgrading,
 } from '../../../../components/index.js';
@@ -38,11 +39,15 @@ export class StoreSinks {
    *  `withdrawn*` lists: a stock write re-captures a store that mostly accepts what it did, and taking it
    *  out of every good's set to put it back makes each set rebuild its table. */
   private withdrawn: Entity | null = null;
+  /** The storage factor the captures were taken under: a store's acceptance turns on its slot size, and
+   *  the rules singleton that scales it is journaled on no store. */
+  private readonly storageFactor: number;
 
   private constructor(
     private readonly world: World,
     readonly content: ContentContext,
   ) {
+    this.storageFactor = storageCapacityFactor(world);
     this.captures = new JournaledCaptures(
       world,
       {
@@ -94,7 +99,11 @@ export class StoreSinks {
   /** `world`'s ledger, caught up to its current stores. */
   static of(world: World, ctx: ContentContext): StoreSinks {
     let ledger = ledgers.get(world);
-    if (ledger === undefined || ledger.content.content !== ctx.content) {
+    if (
+      ledger === undefined ||
+      ledger.content.content !== ctx.content ||
+      ledger.storageFactor !== storageCapacityFactor(world)
+    ) {
       if (ledger === undefined) {
         world.registerCacheVerifier('storeSinks', () => ledgers.get(world)?.verify() ?? []);
       }
