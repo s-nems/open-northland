@@ -45,6 +45,7 @@ const BYZANTINE = 3;
 /** The monster tribes, whose soldiers are their only human look. */
 const WERESNAKE = 5;
 const WEREWOLF = 6;
+const DRAGON = 42;
 const FACINGS = 8;
 /** Every weapon-carrying soldier and hero job: the soldier band past the unarmed base, then the armed heroes. */
 const ARMED_JOBS: readonly number[] = [
@@ -140,13 +141,16 @@ describe.runIf(hasRealIr())('every settler look draws its head', () => {
   const tables = characterTablesUnderTest(CIVILIZATIONS);
   if (tables === null) return;
 
-  it('draws the Byzantine wooden spear as a dragon and the iron spear as a headed soldier', () => {
+  it('draws the Byzantine wooden and iron spearmen as headed soldiers, the dragon as its own body', () => {
     const table = tables.get(BYZANTINE);
     const wooden = table?.byJob[JOB_SOLDIER_SPEAR_WOODEN];
     const iron = table?.byJob[JOB_SOLDIER_SPEAR];
-    // CNMod jobgraphics.ini names body 72 for job 32, body 52 with heads 53/54 for job 33.
-    expect(wooden?.heads ?? []).toHaveLength(0);
+    // The pack binds job 32 to copies of job 33's body 52 with heads 53/54, and the dragon tribe to body 72.
+    expect(wooden?.heads).toHaveLength(2);
     expect(iron?.heads).toHaveLength(2);
+    const dragon = characterTablesUnderTest([VIKING, DRAGON])?.get(DRAGON)?.byJob[JOB_SOLDIER_UNARMED];
+    expect(dragon?.heads ?? []).toHaveLength(0);
+    expect(dragon?.binding.byAtomic?.[ATTACK_ATOMIC]).toBeDefined();
     const ir = rawIrUnderTest() as ContentIr;
     for (const [slug, character] of [
       ['spear_wooden', wooden],
@@ -162,8 +166,8 @@ describe.runIf(hasRealIr())('every settler look draws its head', () => {
     const gaps: string[] = [];
     // A look a civilization borrows from the base is checked once, under the base.
     const checked = new Set<SettlerCharacter>();
-    const allTribes = characterTablesUnderTest([...CIVILIZATIONS, WERESNAKE, WEREWOLF]);
-    expect(allTribes?.size).toBe(7);
+    const allTribes = characterTablesUnderTest([...CIVILIZATIONS, WERESNAKE, WEREWOLF, DRAGON]);
+    expect(allTribes?.size).toBe(8);
     for (const [tribe, table] of allTribes ?? []) {
       expect(table, `tribe ${tribe}`).toBeDefined();
       if (table === undefined) continue;
@@ -237,7 +241,7 @@ describe.runIf(hasRealIr())('every settler look draws its head', () => {
 
   it('keeps every armed look on its weapon while it fidgets', () => {
     // Each weapon class degrades through the unarmed soldier, whose idle records name the empty-handed wait.
-    // A look already standing in that wait authors no armed clip at all, such as a non-viking axe hero.
+    // A look already standing in that wait authors no armed clip at all.
     const empty = humanSequences(rawIrUnderTest() as ContentIr).get('human_man_warrior_empty_wait');
     expect(empty).toBeDefined();
     const unarmedFidgets: string[] = [];

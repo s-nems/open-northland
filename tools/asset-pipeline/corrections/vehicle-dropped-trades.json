@@ -1,0 +1,32 @@
+{
+  "reason": "Paczka danych usunęła zawody 36-39 (żołnierze z szablą i toporem) i 46 (bohater z toporem), ale w Data/logic/vehicletypes.ini statki i katapulta nadal wpuszczają je jako pasażerów (logicpassenger). Usuwamy te linie, bo wskazują zawody, których dane już nie mają. Poprawka znika, gdy paczka sama usunie te linie.",
+  "file": "Data/logic/vehicletypes.ini",
+  "sha256": "bf28ec9c9668862ceb96fe33acfe4f761690651fcb0011d36d027a7fd2bf1c78",
+  "lines": [
+    {
+      "from": "logicpassenger 36",
+      "to": [],
+      "every": true
+    },
+    {
+      "from": "logicpassenger 37",
+      "to": [],
+      "every": true
+    },
+    {
+      "from": "logicpassenger 38",
+      "to": [],
+      "every": true
+    },
+    {
+      "from": "logicpassenger 39",
+      "to": [],
+      "every": true
+    },
+    {
+      "from": "logicpassenger 46",
+      "to": [],
+      "every": true
+    }
+  ]
+}

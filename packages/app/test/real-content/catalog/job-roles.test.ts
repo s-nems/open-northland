@@ -16,7 +16,10 @@ import { hasRealIr, loadContentUnderTest } from '../helpers.js';
  * rename upstream would otherwise silently turn the soldiers into civilians, or move a job across the
  * soldier/hero line and reroute its general fight XP.
  */
-const span = (lo: number, hi: number): number[] => Array.from({ length: hi - lo + 1 }, (_, i) => lo + i);
+/** The sabre and axe soldiers and the axe hero, which our data pack retires from the bands. */
+const RETIRED_JOBS: ReadonlySet<number> = new Set([36, 37, 38, 39, 46]);
+const span = (lo: number, hi: number): number[] =>
+  Array.from({ length: hi - lo + 1 }, (_, i) => lo + i).filter((job) => !RETIRED_JOBS.has(job));
 
 describe.runIf(hasRealIr())('job roles over the real IR', () => {
   it('classifies every extracted job as the jobtypes.ini id bands did', async () => {
