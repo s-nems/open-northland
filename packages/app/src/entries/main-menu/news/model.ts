@@ -93,7 +93,7 @@ export function pickText(text: NewsText, lang: Language): string {
 /** The site page for `lang`'s tag, else the English one. */
 export function siteLink(links: SiteLinks, lang: Language): string {
   const tag = LANGUAGE_INFO[lang].tag;
-  return Object.entries(links).find(([key]) => key === tag)?.[1] ?? links.en;
+  return links[tag] ?? links.en;
 }
 
 function versionParts(version: string): { readonly core: readonly number[]; readonly pre: string | null } {

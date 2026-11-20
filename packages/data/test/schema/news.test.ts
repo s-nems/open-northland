@@ -11,8 +11,8 @@ const ENTRY = {
   title: { eng: ' Showmatch tonight ', pol: 'Showmatch dziś wieczorem' },
   text: { eng: 'Two clans, one island.' },
   link: { url: 'https://example.org/stream', label: { eng: 'Watch' } },
-  startsAt: '2026-11-25T19:00:00+01:00',
-  until: '2026-11-25T23:00:00Z',
+  startsAt: '2026-11-25T19:00+01:00',
+  until: '2026-11-25T23:00:00.000Z',
 };
 
 const document = (...entries: readonly unknown[]) => ({ schema: 1, entries });
@@ -34,6 +34,7 @@ describe('news document', () => {
       [withEntry({ title: { eng: '   ' } }), 'entries.0.title.eng'],
       [withEntry({ title: { eng: 'x'.repeat(NEWS_TITLE_MAX_CHARS + 1) } }), 'entries.0.title.eng'],
       [withEntry({ startsAt: '2026-11-25T19:00:00' }), 'entries.0.startsAt'],
+      [withEntry({ startsAt: '2026-13-25T19:00+01:00' }), 'entries.0.startsAt'],
       [withEntry({ until: '2026-11-25T18:00:00Z' }), 'entries.0.until'],
       [withEntry({ link: { url: 'http://example.org/stream' } }), 'entries.0.link.url'],
       [withEntry({ link: { url: '/stream' } }), 'entries.0.link.url'],

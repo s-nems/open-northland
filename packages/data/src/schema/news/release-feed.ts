@@ -7,8 +7,9 @@ import { httpsUrl, type Validated, validated } from './validated.js';
  */
 export const RELEASE_FEED_SCHEMA_VERSION = 1;
 
-/** Pages keyed by the site's language tag; every page exists in English. */
-export const SiteLinks = z.object({ en: httpsUrl, pl: httpsUrl.optional() });
+/** Pages keyed by the site's language tags, which match the game languages' `LANGUAGE_INFO` tags;
+ *  every page exists in English. */
+export const SiteLinks = z.object({ en: httpsUrl }).catchall(httpsUrl);
 export type SiteLinks = z.infer<typeof SiteLinks>;
 
 /** `major.minor.patch` with an optional prerelease suffix. */

@@ -17,7 +17,7 @@ describe('news endpoint', () => {
   let file: string;
   let server: ApiServer;
   let base: string;
-  let logged: { readonly event: string; readonly fields?: Record<string, unknown> }[];
+  let logged: { readonly event: string; readonly fields: Record<string, unknown> | undefined }[];
 
   beforeEach(async () => {
     dir = await mkdtemp(join(tmpdir(), 'on-api-news-'));
