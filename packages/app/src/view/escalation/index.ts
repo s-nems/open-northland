@@ -1,4 +1,4 @@
-import type { MapVariant } from '@open-northland/data';
+import type { MapNotice, MapVariant } from '@open-northland/data';
 import type { SimEvent } from '@open-northland/sim';
 import type { MissionInfoRow } from '../../game/map/info-lines.js';
 import { createCentreNotice } from '../../hud/dom/centre-notice.js';
@@ -9,7 +9,8 @@ import {
   NOTICE_SHOWN_MS,
   NoticeQueue,
   type NoticeShowing,
-  type SiegeNoticeId,
+  noticeText,
+  sameNotice,
   siegeNoticesOf,
 } from './notices.js';
 
@@ -18,6 +19,8 @@ export interface SiegePresentationDeps {
   /** The variant the session plays, which names the mode mark and the attack notice; null for none. */
   readonly variant: MapVariant | null;
   readonly plane: HTMLElement;
+  /** The map's own strings by id, in the player's map text language; the notices' words. */
+  readonly mapText: (stringId: number) => string | undefined;
   /** The world renderer's attack night. */
   readonly setAttackNight: (on: boolean) => void;
   /** The goal slip's mode mark. */
@@ -39,15 +42,15 @@ export interface SiegePresentation {
 }
 
 export function mountSiegePresentation(deps: SiegePresentationDeps): SiegePresentation {
-  const queue = new NoticeQueue<SiegeNoticeId>();
+  const queue = new NoticeQueue<MapNotice>(sameNotice);
   const banner = createCentreNotice(deps.plane, NOTICE_SHOWN_MS);
   const siegeRows = createSiegeRows();
   let night = false;
   let marked = false;
-  let showing: NoticeShowing<SiegeNoticeId> | null = null;
+  let showing: NoticeShowing<MapNotice> | null = null;
   return {
     onEvents(events) {
-      for (const id of siegeNoticesOf(events)) queue.push(id);
+      for (const notice of siegeNoticesOf(events)) queue.push(notice);
       if (events.some((event) => event.kind === 'mapEscalationAttackLaunched')) deps.playAttackMusic();
     },
     frame() {
@@ -65,7 +68,7 @@ export function mountSiegePresentation(deps: SiegePresentationDeps): SiegePresen
       if (next !== showing) {
         showing = next;
         // A fresh text for every showing, so a notice shown again restarts its fade.
-        banner.show(next === null ? null : { ...messages().hud.escalation.notices[next.notice] });
+        banner.show(next === null ? null : noticeText(next.notice, deps.mapText));
       }
     },
     infoRows(rows, tick) {

@@ -1,4 +1,4 @@
-import { MapEscalation } from '@open-northland/data';
+import { MapModules, type MapNotice } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
 import { FOG_MODE, mapEscalationProgress, Position, Rider, Vehicle } from '../../../src/components/index.js';
 import { TICKS_PER_SECOND } from '../../../src/core/loop.js';
@@ -11,7 +11,6 @@ import {
   coast,
   coastWorld,
   distance,
-  ESCALATION,
   LAKE,
   LANDING,
   LANDINGS,
@@ -24,6 +23,7 @@ import {
   SCRIPT,
   SECOND_LANDING,
   SHIP_SEATS,
+  SIEGE,
   TARGET,
 } from '../../fixtures/map-escalation/coast.js';
 
@@ -33,14 +33,14 @@ const SCRAP_END_PCT = 50;
 describe('map escalation - a sea landing', () => {
   it('sails one full ship to the landing point, sets its men ashore in the attack and leaves the map', () => {
     const sim = coastWorld();
-    let landing: { wave: number; seats: readonly number[]; noticeKey: string } | null = null;
+    let landing: { wave: number; seats: readonly number[]; notice: MapNotice } | null = null;
     runUntil(sim, LAUNCH_SECONDS + 1, () => {
       for (const ev of sim.events.current())
         if (ev.kind === 'mapEscalationLanding')
-          landing = { wave: ev.wave, seats: ev.seats, noticeKey: ev.noticeKey };
+          landing = { wave: ev.wave, seats: ev.seats, notice: ev.notice };
       return landing !== null;
     });
-    expect(landing).toEqual({ wave: 1, seats: [PLAYER], noticeKey: NOTICE });
+    expect(landing).toEqual({ wave: 1, seats: [PLAYER], notice: NOTICE });
     const [ship, ...others] = raiderShips(sim);
     if (ship === undefined) throw new Error('no ship');
     expect(others).toEqual([]);
@@ -67,11 +67,11 @@ describe('map escalation - a sea landing', () => {
   });
 
   it('sends a two-ship wave from two spawn points to two landing points, each ship full', () => {
-    const [launch] = ESCALATION.attacks.launches;
+    const [launch] = SIEGE.attacks.launches;
     if (launch === undefined) throw new Error('no launch');
     const sim = coastWorld({
-      ...ESCALATION,
-      attacks: { ...ESCALATION.attacks, launches: [{ ...launch, ships: 2 }] },
+      ...SIEGE,
+      attacks: { ...SIEGE.attacks, launches: [{ ...launch, ships: 2 }] },
     });
     runUntil(sim, LAUNCH_SECONDS + 1, () => raiderShips(sim).length > 0);
     const ships = raiderShips(sim);
@@ -97,7 +97,7 @@ describe('map escalation - a sea landing', () => {
   it('shows each ship under way to the targeted seats the whole voyage, out and back', () => {
     const REVEAL_NODES = 6;
     const sim = coastWorld({
-      ...ESCALATION,
+      ...SIEGE,
       landings: { ...LANDINGS, revealNodes: REVEAL_NODES },
     });
     sim.enqueueSetup({ kind: 'setFogMode', mode: FOG_MODE.CLASSIC });
@@ -125,7 +125,7 @@ describe('map escalation - a sea landing', () => {
 
   it('scraps a ship that can no longer reach its shore, its men leaving the attack instead of counting dead', () => {
     const sim = coastWorld(
-      { ...ESCALATION, attacks: { ...ESCALATION.attacks, endDeadPct: SCRAP_END_PCT } },
+      { ...SIEGE, attacks: { ...SIEGE.attacks, endDeadPct: SCRAP_END_PCT } },
       coast(true),
     );
     runUntil(sim, LAUNCH_SECONDS + 1, () => raiderShips(sim).length > 0);
@@ -158,7 +158,7 @@ describe('map escalation - a sea landing', () => {
       content: sim.content,
       map: coast(),
       mapAiScript: SCRIPT,
-      mapEscalation: MapEscalation.parse(ESCALATION),
+      mapModules: MapModules.parse({ siege: SIEGE }),
     });
     expect(restored.hashState()).toBe(sim.hashState());
   });

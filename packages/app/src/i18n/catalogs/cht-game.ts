@@ -12,15 +12,6 @@ export const chtGame = {
       nextAttack: '下次進攻：{time} 後',
       attackRunning: '進攻進行中',
       modeMark: '{variant}模式',
-      notices: {
-        fortecaAttack: { title: '要塞的爪牙發起了進攻！' },
-        fortecaLanding: { title: '暗地人的戰船正在靠岸！' },
-        fortecaReinforcements: { title: '篡位領主召來了援軍！', detail: '一支龐大的登陸艦隊正在駛來。' },
-        fortecaLightArmor: { title: '要塞的戰士變得更強了。', detail: '他們獲得了更好的武器和輕甲。' },
-        fortecaHeavyArmor: { title: '要塞的戰士變得更強了。', detail: '他們獲得了重甲。' },
-        fortecaAmulets: { title: '要塞的戰士變得更強了。', detail: '他們獲得了護身符。' },
-        fortecaHealDraughts: { title: '要塞的戰士變得更強了。', detail: '他們獲得了治療藥水。' },
-      },
     },
     armyOrderLimit: '一道命令最多只能選取 {limit} 個單位。沒有任何單位收到這道命令。',
     diplomacyMap: {

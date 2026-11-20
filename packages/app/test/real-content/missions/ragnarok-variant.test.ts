@@ -2,7 +2,8 @@ import { readFileSync } from 'node:fs';
 import {
   applyMapVariantStrings,
   findMapVariant,
-  type MapEscalation,
+  type MapModules,
+  type MapSiege,
   type MapVariant,
   mapLobbySlots,
   TerrainMapFile,
@@ -306,25 +307,37 @@ describe.runIf(hasRealIr())('a Ragnarök attack on specjalna_forteca', () => {
   /** The mean distance of the garrison from the keep: its Defend posts lie within 40 of it. */
   const GARRISON_REACH = 40;
 
-  function ragnarok(): MapEscalation {
-    const escalation = findMapVariant(MAP_ID, 'ragnarok')?.escalation;
-    if (escalation === undefined) throw new Error('Ragnarök ships no escalation');
-    return escalation;
+  function ragnarok(): MapModules & { readonly siege: MapSiege } {
+    const modules = findMapVariant(MAP_ID, 'ragnarok')?.modules;
+    const siege = modules?.siege;
+    if (modules === undefined || siege === undefined) throw new Error('Ragnarök runs no siege');
+    return { ...modules, siege };
   }
 
-  /** The escalation with its first launch at {@link EARLY_LAUNCH_SECONDS}. */
-  function earlyAttack(): MapEscalation {
+  /** Ragnarök's modules with the siege `change` makes. */
+  function withSiege(change: (siege: MapSiege) => MapSiege): MapModules {
     const real = ragnarok();
-    const [first, ...later] = real.attacks.launches;
-    if (first === undefined) throw new Error('no first launch');
-    return {
-      ...real,
-      attacks: { ...real.attacks, launches: [{ ...first, atSeconds: EARLY_LAUNCH_SECONDS }, ...later] },
-    };
+    return { ...real, siege: change(real.siege) };
   }
+
+  /** The modules with the first launch at {@link EARLY_LAUNCH_SECONDS}. */
+  function earlyAttack(): MapModules & { readonly siege: MapSiege } {
+    const real = ragnarok();
+    const [first, ...later] = real.siege.attacks.launches;
+    if (first === undefined) throw new Error('no first launch');
+    const siege = {
+      ...real.siege,
+      attacks: { ...real.siege.attacks, launches: [{ ...first, atSeconds: EARLY_LAUNCH_SECONDS }, ...later] },
+    };
+    return { ...real, siege };
+  }
+
+  /** The content type a slug names in `rows`; -1 for none. */
+  const typeIn = (rows: readonly { id: string; typeId: number }[], slug: string): number =>
+    rows.find((row) => row.id === slug)?.typeId ?? -1;
 
   async function earlyAttackWorld(
-    escalation: MapEscalation = earlyAttack(),
+    modules: MapModules = earlyAttack(),
     absentSeats: readonly number[] = [ABSENT_SEAT],
   ): Promise<Simulation> {
     const ir = rawIrUnderTest() as ContentIr;
@@ -340,7 +353,7 @@ describe.runIf(hasRealIr())('a Ragnarök attack on specjalna_forteca', () => {
       machineSeats: [...COMPUTER_SEATS, ...FORTRESS_SIDE],
       absentSeats,
       assistantSeats: [0],
-      script: { ...mapScriptWorld(script, ir), escalation },
+      script: { ...mapScriptWorld(script, ir), modules },
       ...NO_RULE_OVERRIDES,
       missions: false,
       berryBushes: false,
@@ -365,8 +378,7 @@ describe.runIf(hasRealIr())('a Ragnarök attack on specjalna_forteca', () => {
 
   it('sends each occupied seat’s raider its band from the keep, and leaves the garrison home', async () => {
     const sim = await earlyAttackWorld();
-    const escalation = ragnarok();
-    const { keep, attacks } = escalation;
+    const { stronghold: keep, attacks } = ragnarok().siege;
     const garrison = owned(sim, FORTRESS);
     const launch = EARLY_LAUNCH_SECONDS * TICKS_PER_SECOND;
     let launched: number[] | null = null;
@@ -402,7 +414,7 @@ describe.runIf(hasRealIr())('a Ragnarök attack on specjalna_forteca', () => {
 
   it('brings every band to its seat’s headquarters within minutes, no man left standing idle', async () => {
     const sim = await earlyAttackWorld();
-    const { targets } = ragnarok().attacks;
+    const { targets } = ragnarok().siege.attacks;
     /** A band is at its target once every living man stands this near the headquarters, in map points. */
     const ARRIVED = 25;
     const WATCH_SECONDS = 300;
@@ -459,18 +471,21 @@ describe.runIf(hasRealIr())('a Ragnarök attack on specjalna_forteca', () => {
 
   it('gears the fortress side’s soldiers, existing and new, and raises a lost catapult again', async () => {
     const early = earlyAttack();
-    const gear = early.gear;
-    const respawn = early.catapults;
+    const gear = early.gearSchedule;
+    const respawn = early.siege.catapults;
     if (gear === undefined || respawn === undefined) throw new Error('Ragnarök ships no gear or catapults');
     /** Every gear step one second apart from the second second on, all passed before the first launch. */
     const FIRST_STEP_SECONDS = 2;
     const CATAPULT_RESPAWN_SECONDS = 30;
-    const escalation: MapEscalation = {
+    const siege: MapSiege = { ...early.siege, catapults: { respawnSeconds: CATAPULT_RESPAWN_SECONDS } };
+    const sim = await earlyAttackWorld({
       ...early,
-      gear: { ...gear, steps: gear.steps.map((step, i) => ({ ...step, atSeconds: FIRST_STEP_SECONDS + i })) },
-      catapults: { respawnSeconds: CATAPULT_RESPAWN_SECONDS },
-    };
-    const sim = await earlyAttackWorld(escalation);
+      siege,
+      gearSchedule: {
+        ...gear,
+        steps: gear.steps.map((step, i) => ({ ...step, atSeconds: FIRST_STEP_SECONDS + i })),
+      },
+    });
     const goods = new Map(sim.content.goods.map((good) => [good.id, good]));
     const typeOf = (slug: string): number => goods.get(slug)?.typeId ?? -1;
     const heavyArmor = (gear.steps[1]?.grants[0]?.goods ?? []).map(typeOf);
@@ -483,16 +498,14 @@ describe.runIf(hasRealIr())('a Ragnarök attack on specjalna_forteca', () => {
     const upgrades = gear.steps.flatMap((step) => step.weaponUpgrades);
     expect(upgrades.length).toBeGreaterThan(0);
     // Each better weapon arms the tribe's next class of the same kind.
+    const tribe = typeIn(sim.content.tribes, siege.tribe);
     const armed = (slug: string) =>
-      sim.content.weapons.find((w) => w.tribeType === escalation.tribe && w.goodType === typeOf(slug));
+      sim.content.weapons.find((w) => w.tribeType === tribe && w.goodType === typeOf(slug));
     for (const { from, to } of upgrades) {
       expect(armed(to)?.mainType, `${from} -> ${to}`).toBe(armed(from)?.mainType);
       expect(armed(to)?.jobType, `${from} -> ${to}`).not.toBe(armed(from)?.jobType);
     }
-    const spearJobs = sim.content.jobs
-      .filter((job) => job.id.startsWith('soldier_spear'))
-      .map((j) => j.typeId);
-    expect(escalation.jobMix.some((share) => spearJobs.includes(share.job))).toBe(true);
+    expect(siege.jobMix.some((share) => share.job.startsWith('soldier_spear'))).toBe(true);
     expect(goods.get('potion_heal_big')?.equip?.restorePct?.healthMax).toBeGreaterThan(0);
     expect(goods.get('amulet_defense')?.equip?.damageTakenPct).toBeDefined();
 
@@ -546,7 +559,7 @@ describe.runIf(hasRealIr())('a Ragnarök attack on specjalna_forteca', () => {
     const spot = sim.world.get(lost, components.Vehicle).guard;
     sim.world.mut(lost, components.Health).hitpoints = 0;
     sim.run((EARLY_LAUNCH_SECONDS + 1) * TICKS_PER_SECOND - sim.tick);
-    const humanRaider = escalation.attacks.targets.find((target) => target.seat === HUMAN_SEAT)?.raider;
+    const humanRaider = siege.attacks.targets.find((target) => target.seat === HUMAN_SEAT)?.raider;
     const band = humanRaider === undefined ? [] : owned(sim, humanRaider);
     expect(band.length).toBeGreaterThan(0);
     for (const e of band)
@@ -554,7 +567,7 @@ describe.runIf(hasRealIr())('a Ragnarök attack on specjalna_forteca', () => {
     expect(fortressCatapults()).toHaveLength(catapults.length - 1);
 
     // Seen lost within a second; the first refill beat a full wait after that raises it.
-    const firstBeat = escalation.guard.refill.everySeconds * TICKS_PER_SECOND;
+    const firstBeat = siege.guard.refill.everySeconds * TICKS_PER_SECOND;
     sim.run(firstBeat + TICKS_PER_SECOND - sim.tick);
     const back = fortressCatapults().filter((e) => !catapults.includes(e));
     expect(back).toHaveLength(1);
@@ -562,26 +575,29 @@ describe.runIf(hasRealIr())('a Ragnarök attack on specjalna_forteca', () => {
   }, 300_000);
 
   it('lands every ship of a full wave at its own landing point, on the land its men walk to the target', async () => {
-    const real = ragnarok();
+    const real = ragnarok().siege;
     const landingWave = real.attacks.launches.find((row) => row.ships === MAX_SHIPS);
     if (landingWave === undefined || real.landings === undefined)
       throw new Error('Ragnarök ships no full landing wave');
     // The first full landing wave moved to the first launch, every seat occupied.
-    const escalation: MapEscalation = {
+    const siege: MapSiege = {
       ...real,
       attacks: {
         ...real.attacks,
         launches: [{ ...landingWave, atSeconds: EARLY_LAUNCH_SECONDS }, ...real.attacks.launches.slice(1)],
       },
     };
-    const sim = await earlyAttackWorld(escalation, []);
+    const sim = await earlyAttackWorld(
+      withSiege(() => siege),
+      [],
+    );
     const terrain = sim.terrain;
     if (terrain === undefined) throw new Error('no terrain');
     /** Time for the farthest ship to sail in, set its men down, and sail back off the map. */
     const VOYAGE_SECONDS = 240;
     /** How near its landing point a ship's men step ashore, in map points. */
     const ASHORE = 8;
-    const { targets } = escalation.attacks;
+    const { targets } = siege.attacks;
     let landed: readonly number[] = [];
     sim.run(EARLY_LAUNCH_SECONDS * TICKS_PER_SECOND - sim.tick - 1);
     sim.step();
@@ -630,8 +646,10 @@ describe.runIf(hasRealIr())('a Ragnarök attack on specjalna_forteca', () => {
   it('turns the computer seats’ soldiers into civilians at the start, the human seat keeping its own', async () => {
     const SETTLE_TICKS = 5 * TICKS_PER_SECOND;
     // The placed army, before the computer player's first decision disarms its own start soldiers.
-    const armed = await earlyAttackWorld({ ...ragnarok(), demobilizeComputerSeats: false });
-    const demobilized = await earlyAttackWorld({ ...ragnarok(), demobilizeComputerSeats: true });
+    const { demobilizedStart, ...armedModules } = ragnarok();
+    if (demobilizedStart === undefined) throw new Error('Ragnarök demobilizes no computer seat');
+    const armed = await earlyAttackWorld(armedModules);
+    const demobilized = await earlyAttackWorld(ragnarok());
     demobilized.run(SETTLE_TICKS);
     const soldiers = (sim: Simulation, seat: number) =>
       owned(sim, seat).filter((e) =>
@@ -648,10 +666,10 @@ describe.runIf(hasRealIr())('a Ragnarök attack on specjalna_forteca', () => {
   }, 300_000);
 
   it('keeps the fortress’s builders and porters: a razed palisade goes up again, a pile at a gate is carted in', async () => {
-    const escalation = ragnarok();
-    const { builders, porters, keep } = escalation;
+    const { siege } = ragnarok();
+    const { builders, porters, stronghold: keep } = siege;
     if (builders === undefined || porters === undefined) throw new Error('Ragnarök keeps no fortress crew');
-    const sim = await earlyAttackWorld(escalation);
+    const sim = await earlyAttackWorld(ragnarok());
     const w = sim.world;
     const jobOf = (slug: string) => sim.content.jobs.find((job) => job.id === slug)?.typeId ?? -1;
     const crew = (slug: string) =>
@@ -664,7 +682,7 @@ describe.runIf(hasRealIr())('a Ragnarök attack on specjalna_forteca', () => {
     );
     if (store === undefined) throw new Error('the fortress has no store');
     /** The first refill beat makes the crew; the first launch lies half an hour out. */
-    const CREWED_SECONDS = escalation.guard.refill.everySeconds + 1;
+    const CREWED_SECONDS = siege.guard.refill.everySeconds + 1;
     /** Beside the north gate, 47 map points from the keep. */
     const GATE_PILE = { x: 252, y: 196 };
     /** The outermost palisade stands 56 map points from the keep. */
@@ -719,11 +737,11 @@ describe.runIf(hasRealIr())('a Ragnarök attack on specjalna_forteca', () => {
   }, 300_000);
 
   it('mans every fortress tower with its bows on the first beat, and stands Lord Usurper at the keep', async () => {
-    const escalation = ragnarok();
-    const { towerGarrison, keep } = escalation;
-    const [lord] = escalation.heroes;
+    const modules = ragnarok();
+    const { towerGarrison, stronghold: keep, guard } = modules.siege;
+    const [lord] = modules.heroes?.placed ?? [];
     if (towerGarrison === undefined || lord === undefined) throw new Error('Ragnarök mans no towers');
-    const sim = await earlyAttackWorld(escalation);
+    const sim = await earlyAttackWorld(modules);
     const w = sim.world;
     const towers = [...w.query(components.Building, components.Owner)].filter(
       (e) =>
@@ -735,7 +753,7 @@ describe.runIf(hasRealIr())('a Ragnarök attack on specjalna_forteca', () => {
     const FORTRESS_TOWERS = 16;
     expect(towers).toHaveLength(FORTRESS_TOWERS);
 
-    sim.run((escalation.guard.refill.everySeconds + 1) * TICKS_PER_SECOND - sim.tick);
+    sim.run((guard.refill.everySeconds + 1) * TICKS_PER_SECOND - sim.tick);
     // The map AI remembers every tower for rebuilding, each on its own anchor.
     const program = [...w.query(components.MapAiState)].find(
       (e) => w.get(e, components.MapAiState).player === FORTRESS,
@@ -756,8 +774,9 @@ describe.runIf(hasRealIr())('a Ragnarök attack on specjalna_forteca', () => {
         (e) => w.get(e, components.JobAssignment).workplace === tower,
       );
       for (const slot of towerGarrison.slots) {
-        const posts = type?.workers.find((row) => row.jobType === slot.job)?.count ?? 0;
-        const men = posted.filter((e) => w.get(e, components.Settler).jobType === slot.job);
+        const jobType = typeIn(sim.content.jobs, slot.job);
+        const posts = type?.workers.find((row) => row.jobType === jobType)?.count ?? 0;
+        const men = posted.filter((e) => w.get(e, components.Settler).jobType === jobType);
         expect(men, `tower ${tower} job ${slot.job}`).toHaveLength(Math.min(slot.count, posts));
       }
     }

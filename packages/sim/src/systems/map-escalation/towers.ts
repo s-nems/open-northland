@@ -1,5 +1,6 @@
-import type { MapEscalation } from '@open-northland/data';
+import type { MapSiege } from '@open-northland/data';
 import { Settler } from '../../components/index.js';
+import { contentIndex } from '../../core/content-index.js';
 import type { World } from '../../ecs/world.js';
 import { garrisonSlots } from '../ai-shared/military/defence/posts.js';
 import { anchorNodeOf } from '../ai-shared/node-geometry.js';
@@ -8,19 +9,20 @@ import type { SystemContext } from '../context.js';
 import { assignedWorkers } from '../stores/assigned-workers.js';
 import { spawnPostedAtKeep } from './keep.js';
 
-type TowerGarrison = NonNullable<MapEscalation['towerGarrison']>;
+type TowerGarrison = NonNullable<MapSiege['towerGarrison']>;
 
 /**
- * Make each finished fortress tower's missing archers at the keep, posted to it, so they walk up and man
+ * Make each finished stronghold tower's missing archers at the keep, posted to it, so they walk up and man
  * it. A tower raised again since is one of the seat's buildings like the first, so it is manned again.
  */
 export function keepTowerGarrison(
   world: World,
   ctx: SystemContext,
-  config: MapEscalation,
+  siege: MapSiege,
   garrison: TowerGarrison,
 ): void {
-  const seat = config.keep.seat;
+  const seat = siege.stronghold.seat;
+  const jobTypeBySlug = contentIndex(ctx.content).jobTypeBySlug;
   for (const tower of ownedBuildings(world, seat)) {
     const posts = garrisonSlots(world, ctx, tower);
     if (posts.size === 0 || !isBuilt(world, tower)) continue;
@@ -32,10 +34,12 @@ export function keepTowerGarrison(
       if (job != null) held.set(job, (held.get(job) ?? 0) + 1);
     }
     for (const slot of garrison.slots) {
-      const missing = Math.min(slot.count, posts.get(slot.job) ?? 0) - (held.get(slot.job) ?? 0);
+      const jobType = jobTypeBySlug.get(slot.job);
+      if (jobType === undefined) continue;
+      const missing = Math.min(slot.count, posts.get(jobType) ?? 0) - (held.get(jobType) ?? 0);
       for (let i = 0; i < missing; i++) {
         // A tower that would not take one takes no more this beat; the next beat tries again.
-        if (spawnPostedAtKeep(world, ctx, config, slot.job, tower, anchor) === null) break;
+        if (spawnPostedAtKeep(world, ctx, siege, jobType, tower, anchor) === null) break;
       }
     }
   }

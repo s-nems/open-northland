@@ -1,4 +1,4 @@
-import { type ContentSet, jsonFingerprint, type MapEscalation } from '@open-northland/data';
+import { type ContentSet, jsonFingerprint, type MapModules } from '@open-northland/data';
 import {
   type MapAiScript,
   MapAiState,
@@ -33,8 +33,8 @@ export interface RestoreOptions {
   missions?: MissionScript;
   /** The map's `[AIData]` rows, on the same terms for a save that carries a seat's program state. */
   mapAiScript?: MapAiScript;
-  /** The map variant's escalation, which must be the one the run was saved under. */
-  mapEscalation?: MapEscalation;
+  /** The map's modules, which must be the ones the run was saved under. */
+  mapModules?: MapModules;
 }
 
 /**
@@ -65,9 +65,9 @@ export function restoreSimulation(save: SaveGame, opts: RestoreOptions): Simulat
   if (header.mapAiScriptFingerprint !== aiFingerprint) {
     throw new Error('save.header.mapAiScriptFingerprint: the loaded map AI script differs from the save');
   }
-  const escalationFingerprint = opts.mapEscalation === undefined ? null : jsonFingerprint(opts.mapEscalation);
-  if (header.mapEscalationFingerprint !== escalationFingerprint) {
-    throw new Error('save.header.mapEscalationFingerprint: the loaded map escalation differs from the save');
+  const modulesFingerprint = opts.mapModules === undefined ? null : jsonFingerprint(opts.mapModules);
+  if (header.mapModulesFingerprint !== modulesFingerprint) {
+    throw new Error('save.header.mapModulesFingerprint: the loaded map modules differ from the save');
   }
   const sim = new Simulation({
     seed: header.seed,
@@ -75,7 +75,7 @@ export function restoreSimulation(save: SaveGame, opts: RestoreOptions): Simulat
     ...(opts.map !== undefined ? { map: opts.map } : {}),
     ...(opts.missions !== undefined ? { missions: opts.missions } : {}),
     ...(opts.mapAiScript !== undefined ? { mapAiScript: opts.mapAiScript } : {}),
-    ...(opts.mapEscalation !== undefined ? { mapEscalation: opts.mapEscalation } : {}),
+    ...(opts.mapModules !== undefined ? { mapModules: opts.mapModules } : {}),
   });
   const fingerprint = sim.mapFingerprint ?? null;
   if (fingerprint !== header.mapFingerprint) {

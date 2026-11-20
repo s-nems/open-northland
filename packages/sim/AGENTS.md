@@ -126,7 +126,7 @@ The hygiene suite enforces the import and nondeterminism boundary. Normal change
 | `spawn`, `livestock`, `wildlife`, `chests` | entity creation; farm animals; wild animals; chests |
 | `missions`, `match` | map scripts and goals; match goals, standing and teardown |
 | `computer-player`, `map-ai`, `ai-shared` | see AI ownership below |
-| `map-escalation` | a map variant's siege schedule: attacks spawned at a keep, sea landings, an attack's aim past a fallen headquarters, the growing guard, gear steps, lost catapults raised again, the fortress's builders, carting porters and tower archers kept up, its defenders placed at the start and computer seats' soldiers retrained at the start |
+| `map-escalation` | a map's modules (`ctx.mapModules`): the siege's attacks spawned at a keep, sea landings, an attack's aim past a fallen headquarters, the growing guard, gear steps, lost catapults raised again, the fortress's builders, carting porters and tower archers kept up, its defenders placed at the start and computer seats' soldiers retrained at the start |
 | `readviews` | content read views shared across systems |
 
 `test/` mirrors `src/`: system tests live in `test/systems/<system>/` and its subfolders (a

@@ -51,7 +51,7 @@ describe('parseSaveGame header rejection', () => {
       doc.header.contentFingerprint = contentFingerprint;
       expect(() => parseSaveGame(doc)).toThrow(/contentFingerprint/);
     }
-    for (const field of ['missionScriptFingerprint', 'mapAiScriptFingerprint', 'mapEscalationFingerprint']) {
+    for (const field of ['missionScriptFingerprint', 'mapAiScriptFingerprint', 'mapModulesFingerprint']) {
       for (const value of [undefined, '', 'abcd', 'A'.repeat(64), 123]) {
         const doc = populatedDoc();
         doc.header[field] = value;

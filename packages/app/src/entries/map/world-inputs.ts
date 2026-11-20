@@ -1,5 +1,10 @@
 import type { ContentSet, MapScript, TerrainMapFile } from '@open-northland/data';
-import { assertMapVariantFitsMap, mapLobbySlots } from '@open-northland/data';
+import {
+  assertMapModulesFitMap,
+  assertMapVariantFitsMap,
+  type MapModulesContentNames,
+  mapLobbySlots,
+} from '@open-northland/data';
 import { type GameSession, localPlayerOf, parseSavedSessionMetadata } from '@open-northland/lockstep';
 import { DESCRIPTOR_WORLD } from '@open-northland/net-protocol';
 import { type Entity, parseSaveGame, type SaveGame } from '@open-northland/sim';
@@ -51,7 +56,14 @@ const NO_PLACEMENTS: MapWorldPlacements = { harvestablePlacements: [], pooledPla
 export function buildMapWorldFromInputs(inputs: MapWorldInputs): BuiltWorld<MapWorldPlacements> {
   const { ir, script, session, save } = inputs;
   const variant = sessionMapVariant(session.world);
-  if (variant !== null && inputs.map !== null) assertMapVariantFitsMap(variant, inputs.map);
+  if (variant !== null && inputs.map !== null) {
+    assertMapVariantFitsMap(variant, inputs.map);
+    if (variant.modules !== undefined)
+      assertMapModulesFitMap(variant.modules, inputs.map, {
+        seats: script === null ? null : new Set(script.players.map((row) => row.player)),
+        names: contentNamesOf(ir),
+      });
+  }
   const map = variantMap(inputs.map, session.world);
   // The render layers read the raw map; the sim runs on the collision resolution of the same map.
   const seated = sessionMapScript(session, script, ir);
@@ -82,6 +94,23 @@ export function buildMapWorldFromInputs(inputs: MapWorldInputs): BuiltWorld<MapW
   return {
     sim: world.sim,
     extras: { harvestablePlacements: world.harvestablePlacements, pooledPlacements: world.pooledPlacements },
+  };
+}
+
+/** The slugs the IR names, by kind; null unless it carries every lane the map modules name. */
+function contentNamesOf(ir: ContentIr | null): MapModulesContentNames | null {
+  if (ir === null) return null;
+  const { jobs, tribes, buildings, goods, vehicles } = ir;
+  if (jobs === undefined || tribes === undefined || buildings === undefined) return null;
+  if (goods === undefined || vehicles === undefined) return null;
+  const slugs = (rows: readonly { readonly id?: string | undefined }[]) =>
+    new Set(rows.flatMap((row) => (row.id === undefined ? [] : [row.id])));
+  return {
+    jobs: slugs(jobs),
+    tribes: slugs(tribes),
+    buildings: slugs(buildings),
+    goods: slugs(goods),
+    vehicles: slugs(vehicles),
   };
 }
 

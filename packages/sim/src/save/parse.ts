@@ -72,10 +72,7 @@ function parsedHeader(value: unknown): SaveGameHeader {
       'missionScriptFingerprint',
     ),
     mapAiScriptFingerprint: parseContentFingerprint(raw.mapAiScriptFingerprint, 'mapAiScriptFingerprint'),
-    mapEscalationFingerprint: parseContentFingerprint(
-      raw.mapEscalationFingerprint,
-      'mapEscalationFingerprint',
-    ),
+    mapModulesFingerprint: parseContentFingerprint(raw.mapModulesFingerprint, 'mapModulesFingerprint'),
     savedAt: parseSavedAt(raw.savedAt),
     mapId: asNullableString(raw.mapId, `${at}.mapId`),
     mapFingerprint: asNullableString(raw.mapFingerprint, `${at}.mapFingerprint`),

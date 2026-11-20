@@ -13,30 +13,6 @@ export const itGame = {
       nextAttack: 'Prossimo attacco tra {time}',
       attackRunning: 'Attacco in corso',
       modeMark: 'Modalità {variant}',
-      notices: {
-        fortecaAttack: { title: "Gli sgherri della Fortezza marciano all'attacco!" },
-        fortecaLanding: { title: 'Le navi delle Terre Oscure approdano sulla riva!' },
-        fortecaReinforcements: {
-          title: 'Lord Usurpatore ha chiamato rinforzi!',
-          detail: "Un'enorme flotta da sbarco è in arrivo.",
-        },
-        fortecaLightArmor: {
-          title: 'I guerrieri della Fortezza diventano più forti.',
-          detail: 'Hanno ricevuto armi migliori e armature leggere.',
-        },
-        fortecaHeavyArmor: {
-          title: 'I guerrieri della Fortezza diventano più forti.',
-          detail: 'Hanno ricevuto armature pesanti.',
-        },
-        fortecaAmulets: {
-          title: 'I guerrieri della Fortezza diventano più forti.',
-          detail: 'Hanno ricevuto amuleti.',
-        },
-        fortecaHealDraughts: {
-          title: 'I guerrieri della Fortezza diventano più forti.',
-          detail: 'Hanno ricevuto pozioni di guarigione.',
-        },
-      },
     },
     armyOrderLimit:
       'Seleziona al massimo {limit} unità per un ordine. Nessuna unità ha ricevuto questo ordine.',

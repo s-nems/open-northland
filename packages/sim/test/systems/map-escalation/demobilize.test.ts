@@ -1,29 +1,25 @@
-import { MapEscalation } from '@open-northland/data';
+import { MapModules } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
 import { Owner, Person, Settler } from '../../../src/components/index.js';
 import { Simulation } from '../../../src/index.js';
 import { CIVILIST_JOB } from '../../../src/systems/lifecycle/ageclass.js';
 import { aiContent } from '../../fixtures/ai-content.js';
-import {
-  ESCALATION,
-  FORTRESS,
-  MAP,
-  SPEARMAN,
-  soldiersOf,
-  VIKING,
-} from '../../fixtures/map-escalation/keep.js';
+import { FORTRESS, MAP, SIEGE, SPEARMAN, soldiersOf, VIKING } from '../../fixtures/map-escalation/keep.js';
 import { grassNodeMap } from '../../fixtures/terrain.js';
 
 const HUMAN = 0;
 const COMPUTER = 1;
 const SOLDIERS_PER_SEAT = 3;
 
-function startedWorld(demobilizeComputerSeats: boolean): Simulation {
+function startedWorld(demobilized: boolean): Simulation {
   const sim = new Simulation({
     seed: 3,
     content: aiContent(),
     map: grassNodeMap(MAP, MAP),
-    mapEscalation: MapEscalation.parse({ ...ESCALATION, demobilizeComputerSeats }),
+    mapModules: MapModules.parse({
+      siege: SIEGE,
+      ...(demobilized ? { demobilizedStart: { version: 1 } } : {}),
+    }),
   });
   sim.enqueueSetup({ kind: 'setAiControl', player: COMPUTER, enabled: true });
   // A map-scripted camp: machine identity whose computer controller stays off.
@@ -70,7 +66,7 @@ describe('map escalation - computer seats demobilize', () => {
     expect(soldiersOf(sim, HUMAN)).toBe(SOLDIERS_PER_SEAT);
   });
 
-  it('keeps every seat armed without the flag', () => {
+  it('keeps every seat armed without the module', () => {
     const sim = startedWorld(false);
     expect(soldiersOf(sim, COMPUTER)).toBe(SOLDIERS_PER_SEAT);
   });

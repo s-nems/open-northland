@@ -33,7 +33,7 @@ interface PageText {
 interface LanguageText {
   /** The map's story, told without the trade and the tribes to find that Ragnarök does not have. */
   readonly intro: PageText;
-  /** What Ragnarök changes, without the times and band sizes the escalation data may tune. */
+  /** What Ragnarök changes, without the times and band sizes its modules may tune. */
   readonly rules: PageText;
   readonly victory: PageText;
 }

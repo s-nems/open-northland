@@ -1,4 +1,4 @@
-import type { MapEscalation } from '@open-northland/data';
+import type { MapSiege } from '@open-northland/data';
 import { Building, ownerOf, Settler } from '../../../../components/index.js';
 import type { PlayerCommand } from '../../../../core/commands/index.js';
 import { contentIndex } from '../../../../core/content-index.js';
@@ -214,14 +214,14 @@ function peaceSlots(slots: ReadonlyMap<number, number>): ReadonlyMap<number, num
 }
 
 const heldCrewMemo = new WeakMap<
-  MapEscalation,
+  MapSiege,
   WeakMap<ReadonlyMap<number, number>, ReadonlyMap<number, number>>
 >();
 
 /**
  * The men of each class a calm tower of `slots` keeps under the scripted rule: its quiet crew, or for the
- * fortress seat of a map escalation that mans its towers, that garrison where larger, so the program
- * never sends the escalation's archers back out. Shared like the slots it derives from.
+ * stronghold seat of a map's siege that mans its towers, that garrison where larger, so the program
+ * never sends the siege's archers back out. Shared like the slots it derives from.
  */
 function calmKeep(
   ctx: SystemContext,
@@ -229,20 +229,23 @@ function calmKeep(
   slots: ReadonlyMap<number, number>,
   peace: ReadonlyMap<number, number>,
 ): ReadonlyMap<number, number> {
-  const escalation = ctx.mapEscalation;
-  const garrison = escalation?.towerGarrison;
-  if (escalation === undefined || garrison === undefined || owner !== escalation.keep.seat) return peace;
-  let bySlots = heldCrewMemo.get(escalation);
+  const siege = ctx.mapModules?.siege;
+  const garrison = siege?.towerGarrison;
+  if (siege === undefined || garrison === undefined || owner !== siege.stronghold.seat) return peace;
+  let bySlots = heldCrewMemo.get(siege);
   if (bySlots === undefined) {
     bySlots = new WeakMap();
-    heldCrewMemo.set(escalation, bySlots);
+    heldCrewMemo.set(siege, bySlots);
   }
   let keep = bySlots.get(slots);
   if (keep === undefined) {
+    const jobTypeBySlug = contentIndex(ctx.content).jobTypeBySlug;
     const held = new Map(peace);
     for (const slot of garrison.slots) {
-      const posts = slots.get(slot.job) ?? 0;
-      held.set(slot.job, Math.max(held.get(slot.job) ?? 0, Math.min(slot.count, posts)));
+      const jobType = jobTypeBySlug.get(slot.job);
+      if (jobType === undefined) continue;
+      const posts = slots.get(jobType) ?? 0;
+      held.set(jobType, Math.max(held.get(jobType) ?? 0, Math.min(slot.count, posts)));
     }
     keep = held;
     bySlots.set(slots, keep);

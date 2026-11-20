@@ -1,5 +1,5 @@
-import type { ContentSet, MapAiSeat, MapEscalationInput } from '@open-northland/data';
-import { MapEscalation, parseContentSet } from '@open-northland/data';
+import type { ContentSet, MapAiSeat, MapModulesInput } from '@open-northland/data';
+import { MapModules, parseContentSet } from '@open-northland/data';
 import { Owner, Person, Position, Settler } from '../../../src/components/index.js';
 import { TICKS_PER_SECOND } from '../../../src/core/loop.js';
 import type { Entity } from '../../../src/ecs/world.js';
@@ -11,15 +11,19 @@ import { aiContent } from '../ai-content.js';
 import { grassNodeMap } from '../terrain.js';
 
 /**
- * A synthetic escalation map: a fortress seat whose keep spawns each attack for the raider of every
+ * A synthetic siege map: a fortress seat whose keep spawns each attack for the raider of every
  * occupied target seat, the raider's own Attack task marching it, and a guard that refills toward its
  * growing cap while the garrison holds its post.
  */
 
 export const VIKING = 1;
+export const VIKING_SLUG = 'viking';
 export const HQ_TYPE = 1;
+const HQ_SLUG = 'headquarters';
 export const SPEARMAN = 32;
+export const SPEARMAN_SLUG = 'soldier_spear_wooden';
 export const BOWMAN = 40;
+export const BOWMAN_SLUG = 'soldier_bow_short';
 export const MAP = 160;
 
 export const FORTRESS = 6;
@@ -37,14 +41,17 @@ const FIRST_WAVE_MEN = 3;
 const END_DEAD_PCT = 60;
 export const END_AFTER_SECONDS = 120;
 export const GUARD_BASE = 3;
-export const REFILL_EVERY_SECONDS = 5;
+export const REFILL_EVERY_SECONDS = 10;
 
-export const ESCALATION: MapEscalationInput = {
-  keep: { seat: FORTRESS, houseType: HQ_TYPE, ...KEEP, range: 4 },
-  tribe: VIKING,
+export type SiegeInput = NonNullable<MapModulesInput['siege']>;
+
+export const SIEGE: SiegeInput = {
+  version: 1,
+  stronghold: { seat: FORTRESS, building: HQ_SLUG, ...KEEP, range: 4 },
+  tribe: VIKING_SLUG,
   jobMix: [
-    { job: SPEARMAN, weight: 2 },
-    { job: BOWMAN, weight: 1 },
+    { job: SPEARMAN_SLUG, weight: 2 },
+    { job: BOWMAN_SLUG, weight: 1 },
   ],
   attacks: {
     launches: [
@@ -67,6 +74,8 @@ export const ESCALATION: MapEscalationInput = {
     refill: { everySeconds: REFILL_EVERY_SECONDS, baseMen: 2, stepMen: 0, stepSeconds: 60, maxMen: 2 },
   },
 };
+
+export const MODULES: MapModulesInput = { siege: SIEGE };
 
 const seat = (player: number, tasks: MapAiSeat['tasks']): MapAiSeat => ({
   player,
@@ -98,7 +107,7 @@ export const SCRIPT: MapAiSeat[] = [
 /** The keep world after its setup tick. `inMatch` makes the player and fortress match participants;
  *  `scriptedFortress` leaves the fortress seat to its map AI alone, as a map's scripted seat is. */
 export function keepWorld(
-  config: MapEscalationInput = ESCALATION,
+  modules: MapModulesInput = MODULES,
   content: ContentSet = aiContent(),
   options: { readonly inMatch?: boolean; readonly scriptedFortress?: boolean } = {},
 ): { sim: Simulation; garrison: Entity[] } {
@@ -107,7 +116,7 @@ export function keepWorld(
     content,
     map: grassNodeMap(MAP, MAP),
     mapAiScript: SCRIPT,
-    mapEscalation: MapEscalation.parse(config),
+    mapModules: MapModules.parse(modules),
   });
   if (options.inMatch === true)
     sim.enqueueSetup({ kind: 'setMatchParticipants', players: [PLAYER, FORTRESS] });
@@ -219,23 +228,30 @@ export function gearContent(): ContentSet {
   });
 }
 
-/** {@link ESCALATION} with two gear steps for the fortress and its raider, and catapults that return. */
-export const GEARED: MapEscalationInput = {
-  ...ESCALATION,
-  gear: {
-    seats: [FORTRESS, RAIDER],
-    steps: [
-      {
-        atSeconds: LIGHT_ARMOR_SECONDS,
-        noticeKey: 'forteca.gear.lightArmor',
-        grants: [{ goods: ['armor_wool', 'armor_leather'] }, { goods: ['shoes'] }],
-      },
-      {
-        atSeconds: AMULET_SECONDS,
-        noticeKey: 'forteca.gear.amulets',
-        grants: [{ goods: ['amulet_defense'] }],
-      },
-    ],
-  },
-  catapults: { respawnSeconds: CATAPULT_RESPAWN_SECONDS },
+/** Map string ids the gear steps' notices name. */
+export const LIGHT_ARMOR_NOTICE = { title: 1, detail: 2 };
+export const AMULET_NOTICE = { title: 1, detail: 3 };
+
+/** Two gear steps for the fortress and its raider. */
+export const GEAR_SCHEDULE: NonNullable<MapModulesInput['gearSchedule']> = {
+  version: 1,
+  seats: [FORTRESS, RAIDER],
+  steps: [
+    {
+      atSeconds: LIGHT_ARMOR_SECONDS,
+      notice: LIGHT_ARMOR_NOTICE,
+      grants: [{ goods: ['armor_wool', 'armor_leather'] }, { goods: ['shoes'] }],
+    },
+    {
+      atSeconds: AMULET_SECONDS,
+      notice: AMULET_NOTICE,
+      grants: [{ goods: ['amulet_defense'] }],
+    },
+  ],
+};
+
+/** {@link SIEGE} with catapults that return, and the {@link GEAR_SCHEDULE}. */
+export const GEARED: MapModulesInput = {
+  siege: { ...SIEGE, catapults: { respawnSeconds: CATAPULT_RESPAWN_SECONDS } },
+  gearSchedule: GEAR_SCHEDULE,
 };

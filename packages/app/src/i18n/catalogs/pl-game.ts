@@ -13,24 +13,6 @@ export const plGame = {
       nextAttack: 'Następny atak za {time}',
       attackRunning: 'Atak trwa',
       modeMark: 'Tryb {variant}',
-      notices: {
-        fortecaAttack: { title: 'Siepacze Twierdzy ruszają do ataku!' },
-        fortecaLanding: { title: 'Okręty Krainy Ciemności przybijają do brzegu!' },
-        fortecaReinforcements: {
-          title: 'Lord Uzurpator wezwał wsparcie!',
-          detail: 'Płynie ogromna flota desantowa.',
-        },
-        fortecaLightArmor: {
-          title: 'Wojownicy Twierdzy rosną w siłę.',
-          detail: 'Otrzymali lepszą broń i lekkie zbroje.',
-        },
-        fortecaHeavyArmor: { title: 'Wojownicy Twierdzy rosną w siłę.', detail: 'Otrzymali ciężkie zbroje.' },
-        fortecaAmulets: { title: 'Wojownicy Twierdzy rosną w siłę.', detail: 'Otrzymali amulety.' },
-        fortecaHealDraughts: {
-          title: 'Wojownicy Twierdzy rosną w siłę.',
-          detail: 'Otrzymali mikstury leczenia.',
-        },
-      },
     },
     armyOrderLimit:
       'Zaznacz najwyżej {limit} jednostek do jednego rozkazu. Żadna jednostka nie otrzymała tego rozkazu.',

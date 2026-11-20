@@ -1,4 +1,4 @@
-import type { MapEscalation } from '@open-northland/data';
+import type { MapGearSchedule } from '@open-northland/data';
 import {
   Equipment,
   ensureEquipment,
@@ -21,8 +21,7 @@ import { isSoldierJob, mayChangeEquipment } from '../readviews/index.js';
 import { takeUpWeaponGood } from '../settlers/atomics/effects/goods/weapon-class.js';
 import { isEscalationHero } from './heroes.js';
 
-type GearConfig = NonNullable<MapEscalation['gear']>;
-type GearStep = GearConfig['steps'][number];
+type GearStep = MapGearSchedule['steps'][number];
 type WeaponUpgrade = GearStep['weaponUpgrades'][number];
 
 const PERCENT = 100;
@@ -30,13 +29,13 @@ const PERCENT = 100;
 const NEWCOMER_CHECK_TICKS = TICKS_PER_SECOND;
 
 /**
- * The fortress side's gear: when a step falls due every soldier of the gear seats gets it, and every
+ * The gear schedule: when a step falls due every soldier of the gear seats gets it, and every
  * soldier created for those seats later (a refill, a band, a script spawn) gets each step already passed,
  * within a second. Newcomers are found by entity id above a watermark, so the look costs the entities
  * created since the last one. A settler that becomes a gear seat's soldier by a trade or owner change is
  * not seen: a gear seat is a scripted camp that neither trains nor is handed people.
  */
-export function gearTurn(world: World, ctx: SystemContext, gear: GearConfig): void {
+export function gearTurn(world: World, ctx: SystemContext, gear: MapGearSchedule): void {
   const passed = mapEscalationProgress(world).gearSteps;
   const due = gear.steps[passed];
   const stepDue = due !== undefined && ctx.tick >= due.atSeconds * TICKS_PER_SECOND;
@@ -55,10 +54,14 @@ export function gearTurn(world: World, ctx: SystemContext, gear: GearConfig): vo
     progress.gearSteps = step;
     progress.gearedBelow = below;
   });
-  ctx.events.emit({ kind: 'mapEscalationGearStep', step, noticeKey: due.noticeKey });
+  ctx.events.emit({
+    kind: 'mapEscalationGearStep',
+    step,
+    ...(due.notice === undefined ? {} : { notice: due.notice }),
+  });
 }
 
-function gearNewcomers(world: World, ctx: SystemContext, gear: GearConfig, passed: number): void {
+function gearNewcomers(world: World, ctx: SystemContext, gear: MapGearSchedule, passed: number): void {
   const from = mapEscalationProgress(world).gearedBelow;
   const below = world.nextEntityId;
   if (below <= from) return;

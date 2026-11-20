@@ -1,4 +1,4 @@
-import { MapEscalation } from '@open-northland/data';
+import { MapModules } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
 import { markPlayerDead, Owner, Vehicle } from '../../../src/components/index.js';
 import { TICKS_PER_SECOND } from '../../../src/core/loop.js';
@@ -29,7 +29,7 @@ function setupWithCatapult(options: { readonly inMatch?: boolean } = {}): Simula
     content: gearContent(),
     map: grassNodeMap(MAP, MAP),
     mapAiScript: SCRIPT,
-    mapEscalation: MapEscalation.parse(GEARED),
+    mapModules: MapModules.parse(GEARED),
   });
   if (options.inMatch === true) sim.enqueueSetup({ kind: 'setMatchParticipants', players: [FORTRESS] });
   sim.enqueueSetup({ kind: 'setAiControl', player: FORTRESS, enabled: true, modules: { military: false } });

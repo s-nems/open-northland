@@ -6,9 +6,9 @@ import {
   applyMapVariantSlots,
   applyMapVariantStrings,
   assertMapVariantFitsMap,
+  LANGUAGES,
   MAP_VARIANTS,
   MapBriefing,
-  MapEscalation,
   MapScript,
   MapVariant,
   mapLobbySlots,
@@ -250,56 +250,14 @@ describe('a start seat', () => {
 describe('assertMapVariantFitsMap', () => {
   /** In cells: a 20 x 10 half-cell grid. */
   const SIZE = { width: 10, height: 5 };
-  const committed = MAP_VARIANTS.find((row) => row.escalation !== undefined)?.escalation;
-  if (committed === undefined) throw new Error('no committed escalation to vary');
-  const escalation: MapEscalation = committed;
-  const target = escalation.attacks.targets[0];
-  if (target === undefined) throw new Error('no committed target to vary');
-  const onMap = { x: 1, y: 1 };
-  const landing = { spawnX: 1, spawnY: 1, ...onMap };
-  /** The committed escalation moved onto the small map, with `change` applied. */
-  const fitted = (change: (fit: MapEscalation) => MapEscalation) => {
-    const fit = {
-      ...escalation,
-      keep: { ...escalation.keep, ...onMap },
-      attacks: { ...escalation.attacks, targets: [{ ...target, ...onMap, landings: [landing] }] },
-      heroes: escalation.heroes.map((hero) => ({ ...hero, ...onMap })),
-      ...(escalation.porters === undefined ? {} : { porters: { ...escalation.porters, ...onMap } }),
-    };
-    return { ...VARIANT, escalation: change(fit) };
-  };
-  const off = { x: 20, y: 0 };
-
-  it('passes a variant whose objects and points all fit', () => {
-    const placed = { ...fitted((fit) => fit), landscapeObjects: [{ object: 'cedar 01', hx: 19, hy: 9 }] };
+  it('passes a variant whose objects fit', () => {
+    const placed = { ...VARIANT, landscapeObjects: [{ object: 'cedar 01', hx: 19, hy: 9 }] };
     expect(() => assertMapVariantFitsMap(placed, SIZE)).not.toThrow();
   });
 
-  it('refuses a placed object or an escalation point off the map', () => {
-    const placed = { ...fitted((fit) => fit), landscapeObjects: [{ object: 'cedar 01', hx: 0, hy: 10 }] };
+  it('refuses a placed object off the map', () => {
+    const placed = { ...VARIANT, landscapeObjects: [{ object: 'cedar 01', hx: 0, hy: 10 }] };
     expect(() => assertMapVariantFitsMap(placed, SIZE)).toThrow(/places cedar 01 at \(0, 10\)/);
-    const [fitTarget] = fitted((fit) => fit).escalation.attacks.targets;
-    if (fitTarget === undefined) throw new Error('no target');
-    const offPoints = [
-      fitted((fit) => ({ ...fit, keep: { ...fit.keep, ...off } })),
-      fitted((fit) => ({ ...fit, attacks: { ...fit.attacks, targets: [{ ...fitTarget, ...off }] } })),
-      fitted((fit) => ({
-        ...fit,
-        attacks: {
-          ...fit.attacks,
-          targets: [{ ...fitTarget, landings: [{ ...landing, spawnX: off.x, spawnY: off.y }] }],
-        },
-      })),
-      fitted((fit) => ({
-        ...fit,
-        attacks: { ...fit.attacks, targets: [{ ...fitTarget, landings: [{ ...landing, ...off }] }] },
-      })),
-      fitted((fit) => ({ ...fit, heroes: fit.heroes.map((hero) => ({ ...hero, ...off })) })),
-      fitted((fit) => (fit.porters === undefined ? fit : { ...fit, porters: { ...fit.porters, ...off } })),
-    ];
-    for (const variant of offPoints) {
-      expect(() => assertMapVariantFitsMap(variant, SIZE)).toThrow(/at \(20, 0\) lies off the map/);
-    }
   });
 });
 
@@ -345,37 +303,34 @@ describe('applyMapVariantBriefing', () => {
 });
 
 describe('applyMapVariantStrings', () => {
-  it('adds each escalation hero’s name under its string id and refuses an id the map uses', () => {
-    const committed = MAP_VARIANTS.find((row) => (row.escalation?.heroes.length ?? 0) > 0);
-    const hero = committed?.escalation?.heroes[0];
-    if (committed === undefined || hero === undefined) throw new Error('no committed hero');
+  it('adds each of the variant’s strings under its id and refuses an id the map uses', () => {
+    const committed = MAP_VARIANTS.find((row) => (row.modules?.heroes?.placed.length ?? 0) > 0);
+    const hero = committed?.modules?.heroes?.placed[0];
+    if (committed === undefined || hero?.nameStringId === undefined) throw new Error('no committed hero');
     const id = String(hero.nameStringId);
+    const name = committed.strings[id];
+    if (name === undefined) throw new Error('the hero is not named');
     const strings = applyMapVariantStrings({ pol: { '1': 'Mapa' } }, committed);
-    expect(strings?.pol).toEqual({ '1': 'Mapa', [id]: hero.name.pol });
-    expect(strings?.eng?.[id]).toBe(hero.name.eng);
+    expect(strings?.pol?.['1']).toBe('Mapa');
+    expect(strings?.pol?.[id]).toBe(name.pol);
+    expect(strings?.eng?.[id]).toBe(name.eng);
     expect(() => applyMapVariantStrings({ eng: { [id]: 'taken' } }, committed)).toThrow(id);
+    expect(applyMapVariantStrings(null, VARIANT)).toBeNull();
   });
-});
 
-describe('MapEscalation', () => {
-  it('refuses a schedule or gear steps out of order, a seat targeted twice, a refill above its max or an unknown notice', () => {
-    const variant = MAP_VARIANTS.find((row) => row.escalation !== undefined);
-    if (variant?.escalation === undefined) throw new Error('no committed escalation to vary');
-    const { attacks, guard, gear, keep } = variant.escalation;
-    if (gear === undefined) throw new Error('no committed gear to vary');
-    const [target, other] = attacks.targets;
-    if (target === undefined || other === undefined) throw new Error('no two committed targets to vary');
-    for (const bad of [
-      { attacks: { ...attacks, launches: [...attacks.launches].reverse() } },
-      { attacks: { ...attacks, targets: [target, target] } },
-      { attacks: { ...attacks, targets: [target, { ...other, raider: target.raider }] } },
-      { attacks: { ...attacks, targets: [{ ...target, raider: keep.seat }] } },
-      { attacks: { ...attacks, targets: [target, { ...other, raider: target.seat }] } },
-      { guard: { ...guard, refill: { ...guard.refill, baseMen: guard.refill.maxMen + 1 } } },
-      { gear: { ...gear, steps: [...gear.steps].reverse() } },
-      { attacks: { ...attacks, noticeKey: 'forteca.atack' } },
-    ]) {
-      expect(MapEscalation.safeParse({ ...variant.escalation, ...bad }).success).toBe(false);
+  it('names every notice of the committed variants in each language it is written in', () => {
+    for (const variant of MAP_VARIANTS) {
+      const { siege, gearSchedule } = variant.modules ?? {};
+      const notices = [
+        siege?.attacks.notice,
+        ...(siege?.attacks.launches.map((row) => row.notice) ?? []),
+        siege?.landings?.notice,
+        ...(gearSchedule?.steps.map((step) => step.notice) ?? []),
+      ].flatMap((notice) => (notice === undefined ? [] : [notice.title, notice.detail]));
+      for (const id of notices) {
+        if (id === undefined) continue;
+        expect(Object.keys(variant.strings[String(id)] ?? {})).toEqual([...LANGUAGES]);
+      }
     }
   });
 });

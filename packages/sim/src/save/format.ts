@@ -10,7 +10,7 @@ export const SAVE_KIND = 'open-northland-save';
 
 /** Single monotonic version of the whole persisted layout; any layout change bumps it. A reader accepts
  *  exactly this version and rejects any other, never migrating. */
-export const SAVE_FORMAT_VERSION = 206;
+export const SAVE_FORMAT_VERSION = 207;
 
 /** The single key wrapping a serialized `Map`'s entry pairs; reserved, so a plain record carrying it
  *  is rejected at export. */
@@ -27,7 +27,7 @@ export interface SaveGameHeader {
   /** Identity of the resolved programs, including definitions whose state has not initialized yet. */
   readonly missionScriptFingerprint: string | null;
   readonly mapAiScriptFingerprint: string | null;
-  readonly mapEscalationFingerprint: string | null;
+  readonly mapModulesFingerprint: string | null;
   /** Unix milliseconds supplied by the caller, or null when no creation time was recorded. */
   readonly savedAt: number | null;
   /** Provenance of the decoded map the run loaded, or null for scenes and mapless sims. */

@@ -305,7 +305,7 @@ export function restoreMapWorld(options: RestoreWorldOptions, save: SaveGame): R
     map: terrain,
     ...(options.script?.missions !== undefined ? { missions: options.script.missions } : {}),
     ...(ai !== undefined && ai.length > 0 ? { mapAiScript: ai } : {}),
-    ...(options.script?.escalation !== undefined ? { mapEscalation: options.script.escalation } : {}),
+    ...(options.script?.modules !== undefined ? { mapModules: options.script.modules } : {}),
   });
   return { sim, kind: authored !== null ? 'authored' : 'bare' };
 }

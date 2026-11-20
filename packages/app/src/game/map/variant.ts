@@ -64,7 +64,7 @@ export function variantBriefing(briefing: MapBriefing | null, world: SessionWorl
   return briefing === null || variant === null ? briefing : applyMapVariantBriefing(briefing, variant);
 }
 
-/** The map's string table as the session's world names things, its escalation heroes included. */
+/** The map's string table as the session's world names things, the variant's own strings included. */
 export function variantStrings(strings: MapStrings | null, world: SessionWorld): MapStrings | null {
   const variant = sessionMapVariant(world);
   return variant === null ? strings : applyMapVariantStrings(strings, variant);
@@ -77,10 +77,10 @@ export function variantMap(map: TerrainMapFile | null, world: SessionWorld): Ter
   return { ...map, entities: applyMapVariantEntities(map.entities, variant, map) };
 }
 
-/** The script world with the session variant's escalation, which the build and every restore pass on. */
+/** The script world with the session variant's modules, which the build and every restore pass on. */
 export function variantScriptWorld(script: MapScriptWorld, world: SessionWorld): MapScriptWorld {
-  const escalation = sessionMapVariant(world)?.escalation;
-  return escalation === undefined ? script : { ...script, escalation };
+  const modules = sessionMapVariant(world)?.modules;
+  return modules === undefined ? script : { ...script, modules };
 }
 
 /** The map world a launch plays: `mapId` under `variant`, or as authored. */

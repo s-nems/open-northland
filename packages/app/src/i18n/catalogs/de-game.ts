@@ -13,30 +13,6 @@ export const deGame = {
       nextAttack: 'Nächster Angriff in {time}',
       attackRunning: 'Angriff läuft',
       modeMark: '{variant}-Modus',
-      notices: {
-        fortecaAttack: { title: 'Die Schlächter der Festung ziehen zum Angriff!' },
-        fortecaLanding: { title: 'Schiffe der Dunkelländer legen am Ufer an!' },
-        fortecaReinforcements: {
-          title: 'Lord Usurpator hat Verstärkung gerufen!',
-          detail: 'Eine riesige Landungsflotte ist unterwegs.',
-        },
-        fortecaLightArmor: {
-          title: 'Die Krieger der Festung werden stärker.',
-          detail: 'Sie haben bessere Waffen und leichte Rüstungen erhalten.',
-        },
-        fortecaHeavyArmor: {
-          title: 'Die Krieger der Festung werden stärker.',
-          detail: 'Sie haben schwere Rüstungen erhalten.',
-        },
-        fortecaAmulets: {
-          title: 'Die Krieger der Festung werden stärker.',
-          detail: 'Sie haben Amulette erhalten.',
-        },
-        fortecaHealDraughts: {
-          title: 'Die Krieger der Festung werden stärker.',
-          detail: 'Sie haben Heiltränke erhalten.',
-        },
-      },
     },
     armyOrderLimit:
       'Wähle höchstens {limit} Einheiten für einen Befehl aus. Keine Einheit hat diesen Befehl erhalten.',

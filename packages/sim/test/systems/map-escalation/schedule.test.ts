@@ -1,4 +1,4 @@
-import { MapEscalation } from '@open-northland/data';
+import { MapSiege } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
 import { TICKS_PER_SECOND } from '../../../src/core/loop.js';
 import {
@@ -9,18 +9,19 @@ import {
   waveSize,
 } from '../../../src/systems/map-escalation/schedule.js';
 
-const SWORD = 35;
-const SHORT = 34;
-const BOW = 41;
+const SWORD = 'soldier_sword_long';
+const SHORT = 'soldier_sword_short';
+const BOW = 'soldier_bow_long';
 const MIX = [
   { job: SWORD, weight: 2 },
   { job: SHORT, weight: 1 },
   { job: BOW, weight: 2 },
 ];
 
-const CONFIG = MapEscalation.parse({
-  keep: { seat: 6, houseType: 39, x: 1, y: 1, range: 1 },
-  tribe: 2,
+const CONFIG = MapSiege.parse({
+  version: 1,
+  stronghold: { seat: 6, building: 'barracks', x: 1, y: 1, range: 1 },
+  tribe: 'frank',
   jobMix: MIX,
   attacks: {
     launches: [
@@ -28,7 +29,7 @@ const CONFIG = MapEscalation.parse({
       { atSeconds: 200, landMen: 20, ships: 2 },
     ],
     repeat: {
-      everySeconds: 50,
+      everySeconds: 100,
       waves: [
         { landMen: 1, ships: 0 },
         { landMen: 2, ships: 3 },
@@ -57,7 +58,7 @@ describe('map escalation schedule', () => {
   });
 
   it('repeats past the scheduled launches on its interval, cycling the repeat waves', () => {
-    expect([0, 1, 2, 3, 4].map((i) => launchTick(CONFIG, i))).toEqual([100, 200, 250, 300, 350].map(at));
+    expect([0, 1, 2, 3, 4].map((i) => launchTick(CONFIG, i))).toEqual([100, 200, 300, 400, 500].map(at));
     expect([1, 2, 3, 4].map((i) => waveSize(CONFIG, i).ships)).toEqual([2, 0, 3, 0]);
   });
 

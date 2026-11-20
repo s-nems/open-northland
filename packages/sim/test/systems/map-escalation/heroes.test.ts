@@ -1,4 +1,4 @@
-import { MapEscalation } from '@open-northland/data';
+import { MapModules, type MapModulesInput } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
 import {
   Equipment,
@@ -31,6 +31,8 @@ import {
   runToSecond,
   SCRIPT,
   SPEARMAN,
+  SPEARMAN_SLUG,
+  VIKING_SLUG,
   WOOL,
 } from '../../fixtures/map-escalation/keep.js';
 import { needsOf } from '../../fixtures/settler.js';
@@ -44,23 +46,27 @@ const HERO_AT = { x: KEEP.x, y: KEEP.y + 8 };
 const HOLD_NODES = 4;
 const TALLER_PCT = 120;
 
-function heroConfig(hero = false, scalePct?: number) {
+function heroModule(hero = false, scalePct?: number): NonNullable<MapModulesInput['heroes']> {
   return {
-    ...GEARED,
-    heroes: [
+    version: 1,
+    placed: [
       {
         seat: FORTRESS,
-        job: SPEARMAN,
+        job: SPEARMAN_SLUG,
+        tribe: VIKING_SLUG,
         ...HERO_AT,
         hitpoints: HERO_HITPOINTS,
         equipment: ['armor_wool', 'amulet_defense'],
         nameStringId: NAME_STRING_ID,
-        name: { eng: 'Lord Usurper' },
         hero,
         ...(scalePct !== undefined ? { scalePct } : {}),
       },
     ],
   };
+}
+
+function heroConfig(hero = false, scalePct?: number): MapModulesInput {
+  return { ...GEARED, heroes: heroModule(hero, scalePct) };
 }
 
 function heroWorld(hero = false, scalePct?: number): Simulation {
@@ -124,7 +130,7 @@ describe('map escalation - heroes', () => {
       content: sim.content,
       map: grassNodeMap(MAP, MAP),
       mapAiScript: SCRIPT,
-      mapEscalation: MapEscalation.parse(heroConfig(true, TALLER_PCT)),
+      mapModules: MapModules.parse(heroConfig(true, TALLER_PCT)),
     });
     expect(restored.world.tryGet(hero, VisualScale)).toEqual({ pct: TALLER_PCT });
 
@@ -132,5 +138,14 @@ describe('map escalation - heroes', () => {
     const [plain] = heroesOf(plainSim);
     if (plain === undefined) throw new Error('no hero');
     expect(plainSim.world.has(plain, VisualScale)).toBe(false);
+  });
+
+  it('places its defenders on a map that runs no siege', () => {
+    const sim = keepWorld({ heroes: heroModule() }, gearContent(), { scriptedFortress: true }).sim;
+    const [hero, ...more] = heroesOf(sim);
+    if (hero === undefined) throw new Error('no hero');
+    expect(more).toEqual([]);
+    expect(sim.world.get(hero, Health).hitpoints).toBe(HERO_HITPOINTS);
+    expect(sim.mapEscalationView()).toBeNull();
   });
 });

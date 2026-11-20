@@ -1,4 +1,4 @@
-import type { MapEscalation } from '@open-northland/data';
+import type { MapSiege } from '@open-northland/data';
 import {
   type MapEscalationCatapultRecord,
   mapEscalationProgress,
@@ -17,9 +17,9 @@ import { createVehicle } from '../vehicles/create.js';
 // turn is the list, and a lost one is raised again at its spot. The seat's own map-AI turn crews it.
 
 /** The catapults of the fortress seat standing now, with the spot each guards. */
-export function rememberCatapults(world: World, ctx: SystemContext, config: MapEscalation): void {
+export function rememberCatapults(world: World, ctx: SystemContext, siege: MapSiege): void {
   const records: MapEscalationCatapultRecord[] = [];
-  for (const e of seatCatapults(world, ctx, config.keep.seat)) {
+  for (const e of seatCatapults(world, ctx, siege.stronghold.seat)) {
     const state = world.get(e, Vehicle);
     const spot = state.guard ?? vehicleAnchor(world, e);
     if (spot === null) continue;
@@ -38,9 +38,9 @@ export function rememberCatapults(world: World, ctx: SystemContext, config: MapE
 }
 
 /** Mark each remembered catapult that is gone, or no longer the fortress's, as lost from now. */
-export function noteLostCatapults(world: World, ctx: SystemContext, config: MapEscalation): void {
+export function noteLostCatapults(world: World, ctx: SystemContext, siege: MapSiege): void {
   const records = mapEscalationProgress(world).catapults ?? [];
-  const seat = config.keep.seat;
+  const seat = siege.stronghold.seat;
   const lost = records.flatMap((record, i) => {
     const e = record.entity;
     if (e === null) return [];
@@ -62,7 +62,7 @@ export function noteLostCatapults(world: World, ctx: SystemContext, config: MapE
 export function respawnCatapult(
   world: World,
   ctx: SystemContext,
-  config: MapEscalation,
+  siege: MapSiege,
   respawnSeconds: number,
 ): void {
   const records = mapEscalationProgress(world).catapults ?? [];
@@ -75,7 +75,7 @@ export function respawnCatapult(
     x: record.hx,
     y: record.hy,
     tribe: record.tribe,
-    owner: config.keep.seat,
+    owner: siege.stronghold.seat,
   });
   if (e === null) return;
   writeMapEscalation(world, (progress) => {

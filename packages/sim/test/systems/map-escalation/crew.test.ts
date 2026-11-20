@@ -22,13 +22,13 @@ import { aiContent } from '../../fixtures/ai-content.js';
 import { ctxOf } from '../../fixtures/context.js';
 import {
   distance,
-  ESCALATION,
   FORTRESS,
   HQ_TYPE,
   KEEP,
   keepWorld,
   REFILL_EVERY_SECONDS,
   runToSecond,
+  SIEGE,
 } from '../../fixtures/map-escalation/keep.js';
 
 const BUILDER = 7;
@@ -62,12 +62,12 @@ function cartContent(): ContentSet {
 }
 
 function crewWorld(): Simulation {
-  const config = {
-    ...ESCALATION,
+  const siege = {
+    ...SIEGE,
     builders: { count: BUILDERS },
     porters: { count: PORTERS, vehicle: 'handcart', ...KEEP, radius: PORTER_RADIUS },
   };
-  return keepWorld(config, cartContent(), { scriptedFortress: true }).sim;
+  return keepWorld({ siege }, cartContent(), { scriptedFortress: true }).sim;
 }
 
 function fortressOf(sim: Simulation, jobType: number): Entity[] {

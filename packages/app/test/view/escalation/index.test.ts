@@ -15,14 +15,13 @@ describe('mountSiegePresentation', () => {
       host: { mapEscalation: () => null },
       variant: null,
       plane,
+      mapText: () => 'Ships are landing!',
       setAttackNight: () => {},
       setModeMark: () => {},
       playAttackMusic: () => {},
       now: () => nowMs,
     });
-    const landing: SimEvent[] = [
-      { kind: 'mapEscalationLanding', wave: 1, seats: [0], noticeKey: 'forteca.landing' },
-    ];
+    const landing: SimEvent[] = [{ kind: 'mapEscalationLanding', wave: 1, seats: [0], notice: { title: 1 } }];
     siege.onEvents(landing);
     siege.frame();
     const first = plane.firstElementChild;

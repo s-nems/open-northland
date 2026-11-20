@@ -60,7 +60,7 @@ export function reap(world: World, ctx: SystemContext, e: Entity): void {
     layAnimalRemains(world, ctx, e, settler.tribe, pos);
   releaseHaulingCart(world, ctx, e); // the cart stands where its carrier fell, the load in its hold
   const dropsNothing =
-    owner !== undefined && ctx.mapEscalation?.withheldDeathDrops?.seats.includes(owner.player);
+    owner !== undefined && ctx.mapModules?.deathDrops?.withheldSeats.includes(owner.player);
   const loot = dropsNothing === true ? null : droppedOnDeathOf(world, ctx.content, e);
   removeSettlerSilently(world, e);
   scatterSpilledStock(world, ctx, loot);

@@ -1,4 +1,4 @@
-import { MapEscalation } from '@open-northland/data';
+import { MapModules } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
 import {
   Building,
@@ -19,7 +19,6 @@ import type { NodeId } from '../../../src/nav/terrain/index.js';
 import { cleanupSystem } from '../../../src/systems/index.js';
 import { testContent } from '../../fixtures/content.js';
 import { ctxOf } from '../../fixtures/context.js';
-import { ESCALATION } from '../../fixtures/map-escalation/keep.js';
 import { settlerAt } from '../../fixtures/settler.js';
 import { grassCellMap } from '../../fixtures/terrain.js';
 
@@ -265,10 +264,10 @@ describe('a fallen character drops its gear beside the bones', () => {
   });
 });
 
-describe("a map escalation's withheld death drops", () => {
+describe("a map's withheld death drops", () => {
   const FORTRESS_SIDE = 6;
   const PLAYER = 0;
-  const RULE = MapEscalation.parse({ ...ESCALATION, withheldDeathDrops: { seats: [FORTRESS_SIDE] } });
+  const RULE = MapModules.parse({ deathDrops: { version: 1, withheldSeats: [FORTRESS_SIDE] } });
   const FULL_KIT: Gear = {
     weapon: worn(SWORD),
     armor: worn(MAIL),
@@ -281,7 +280,7 @@ describe("a map escalation's withheld death drops", () => {
     const soldier = doomedWearing(sim, FULL_KIT);
     sim.world.add(soldier, Owner, { player: seat });
     sim.world.add(soldier, Carrying, { goodType: STONE, amount: 1 });
-    cleanupSystem(sim.world, { ...ctxOf(sim), mapEscalation: RULE });
+    cleanupSystem(sim.world, { ...ctxOf(sim), mapModules: RULE });
     return droppedUnits(sim);
   }
 

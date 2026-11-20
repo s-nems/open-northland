@@ -1,4 +1,4 @@
-import { MapEscalation } from '@open-northland/data';
+import { MapModules, type MapNotice } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
 import {
   Building,
@@ -22,7 +22,6 @@ import {
   distance,
   EMPTY_SEAT,
   END_AFTER_SECONDS,
-  ESCALATION,
   FIRST_LAUNCH_SECONDS,
   FORTRESS,
   GUARD_BASE,
@@ -30,6 +29,7 @@ import {
   KEEP,
   keepWorld,
   MAP,
+  MODULES,
   ownedFighters,
   PLAYER,
   POST,
@@ -37,6 +37,7 @@ import {
   REFILL_EVERY_SECONDS,
   runToSecond,
   SCRIPT,
+  SIEGE,
   SPEARMAN,
   soldiersOf,
   TARGET,
@@ -85,23 +86,27 @@ describe('map escalation - an attack', () => {
   });
 
   it('names the attack notice on its launch, a launch’s own in place of the schedule’s', () => {
-    const [first, second] = ESCALATION.attacks.launches;
+    const [first, second] = SIEGE.attacks.launches;
     if (first === undefined || second === undefined) throw new Error('two launches');
+    const attack = { title: 1 };
+    const reinforcements = { title: 2, detail: 3 };
     const { sim } = keepWorld({
-      ...ESCALATION,
-      attacks: {
-        ...ESCALATION.attacks,
-        noticeKey: 'forteca.attack',
-        launches: [first, { ...second, noticeKey: 'forteca.reinforcements' }],
+      siege: {
+        ...SIEGE,
+        attacks: {
+          ...SIEGE.attacks,
+          notice: attack,
+          launches: [first, { ...second, notice: reinforcements }],
+        },
       },
     });
-    const notices: (string | undefined)[] = [];
+    const notices: (MapNotice | undefined)[] = [];
     while (sim.tick < (second.atSeconds + 1) * TICKS_PER_SECOND) {
       sim.step();
       for (const ev of sim.events.current())
-        if (ev.kind === 'mapEscalationAttackLaunched') notices.push(ev.noticeKey);
+        if (ev.kind === 'mapEscalationAttackLaunched') notices.push(ev.notice);
     }
-    expect(notices).toEqual(['forteca.attack', 'forteca.reinforcements']);
+    expect(notices).toEqual([attack, reinforcements]);
   });
 
   it('ends once its dead share reaches the configured part, the survivors fighting on, or when its time runs out', () => {
@@ -179,7 +184,7 @@ describe('map escalation - the guard', () => {
   it('refills toward a cap that grows with each step for each occupied seat, and no further', () => {
     const { sim } = keepWorld();
     // At the base cap nothing is added until the first step raises it by one occupied seat's share.
-    runToSecond(sim, REFILL_EVERY_SECONDS * 5);
+    runToSecond(sim, REFILL_EVERY_SECONDS * 2);
     expect(guard(sim)).toBe(GUARD_BASE);
     runToSecond(sim, 30 + REFILL_EVERY_SECONDS);
     expect(guard(sim)).toBe(GUARD_BASE + 1);
@@ -188,7 +193,7 @@ describe('map escalation - the guard', () => {
   });
 
   it('refills nothing once the match counted the fortress seat out, its keep standing or not', () => {
-    const { sim } = keepWorld(ESCALATION, undefined, { inMatch: true });
+    const { sim } = keepWorld(undefined, undefined, { inMatch: true });
     markPlayerDead(sim.world, FORTRESS);
     // Past the first step, which raises the cap of a fortress still in the match.
     runToSecond(sim, 30 + REFILL_EVERY_SECONDS);
@@ -197,15 +202,15 @@ describe('map escalation - the guard', () => {
 });
 
 describe('map escalation - a save', () => {
-  it('keeps the running attack and requires the same escalation to restore', () => {
+  it('keeps the running attack and requires the same modules to restore', () => {
     const { sim } = keepWorld();
     runToSecond(sim, FIRST_LAUNCH_SECONDS + 1);
     const save = parseSaveGame(JSON.parse(serializeSaveGame(exportSaveGame(sim))));
     const inputs = { content: sim.content, map: grassNodeMap(MAP, MAP), mapAiScript: SCRIPT };
-    const restored = restoreSimulation(save, { ...inputs, mapEscalation: MapEscalation.parse(ESCALATION) });
+    const restored = restoreSimulation(save, { ...inputs, mapModules: MapModules.parse(MODULES) });
     expect(restored.hashState()).toBe(sim.hashState());
     expect(restored.mapEscalationView()).toEqual(sim.mapEscalationView());
-    expect(() => restoreSimulation(save, inputs)).toThrow(/mapEscalationFingerprint/);
+    expect(() => restoreSimulation(save, inputs)).toThrow(/mapModulesFingerprint/);
     // Past the next refill beats and end checks, the restored run stays the unrestored one.
     const AFTER_RESTORE_TICKS = 300;
     sim.run(AFTER_RESTORE_TICKS);

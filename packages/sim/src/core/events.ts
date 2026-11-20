@@ -1,4 +1,4 @@
-import type { MapEscalationNoticeKey } from '@open-northland/data';
+import type { MapNotice } from '@open-northland/data';
 import type { ChestKind } from '../components/chest.js';
 import type { Paper } from '../components/players/papers.js';
 import type { SettlerIdentity } from '../components/settler.js';
@@ -640,12 +640,12 @@ export type SimEvent =
     }
   // A map escalation's steps (`systems/map-escalation`); each later step adds a kind of its own here.
   | {
-      /** An attack set out: its men stand at the keep, one band for each of `seats`. `noticeKey` names
-       *  the notice the app shows, absent for none. */
+      /** An attack set out: its men stand at the keep, one band for each of `seats`. `notice` is the
+       *  notice the app shows, absent for none. */
       readonly kind: 'mapEscalationAttackLaunched';
       readonly wave: number;
       readonly seats: readonly number[];
-      readonly noticeKey?: MapEscalationNoticeKey;
+      readonly notice?: MapNotice;
     }
   | {
       /** The running attack is over: the variant's dead share of its men fell, the men against a seat
@@ -655,19 +655,20 @@ export type SimEvent =
       readonly cause: 'defeated' | 'expired';
     }
   | {
-      /** A gear step fell due for the fortress side; `noticeKey` names the notice the app shows. */
+      /** A gear step fell due for the fortress side; `notice` is the notice the app shows, absent for
+       *  none. */
       readonly kind: 'mapEscalationGearStep';
       /** The step's number, from 1. */
       readonly step: number;
-      readonly noticeKey: MapEscalationNoticeKey;
+      readonly notice?: MapNotice;
     }
   | {
-      /** The landing ships of attack `wave` set out, one for each of `seats`; `noticeKey` names the
-       *  notice the app shows. */
+      /** The landing ships of attack `wave` set out, one for each of `seats`; `notice` is the notice
+       *  the app shows. */
       readonly kind: 'mapEscalationLanding';
       readonly wave: number;
       readonly seats: readonly number[];
-      readonly noticeKey: MapEscalationNoticeKey;
+      readonly notice: MapNotice;
     };
 
 /** A pass's pending map change: into a campaign's sub map, or back to the parent from mission `mission`. */

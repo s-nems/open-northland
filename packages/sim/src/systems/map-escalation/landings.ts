@@ -1,4 +1,4 @@
-import type { MapEscalation } from '@open-northland/data';
+import type { MapSiege, MapSiegeTarget } from '@open-northland/data';
 import {
   FOG_MODE,
   fogMode,
@@ -22,10 +22,9 @@ import { dockVehicle } from '../vehicles/dock.js';
 import { startVehicleDrive } from '../vehicles/movement.js';
 import { removeVehicle } from '../vehicles/remove.js';
 import { enlistAttackMan } from './focus.js';
-import { occupiedTargets } from './keep.js';
+import { occupiedTargets, siegeTribe } from './keep.js';
 
-type Target = MapEscalation['attacks']['targets'][number];
-type LandingPoints = Target['landings'][number];
+type LandingPoints = MapSiegeTarget['landings'][number];
 
 // A wave's sea landing: each of its ships against a seat appears at the next of the seat's sea spawn
 // points with the fresh men aboard, docks at that point's shore, sets them ashore, then sails back and
@@ -38,14 +37,14 @@ type LandingPoints = Target['landings'][number];
 export function launchLandings(
   world: World,
   ctx: SystemContext,
-  config: MapEscalation,
-  target: Target,
+  siege: MapSiege,
+  target: MapSiegeTarget,
   ships: number,
   jobs: readonly number[],
 ): Entity[] {
   const men: Entity[] = [];
   for (let point = 0; point < Math.min(ships, target.landings.length); point++)
-    men.push(...launchShip(world, ctx, config, target, point, jobs));
+    men.push(...launchShip(world, ctx, siege, target, point, jobs));
   return men;
 }
 
@@ -57,26 +56,28 @@ export function launchLandings(
 function launchShip(
   world: World,
   ctx: SystemContext,
-  config: MapEscalation,
-  target: Target,
+  siege: MapSiege,
+  target: MapSiegeTarget,
   point: number,
   jobs: readonly number[],
 ): Entity[] {
-  const landings = config.landings;
+  const landings = siege.landings;
   const points = target.landings[point];
   const terrain = ctx.terrain;
   if (landings === undefined || points === undefined || terrain === undefined || jobs.length === 0) return [];
   const vehicleType = contentIndex(ctx.content).vehicleTypeBySlug.get(landings.vehicle);
-  if (vehicleType === undefined || !terrain.inBounds(points.spawnX, points.spawnY)) return [];
+  const tribe = siegeTribe(ctx, siege);
+  if (vehicleType === undefined || tribe === undefined || !terrain.inBounds(points.spawnX, points.spawnY))
+    return [];
   const ship = createVehicle(world, ctx, {
     vehicleType,
     x: points.spawnX,
     y: points.spawnY,
-    tribe: config.tribe,
+    tribe,
     owner: target.raider,
   });
   if (ship === null) return [];
-  const men = boardMen(world, ctx, config, target, points, ship, jobs);
+  const men = boardMen(world, ctx, tribe, target, points, ship, jobs);
   const sails =
     men.length > 0 &&
     dockVehicle(world, ctx, { kind: 'dockVehicle', vehicle: ship, x: points.x, y: points.y });
@@ -95,8 +96,8 @@ function launchShip(
 function boardMen(
   world: World,
   ctx: SystemContext,
-  config: MapEscalation,
-  target: Target,
+  tribe: number,
+  target: MapSiegeTarget,
   points: LandingPoints,
   ship: Entity,
   jobs: readonly number[],
@@ -107,7 +108,7 @@ function boardMen(
     const e = spawnSettler(world, ctx, {
       kind: 'spawnSettler',
       jobType,
-      tribe: config.tribe,
+      tribe,
       x: points.x,
       y: points.y,
       owner: target.raider,
@@ -130,14 +131,14 @@ function boardMen(
  * with whoever is aboard when no way is left; an outbound one that arrived, or stopped, leaves the map.
  * A ship gone (sunk) is forgotten.
  */
-export function landingsTurn(world: World, ctx: SystemContext, config: MapEscalation): void {
+export function landingsTurn(world: World, ctx: SystemContext, siege: MapSiege): void {
   const landings = mapEscalationProgress(world).landings;
   if (landings.length === 0) return;
   const kept: MapEscalationLandingRecord[] = [];
   for (const landing of landings) {
     const { ship, point } = landing;
     const state = world.tryGet(ship, Vehicle);
-    const points = config.attacks.targets.find((target) => target.seat === landing.seat)?.landings[point];
+    const points = siege.attacks.targets.find((target) => target.seat === landing.seat)?.landings[point];
     if (state === undefined || points === undefined) continue;
     const underWay = world.has(ship, VehicleDrive);
     if (landing.leg === 'outbound') {
@@ -177,8 +178,8 @@ const REVEAL_STEP = 2;
  * The reveal stays, as a script's reveal does. Costs a position read per ship per tick and a reveal per
  * move.
  */
-export function revealShips(world: World, ctx: SystemContext, config: MapEscalation): void {
-  const radius = config.landings?.revealNodes ?? 0;
+export function revealShips(world: World, ctx: SystemContext, siege: MapSiege): void {
+  const radius = siege.landings?.revealNodes ?? 0;
   const fog = ctx.fog;
   const landings = mapEscalationProgress(world).landings;
   if (radius === 0 || fog === undefined || landings.length === 0 || fogMode(world) === FOG_MODE.OFF) return;
@@ -189,7 +190,7 @@ export function revealShips(world: World, ctx: SystemContext, config: MapEscalat
     if (at === null) return;
     const seen = landing.seen;
     if (seen !== null && hexDistanceBetween(seen.hx, seen.hy, at.hx, at.hy) < REVEAL_STEP) return;
-    watchers ??= occupiedTargets(world, config);
+    watchers ??= occupiedTargets(world, siege);
     for (const target of watchers) fog.revealArea(target.seat, at, radius);
     moved.push({ index, at });
   });

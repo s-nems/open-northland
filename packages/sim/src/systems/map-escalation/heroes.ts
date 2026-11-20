@@ -1,4 +1,4 @@
-import type { MapEscalation, MapEscalationHero } from '@open-northland/data';
+import type { MapHero, MapHeroes } from '@open-northland/data';
 import {
   MISSION_BEHAVIOUR,
   mapEscalationProgress,
@@ -16,23 +16,28 @@ import { MILITARY_MODE } from '../readviews/index.js';
 import { spawnSettler } from '../spawn/index.js';
 
 /**
- * Place the variant's defenders once, on the escalation's first turn. Each stands outside every scripted
+ * Place the map's defenders once, on the modules' first turn. Each stands outside every scripted
  * handler's list, so no task draws him off, and holds his ground in the defend stance where he was put.
+ * A hero whose trade or tribe the content lacks is not placed.
  */
-export function placeHeroes(world: World, ctx: SystemContext, config: MapEscalation): void {
+export function placeHeroes(world: World, ctx: SystemContext, heroes: MapHeroes): void {
   if (mapEscalationProgress(world).heroes !== null) return;
+  const index = contentIndex(ctx.content);
   const placed: Entity[] = [];
-  for (const hero of config.heroes) {
+  for (const hero of heroes.placed) {
+    const jobType = index.jobTypeBySlug.get(hero.job);
+    const tribe = index.tribeTypeBySlug.get(hero.tribe);
+    if (jobType === undefined || tribe === undefined) continue;
     const e = spawnSettler(world, ctx, {
       kind: 'spawnSettler',
-      jobType: hero.job,
-      tribe: config.tribe,
+      jobType,
+      tribe,
       x: hero.x,
       y: hero.y,
       owner: hero.seat,
       hitpoints: hero.hitpoints,
       equipment: heroEquipment(ctx, hero),
-      nameStringId: hero.nameStringId,
+      ...(hero.nameStringId === undefined ? {} : { nameStringId: hero.nameStringId }),
     });
     if (e === null) continue;
     setMissionBehaviour(world, e, MISSION_BEHAVIOUR.NOT_CONTROLLABLE, true);
@@ -53,7 +58,7 @@ export function isEscalationHero(world: World, e: Entity): boolean {
 }
 
 /** The hero's goods by slot: each good's equip category names it, misc goods in order. */
-function heroEquipment(ctx: SystemContext, hero: MapEscalationHero): SettlerEquipment {
+function heroEquipment(ctx: SystemContext, hero: MapHero): SettlerEquipment {
   const index = contentIndex(ctx.content);
   const slots: {
     boots?: SettlerEquipmentSlot;

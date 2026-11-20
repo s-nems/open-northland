@@ -1,4 +1,4 @@
-import { MapEscalation } from '@open-northland/data';
+import { MapModules } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
 import { Building, JobAssignment, Owner, Settler } from '../../../src/components/index.js';
 import type { Entity } from '../../../src/ecs/world.js';
@@ -10,7 +10,7 @@ import { aiContent } from '../../fixtures/ai-content.js';
 import { ctxOf } from '../../fixtures/context.js';
 import {
   BOWMAN,
-  ESCALATION,
+  BOWMAN_SLUG,
   FORTRESS,
   HQ_TYPE,
   KEEP,
@@ -18,6 +18,7 @@ import {
   REFILL_EVERY_SECONDS,
   runToSecond,
   SCRIPT,
+  SIEGE,
   VIKING,
 } from '../../fixtures/map-escalation/keep.js';
 import { grassNodeMap } from '../../fixtures/terrain.js';
@@ -35,9 +36,8 @@ function towerWorld(): Simulation {
     content: aiContent(),
     map: grassNodeMap(MAP, MAP),
     mapAiScript: SCRIPT,
-    mapEscalation: MapEscalation.parse({
-      ...ESCALATION,
-      towerGarrison: { slots: [{ job: BOWMAN, count: WANTED_ARCHERS }] },
+    mapModules: MapModules.parse({
+      siege: { ...SIEGE, towerGarrison: { slots: [{ job: BOWMAN_SLUG, count: WANTED_ARCHERS }] } },
     }),
   });
   // The fortress is the map AI's alone, as a map's scripted seat is.

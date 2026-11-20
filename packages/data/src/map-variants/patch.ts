@@ -1,5 +1,6 @@
 import { isLanguage, textReadingOrder } from '../languages.js';
 import { mapSlotEligibility } from '../map-lobby.js';
+import { type MapCells, onMap } from '../map-modules/fit.js';
 import type { MapBriefing } from '../schema/maps/briefing.js';
 import type { TerrainEntities } from '../schema/maps/entities.js';
 import type { MapsIndexPlayerSlot } from '../schema/maps/listing.js';
@@ -7,18 +8,7 @@ import type { MapMission, MapRelationFlag, MapScript } from '../schema/maps/scri
 import type { MapStrings } from '../schema/maps/strings.js';
 import type { MapVariant, MapVariantStartSeat } from './schema.js';
 
-/** The half-cell lattice is `2W x 2H` over a `W x H` cell map. */
-const HALF_CELLS_PER_CELL = 2;
-
 const ACTIVATE_MISSION = 'ActivateMission';
-
-interface MapCells {
-  readonly width: number;
-  readonly height: number;
-}
-
-const onMap = (size: MapCells, hx: number, hy: number): boolean =>
-  hx >= 0 && hy >= 0 && hx < size.width * HALF_CELLS_PER_CELL && hy < size.height * HALF_CELLS_PER_CELL;
 
 /**
  * The map's script as the variant plays it. Throws when the variant names a mission the script lacks
@@ -73,36 +63,15 @@ export function applyMapVariantScript(script: MapScript, variant: MapVariant): M
 }
 
 /**
- * Throws when the variant does not fit the map it is played on: a placed object or an escalation point
- * off the map, whose `size` is in cells, which means the variant was written for another version of it.
+ * Throws when the variant does not fit the map it is played on: a placed object off the map, whose
+ * `size` is in cells, which means the variant was written for another version of it. Its modules have
+ * their own check, `assertMapModulesFitMap`.
  */
 export function assertMapVariantFitsMap(variant: MapVariant, size: MapCells): void {
   for (const row of variant.landscapeObjects) {
     if (!onMap(size, row.hx, row.hy))
       throw new Error(`${label(variant)}: places ${row.object} at (${row.hx}, ${row.hy}), off the map`);
   }
-  for (const [name, x, y] of escalationPoints(variant)) {
-    if (!onMap(size, x, y))
-      throw new Error(`${label(variant)}: the ${name} at (${x}, ${y}) lies off the map`);
-  }
-}
-
-function escalationPoints(variant: MapVariant): (readonly [string, number, number])[] {
-  const escalation = variant.escalation;
-  if (escalation === undefined) return [];
-  const { keep, attacks, heroes, porters } = escalation;
-  return [
-    ['keep', keep.x, keep.y],
-    ...attacks.targets.flatMap((target): (readonly [string, number, number])[] => [
-      [`seat ${target.seat}'s target`, target.x, target.y],
-      ...target.landings.flatMap((landing): (readonly [string, number, number])[] => [
-        [`seat ${target.seat}'s landing ship`, landing.spawnX, landing.spawnY],
-        [`seat ${target.seat}'s landing shore`, landing.x, landing.y],
-      ]),
-    ]),
-    ...heroes.map((hero): readonly [string, number, number] => [`seat ${hero.seat}'s hero`, hero.x, hero.y]),
-    ...(porters === undefined ? [] : [["porters' flag", porters.x, porters.y] as const]),
-  ];
 }
 
 /** The map's placements as the variant starts them: each start seat's copied settlers after the
@@ -146,17 +115,16 @@ export function applyMapVariantBriefing(briefing: MapBriefing, variant: MapVaria
   return { ...briefing, texts };
 }
 
-/** The map's string table with the variant's escalation heroes' names added, each under its string id in
- *  every language its name is written in. Throws on an id the map's table already uses in that language. */
+/** The map's string table with the variant's strings added, each under its id in every language it is
+ *  written in. Throws on an id the map's table already uses in that language. */
 export function applyMapVariantStrings(strings: MapStrings | null, variant: MapVariant): MapStrings | null {
-  const heroes = variant.escalation?.heroes ?? [];
-  if (heroes.length === 0) return strings;
+  const added = Object.entries(variant.strings);
+  if (added.length === 0) return strings;
   const patched: MapStrings = { ...strings };
-  for (const hero of heroes) {
-    for (const [lang, text] of Object.entries(hero.name)) {
+  for (const [id, byLanguage] of added) {
+    for (const [lang, text] of Object.entries(byLanguage)) {
       if (!isLanguage(lang) || text === undefined) continue;
       const table = { ...patched[lang] };
-      const id = String(hero.nameStringId);
       if (table[id] !== undefined) throw new Error(`${label(variant)}: map string ${id} is taken in ${lang}`);
       table[id] = text;
       patched[lang] = table;

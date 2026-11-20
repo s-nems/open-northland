@@ -13,27 +13,6 @@ export const enGame = {
       nextAttack: 'Next attack in {time}',
       attackRunning: 'Attack under way',
       modeMark: '{variant} mode',
-      notices: {
-        fortecaAttack: { title: 'The Fortress enforcers march to attack!' },
-        fortecaLanding: { title: 'Darkland ships are landing on the shore!' },
-        fortecaReinforcements: {
-          title: 'Lord Usurper has called for reinforcements!',
-          detail: 'A huge landing fleet is on its way.',
-        },
-        fortecaLightArmor: {
-          title: 'The Fortress warriors grow stronger.',
-          detail: 'They received better weapons and light armour.',
-        },
-        fortecaHeavyArmor: {
-          title: 'The Fortress warriors grow stronger.',
-          detail: 'They received heavy armour.',
-        },
-        fortecaAmulets: { title: 'The Fortress warriors grow stronger.', detail: 'They received amulets.' },
-        fortecaHealDraughts: {
-          title: 'The Fortress warriors grow stronger.',
-          detail: 'They received healing potions.',
-        },
-      },
     },
     armyOrderLimit: 'Select at most {limit} units for one order. No units received this order.',
     diplomacyMap: {

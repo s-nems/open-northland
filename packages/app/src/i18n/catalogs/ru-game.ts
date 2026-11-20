@@ -13,27 +13,6 @@ export const ruGame = {
       nextAttack: 'Следующая атака через {time}',
       attackRunning: 'Идёт атака',
       modeMark: 'Режим {variant}',
-      notices: {
-        fortecaAttack: { title: 'Приспешники Крепости идут в атаку!' },
-        fortecaLanding: { title: 'Корабли Страны Тьмы причаливают к берегу!' },
-        fortecaReinforcements: {
-          title: 'Лорд Узурпатор призвал подкрепление!',
-          detail: 'Огромный десантный флот уже в пути.',
-        },
-        fortecaLightArmor: {
-          title: 'Воины Крепости становятся сильнее.',
-          detail: 'Они получили лучшее оружие и лёгкие доспехи.',
-        },
-        fortecaHeavyArmor: {
-          title: 'Воины Крепости становятся сильнее.',
-          detail: 'Они получили тяжёлые доспехи.',
-        },
-        fortecaAmulets: { title: 'Воины Крепости становятся сильнее.', detail: 'Они получили амулеты.' },
-        fortecaHealDraughts: {
-          title: 'Воины Крепости становятся сильнее.',
-          detail: 'Они получили зелья лечения.',
-        },
-      },
     },
     armyOrderLimit:
       'Выберите не более {limit} юнитов для одного приказа. Ни один юнит не получил этот приказ.',

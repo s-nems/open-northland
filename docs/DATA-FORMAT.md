@@ -229,7 +229,7 @@ A save is one JSON document produced by `exportSaveGame` and `serializeSaveGame`
 { "header": { "...": "..." }, "sections": [], "presentation": null }
 ```
 
-- `header` holds `{kind, formatVersion, irVersion, contentFingerprint, missionScriptFingerprint, mapAiScriptFingerprint, mapEscalationFingerprint, savedAt, mapId, mapFingerprint, entry, session,
+- `header` holds `{kind, formatVersion, irVersion, contentFingerprint, missionScriptFingerprint, mapAiScriptFingerprint, mapModulesFingerprint, savedAt, mapId, mapFingerprint, entry, session,
   view, seed, tick}` and is the document's first key, so a reader classifies compatibility without
   touching sections. A later format may compress the sections but never the header. `entry` is a
   caller-recorded relaunch token, opaque to the sim like `mapId`: the app stores the entry URL
@@ -295,8 +295,8 @@ identity, the exact section order, allocation coherence, pending envelopes), and
 materializes it onto a fresh sim, validating value shapes as it goes plus everything that needs
 loaded content or a map, and finally runs the core invariants over the rebuilt world. The IR version
 and map fingerprint must match exactly. A non-null `contentFingerprint` must match the resolved content.
-Required nullable `missionScriptFingerprint`, `mapAiScriptFingerprint` and `mapEscalationFingerprint`
-identify the resolved mission and map-AI programs and the map variant's escalation using canonical
+Required nullable `missionScriptFingerprint`, `mapAiScriptFingerprint` and `mapModulesFingerprint`
+identify the resolved mission and map-AI programs and the map's modules using canonical
 SHA-256 JSON fingerprints. Null means no program was
 supplied; even a supplied empty program has a digest. Restore requires exact matches before
 materializing state, including when a program has not initialized yet. Mission array order and all

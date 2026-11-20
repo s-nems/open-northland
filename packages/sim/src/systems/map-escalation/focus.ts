@@ -1,4 +1,4 @@
-import type { MapEscalation } from '@open-northland/data';
+import type { MapSiege, MapSiegeTarget } from '@open-northland/data';
 import {
   Age,
   AttackOrder,
@@ -27,7 +27,6 @@ import type { SystemContext } from '../context.js';
 import { houseFootprintOf, translatedCells } from '../footprint/geometry.js';
 import { MILITARY_MODE } from '../readviews/index.js';
 
-type Target = MapEscalation['attacks']['targets'][number];
 type Focus = Pick<MapEscalationFocusRecord, 'kind' | 'entity'>;
 
 /** Within this many map points of the aim a man strikes it itself; farther out he attack-moves on it. */
@@ -48,14 +47,14 @@ const MARCH_SLACK = 8;
  * earlier attacks included. A man fighting is left to it. Returns the seats with men ashore and nothing
  * left to aim at: counted out, or without a building or a person.
  */
-export function focusTurn(world: World, ctx: SystemContext, config: MapEscalation): ReadonlySet<number> {
+export function focusTurn(world: World, ctx: SystemContext, siege: MapSiege): ReadonlySet<number> {
   const spent = new Set<number>();
   const terrain = ctx.terrain;
   if (terrain === undefined) return spent;
   const held = mapEscalationProgress(world).focus;
   const next: MapEscalationFocusRecord[] = [];
   let changed = false;
-  for (const target of config.attacks.targets) {
+  for (const target of siege.attacks.targets) {
     const own = held.find((record) => record.seat === target.seat);
     const band = attackMen(world, target.raider);
     if (band.length === 0) {
@@ -111,7 +110,7 @@ function stands(world: World, seat: number, aim: DeepReadonly<Focus>): boolean {
 function pickFocus(
   world: World,
   ctx: SystemContext,
-  target: Target,
+  target: MapSiegeTarget,
   previous: DeepReadonly<Focus> | undefined,
   band: readonly Entity[],
 ): Focus | null {

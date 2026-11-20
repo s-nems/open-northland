@@ -1,37 +1,37 @@
-import type { MapEscalationNoticeKey } from '@open-northland/data';
+import type { MapNotice } from '@open-northland/data';
 import type { SimEvent } from '@open-northland/sim';
-import type { Messages } from '../../i18n/en.js';
-
-export type SiegeNoticeId = keyof Messages['hud']['escalation']['notices'];
-
-/** The notice the app shows for each key an escalation may name (`packages/data/src/map-variants`). */
-const NOTICE_BY_KEY: Readonly<Record<MapEscalationNoticeKey, SiegeNoticeId>> = {
-  'forteca.attack': 'fortecaAttack',
-  'forteca.landing': 'fortecaLanding',
-  'forteca.reinforcements': 'fortecaReinforcements',
-  'forteca.gear.lightArmor': 'fortecaLightArmor',
-  'forteca.gear.heavyArmor': 'fortecaHeavyArmor',
-  'forteca.gear.amulets': 'fortecaAmulets',
-  'forteca.gear.healDraughts': 'fortecaHealDraughts',
-};
+import type { CentreNoticeText } from '../../hud/dom/centre-notice.js';
 
 /** The centre-screen notices a batch of sim events raises, in order. */
-export function siegeNoticesOf(events: readonly SimEvent[]): SiegeNoticeId[] {
-  const out: SiegeNoticeId[] = [];
+export function siegeNoticesOf(events: readonly SimEvent[]): MapNotice[] {
+  const out: MapNotice[] = [];
   for (const event of events) {
     switch (event.kind) {
       case 'mapEscalationAttackLaunched':
-        if (event.noticeKey !== undefined) out.push(NOTICE_BY_KEY[event.noticeKey]);
-        break;
       case 'mapEscalationGearStep':
       case 'mapEscalationLanding':
-        out.push(NOTICE_BY_KEY[event.noticeKey]);
+        if (event.notice !== undefined) out.push(event.notice);
         break;
       default:
         break;
     }
   }
   return out;
+}
+
+export const sameNotice = (a: MapNotice, b: MapNotice): boolean =>
+  a.title === b.title && a.detail === b.detail;
+
+/** The notice's words from the map's string table; null when the table lacks its title. A detail the
+ *  table lacks is left out. */
+export function noticeText(
+  notice: MapNotice,
+  mapText: (stringId: number) => string | undefined,
+): CentreNoticeText | null {
+  const title = mapText(notice.title);
+  if (title === undefined) return null;
+  const detail = notice.detail === undefined ? undefined : mapText(notice.detail);
+  return detail === undefined ? { title } : { title, detail };
 }
 
 /** How long one notice stands, fade in and out included; foundation.css animates over the same. */
@@ -43,14 +43,17 @@ export interface NoticeShowing<T> {
   readonly sinceMs: number;
 }
 
-/** Notices shown one at a time, each for {@link NOTICE_SHOWN_MS}, the rest waiting in order. */
+/** Notices shown one at a time, each for {@link NOTICE_SHOWN_MS}, the rest waiting in order. `same`
+ *  tells two notices apart. */
 export class NoticeQueue<T> {
   private readonly waiting: T[] = [];
   private shown: NoticeShowing<T> | null = null;
 
+  constructor(private readonly same: (a: T, b: T) => boolean = Object.is) {}
+
   /** Queue `notice`, unless the same one already waits. */
   push(notice: T): void {
-    if (!this.waiting.includes(notice)) this.waiting.push(notice);
+    if (!this.waiting.some((waiting) => this.same(waiting, notice))) this.waiting.push(notice);
   }
 
   /** The showing standing at `nowMs`, null while none waits. */

@@ -1,5 +1,5 @@
-import type { ContentSet, MapAiSeat, MapEscalationInput, MapEscalationNoticeKey } from '@open-northland/data';
-import { MapEscalation, parseContentSet } from '@open-northland/data';
+import type { ContentSet, MapAiSeat, MapModulesInput, MapNotice } from '@open-northland/data';
+import { MapModules, parseContentSet } from '@open-northland/data';
 import { Owner, Position, Settler, Vehicle } from '../../../src/components/index.js';
 import { TICKS_PER_SECOND } from '../../../src/core/loop.js';
 import type { Entity } from '../../../src/ecs/world.js';
@@ -9,7 +9,7 @@ import { CONDITION_ALWAYS } from '../../../src/systems/map-ai/index.js';
 import { aiContent } from '../ai-content.js';
 
 /**
- * A synthetic coast for an escalation: open sea in the west, a fortress keep and one player seat with
+ * A synthetic coast for a siege: open sea in the west, a fortress keep and one player seat with
  * two houses and a villager on land, and a raider whose wave brings a sea landing.
  */
 
@@ -17,6 +17,10 @@ const VIKING = 1;
 const HQ_TYPE = 1;
 const SPEARMAN = 32;
 const BOWMAN = 40;
+const HQ_SLUG = 'headquarters';
+const VIKING_SLUG = 'viking';
+const SPEARMAN_SLUG = 'soldier_spear_wooden';
+const BOWMAN_SLUG = 'soldier_bow_short';
 const SHIP = 3;
 /** The ship's seats besides the commander's: the landing carries one more man than this. */
 export const SHIP_SEATS = 3;
@@ -39,7 +43,8 @@ export const LANDING = { spawnX: 4, spawnY: 30, x: 21, y: 30 };
 export const SECOND_LANDING = { spawnX: 4, spawnY: 50, x: 21, y: 50 };
 
 export const LAUNCH_SECONDS = 10;
-export const NOTICE: MapEscalationNoticeKey = 'forteca.landing';
+/** The landing notice, by map string id. */
+export const NOTICE: MapNotice = { title: 7 };
 
 /** {@link aiContent} with a small ship that admits the attack's trades. */
 function landingContent(): ContentSet {
@@ -83,14 +88,15 @@ export function coast(lake = false): TerrainMap {
   return halfCellMapFromCells({ width, height, typeIds });
 }
 
-export const LANDINGS = { vehicle: 'ship_small', menPerShip: MEN_PER_SHIP, noticeKey: NOTICE };
+export const LANDINGS = { vehicle: 'ship_small', menPerShip: MEN_PER_SHIP, notice: NOTICE };
 
-export const ESCALATION: MapEscalationInput = {
-  keep: { seat: FORTRESS, houseType: HQ_TYPE, ...KEEP, range: 4 },
-  tribe: VIKING,
+export const SIEGE: NonNullable<MapModulesInput['siege']> = {
+  version: 1,
+  stronghold: { seat: FORTRESS, building: HQ_SLUG, ...KEEP, range: 4 },
+  tribe: VIKING_SLUG,
   jobMix: [
-    { job: SPEARMAN, weight: 2 },
-    { job: BOWMAN, weight: 1 },
+    { job: SPEARMAN_SLUG, weight: 2 },
+    { job: BOWMAN_SLUG, weight: 1 },
   ],
   attacks: {
     launches: [{ atSeconds: LAUNCH_SECONDS, landMen: 1, ships: 1 }],
@@ -134,13 +140,16 @@ export const SCRIPT: MapAiSeat[] = [
 ];
 
 /** The coast world after its setup tick. */
-export function coastWorld(config: MapEscalationInput = ESCALATION, map: TerrainMap = coast()): Simulation {
+export function coastWorld(
+  siege: NonNullable<MapModulesInput['siege']> = SIEGE,
+  map: TerrainMap = coast(),
+): Simulation {
   const sim = new Simulation({
     seed: 5,
     content: landingContent(),
     map,
     mapAiScript: SCRIPT,
-    mapEscalation: MapEscalation.parse(config),
+    mapModules: MapModules.parse({ siege }),
   });
   for (const player of [FORTRESS, RAIDER]) {
     sim.enqueueSetup({ kind: 'setAiControl', player, enabled: true, modules: { military: false } });

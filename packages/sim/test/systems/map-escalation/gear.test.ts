@@ -1,4 +1,4 @@
-import { type ContentSet, type MapEscalationInput, parseContentSet } from '@open-northland/data';
+import { type ContentSet, type MapModulesInput, type MapNotice, parseContentSet } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
 import { Equipment, Settler, Stance, Weapon } from '../../../src/components/index.js';
 import { TICKS_PER_SECOND } from '../../../src/core/loop.js';
@@ -8,21 +8,23 @@ import { damageTakenBy } from '../../../src/systems/equipment/index.js';
 import { WEAPON_MAIN_TYPE } from '../../../src/systems/readviews/index.js';
 import { ctxOf } from '../../fixtures/context.js';
 import {
+  AMULET_NOTICE,
   AMULET_SECONDS,
   BOWMAN,
   DEFENSE_AMULET,
-  ESCALATION,
   FORTRESS,
   GEARED,
   gearContent,
   keepWorld,
   LEATHER,
+  LIGHT_ARMOR_NOTICE,
   LIGHT_ARMOR_SECONDS,
   ownedFighters,
   RAIDER,
   REFILL_EVERY_SECONDS,
   runToSecond,
   SHOES,
+  SIEGE,
   SPEARMAN,
   VIKING,
   WOOL,
@@ -74,12 +76,13 @@ function gearOf(sim: Simulation, e: Entity) {
   };
 }
 
-function gearSteps(sim: Simulation, seconds: number): string[] {
-  const seen: string[] = [];
+function gearSteps(sim: Simulation, seconds: number): { step: number; notice?: MapNotice }[] {
+  const seen: { step: number; notice?: MapNotice }[] = [];
   while (sim.tick < seconds * TICKS_PER_SECOND) {
     sim.step();
     for (const ev of sim.events.current())
-      if (ev.kind === 'mapEscalationGearStep') seen.push(`${ev.step} ${ev.noticeKey}`);
+      if (ev.kind === 'mapEscalationGearStep')
+        seen.push({ step: ev.step, ...(ev.notice === undefined ? {} : { notice: ev.notice }) });
   }
   return seen;
 }
@@ -87,7 +90,7 @@ function gearSteps(sim: Simulation, seconds: number): string[] {
 describe('map escalation - gear', () => {
   it('gears every soldier of the gear seats at each step, and each one they gain later with every step passed', () => {
     const { sim, garrison } = keepWorld(GEARED, gearContent());
-    expect(gearSteps(sim, LIGHT_ARMOR_SECONDS + 1)).toEqual(['1 forteca.gear.lightArmor']);
+    expect(gearSteps(sim, LIGHT_ARMOR_SECONDS + 1)).toEqual([{ step: 1, notice: LIGHT_ARMOR_NOTICE }]);
     const band = ownedFighters(sim, RAIDER);
     expect(band.length).toBeGreaterThan(0);
     for (const e of [...garrison, ...band]) {
@@ -95,7 +98,7 @@ describe('map escalation - gear', () => {
       expect([WOOL, LEATHER]).toContain(gearOf(sim, e).armor);
     }
 
-    expect(gearSteps(sim, AMULET_SECONDS + 1)).toEqual(['2 forteca.gear.amulets']);
+    expect(gearSteps(sim, AMULET_SECONDS + 1)).toEqual([{ step: 2, notice: AMULET_NOTICE }]);
     for (const e of garrison) expect(gearOf(sim, e).misc).toEqual([DEFENSE_AMULET]);
     // The cap grew at 30 s, so the next refill beat brings a newcomer.
     runToSecond(sim, AMULET_SECONDS + REFILL_EVERY_SECONDS + 1);
@@ -108,16 +111,13 @@ describe('map escalation - gear', () => {
   });
 
   it('swaps a soldier’s weapon for the better one of its class, trade and combat weapon with it, keeping his stance', () => {
-    const config: MapEscalationInput = {
-      ...ESCALATION,
-      gear: {
+    const config: MapModulesInput = {
+      siege: SIEGE,
+      gearSchedule: {
+        version: 1,
         seats: [FORTRESS],
         steps: [
-          {
-            atSeconds: LIGHT_ARMOR_SECONDS,
-            noticeKey: 'forteca.gear.heavyArmor',
-            weaponUpgrades: [{ from: 'spear_wooden', to: 'spear_iron' }],
-          },
+          { atSeconds: LIGHT_ARMOR_SECONDS, weaponUpgrades: [{ from: 'spear_wooden', to: 'spear_iron' }] },
         ],
       },
     };
@@ -143,14 +143,15 @@ describe('map escalation - gear', () => {
   });
 
   it('gives a second, different amulet on the extra chance beside a sure draught', () => {
-    const config: MapEscalationInput = {
-      ...ESCALATION,
-      gear: {
+    const config: MapModulesInput = {
+      siege: SIEGE,
+      gearSchedule: {
+        version: 1,
         seats: [FORTRESS],
         steps: [
           {
             atSeconds: AMULET_SECONDS,
-            noticeKey: 'forteca.gear.amulets',
+            notice: AMULET_NOTICE,
             grants: [
               { goods: ['amulet_defense', 'amulet_strength'], extraChancePct: 100 },
               { goods: ['potion_heal_big'] },

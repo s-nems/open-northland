@@ -2,9 +2,9 @@ import type {
   ContentSet,
   MapAiSeat,
   MapDiplomacy,
-  MapEscalation,
   MapHumanName,
   MapHumanPalette,
+  MapModules,
   MapRelationFlag,
   MapScript,
   MapTradeAgreement,
@@ -47,8 +47,8 @@ export interface MapScriptWorld {
   /** The map's `[misc_weather]` rectangles, laid down before the first tick and any script write. */
   readonly weather?: readonly MapWeatherRectangle[];
   readonly missions?: MissionScript;
-  /** The map variant's escalating siege, which the simulation runs beside the AI rows. */
-  readonly escalation?: MapEscalation;
+  /** The rules the map adds to its script, which the simulation runs beside the AI rows. */
+  readonly modules?: MapModules;
   /** The seats the match counts, from the roster: every seat in use except the `playerneverdies` ones. */
   readonly participants?: readonly number[];
 }
@@ -92,7 +92,7 @@ export function newWorldSim(
     map,
     ...(script.missions !== undefined ? { missions: script.missions } : {}),
     ...(script.ai !== undefined && script.ai.length > 0 ? { mapAiScript: script.ai } : {}),
-    ...(script.escalation !== undefined ? { mapEscalation: script.escalation } : {}),
+    ...(script.modules !== undefined ? { mapModules: script.modules } : {}),
   });
   if (map.fishSwarms !== undefined && sim.terrain !== undefined) {
     systems.addFishSwarms(sim.world, sim.terrain, map.fishSwarms);

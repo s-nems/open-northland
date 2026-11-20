@@ -17,6 +17,7 @@ export * from './job-atomics.js';
 export * from './languages.js';
 export * from './lookup.js';
 export * from './map-lobby.js';
+export * from './map-modules/index.js';
 export * from './map-variants/index.js';
 export * from './missions/index.js';
 export { PERSONAL_NAMES } from './names/index.js';

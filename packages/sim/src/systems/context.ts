@@ -1,4 +1,4 @@
-import type { ContentSet, MapEscalation } from '@open-northland/data';
+import type { ContentSet, MapModules } from '@open-northland/data';
 import type { MapAiScript } from '../components/ai/map-ai.js';
 import type { CommandQueue } from '../core/command-queue.js';
 import type { EventBuffer } from '../core/events.js';
@@ -37,8 +37,8 @@ export interface SystemContext {
   readonly missions?: MissionScript;
   /** The map's `[AIData]` rows, one per seat that authored any. Absent like `missions`. */
   readonly mapAiScript?: MapAiScript;
-  /** The map variant's escalating siege, an immutable input like `mapAiScript`. Absent like it. */
-  readonly mapEscalation?: MapEscalation;
+  /** The rules the map adds to its script, an immutable input like `mapAiScript`. Absent like it. */
+  readonly mapModules?: MapModules;
 }
 
 /**

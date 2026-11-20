@@ -1024,6 +1024,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       host,
       variant: deps.mapVariant ?? null,
       plane: hudDom.element,
+      mapText,
       setAttackNight: (on) => renderer.setAttackNight(on),
       setModeMark: (text) => toolPanel.controller.setModeMark(text),
       playAttackMusic: () => soundDriver?.playInterlude(ATTACK_MUSIC),

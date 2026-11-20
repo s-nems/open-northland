@@ -1,12 +1,4 @@
 export {
-  MapEscalation,
-  type MapEscalationHero,
-  type MapEscalationInput,
-  MapEscalationJobShare,
-  MapEscalationNoticeKey,
-  MapEscalationWaveSize,
-} from './escalation.js';
-export {
   applyMapVariantBriefing,
   applyMapVariantEntities,
   applyMapVariantScript,
@@ -25,4 +17,5 @@ export {
   MapVariantMissionResults,
   MapVariantScriptPatch,
   MapVariantStartSeat,
+  MapVariantStrings,
 } from './schema.js';
