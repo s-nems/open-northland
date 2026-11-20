@@ -7,6 +7,7 @@ export const itSurfaces = {
     5: 'Serpente mannaro',
     6: 'Lupo mannaro',
     7: 'Egizio',
+    42: 'Drago',
   } as Readonly<Record<number, string>>,
   mainMenu: {
     eyebrow: "Un gioco di strategia economica nell'epoca vichinga",

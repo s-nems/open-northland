@@ -8,6 +8,7 @@ export const chtSurfaces = {
     5: '蛇人',
     6: '狼人',
     7: '埃及人',
+    42: '龍',
   } as Readonly<Record<number, string>>,
   mainMenu: {
     eyebrow: '維京時代的經濟策略遊戲',

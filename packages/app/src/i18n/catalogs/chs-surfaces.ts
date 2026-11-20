@@ -8,6 +8,7 @@ export const chsSurfaces = {
     5: '蛇人',
     6: '狼人',
     7: '埃及人',
+    42: '龙',
   } as Readonly<Record<number, string>>,
   mainMenu: {
     eyebrow: '一款维京时代的经济策略游戏',

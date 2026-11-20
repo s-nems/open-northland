@@ -7,6 +7,7 @@ export const deSurfaces = {
     '5': 'Schlangenmensch',
     '6': 'Werwolf',
     '7': 'Ägypter',
+    '42': 'Drache',
   },
   mainMenu: {
     eyebrow: 'Eine Wirtschaftsstrategie zur Wikingerzeit',

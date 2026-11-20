@@ -8,6 +8,7 @@ export const enSurfaces = {
     5: 'Weresnake',
     6: 'Werewolf',
     7: 'Egyptian',
+    42: 'Dragon',
   } as Readonly<Record<number, string>>,
   mainMenu: {
     eyebrow: 'A Viking-era economic strategy game',

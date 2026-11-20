@@ -8,6 +8,7 @@ export const plSurfaces = {
     5: 'Wężołak',
     6: 'Wilkołak',
     7: 'Egipcjanin',
+    42: 'Smok',
   } as Readonly<Record<number, string>>,
   mainMenu: {
     eyebrow: 'Strategia ekonomiczna z czasów wikingów',
