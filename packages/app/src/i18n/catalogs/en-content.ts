@@ -347,6 +347,11 @@ export const enContent = {
       summary:
         'Defence mode is on: civilians hide in the defence towers, and each tower shoots at the raiders faster the more are inside.',
     },
+    'tower-defence-nations': {
+      title: 'Towers of every nation',
+      summary:
+        "One defence tower of each nation, and the viking stone tower, shelter their townspeople and shoot at an enemy storehouse in the middle, so each tower's arrows can be watched leaving its upper level.",
+    },
     'attack-move': {
       title: 'Attack-move',
       summary:

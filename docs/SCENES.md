@@ -92,6 +92,12 @@ Watch both heads of every row chop facing each tree, the saracen turban heads in
 saracen, egyptian, each with its carrier and a warehouse below. Watch a carrier at its well: it walks
 straight to the well's right side, pumps at the crank and walks off with the bucket.
 
+`?scene=tower-defence-nations` rings an enemy storehouse with a defence tower of each civilization,
+viking, frank, byzantine, saracen and egyptian, and the viking stone tower, each garrisoned by its
+townspeople. Watch each tower fire: its arrows leave its upper level (gallery, battlements, windows or
+roof platform) on the side facing the storehouse, each from a spot of its own. `?scene=vehicle-ship-archers`
+shows the same along a warship's deck.
+
 `?scene=armed-idle` stands the spearman, swordsman, two-hander, shortbow and longbow of each
 civilization in rows: viking, frank, byzantine, saracen, egyptian. Watch them for a while: every idle
 fidget keeps the weapon in hand.

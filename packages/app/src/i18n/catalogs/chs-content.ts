@@ -330,6 +330,11 @@ export const chsContent = {
       title: '箭塔防御',
       summary: '防御模式已开启：平民躲进箭塔，塔内人越多，箭塔射击袭击者的速度越快。',
     },
+    'tower-defence-nations': {
+      title: '各族箭塔',
+      summary:
+        '每个民族各有一座箭塔，另有维京石塔，收容本族平民并射击中央的敌方仓库，可以看到每座箭塔的箭从塔的顶层射出。',
+    },
     'attack-move': {
       title: '攻击移动',
       summary: '一支奉命横穿地图的战团击溃挡路的哨兵，然后继续前往指定地点。',

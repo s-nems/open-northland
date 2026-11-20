@@ -345,6 +345,11 @@ export const plContent = {
       summary:
         'Alarm: cywile chowają się w wieżach, a każda wieża ostrzeliwuje najeźdźców tym szybciej, im więcej osób jest w środku.',
     },
+    'tower-defence-nations': {
+      title: 'Wieże wszystkich nacji',
+      summary:
+        'Po jednej wieży obronnej każdej nacji i kamienna wieża wikingów chowają swoich mieszkańców i ostrzeliwują wrogi magazyn na środku placu, więc widać, jak strzały każdej wieży wylatują z jej górnego poziomu.',
+    },
     'attack-move': {
       title: 'Atak w marszu',
       summary:

@@ -331,6 +331,11 @@ export const chtContent = {
       title: '箭塔防禦',
       summary: '防禦模式已開啟：平民躲進箭塔，塔內人數越多，箭塔向襲擊者射擊得越快。',
     },
+    'tower-defence-nations': {
+      title: '各族箭塔',
+      summary:
+        '每個民族各有一座箭塔，另有維京石塔，收容本族平民並射擊中央的敵方倉庫，可以看到每座箭塔的箭從塔的頂層射出。',
+    },
     'attack-move': {
       title: '攻擊移動',
       summary: '一支奉命橫越地圖的戰團先擊潰擋路的哨兵，再繼續走到指定地點。',

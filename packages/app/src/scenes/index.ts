@@ -31,6 +31,7 @@ import { precisionBattleScene } from './army/precision-battle.js';
 import { scoutVillageScene } from './army/scout-village.js';
 import { siegeScene } from './army/siege.js';
 import { towerDefenceScene } from './army/tower-defence.js';
+import { towerDefenceNationsScene } from './army/tower-defence-nations.js';
 import { towerGarrisonScene } from './army/tower-garrison.js';
 import { amuletsScene } from './combat/amulets.js';
 import { armedIdleScene } from './combat/armed-idle.js';
@@ -205,6 +206,7 @@ export const SCENES: readonly SceneDefinition[] = [
   repairScene,
   wallRepairScene,
   towerDefenceScene,
+  towerDefenceNationsScene,
   attackMoveScene,
   focusFireScene,
   hitAlarmScene,

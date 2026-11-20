@@ -351,6 +351,11 @@ export const itContent = {
       summary:
         'La modalità difensiva è attiva: i civili si rifugiano nelle torri di difesa e ogni torre tira sui predoni tanto più in fretta quanti più civili ci sono dentro.',
     },
+    'tower-defence-nations': {
+      title: 'Torri di ogni popolo',
+      summary:
+        'Una torre di difesa per ogni popolo e la torre di pietra vichinga accolgono i loro abitanti e tirano su un magazzino nemico al centro, così si vede che le frecce di ogni torre partono dal suo piano più alto.',
+    },
     'attack-move': {
       title: 'Attacco in movimento',
       summary:

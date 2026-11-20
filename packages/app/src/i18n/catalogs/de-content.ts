@@ -348,6 +348,11 @@ export const deContent = {
       summary:
         'Der Verteidigungsmodus ist aktiv: Zivilisten verstecken sich in den Wachtürmen. Je mehr sich in einem Turm befinden, desto schneller schießt er auf die Angreifer.',
     },
+    'tower-defence-nations': {
+      title: 'Türme aller Völker',
+      summary:
+        'Je ein Wachturm jedes Volkes und der steinerne Wikingerturm nehmen ihre Bewohner auf und beschießen ein feindliches Lagerhaus in der Mitte, sodass man sieht, wie die Pfeile jedes Turms sein oberes Stockwerk verlassen.',
+    },
     'attack-move': {
       title: 'Angriffsbewegung',
       summary:
