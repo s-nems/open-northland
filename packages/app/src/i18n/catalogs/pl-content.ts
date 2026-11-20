@@ -243,7 +243,7 @@ export const plContent = {
     'byzantine-spears': {
       title: 'Bizantyjscy włócznicy',
       summary:
-        'Kolumny: wyszkolony włócznik, jednostka mapy na miejscu komputera, dar mapy dla gracza. Drewniane włócznie u góry, żelazne u dołu; tylko wyszkolony drewniany włócznik jest człowiekiem, dwa pozostałe to smoki.',
+        'Kolumny: wyszkoleni włócznicy bizantyjscy gracza, włócznicy miejsca komputera i smok obok nich. Drewniane włócznie u góry, żelazne u dołu; wyszkolony drewniany włócznik to zwykły drewniany włócznik.',
     },
     'mace-blows': {
       title: 'Ciosy buławą',

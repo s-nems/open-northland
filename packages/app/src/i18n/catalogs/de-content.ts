@@ -245,7 +245,7 @@ export const deContent = {
     'byzantine-spears': {
       title: 'Byzantinische Speerträger',
       summary:
-        'Spalten: ein ausgebildeter Speerträger, der Mann der Karte auf einem Computerplatz, das Geschenk der Karte an den Spieler. Holzspeere oben, Eisenspeere unten; nur der ausgebildete Holzspeer ist ein Mensch, die anderen beiden sind Drachen.',
+        'Spalten: die ausgebildeten byzantinischen Speerträger des Spielers, die eines Computerplatzes und daneben ein Drache. Holzspeere oben, Eisenspeere unten; ein ausgebildeter Holzspeerträger ist ein gewöhnlicher Holzspeerträger.',
     },
     'mace-blows': {
       title: 'Streitkolbenhiebe',

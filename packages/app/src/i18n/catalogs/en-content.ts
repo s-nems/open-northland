@@ -245,7 +245,7 @@ export const enContent = {
     'byzantine-spears': {
       title: 'Byzantine spears',
       summary:
-        "Columns: a trained wooden spearman, the map's man on a machine seat, the map's gift to the human player. Wooden spears above, iron below; only the trained wooden spear is a man, the other two are dragons.",
+        "Columns: the human player's trained Byzantine spearmen, a machine seat's, and a dragon beside them. Wooden spears above, iron below; a trained wooden spearman is an ordinary wooden spearman.",
     },
     'mace-blows': {
       title: 'Mace blows',

@@ -246,7 +246,7 @@ export const itContent = {
     'byzantine-spears': {
       title: 'Lance bizantine',
       summary:
-        "Colonne: un lanciere con lancia di legno addestrato, l'uomo della mappa su un sedile di macchina, il dono della mappa al giocatore umano. Lance di legno sopra, di ferro sotto; solo la lancia di legno addestrata è un uomo, gli altri due sono dragoni.",
+        'Colonne: i lancieri bizantini addestrati del giocatore, quelli di un sedile di macchina e accanto un drago. Lance di legno sopra, di ferro sotto; un lanciere con lancia di legno addestrato è un normale lanciere con lancia di legno.',
     },
     'mace-blows': {
       title: 'Colpi di mazza',
