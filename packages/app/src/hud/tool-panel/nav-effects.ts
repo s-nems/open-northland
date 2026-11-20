@@ -45,8 +45,9 @@ const EFFECTS: Readonly<Record<NavEntryId, NavEntryEffect>> = {
 
 export const navEntryEffect = (id: NavEntryId): NavEntryEffect => EFFECTS[id];
 
-/** The beam entry that owns a central window; null for one the beam does not open (the network
- *  window, which its hotkey and the game menu open). */
+/** The beam entry that owns a central window; null for one the beam does not open: the network
+ *  window, which its hotkey and the game menu open, and the diplomacy map, which its key and the
+ *  minimap open. */
 export function navEntryForWindow(window: ToolWindowId): NavEntryId | null {
   return NAV_ENTRY_IDS.find((id) => EFFECTS[id].window === window) ?? null;
 }

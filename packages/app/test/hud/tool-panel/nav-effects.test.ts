@@ -13,6 +13,7 @@ import {
   type ConstructionWindowStub,
   stubConstructionWindow,
 } from '../../support/tool-panel-stubs/construction-window.js';
+import { stubDiplomacyMap } from '../../support/tool-panel-stubs/diplomacy-map.js';
 import { stubDiplomacyWindow } from '../../support/tool-panel-stubs/diplomacy-window.js';
 import { stubKnowledgeWindow } from '../../support/tool-panel-stubs/knowledge-window.js';
 import { stubMissionBook } from '../../support/tool-panel-stubs/mission-book.js';
@@ -46,6 +47,8 @@ function mountSurfaces() {
     onCancel: () => windows?.byId.menu.resume(),
   });
   let menu: ConstructionWindowStub | null = null;
+  const nationPage = stubDiplomacyWindow();
+  const diplomacyMap = stubDiplomacyMap();
   windows = createToolWindows({
     knowledgeWindow: stubKnowledgeWindow,
     residentsWindow: stubResidentsWindow,
@@ -57,7 +60,8 @@ function mountSurfaces() {
     assistantWindow: stubAssistantWindow,
     statisticsWindow: stubStatisticsWindow,
     heldPaper: createHeldPaperController(ctx, strip),
-    diplomacyWindow: stubDiplomacyWindow,
+    diplomacyWindow: () => nationPage,
+    diplomacyMap,
     missionBook: stubMissionBook,
     onPickBuilding: (pick) => {
       windows?.byId.menu.suspend();
@@ -68,7 +72,14 @@ function mountSurfaces() {
   const surfaces = { windows: windows.byId, cancelHeld: () => placement.cancel() };
   const press = (id: NavEntryId): void => applyNavEntry(surfaces, id);
   const { onPick } = (menu as ConstructionWindowStub).seam;
-  return { press, windows, placement, pick: (typeId: number) => onPick(typeId, VIKING) };
+  return {
+    press,
+    windows,
+    placement,
+    nationPage,
+    diplomacyMap,
+    pick: (typeId: number) => onPick(typeId, VIKING),
+  };
 }
 
 describe('applying a navigation entry', () => {
@@ -136,6 +147,20 @@ describe('applying a navigation entry', () => {
     press('mission');
     expect(placement.isActive()).toBe(false);
     expect(windows.openId()).toBe('mission');
+  });
+
+  it('shuts a standing diplomacy map for any entry, the diplomacy window among them', () => {
+    const { press, windows, nationPage, diplomacyMap } = mountSurfaces();
+    diplomacyMap.toggle();
+    press('diplomacy');
+    expect(diplomacyMap.isOpen()).toBe(false);
+    expect(nationPage.isOpen()).toBe(true);
+
+    nationPage.close();
+    diplomacyMap.toggle();
+    press('statistics');
+    expect(diplomacyMap.isOpen()).toBe(false);
+    expect(windows.openId()).toBe('stats');
   });
 
   it('opens the mission window on a caller-supplied page and still closes the others', () => {

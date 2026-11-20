@@ -23,6 +23,7 @@ import {
   type ConstructionWindowStub,
   stubConstructionWindow,
 } from '../../support/tool-panel-stubs/construction-window.js';
+import { stubDiplomacyMap } from '../../support/tool-panel-stubs/diplomacy-map.js';
 import { stubDiplomacyWindow } from '../../support/tool-panel-stubs/diplomacy-window.js';
 import { stubKnowledgeWindow } from '../../support/tool-panel-stubs/knowledge-window.js';
 import { stubMissionBook } from '../../support/tool-panel-stubs/mission-book.js';
@@ -83,6 +84,7 @@ describe('tool windows registry', () => {
       statisticsWindow: () => stats,
       heldPaper,
       diplomacyWindow: stubDiplomacyWindow,
+      diplomacyMap: stubDiplomacyMap(),
       missionBook: stubMissionBook,
       onPickBuilding: (pick) => picks.push(pick),
     });

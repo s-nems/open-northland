@@ -39,6 +39,9 @@
   text-shadow: 0 1px 2px #000;
   white-space: nowrap;
 }
+.on-hud .on-dipmap__diplomacy {
+  flex: none;
+}
 .on-hud .on-dipmap__close {
   flex: none;
   width: 26px;

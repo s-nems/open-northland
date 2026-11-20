@@ -23,6 +23,7 @@ const MOUNT_ORDER = [
   'knowledge',
   'mission',
   'network',
+  'diplomacyMap',
 ] as const;
 
 export type ToolWindowId = (typeof MOUNT_ORDER)[number];
@@ -66,6 +67,9 @@ export interface ToolWindowsDeps {
   readonly networkWindow?: () => NetworkWindow;
   readonly buildings: readonly MenuBuildingEntry[];
   readonly diplomacyWindow: () => DiplomacyWindow;
+  /** The diplomacy map, which mounts over the minimap; the beam does not open it, its own key and button
+   *  do. */
+  readonly diplomacyMap: ToolWindow;
   /** The place-any plan the construction window holds for its next catalogue pick. */
   readonly heldPaper: HeldPaperController;
   /** A building was picked for placement, with the plan the placement spends when one is held. */
@@ -142,11 +146,23 @@ export function createToolWindows(deps: ToolWindowsDeps): ToolWindows {
     knowledge: { window: knowledge, perFrame: () => knowledge.place() },
     mission: { window: mission, perFrame: () => mission.refresh() },
     network: { window: networkEntry, perFrame: () => network?.refresh() },
+    // The frame loop refreshes the map itself.
+    diplomacyMap: { window: deps.diplomacyMap, perFrame: () => undefined },
   };
   const mounted = MOUNT_ORDER.map((id) => entries[id]);
 
   return {
-    byId: { menu, assistant, stats, diplomacy, residents, knowledge, mission, network: networkEntry },
+    byId: {
+      menu,
+      assistant,
+      stats,
+      diplomacy,
+      residents,
+      knowledge,
+      mission,
+      network: networkEntry,
+      diplomacyMap: deps.diplomacyMap,
+    },
     mission,
     openId: () => MOUNT_ORDER.find((id) => entries[id].window.isOpen()) ?? null,
     // A suspended construction window reports closed and keeps its placement's resume.

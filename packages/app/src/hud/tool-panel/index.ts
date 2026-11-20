@@ -104,6 +104,7 @@ import { NO_RESIDENT_FILTERS } from './residents/rows.js';
 import type { ResidentsSeam } from './residents/seam.js';
 import { createSpeedControl } from './speed-control.js';
 import { type ClientPoint, createWallDemolishBrush } from './wall-demolish.js';
+import type { ToolWindow } from './window-shell.js';
 import { createToolWindows } from './windows.js';
 
 /** Painted-icon size in a window head (design px). */
@@ -198,14 +199,14 @@ export interface ToolPanelOptions {
   readonly residents: ResidentsSeam;
   /** The roster of discovered players, one row each, which the diplomacy window reads while it is open. */
   readonly diplomacy: DiplomacySource;
-  /** The diplomacy map, which mounts after the panel and over the minimap. */
-  readonly diplomacyMap: {
+  /** The diplomacy map, which mounts after the panel and over the minimap: a central window the beam does
+   *  not open, never standing with another. */
+  readonly diplomacyMap: ToolWindow & {
     /** False when the map may not stand now. */
     open(): boolean;
-    /** False when the Escape was not the map's to take. */
-    close(): boolean;
-    toggle(): void;
   };
+  /** The open diplomacy window holds the game, as the mission book does; the map holds it on its own. */
+  readonly onDiplomacyHold?: (held: boolean) => void;
   /** The discovered players and their stance toward the viewer, which the message centre reads a tick. */
   readonly metSeats: () => readonly MetSeat[];
   /** The viewer's fog, null with fog off or the whole map in view: a note about another seat points only
@@ -323,6 +324,10 @@ export interface ToolPanelController {
   readonly paintNationEmblem: NationEmblemPainter;
   /** The diplomacy window on `player`'s page, as a press on the beam opens it. */
   showNation(player: number): void;
+  /** The diplomacy window as its beam entry opens it; an open one stays as it is. */
+  openDiplomacy(): void;
+  /** The diplomacy map's key and button. */
+  toggleDiplomacyMap(): void;
   /** Open the mission book (the map's briefing and goals), as the session start does; on `page` when a
    *  script asked for one, which holds the game while it shows. */
   openMission(page?: number): void;
@@ -715,7 +720,12 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
           tooltip: opts.assistant.tooltip,
           cue: ctx.cue,
           paintEmblem: paintNationEmblem,
-          onOpenMap: opts.diplomacyMap.open,
+          onOpenMap: () => {
+            if (!opts.diplomacyMap.open()) return false;
+            closeAllBut(opts.diplomacyMap);
+            return true;
+          },
+          onHold: (held) => opts.onDiplomacyHold?.(held),
           mapKey: () => {
             const binding = opts.bindings.diplomacyMap;
             return binding === null ? null : keyDisplayLabel(binding);
@@ -724,16 +734,25 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
         window.onDismiss(() => focusOwner?.('diplomacy'));
         return window;
       },
+      diplomacyMap: opts.diplomacyMap,
       onPickBuilding: (pick) => placement.enter(pick),
     });
     domParts.push(windows);
+    /** One central window at a time: every window but `target` shuts. */
+    const closeAllBut = (target: ToolWindow): void => {
+      for (const window of Object.values(windows.byId)) if (window !== target) window.close();
+    };
 
     const surfaces = { windows: windows.byId, cancelHeld };
+    const toggleDiplomacyMap = (): void => {
+      opts.diplomacyMap.toggle();
+      if (opts.diplomacyMap.isOpen()) closeAllBut(opts.diplomacyMap);
+    };
     /** Not a beam entry, but one central window at a time all the same: every other one closes.
      *  `open` true keeps an open window open; false toggles it, as its hotkey does. */
     const showNetwork = (open: boolean): void => {
       const target = windows.byId.network;
-      for (const window of Object.values(windows.byId)) if (window !== target) window.close();
+      closeAllBut(target);
       if (!open || !target.isOpen()) target.toggle();
     };
     openGoals = () => applyNavEntry(surfaces, 'mission', () => windows.mission.openGoals());
@@ -876,18 +895,17 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
       },
       onOpenAssistant: () => {
         const target = windows.byId.assistant;
-        for (const window of Object.values(windows.byId)) if (window !== target) window.close();
+        closeAllBut(target);
         if (!target.isOpen()) target.toggle();
       },
       isVehicleSite: opts.isVehicleSite,
     });
     domParts.push(messageCenter);
 
-    // Esc closes the open window and hands focus back to its beam entry; the diplomacy map is the
-    // rung under the windows, which open over it.
+    // Esc closes the open window and hands focus back to its beam entry.
     const closeWindow = (): boolean => {
       const open = windows.openId();
-      if (open === null) return opts.diplomacyMap.close();
+      if (open === null) return false;
       if (open === 'knowledge' && windows.byId.knowledge.escape()) return true;
       windows.byId[open].close();
       focusOwner?.(navEntryForWindow(open));
@@ -942,7 +960,7 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
             },
           }
         : {}),
-      toggleDiplomacyMap: opts.diplomacyMap.toggle,
+      toggleDiplomacyMap,
       ...(roadOffered
         ? {
             roadTool: () => {
@@ -977,6 +995,10 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
       paintNationEmblem,
       showNation: (player) =>
         applyNavEntry(surfaces, 'diplomacy', () => windows.byId.diplomacy.showNation(player)),
+      openDiplomacy: () => {
+        if (!windows.byId.diplomacy.isOpen()) applyNavEntry(surfaces, 'diplomacy');
+      },
+      toggleDiplomacyMap,
       openMission: (page) => {
         if (page !== undefined) applyNavEntry(surfaces, 'mission', () => windows.mission.showPage(page));
         else if (!windows.mission.isOpen()) applyNavEntry(surfaces, 'mission');

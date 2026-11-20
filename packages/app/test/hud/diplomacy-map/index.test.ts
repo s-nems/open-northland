@@ -85,6 +85,8 @@ function mount(startNations: readonly DiplomacyMapNation[], startWorld: readonly
   const nations = vi.fn(() => world.nations);
   const snapshot = vi.fn((): WorldSnapshot => world.snapshot);
   const onNation = vi.fn<(player: number) => void>();
+  const onHold = vi.fn<(held: boolean) => void>();
+  const onOpenDiplomacy = vi.fn<() => void>();
   const cue = vi.fn<(cue: UiCue) => void>();
   const map = createDiplomacyMap({
     minimap,
@@ -96,6 +98,8 @@ function mount(startNations: readonly DiplomacyMapNation[], startWorld: readonly
     uiScale: () => UI_SCALE,
     unavailable: () => state.unavailable,
     onNation,
+    onHold,
+    onOpenDiplomacy,
     cue,
     now: () => state.clock,
   });
@@ -113,10 +117,13 @@ function mount(startNations: readonly DiplomacyMapNation[], startWorld: readonly
     nations,
     snapshot,
     onNation,
+    onHold,
+    onOpenDiplomacy,
     cue,
     state,
     world,
     closeButton: () => one<HTMLButtonElement>('.on-dipmap__close'),
+    diplomacyButton: () => one<HTMLButtonElement>('.on-dipmap__diplomacy'),
     unknownStrip: () => one('.on-dipmap__unknown'),
     stripPlaques: () => all('.on-dipmap__unknown .on-dipmap-plaque'),
     plaques: () => all<HTMLButtonElement>('.on-dipmap-plaque--map'),
@@ -294,6 +301,29 @@ describe('createDiplomacyMap', () => {
     expect(map.isOpen()).toBe(false);
     expect(minimap.setOverview).not.toHaveBeenCalled();
     expect(nations).not.toHaveBeenCalled();
+  });
+
+  it('holds the game while it stands, however it shuts, and not when it refuses to open', () => {
+    const { map, state, onHold, closeButton } = mount([OWN_NATION]);
+    state.unavailable = true;
+    map.open();
+    expect(onHold).not.toHaveBeenCalled();
+    state.unavailable = false;
+    map.open();
+    map.open();
+    closeButton().click();
+    map.open();
+    state.unavailable = true;
+    map.refresh();
+    expect(onHold.mock.calls).toEqual([[true], [false], [true], [false]]);
+  });
+
+  it('asks for the diplomacy window from its diplomacy button', () => {
+    const { map, cue, onOpenDiplomacy, diplomacyButton } = mount([OWN_NATION]);
+    map.open();
+    diplomacyButton().click();
+    expect(onOpenDiplomacy).toHaveBeenCalledOnce();
+    expect(cue).toHaveBeenLastCalledWith('confirm');
   });
 
   it('sounds the refusal when a toggle cannot open it, and the confirmation when it can', () => {

@@ -133,6 +133,7 @@ export interface GameToolPanelDeps {
   /** The diplomacy window's roster: one row per discovered player. */
   readonly diplomacy: DiplomacySource;
   readonly diplomacyMap: ToolPanelOptions['diplomacyMap'];
+  readonly onDiplomacyHold?: ToolPanelOptions['onDiplomacyHold'];
   /** The discovered players and their stance toward the viewer, the message centre's per-tick read. */
   readonly metSeats: () => readonly MetSeat[];
   /** The viewer's fog, null with fog off or the whole map in view. */
@@ -373,6 +374,7 @@ export async function mountGameToolPanel(deps: GameToolPanelDeps): Promise<GameT
       : {}),
     ...(deps.missionPictureUrl !== undefined ? { missionPictureUrl: deps.missionPictureUrl } : {}),
     ...(deps.onMissionHold !== undefined ? { onMissionHold: deps.onMissionHold } : {}),
+    ...(deps.onDiplomacyHold !== undefined ? { onDiplomacyHold: deps.onDiplomacyHold } : {}),
     ...(deps.pauseStopsClock !== undefined ? { pauseStopsClock: deps.pauseStopsClock } : {}),
     ...(deps.onShowOnMap !== undefined ? { onShowOnMap: deps.onShowOnMap } : {}),
     ...(deps.onCentreView !== undefined ? { onCentreView: deps.onCentreView } : {}),

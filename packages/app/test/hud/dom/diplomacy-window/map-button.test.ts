@@ -33,6 +33,7 @@ function mount(onOpenMap: () => boolean = () => true, mapKey: string | null = 'O
   const plane = document.createElement('div');
   document.body.append(plane);
   const rows = [row(FIRST), row(SECOND)];
+  const onHold = vi.fn<(held: boolean) => void>();
   const window = createDiplomacyWindow({
     plane,
     source: {
@@ -48,11 +49,12 @@ function mount(onOpenMap: () => boolean = () => true, mapKey: string | null = 'O
     tooltip: { show: () => undefined, hide: () => undefined },
     cue: () => undefined,
     onOpenMap,
+    onHold,
     mapKey: () => mapKey,
   });
   const shownPlayer = (): string | undefined =>
     plane.querySelector<HTMLElement>('.on-dip-nation[aria-current="true"]')?.dataset.player;
-  return { plane, window, shownPlayer, switchSeat: (seat: number) => (viewer = seat) };
+  return { plane, window, onHold, shownPlayer, switchSeat: (seat: number) => (viewer = seat) };
 }
 
 describe('diplomacy window map button', () => {
@@ -104,5 +106,17 @@ describe('diplomacy window showNation', () => {
     window.showNation(UNLISTED);
     expect(window.isOpen()).toBe(true);
     expect(shownPlayer()).toBe(String(FIRST));
+  });
+});
+
+describe('diplomacy window hold', () => {
+  it('holds the game while open, until a close or the medallion shuts it', () => {
+    const { plane, window, onHold } = mount();
+    window.toggle();
+    window.close();
+    window.close();
+    window.showNation(SECOND);
+    plane.querySelector<HTMLButtonElement>('.on-window__close')?.click();
+    expect(onHold.mock.calls).toEqual([[true], [false], [true], [false]]);
   });
 });

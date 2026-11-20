@@ -359,6 +359,8 @@ export interface GameViewHandle {
 const PAUSE_HOLDER_MENU = 'menu';
 const PAUSE_HOLDER_MISSION = 'mission';
 const PAUSE_HOLDER_VERDICT = 'verdict';
+const PAUSE_HOLDER_DIPLOMACY = 'diplomacy';
+const PAUSE_HOLDER_DIPLOMACY_MAP = 'diplomacyMap';
 const NO_PAPERS: readonly Paper[] = [];
 const NO_RESIDENTS: readonly ResidentRow[] = [];
 /** Above the world layers, below the HUD plane the tool panel and the minimap share. */
@@ -443,9 +445,14 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
     setUpdateContinuation(() => saveLoad.stageForReload());
     cleanup.push(() => setUpdateContinuation(null));
   }
-  // Three overlays hold the sim paused - the menu, the mission book and the verdict - so
-  // each holds under its own key and none can release another's.
+  // Each overlay that holds the sim paused holds under its own key, so none can release another's.
   const pauseHolds = createPauseHolds(saveLoad, !sharedClock);
+  const holdPause =
+    (owner: string) =>
+    (held: boolean): void => {
+      if (held) pauseHolds.hold(owner);
+      else pauseHolds.release(owner);
+    };
   const destroy = (): void => {
     if (destroyed) return;
     destroyed = true;
@@ -565,7 +572,6 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
     let minimap: MinimapHandle | undefined;
     // Stands on the minimap, so it mounts after it; the panel and the minimap's button reach it here.
     let diplomacyMap: DiplomacyMap | undefined;
-    let unitWindowOpen: (() => boolean) | undefined;
     let toggleMapPing: (() => void) | undefined;
     const mapPing =
       deps.netSignals === undefined
@@ -783,15 +789,12 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
         }),
       },
       diplomacyMap: {
+        isOpen: () => diplomacyMap?.isOpen() === true,
         open: () => diplomacyMap?.open() === true,
-        // A window of the unit controls stands over the map, and its own Escape comes first.
-        close: () => {
-          if (diplomacyMap?.isOpen() !== true || unitWindowOpen?.() === true) return false;
-          diplomacyMap.close();
-          return true;
-        },
+        close: () => diplomacyMap?.close(),
         toggle: () => diplomacyMap?.toggle(),
       },
+      onDiplomacyHold: holdPause(PAUSE_HOLDER_DIPLOMACY),
       metSeats,
       fogView: fogViewOf,
       canPlaceAt,
@@ -1162,7 +1165,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       onOrder: (worldX, worldY, event) =>
         toolPanel.controller.callOffHeld(event) || (overviewPress?.(worldX, worldY, event) ?? false),
       toScreenPx: clientToScreen,
-      onOverviewButton: () => diplomacyMap?.toggle(),
+      onOverviewButton: toolPanel.controller.toggleDiplomacyMap,
       ...(mapPing === undefined ? {} : { onSignalButton: () => toggleMapPing?.() }),
     });
 
@@ -1194,6 +1197,8 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       uiScale: hudDom.currentScale,
       unavailable: () => hudHidden,
       onNation: toolPanel.controller.showNation,
+      onOpenDiplomacy: toolPanel.controller.openDiplomacy,
+      onHold: holdPause(PAUSE_HOLDER_DIPLOMACY_MAP),
       cue: uiCue,
       now: () => performance.now(),
     });
@@ -1325,7 +1330,6 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
     unitSelection = controls;
     residentsProducts = createProductSelectionCache(controls.panelModelContext, answers.versions.technology);
     escapeClaimed = controls.claimsEscape;
-    unitWindowOpen = controls.windowOpen;
     overviewPress = controls.overviewPress;
 
     const {

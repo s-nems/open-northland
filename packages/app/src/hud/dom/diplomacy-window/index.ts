@@ -43,6 +43,8 @@ export interface DiplomacyWindowDeps {
   readonly cue: (cue: UiCue) => void;
   /** The map button was pressed; false leaves this window open, the map having refused. */
   readonly onOpenMap: () => boolean;
+  /** The open window holds the game. */
+  readonly onHold: (held: boolean) => void;
   /** The Diplomacy Map's key as shown to the player; `null` when unbound. */
   readonly mapKey: () => string | null;
 }
@@ -305,11 +307,17 @@ export function createDiplomacyWindow(deps: DiplomacyWindowDeps): DiplomacyWindo
 
   const close = (): void => {
     tips.hide();
+    if (!window.isOpen()) return;
     window.close();
+    deps.onHold(false);
   };
-  window.onDismiss(() => tips.hide());
+  window.onDismiss(() => {
+    tips.hide();
+    deps.onHold(false);
+  });
   const open = (): void => {
     window.open();
+    deps.onHold(true);
     refresh();
     nations.get(selected ?? -1)?.button.focus({ preventScroll: true });
   };

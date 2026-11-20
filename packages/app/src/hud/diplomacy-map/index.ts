@@ -34,6 +34,10 @@ export interface DiplomacyMapDeps {
   readonly unavailable: () => boolean;
   /** A plaque was pressed: open that nation's diplomacy page. */
   readonly onNation: (player: number) => void;
+  /** The diplomacy button was pressed: open the diplomacy window in the map's place. */
+  readonly onOpenDiplomacy: () => void;
+  /** The standing map holds the game. */
+  readonly onHold: (held: boolean) => void;
   readonly cue: (cue: UiCue) => void;
   /** Wall-clock ms. */
   readonly now: () => number;
@@ -71,7 +75,9 @@ export function createDiplomacyMap(deps: DiplomacyMapDeps): DiplomacyMap {
   // On the title's plate: the frame's rail is too slim to carry the medallion.
   const closeButton = button('on-medallion on-window__close on-dipmap__close', GLYPH.close);
   closeButton.setAttribute('aria-label', messages().hud.shell.close);
-  head.append(title, closeButton);
+  const diplomacyButton = button('on-button on-dipmap__diplomacy');
+  write(diplomacyButton, messages().hud.diplomacy);
+  head.append(title, diplomacyButton, closeButton);
   const unknown = element('div', 'on-dipmap__unknown');
   const unknownLabel = element('span', 'on-dipmap__unknown-label');
   write(unknownLabel, copy.unknown);
@@ -208,11 +214,13 @@ export function createDiplomacyMap(deps: DiplomacyMapDeps): DiplomacyMap {
     root.hidden = true;
     deps.minimap.setOverview(false);
     if (heldFocus) deps.minimap.focusOverviewButton();
+    deps.onHold(false);
   }
   function open(): boolean {
     if (opened) return true;
     if (deps.unavailable()) return false;
     opened = true;
+    deps.onHold(true);
     deps.minimap.setOverview(true);
     root.hidden = false;
     read();
@@ -223,6 +231,10 @@ export function createDiplomacyMap(deps: DiplomacyMapDeps): DiplomacyMap {
   closeButton.addEventListener('click', () => {
     deps.cue('confirm');
     close();
+  });
+  diplomacyButton.addEventListener('click', () => {
+    deps.cue('confirm');
+    deps.onOpenDiplomacy();
   });
 
   return {
