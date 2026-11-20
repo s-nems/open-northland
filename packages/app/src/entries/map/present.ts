@@ -63,6 +63,8 @@ export interface MapRuntime {
   readonly onWatchAfterResult?: () => void;
   /** Present for a relayed session: the nick of the person who played a seat. */
   readonly playerNickOf?: GameViewDeps['playerNickOf'];
+  /** Present for a relayed session: the nick of the person sitting a seat now. */
+  readonly seatedNickOf?: GameViewDeps['seatedNickOf'];
   /** Present for a relayed session: whether a person still holds the seat, not left or turned to watching. */
   readonly seatHeld?: (player: number) => boolean;
   /** Present for a relayed session: the sim events of each frame that stepped. */
@@ -261,6 +263,7 @@ export async function presentMapWorld(
       !isSpectator(session) &&
       hosted.matchRules.participants.includes(localPlayer),
     ...(runtime.playerNickOf === undefined ? {} : { playerNickOf: runtime.playerNickOf }),
+    ...(runtime.seatedNickOf === undefined ? {} : { seatedNickOf: runtime.seatedNickOf }),
     ...(runtime.sharedClock === true
       ? {
           playersDecided: () =>
@@ -287,7 +290,7 @@ export async function presentMapWorld(
     playerColourOf,
     seatTribeOf: (player) => playerTribe({ players: world.seatedPlayers }, player),
     tribes: world.tribes,
-    seatNameOf: seatNameMap(session, script, currentLocale()),
+    seatNameOf: seatNameMap(session, script, currentLocale(), runtime.seatedNickOf),
     rosterPlayers: script?.players.map((p) => p.player) ?? [],
     relationFlags: script?.relationFlags ?? [],
     ...terrainColourOption(world.terrain),

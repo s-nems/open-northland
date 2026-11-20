@@ -44,7 +44,7 @@ import {
   type VerifiedStart,
 } from './relayed-world.js';
 import { roomEndText, roomExitObserver } from './room-exit.js';
-import { createSeatNicks } from './seat-nicks.js';
+import { createSeatNicks, seatedNick } from './seat-nicks.js';
 import { closeKeepsSeat, keptSeat } from './seat-surrender.js';
 import { createStartWait } from './start-wait.js';
 
@@ -378,6 +378,7 @@ export function renderNetworkGame(
       onReturnToMenu: returnToMenu,
       onWatchAfterResult: () => client.claimSeat(null),
       playerNickOf: seatNicks.nickOf,
+      seatedNickOf: (player) => seatedNick(client.room, player),
       onEvents: (events) => hud?.worldEvents(events),
       seatHeld: (player) =>
         client.room?.seats.some((seat) => seat.player === player && seat.mode === 'human') ?? true,

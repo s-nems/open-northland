@@ -241,6 +241,7 @@ export const ruGame = {
     diplomacy: 'Дипломатия',
     player: 'Игрок',
     computerSeat: '{name} ({level})',
+    seatNick: '{nick} ({name})',
     diplomacyStances: {
       friend: 'дружественный',
       neutral: 'нейтральный',

@@ -1,5 +1,5 @@
 import type { ObserverSeatEntry } from '../../../game/match/observer-seats.js';
-import { withComputerLevel } from '../../../game/match/seat-names.js';
+import { withComputerLevel, withSeatNick } from '../../../game/match/seat-names.js';
 import { PLAYERS_SIGHT, type ViewerSeat, type WatchTarget } from '../../../game/viewer-seat.js';
 import { messages } from '../../../i18n/index.js';
 import { teamSwatchHex } from '../../../view/accessibility/team-colour.js';
@@ -10,6 +10,8 @@ import { GLYPH } from '../icons.js';
 export interface ObserverPickerDeps {
   readonly enabled?: () => boolean;
   readonly seats: readonly ObserverSeatEntry[];
+  /** The nick of the person sitting a seat now; absent outside a relayed game. */
+  readonly nickOf?: ((player: number) => string | undefined) | undefined;
   /** What the picker shows as chosen; the choice itself goes through `onWatch`. */
   readonly viewer: ViewerSeat;
   /** Owner slot to team-colour slot for the swatches; absent = identity. */
@@ -31,8 +33,12 @@ export interface ObserverPicker {
 
 /** A seat's name as the spectator's HUD shows it. Seats are numbered from one, as the lobby numbers
  *  them; a name several seats share (a map's "Duchy" ×6) carries the number too, so the seats stay
- *  distinguishable beyond their swatch, and a computer's seat carries its level. */
-export function observerSeatLabels(seats: readonly ObserverSeatEntry[]): (seat: number) => string {
+ *  distinguishable beyond their swatch. The nick of the person sitting a seat leads its name, and a
+ *  computer's seat carries its level. */
+export function observerSeatLabels(
+  seats: readonly ObserverSeatEntry[],
+  nickOf?: (player: number) => string | undefined,
+): (seat: number) => string {
   const copy = messages().hud;
   const seatNumber = (seat: number): number => seat + 1;
   const nameCount = new Map<string, number>();
@@ -46,6 +52,8 @@ export function observerSeatLabels(seats: readonly ObserverSeatEntry[]): (seat: 
   return (seat) => {
     const entry = seats.find((s) => s.player === seat);
     const label = numbered(seat, entry?.name);
+    const nick = nickOf?.(seat);
+    if (nick !== undefined) return withSeatNick(nick, label);
     return entry?.level === undefined ? label : withComputerLevel(label, entry.level);
   };
 }
@@ -111,7 +119,7 @@ export function createObserverPicker(deps: ObserverPickerDeps): ObserverPicker {
   title.textContent = copy.observer.label;
   list.append(title);
 
-  const seatLabel = observerSeatLabels(deps.seats);
+  const seatLabel = observerSeatLabels(deps.seats, deps.nickOf);
   const labelOf = (seat: WatchTarget): string => {
     if (seat === null) return copy.observer.wholeMap;
     if (seat === PLAYERS_SIGHT) return copy.observer.playersSight;
@@ -129,6 +137,7 @@ export function createObserverPicker(deps: ObserverPickerDeps): ObserverPicker {
 
   const entries = new Map<WatchTarget, HTMLButtonElement>();
   const entryKeys = new Map<WatchTarget, HTMLElement>();
+  const seatNames = new Map<number, HTMLElement>();
   const entry = (seat: WatchTarget, parent: HTMLElement): void => {
     const option = document.createElement('button');
     option.type = 'button';
@@ -140,6 +149,7 @@ export function createObserverPicker(deps: ObserverPickerDeps): ObserverPicker {
       const name = document.createElement('span');
       name.className = 'on-seat__name';
       name.textContent = labelOf(seat);
+      seatNames.set(seat, name);
       option.append(swatch(colourOf(seat)), name);
     } else {
       option.classList.add('on-seat--mode');
@@ -162,12 +172,19 @@ export function createObserverPicker(deps: ObserverPickerDeps): ObserverPicker {
   entry(PLAYERS_SIGHT, modes);
   entry(null, modes);
   for (const seat of deps.seats) entry(seat.player, list);
-  // Read on every open, since the bindings object is rebound in place from the settings.
-  const showKeys = (): void => {
+  // Read on every open, since the bindings object is rebound in place from the settings and a seat's
+  // nick follows who sits in it.
+  const showKeysAndNames = (): void => {
     for (const [seat, key] of entryKeys) {
       const label = keyOf(seat);
       key.hidden = label === null;
       key.textContent = label ?? '';
+    }
+    for (const [seat, name] of seatNames) {
+      const label = labelOf(seat);
+      if (name.textContent === label) continue;
+      name.textContent = label;
+      entries.get(seat)?.setAttribute('aria-label', label);
     }
   };
 
@@ -182,7 +199,7 @@ export function createObserverPicker(deps: ObserverPickerDeps): ObserverPicker {
   const show = (open: boolean): void => {
     if (list.hidden === !open) return;
     list.hidden = !open;
-    if (open) showKeys();
+    if (open) showKeysAndNames();
     button.setAttribute('aria-expanded', String(open));
     if (open) document.addEventListener('keydown', onEscape, true);
     else document.removeEventListener('keydown', onEscape, true);
@@ -196,14 +213,17 @@ export function createObserverPicker(deps: ObserverPickerDeps): ObserverPicker {
   root.append(button, list);
 
   let shown: WatchTarget | undefined;
+  let shownNick: string | undefined;
   return {
     element: root,
     refresh: () => {
       root.hidden = deps.enabled?.() === false;
       const seat = watchedOf(deps.viewer);
-      if (seat === shown) return;
-      shown = seat;
       const watchesSeat = typeof seat === 'number';
+      const nick = watchesSeat ? deps.nickOf?.(seat) : undefined;
+      if (seat === shown && nick === shownNick) return;
+      shown = seat;
+      shownNick = nick;
       chosenName.textContent = watchesSeat ? labelOf(seat) : '';
       chosenName.hidden = !watchesSeat;
       button.title = watchesSeat ? '' : labelOf(seat);

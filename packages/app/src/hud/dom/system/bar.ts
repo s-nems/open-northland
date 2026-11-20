@@ -89,6 +89,7 @@ export function createHudSystemBar(plane: HTMLElement, deps: HudSystemBarDeps): 
       ? null
       : createObserverStandings({
           seats: observer.seats,
+          nickOf: observer.nickOf,
           playerColourOf: observer.playerColourOf,
           onWatch: observer.onWatch,
           army: observer.army,

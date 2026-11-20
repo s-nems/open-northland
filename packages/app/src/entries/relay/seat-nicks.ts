@@ -8,6 +8,13 @@ export interface SeatNicks {
   nickOf(player: number): string | undefined;
 }
 
+/** The nick of the person sitting in `player`'s seat now; a seat its player left or turned to watching
+ *  has none. */
+export function seatedNick(room: SeatsOfRoom | null, player: number): string | undefined {
+  for (const seat of room?.seats ?? []) if (seat.player === player) return seat.nick ?? undefined;
+  return undefined;
+}
+
 /** The nick last seen in each seat of a running room. The room clears a seat's nick when its player
  *  turns to watching or leaves; the seat keeps it here and in `kept`, so the result names it by who
  *  played it, after a reload of the tab too. */

@@ -177,6 +177,8 @@ export interface ToolPanelOptions {
   readonly observer?: {
     readonly enabled?: () => boolean;
     readonly seats: readonly ObserverSeatEntry[];
+    /** The nick of the person sitting a seat now; absent outside a relayed game. */
+    readonly nickOf?: (player: number) => string | undefined;
     readonly onWatch: (target: WatchTarget) => void;
     /** Each seat's standing, shown on the bar while no single seat is watched. */
     readonly standings: () => readonly SeatStanding[];
@@ -792,6 +794,7 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
         ? {
             observer: {
               seats: opts.observer.seats,
+              nickOf: opts.observer.nickOf,
               ...(opts.observer.enabled === undefined ? {} : { enabled: opts.observer.enabled }),
               viewer: opts.viewer,
               playerColourOf: opts.playerColourOf,

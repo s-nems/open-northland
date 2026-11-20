@@ -244,6 +244,7 @@ export const deGame = {
     diplomacy: 'Diplomatie',
     player: 'Spieler',
     computerSeat: '{name} ({level})',
+    seatNick: '{nick} ({name})',
     diplomacyStances: {
       friend: 'freundlich',
       neutral: 'neutral',

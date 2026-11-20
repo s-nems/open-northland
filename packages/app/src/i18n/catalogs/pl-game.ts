@@ -215,6 +215,7 @@ export const plGame = {
     diplomacy: 'Dyplomacja',
     player: 'Gracz',
     computerSeat: '{name} ({level})',
+    seatNick: '{nick} ({name})',
     diplomacyStances: {
       friend: 'przyjazny',
       neutral: 'neutralny',

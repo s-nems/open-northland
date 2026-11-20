@@ -222,6 +222,7 @@ export const itGame = {
     diplomacy: 'Diplomazia',
     player: 'Giocatore',
     computerSeat: '{name} ({level})',
+    seatNick: '{nick} ({name})',
     diplomacyStances: {
       friend: 'amichevole',
       neutral: 'neutrale',

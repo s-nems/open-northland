@@ -293,10 +293,12 @@ export interface GameViewDeps {
   readonly observerSeats?: readonly ObserverSeatEntry[];
   /** Owner slot to team-colour slot for player-coloured HUD bits. Default identity. */
   readonly playerColourOf?: (player: number) => number;
-  /** Owner slot to the roster's authored seat name, which the stats header prefers over the slot id. */
+  /** Owner slot to the seat's name in play (`seatNameMap`), which the HUD prefers over the slot id. */
   readonly seatNameOf?: (player: number) => string | undefined;
   /** A relayed session's nick of the person who played a seat, which the result's ranking prefers. */
   readonly playerNickOf?: (player: number) => string | undefined;
+  /** A relayed session's nick of the person sitting a seat now, which the spectator's seat names lead with. */
+  readonly seatedNickOf?: (player: number) => string | undefined;
   /** A shared session's word that the match is over for its people while the others play on; the
    *  result opens then for everyone, a winner and a watcher too, rather than at the match's end. */
   readonly playersDecided?: () => boolean;
@@ -839,6 +841,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
         ? {
             observer: {
               seats: deps.observerSeats,
+              ...(deps.seatedNickOf === undefined ? {} : { nickOf: deps.seatedNickOf }),
               enabled: () => watching,
               onWatch: (seat) => {
                 if (watching) switchableSeat.watch(seat);

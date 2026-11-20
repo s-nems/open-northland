@@ -2,7 +2,7 @@
 
 import { afterEach, expect, it } from 'vitest';
 import { keptView } from '../../../src/entries/relay/kept-view.js';
-import { createSeatNicks } from '../../../src/entries/relay/seat-nicks.js';
+import { createSeatNicks, seatedNick } from '../../../src/entries/relay/seat-nicks.js';
 
 afterEach(() => window.sessionStorage.clear());
 
@@ -36,4 +36,15 @@ it('reads the nicks back after a reload of the tab, and forgets them once the ga
   expect(reloaded.nickOf(1)).toBe('Bartek');
   room().set(null);
   expect(createSeatNicks(room()).nickOf(1)).toBeUndefined();
+});
+
+it('names only the person sitting a seat now', () => {
+  const room = {
+    seats: [
+      { player: 0, nick: 'Ania' },
+      { player: 1, nick: null },
+    ],
+  };
+  expect([0, 1, 2].map((player) => seatedNick(room, player))).toEqual(['Ania', undefined, undefined]);
+  expect(seatedNick(null, 0)).toBeUndefined();
 });

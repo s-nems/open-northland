@@ -46,4 +46,34 @@ describe('seatNameMap', () => {
       undefined,
     ]);
   });
+
+  it('leads a seat a person sits in now with their nick, beside the map name or the lobby label', () => {
+    const sitting = new Map([
+      [0, 'Seba'],
+      [1, 'Ania'],
+      [5, 'Bartek'],
+    ]);
+    const nameOf = seatNameMap(
+      {
+        seats: [
+          { player: 0, mode: 'human', color: 0 },
+          { player: 1, mode: 'computer', color: 1, difficulty: 'hard' },
+          { player: 2, mode: 'human', color: 2 },
+          { player: 5, mode: 'human', color: 5 },
+        ],
+      },
+      SCRIPT,
+      'pol',
+      (player) => sitting.get(player),
+    );
+    expect([0, 1, 2, 5].map(nameOf)).toEqual([
+      'Seba (Ragnar)',
+      'Ania (Wikingowie 1)',
+      'Wikingowie 2',
+      'Bartek (Gracz 6)',
+    ]);
+    // Seba left the seat: it is the map's again.
+    sitting.delete(0);
+    expect(nameOf(0)).toBe('Ragnar');
+  });
 });

@@ -222,6 +222,7 @@ export const enGame = {
     diplomacy: 'Diplomacy',
     player: 'Player',
     computerSeat: '{name} ({level})',
+    seatNick: '{nick} ({name})',
     diplomacyStances: {
       friend: 'friendly',
       neutral: 'neutral',

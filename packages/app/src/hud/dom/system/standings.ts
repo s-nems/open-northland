@@ -10,6 +10,8 @@ import { observerSeatColour, observerSeatLabels } from './observer-picker.js';
 
 export interface ObserverStandingsDeps {
   readonly seats: readonly ObserverSeatEntry[];
+  /** The nick of the person sitting a seat now; absent outside a relayed game. */
+  readonly nickOf?: ((player: number) => string | undefined) | undefined;
   /** Owner slot to team-colour slot for the swatches; absent = identity. */
   readonly playerColourOf?: ((player: number) => number) | undefined;
   readonly onWatch: (player: number) => void;
@@ -73,7 +75,7 @@ export function createObserverStandings(deps: ObserverStandingsDeps): ObserverSt
   const copy = messages().hud;
   const observerCopy = copy.observer;
   const summaryCopy = copy.summary;
-  const labelOf = observerSeatLabels(deps.seats);
+  const labelOf = observerSeatLabels(deps.seats, deps.nickOf);
 
   const root = document.createElement('div');
   root.className = 'on-standings';
