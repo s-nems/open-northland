@@ -350,7 +350,8 @@ export function gfxWaitProgramsBySeq(ir: ContentIr | null, tribe: number): Map<s
  * The indoor choreography as the scene asks for it: `(tribe, job, action)` → its `gfxanimmode 2`
  * program, first record winning. `tribe` is the `logictribe` the rows carry, which the sim's tribe
  * typeId matches for the viking (both 1). The job arrives in whichever space the running set uses and is
- * read back into the source's, the space the rows are keyed in.
+ * read back into the source's, the space the rows are keyed in. A job with no program of its own for the
+ * action takes the civilist's, as its clips do: the well pump is authored for the civilist alone.
  *
  * A walk's `goodType` is rewritten from the source's id space into `goods`, the running content set's,
  * because that is the space the carry-gait table is keyed in. Joined by slug, the one id that survives
@@ -381,7 +382,12 @@ export function inHouseProgramLookup(ir: ContentIr | null, goods: readonly GoodR
       ),
     });
   }
-  return (tribe, job, action) => byTribe.get(tribe)?.get(`${canonicalJobType(job)}/${action}`);
+  return (tribe, job, action) => {
+    const byJobAction = byTribe.get(tribe);
+    return (
+      byJobAction?.get(`${canonicalJobType(job)}/${action}`) ?? byJobAction?.get(`${JOB_CIVILIST}/${action}`)
+    );
+  };
 }
 
 /** The original selects this one landscape loop for every tribe's holy-fire table entry. The house

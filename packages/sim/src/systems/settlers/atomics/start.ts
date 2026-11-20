@@ -15,6 +15,7 @@ import { TICKS_PER_SECOND } from '../../../core/loop.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import type { NodeId } from '../../../nav/terrain/index.js';
 import type { ContentContext, SystemContext } from '../../context.js';
+import { collectStandOf } from '../../footprint/index.js';
 import { clearNavState } from '../../movement/nav-state.js';
 import { atomicClipName, atomicDuration } from '../../readviews/animations.js';
 import { isCandyMeal } from '../../readviews/food.js';
@@ -332,9 +333,10 @@ export function walkFetchInput(
 const REFILL_WAIT_ATOMIC_ID = 2;
 
 /**
- * Walk to `from`, then start the pickup. Original behavior: at a self-filling house of the good the clip
- * starts while the shelf holds a unit, whatever is claimed, so parallel lifters may start; the first clip to
- * finish takes it and the rest end empty-handed. On an empty shelf the original idles a clip and searches
+ * Walk to `from`, at the stand its own collect action plays from or else its door, then start the pickup.
+ * Original behavior: at a self-filling house of the good the clip starts while the shelf holds a unit,
+ * whatever is claimed, so parallel lifters may start; the first clip to finish takes it and the rest end
+ * empty-handed. On an empty shelf the original idles a clip and searches
  * again; here the settler idles, keeping its errand, until the tick after the next refill beat.
  * `refills` is the caller's verdict on `from`, else judged on arrival at an empty shelf.
  */
@@ -347,7 +349,9 @@ function walkThenLift(
   cell?: NodeId,
 ): void {
   const { world, ctx, terrain, entity: e, here } = plan;
-  atOrWalk(world, e, here, cell ?? interactionCell(world, ctx, terrain, from, here), () => {
+  const stand =
+    cell ?? collectStandOf(world, ctx, terrain, from) ?? interactionCell(world, ctx, terrain, from, here);
+  atOrWalk(world, e, here, stand, () => {
     const empty = (accessibleStockAmounts(world, from)?.get(goodType) ?? 0) <= 0;
     if (empty && (refills ?? refillingGoodsOf(world, ctx, from).includes(goodType))) {
       startRefillWait(world, ctx, e);

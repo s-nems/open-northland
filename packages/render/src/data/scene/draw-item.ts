@@ -227,6 +227,9 @@ export interface DrawItem extends Readonly<StaticDrawFields> {
   /** This settler is drawn inside its workplace by an in-house craft program: its anchor is the house's,
    *  offset by the program, and its gait runs on the free tick rather than on ground covered. */
   readonly inHouse?: boolean;
+  /** For an {@link inHouse} settler: its program plays at the house's outside (the well pump), so it
+   *  still stands on the map ground and carries its own light at night. */
+  readonly outdoors?: boolean;
   /** For an {@link inHouse} settler mid-motion: the sub-clip it performs and how far through it. Absent
    *  while the program has it crossing the room. */
   readonly craftClip?: InHouseClip;
@@ -335,6 +338,7 @@ export function newDrawItem(
     portraitOnly: undefined,
     frozen: undefined,
     inHouse: undefined,
+    outdoors: undefined,
     craftClip: undefined,
     fxName: undefined,
     sortY: undefined,

@@ -1,7 +1,10 @@
-import { ONE } from '../projection/index.js';
+import { ONE, tileToScreen } from '../projection/index.js';
 import { gfxDirToFacing } from '../sprites/settler.js';
+import { type ElevationField, terrainLiftAt } from '../terrain/index.js';
 import type { SpriteState } from './draw-item.js';
 import {
+  fromStand,
+  type HousePoint,
   type InHouseOverlay,
   type InHousePose,
   type InHouseProgramLookup,
@@ -10,12 +13,15 @@ import {
 } from './in-house.js';
 import { TARGET_FACING_ATOMIC_IDS } from './snapshot-index.js';
 import {
+  type CraftPerformance,
   facingTowardTile,
   readActingAtomic,
   readAtomicTargetEntity,
   readCraftPerformance,
   readJobType,
+  readPosition,
   readSettlerTribe,
+  readShelfPerformance,
   readSpriteState,
   readVehicleDriving,
 } from './snapshot-readers/index.js';
@@ -71,6 +77,8 @@ export interface CraftAnchor {
   readonly action: number;
   readonly elapsed: number;
   readonly duration: number;
+  /** For a settler performing outside the house: where it stands, in pixels from the house's anchor. */
+  readonly stand?: HousePoint;
 }
 
 /** A worker drawn inside its workplace: the pose its program puts it in, ready for the draw item, and
@@ -93,11 +101,47 @@ export function craftAnchorOf(
 ): CraftAnchor | undefined {
   const craft = readCraftPerformance(components, tick);
   if (craft === null) return undefined; // the common indoor case: no craft, no further reads
+  return performanceAnchor(components, positions, craft);
+}
+
+/**
+ * Where a settler lifting off a house's shelf anchors when the content choreographs that lift at the house,
+ * as the well pump has the drawer step round to its crank, or `undefined` for a lift drawn where the
+ * settler stands.
+ */
+export function shelfAnchorOf(
+  components: Readonly<Record<string, unknown>>,
+  positions: ReadonlyMap<number, { x: number; y: number }>,
+  tick: number,
+  lookup: InHouseProgramLookup | undefined,
+  elevation: ElevationField | undefined,
+): CraftAnchor | undefined {
+  if (lookup === undefined) return undefined;
+  const lift = readShelfPerformance(components, tick);
+  if (lift === null) return undefined;
+  const anchor = performanceAnchor(components, positions, lift);
+  const at = readPosition(components);
+  if (anchor === undefined || at === null) return undefined;
+  if (lookup(anchor.tribe, anchor.job, anchor.action) === undefined) return undefined;
+  const col = at.x / ONE;
+  const row = at.y / ONE;
+  const settler = tileToScreen(col, row);
+  const house = tileToScreen(anchor.tileX, anchor.tileY);
+  // The worker draws on the house's terrain lift, so its stand carries the ground step between the two.
+  const step = terrainLiftAt(elevation, col, row) - terrainLiftAt(elevation, anchor.tileX, anchor.tileY);
+  return { ...anchor, stand: { x: settler.x - house.x, y: settler.y - house.y - step } };
+}
+
+function performanceAnchor(
+  components: Readonly<Record<string, unknown>>,
+  positions: ReadonlyMap<number, { x: number; y: number }>,
+  performance: CraftPerformance,
+): CraftAnchor | undefined {
   const action = readActingAtomic(components);
   const tribe = readSettlerTribe(components);
   const job = readJobType(components);
   if (action === null || tribe === undefined || job === undefined) return undefined;
-  const at = positions.get(craft.workplace);
+  const at = positions.get(performance.workplace);
   if (at === undefined) return undefined;
   return {
     tileX: at.x / ONE,
@@ -105,8 +149,8 @@ export function craftAnchorOf(
     tribe,
     job,
     action,
-    elapsed: craft.elapsed,
-    duration: craft.duration,
+    elapsed: performance.elapsed,
+    duration: performance.duration,
   };
 }
 
@@ -116,8 +160,9 @@ export function inHouseDrawAt(
   anchor: CraftAnchor,
   lookup: InHouseProgramLookup | undefined,
 ): InHouseDraw | undefined {
-  const program = lookup?.(anchor.tribe, anchor.job, anchor.action);
-  if (program === undefined) return undefined;
+  const authored = lookup?.(anchor.tribe, anchor.job, anchor.action);
+  if (authored === undefined) return undefined;
+  const program = anchor.stand === undefined ? authored : fromStand(authored, anchor.stand);
   const pose = inHousePose(program, anchor.elapsed, anchor.duration);
   return {
     pose: { state: pose.state, actingAtomic: null, targetFacing: gfxDirToFacing(pose.dir) },

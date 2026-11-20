@@ -50,10 +50,12 @@ export interface Pickable {
  * Whether a drawn item is something the cursor can be over: a fog ghost is a remembered static rather
  * than the live entity, a portrait-only item was force-drawn through the frame's culls, and a worker
  * drawn at its craft is scenery inside its workshop - it stands over the house's own anchor, so
- * targeting it would take every click and marquee meant for the workshop.
+ * targeting it would take every click and marquee meant for the workshop. One performing outside the
+ * house, as at the well's crank, stays a unit like any other.
  */
 export function isHitTarget(item: DrawItem): boolean {
-  return item.ghost !== true && item.portraitOnly !== true && item.inHouse !== true;
+  const indoors = item.inHouse === true && item.outdoors !== true;
+  return item.ghost !== true && item.portraitOnly !== true && !indoors;
 }
 
 /** A half-cell node coordinate (integer col,row on the `2W×2H` lattice), the target of a move order. */

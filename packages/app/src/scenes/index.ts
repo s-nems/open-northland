@@ -93,6 +93,7 @@ import { tradeSeaPinScene } from './economy/trade-sea-pin.js';
 import { tradeSeaSettlementsScene } from './economy/trade-sea-settlements.js';
 import { tradeSeaSharedStopScene } from './economy/trade-sea-shared-stop.js';
 import { warehouseScene } from './economy/warehouse.js';
+import { wellDrawersScene } from './economy/well-drawers.js';
 import { workshopProductsScene } from './economy/workshop-products.js';
 import { berriesScene } from './gathering/berries.js';
 import { clayGatherersScene } from './gathering/clay-gatherers.js';
@@ -251,6 +252,7 @@ export const SCENES: readonly SceneDefinition[] = [
   householdGoodsScene,
   storageMinimumScene,
   storageMinimumPorterScene,
+  wellDrawersScene,
   storePriorityScene,
   templeAuraScene,
   templeOilScene,

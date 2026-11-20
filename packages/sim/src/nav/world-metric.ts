@@ -8,6 +8,10 @@
  */
 import { type Fixed, fx, ONE } from '../core/fixed.js';
 
+/** The measured column step in screen pixels: what a pixel offset the content authors (a house program's
+ *  walk point) divides by to land in column units. */
+export const COLUMN_PX = 68;
+
 /** Half a column step (34 px): the sideways shift one row step carries under the stagger, and the
  *  length of one E/W navigation step. */
 export const HALF_COLUMN: Fixed = fx.div(ONE, fx.fromInt(2));

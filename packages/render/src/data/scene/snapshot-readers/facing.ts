@@ -19,7 +19,7 @@ const HEADING_OCTANT_TO_BLOCK: readonly number[] = [4, 5, 6, 0, 1, 2, 7, 3];
 const DEFAULT_HEADING_BLOCK = 6;
 
 /** The facing block whose sprite looks along a screen heading, given as a pixel delta. */
-function facingFromScreenHeading(dx: number, dy: number): number {
+export function facingFromScreenHeading(dx: number, dy: number): number {
   const octant = Math.round(Math.atan2(dy, dx) / (Math.PI / 4));
   return HEADING_OCTANT_TO_BLOCK[((octant % 8) + 8) % 8] ?? DEFAULT_HEADING_BLOCK;
 }

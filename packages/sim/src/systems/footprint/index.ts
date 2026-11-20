@@ -15,6 +15,7 @@ export {
   walkBlockedBodyOf,
 } from './blocked.js';
 export { buildingBlockedCells, buildingDoorwayNodes } from './building-blocked-cache.js';
+export { collectStandOf } from './collect-stand.js';
 export {
   anchoredStanceCells,
   atInteractionNode,

@@ -268,6 +268,10 @@ export const deContent = {
       title: 'Holzsammler',
       summary: 'Zwei Sammler jedes Stammes fällen die Bäume zu beiden Seiten ihrer Flagge.',
     },
+    'well-drawers': {
+      title: 'Wasserträger am Brunnen',
+      summary: 'Ein Brunnen jedes Stammes: sein Träger pumpt an der Kurbel Wasser und trägt es zum Lager.',
+    },
     'nation-footprints': {
       title: 'Grundrisse der Völker',
       summary:

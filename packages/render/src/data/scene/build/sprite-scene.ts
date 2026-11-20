@@ -25,7 +25,14 @@ import {
 import { type HolyFireLookup, holyFireOverlays } from '../holy-fire.js';
 import type { InHousePose, InHouseProgramLookup } from '../in-house.js';
 import { palisadeLayoutOf } from '../palisades/connections.js';
-import { craftAnchorOf, inHouseDrawAt, STANDING_POSE, settlerPose, vehiclePose } from '../settler-pose.js';
+import {
+  craftAnchorOf,
+  inHouseDrawAt,
+  STANDING_POSE,
+  settlerPose,
+  shelfAnchorOf,
+  vehiclePose,
+} from '../settler-pose.js';
 import { signpostLinkIds } from '../signpost-boards.js';
 import { isIndoorSettler, targetPositionsOf } from '../snapshot-index.js';
 import { classify, readPosition, vehicleDrawTile } from '../snapshot-readers/index.js';
@@ -430,10 +437,16 @@ function collectScene(
     // An indoor settler stays live and pooled but draws nothing, unless kept or forced here - or unless
     // it is performing a craft the content choreographs, which the house then shows it doing. The portrait
     // subject resolves its craft too, or selecting a craftsman would empty his workshop. Only the anchor is
-    // resolved here; the choreography itself waits until the cull below has kept the worker.
+    // resolved here; the choreography itself waits until the cull below has kept the worker. Outdoors, a
+    // lift off a shelf the content choreographs at the house (the well pump) anchors on the house the same.
     const indoorSettler = kind === 'settler' && isIndoorSettler(snapshot, components);
     const hiddenIndoors = indoorSettler && keepIndoorSettlers !== true;
-    const craft = hiddenIndoors ? craftAnchorOf(components, posByRef, snapshot.tick) : undefined;
+    const outdoorSettler = kind === 'settler' && !indoorSettler && aboard === null;
+    const craft = hiddenIndoors
+      ? craftAnchorOf(components, posByRef, snapshot.tick)
+      : outdoorSettler
+        ? shelfAnchorOf(components, posByRef, snapshot.tick, inHousePrograms, elevation)
+        : undefined;
     if (hiddenIndoors && craft === undefined && !isPortrait) return;
     // A driving vehicle draws part-way along its leg; everything else stands on its Position.
     const drawn = kind === 'vehicle' ? vehicleDrawTile(components, pos) : undefined;
@@ -457,7 +470,7 @@ function collectScene(
     if (isPortrait && hiddenIndoors && inHouse === undefined && portraitHouse !== undefined) return;
     const pose =
       inHouse?.pose ??
-      (kind === 'settler' && !indoorSettler && aboard === null
+      (outdoorSettler
         ? settlerPose(components, tileX, tileY, posByRef)
         : kind === 'vehicle'
           ? vehiclePose(components)
@@ -494,7 +507,7 @@ function collectScene(
     // just kept it off.
     const stagesEffects = item.portraitOnly !== true;
     if (inHouse !== undefined) {
-      applyInHousePose(item, inHouse.inHouse);
+      applyInHousePose(item, inHouse.inHouse, outdoorSettler);
       if (stagesEffects) pushEffectItems(list, collected, item, inHouse.overlays, screen, tileX, tileY);
     }
     // Only a kept or forced settler gets this far indoors without a craft to show, and only a kept rider
@@ -762,9 +775,10 @@ function emitExposedStatics(
 }
 
 /** Offset a choreographed worker from its house's anchor and give it the pose its program calls for. The
- *  program is the authority on the load indoors, overriding what the settler walked in holding. */
-function applyInHousePose(item: MutableSpriteDrawItem, pose: InHousePose): void {
+ *  program is the authority on the load, overriding what the settler walked in holding. */
+function applyInHousePose(item: MutableSpriteDrawItem, pose: InHousePose, outdoors: boolean): void {
   item.inHouse = true;
+  if (outdoors) item.outdoors = true;
   item.x += pose.dx;
   item.y += pose.dy;
   item.carrying = pose.goodType !== UNLOADED_GOOD_TYPE;

@@ -88,6 +88,10 @@ to the flag, especially the byzantine collector with a hat.
 `?scene=wood-gatherers` places two collectors per civilization between two trees, in the same rows.
 Watch both heads of every row chop facing each tree, the saracen turban heads included.
 
+`?scene=well-drawers` stands a well of each civilization from west to east: viking, frank, byzantine,
+saracen, egyptian, each with its carrier and a warehouse below. Watch a carrier at its well: it walks
+straight to the well's right side, pumps at the crank and walks off with the bucket.
+
 `?scene=armed-idle` stands the spearman, swordsman, two-hander, shortbow and longbow of each
 civilization in rows: viking, frank, byzantine, saracen, egyptian. Watch them for a while: every idle
 fidget keeps the weapon in hand.

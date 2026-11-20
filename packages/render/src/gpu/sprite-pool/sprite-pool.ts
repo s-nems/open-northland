@@ -372,7 +372,7 @@ export class SpritePool {
         const item = pe.bound.item;
         if (item === undefined || item.ghost === true || item.portraitOnly === true) continue;
         if (item.kind === 'settler' || item.kind === 'vehicle') {
-          if (item.player !== undefined && item.inHouse !== true)
+          if (item.player !== undefined && !drawnIndoors(item))
             this.nightBearers.mark(pe, level * BEARER_GLOW, false);
         } else if (item.kind === 'building' && item.builtPct === undefined) {
           const on = lightOn('building', item.ref, level);
@@ -1453,5 +1453,9 @@ export class SpritePool {
 
 /** A fog memory, a portrait-only body and a worker shown inside a house stand on no map ground. */
 function standsOnMapGround(item: SpriteDrawItem): boolean {
-  return item.ghost !== true && item.portraitOnly !== true && item.inHouse !== true;
+  return item.ghost !== true && item.portraitOnly !== true && !drawnIndoors(item);
+}
+
+function drawnIndoors(item: Pick<DrawItem, 'inHouse' | 'outdoors'>): boolean {
+  return item.inHouse === true && item.outdoors !== true;
 }

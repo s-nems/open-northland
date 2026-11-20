@@ -1,6 +1,6 @@
 import type { GfxInHouseProgram } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
-import { inHouseOverlays, inHousePose } from '../../../src/data/scene/in-house.js';
+import { fromStand, inHouseOverlays, inHousePose } from '../../../src/data/scene/in-house.js';
 import { collectSpriteScene } from '../../../src/data/scene/index.js';
 import { readAtomicElapsed } from '../../../src/data/scene/snapshot-readers/unit-readers.js';
 import { ONE, tileToScreen } from '../../../src/index.js';
@@ -68,6 +68,43 @@ describe('inHousePose', () => {
 
   it('reads a zero-length performance as its opening moment instead of dividing by zero', () => {
     expect(inHousePose(BAKER_PROGRAM, 0, 0)).toMatchObject({ state: 'moving', dx: 75, dy: 29 });
+  });
+});
+
+describe('fromStand', () => {
+  const PUMP = 44;
+  const WATER = 1;
+  const DOOR = { x: -16, y: 22 } as const;
+  const CRANK = { x: 18, y: 10 } as const;
+  /** The well pump's shape: from the door round the well to the crank, the pump, back to the door. */
+  const pump: GfxInHouseProgram = {
+    tribe: VIKING,
+    job: 6,
+    action: PUMP,
+    entries: [
+      { kind: 'walk', dir: 3, goodType: 0, ...DOOR, from: 0, to: 0 },
+      { kind: 'walk', dir: 0, goodType: 0, x: 8, y: 20, from: 0, to: 10 },
+      { kind: 'walk', dir: 5, goodType: 0, ...CRANK, from: 10, to: 15 },
+      { kind: 'clip', action: PUMP, subId: 1, dir: 4, from: 15, to: 90 },
+      { kind: 'walk', dir: 2, goodType: WATER, x: 8, y: 20, from: 90, to: 95 },
+      { kind: 'walk', dir: 3, goodType: WATER, ...DOOR, from: 95, to: 100 },
+    ],
+  };
+  const STAND = { x: 34, y: 38 } as const;
+  const DURATION = 100;
+
+  it('steps straight from the stand to the crank rather than round from the door', () => {
+    const program = fromStand(pump, STAND);
+    expect(inHousePose(program, 0, DURATION)).toMatchObject({ dx: STAND.x, dy: STAND.y });
+    const halfway = inHousePose(program, 7.5, DURATION);
+    expect(halfway).toMatchObject({ dx: (STAND.x + CRANK.x) / 2, dy: (STAND.y + CRANK.y) / 2 });
+    expect(inHousePose(program, 50, DURATION)).toMatchObject({ dx: CRANK.x, dy: CRANK.y, state: 'acting' });
+  });
+
+  it('walks back to the stand with the water once the pump ends', () => {
+    const program = fromStand(pump, STAND);
+    expect(inHousePose(program, 95, DURATION)).toMatchObject({ goodType: WATER, state: 'moving' });
+    expect(inHousePose(program, DURATION, DURATION)).toMatchObject({ dx: STAND.x, dy: STAND.y });
   });
 });
 

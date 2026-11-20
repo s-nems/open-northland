@@ -21,6 +21,8 @@ const VIKING = 1;
 const HARVEST_ATOMIC = 24;
 /** Any atomic id: the program lookup below answers every one. */
 const CRAFT_ATOMIC = 47;
+/** The well pump, an exchange the settler performs outside the store. */
+const PUMP_ATOMIC = 44;
 
 const { addCurrentAtomic, Building, Position, Resource, Resting, Settler } = components;
 
@@ -143,5 +145,65 @@ describe('a workplace craft over a real Simulation snapshot', () => {
     const drawn = scene.items.find((i) => i.kind === 'settler');
     expect(drawn).toMatchObject({ inHouse: true, state: 'acting' });
     expect(drawn?.craftClip).toEqual({ action: CRAFT_ATOMIC, subId: 1, progress: 0.25 });
+  });
+});
+
+describe('a shelf lift over a real Simulation snapshot', () => {
+  /** The well pump's shape: the drawer steps from the door to a spot beside the house and plays there. */
+  const PUMP_AT = { x: 18, y: 10 } as const;
+
+  function liftingWorker(): { sim: Simulation; store: number } {
+    const sim = new Simulation({ seed: 7, content: testContent(), map: grassMap(6, 1) });
+    sim.enqueueSetup({ kind: 'placeBuilding', buildingType: SAWMILL, x: 4, y: 0, tribe: VIKING });
+    sim.enqueueSetup({ kind: 'spawnSettler', jobType: WOODCUTTER, x: 0, y: 0, tribe: VIKING });
+    sim.run(1);
+    const [store] = sim.world.query(Building);
+    const [worker] = sim.world.query(Settler);
+    if (store === undefined || worker === undefined) throw new Error('setup placed no store or worker');
+    const lift = { kind: 'pickup', goodType: WOOD, amount: 1, from: store } as const;
+    addCurrentAtomic(
+      sim.world,
+      worker,
+      { atomicId: PUMP_ATOMIC, duration: 100, effect: lift, targetEntity: store, targetTile: null },
+      30,
+    );
+    return { sim, store };
+  }
+
+  const pump: GfxInHouseProgram = {
+    tribe: VIKING,
+    job: WOODCUTTER,
+    action: PUMP_ATOMIC,
+    entries: [
+      { kind: 'walk', dir: 5, goodType: 0, x: PUMP_AT.x, y: PUMP_AT.y, from: 0, to: 0 },
+      { kind: 'clip', action: PUMP_ATOMIC, subId: 1, dir: 4, from: 20, to: 60 },
+    ],
+  };
+
+  it('draws the lifter where the choreography puts it beside the house', () => {
+    const { sim, store } = liftingWorker();
+
+    const scene = collectSpriteScene(sim.snapshot(), { inHousePrograms: () => pump });
+
+    const house = scene.items.find((i) => i.ref === store);
+    const drawn = scene.items.find((i) => i.kind === 'settler');
+    expect(drawn).toMatchObject({ inHouse: true, outdoors: true, state: 'acting' });
+    expect(drawn?.craftClip).toEqual({ action: PUMP_ATOMIC, subId: 1, progress: 0.25 });
+    expect({ x: drawn?.x, y: drawn?.y }).toEqual({
+      x: (house?.x ?? 0) + PUMP_AT.x,
+      y: (house?.y ?? 0) + PUMP_AT.y,
+    });
+  });
+
+  it('draws a lift nothing choreographs where the settler stands', () => {
+    const { sim, store } = liftingWorker();
+
+    const scene = collectSpriteScene(sim.snapshot(), { inHousePrograms: () => undefined });
+
+    const house = scene.items.find((i) => i.ref === store);
+    const drawn = scene.items.find((i) => i.kind === 'settler');
+    expect(drawn).toMatchObject({ state: 'acting', atomicId: PUMP_ATOMIC });
+    expect(drawn?.inHouse).toBeUndefined();
+    expect(drawn?.x).toBeLessThan(house?.x ?? 0);
   });
 });

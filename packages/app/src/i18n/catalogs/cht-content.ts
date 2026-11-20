@@ -262,6 +262,10 @@ export const chtContent = {
       title: '木材採集者',
       summary: '每個民族各兩名採集者砍伐自己旗幟兩側的樹木。',
     },
+    'well-drawers': {
+      title: '井邊取水',
+      summary: '每個民族各有一口井：搬運工在曲柄旁抽水，並把水運到倉庫。',
+    },
     'nation-footprints': {
       title: '各民族建築占地',
       summary: '維京、法蘭克和拜占庭的房屋成排排列；閒置的居民站在自家旁邊，絕不站在牆格或門口。',

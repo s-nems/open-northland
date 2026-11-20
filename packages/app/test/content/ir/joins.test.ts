@@ -5,6 +5,7 @@ import {
   gfxAtomicProgramsByAction,
   gfxWaitProgramsBySeq,
   gfxWalkFrameLists,
+  inHouseProgramLookup,
   tribeJobSeqs,
 } from '../../../src/content/ir/joins.js';
 import type { ContentIr } from '../../../src/content/ir/rows.js';
@@ -80,6 +81,26 @@ describe('gfxAtomicProgramsByAction', () => {
       ['soldier_eat', 50],
       ['eat', 50],
     ]);
+  });
+});
+
+describe('inHouseProgramLookup', () => {
+  const PUMP = 44;
+  const CIVILIST = 6;
+  const CARRIER = 24;
+  const BAKER = 20;
+  const pump = (job: number, x: number) => ({
+    tribe: VIKING,
+    job,
+    action: PUMP,
+    entries: [{ kind: 'walk' as const, dir: 5, goodType: 0, x, y: 10, from: 0, to: 0 }],
+  });
+
+  it("gives a job with no program of its own for an action the civilist's, as its clips fall back", () => {
+    const lookup = inHouseProgramLookup({ gfxInHousePrograms: [pump(CIVILIST, 18), pump(BAKER, 4)] }, []);
+    expect(lookup(VIKING, CARRIER, PUMP)?.entries[0]).toMatchObject({ x: 18 });
+    expect(lookup(VIKING, BAKER, PUMP)?.entries[0]).toMatchObject({ x: 4 });
+    expect(lookup(2, CARRIER, PUMP)).toBeUndefined();
   });
 });
 

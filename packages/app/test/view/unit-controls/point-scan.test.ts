@@ -17,6 +17,7 @@ it('keeps the hit targets whose box holds the point, in draw order, and every dr
     item(6, 'fish', 100, 100),
     item(7, 'stump', 100, 100, { isFlag: true }),
     item(8, 'building', 100, 100, { inHouse: true }),
+    item(9, 'settler', 100, 100, { inHouse: true, outdoors: true }),
   ];
   const scanAt = createPointScan({
     drawnItems: () => drawn,
@@ -24,7 +25,8 @@ it('keeps the hit targets whose box holds the point, in draw order, and every dr
   });
   const scan = scanAt(100, 100);
   // The road plot's box ends 2 px short of the point and reaches it by its margin.
-  expect(scan.items.map((i) => i.ref)).toEqual([1, 5, 7]);
+  // A worker drawn by a program outside the house, at the well's crank, is a unit like any other.
+  expect(scan.items.map((i) => i.ref)).toEqual([1, 5, 7, 9]);
   expect([...scan.resources]).toEqual([4]);
 });
 

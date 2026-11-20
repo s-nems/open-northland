@@ -94,6 +94,33 @@ export function readCraftPerformance(
   return elapsed === null ? null : { ...craft, elapsed };
 }
 
+function shelfLiftOf(
+  components: Readonly<Record<string, unknown>>,
+): Omit<CraftPerformance, 'elapsed'> | null {
+  const a = components.CurrentAtomic as
+    | { effect?: { kind?: unknown; from?: unknown }; duration?: unknown }
+    | undefined;
+  const effect = a?.effect;
+  if (effect?.kind !== 'pickup' && effect?.kind !== 'haulLoad') return null;
+  const { from } = effect;
+  const duration = a?.duration;
+  if (typeof from !== 'number' || typeof duration !== 'number') return null;
+  return { workplace: from, duration };
+}
+
+/** A settler lifting goods off a store by hand or into its hauling cart (the well pump among them): the
+ *  store as the workplace a house program anchors to, and the lift's clip clock, or `null` for any other
+ *  atomic. */
+export function readShelfPerformance(
+  components: Readonly<Record<string, unknown>>,
+  tick: number,
+): CraftPerformance | null {
+  const lift = shelfLiftOf(components);
+  if (lift === null) return null;
+  const elapsed = readAtomicElapsed(components, tick);
+  return elapsed === null ? null : { ...lift, elapsed };
+}
+
 /** The workplace a crafting settler performs inside, whatever its clock reads. */
 export function readCraftWorkplace(components: Readonly<Record<string, unknown>>): number | null {
   return craftAtomicOf(components)?.workplace ?? null;

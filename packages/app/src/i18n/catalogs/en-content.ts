@@ -268,6 +268,10 @@ export const enContent = {
       title: 'Wood collectors',
       summary: 'Two collectors from each tribe chop the trees on both sides of their flag.',
     },
+    'well-drawers': {
+      title: 'Well drawers',
+      summary: 'A well of each tribe: its carrier pumps water at the crank and carries it to the warehouse.',
+    },
     'nation-footprints': {
       title: 'Nation footprints',
       summary:

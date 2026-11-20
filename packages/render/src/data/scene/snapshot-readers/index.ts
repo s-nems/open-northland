@@ -1,6 +1,6 @@
 export { readPosition } from '../../snapshot/index.js';
 export { classify } from './classify.js';
-export { facingTowardTile, readFacing } from './facing.js';
+export { facingFromScreenHeading, facingTowardTile, readFacing } from './facing.js';
 export {
   readProjectileAim,
   readProjectileCover,
@@ -26,6 +26,7 @@ export {
 } from './static-readers.js';
 export { readStockpile } from './stockpile-readers.js';
 export {
+  type CraftPerformance,
   readActingAtomic,
   readAtomicDuration,
   readAtomicElapsed,
@@ -45,6 +46,7 @@ export {
   readOwnerPlayer,
   readScriptedLook,
   readSettlerTribe,
+  readShelfPerformance,
   readSpriteState,
   readStoreExchangeRef,
   readsCartLift,

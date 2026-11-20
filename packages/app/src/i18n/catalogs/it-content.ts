@@ -270,6 +270,11 @@ export const itContent = {
       title: 'Raccoglitori di legna',
       summary: 'Due raccoglitori per ogni tribù tagliano gli alberi ai due lati della loro bandierina.',
     },
+    'well-drawers': {
+      title: "Portatori d'acqua al pozzo",
+      summary:
+        "Un pozzo per ogni tribù: il suo portatore pompa l'acqua alla manovella e la porta al magazzino.",
+    },
     'nation-footprints': {
       title: 'Ingombro degli edifici per popolo',
       summary:

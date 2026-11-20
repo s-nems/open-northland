@@ -265,6 +265,10 @@ export const plContent = {
       title: 'Zbieracze drewna',
       summary: 'Dwaj zbieracze każdego plemienia rąbią drzewa po obu stronach swojej flagi.',
     },
+    'well-drawers': {
+      title: 'Nosiwody przy studni',
+      summary: 'Studnia każdego plemienia: jej tragarz pompuje wodę przy korbie i nosi ją do magazynu.',
+    },
     'nation-footprints': {
       title: 'Obrysy domów nacji',
       summary:
