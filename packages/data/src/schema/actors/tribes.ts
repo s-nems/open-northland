@@ -51,8 +51,8 @@ export const JobRequirement = z.strictObject({
 });
 export type JobRequirement = z.infer<typeof JobRequirement>;
 
-/** Authored monster rules (`catalog/creatures.ts` in the app): the tribe is a monster, whose blows take a
- *  weapon's monster column. Unset fields keep the common rule: 5000 hitpoints, a fighter starting in DEFEND. */
+/** Authored monster rules (`catalog/creatures.ts` in the app): the tribe is a monster, and a blow against
+ *  it takes the weapon's monster column. Unset fields keep the common person's hitpoints and DEFEND start. */
 export const MonsterRules = z.strictObject({
   hitpoints: z.number().int().positive().optional(),
   startsInAttack: z.boolean().optional(),
