@@ -1,39 +1,41 @@
-import { Container, Matrix } from 'pixi.js';
+import { Container, Matrix, type Sprite } from 'pixi.js';
 import { GLOW_PALETTE_INDEX } from '../../data/palettes/glow-colour.js';
 import { createHumanPaletteColours } from '../../data/palettes/human-palettes.js';
 import type { SpriteDrawItem } from '../../data/scene/index.js';
 import { PalettedSprite } from '../paletted-sprite/index.js';
+import { isShadowTexture } from '../pixel-art/registry.js';
 import { GhostOutlineSprite, SelectionGraphics, SelectionSprite } from '../selection/sprite-effect.js';
 import type { HumanPaletteLut } from '../textures/human-palette-lut.js';
 import type { TextureCache } from '../textures/texture-cache.js';
 import { worldBatched } from '../world-batch/batcher.js';
-import { SELECTION_STAMP } from '../world-batch/shader.js';
-import { pixelHit } from './picking/pick.js';
+import { SELECTION_COVER, SELECTION_STAMP } from '../world-batch/shader.js';
+import { clipDepthOf, GhostClip } from './ghost-clip.js';
 import { pooledDepth } from './pooled-depth.js';
 import type { EntityBounds, PooledEntity } from './pooled-entity.js';
 import { frameTransform, placeOutline } from './selection-effects.js';
 
 /**
- * Occlusion ghosts: a settler a standing sprite hides shows over that sprite as a fill, a ring or both
- * ({@link GhostMarks}), tinted with the team colour its body wears. The see-through view fades every
- * occluder on the screen to {@link OCCLUDER_FADE_ALPHA} instead, with or without the marks.
+ * Occlusion ghosts: the part of a settler a standing sprite hides shows over that sprite as a fill, a
+ * ring or both ({@link GhostMarks}), tinted with the team colour its body wears; the part in plain view
+ * stays unmarked. The see-through view fades every occluder on the screen to
+ * {@link OCCLUDER_FADE_ALPHA} instead, with or without the marks.
  *
- * Approximation: the original's hidden-unit rendering has no readable source. The alphas, the reach
- * and the coverage samples are tuned by eye. The occluder kinds are the standing sprites tall enough
+ * Approximation: the original's hidden-unit rendering has no readable source. The alphas and the reach
+ * are tuned by eye. The occluder kinds are the standing sprites tall enough
  * to hide a person. Vehicles neither ghost nor occlude: their paletted layers are self-placing meshes
  * a stamp quad cannot copy.
  */
 
 /** One occluder candidate the pool's draw list cannot see, as the static map-object layer reports it:
- *  a tall landscape object's bound pose this frame. Its art is the truth the scan tests against. */
+ *  a tall landscape object's bound pose this frame. */
 export interface GhostOccluder {
   /** The painter depth the object sorts at in the shared entity layer, comparable with a draw item's. */
   readonly depth: number;
   /** The world-px box of the bound pose, or `undefined` when the pose has none this frame. */
   bounds(): EntityBounds | undefined;
-  /** Whether the bound pose's art covers the world point; `undefined` keeps the box verdict, as the
-   *  picker does where its pixels are unreadable. */
-  hit(wx: number, wy: number): boolean | undefined;
+  /** The sprite drawing the bound pose in the shared entity layer, whose art and placement the ghosts'
+   *  clip copies. */
+  body(): Sprite | undefined;
   /** Fade the occluder's drawn art to `alpha`; `undefined` restores it. A candidate without it never
    *  fades. */
   setFade?(alpha: number | undefined): void;
@@ -92,22 +94,6 @@ function teamTint(palette: Uint8Array): number {
   return ((palette[at] ?? 0) << 16) | ((palette[at + 1] ?? 0) << 8) | (palette[at + 2] ?? 0);
 }
 
-/**
- * Where the scan samples the unit's box for cover, as (u, v) shares from the box's top-left. The strip
- * runs down the body's own extent, so a cover touching only the generous box's air does not ghost the
- * unit; one covered point ghosts it, since any hidden body pixel is worth the outline.
- */
-const COVER_SAMPLES: readonly (readonly [number, number])[] = [
-  [0.5, 0.15],
-  [0.5, 0.35],
-  [0.35, 0.5],
-  [0.65, 0.5],
-  [0.5, 0.6],
-  [0.35, 0.75],
-  [0.65, 0.75],
-  [0.5, 0.9],
-];
-
 /** World px per occluder-registry cell. Coarse on purpose: an occluder registers into each cell its box
  *  touches, a unit probes the few its own box touches, and the box test filters the rest. */
 const CELL = 128;
@@ -126,9 +112,9 @@ const cellKey = (gx: number, gy: number): number => gx * 1000003 + gy;
 interface OccluderSlot {
   /** The occluder object the slot is registered by in {@link OcclusionGhosts.slots}. */
   readonly key: object;
-  /** The static candidate, whose own `hit` answers the pixel probes; absent for a pool occluder. */
+  /** The static candidate; absent for a pool occluder. */
   readonly occ: GhostOccluder | undefined;
-  /** The pooled entity behind the slot, whose `pixelHit` answers instead of `occ.hit`. */
+  /** The pooled entity behind a pool occluder's slot. */
   readonly pe: PooledEntity | undefined;
   /** The painter depth the occluder sorts at this frame. */
   depth: number;
@@ -141,6 +127,16 @@ interface OccluderSlot {
   run: number;
   /** The unit walk that last visited the slot, deduping a multi-cell occluder within one walk. */
   visited: number;
+  /** The scan run the slot last stood in front of a ghosted unit, and its copies in the clip, minted
+   *  the first time it does. */
+  coverRun: number;
+  cover: CoverStamp | undefined;
+}
+
+/** An occluder's copies in the ghosts' clip: one quad per art layer drawn this frame. */
+interface CoverStamp {
+  readonly container: Container;
+  readonly quads: SelectionSprite[];
 }
 
 /** A unit's pooled ghost stamps, kept while its unit draws and dropped when it stops. */
@@ -170,6 +166,7 @@ interface GhostStamp {
  */
 export class OcclusionGhosts {
   readonly container = new Container();
+  private readonly clip = new GhostClip(this.container);
 
   constructor(
     private readonly textures: TextureCache,
@@ -195,6 +192,8 @@ export class OcclusionGhosts {
   private run = 0;
   /** The running unit walk, stamped on every slot it visited. */
   private unitRun = 0;
+  /** The slots holding a cover, which the sweep hides or frees. */
+  private readonly coverSlots = new Set<OccluderSlot>();
   /** The scan's unit candidates, flat. */
   private readonly unitPe: (PooledEntity | undefined)[] = [];
   private readonly unitDepth: number[] = [];
@@ -214,7 +213,7 @@ export class OcclusionGhosts {
   /**
    * Scan the painter-ordered draw list the pool just presented: fade the occluders when `revealAll`
    * asks, find the covered settlers and lay their `marks`. `frameOf` answers the frame id a pooled
-   * entity's bounds and pixels are valid for, `viewMoved` re-lays the paletted layers a ring copies,
+   * entity's bounds are valid for, `viewMoved` re-lays the paletted layers a ring copies,
    * and `zoom` holds the ring's screen width. `staticOccluders` are the visible map objects, which the
    * pool's list never holds. The walkers of `wildlifeTribes` stay unghosted: a herd would fill the
    * overlay and tells the player nothing.
@@ -263,7 +262,7 @@ export class OcclusionGhosts {
     const marking = marks.fill || marks.ring;
     if ((this.unitCount === 0 || !marking) && !revealAll) {
       this.restoreFades();
-      this.sweepStamps();
+      this.sweep();
       return;
     }
     for (let o = 0; o < this.occluderCount; o++) {
@@ -277,15 +276,22 @@ export class OcclusionGhosts {
     for (let u = 0; marking && u < this.unitCount; u++) {
       const pe = this.unitPe[u];
       if (pe === undefined) continue;
-      if (this.coveredUnit(pe, this.unitDepth[u] ?? 0, frameOf)) this.stamp(pe, viewMoved, zoom, marks);
+      const depth = this.unitDepth[u] ?? 0;
+      if (this.coverUnit(pe, depth)) this.stamp(pe, depth, viewMoved, zoom, marks);
     }
     this.restoreFades();
-    this.sweepStamps();
+    this.sweep();
   }
 
   /** Free or hide the stamps whose units no longer ghost: a unit still drawn keeps a hidden stamp it
-   *  may re-show next frame, a vanished one dies with its ref. */
-  private sweepStamps(): void {
+   *  may re-show next frame, a vanished one dies with its ref. A cover no unit stands behind dies at
+   *  once: a kept copy would outlive the texture it shows, which a construction site's rising walls
+   *  replace and free while the site stands. */
+  private sweep(): void {
+    this.clip.active = this.ghostedUnits.size > 0;
+    for (const slot of this.coverSlots) {
+      if (slot.coverRun !== this.run) this.freeCover(slot);
+    }
     for (const [ref, stamp] of this.stamps) {
       if (this.ghostedUnits.has(ref)) continue;
       if (this.drawnUnits.has(ref) && !stamp.pe.container.destroyed) {
@@ -311,6 +317,15 @@ export class OcclusionGhosts {
     this.marked = evicted;
   }
 
+  /** The stamps of the ghosted units and the copies of the occluders that clip them, one child each. */
+  get marks(): Container {
+    return this.clip.marks;
+  }
+
+  get covers(): Container {
+    return this.clip.covers;
+  }
+
   /** The slot entries across the grid's cells: the registered occluders, once per cell each touches. */
   get gridEntries(): number {
     let entries = 0;
@@ -324,6 +339,8 @@ export class OcclusionGhosts {
     for (const stamp of this.stamps.values()) stamp.container.destroy({ children: true });
     this.stamps.clear();
     this.clearGrid();
+    for (const slot of this.coverSlots) this.freeCover(slot);
+    this.clip.active = false;
     for (const pe of this.fadedPes) if (!pe.container.destroyed) pe.container.alpha = 1;
     for (const occ of this.fadedStatic) occ.setFade?.(undefined);
     this.fadedPes.clear();
@@ -349,6 +366,12 @@ export class OcclusionGhosts {
     this.container.destroy({ children: true });
   }
 
+  private freeCover(slot: OccluderSlot): void {
+    slot.cover?.container.destroy({ children: true });
+    slot.cover = undefined;
+    this.coverSlots.delete(slot);
+  }
+
   private clearGrid(): void {
     if (this.cellSlots.size === 0) return;
     this.cellSlots.clear();
@@ -359,8 +382,7 @@ export class OcclusionGhosts {
 
   /** Mark `key`'s occluder for the running scan at `depth`, registering its box into the grid when it
    *  moved. An unchanged box keeps its cell entries from earlier runs, so an unchanged frame costs one
-   *  depth stamp per occluder instead of a grid refill. `occ` answers the pixel probes unless `pe`
-   *  does. */
+   *  depth stamp per occluder instead of a grid refill. */
   private mark(
     key: object,
     occ: GhostOccluder | undefined,
@@ -380,6 +402,8 @@ export class OcclusionGhosts {
         cells: [],
         run: this.run,
         visited: -1,
+        coverRun: -1,
+        cover: undefined,
       };
       this.slots.set(key, slot);
       this.marked.push(slot);
@@ -440,11 +464,16 @@ export class OcclusionGhosts {
     slot.cells.length = 0;
   }
 
-  /** Whether any standing sprite drawn in front of the unit covers a sampled body point of it. */
-  private coveredUnit(pe: PooledEntity, depth: number, frameOf: (pe: PooledEntity) => number): boolean {
+  /**
+   * Copy every standing sprite drawn in front of the unit, where their boxes meet, into the clip;
+   * whether there is one. The boxes only pick the candidates: the clip's depth test draws a mark on
+   * the pixels a cover's art really hides.
+   */
+  private coverUnit(pe: PooledEntity, depth: number): boolean {
     const b = pe.bounds;
     this.unitRun++;
     const run = this.unitRun;
+    let covered = false;
     for (let gx = Math.floor(b.minX / CELL); gx <= Math.floor(b.maxX / CELL); gx++) {
       for (let gy = Math.floor(b.minY / CELL); gy <= Math.floor(b.maxY / CELL); gy++) {
         const cell = this.cellSlots.get(cellKey(gx, gy));
@@ -454,29 +483,53 @@ export class OcclusionGhosts {
           // the unit's box may share, so the walk dedupes per slot.
           if (slot.run !== this.run || slot.visited === run) continue;
           slot.visited = run;
-          if (slot.depth <= depth) continue;
-          const ob = slot.bounds;
-          if (!boxesOverlap(b, ob)) continue;
-          const width = b.maxX - b.minX;
-          const height = b.maxY - b.minY;
-          for (const [u, v] of COVER_SAMPLES) {
-            const px = b.minX + u * width;
-            const py = b.minY + v * height;
-            // The occluder's box must hold the sample before its pixels answer anything.
-            if (px < ob.minX || px > ob.maxX || py < ob.minY || py > ob.maxY) continue;
-            const hit =
-              slot.pe !== undefined
-                ? pixelHit(slot.pe, frameOf(slot.pe), px, py)
-                : slot.occ === undefined
-                  ? undefined
-                  : slot.occ.hit(px, py);
-            // One covered point ghosts the unit: any hidden body pixel is worth the marks.
-            if (hit !== false) return true;
-          }
+          if (slot.depth <= depth || !boxesOverlap(b, slot.bounds)) continue;
+          covered = true;
+          if (slot.coverRun !== this.run) this.layCover(slot);
         }
       }
     }
-    return false;
+    return covered;
+  }
+
+  /** Lay `slot`'s copies over its art as drawn this frame, one quad per layer that hides anything: a
+   *  shadow and a layer the picker ignores hide nothing. */
+  private layCover(slot: OccluderSlot): void {
+    slot.coverRun = this.run;
+    let cover = slot.cover;
+    if (cover === undefined) {
+      cover = { container: new Container(), quads: [] };
+      slot.cover = cover;
+      this.coverSlots.add(slot);
+      this.clip.covers.addChild(cover.container);
+    }
+    const z = clipDepthOf(slot.depth);
+    let count = 0;
+    const pe = slot.pe;
+    if (pe !== undefined) {
+      cover.container.position.copyFrom(pe.container.position);
+      for (let i = 0; i < pe.sprites.length; i++) {
+        const body = pe.sprites[i];
+        if (body === undefined || !body.visible || body.alpha <= 0 || body instanceof PalettedSprite)
+          continue;
+        if (!pe.paletted && pe.pickExempt[i] === true) continue;
+        if (isShadowTexture(body.texture)) continue;
+        this.layCoverQuad(coverQuadAt(cover, count++), body, z);
+      }
+    } else {
+      const body = slot.occ?.body();
+      if (body !== undefined) this.layCoverQuad(coverQuadAt(cover, count++), body, z);
+    }
+    // A layer the art dropped takes its copy with it, for the same reason an unused cover dies.
+    while (cover.quads.length > count) cover.quads.pop()?.destroy();
+  }
+
+  private layCoverQuad(quad: SelectionSprite, body: Sprite, z: number): void {
+    body.updateLocalTransform();
+    quad.alpha = 1;
+    quad.clipDepth = z;
+    quad.texture = body.texture;
+    quad.setFromMatrix(frameTransform(this.transform, body.localTransform, body.anchor, body.texture));
   }
 
   /** Fade every occluder this scan marked, whether or not a unit hides behind it. */
@@ -507,8 +560,9 @@ export class OcclusionGhosts {
     this.fadedNowStatic = statics;
   }
 
-  /** Show or mint `pe`'s stamps, tracking its body's placement; lay the rings when the body rebinds. */
-  private stamp(pe: PooledEntity, viewMoved: boolean, zoom: number, marks: GhostMarks): void {
+  /** Show or mint `pe`'s stamps at the unit's painter `depth`, tracking its body's placement; lay the
+   *  quads when the body rebinds. */
+  private stamp(pe: PooledEntity, depth: number, viewMoved: boolean, zoom: number, marks: GhostMarks): void {
     const ref = pe.bound.item?.ref;
     if (ref === undefined) return;
     this.ghostedUnits.add(ref);
@@ -527,7 +581,7 @@ export class OcclusionGhosts {
         laidRing: marks.ring,
       };
       this.stamps.set(ref, stamp);
-      this.container.addChild(stamp.container);
+      this.clip.marks.addChild(stamp.container);
     }
     stamp.container.alpha = 1;
     stamp.container.position.copyFrom(pe.container.position);
@@ -542,6 +596,11 @@ export class OcclusionGhosts {
       marks.ring !== stamp.laidRing
     )
       this.lay(pe, stamp, viewMoved, zoom, marks);
+    // The unit's depth moves with it, and a hidden quad keeps one it never tests.
+    const z = clipDepthOf(depth);
+    for (const quad of stamp.fills) quad.clipDepth = z;
+    for (const quad of stamp.rings) quad.clipDepth = z;
+    if (stamp.placeholder !== undefined) stamp.placeholder.clipDepth = z;
   }
 
   /** Lay the marks' fill and ring quads per stamped body layer, each over its body's placement and
@@ -635,6 +694,17 @@ function ringAt(stamp: GhostStamp, index: number): GhostOutlineSprite {
   const quad = worldBatched(new GhostOutlineSprite());
   stamp.rings[index] = quad;
   stamp.container.addChild(quad);
+  return quad;
+}
+
+/** The cover quad at `index` of `cover`. */
+function coverQuadAt(cover: CoverStamp, index: number): SelectionSprite {
+  const held = cover.quads[index];
+  if (held !== undefined) return held;
+  const quad = worldBatched(new SelectionSprite());
+  quad.selectionEffect = SELECTION_COVER;
+  cover.quads[index] = quad;
+  cover.container.addChild(quad);
   return quad;
 }
 

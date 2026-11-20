@@ -39,6 +39,11 @@ export const SELECTION_OUTLINE = -2;
 /** `aSelection` for an outline quad that draws its ring alone: the reach's offset copies less the
  *  body's own coverage, since nothing draws under an occlusion ghost to fill it. */
 export const SELECTION_GHOST_OUTLINE = -3;
+/** `aSelection` for an occluder's copy in the occlusion ghosts' depth clip: it draws no colour and keeps
+ *  only the fragments its art covers, so the depth it writes has the art's shape. */
+export const SELECTION_COVER = -4;
+/** The coverage from which a cover fragment counts as hiding what stands behind it. Approximation. */
+const COVER_SOLID = 0.5;
 /**
  * `aNight`: how lit an element shows in the night's lit mask (see `lighting/night-mask.ts`), 0 unlit up
  * to 1 a light-bearer's full share. From {@link NIGHT_FALL_BAND} up the share fades from full at the
@@ -111,7 +116,9 @@ void main(void) {
   vBlood = aBlood;
   vSplashes = aSplashes;
   vNight = aNight;
-  gl_Position = vec4((uProjectionMatrix * uWorldTransformMatrix * vec3(aPosition, 1.0)).xy, 0.0, 1.0);
+  // A silhouette's night slot is its clip depth, which only the occlusion ghosts' depth clip tests.
+  float z = aSelection < 0.0 ? aNight : 0.0;
+  gl_Position = vec4((uProjectionMatrix * uWorldTransformMatrix * vec3(aPosition, 1.0)).xy, z, 1.0);
   if (aTextureIdAndRound.x == 1.0) {
     gl_Position.xy = (floor(((gl_Position.xy * 0.5 + 0.5) * uResolution) + 0.5) / uResolution) * 2.0 - 1.0;
   }
@@ -316,6 +323,8 @@ const float MINIFY_TAP_OFFSET = 0.25;
 const float MINIFY_TAP_WEIGHT = 0.25;
 const float SELECTION_OUTLINE = ${SELECTION_OUTLINE}.0;
 const float SELECTION_GHOST_OUTLINE = ${SELECTION_GHOST_OUTLINE}.0;
+const float SELECTION_COVER = ${SELECTION_COVER}.0;
+const float COVER_SOLID = ${glslFloat(COVER_SOLID)};
 const float NIGHT_FALL_BAND = ${glslFloat(NIGHT_FALL_BAND)};
 const float NIGHT_FALL_TOP = ${glslFloat(NIGHT_FALL_TOP)};
 const float NIGHT_FALL_FROM = ${glslFloat(NIGHT_FALL_FROM)};
@@ -437,7 +446,8 @@ void main(void) {
     // a texel inside the frame, as the body's gather does, so no neighbour bleeds in.
     vec2 stampLow = WORLD_MAGNIFY > 0.5 ? vFrame.xy + 0.5 / texSize : vFrame.xy;
     vec2 stampHigh = WORLD_MAGNIFY > 0.5 ? vFrame.zw - 0.5 / texSize : vFrame.zw;
-    if (vSelection < SELECTION_OUTLINE + 0.5) {
+    bool cover = vSelection < SELECTION_COVER + 0.5;
+    if (!cover && vSelection < SELECTION_OUTLINE + 0.5) {
       // The union of the offset copies blended over one another: a copy covers this fragment only
       // where its quad, the body's frame moved by its offset, does.
       // The last tap is the body's own texel, which only a ghost ring reads.
@@ -470,6 +480,12 @@ ${textureChain(maxTextures, 'vTextureId', (i) => `for (int k = 0; k <= OUTLINE_T
     vec2 stampUV = WORLD_MAGNIFY > 0.5 ? clamp(vUV, stampLow, stampHigh) : vUV;
     vec4 stamp = sampleTexture(stampUV, uvDx, uvDy);
     float coverage = indexed ? stamp.g : stamp.a;
+    if (cover) {
+      // Only the depth write matters, and a hidden cover (zero alpha) writes none.
+      if (coverage * vColor.a < COVER_SOLID) discard;
+      finalColor = vec4(0.0);
+      return;
+    }
     finalColor = vec4(vColor.rgb * coverage, vColor.a * coverage);
     return;
   }

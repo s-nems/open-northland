@@ -539,16 +539,18 @@ function defineWorldBatcher(): WorldBatcherClass {
    *  and its stains. Answers the sprite when it is an outline quad, for {@link packOutline}. */
   function beginRenderable(renderable: object | null): OutlineSprite | null {
     if (!(renderable instanceof BloodSurfaceSprite)) {
-      packing.selection = renderable instanceof SelectionGraphics ? renderable.selectionEffect : 0;
+      const marker = renderable instanceof SelectionGraphics ? renderable : null;
+      packing.selection = marker?.selectionEffect ?? 0;
       packing.blood = 0;
-      packing.night = 0;
+      packing.night = marker !== null && packing.selection < 0 ? marker.clipDepth : 0;
       packSplashes(undefined);
       return null;
     }
     const selects = renderable instanceof SelectionSprite;
     packing.selection = selects ? renderable.selectionEffect : 0;
     packing.blood = selects ? renderable.bloodEffect : 0;
-    packing.night = selects ? renderable.nightLit : 0;
+    // A silhouette leaves the lit mask alone, so its slot carries the clip depth instead.
+    packing.night = !selects ? 0 : packing.selection < 0 ? renderable.clipDepth : renderable.nightLit;
     const surface = renderable.bloodSurface;
     const stained = surface?.enabled === true;
     // Body coats are positive packed data; a facade uses the same slot for its negative UV cutoff.

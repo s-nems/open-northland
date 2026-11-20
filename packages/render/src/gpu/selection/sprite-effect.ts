@@ -8,6 +8,19 @@ export class SelectionSprite extends BloodSurfaceSprite {
   private effect = 0;
   private blood = 0;
   private night = 0;
+  private depth = 0;
+
+  /** The clip-space z a silhouette draws at, for the occlusion ghosts' depth clip; any other silhouette
+   *  keeps 0, and a body ignores it. */
+  get clipDepth(): number {
+    return this.depth;
+  }
+
+  set clipDepth(z: number) {
+    if (z === this.depth) return;
+    this.depth = z;
+    this.onViewUpdate();
+  }
 
   /** The packed `aNight` value of `world-batch/shader.ts`: how lit the layer shows in the night's mask. */
   get nightLit(): number {
@@ -86,6 +99,16 @@ export class GhostOutlineSprite extends OutlineSprite {
 
 export class SelectionGraphics extends Graphics {
   private effect = 0;
+  private depth = 0;
+  /** As {@link SelectionSprite.clipDepth}. */
+  get clipDepth(): number {
+    return this.depth;
+  }
+  set clipDepth(z: number) {
+    if (z === this.depth) return;
+    this.depth = z;
+    this.onViewUpdate();
+  }
   get selectionEffect(): number {
     return this.effect;
   }

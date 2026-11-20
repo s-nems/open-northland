@@ -20,7 +20,6 @@ import type { EntityBounds } from '../sprite-pool/pooled-entity.js';
 import { castShadowShear, setVegetationShear, vegetationShear } from '../sway/vegetation.js';
 import type { TextureCache } from '../textures/texture-cache.js';
 import { worldBatched } from '../world-batch/batcher.js';
-import { mapObjectPixelHit } from './map-object-pick.js';
 import { activeSway, type MapObjectSprite, objectFrameAt, objectFrameIndexAt } from './map-object-sprite.js';
 
 /** A grounded object's ground shade sorts under its cast shadow, and the cover over its foot one mark over
@@ -59,7 +58,7 @@ interface PooledObject {
   lastWatched: boolean;
   /** The painter depth the sprite sorts at, fixed at mint: the feet anchor's row, never the lift. */
   depth: number;
-  /** The tick the bound pose was picked on, which the occluder's bounds and texels answer from; a pose
+  /** The tick the bound pose was picked on, which the occluder's bounds answer from; a pose
    *  that failed to bind keeps the tick of the pose still drawn. */
   boundTick: number;
   /** The ghost scan's candidate for this member, minted with the sprite and restamped per update. */
@@ -112,8 +111,8 @@ function placeOverlay(overlay: Sprite, texture: Texture | null, x: number, y: nu
 }
 
 /**
- * One tall member as the occlusion ghost scan's static occluder: its bound pose answers the bounds and
- * the texels the scan probes. The entry mints once per member and restamps its fields per update, since
+ * One tall member as the occlusion ghost scan's static occluder: its bound pose answers the bounds, and
+ * its sprite is the art the ghosts' clip copies. The entry mints once per member and restamps its fields per update, since
  * the scan walks it as a plain {@link GhostOccluder} - the box lives on, so a frame allocates none.
  */
 class TallOccluder implements GhostOccluder {
@@ -142,8 +141,8 @@ class TallOccluder implements GhostOccluder {
     return this.boxed ? this.box : undefined;
   }
 
-  hit(wx: number, wy: number): boolean | undefined {
-    return mapObjectPixelHit(this.obj, this.tick, wx, wy);
+  body(): Sprite | undefined {
+    return this.po.sprite ?? undefined;
   }
 
   setFade(alpha: number | undefined): void {
