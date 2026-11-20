@@ -39,7 +39,17 @@ export const MONSTER_TRIBE_WERESNAKE = 5;
 export const MONSTER_TRIBE_WEREWOLF = 6;
 /** The dragon's own `[tribetype]` in our data pack. */
 export const MONSTER_TRIBE_DRAGON = 42;
-export const MONSTER_TRIBES: ReadonlySet<number> = new Set([MONSTER_TRIBE_WERESNAKE, MONSTER_TRIBE_WEREWOLF]);
+export const MONSTER_TRIBES: ReadonlySet<number> = new Set([
+  MONSTER_TRIBE_WERESNAKE,
+  MONSTER_TRIBE_WEREWOLF,
+  MONSTER_TRIBE_DRAGON,
+]);
+/** The monsters drawn in their own skins instead of the player colour; the dragon's body takes the player
+ *  colour like a person's. */
+export const OWN_SKIN_TRIBES: ReadonlySet<number> = new Set([
+  MONSTER_TRIBE_WERESNAKE,
+  MONSTER_TRIBE_WEREWOLF,
+]);
 
 /** `weapontype` id 1, the claw/fist slot a monster's natural weapon binds at (tribe-scoped, extracted). */
 export const NATURAL_WEAPON_TYPE = 1;

@@ -3,7 +3,7 @@ import { resolve } from 'node:path';
 import { HumanPalettes } from '@open-northland/data';
 import type { SettlerCharacter } from '@open-northland/render';
 import { describe, expect, it } from 'vitest';
-import { MONSTER_TRIBES } from '../../../src/catalog/creatures.js';
+import { OWN_SKIN_TRIBES } from '../../../src/catalog/creatures.js';
 import {
   JOB_ARCHER,
   JOB_ARCHER_LONG,
@@ -49,7 +49,7 @@ function atlasServed(stem: string): boolean {
  *  resolves it. */
 function everyLook(ir: ContentIr): ResolvedLook[] {
   const tribes = [...new Set((ir.jobGraphics ?? []).map((row) => row.tribe))].filter(
-    (tribe) => !MONSTER_TRIBES.has(tribe),
+    (tribe) => !OWN_SKIN_TRIBES.has(tribe),
   );
   return [
     ...[...resolveLooks(ir, tribes, INDEXED_CHARACTER_PALETTE).values()].flatMap((bySpec) =>
@@ -82,9 +82,9 @@ describe.runIf(hasRealIr() && existsSync(resolve(contentDir(), 'bobs')))('charac
     }
   });
 
-  it('keeps every monster look in its authored skin', () => {
+  it('keeps every weresnake and werewolf look in its authored skin', () => {
     const ir = rawIrUnderTest() as ContentIr;
-    const looks = [...resolveLooks(ir, [...MONSTER_TRIBES], INDEXED_CHARACTER_PALETTE).values()].flatMap(
+    const looks = [...resolveLooks(ir, [...OWN_SKIN_TRIBES], INDEXED_CHARACTER_PALETTE).values()].flatMap(
       (bySpec) => [...bySpec.values()].flat(),
     );
     expect(looks.length).toBeGreaterThan(0);

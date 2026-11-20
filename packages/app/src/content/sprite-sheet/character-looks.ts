@@ -1,5 +1,5 @@
 import type { SpriteLayer } from '@open-northland/render';
-import { MONSTER_TRIBES } from '../../catalog/creatures.js';
+import { OWN_SKIN_TRIBES } from '../../catalog/creatures.js';
 import { INDEXED_CHARACTER_PALETTE } from '../../catalog/roster.js';
 import { diag } from '../../diag/index.js';
 import { servedShadowStem } from '../ir/joins.js';
@@ -58,8 +58,7 @@ export function resolveLooks(
 ): Map<number, Map<CharacterSpecId, ResolvedLook[]>> {
   const byTribe = new Map<number, Map<CharacterSpecId, ResolvedLook[]>>();
   for (const tribe of tribes) {
-    // The monsters' own skins are their look, so they trade the player colour for them.
-    const skin = MONSTER_TRIBES.has(tribe) ? undefined : palette;
+    const skin = OWN_SKIN_TRIBES.has(tribe) ? undefined : palette;
     const resolved = new Map<CharacterSpecId, ResolvedLook[]>();
     for (const [specId, chain] of tribeLooks(ir, tribe)) {
       resolved.set(
