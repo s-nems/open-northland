@@ -195,6 +195,8 @@ export const ruSurfaces = {
         worldGroup: 'Мир',
         reset: 'Вернуть по умолчанию',
         done: 'Готово',
+        close: 'Закрыть',
+        hostOnly: 'Эти настройки меняет только создатель комнаты.',
       },
       peace: {
         label: 'Мирное время',

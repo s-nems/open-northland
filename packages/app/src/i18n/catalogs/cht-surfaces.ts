@@ -166,6 +166,8 @@ export const chtSurfaces = {
         worldGroup: '世界',
         reset: '恢復預設',
         done: '完成',
+        close: '關閉',
+        hostOnly: '這些設定只能由房間建立者變更。',
       },
       peace: {
         label: '和平時間',

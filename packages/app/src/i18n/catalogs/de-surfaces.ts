@@ -196,6 +196,8 @@ export const deSurfaces = {
         worldGroup: 'Welt',
         reset: 'Standard wiederherstellen',
         done: 'Fertig',
+        close: 'Schließen',
+        hostOnly: 'Diese Einstellungen ändert nur der Raumersteller.',
       },
       peace: {
         label: 'Friedenszeit',

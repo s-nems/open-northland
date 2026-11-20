@@ -168,6 +168,8 @@ export const plSurfaces = {
         worldGroup: 'Świat',
         reset: 'Przywróć domyślne',
         done: 'Gotowe',
+        close: 'Zamknij',
+        hostOnly: 'Te ustawienia zmienia twórca pokoju.',
       },
       peace: {
         label: 'Czas pokoju',

@@ -55,11 +55,13 @@ export function roomSettings(deps: NetworkRoomDeps) {
     update(next: RoomView, editable: boolean): void {
       queue.update(next, editable);
       if (editable && next.settings.kickedSeatMode !== 'idle') queue.change({ kickedSeatMode: 'idle' });
-      const why = next.settings.initialSave === undefined ? copy.creatorSettings : copy.savedSettings;
-      hint.textContent = why;
-      hint.hidden = editable && next.settings.initialSave === undefined;
-      const frozen = !editable || next.settings.initialSave !== undefined;
-      rules.update(next.settings.rules, frozen, why);
+      const saved = next.settings.initialSave !== undefined;
+      hint.textContent = saved ? copy.savedSettings : copy.creatorSettings;
+      hint.hidden = editable && !saved;
+      const frozen = !editable || saved;
+      // A guest reads the rules as text rather than as dimmed controls.
+      fields.classList.toggle('is-readonly', frozen);
+      rules.update(next.settings.rules, frozen, saved ? copy.savedSettings : lobby.advanced.hostOnly);
     },
   };
 }

@@ -647,3 +647,27 @@
   cursor: var(--cursor-default, default);
   opacity: 0.4;
 }
+
+/* A viewer who cannot change the rules reads each one's choice as text in place of its control
+ * (lobby-controls/rules.ts); a rule the standard game plays otherwise stands out. */
+.main-menu__rule-value {
+  display: none;
+}
+
+.is-readonly .main-menu__rule-value {
+  display: block;
+  flex: none;
+  max-width: 50%;
+  text-align: right;
+  color: var(--text-body);
+}
+
+.is-readonly .is-changed > .main-menu__rule-value {
+  color: var(--accent-bright);
+}
+
+.is-readonly .main-menu__toggle,
+.is-readonly .main-menu__seg,
+.is-readonly .main-menu__dropdown {
+  display: none;
+}

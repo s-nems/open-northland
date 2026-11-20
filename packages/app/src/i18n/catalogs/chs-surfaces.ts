@@ -166,6 +166,8 @@ export const chsSurfaces = {
         worldGroup: '世界',
         reset: '恢复默认',
         done: '完成',
+        close: '关闭',
+        hostOnly: '这些设置只能由房间创建者更改。',
       },
       peace: {
         label: '和平时间',

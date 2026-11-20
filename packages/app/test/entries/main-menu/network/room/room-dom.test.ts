@@ -489,6 +489,21 @@ describe('room guidance and chat', () => {
     expect(fog?.parentElement?.hidden).toBe(true);
     room.update({ ...explicit, creator: 'Bjorn' }, true);
     expect(progression.disabled).toBe(true);
+    // A guest reads each rule's choice as text, the one the standard game plays otherwise marked.
+    const lobbyCopy = messages().mainMenu.lobby;
+    expect(room.element.querySelector('.main-menu__advanced')?.classList.contains('is-readonly')).toBe(true);
+    expect(room.element.querySelector('.network-room__settings')?.classList.contains('is-readonly')).toBe(
+      true,
+    );
+    const progressionRow = progression.parentElement;
+    expect(progressionRow?.querySelector('.main-menu__rule-value')?.textContent).toBe(
+      lobbyCopy.progressionModes.on,
+    );
+    expect(progressionRow?.classList.contains('is-changed')).toBe(false);
+    const needsRow = room.element
+      .querySelector(`[role="switch"][aria-label="${lobbyCopy.needsLabel}"]`)
+      ?.closest('.main-menu__lobby-option-row');
+    expect(needsRow?.classList.contains('is-changed')).toBe(true);
   });
 
   it('keeps departed seats idle when hosting an existing room with AI takeover', () => {

@@ -14,6 +14,8 @@ const TEXT: AdvancedText = {
   worldGroup: 'World',
   reset: 'Restore defaults',
   done: 'Done',
+  close: 'Close',
+  hostOnly: 'Only the room creator changes these settings.',
 };
 
 function mount() {
@@ -86,8 +88,10 @@ describe('the advanced settings window', () => {
     expect(box?.querySelector('.main-menu__advanced-note')?.textContent).toBe(
       'Only the room creator changes settings.',
     );
-    const reset = [...(box?.querySelectorAll('button') ?? [])].find((b) => b.textContent === TEXT.reset);
-    expect(reset?.hidden).toBe(true);
+    const buttons = [...(box?.querySelectorAll('button') ?? [])];
+    expect(buttons.find((b) => b.textContent === TEXT.reset)?.hidden).toBe(true);
+    expect(buttons.some((b) => b.textContent === TEXT.close)).toBe(true);
+    expect(box?.querySelector('.main-menu__advanced')?.classList.contains('is-readonly')).toBe(true);
   });
 
   it('leaves nothing behind when its screen is torn down while open', () => {

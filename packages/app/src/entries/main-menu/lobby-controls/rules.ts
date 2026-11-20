@@ -133,6 +133,18 @@ function ruleDetail(label: HTMLElement, text: string | undefined): HTMLElement {
   return detail;
 }
 
+/** The value a read-only viewer reads in place of a row's control, shown under `.is-readonly`; a
+ *  `changed` row is a rule the standard game plays otherwise. */
+function readout(row: HTMLElement): (text: string, changed: boolean) => void {
+  const value = document.createElement('span');
+  value.className = 'main-menu__rule-value';
+  row.append(value);
+  return (text, changed) => {
+    value.textContent = text;
+    row.classList.toggle('is-changed', changed);
+  };
+}
+
 /**
  * The match rules as the card shows them: the settings every match sets, then the advanced entry,
  * whose window holds the rules most games keep standard.
@@ -161,15 +173,17 @@ export function gameRuleControls(options: GameRuleControlOptions) {
       placement === 'advanced' ? OPTION_ROW_CLASS : (options.fieldClassName ?? OPTION_ROW_CLASS),
     );
     const written = placement === 'advanced' ? ruleDetail(control.caption, undefined) : null;
+    const show = readout(control.root);
     return {
       elements: [control.root],
       state,
-      update(value: T, disabled: boolean, label?: string): void {
+      update(value: T, disabled: boolean, label?: string, changed = false): void {
         state.update(value, disabled);
         control.update(String(value ?? ''), disabled, label);
-        const detail = choices.find((choice) => choice.value === value)?.detail;
-        if (written !== null) written.textContent = detail ?? '';
-        else showDetail(control.root, detail);
+        const held = choices.find((choice) => choice.value === value);
+        if (written !== null) written.textContent = held?.detail ?? '';
+        else showDetail(control.root, held?.detail);
+        show(held?.label ?? label ?? '', changed);
       },
     };
   }
@@ -194,13 +208,15 @@ export function gameRuleControls(options: GameRuleControlOptions) {
     if (detail !== undefined) pill.setAttribute('aria-describedby', ruleDetail(label, detail).id);
     // Any rule can arrive as the world's own; the room shows it in a dropdown naming the map default.
     const fallback = inherited !== undefined ? select(text.label, choices, change, placement) : null;
+    const show = readout(row);
     return {
       elements: [row, ...(fallback?.elements ?? [])],
       state,
-      update(value: boolean | null, disabled: boolean): void {
+      update(value: boolean | null, disabled: boolean, changed = false): void {
         state.update(value, disabled);
         paint(value === true, disabled);
         pill.title = value === true ? text.on : text.off;
+        show(value === true ? text.on : text.off, changed);
         if (fallback !== null) {
           row.hidden = value === null;
           fallback.update(value, disabled, value === null ? inherited : undefined);
@@ -242,11 +258,13 @@ export function gameRuleControls(options: GameRuleControlOptions) {
     segments.root.setAttribute('aria-labelledby', name.id);
     if (detail !== undefined) segments.root.setAttribute('aria-describedby', ruleDetail(title, detail).id);
     const row = detailTipRow(title, segments.root, choices);
+    const show = readout(row);
     return {
       elements: [row],
       state,
-      update(value: T | null, disabled: boolean): void {
+      update(value: T | null, disabled: boolean, changed = false): void {
         state.update(value, disabled);
+        show(choices.find((choice) => choice.value === value)?.label ?? '', changed);
         segments.setActive(value ?? '');
         for (const button of segments.root.querySelectorAll('button')) button.disabled = disabled;
       },
@@ -344,21 +362,36 @@ export function gameRuleControls(options: GameRuleControlOptions) {
     'advanced',
   );
 
-  /** The advanced rules the standard game plays otherwise, as "label: choice" lines; a rule kept at the
-   *  world's own reads standard. */
-  function advancedChanges(rules: GameRules): string[] {
-    const changes: string[] = [];
-    const line = (label: string, choice: string): void => {
-      changes.push(`${label}: ${choice}`);
+  /** The advanced rules as `rules` holds them, each flagged when the standard game plays it otherwise; a
+   *  rule kept at the world's own reads standard. */
+  function advancedRead(rules: GameRules) {
+    const weatherMode = rules.weather ?? STANDARD_ADVANCED.weather;
+    const dayNightMode = rules.dayNight ?? STANDARD_ADVANCED.dayNight;
+    return {
+      weatherMode,
+      dayNightMode,
+      progression: {
+        changed: rules.progression === false,
+        label: options.progression.label,
+        choice: options.progression.off,
+      },
+      needs: { changed: rules.needs === false, label: options.needs.label, choice: options.needs.off },
+      storage: {
+        changed: rules.storageCapacity !== null,
+        label: options.storage.label,
+        choice: storageLabel(rules.storageCapacity),
+      },
+      weather: {
+        changed: weatherMode !== STANDARD_ADVANCED.weather,
+        label: options.weather.label,
+        choice: weatherModes[weatherMode].label,
+      },
+      dayNight: {
+        changed: dayNightMode !== STANDARD_ADVANCED.dayNight,
+        label: options.dayNight.label,
+        choice: dayNightModes[dayNightMode].label,
+      },
     };
-    if (rules.progression === false) line(options.progression.label, options.progression.off);
-    if (rules.needs === false) line(options.needs.label, options.needs.off);
-    if (rules.storageCapacity !== null) line(options.storage.label, storageLabel(rules.storageCapacity));
-    if (rules.weather !== null && rules.weather !== STANDARD_ADVANCED.weather)
-      line(options.weather.label, weatherModes[rules.weather].label);
-    if (rules.dayNight !== null && rules.dayNight !== STANDARD_ADVANCED.dayNight)
-      line(options.dayNight.label, dayNightModes[rules.dayNight].label);
-    return changes;
   }
 
   const advanced = advancedSettings({
@@ -400,12 +433,16 @@ export function gameRuleControls(options: GameRuleControlOptions) {
       fogOfWar.update(settings?.fogOfWar ?? null, disabled);
       alliedVision.update(rules.alliedVision, disabled);
       peace?.update(peaceChoiceId(rules.peace), disabled);
-      progression.update(rules.progression, disabled);
-      needs.update(rules.needs, disabled);
-      storage.update(storageChoiceId(rules.storageCapacity), disabled);
-      weather.update(rules.weather ?? DEFAULT_WEATHER_MODE, disabled);
-      dayNight.update(rules.dayNight ?? DEFAULT_DAY_NIGHT_MODE, disabled);
-      advanced.update(advancedChanges(rules), disabled, note);
+      const read = advancedRead(rules);
+      progression.update(rules.progression, disabled, read.progression.changed);
+      needs.update(rules.needs, disabled, read.needs.changed);
+      storage.update(storageChoiceId(rules.storageCapacity), disabled, read.storage.changed);
+      weather.update(read.weatherMode, disabled, undefined, read.weather.changed);
+      dayNight.update(read.dayNightMode, disabled, undefined, read.dayNight.changed);
+      const changes = [read.progression, read.needs, read.storage, read.weather, read.dayNight]
+        .filter((rule) => rule.changed)
+        .map((rule) => `${rule.label}: ${rule.choice}`);
+      advanced.update(changes, disabled, note);
     },
     /** The room refused the last settings change; drop what the fog pair composed on top of it. */
     rejected: fog.reject,

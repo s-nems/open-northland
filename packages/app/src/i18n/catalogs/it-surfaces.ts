@@ -185,6 +185,8 @@ export const itSurfaces = {
         worldGroup: 'Mondo',
         reset: 'Ripristina predefinite',
         done: 'Fatto',
+        close: 'Chiudi',
+        hostOnly: 'Solo il creatore della stanza può cambiare queste impostazioni.',
       },
       peace: {
         label: 'Tregua iniziale',

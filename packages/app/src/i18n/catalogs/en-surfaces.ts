@@ -169,6 +169,8 @@ export const enSurfaces = {
         worldGroup: 'World',
         reset: 'Restore defaults',
         done: 'Done',
+        close: 'Close',
+        hostOnly: 'Only the room creator changes these settings.',
       },
       peace: {
         label: 'Peace time',

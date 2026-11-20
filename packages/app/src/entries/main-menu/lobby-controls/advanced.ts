@@ -13,6 +13,10 @@ export interface AdvancedText {
   readonly worldGroup: string;
   readonly reset: string;
   readonly done: string;
+  /** Done's label for a viewer who cannot change anything. */
+  readonly close: string;
+  /** Why a room guest only reads the window. */
+  readonly hostOnly: string;
 }
 
 interface AdvancedGroup {
@@ -126,6 +130,9 @@ export function advancedSettings(options: {
       summary.hidden = !changed;
       note.textContent = why;
       note.hidden = !frozen || why === '';
+      // A viewer who cannot change anything reads each rule's choice as text, not a dimmed control.
+      box.classList.toggle('is-readonly', frozen);
+      done.textContent = frozen ? text.close : text.done;
       reset.hidden = frozen;
       reset.disabled = !changed;
     },
