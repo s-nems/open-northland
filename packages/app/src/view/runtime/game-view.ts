@@ -1240,6 +1240,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       ...(deps.playerColourOf !== undefined ? { playerColourOf: deps.playerColourOf } : {}),
       enqueue: issueCommand,
       readOnly,
+      ...(host.missions !== undefined ? { missions: host.missions } : {}),
       centerOn: jumpToWorld,
       drawnItems: () => renderer.drawnItems(),
       resourceVisible: (tileX, tileY) => {

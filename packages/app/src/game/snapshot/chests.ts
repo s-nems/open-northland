@@ -12,6 +12,12 @@ export function chestKindOf(e: SnapshotEntity): ChestKind | undefined {
   return CHEST_KINDS.find((k) => k === kind);
 }
 
+/** A closed chest's chest type, the key of what it hands out, or undefined for an entity that is no chest. */
+export function chestContentsOf(e: SnapshotEntity): number | undefined {
+  const chest = e.components.Chest as { contents?: unknown } | undefined;
+  return typeof chest?.contents === 'number' ? chest.contents : undefined;
+}
+
 /** Whether the settler may open a `kind` chest: grown, and of a trade the chest admits. */
 export function canOpenChest(e: SnapshotEntity, kind: ChestKind, content: ContentSet): boolean {
   return isAdult(e) && systems.jobCanOpenChest(content, settlerJobType(e) ?? null, kind);

@@ -437,6 +437,11 @@ export const plGame = {
       wooden: 'Skrzynia',
       magical: 'Magiczna skrzynia',
     },
+    chestScript: {
+      script: 'skrypt mapy',
+      needsFrozen: 'bez potrzeb',
+      walksFast: 'szybki chód',
+    },
     actionHint: {
       walk: 'Idź',
       drive: 'Jedź',

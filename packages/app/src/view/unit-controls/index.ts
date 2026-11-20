@@ -1,5 +1,11 @@
 import { entityById, MAX_UNIT_ORDER_MEMBERS, systems, type WorldSnapshot } from '@open-northland/sim';
-import { holdsHaulFlagPost, isSettler, isVehicle, settlerJobType } from '../../game/snapshot/index.js';
+import {
+  holdsHaulFlagPost,
+  isSettler,
+  isVehicle,
+  type SnapshotEntity,
+  settlerJobType,
+} from '../../game/snapshot/index.js';
 import { pickableSeat } from '../../game/viewer-seat.js';
 import type { ActionOrderId } from '../../hud/action-ring/index.js';
 import { jobDisplayName } from '../../hud/details-panel/model/context.js';
@@ -9,6 +15,7 @@ import { isActionHotkey, isFieldKey, isOrderHotkey } from '../../hud/hotkeys.js'
 import { type ModifierState, matchesMouseBinding } from '../../hud/keybindings.js';
 import { clientToScreen, screenScale } from '../camera/index.js';
 import { setCanvasCursor } from '../cursors/element.js';
+import { buildingLabelsFromContent } from '../game-tool-panel.js';
 import {
   clampTile,
   nodeBounds,
@@ -21,6 +28,7 @@ import {
 } from '../picking.js';
 import { entityAnchor } from '../projections/entity-anchor.js';
 import { memoBySnapshot, rangeRingsOf } from '../projections/index.js';
+import { type ChestContentsNaming, chestContentsLabel } from './action-hint/chest-contents.js';
 import { createActionHint } from './action-hint/controller.js';
 import { createHintLabel, hintLine } from './action-hint/label.js';
 import { natureName, natureTargetOf } from './action-hint/nature-name.js';
@@ -454,6 +462,20 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
     return proxy === null || proxy.covered ? null : proxy.ref;
   };
 
+  // An observer reads what a closed chest holds off the label; the building names load on first use.
+  let buildingLabels: ReadonlyMap<number, string> | null = null;
+  const chestNaming: ChestContentsNaming = {
+    content: opts.content,
+    uiString: opts.domHud.uiString,
+    missions: opts.missions,
+    seatName: (player) => opts.seatNameOf?.(player),
+    buildingLabel: (typeId) => {
+      buildingLabels ??= buildingLabelsFromContent(opts.content, opts.lang);
+      return buildingLabels.get(typeId);
+    },
+  };
+  const chestContents = (chest: SnapshotEntity): string | null => chestContentsLabel(chestNaming, chest);
+
   /** The label names what the armed pick's press, else a right press, would do at the point, resolved
    *  as that press resolves it. */
   const hintLineAt = (clientX: number, clientY: number, mods: ModifierState) => {
@@ -474,7 +496,12 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
             workFlag: matchesMouseBinding({ ...mods, button: RIGHT_BUTTON }, opts.bindings.workFlagOrder),
           });
     const target = natureTargetOf(hit, hint);
-    const nameContext = { snapshot: opts.snapshot(), content: opts.content, uiString: opts.domHud.uiString };
+    const nameContext = {
+      snapshot: opts.snapshot(),
+      content: opts.content,
+      uiString: opts.domHud.uiString,
+      ...(opts.readOnly?.() === true ? { chestContents } : {}),
+    };
     const name = target === null ? null : natureName(nameContext, target, hit);
     return hintLine(name, hint, (jobType) => jobDisplayName(opts.content, jobType));
   };

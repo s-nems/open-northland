@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { sandboxContent } from '../../../../src/game/sandbox/index.js';
+import { messages } from '../../../../src/i18n/index.js';
 import { natureName, natureTargetOf } from '../../../../src/view/unit-controls/action-hint/nature-name.js';
 import type { PointHits } from '../../../../src/view/unit-controls/unit-targets.js';
 import { snapshotOf } from '../../../support/snapshot.js';
@@ -11,6 +12,8 @@ const IRON_DEPOSIT_ROW = 104;
 const DEER = 10;
 const RABBIT = 11;
 const ORE = 20;
+const CHEST = 30;
+const FOOD_CHEST = 20;
 
 const NOTHING: PointHits = {
   ownSettler: null,
@@ -61,5 +64,22 @@ describe('the nature name', () => {
     };
     const hit = { ...NOTHING, resource: { ref: ORE, goodType: IRON } };
     expect(natureName(ctx, { kind: 'resource', ref: ORE }, hit)).toBe('Iron deposit');
+  });
+
+  it("adds what a chest holds only where the observer's line is given", () => {
+    const snapshot = snapshotOf([
+      { id: CHEST, components: { Chest: { kind: 'wooden', contents: FOOD_CHEST } } },
+    ]);
+    const ctx = {
+      snapshot,
+      content: CONTENT,
+      uiString: (_t: string, _id: number, fallback: string) => fallback,
+    };
+    const hit = { ...NOTHING, chest: CHEST };
+    const target = { kind: 'chest', ref: CHEST } as const;
+    const name = messages().hud.chest.wooden;
+    expect(natureName(ctx, target, hit)).toBe(name);
+    const observer = { ...ctx, chestContents: (chest: { readonly id: number }) => `held ${chest.id}` };
+    expect(natureName(observer, target, hit)).toBe(`${name} · held ${CHEST}`);
   });
 });

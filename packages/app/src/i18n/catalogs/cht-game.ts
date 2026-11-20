@@ -424,6 +424,11 @@ export const chtGame = {
       wooden: '箱子',
       magical: '魔法箱子',
     },
+    chestScript: {
+      script: '地圖腳本',
+      needsFrozen: '無需求',
+      walksFast: '快速行走',
+    },
     actionHint: {
       walk: '前往',
       drive: '駕駛',

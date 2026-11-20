@@ -20,6 +20,7 @@ import type {
   FormationOrder,
   FormationSlotGroup,
   HalfCellNode,
+  MissionScript,
   PlayerCommand,
   SignpostReachView,
   TradeOffer,
@@ -119,6 +120,8 @@ export interface UnitControlsOptions {
   readonly enqueue: (command: PlayerCommand) => void;
   /** The session drops every command `enqueue` takes (a spectator); absent, it issues them. */
   readonly readOnly?: () => boolean;
+  /** The map's mission script; an observer's chest label reads from it what opening a chest fires. */
+  readonly missions?: MissionScript;
   /** The map's own string by id, for the names a map gives its settlers. */
   readonly mapText?: (stringId: number) => string | undefined;
   /** Re-centre the main view on a world-px point at the current zoom; the hud layer never reaches the
@@ -213,7 +216,8 @@ export interface UnitControlsOptions {
   readonly workStatus?: (entity: number) => SettlerWorkStatus | undefined;
   /** The viewer seat's stance toward another owner, for a foreign person's owner line. */
   readonly diplomacyStance?: (owner: number) => DiplomacyStance;
-  /** The roster's authored seat name, for another seat's house card; absent numbers the seat. */
+  /** The roster's authored seat name, for another seat's house card and an observer's chest label; absent
+   *  numbers the seat. */
   readonly seatNameOf?: (player: number) => string | undefined;
 }
 

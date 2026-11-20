@@ -475,6 +475,11 @@ export const ruGame = {
       wooden: 'Сундук',
       magical: 'Магический сундук',
     },
+    chestScript: {
+      script: 'скрипт карты',
+      needsFrozen: 'без потребностей',
+      walksFast: 'быстрый шаг',
+    },
     actionHint: {
       walk: 'Идти',
       drive: 'Ехать',

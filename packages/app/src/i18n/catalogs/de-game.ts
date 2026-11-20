@@ -480,6 +480,11 @@ export const deGame = {
       wooden: 'Kiste',
       magical: 'Magische Kiste',
     },
+    chestScript: {
+      script: 'Kartenskript',
+      needsFrozen: 'keine Bedürfnisse',
+      walksFast: 'schneller Gang',
+    },
     actionHint: {
       walk: 'Gehen',
       drive: 'Fahren',

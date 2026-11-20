@@ -450,6 +450,11 @@ export const itGame = {
       wooden: 'Cassa',
       magical: 'Cassa magica',
     },
+    chestScript: {
+      script: 'script della mappa',
+      needsFrozen: 'senza bisogni',
+      walksFast: 'passo veloce',
+    },
     actionHint: {
       walk: 'Vai',
       drive: 'Guida',

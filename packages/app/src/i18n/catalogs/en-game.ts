@@ -445,6 +445,12 @@ export const enGame = {
       wooden: 'Chest',
       magical: 'Magic Chest',
     },
+    /** An observer's line for what a chest's map script does once it is opened. */
+    chestScript: {
+      script: 'map script',
+      needsFrozen: 'no needs',
+      walksFast: 'fast walk',
+    },
     /** The label beside the cursor naming what a right click there does, or why it is refused. */
     actionHint: {
       walk: 'Go',
