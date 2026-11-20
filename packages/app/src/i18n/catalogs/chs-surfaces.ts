@@ -24,6 +24,7 @@ export const chsSurfaces = {
     comingSoon: '即将推出',
     comingSoonTip: '即将推出',
     fullscreenPrompt: '全屏游玩，体验更佳',
+    fullscreenButton: '全屏',
     news: {
       heading: '新闻',
       updateAvailable: '新版本 {version} 已发布',

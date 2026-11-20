@@ -1,7 +1,8 @@
 /* The main screen's news panel (news/panel.ts). News entries stand in the top-left corner above the
    brand block, on its left edge and as far from the top as the block stands from the bottom
-   (menu.css .main-menu__home). The versions stand in the top-right corner on the nav's right edge,
-   below the fullscreen prompt's slot (fullscreen-prompt.css) and above the nav. Each column is capped
+   (menu.css .main-menu__home). The versions mirror them in the top-right corner on the nav's right
+   edge, under the fullscreen control in the screen's margin (fullscreen-prompt.css) and above the
+   nav. Each column is capped
    to its room; panel.ts hides the blocks that reach past the cap, so a short window drops whole
    blocks instead of cutting one. Each heading folds its column's body. */
 
@@ -10,8 +11,6 @@
   --news-brand-height: 421;
   /* The desktop's eight nav items, its tallest nav: 8 x (30 + 2 x 6) + 7 x 22 gaps. */
   --news-nav-height: 490;
-  /* The fullscreen prompt's top 64 and height 46, plus a gap. */
-  --news-prompt-clear: 142;
   --news-edge: 96;
   --news-side: 120;
   /* Space kept free above the brand block or the nav; it also holds an eyebrow that wraps. */
@@ -39,7 +38,7 @@
 }
 
 .main-menu__news-versions {
-  top: calc(var(--u) * var(--news-prompt-clear));
+  top: calc(var(--u) * var(--news-edge));
   bottom: calc(var(--u) * (var(--news-edge) + var(--news-nav-height) + var(--news-floor-gap)));
   right: calc(var(--u) * var(--news-side));
   max-width: calc(var(--u) * 460);

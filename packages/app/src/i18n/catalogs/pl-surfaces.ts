@@ -24,6 +24,7 @@ export const plSurfaces = {
     comingSoon: 'wkrótce',
     comingSoonTip: 'Wkrótce',
     fullscreenPrompt: 'Włącz pełny ekran',
+    fullscreenButton: 'Pełny ekran',
     news: {
       heading: 'Nowości',
       updateAvailable: 'Dostępna nowa wersja {version}',

@@ -24,6 +24,7 @@ export const enSurfaces = {
     comingSoon: 'coming soon',
     comingSoonTip: 'Coming soon',
     fullscreenPrompt: 'For a better experience, play in fullscreen',
+    fullscreenButton: 'Fullscreen',
     news: {
       heading: 'News',
       updateAvailable: 'New version {version} available',

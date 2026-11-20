@@ -23,6 +23,7 @@ export const itSurfaces = {
     comingSoon: 'in arrivo',
     comingSoonTip: 'In arrivo',
     fullscreenPrompt: "Per un'esperienza migliore, gioca a schermo intero",
+    fullscreenButton: 'Schermo intero',
     news: {
       heading: 'Novità',
       updateAvailable: 'Nuova versione {version} disponibile',

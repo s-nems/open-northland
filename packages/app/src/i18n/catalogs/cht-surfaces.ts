@@ -24,6 +24,7 @@ export const chtSurfaces = {
     comingSoon: '即將推出',
     comingSoonTip: '即將推出',
     fullscreenPrompt: '切換至全螢幕，享受更好的遊戲體驗',
+    fullscreenButton: '全螢幕',
     news: {
       heading: '新聞',
       updateAvailable: '新版本 {version} 已發布',

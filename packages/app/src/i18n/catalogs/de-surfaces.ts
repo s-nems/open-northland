@@ -23,6 +23,7 @@ export const deSurfaces = {
     comingSoon: 'Demnächst',
     comingSoonTip: 'Demnächst verfügbar',
     fullscreenPrompt: 'Am besten spielst du im Vollbildmodus',
+    fullscreenButton: 'Vollbild',
     news: {
       heading: 'Neuigkeiten',
       updateAvailable: 'Neue Version {version} verfügbar',

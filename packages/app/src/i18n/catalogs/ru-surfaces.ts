@@ -23,6 +23,7 @@ export const ruSurfaces = {
     comingSoon: 'Скоро',
     comingSoonTip: 'Скоро появится',
     fullscreenPrompt: 'Для удобства играйте в полноэкранном режиме',
+    fullscreenButton: 'Полный экран',
     news: {
       heading: 'Новости',
       updateAvailable: 'Доступна новая версия {version}',

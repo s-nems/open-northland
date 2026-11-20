@@ -7,8 +7,9 @@ import {
 } from '../../view/platform/fullscreen.js';
 
 /**
- * The menu's fullscreen prompt. It exists only while the window is not fullscreen, and its own click is
- * the user gesture a browser demands; `bindDisplayMode` records the mode that click produces.
+ * The menu's fullscreen control in the screen's top-right corner. It exists only while the window is
+ * not fullscreen, and its own click is the user gesture a browser demands; `bindDisplayMode` records
+ * the mode that click produces.
  */
 
 export interface FullscreenPrompt {
@@ -32,7 +33,9 @@ export function mountFullscreenPrompt(
   button.append(icon, text);
 
   const relabel = (): void => {
-    text.textContent = messages().mainMenu.fullscreenPrompt;
+    const copy = messages().mainMenu;
+    text.textContent = copy.fullscreenButton;
+    button.title = copy.fullscreenPrompt;
   };
   relabel();
 
@@ -46,7 +49,7 @@ export function mountFullscreenPrompt(
   paint();
 
   root.append(button);
-  // Mounted off the edge and released a frame later, so the first windowed menu gets a slide. A later
+  // Mounted transparent and released a frame later, so the first windowed menu fades it in. A later
   // return from fullscreen re-displays a button that is already in place, and it simply reappears.
   requestAnimationFrame(() => button.classList.add('is-in'));
   return { relabel };
