@@ -29,6 +29,8 @@ export interface CombatTarget {
   readonly column: string;
   readonly fallback?: string;
   readonly person: boolean;
+  /** Whether the blow's direction counts: on a person and on a monster. */
+  readonly faced: boolean;
   readonly vehicle: boolean;
   /** The armour good a person target wears, by id. */
   readonly good: string | null;
@@ -72,6 +74,20 @@ export const ANIMAL_TARGET: CombatTarget = {
   column: String(systems.WILDLIFE_DAMAGE_COLUMN),
   fallback: String(ARMOR_MATERIAL.LEATHER),
   person: false,
+  faced: false,
+  vehicle: false,
+  good: null,
+  blocking: 0,
+};
+
+/** A monster (a weresnake, werewolf or dragon) takes the monster column, or the bare one where a weapon has
+ *  none: the blow's direction counts, and it wears no armour or amulet and gains no fight experience. */
+export const MONSTER_TARGET: CombatTarget = {
+  id: 'monster',
+  column: String(systems.MONSTER_DAMAGE_COLUMN),
+  fallback: String(ARMOR_MATERIAL.NONE),
+  person: false,
+  faced: true,
   vehicle: false,
   good: null,
   blocking: 0,
@@ -88,6 +104,7 @@ export function combatTargets(base: KnowledgeBase): readonly CombatTarget[] {
       id: 'bare',
       column: String(ARMOR_MATERIAL.NONE),
       person: true,
+      faced: true,
       vehicle: false,
       good: null,
       blocking: 0,
@@ -96,6 +113,7 @@ export function combatTargets(base: KnowledgeBase): readonly CombatTarget[] {
       id,
       column: String(material),
       person: true,
+      faced: true,
       vehicle: false,
       good,
       blocking: blockingOf(good),
@@ -104,6 +122,7 @@ export function combatTargets(base: KnowledgeBase): readonly CombatTarget[] {
       id: 'vehicle',
       column: String(ARMOR_MATERIAL.VEHICLE),
       person: false,
+      faced: false,
       vehicle: true,
       good: null,
       blocking: 0,
@@ -112,11 +131,17 @@ export function combatTargets(base: KnowledgeBase): readonly CombatTarget[] {
       id: 'building',
       column: String(ARMOR_MATERIAL.HOUSE),
       person: false,
+      faced: false,
       vehicle: false,
       good: null,
       blocking: 0,
     },
   ];
+}
+
+/** A weapon table's columns: {@link combatTargets}, then an animal and a monster. */
+export function weaponTableTargets(base: KnowledgeBase): readonly CombatTarget[] {
+  return [...combatTargets(base), ANIMAL_TARGET, MONSTER_TARGET];
 }
 
 export function targetName(target: CombatTarget): string {
@@ -175,9 +200,9 @@ export function takesStrengthAmulet(weapon: Pick<KnowledgeWeapon, 'id'>): boolea
 }
 
 /**
- * One blow in the sim's order: for a person direction and blocking, then the striker's raises (fight
- * experience on a soldier's melee blow at anything but a vehicle, and the strength amulet, added into one
- * raise), then for a person the defence amulet and his own fight experience, multiplied in one
+ * One blow in the sim's order: direction for a person or a monster, blocking for a person, then the
+ * striker's raises (fight experience on a soldier's melee blow at anything but a vehicle, and the strength
+ * amulet, added into one raise), then for a person the defence amulet and his own fight experience, multiplied in one
  * truncation. A blow never heals, so a last `floor` step stops the sum at zero.
  */
 export function blowSteps(
@@ -185,11 +210,11 @@ export function blowSteps(
   target: CombatTarget,
   modifiers: BlowModifiers = NO_MODIFIERS,
 ): readonly BlowStep[] {
-  const { person } = target;
+  const { person, faced } = target;
   const base =
     weapon.damage[target.column] ??
     (target.fallback === undefined ? 0 : (weapon.damage[target.fallback] ?? 0));
-  const directed = person ? systems.directedDamage(base, modifiers.direction) : base;
+  const directed = faced ? systems.directedDamage(base, modifiers.direction) : base;
   const blocked = person ? directed - target.blocking : directed;
   const experienced = gainsFightExperience(weapon, target);
   // The calculator states fight experience in points; the sim's raises read the counter's fine units.
@@ -204,7 +229,7 @@ export function blowSteps(
   const hardened = person ? systems.withTakenBonuses(strong, targetUnits, takenPct) : shielded;
   return [
     { id: 'base', value: base, applies: true },
-    { id: 'direction', value: directed, applies: person },
+    { id: 'direction', value: directed, applies: faced },
     { id: 'block', value: blocked, applies: person },
     { id: 'experience', value: raised, applies: experienced },
     { id: 'strength', value: strong, applies: takesStrengthAmulet(weapon) },

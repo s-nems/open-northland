@@ -14,6 +14,7 @@ import {
   STRENGTH_PCT,
   stepSeconds,
   targetName,
+  weaponTableTargets,
   weaponOf,
 } from '../../../knowledge/combat.js';
 import {
@@ -76,7 +77,7 @@ export function weaponStrip(context: KnowledgeContext, weapon: KnowledgeWeapon):
 
 export function weaponFilm(context: KnowledgeContext, weapon: KnowledgeWeapon): EntryBlock | null {
   const text = copy().weapon;
-  const jobType = weapon.filmJob;
+  const { jobType } = weapon;
   if (jobType === null) return null;
   const tribe = context.tribe();
   const step = preciseSecondsText(stepSeconds(weapon.weight));
@@ -100,7 +101,7 @@ export function weaponFilm(context: KnowledgeContext, weapon: KnowledgeWeapon): 
 
 function damageBlock(context: KnowledgeContext, weapon: KnowledgeWeapon): EntryBlock {
   const text = copy();
-  const rows = combatTargets(context.base).map((target) => {
+  const rows = weaponTableTargets(context.base).map((target) => {
     const damage = landed(weapon, target);
     const hits = target.person ? hitsToKill(damage) : null;
     const worn = target.good === null ? undefined : context.base.goodById.get(target.good);

@@ -38,7 +38,7 @@ export const MILITARY: ArticleGroup = {
         {
           list: [
             "The attacker's experience doesn't strengthen arrows, stones or blows on vehicles and stockades. The target's experience cuts every blow and shot on a person.",
-            'Blow direction and the Amulet of Defence count only against people. For an arrow, direction is taken from where it was fired.',
+            'Blow direction counts against people and monsters, the Amulet of Defence only against people. For an arrow, direction is taken from where it was fired.',
             'A Catapult cannot take an Amulet of Strength.',
             'A stockade counts damage its own way: [[article:walls|Stockades and Gates]].',
             "Children can't be hurt.",
@@ -48,7 +48,13 @@ export const MILITARY: ArticleGroup = {
           h: 'Tribe differences',
         },
         {
-          p: 'The table counts the weapons of the tribe whose emblem you pick at the top of the window. The Dragon that the [[good:spear_wooden|Wooden Spear]] row shows for the Byzantines has {{dragon.hitpoints}} health.',
+          p: "The table counts the weapons of the tribe whose emblem you pick at the top of the window. A soldier's weapon deals the same damage and reaches as far in every tribe; heroes have values of their own.",
+        },
+        {
+          h: 'Animals and monsters',
+        },
+        {
+          p: 'The Animal column is what a wild animal takes, the Monster column what a Weresnake, a Werewolf or a Dragon takes. A monster wears no armour or amulet and has no combat experience; the direction of a blow counts as on a person. The Dragon has {{dragon.hitpoints}} health. No tribe trains one: a Dragon stands only where a map places it.',
         },
         {
           h: 'Armour',

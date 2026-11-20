@@ -59,6 +59,7 @@ export const enKnowledge = {
     vehicle: 'Vehicle',
     building: 'Building',
     animal: 'Animal',
+    monster: 'Monster',
   },
   entry: {
     notFound: "This entry is not in this game's data.",
@@ -507,7 +508,7 @@ export const enKnowledge = {
     matrixRange: 'Range',
     matrixCadence: 'Blow every',
     matrixFoot:
-      'A person has {hitpoints} health. The damage an animal takes from each weapon is on its card. The target has no combat experience.',
+      "A person has {hitpoints} health. A monster is a weresnake, a werewolf or a dragon; an animal's health is on its card. The target has no combat experience.",
     directions: { front: 'Front', backSide: 'Rear flank ×1.25', behind: 'Behind ×1.5' },
     armourName: 'Armour',
     armourWeight: 'Weight',

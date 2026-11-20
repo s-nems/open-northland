@@ -124,8 +124,6 @@ export interface KnowledgeWeapon {
   readonly typeId: number;
   readonly id: string;
   readonly jobType: number | null;
-  /** The job whose body draws the row: a trained form can borrow another class's look. */
-  readonly filmJob: number | null;
   readonly jobName: string | null;
   readonly goodType: number | null;
   readonly goodName: string | null;

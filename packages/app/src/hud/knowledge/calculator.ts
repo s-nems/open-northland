@@ -247,6 +247,7 @@ function skipOf(
       if (isRanged(weapon)) return 'ranged';
       return target.vehicle ? 'vehicle' : null;
     case 'direction':
+      return target.faced ? null : 'notPerson';
     case 'block':
       return target.person ? null : 'notPerson';
     case 'strength':

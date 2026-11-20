@@ -38,7 +38,7 @@ export const MILITARY: ArticleGroup = {
         {
           list: [
             'Die Erfahrung des Angreifers verstärkt keine Pfeile und Steine und keine Schläge gegen Fahrzeuge und Palisaden. Die Erfahrung des Ziels senkt jeden Schlag und Schuss auf einen Menschen.',
-            'Schlagrichtung und Verteidigungsamulett zählen nur bei Menschen. Beim Pfeil richtet sich die Richtung nach dem Ort, von dem er abgeschossen wurde.',
+            'Die Schlagrichtung zählt bei Menschen und Monstern, das Verteidigungsamulett nur bei Menschen. Beim Pfeil richtet sich die Richtung nach dem Ort, von dem er abgeschossen wurde.',
             'Ein Katapult kann kein Amulett der Stärke tragen.',
             'Palisaden rechnen Schaden anders: [[article:walls|Palisaden und Tore]].',
             'Kinder lassen sich nicht verwunden.',
@@ -48,7 +48,13 @@ export const MILITARY: ArticleGroup = {
           h: 'Unterschiede der Stämme',
         },
         {
-          p: 'Die Tabelle rechnet mit den Waffen des Stammes, dessen Wappen du oben im Fenster wählst. Der Drache, den die Zeile [[good:spear_wooden|Holzspeer]] bei den Byzantinern zeigt, hat {{dragon.hitpoints}} Gesundheit.',
+          p: 'Die Tabelle rechnet mit den Waffen des Stammes, dessen Wappen du oben im Fenster wählst. Die Waffe eines Soldaten macht in jedem Stamm denselben Schaden und reicht gleich weit; Helden haben eigene Werte.',
+        },
+        {
+          h: 'Tiere und Monster',
+        },
+        {
+          p: 'Die Spalte Tier zeigt, was ein wildes Tier abbekommt, die Spalte Monster, was ein Schlangenmensch, ein Werwolf oder ein Drache abbekommt. Ein Monster trägt weder Rüstung noch Amulett und hat keine Kampferfahrung; die Schlagrichtung zählt wie bei einem Menschen. Der Drache hat {{dragon.hitpoints}} Gesundheit. Kein Stamm bildet ihn aus: Ein Drache steht nur dort, wo eine Karte ihn hinstellt.',
         },
         {
           h: 'Rüstungen',

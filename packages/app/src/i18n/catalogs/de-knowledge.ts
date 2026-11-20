@@ -64,6 +64,7 @@ export const deKnowledge = {
     vehicle: 'Fahrzeug',
     building: 'Gebäude',
     animal: 'Tier',
+    monster: 'Monster',
   },
   entry: {
     notFound: 'Diesen Eintrag gibt es in den Daten dieses Spiels nicht.',
@@ -544,7 +545,7 @@ export const deKnowledge = {
     matrixRange: 'Reichweite',
     matrixCadence: 'Schlag alle',
     matrixFoot:
-      'Ein Mensch hat {hitpoints} Gesundheit. Welchen Schaden ein Tier von jeder Waffe nimmt, zeigt seine Karte. Das Ziel hat keine Kampferfahrung.',
+      'Ein Mensch hat {hitpoints} Gesundheit. Ein Monster ist ein Schlangenmensch, ein Werwolf oder ein Drache; die Gesundheit eines Tieres zeigt seine Karte. Das Ziel hat keine Kampferfahrung.',
     directions: {
       front: 'Vorne',
       backSide: 'Hintere Flanke ×1,25',

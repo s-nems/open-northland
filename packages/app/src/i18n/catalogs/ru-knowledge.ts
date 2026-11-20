@@ -59,6 +59,7 @@ export const ruKnowledge = {
     vehicle: 'Машина',
     building: 'Здание',
     animal: 'Животное',
+    monster: 'Монстр',
   },
   entry: {
     notFound: 'Такой статьи нет в данных этой игры.',
@@ -507,7 +508,7 @@ export const ruKnowledge = {
     matrixRange: 'Дальность',
     matrixCadence: 'Удар каждые',
     matrixFoot:
-      'Здоровье человека: {hitpoints}. Урон, который животное получает от каждого оружия, показан в его карточке. У цели нет боевого опыта.',
+      'Здоровье человека: {hitpoints}. Монстр - это змеелюд, оборотень или дракон; здоровье животного показано в его карточке. У цели нет боевого опыта.',
     directions: { front: 'Спереди', backSide: 'Сзади сбоку ×1,25', behind: 'Сзади ×1,5' },
     armourName: 'Доспехи',
     armourWeight: 'Вес',

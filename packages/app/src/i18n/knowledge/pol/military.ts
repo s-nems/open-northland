@@ -38,7 +38,7 @@ export const MILITARY: ArticleGroup = {
         {
           list: [
             'Doświadczenie atakującego nie wzmacnia strzał, kamieni ani ciosów w pojazdy i palisady. Doświadczenie celu zmniejsza każdy cios i strzał w człowieka.',
-            'Kierunek ciosu i Amulet Obrony liczą się tylko przy ludziach. Przy strzale kierunek liczy się od miejsca, z którego strzelano.',
+            'Kierunek ciosu liczy się przy ludziach i potworach, Amulet Obrony tylko przy ludziach. Przy strzale kierunek liczy się od miejsca, z którego strzelano.',
             'Katapulta nie może mieć Amuletu Siły.',
             'Palisada liczy obrażenia inaczej: [[article:walls|Palisady i bramy]].',
             'Dziecka nie da się zranić.',
@@ -48,7 +48,13 @@ export const MILITARY: ArticleGroup = {
           h: 'Różnice plemion',
         },
         {
-          p: 'Tabela liczy broń plemienia, którego herb wybierzesz u góry okna. Smok, którego u Bizantyjczyków pokazuje wiersz [[good:spear_wooden|Drewnianej Włóczni]], ma {{dragon.hitpoints}} zdrowia.',
+          p: 'Tabela liczy broń plemienia, którego herb wybierzesz u góry okna. Broń żołnierza zadaje te same obrażenia i sięga tak samo daleko w każdym plemieniu; bohaterowie mają własne wartości.',
+        },
+        {
+          h: 'Zwierzęta i potwory',
+        },
+        {
+          p: 'Kolumna Zwierzę to obrażenia dzikiego zwierzęcia, kolumna Potwór to obrażenia wężołaka, wilkołaka albo smoka. Potwór nie nosi zbroi ani amuletu i nie ma doświadczenia w walce; kierunek ciosu liczy się jak przy człowieku. Smok ma {{dragon.hitpoints}} zdrowia. Żadne plemię go nie szkoli: smok stoi tylko tam, gdzie postawi go mapa.',
         },
         {
           h: 'Pancerze',

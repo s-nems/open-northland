@@ -41,7 +41,7 @@ export const MILITARY: ArticleGroup = {
         {
           list: [
             "L'esperienza dell'attaccante non rafforza frecce, pietre né colpi contro veicoli e palizzate. L'esperienza del bersaglio riduce ogni colpo e tiro su una persona.",
-            "La direzione del colpo e l'Amuleto della difesa contano solo contro le persone. Per una freccia la direzione si calcola dal punto da cui è stata scoccata.",
+            "La direzione del colpo conta contro persone e mostri, l'Amuleto della difesa solo contro le persone. Per una freccia la direzione si calcola dal punto da cui è stata scoccata.",
             "Una catapulta non può ricevere l'Amuleto della forza.",
             'Una palizzata calcola il danno a modo suo: [[article:walls|Palizzate e cancelli]].',
             'I bambini non possono essere feriti.',
@@ -51,7 +51,13 @@ export const MILITARY: ArticleGroup = {
           h: 'Differenze tra le tribù',
         },
         {
-          p: 'La tabella considera le armi della tribù di cui scegli lo stemma in cima alla finestra. Il dragone che la riga [[good:spear_wooden|Lancia di legno]] mostra per i Bizantini ha {{dragon.hitpoints}} punti di salute.',
+          p: "La tabella considera le armi della tribù di cui scegli lo stemma in cima alla finestra. L'arma di un soldato fa lo stesso danno e arriva alla stessa distanza in ogni tribù; gli eroi hanno valori propri.",
+        },
+        {
+          h: 'Animali e mostri',
+        },
+        {
+          p: 'La colonna Animale è il danno che subisce un animale selvatico, la colonna Mostro quello che subisce un serpente mannaro, un lupo mannaro o un drago. Un mostro non porta armatura né amuleti e non ha esperienza in combattimento; la direzione del colpo conta come per una persona. Il drago ha {{dragon.hitpoints}} punti di salute. Nessuna tribù lo addestra: un drago si trova solo dove lo mette una mappa.',
         },
         {
           h: 'Armature',

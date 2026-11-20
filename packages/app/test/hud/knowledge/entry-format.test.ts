@@ -22,7 +22,6 @@ const weapon = (over: Partial<KnowledgeWeapon>): KnowledgeWeapon => ({
   typeId: 1,
   id: 'spear',
   jobType: 32,
-  filmJob: null,
   jobName: null,
   goodType: null,
   goodName: null,

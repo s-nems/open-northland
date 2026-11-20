@@ -1,7 +1,7 @@
 import { hexDistanceBetween, systems, TICKS_PER_SECOND } from '@open-northland/sim';
 import { VIKING } from '../../../catalog/buildings.js';
 import { FRANK } from '../../../catalog/civilizations.js';
-import { DRAGON_HITPOINTS } from '../../../catalog/creatures.js';
+import { MONSTER_TRIBE_DRAGON } from '../../../catalog/creatures.js';
 import {
   CLOSED_GATE_LOGIC_ID,
   POST_STRENGTH,
@@ -364,7 +364,9 @@ export const COMBAT_FACTS: Readonly<Record<string, Fact>> = {
   'tower2.mead': whole((base) => stockOf(base, 'tower_01', 'mead')),
   'tower2.food': whole((base) => stockOf(base, 'tower_01', 'food_simple')),
   'tower2.weapon': whole((base) => stockOf(base, 'tower_01', 'bow_short')),
-  'dragon.hitpoints': whole(DRAGON_HITPOINTS),
+  'dragon.hitpoints': whole(
+    (base) => base.content.tribes.find((t) => t.typeId === MONSTER_TRIBE_DRAGON)?.monster?.hitpoints,
+  ),
   'catapult.searchRadius': whole(systems.VEHICLE_SCAN_RADIUS_POINTS),
   'catapult.leash': whole(systems.VEHICLE_DEFENCE_LEASH_POINTS),
   'catapult.priorityReach': whole((base) => {

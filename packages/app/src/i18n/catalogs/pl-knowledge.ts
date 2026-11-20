@@ -59,6 +59,7 @@ export const plKnowledge = {
     vehicle: 'Pojazd',
     building: 'Budynek',
     animal: 'Zwierzę',
+    monster: 'Potwór',
   },
   entry: {
     notFound: 'Tego hasła nie ma w danych tej gry.',
@@ -508,7 +509,7 @@ export const plKnowledge = {
     matrixRange: 'Zasięg',
     matrixCadence: 'Cios co',
     matrixFoot:
-      'Człowiek ma {hitpoints} zdrowia. Obrażenia, jakie zwierzę dostaje od każdej broni, pokazuje jego karta. Cel nie ma doświadczenia w walce.',
+      'Człowiek ma {hitpoints} zdrowia. Potwór to wężołak, wilkołak albo smok; zdrowie zwierzęcia pokazuje jego karta. Cel nie ma doświadczenia w walce.',
     directions: { front: 'Przód', backSide: 'Bok z tyłu ×1,25', behind: 'Tył ×1,5' },
     armourName: 'Pancerz',
     armourWeight: 'Ciężar',

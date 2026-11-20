@@ -14,6 +14,7 @@ import {
   landed,
   perSecond,
   targetName,
+  weaponTableTargets,
 } from '../../../knowledge/combat.js';
 import { cadenceText, rangeText, requirementText } from '../../../knowledge/entry-format.js';
 import { formatFactNumber, lessonSeconds } from '../../../knowledge/facts/reader.js';
@@ -89,7 +90,7 @@ function cellValue(
 function matrixTable(context: KnowledgeContext, state: MatrixState): HTMLElement {
   const { base, art } = context;
   const copy = messages().knowledge.mechanics;
-  const targets = combatTargets(base);
+  const targets = weaponTableTargets(base);
   const groups = weaponGroups(base, context.tribe(), state.heroes);
   const peak = new Map(
     targets.map((target) => [

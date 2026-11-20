@@ -343,7 +343,6 @@ function weaponRow(joins: Joins, tribe: TribeType, w: WeaponType): KnowledgeWeap
     typeId: w.typeId,
     id: w.id,
     jobType: w.jobType ?? null,
-    filmJob: w.jobType ?? null,
     jobName: w.jobType === undefined ? null : jobNameByType(w.jobType),
     goodType: w.goodType === undefined ? null : shownType(w.goodType),
     goodName: w.goodType === undefined ? null : goodNameOf(w.goodType),

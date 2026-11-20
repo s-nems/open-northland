@@ -11,6 +11,7 @@ import {
   HUMAN_HITPOINTS,
   hitsToKill,
   landed,
+  MONSTER_TARGET,
   NO_MODIFIERS,
   perSecond,
   secondsForHits,
@@ -33,7 +34,6 @@ const weapon = (over: Partial<KnowledgeWeapon> = {}): KnowledgeWeapon => ({
   typeId: 1,
   id: 'iron_spear',
   jobType: 33,
-  filmJob: null,
   jobName: null,
   goodType: 40,
   goodName: null,
@@ -81,6 +81,12 @@ describe('landed', () => {
 
   it('gives an animal the leather column with no blocking', () => {
     expect(landed(weapon(), ANIMAL_TARGET)).toBe(80);
+  });
+
+  it('gives a monster its own column, else the bare one, turned by direction and taking no defence amulet', () => {
+    const behind = { ...NO_MODIFIERS, direction: HIT_DIRECTION.behind, defense: true };
+    expect(landed(weapon({ damage: { '0': 100, '9': 60 } }), MONSTER_TARGET, behind)).toBe(90);
+    expect(landed(weapon(), MONSTER_TARGET)).toBe(100);
   });
 
   it('gives a vehicle the bare column of the weapon, no experience', () => {
