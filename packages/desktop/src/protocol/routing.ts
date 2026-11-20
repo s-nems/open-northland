@@ -35,12 +35,22 @@ export function externalPageUrl(url: string): string | null {
 
 /** The environment variable that points the game at another map catalogue server. */
 export const API_URL_ENV = 'ON_API_URL';
+/** The environment variable that points the menu's release feed at another website. */
+export const SITE_URL_ENV = 'ON_SITE_URL';
 
-/** The first page with the catalogue server override as the app's `?api=` parameter, when one is set. */
-export function initialGameUrl(gameUrl: string, apiOverride: string | undefined): string {
-  const api = apiOverride === undefined ? null : externalPageUrl(apiOverride);
-  if (api === null) return gameUrl;
+/** The first page with the server overrides as the app's `?api=` and `?site=` parameters, when set. */
+export function initialGameUrl(
+  gameUrl: string,
+  apiOverride: string | undefined,
+  siteOverride?: string | undefined,
+): string {
   const url = new URL(gameUrl);
-  url.searchParams.set('api', api);
+  for (const [param, raw] of [
+    ['api', apiOverride],
+    ['site', siteOverride],
+  ] as const) {
+    const override = raw === undefined ? null : externalPageUrl(raw);
+    if (override !== null) url.searchParams.set(param, override);
+  }
   return url.toString();
 }

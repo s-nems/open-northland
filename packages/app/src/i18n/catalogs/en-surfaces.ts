@@ -24,6 +24,15 @@ export const enSurfaces = {
     comingSoon: 'coming soon',
     comingSoonTip: 'Coming soon',
     fullscreenPrompt: 'For a better experience, play in fullscreen',
+    news: {
+      heading: 'News',
+      updateAvailable: 'New version {version} available',
+      download: 'Download',
+      more: 'More',
+      live: 'On now',
+      releases: 'Recent releases',
+      changelog: 'Changelog',
+    },
     originalGame: {
       message: 'The game needs one of these games installed:',
       games: ['Cultures 2: The Gates of Asgard', 'Cultures: Northland', 'Cultures - 8th Wonder of the World'],

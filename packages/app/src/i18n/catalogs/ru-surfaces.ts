@@ -23,6 +23,15 @@ export const ruSurfaces = {
     comingSoon: 'Скоро',
     comingSoonTip: 'Скоро появится',
     fullscreenPrompt: 'Для удобства играйте в полноэкранном режиме',
+    news: {
+      heading: 'Новости',
+      updateAvailable: 'Доступна новая версия {version}',
+      download: 'Скачать',
+      more: 'Подробнее',
+      live: 'Идёт сейчас',
+      releases: 'Последние версии',
+      changelog: 'Список изменений',
+    },
     originalGame: {
       message: 'Для игры должна быть установлена одна из этих игр:',
       games: ['Cultures 2: Врата Асгарда', 'Cultures: Northland', 'Cultures: Восьмое чудо света'],

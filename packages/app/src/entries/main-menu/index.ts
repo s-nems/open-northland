@@ -32,6 +32,9 @@ import {
 } from './model.js';
 import { startMenuMusic } from './music.js';
 import { networkScreen } from './network/index.js';
+import type { MenuNews } from './news/model.js';
+import { mountNewsPanel } from './news/panel.js';
+import { loadMenuNews } from './news/source.js';
 import { originalGameGateScreen } from './original-game/gate-screen.js';
 import { loadScreen } from './saves/load-screen.js';
 import { settingsScreen } from './settings/screen.js';
@@ -58,8 +61,10 @@ function navButton(item: MainNavItem, open: (screen: MenuScreen) => void): HTMLB
   return button;
 }
 
-function mainScreen(open: (screen: MenuScreen) => void): HTMLElement {
+function mainScreen(open: (screen: MenuScreen) => void, news: Promise<MenuNews>): MountedScreen {
   const copy = messages().mainMenu;
+  const screen = document.createElement('div');
+  screen.className = 'main-menu__main';
   const home = document.createElement('div');
   home.className = 'main-menu__home';
 
@@ -87,7 +92,8 @@ function mainScreen(open: (screen: MenuScreen) => void): HTMLElement {
   for (const item of mainNavFor(servedByBrowser())) nav.append(navButton(item, open));
 
   home.append(brand, nav);
-  return home;
+  screen.append(home);
+  return { element: screen, dispose: mountNewsPanel(screen, news) };
 }
 
 export async function renderMainMenu(canvas: HTMLCanvasElement, params: URLSearchParams): Promise<void> {
@@ -100,6 +106,8 @@ export async function renderMainMenu(canvas: HTMLCanvasElement, params: URLSearc
   await tribeNames;
   // Owns the handlers this module binds outside `root`, so `closeMenu` releases them in one step.
   const scope = new AbortController();
+  // Fetched once per menu: every return to the main screen rebuilds it from this answer.
+  const news = loadMenuNews(scope.signal);
   // A graphics change in the settings warms its programs before a map needs them.
   onSettingsChange(warmGraphicsInBackground, scope.signal);
   // Through the menu's own writer, so the settings session it caches stays in step with the store.
@@ -183,7 +191,7 @@ export async function renderMainMenu(canvas: HTMLCanvasElement, params: URLSearc
   const screenFor = (next: MenuScreen): MountedScreen => {
     switch (next) {
       case 'main':
-        return { element: mainScreen(show) };
+        return mainScreen(show, news);
       case 'newGame':
         return mapSelectScreen(show, mapSelectMemory, openLobby, launch, sound.silenceMusic);
       case 'catalogue':

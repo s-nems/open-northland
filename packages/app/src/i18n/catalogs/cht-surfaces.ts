@@ -24,6 +24,15 @@ export const chtSurfaces = {
     comingSoon: '即將推出',
     comingSoonTip: '即將推出',
     fullscreenPrompt: '切換至全螢幕，享受更好的遊戲體驗',
+    news: {
+      heading: '新聞',
+      updateAvailable: '新版本 {version} 已發布',
+      download: '下載',
+      more: '詳情',
+      live: '正在進行',
+      releases: '最近版本',
+      changelog: '更新日誌',
+    },
     originalGame: {
       message: '本遊戲需要安裝以下其中一款遊戲：',
       games: ['Cultures 2: The Gates of Asgard', 'Cultures: Northland', 'Cultures - 8th Wonder of the World'],

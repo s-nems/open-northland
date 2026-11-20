@@ -14,7 +14,7 @@ export function catalogRequestSignal(signal?: AbortSignal): AbortSignal {
   return signal === undefined ? deadline : AbortSignal.any([signal, deadline]);
 }
 
-const API_PARAM = 'api';
+export const API_PARAM = 'api';
 const WEB_PROTOCOLS: readonly string[] = ['http:', 'https:'];
 
 /** An http(s) origin and path without the trailing slash, or null for anything else. */

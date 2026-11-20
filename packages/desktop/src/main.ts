@@ -23,7 +23,7 @@ import {
   writeOriginalGameState,
 } from './original-game/state.js';
 import { CONTENT_DIR_ENV, faultsRoot, installedMapsRoot, resolveShellRoots } from './paths.js';
-import { API_URL_ENV, initialGameUrl } from './protocol/routing.js';
+import { API_URL_ENV, initialGameUrl, SITE_URL_ENV } from './protocol/routing.js';
 import { GAME_URL, handleAppProtocol, registerAppScheme } from './protocol/scheme.js';
 import { createWindow } from './window/create.js';
 import { WINDOW_STATE_FILE } from './window/state.js';
@@ -77,7 +77,7 @@ if (app.requestSingleInstanceLock()) {
     mainWindow = createWindow({
       statePath: join(userData, WINDOW_STATE_FILE),
       mapsRoot,
-      startUrl: initialGameUrl(GAME_URL, process.env[API_URL_ENV]),
+      startUrl: initialGameUrl(GAME_URL, process.env[API_URL_ENV], process.env[SITE_URL_ENV]),
       originalGame,
       faults,
       cursorHold: cursorConfineWanted(app.isPackaged, process.env)

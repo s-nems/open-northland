@@ -1,0 +1,201 @@
+/* The main screen's news panel (news/panel.ts), in the top-left corner above the brand block: on its
+   left edge, as far from the top as the block stands from the bottom (menu.css .main-menu__home). */
+
+.main-menu__news {
+  /* The brand block's height in design units: eyebrow 19 + 20, logo 336, version 28 + 18. */
+  --news-brand-height: 421;
+  --news-edge: 96;
+  /* Space kept free above the brand block; it also holds an eyebrow that wraps to a second line. */
+  --news-brand-gap: 40;
+  --news-block-gap: 18;
+  position: absolute;
+  top: calc(var(--u) * var(--news-edge));
+  left: calc(var(--u) * 120);
+  width: calc(var(--u) * 460);
+  max-height: calc(
+    100% -
+    var(--u) *
+    (2 * var(--news-edge) + var(--news-brand-height) + var(--news-brand-gap))
+  );
+  /* A capped column that wraps moves each block that no longer fits into a second column, which the
+     clip hides: a short window drops whole blocks instead of cutting one. */
+  display: flex;
+  flex-flow: column wrap;
+  gap: calc(var(--u) * var(--news-block-gap));
+  overflow: hidden;
+}
+
+/* An empty first column, so even the first block can wrap away instead of standing clipped. */
+.main-menu__news::before {
+  content: "";
+  width: 100%;
+  margin-bottom: calc(var(--u) * var(--news-block-gap) * -1);
+}
+
+.main-menu__news > *,
+.main-menu__news-lead > * {
+  flex: none;
+  box-sizing: border-box;
+  width: 100%;
+}
+
+.main-menu__news.is-entering {
+  animation: main-menu-fade 220ms ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .main-menu__news.is-entering {
+    animation: none;
+  }
+}
+
+/* The heading travels with the first block, so it never stands alone. */
+.main-menu__news-lead {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--u) * var(--news-block-gap));
+}
+
+.main-menu__news-heading {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--u) * 14);
+  font: 500 calc(var(--u) * 17) / 1 var(--font-body);
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--text-label);
+}
+
+.main-menu__news-heading::before {
+  content: "";
+  flex: none;
+  width: calc(var(--u) * 8);
+  height: calc(var(--u) * 8);
+  background: var(--accent);
+  transform: rotate(45deg);
+}
+
+.main-menu__news-notice {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: calc(var(--u) * 16);
+  padding: calc(var(--u) * 12) calc(var(--u) * 16);
+  border: 1px solid rgb(var(--accent-rgb) / 0.55);
+  border-radius: 6px;
+  background: rgb(var(--accent-rgb) / 0.16);
+  font: 500 calc(var(--u) * 20) / 1.25 var(--font-body);
+  color: var(--accent-bright);
+}
+
+.main-menu__news-download {
+  flex: none;
+  padding: calc(var(--u) * 8) calc(var(--u) * 16);
+  border: 2px solid rgb(var(--accent-rgb) / 0.7);
+  border-radius: 6px;
+  font: 600 calc(var(--u) * 18) / 1 var(--font-body);
+  color: var(--accent-bright);
+  text-decoration: none;
+  transition:
+    background-color 150ms ease-out,
+    border-color 150ms ease-out;
+}
+
+.main-menu__news-download:hover,
+.main-menu__news-download:focus-visible {
+  background: rgb(var(--accent-rgb) / 0.25);
+  border-color: var(--accent);
+}
+
+.main-menu__news-entry {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: calc(var(--u) * 4);
+  padding-left: calc(var(--u) * 18);
+  border-left: 2px solid rgb(var(--accent-rgb) / 0.45);
+}
+
+.main-menu__news-when {
+  font: 600 calc(var(--u) * 15) / 1.2 var(--font-body);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--accent-bright);
+}
+
+.main-menu__news-title,
+.main-menu__news-text {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+}
+
+.main-menu__news-title {
+  font: 600 calc(var(--u) * 24) / 1.25 var(--font-body);
+  color: var(--text-primary);
+}
+
+.main-menu__news-text {
+  margin: 0;
+  font: 400 calc(var(--u) * 18) / 1.35 var(--font-body);
+  color: var(--text-muted);
+}
+
+.main-menu__news-link,
+.main-menu__news-changelog {
+  font: 500 calc(var(--u) * 18) / 1.2 var(--font-body);
+  color: var(--text-body);
+  text-decoration: none;
+  border-bottom: 2px solid rgb(var(--accent-rgb) / 0.4);
+  transition:
+    color 150ms ease-out,
+    border-color 150ms ease-out;
+}
+
+.main-menu__news-link:hover,
+.main-menu__news-link:focus-visible,
+.main-menu__news-changelog:hover,
+.main-menu__news-changelog:focus-visible {
+  color: var(--accent-bright);
+  border-bottom-color: var(--accent);
+}
+
+.main-menu__news-releases {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--u) * 10);
+}
+
+.main-menu__news-releases-heading {
+  font: 600 calc(var(--u) * 14) / 1 var(--font-body);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--text-label);
+}
+
+.main-menu__news-release-list {
+  display: grid;
+  grid-template-columns: repeat(3, max-content);
+  align-items: baseline;
+  gap: calc(var(--u) * 6) calc(var(--u) * 18);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.main-menu__news-release {
+  display: contents;
+}
+
+.main-menu__news-version {
+  font: 600 calc(var(--u) * 19) / 1.2 var(--font-body);
+  color: var(--text-primary);
+}
+
+.main-menu__news-date {
+  font: 400 calc(var(--u) * 17) / 1.2 var(--font-body);
+  color: var(--text-muted);
+}

@@ -18,10 +18,13 @@ import {
   type CatalogEntry,
   type CatalogKind,
   catalogBrowseEntry,
+  EMPTY_NEWS_DOCUMENT,
   type MapsIndexEntry,
   type MapsIndexPlayerSlot,
   type MapTextLanguage,
   mapDocumentsFingerprint,
+  RELEASE_FEED_SCHEMA_VERSION,
+  type ReleaseFeed,
 } from '@open-northland/data';
 import { IR_VERSION } from '@open-northland/data/ir-version';
 
@@ -32,6 +35,12 @@ const TERRAIN_HEAD_BYTES = 256;
 const BYTES_PER_MB = 1024 * 1024;
 /** The campaign slot a pack's sub maps carry, as a converted campaign's do. */
 const MOCK_CAMPAIGN_ID = 7;
+/** Answers the menu's release feed as well, for a page that names this server with `?site=`. */
+const EMPTY_RELEASE_FEED: ReleaseFeed = {
+  schema: RELEASE_FEED_SCHEMA_VERSION,
+  download: { en: 'https://example.org/download/' },
+  releases: [],
+};
 
 interface MapSpec {
   /** The seats the map offers; steers which shipped map a content-backed copy takes. */
@@ -550,6 +559,8 @@ function serve(port: number, catalogue: ReturnType<typeof mockCatalogue>): void 
       return send(catalogue.republish(republish[1] ?? '') ? 200 : 404, '{}');
     if (url.pathname === '/v1/catalog')
       return send(200, JSON.stringify(catalogue.entries.map(catalogBrowseEntry)));
+    if (url.pathname === '/v1/news') return send(200, JSON.stringify(EMPTY_NEWS_DOCUMENT));
+    if (url.pathname === '/releases/feed.json') return send(200, JSON.stringify(EMPTY_RELEASE_FEED));
     const thumbnail = /^\/v1\/maps\/([^/]+)\/thumbnail$/.exec(url.pathname);
     if (thumbnail !== null) {
       const png = catalogue.thumbnail(thumbnail[1] ?? '');

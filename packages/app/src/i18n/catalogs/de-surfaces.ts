@@ -23,6 +23,15 @@ export const deSurfaces = {
     comingSoon: 'Demnächst',
     comingSoonTip: 'Demnächst verfügbar',
     fullscreenPrompt: 'Am besten spielst du im Vollbildmodus',
+    news: {
+      heading: 'Neuigkeiten',
+      updateAvailable: 'Neue Version {version} verfügbar',
+      download: 'Herunterladen',
+      more: 'Mehr',
+      live: 'Läuft gerade',
+      releases: 'Letzte Versionen',
+      changelog: 'Änderungen',
+    },
     originalGame: {
       message: 'Zum Spielen muss eines dieser Spiele installiert sein:',
       games: ['Cultures 2: Die Tore Asgards', 'Cultures: Northland', 'Cultures: 8. Weltwunder'],

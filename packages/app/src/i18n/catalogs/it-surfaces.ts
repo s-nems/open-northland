@@ -23,6 +23,15 @@ export const itSurfaces = {
     comingSoon: 'in arrivo',
     comingSoonTip: 'In arrivo',
     fullscreenPrompt: "Per un'esperienza migliore, gioca a schermo intero",
+    news: {
+      heading: 'Novità',
+      updateAvailable: 'Nuova versione {version} disponibile',
+      download: 'Scarica',
+      more: 'Altro',
+      live: 'In corso',
+      releases: 'Ultime versioni',
+      changelog: 'Note di rilascio',
+    },
     originalGame: {
       message: 'Il gioco richiede che sia installato uno di questi giochi:',
       games: ['Cultures 2: The Gates of Asgard', 'Cultures: Northland', 'Cultures - 8th Wonder of the World'],

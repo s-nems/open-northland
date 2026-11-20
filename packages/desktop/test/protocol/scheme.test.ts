@@ -71,12 +71,15 @@ describe('links the game opens', () => {
     expect(externalPageUrl('not a url')).toBeNull();
   });
 
-  it('passes a catalogue server override to the first page as ?api=', () => {
+  it('passes the server overrides to the first page as ?api= and ?site=', () => {
     const game = 'app://game/index.html';
     expect(initialGameUrl(game, undefined)).toBe(game);
     expect(initialGameUrl(game, 'file:///x')).toBe(game);
     expect(initialGameUrl(game, 'http://127.0.0.1:8790')).toBe(
       'app://game/index.html?api=http%3A%2F%2F127.0.0.1%3A8790%2F',
+    );
+    expect(initialGameUrl(game, undefined, 'http://127.0.0.1:8791')).toBe(
+      'app://game/index.html?site=http%3A%2F%2F127.0.0.1%3A8791%2F',
     );
   });
 });

@@ -24,6 +24,15 @@ export const plSurfaces = {
     comingSoon: 'wkrótce',
     comingSoonTip: 'Wkrótce',
     fullscreenPrompt: 'Włącz pełny ekran',
+    news: {
+      heading: 'Nowości',
+      updateAvailable: 'Dostępna nowa wersja {version}',
+      download: 'Pobierz',
+      more: 'Więcej',
+      live: 'Trwa teraz',
+      releases: 'Ostatnie wersje',
+      changelog: 'Lista zmian',
+    },
     originalGame: {
       message: 'Do gry potrzebna jest zainstalowana jedna z gier:',
       games: ['Cultures 2: Bramy Asgardu', 'Cultures: Northland', 'Cultures: 8. Cud Świata'],

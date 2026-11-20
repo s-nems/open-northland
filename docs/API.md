@@ -175,6 +175,11 @@ Check a file before publishing it, with the server's own validator:
 node packages/api/dist/news/check.js news.json   # exit 0: "ok: <n> entries"; exit 1: reason on stderr
 ```
 
+The main menu reads `/v1/news` and the website's `releases/feed.json` once per menu session. The
+feed comes from `?site=`, else `https://opennorthland.org`; the desktop shell forwards `ON_SITE_URL`
+as `?site=` as it does `ON_API_URL` as `?api=`. A browser under automation (`navigator.webdriver`)
+reads each source only when its parameter names a server.
+
 ## Bug reports
 
 The game posts `ReportUpload` (`packages/data`) as gzipped JSON with `Content-Type: text/plain`, a
