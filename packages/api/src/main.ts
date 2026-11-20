@@ -1,3 +1,4 @@
+import { join } from 'node:path';
 import { IR_VERSION } from '@open-northland/data/ir-version';
 import { loadTranslationOverlays } from '@open-northland/translations';
 import { normalizeRecords } from './catalog/normalize.js';
@@ -8,6 +9,8 @@ import { ConversionService } from './conversion/service.js';
 import { ConversionStore } from './conversion/store.js';
 import { WorkerArchiveConverter } from './conversion/worker-converter.js';
 import { errorMessage, logLine } from './log.js';
+import { NEWS_FILE_NAME } from './news/document.js';
+import { NewsFile } from './news/news-file.js';
 import { ReportEndpoint } from './reports/endpoint.js';
 import { type ApiServer, startApiServer } from './server.js';
 import { DataStore } from './store.js';
@@ -36,6 +39,7 @@ try {
     content: conversions,
     files: conversions,
     reports,
+    news: new NewsFile(join(config.dataDir, NEWS_FILE_NAME), logLine),
     log: logLine,
   });
   // The last good catalogue serves at once and converts from the kept archives; the first sync

@@ -5,8 +5,8 @@ Read the root contract first. Run/configuration and endpoint documentation live 
 
 - `catalog/` owns upstream normalization and synchronization; `conversion/` owns archive download,
   conversion scheduling and durable generations; `http/` owns HTTP responses and file streaming;
-  `reports/` owns bug report intake, limits and storage. `server.ts` owns routing and lifecycle. Keep the upstream's schema out of client-facing contracts.
-- `test/` mirrors `catalog/`, `conversion/`, `http/`, `reports/`, `upstream/` and `upstream-mock/`; `server.ts`,
+  `reports/` owns bug report intake, limits and storage; `news/` owns the menu news file and its check CLI. `server.ts` owns routing and lifecycle. Keep the upstream's schema out of client-facing contracts.
+- `test/` mirrors `catalog/`, `conversion/`, `http/`, `news/`, `reports/`, `upstream/` and `upstream-mock/`; `server.ts`,
   config and end-to-end tests stay at its root, fixtures in `test/support/`.
 - API contracts belong in `packages/data`. Decode formats in `packages/formats` and share map
   conversion through `packages/map-import`; do not duplicate them here or run game simulation.

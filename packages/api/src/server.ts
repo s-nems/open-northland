@@ -7,15 +7,19 @@ import { ArchiveVerificationBusyError } from './conversion/archive-verifier.js';
 import { serveContent, serveKeptFile } from './http/files.js';
 import { pathOf, send, sendError, V1_HEADERS } from './http/response.js';
 import type { ContentSource, KeptFileSource } from './http/sources.js';
+import type { NewsFile } from './news/news-file.js';
 import { type ReportEndpoint, type ReportsHealth, reportTargetOf } from './reports/endpoint.js';
 import type { DataStore } from './store.js';
 
 export const HEALTH_PATH = '/healthz';
 const CATALOG_PATH = '/v1/catalog';
+const NEWS_PATH = '/v1/news';
 const MAP_PATH = /^\/v1\/maps\/([^/]+)(?:\/(thumbnail|file))?$/;
 const CONTENT_PATH = /^\/v1\/content\/([^/]+)\/maps\/([^/]+)$/;
 const CATALOG_CACHE = 'public, max-age=300';
 const THUMBNAIL_CACHE = 'public, max-age=86400';
+const NEWS_MAX_AGE_SECONDS = 60;
+const NEWS_CACHE = `public, max-age=${NEWS_MAX_AGE_SECONDS}`;
 const MS_PER_SECOND = 1000;
 const REQUEST_TIMEOUT_MS = 10_000;
 const HEADERS_TIMEOUT_MS = 5000;
@@ -58,6 +62,8 @@ export interface ApiServerOptions {
   readonly files?: KeptFileSource;
   /** Takes `POST /v1/reports[/<id>]`; without it those paths answer like any other `/v1` route. */
   readonly reports?: ReportEndpoint;
+  /** Serves `/v1/news`; without it that path answers like an unknown `/v1` route. */
+  readonly news?: Pick<NewsFile, 'current'>;
   readonly log?: Log;
   readonly now?: () => Date;
 }
@@ -114,6 +120,13 @@ export function startApiServer(options: ApiServerOptions): Promise<ApiServer> {
     const content = CONTENT_PATH.exec(path);
     if (content?.[1] !== undefined && content[2] !== undefined) {
       await serveContent(options.content, request, response, content[1], content[2]);
+      return;
+    }
+    if (path === NEWS_PATH && options.news !== undefined) {
+      send(request, response, OK, await options.news.current(), {
+        ...V1_HEADERS,
+        'cache-control': NEWS_CACHE,
+      });
       return;
     }
     if (snapshot === null) {

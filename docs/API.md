@@ -99,6 +99,7 @@ All resource routes accept `GET` and `HEAD`; the report routes accept only `POST
 | `/v1/maps/<id>/thumbnail` | Screenshot or 404 |
 | `/v1/maps/<id>/file` | Original archive as an attachment, or 404 |
 | `/v1/content/<irVersion>/maps/<mapId><suffix>` | Converted map file; another IR version returns 404 and names the served version |
+| `/v1/news` | The main menu's news, `NewsDocument`; see [news](#news) |
 | `POST /v1/reports`, `POST /v1/reports/<id>` | A bug report and its addendum; see [bug reports](#bug-reports) |
 
 Map suffixes: `.json`, `.meta.json`, `.strings.json`, `.script.json`, `.briefing.json`, `.png` and
@@ -124,6 +125,7 @@ All paths are relative to `ON_API_DATA_DIR`. The default `.api-data/` is gitigno
 | Path | Content |
 | --- | --- |
 | `catalog.json` | Last good normalized catalogue |
+| `news.json` | The main menu's news, written by the operator; see [news](#news) |
 | `raw/<page>.json` | Upstream pages |
 | `thumbnails/<id>` and `<id>.json` | Screenshot and metadata: content type, `updatedAt`, SHA-256 |
 | `archives/<id>/<sha256>.<ext>` and `source.json` | Original archive, source URL and `updatedAt` |
@@ -134,6 +136,44 @@ On an IR version change, the API deletes old converted versions and rebuilds fro
 Removed catalogue entries lose their archive and conversion. A replacement writes a complete
 new generation before atomically replacing its manifest; existing readers keep their open files.
 Incompatible manifests trigger reconversion.
+
+## News
+
+`/v1/news` serves `<ON_API_DATA_DIR>/news.json` (`/data/news.json` in the image), validated by
+`NewsDocument` in `packages/data`:
+
+```json
+{
+  "schema": 1,
+  "entries": [
+    {
+      "title": { "eng": "Showmatch tonight", "pol": "Showmatch dziś wieczorem" },
+      "text": { "eng": "Two clans, one island." },
+      "link": { "url": "https://example.org/stream", "label": { "eng": "Watch" } },
+      "startsAt": "2026-11-25T19:00:00+01:00",
+      "until": "2026-11-25T23:00:00+01:00"
+    }
+  ]
+}
+```
+
+Only `title` is required. Texts are keyed by game language code and need `eng`. Dates carry an
+offset or `Z`, and `until` follows `startsAt`. Links are `https:`. Unknown keys are refused. At most
+20 entries and 64 KiB; titles 80, texts 280 and link labels 40 characters.
+
+- A missing file serves `{ "schema": 1, "entries": [] }`.
+- Each request compares the file's inode, size and modification time; a change is read on that
+  request, so an edit or an atomic rename needs no restart.
+- An invalid file keeps the last good news (none since start: the empty document) and logs one
+  `news refused` event with the reason per file identity.
+- `Cache-Control: public, max-age=60`; ETag, 304 and CORS as for the other `/v1` reads. The server
+  does not filter by date; the game decides which entries show.
+
+Check a file before publishing it, with the server's own validator:
+
+```bash
+node packages/api/dist/news/check.js news.json   # exit 0: "ok: <n> entries"; exit 1: reason on stderr
+```
 
 ## Bug reports
 

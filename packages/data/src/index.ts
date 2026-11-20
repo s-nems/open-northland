@@ -24,6 +24,9 @@ export * from './schema/catalog/conversion.js';
 export * from './schema/catalog/entry.js';
 export * from './schema/catalog/id.js';
 export * from './schema/index.js';
+export * from './schema/news/news.js';
+export * from './schema/news/release-feed.js';
+export type { Validated } from './schema/news/validated.js';
 export * from './schema/report/report.js';
 export * from './technology.js';
 
