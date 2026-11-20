@@ -33,6 +33,9 @@ import { flatRamp, syntheticLane, TEST_BASE } from '../../support/human-palettes
  * draw list, and its bound pose covers by the same rules.
  */
 
+/** The alphas of the entities drawn into `layer`, most faded first. */
+const alphasOf = (layer: Container): number[] => layer.children.map((c) => c.alpha).sort((a, b) => a - b);
+
 const FLAT: ElevationField = { maxLift: 0, liftAt: () => 0, liftAtNode: () => 0 };
 const CAMERA = { offsetX: 0, offsetY: 0 };
 const EVERYTHING = { minX: -1e9, maxX: 1e9, minY: -1e9, maxY: 1e9 };
@@ -323,33 +326,15 @@ describe('SpritePool - a unit a standing sprite hides shows as an occlusion ghos
     pool.destroy();
   });
 
-  it('fades every occluder in view while the reveal toggle is on, and restores them', () => {
-    const layer = new Container();
-    const pool = new SpritePool(layer, new TextureCache(), undefined);
-    pool.reconcile({ ...frame(snapshotOf([settler(1, 0, 0), house(2, 0, 0.4)])), fadeOccluders: true });
-    expect(pool.containerOf(2)?.alpha).toBe(OCCLUDER_FADE_ALPHA);
-    // The hidden unit itself stays opaque, and so does a building that hides nobody.
-    expect(pool.containerOf(1)?.alpha).toBe(1);
-    pool.reconcile({ ...frame(snapshotOf([settler(1, 0, 0), house(2, 0, 0.4)])), tick: 1 });
-    expect(pool.containerOf(2)?.alpha).toBe(1);
-    pool.destroy();
-  });
-
   it('fades every occluder on the screen while the reveal toggle is on, covered or not', () => {
     const layer = new Container();
     const pool = new SpritePool(layer, new TextureCache(), undefined);
-    // A house and a tree in the open hide nobody: the per-unit asks leave them plain, the toggle
-    // fades them with everything else.
+    // A house and a tree in the open hide nobody; the unit itself is no occluder and stays opaque.
     const open = snapshotOf([settler(1, 0, 0), house(2, 0, -0.4), tree(3, 4, -0.4)]);
     pool.reconcile({ ...frame(open), fadeOccluders: true });
-    expect(pool.containerOf(2)?.alpha).toBe(OCCLUDER_FADE_ALPHA);
-    expect(pool.containerOf(3)?.alpha).toBe(OCCLUDER_FADE_ALPHA);
-    // The unit itself is no occluder and stays opaque.
-    expect(pool.containerOf(1)?.alpha).toBe(1);
-    // Toggling off restores everything.
+    expect(alphasOf(layer)).toEqual([OCCLUDER_FADE_ALPHA, OCCLUDER_FADE_ALPHA, 1]);
     pool.reconcile({ ...frame(open), tick: 1 });
-    expect(pool.containerOf(2)?.alpha).toBe(1);
-    expect(pool.containerOf(3)?.alpha).toBe(1);
+    expect(alphasOf(layer)).toEqual([1, 1, 1]);
     pool.destroy();
   });
 
@@ -358,28 +343,39 @@ describe('SpritePool - a unit a standing sprite hides shows as an occlusion ghos
     const pool = new SpritePool(layer, new TextureCache(), undefined);
     const lonely = snapshotOf([house(2, 0, 0), tree(3, 4, 0)]);
     pool.reconcile({ ...frame(lonely), fadeOccluders: true });
-    expect(pool.containerOf(2)?.alpha).toBe(OCCLUDER_FADE_ALPHA);
-    expect(pool.containerOf(3)?.alpha).toBe(OCCLUDER_FADE_ALPHA);
-    // No unit drew, so no ghost stamp rides along.
+    expect(alphasOf(layer)).toEqual([OCCLUDER_FADE_ALPHA, OCCLUDER_FADE_ALPHA]);
     expect(pool.occlusionGhosts.container.children.length).toBe(0);
     pool.reconcile({ ...frame(lonely), tick: 1 });
-    expect(pool.containerOf(2)?.alpha).toBe(1);
-    expect(pool.containerOf(3)?.alpha).toBe(1);
+    expect(alphasOf(layer)).toEqual([1, 1]);
     pool.destroy();
   });
 
-  it('leaves every occluder opaque however a covered unit is selected, the marks riding alone', () => {
+  it('fades the covers with both mark settings off, and stamps no ghost', () => {
     const layer = new Container();
     const pool = new SpritePool(layer, new TextureCache(), undefined);
-    // Only the reveal toggle fades a cover: a selection draws the unit's ghost marks and nothing else.
-    pool.reconcile({
-      ...frame(snapshotOf([settler(1, 0, 0), house(2, 0, 0.4), house(3, 4, 0.4)])),
-      tick: 1,
-      selection: new Set([1]),
+    const covered = snapshotOf([settler(1, 0, 0), house(2, 0, 0.4)]);
+    const unmarked = { ...frame(covered), occlusionOutline: false };
+    pool.reconcile({ ...unmarked, fadeOccluders: true });
+    expect(alphasOf(layer)).toEqual([OCCLUDER_FADE_ALPHA, 1]);
+    expect(pool.occlusionGhosts.container.children.length).toBe(0);
+    pool.reconcile({ ...unmarked, tick: 1 });
+    expect(alphasOf(layer)).toEqual([1, 1]);
+    pool.destroy();
+  });
+
+  it('shows an inset the world without the ghosts and the fades, then puts both back', () => {
+    const layer = new Container();
+    const pool = new SpritePool(layer, new TextureCache(), undefined);
+    const covered = snapshotOf([settler(1, 0, 0), house(2, 0, 0.4)]);
+    pool.reconcile({ ...frame(covered), fadeOccluders: true });
+    const view = { camera: CAMERA, width: 800, height: 600 };
+    let seen: { ghosts: number; world: number[] } | undefined;
+    pool.portraitPass([1], view, view, () => {
+      seen = { ghosts: pool.occlusionGhosts.container.alpha, world: alphasOf(layer) };
     });
-    expect(pool.containerOf(2)?.alpha).toBe(1);
-    expect(pool.containerOf(3)?.alpha).toBe(1);
-    expect(pool.occlusionGhosts.container.children[0]?.alpha).toBe(1);
+    expect(seen).toEqual({ ghosts: 0, world: [1, 1] });
+    expect(pool.occlusionGhosts.container.alpha).toBe(1);
+    expect(alphasOf(layer)).toEqual([OCCLUDER_FADE_ALPHA, 1]);
     pool.destroy();
   });
 
@@ -407,17 +403,6 @@ describe('SpritePool - a unit a standing sprite hides shows as an occlusion ghos
     expect(faded).toBe(OCCLUDER_FADE_ALPHA);
     pool.reconcile({ ...frame(snapshotOf([settler(1, 0, 0)])), tick: 2, staticOccluders: [crown] });
     expect(faded).toBe(undefined);
-    pool.destroy();
-  });
-
-  it('restores every faded cover when the ghost setting turns off', () => {
-    const layer = new Container();
-    const pool = new SpritePool(layer, new TextureCache(), undefined);
-    const covered = snapshotOf([settler(1, 0, 0), house(2, 0, 0.4)]);
-    pool.reconcile({ ...frame(covered), fadeOccluders: true });
-    expect(pool.containerOf(2)?.alpha).toBe(OCCLUDER_FADE_ALPHA);
-    pool.reconcile({ ...frame(covered), occlusionOutline: undefined });
-    expect(pool.containerOf(2)?.alpha).toBe(1);
     pool.destroy();
   });
 
@@ -563,19 +548,6 @@ describe('SpritePool - a unit a standing sprite hides shows as an occlusion ghos
     }
     for (const ring of children.filter((c) => c instanceof GhostOutlineSprite))
       expect(ring.alpha).toBe(GHOST_ALPHA);
-    pool.destroy();
-  });
-
-  it('fades the cover while the reveal toggle is on with only the fill setting on', () => {
-    const layer = new Container();
-    const pool = new SpritePool(layer, new TextureCache(), undefined);
-    const covered = snapshotOf([settler(1, 0, 0), house(2, 0, 0.4)]);
-    const fillOnly = { ...frame(covered), occlusionOutline: false, occlusionFill: true };
-    pool.reconcile(fillOnly);
-    expect(pool.containerOf(2)?.alpha).toBe(1);
-    pool.reconcile({ ...fillOnly, fadeOccluders: true });
-    expect(pool.occlusionGhosts.container.children[0]?.alpha).toBe(1);
-    expect(pool.containerOf(2)?.alpha).toBe(OCCLUDER_FADE_ALPHA);
     pool.destroy();
   });
 

@@ -655,8 +655,8 @@ export const enGame = {
       close: 'Clear the selection',
       prev: 'Previous',
       next: 'Next',
-      prevTooltip: 'Previous: {trade} · Shift+Tab',
-      nextTooltip: 'Next: {trade} · Tab',
+      prevTooltip: 'Previous: {trade}',
+      nextTooltip: 'Next: {trade}',
       selectTrade: 'Double-click: select every one ({trade})',
       rename: 'Rename',
       foreignOwner: 'Player {player} · {tribe} · attitude: {stance}',
@@ -837,8 +837,8 @@ export const enGame = {
     },
     vehiclePanel: {
       classes: { cart: 'Cart', ship: 'Ship', siege: 'Catapult' },
-      prevTooltip: 'Previous vehicle of this class · Shift+Tab',
-      nextTooltip: 'Next vehicle of this class · Tab',
+      prevTooltip: 'Previous vehicle of this class',
+      nextTooltip: 'Next vehicle of this class',
       selectClass: 'Double-click: select all ({kind})',
       centre: 'Centre the view on the vehicle',
       health: 'Durability {hitpoints} / {max}',
@@ -1078,8 +1078,8 @@ export const enGame = {
       lasting: 'Never wears out',
     },
     buildingPanel: {
-      prevTooltip: 'Previous building of this type · Shift+Tab',
-      nextTooltip: 'Next building of this type · Tab',
+      prevTooltip: 'Previous building of this type',
+      nextTooltip: 'Next building of this type',
       centre: 'Centre the view on the building',
       orders: {
         upgrade: 'Upgrade',

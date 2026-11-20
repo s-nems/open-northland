@@ -48,7 +48,7 @@ export interface WorldEnhancements {
   /** A map script's night lit by its fires, houses and settlers; off, the night is a flat grade. */
   readonly dayNight: boolean;
   /** A settler a standing sprite hides shows through it as a team-coloured fill, an outline, or both;
-   *  both off hides it for good, as the baseline renderer always has. */
+   *  both off leaves it hidden. */
   readonly occlusionFill: boolean;
   readonly occlusionOutline: boolean;
 }
@@ -139,8 +139,8 @@ export interface WorldFrame {
   /** The entity id the cursor rests over, drawn with the selection outline's contour (default none).
    *  Transient view state, never sim state; the app picks it and gates it on the player's setting. */
   readonly hovered?: number | undefined;
-  /** The reveal toggle on: every standing sprite on the screen that can hide a resident draws
-   *  translucent (default false). Transient view state, never sim state. */
+  /** The see-through view: every standing sprite on the screen draws translucent (default false).
+   *  Transient view state, never sim state. */
   readonly fadeOccluders?: boolean | undefined;
   /** Fixed-timestep interpolation fraction: each entity draws `alpha` of the way from its previous tick
    *  anchor to its current one (default 1 draws raw tick positions). */

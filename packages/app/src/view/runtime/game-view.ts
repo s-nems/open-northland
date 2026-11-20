@@ -158,7 +158,6 @@ import {
   templeAuraRadius,
   windTrailGoods,
 } from '../projections/index.js';
-import { createRevealKey } from '../reveal-key.js';
 import { createScriptEffects } from '../script/effects.js';
 import { createScriptMarkers } from '../script/markers.js';
 import { createScriptPresentation } from '../script/presentation.js';
@@ -710,6 +709,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
     let overviewPress: UnitControls['overviewPress'] | null = null;
     // Assigned once every HUD part it hides has mounted.
     let toggleHud: (() => void) | null = null;
+    let revealOn = false;
     let hudHidden = false;
     // The DOM plane the redesigned HUD regions mount on; it scales with the Pixi parts.
     const hudDom = mountHudDomRoot(uiscale);
@@ -864,6 +864,9 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       onSaveGame: () => systemMenu?.openPage('save'),
       ...(sharedClock ? {} : { onLoadGame: () => systemMenu?.openPage('load') }),
       onToggleHud: () => toggleHud?.(),
+      onToggleReveal: () => {
+        revealOn = !revealOn;
+      },
       modalOpen,
       escapeClaimed: () => escapeClaimed?.() === true,
       ...(deps.seatNameOf !== undefined ? { seatNameOf: deps.seatNameOf } : {}),
@@ -1448,7 +1451,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       mountedMinimap.setHidden(hudHidden);
       controls.setHudHidden(hudHidden);
       debugMounts.setHudHidden(hudHidden);
-      // The ghost marks and the reveal fade follow at once, not at the next settings change.
+      // The ghost marks follow at once, not at the next settings change.
       applyGraphicsEnhancements(enhancementsOf(liveSettings.settings.current()));
     };
 
@@ -1504,13 +1507,6 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
 
     cleanup.push(() => worldHover.destroy());
 
-    // Toggling the reveal key fades every standing sprite on the screen - tree, wall or house,
-    // whether or not a unit hides behind one - so a look around costs no click; the frame loop reads
-    // the toggle each frame. The key is the settings' revealToggle binding, and the shared bindings
-    // object updates in place, so a rebind applies to the next press.
-    const revealKey = createRevealKey(() => keyBindings.revealToggle);
-    cleanup.push(() => revealKey.dispose());
-
     // A seat switch from the picker: the selection was the last seat's. The camera stays put, so a
     // spectator can compare both sides of the same fight.
     switchableSeat?.onSwitch(() => {
@@ -1537,10 +1533,8 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       (enabled: boolean) => renderer.setWeatherEnabled(enabled),
       turnedOn,
     );
-    // While the chrome hides (F8), the ghost marks draw neither, and with them no reveal or
-    // cover fade: a screenshot or a recording wants the plain world. The stored settings keep
-    // their values, so the toggle re-applies them on show, and a change made while hidden
-    // applies suppressed.
+    // While the chrome hides, the ghost marks stay off: a screenshot or a recording wants the plain
+    // world. The stored settings keep their values, so showing the chrome applies them again.
     const applyGraphicsEnhancements = applyWhenWarmed((next: WorldEnhancements) => {
       renderer.setGraphicsEnhancements(drawnEnhancementsOf(next, hudHidden));
     });
@@ -1695,9 +1689,8 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       ...(mapPing === undefined ? {} : { mapPings: mapPing.live }),
       rallyColourOf: (player) => pingColour(deps.playerColourOf?.(player) ?? player),
       worldHover,
-      // The reveal fade rides no hidden-chrome frame, whatever the toggle says: a screenshot wants
-      // every occluder at its full opacity.
-      fadeOccluders: () => !hudHidden && revealKey.toggled(),
+      // A screenshot with the chrome hidden wants every occluder at its full opacity.
+      fadeOccluders: () => revealOn && !hudHidden,
       geometryDebug: debugMounts.geometryDebug,
       overlayFrame,
       signpostOverlayFrame,

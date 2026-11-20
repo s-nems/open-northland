@@ -145,12 +145,12 @@ export const DEFAULT_KEY_BINDINGS: KeyBindings = {
   // original's help), F2 the subjects (the original's F7), F7 the knowledge (the original's technology
   // tree on F8), F8 the HUD, N the network panel of a relayed game (a letter: Mac keyboards give F9 to
   // media keys), O the diplomacy map, Q for the original's A (Assign Work Place), so A stays
-  // attack-move, R the shown building's Upgrade, U the shown site's build priority (the original has
-  // no such order), Alt+V the shown building's alarm beside the original's V, I the selection's
-  // equipment window (the common inventory key), Z the selected ships' dock order, ' the next free builder
-  // beside the original's . , and /; with those four, Shift adds the next one the key picks, Alt selects
-  // all of them and Shift+Alt adds them all. Shift+F adds every hero as the original's Shift+M adds the
-  // soldiers.
+  // attack-move, Tab the see-through view and U the shown site's build priority (the original has
+  // neither), R the shown building's Upgrade, Alt+V the shown building's alarm beside the original's
+  // V, I the selection's equipment window (the common inventory key), Z the selected ships' dock
+  // order, ' the next free builder beside the original's . , and /; with those four, Shift adds the next
+  // one the key picks, Alt selects all of them and Shift+Alt adds them all. Shift+F adds every hero as
+  // the original's Shift+M adds the soldiers.
   pauseToggle: 'KeyP',
   speedCycle: 'KeyL',
   gameMenu: 'Escape',
@@ -166,8 +166,6 @@ export const DEFAULT_KEY_BINDINGS: KeyBindings = {
   knowledge: 'F7',
   network: 'KeyN',
   hudToggle: 'F8',
-  // Tab, not Space: the action ring holds Space, and a hold-to-fade key asks for a hand the camera
-  // and the orders already take.
   revealToggle: 'Tab',
   jumpToStore: 'KeyH',
   actionRing: 'Space',

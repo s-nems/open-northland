@@ -14,29 +14,14 @@ import type { EntityBounds, PooledEntity } from './pooled-entity.js';
 import { frameTransform, placeOutline } from './selection-effects.js';
 
 /**
- * Occlusion ghosts: a settler a standing sprite hides shows over that sprite, so the player can follow
- * people behind houses, walls and trees. The scan runs over the painter-ordered draw list after each
- * reconcile: a unit is ghosted when a later-drawn occluder's art covers part of it, and the ghost draws
- * in an overlay above the sprite layer, per body layer, as the {@link GhostMarks} ask: a `SELECTION_STAMP`
- * fill quad, a `SELECTION_GHOST_OUTLINE` ring quad, or both, the fill under the ring. Ghosts tint with
- * the colour their unit's body wears — the team step of the entity's own composed palette row — so
- * friends and foes read apart through the cover; where no colour resolves they keep {@link GHOST_TINT}.
+ * Occlusion ghosts: a settler a standing sprite hides shows over that sprite as a fill, a ring or both
+ * ({@link GhostMarks}), tinted with the team colour its body wears. The see-through view fades every
+ * occluder on the screen to {@link OCCLUDER_FADE_ALPHA} instead, with or without the marks.
  *
- * On top of the marks, the reveal toggle asks to see through: it fades every occluder the frame
- * registered — every tree, wall and house on the screen, covered units or not — to
- * {@link OCCLUDER_FADE_ALPHA} at once, until it is toggled off. Nothing else fades a cover: without
- * the toggle, a hidden unit shows only by its ghost marks.
- *
- * Approximation, not observed original behaviour: the original's hidden-unit rendering has no readable
- * source here. The fill and ring alphas, the reach, the coverage samples and the fade's alpha are tuned
- * by eye; the occluder kinds are the standing sprites tall enough to hide a person (delivery flags and
- * loose heaps are not, and a unit behind one stays plain). Vehicles are neither ghosted nor occluders:
- * their paletted layers are self-placing meshes the ring quad cannot copy, so a cart behind a house
- * stays hidden.
- *
- * The occluders beyond the pool's own draw list arrive through {@link GhostOccluder}: a decoded map's
- * virgin trees and rocks draw on the retained map-object layer and never enter the scene items, so
- * the renderer hands the frame's visible tall objects in as static candidates.
+ * Approximation: the original's hidden-unit rendering has no readable source. The alphas, the reach
+ * and the coverage samples are tuned by eye. The occluder kinds are the standing sprites tall enough
+ * to hide a person. Vehicles neither ghost nor occlude: their paletted layers are self-placing meshes
+ * a stamp quad cannot copy.
  */
 
 /** One occluder candidate the pool's draw list cannot see, as the static map-object layer reports it:
@@ -49,9 +34,8 @@ export interface GhostOccluder {
   /** Whether the bound pose's art covers the world point; `undefined` keeps the box verdict, as the
    *  picker does where its pixels are unreadable. */
   hit(wx: number, wy: number): boolean | undefined;
-  /** Fade the occluder's drawn art to `alpha`, or `undefined` restores it: the scan fades an
-   *  occluder while the reveal toggle asks to see through. Absent keeps the candidate unfadeable -
-   *  the scan still rings the unit over it. */
+  /** Fade the occluder's drawn art to `alpha`; `undefined` restores it. A candidate without it never
+   *  fades. */
   setFade?(alpha: number | undefined): void;
 }
 
@@ -61,8 +45,7 @@ export interface GhostMarks {
   readonly ring: boolean;
 }
 
-/** How translucent a standing sprite draws while the reveal toggle asks to see through. Approximation,
- *  tuned by eye. */
+/** How translucent a standing sprite draws in the see-through view. Approximation, tuned by eye. */
 export const OCCLUDER_FADE_ALPHA = 0.45;
 
 /** The kinds whose art can hide a unit standing behind it. */
@@ -71,10 +54,11 @@ const OCCLUDER_KINDS: ReadonlySet<SpriteDrawItem['kind']> = new Set([
   'palisade',
   'signpost',
   'resource',
+  'berrybush',
 ]);
 
-/** The ghost ring's tint where nothing resolves: no sheet palette at all, or the playerless placeholder
- *  marker. Approximation, tuned by eye for legibility. */
+/** The ghost's tint where no team colour resolves: a sheet without a palette. Approximation, tuned by
+ *  eye for legibility. */
 export const GHOST_TINT = 0xf0ede2;
 /** The ring's alpha over the cover. Approximation, tuned by eye. */
 export const GHOST_ALPHA = 0.4;
@@ -82,19 +66,16 @@ export const GHOST_ALPHA = 0.4;
  *  Approximation, tuned by eye. */
 export const GHOST_FILL_ALPHA = 0.45;
 export const GHOST_UNDER_RING_FILL_ALPHA = 0.2;
-/** Screen px the ring reaches past the body art, one pass per ring. Approximation, tuned by eye for
- *  legibility: the selection outline's own keyline reach, drawn without the body under it. */
+/** Screen px the ring reaches past the body art. Approximation, tuned by eye for legibility. */
 export const GHOST_OUTLINE_RADIUS = 2;
 /** Bytes per palette entry: the team palettes are RGB triplets. */
 const RGB = 3;
 
 /**
- * The tint a ghost ring takes, per pooled entity: a body bound through the human LUT reads the row it
- * draws through — step {@link GLOW_PALETTE_INDEX} of its composed body palette, the step the hero glow
- * reads — so the ring shows the exact colour the unit itself wears, its sex and palette rolls included.
- * A look baked on a plain atlas draws no team band; its ring composes the owner's team palette instead
- * (`composeTeam`, the male recipe, whose ramp the women's recipe shares). No darkness lift, unlike the
- * glow: the ring answers to the unit's colour, not the glow's legibility.
+ * The tint a ghost takes, per pooled entity: a body bound through the human LUT reads step
+ * {@link GLOW_PALETTE_INDEX} of the row it draws through, so the ghost shows the colour the unit itself
+ * wears. A look baked on a plain atlas draws no team band, so its ghost composes the owner's team
+ * palette instead. No darkness lift, unlike the hero glow.
  */
 export function ghostTintOf(lut: HumanPaletteLut): (pe: PooledEntity) => number {
   const scratch = createHumanPaletteColours();
@@ -171,7 +152,7 @@ interface GhostStamp {
   readonly rings: GhostOutlineSprite[];
   /** The placeholder's stamp, minted when an unbound body draws the marker instead of atlas layers. */
   placeholder: SelectionGraphics | undefined;
-  /** The entity the stamps copy; a ref the pool freed destroys the stamp with it. */
+  /** The entity the stamps copy, refreshed when the pool replaces its ref's entity. */
   pe: PooledEntity;
   /** The bind and view the quads were laid from, and whether the camera had moved then: any changing
    *  lays them again, since a rebind re-resolves layers and a moved or rezooned camera re-places the
@@ -192,7 +173,7 @@ export class OcclusionGhosts {
 
   constructor(
     private readonly textures: TextureCache,
-    /** The tint a ghosted unit's ring takes, per entity; absent draws every ring in {@link GHOST_TINT}. */
+    /** A ghosted unit's tint, per entity; absent draws every ghost in {@link GHOST_TINT}. */
     private readonly tintOf: ((pe: PooledEntity) => number) | undefined,
   ) {}
 
@@ -221,8 +202,8 @@ export class OcclusionGhosts {
   /** The units that drew this frame and the ones a ghost shows, so a stamp hides or dies by them. */
   private readonly drawnUnits = new Set<number>();
   private readonly ghostedUnits = new Set<number>();
-  /** The occluders the last scan faded and this one did, and the same for this scan alone: the restore
-   *  walks the last scan's set against this scan's, then the pair swaps for the next scan. */
+  /** The occluders the last scan faded, and the ones the running scan has: the restore walks the first
+   *  against the second, then the pair swaps. */
   private fadedPes = new Set<PooledEntity>();
   private fadedNowPes = new Set<PooledEntity>();
   private fadedStatic = new Set<GhostOccluder>();
@@ -231,22 +212,15 @@ export class OcclusionGhosts {
   private readonly transform = new Matrix();
 
   /**
-   * Scan the painter-ordered draw list the pool just presented: collect the settlers and the standing
-   * sprites, find the covered units and update their stamps. `frameOf` answers the frame id a pooled
-   * entity's stamped bounds and pixels are valid for; `viewMoved` says the camera moved since the last
-   * scan, which re-lays the paletted layers a ring copies, and `zoom` is the camera's scale, whose
-   * divisor holds the ring's screen width. `staticOccluders` carries the frame's visible map-object
-   * candidates, whose drawn poses the pool's list never sees. `wildlifeTribes` lists the animal tribes
-   * the sheet knows: their walkers draw behind trees like anyone else, but a ghosted deer tells the
-   * player nothing and a herd would fill the overlay, so they stay unghosted.
+   * Scan the painter-ordered draw list the pool just presented: fade the occluders when `revealAll`
+   * asks, find the covered settlers and lay their `marks`. `frameOf` answers the frame id a pooled
+   * entity's bounds and pixels are valid for, `viewMoved` re-lays the paletted layers a ring copies,
+   * and `zoom` holds the ring's screen width. `staticOccluders` are the visible map objects, which the
+   * pool's list never holds. The walkers of `wildlifeTribes` stay unghosted: a herd would fill the
+   * overlay and tells the player nothing.
    *
-   * Depth throughout is the painter depth the shared entity layer sorts at - the pool's own
-   * {@link pooledDepth} over the item being drawn and the entity's drawn motion, a static candidate's
-   * own - never the scene item's oracle sort key, which lives on a different scale and would bury
-   * every static tree behind a row's worth of key.
-   *
-   * `revealAll` is the reveal toggle's ask to see through: on, every occluder this scan registers
-   * fades. `marks` picks what a ghost draws.
+   * Depth is the painter depth the shared entity layer sorts at ({@link pooledDepth}, or a static
+   * candidate's own), never the scene item's sort key, which lives on another scale.
    */
   scan(
     items: readonly SpriteDrawItem[],
@@ -285,11 +259,9 @@ export class OcclusionGhosts {
         this.occluderDepth[at] = pooledDepth(pe, item);
       }
     }
-    // No unit drew and no toggle asks: nothing probes the grid, so it stays as the last probing
-    // scan left it, to be marked and evicted against that scan next time; the sweep alone frees the
-    // vanished units' stamps. A lifted ask undoes the last fades even here, which would otherwise
-    // leave a toggle-off translucent until a unit returns.
-    if (this.unitCount === 0 && !revealAll) {
+    // Nothing probes the grid, so it stays as the last probing scan left it for the next eviction.
+    const marking = marks.fill || marks.ring;
+    if ((this.unitCount === 0 || !marking) && !revealAll) {
       this.restoreFades();
       this.sweepStamps();
       return;
@@ -299,15 +271,13 @@ export class OcclusionGhosts {
       if (pe !== undefined) this.mark(pe, undefined, pe, this.occluderDepth[o] ?? 0, pe.bounds);
     }
     for (const occ of staticOccluders) this.mark(occ, occ, undefined, occ.depth, occ.bounds());
-    // While the marks still hold this scan's slots: the toggle's ask fades every registered
-    // occluder at once, before the eviction swaps the marks for the next scan.
+    // Before the eviction swaps this scan's marks away.
     if (revealAll) this.fadeAllMarked();
     this.evictUnmarked();
-    for (let u = 0; u < this.unitCount; u++) {
+    for (let u = 0; marking && u < this.unitCount; u++) {
       const pe = this.unitPe[u];
       if (pe === undefined) continue;
-      if (!this.coveredUnit(pe, this.unitDepth[u] ?? 0, frameOf)) continue;
-      if (marks.fill || marks.ring) this.stamp(pe, viewMoved, zoom, marks);
+      if (this.coveredUnit(pe, this.unitDepth[u] ?? 0, frameOf)) this.stamp(pe, viewMoved, zoom, marks);
     }
     this.restoreFades();
     this.sweepStamps();
@@ -348,9 +318,8 @@ export class OcclusionGhosts {
     return entries;
   }
 
-  /** Free every stamp and the occluder grid, and undo every occluder fade still out; the overlay
-   *  stays mounted. The pool calls this in the scan's place while the setting is off, and once it
-   *  has cleared, each call walks empty maps. */
+  /** Free every stamp and the occluder grid and undo every fade; the overlay stays mounted. The pool
+   *  calls this in the scan's place while nothing asks for one; a cleared overlay walks empty maps. */
   reset(): void {
     for (const stamp of this.stamps.values()) stamp.container.destroy({ children: true });
     this.stamps.clear();
@@ -361,6 +330,17 @@ export class OcclusionGhosts {
     this.fadedNowPes.clear();
     this.fadedStatic.clear();
     this.fadedNowStatic.clear();
+  }
+
+  /**
+   * Hide the overlay and the fades from a portrait or map inset, which borrows the world without
+   * them, then show them again. Alpha, not visibility: Pixi repacks an alpha change in place.
+   */
+  setVisible(visible: boolean): void {
+    this.container.alpha = visible ? 1 : 0;
+    const fade = visible ? OCCLUDER_FADE_ALPHA : undefined;
+    for (const pe of this.fadedPes) if (!pe.container.destroyed) pe.container.alpha = fade ?? 1;
+    for (const occ of this.fadedStatic) occ.setFade?.(fade);
   }
 
   /** Free every stamp and cell; the pool calls this on its own teardown. */
@@ -499,10 +479,7 @@ export class OcclusionGhosts {
     return false;
   }
 
-  /** Fade every occluder this scan registered: the reveal toggle is on, so the whole view's trees,
-   * walls and houses go translucent at once, whether or not some unit hides behind them. Called
-   * while `marked` still holds this scan's slots, so the walk needs no grid probe; the restore
-   * reads the same noted sets this fade fills. */
+  /** Fade every occluder this scan marked, whether or not a unit hides behind it. */
   private fadeAllMarked(): void {
     for (const slot of this.marked) {
       const pe = slot.pe;
@@ -554,7 +531,10 @@ export class OcclusionGhosts {
     }
     stamp.container.alpha = 1;
     stamp.container.position.copyFrom(pe.container.position);
+    const replaced = stamp.pe !== pe;
+    stamp.pe = pe;
     if (
+      replaced ||
       pe.bindSerial !== stamp.bindSerial ||
       viewMoved !== stamp.laidUnderMovedView ||
       zoom !== stamp.laidAtZoom ||
@@ -620,6 +600,7 @@ export class OcclusionGhosts {
         stamp.container.addChild(stamped);
       }
       pe.placeholder.updateLocalTransform();
+      stamped.tint = tint;
       stamped.alpha = pe.placeholder.alpha * (fill ? fillAlpha : GHOST_ALPHA);
       stamped.setFromMatrix(this.transform.copyFrom(pe.placeholder.localTransform));
       marker = true;

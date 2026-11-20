@@ -307,10 +307,10 @@ export const itSurfaces = {
       postFxTip: 'Una vignettatura e una correzione cromatica calda sopra il mondo.',
       occlusionFill: 'Riempimento delle unità nascoste',
       occlusionFillTip:
-        "Disegna un'unità dietro un edificio, un muro o un albero come riempimento semitrasparente nel colore della sua squadra su ciò che la nasconde. Con anche il profilo attivo, il riempimento diventa leggero sotto il profilo. Il tasto Tab alterna la trasparenza: una pressione rende trasparenti tutti gli alberi e gli edifici sullo schermo, un'altra la disattiva.",
+        "Disegna un'unità dietro un edificio, un muro o un albero come riempimento semitrasparente nel colore della sua squadra su ciò che la nasconde. Con anche il profilo attivo, il riempimento diventa leggero sotto il profilo.",
       occlusionOutline: 'Profilo delle unità nascoste',
       occlusionOutlineTip:
-        "Disegna un'unità dietro un edificio, un muro o un albero come profilo nel colore della sua squadra su ciò che la nasconde. Il tasto Tab alterna la trasparenza: una pressione rende trasparenti tutti gli alberi e gli edifici sullo schermo, un'altra la disattiva.",
+        "Disegna un'unità dietro un edificio, un muro o un albero come profilo nel colore della sua squadra su ciò che la nasconde.",
       integerScaling: 'Scala intera',
       integerScalingTip:
         "Ingrandisce solo a passi interi (½×, 1×, 2×, 3×…), così ogni pixel della grafica copre un numero intero di pixel dello schermo e non viene mai ricampionato da una scala frazionaria. La vista salta da un passo all'altro invece di scorrere.",

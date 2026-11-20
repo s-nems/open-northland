@@ -618,8 +618,8 @@ export const chsGame = {
       close: '取消选择',
       prev: '上一个',
       next: '下一个',
-      prevTooltip: '上一个：{trade} · Shift+Tab',
-      nextTooltip: '下一个：{trade} · Tab',
+      prevTooltip: '上一个：{trade}',
+      nextTooltip: '下一个：{trade}',
       selectTrade: '双击：选择全部（{trade}）',
       rename: '重命名',
       foreignOwner: '玩家 {player} · {tribe} · 立场：{stance}',
@@ -797,8 +797,8 @@ export const chsGame = {
     },
     vehiclePanel: {
       classes: { cart: '车辆', ship: '船只', siege: '投石机' },
-      prevTooltip: '同类的上一辆载具 · Shift+Tab',
-      nextTooltip: '同类的下一辆载具 · Tab',
+      prevTooltip: '同类的上一辆载具',
+      nextTooltip: '同类的下一辆载具',
       selectClass: '双击：全部选中（{kind}）',
       centre: '将视角对准这辆载具',
       health: '耐久 {hitpoints} / {max}',
@@ -1034,8 +1034,8 @@ export const chsGame = {
       lasting: '永不损耗',
     },
     buildingPanel: {
-      prevTooltip: '同类的上一座建筑 · Shift+Tab',
-      nextTooltip: '同类的下一座建筑 · Tab',
+      prevTooltip: '同类的上一座建筑',
+      nextTooltip: '同类的下一座建筑',
       centre: '将视角对准这座建筑',
       orders: {
         upgrade: '升级',

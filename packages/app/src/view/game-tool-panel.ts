@@ -154,6 +154,7 @@ export interface GameToolPanelDeps {
   readonly onLoadGame?: () => void;
   readonly onSaveGame?: () => void;
   readonly onToggleHud?: () => void;
+  readonly onToggleReveal?: () => void;
   /** True while a modal screen (the system menu, the lost-connection screen) owns the keyboard. */
   readonly modalOpen?: () => boolean;
   readonly escapeClaimed?: () => boolean;
@@ -358,6 +359,7 @@ export async function mountGameToolPanel(deps: GameToolPanelDeps): Promise<GameT
     ...(deps.onLoadGame !== undefined ? { onLoadGame: deps.onLoadGame } : {}),
     ...(deps.onSaveGame !== undefined ? { onSaveGame: deps.onSaveGame } : {}),
     ...(deps.onToggleHud !== undefined ? { onToggleHud: deps.onToggleHud } : {}),
+    ...(deps.onToggleReveal !== undefined ? { onToggleReveal: deps.onToggleReveal } : {}),
     ...(deps.modalOpen !== undefined ? { modalOpen: deps.modalOpen } : {}),
     ...(deps.escapeClaimed !== undefined ? { escapeClaimed: deps.escapeClaimed } : {}),
     ...(deps.mission !== undefined ? { mission: deps.mission } : {}),

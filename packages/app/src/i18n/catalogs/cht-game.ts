@@ -618,8 +618,8 @@ export const chtGame = {
       close: '清除選取',
       prev: '上一個',
       next: '下一個',
-      prevTooltip: '上一個：{trade} · Shift+Tab',
-      nextTooltip: '下一個：{trade} · Tab',
+      prevTooltip: '上一個：{trade}',
+      nextTooltip: '下一個：{trade}',
       selectTrade: '雙擊：選取所有{trade}',
       rename: '重新命名',
       foreignOwner: '玩家 {player} · {tribe} · 態度：{stance}',
@@ -798,8 +798,8 @@ export const chtGame = {
     },
     vehiclePanel: {
       classes: { cart: '車輛', ship: '船隻', siege: '投石機' },
-      prevTooltip: '此類別的上一輛載具 · Shift+Tab',
-      nextTooltip: '此類別的下一輛載具 · Tab',
+      prevTooltip: '此類別的上一輛載具',
+      nextTooltip: '此類別的下一輛載具',
       selectClass: '雙擊：選取所有{kind}',
       centre: '將視角置中於載具',
       health: '耐久度 {hitpoints} / {max}',
@@ -1035,8 +1035,8 @@ export const chtGame = {
       lasting: '永不耗損',
     },
     buildingPanel: {
-      prevTooltip: '同類型的上一座建築 · Shift+Tab',
-      nextTooltip: '同類型的下一座建築 · Tab',
+      prevTooltip: '同類型的上一座建築',
+      nextTooltip: '同類型的下一座建築',
       centre: '將視角置中於建築',
       orders: {
         upgrade: '升級',

@@ -312,10 +312,10 @@ export const deSurfaces = {
       postFxTip: 'Legt eine Vignette und warme Farbtöne über die Spielwelt.',
       occlusionFill: 'Füllung verdeckter Einheiten',
       occlusionFillTip:
-        'Zeigt eine Einheit hinter einem Gebäude, einer Mauer oder einem Baum als halbtransparente Füllung in ihrer Teamfarbe über dem Verdeckenden. Ist auch der Umriss an, wird die Füllung unter dem Umriss heller. Die Tab-Taste schaltet die Durchsicht um: ein Druck macht alle Bäume und Gebäude auf dem Bildschirm durchsichtig, ein weiterer schaltet zurück.',
+        'Zeigt eine Einheit hinter einem Gebäude, einer Mauer oder einem Baum als halbtransparente Füllung in ihrer Teamfarbe über dem Verdeckenden. Ist auch der Umriss an, wird die Füllung unter dem Umriss heller.',
       occlusionOutline: 'Umriss verdeckter Einheiten',
       occlusionOutlineTip:
-        'Zeigt eine Einheit hinter einem Gebäude, einer Mauer oder einem Baum als Umriss in ihrer Teamfarbe über dem Verdeckenden. Die Tab-Taste schaltet die Durchsicht um: ein Druck macht alle Bäume und Gebäude auf dem Bildschirm durchsichtig, ein weiterer schaltet zurück.',
+        'Zeigt eine Einheit hinter einem Gebäude, einer Mauer oder einem Baum als Umriss in ihrer Teamfarbe über dem Verdeckenden.',
       integerScaling: 'Ganzzahlige Skalierung',
       integerScalingTip:
         'Zoomt nur in ganzen Stufen (½×, 1×, 2×, 3×…), sodass jedes Pixel der Grafik eine ganze Zahl von Bildschirmpixeln abdeckt und nie durch einen gebrochenen Maßstab neu abgetastet wird. Die Ansicht springt zwischen den Stufen, statt zu gleiten.',

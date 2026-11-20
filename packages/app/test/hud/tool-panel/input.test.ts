@@ -103,6 +103,7 @@ function mount(keyboardOwned?: () => boolean, escapeClaimed?: () => boolean, ctr
     palisadeTool: () => ran.push('wall'),
     gateTool: () => ran.push('gate'),
     toggleDiplomacyMap: () => ran.push('diplomacy map'),
+    toggleReveal: () => ran.push('reveal'),
     toggleHud: () => {
       hudToggled++;
     },
@@ -302,6 +303,7 @@ describe('tool panel Escape ladder', () => {
       togglePause: () => undefined,
       cycleSpeed: () => undefined,
       toggleHud: () => undefined,
+      toggleReveal: () => undefined,
       toggleDiplomacyMap: () => undefined,
       cue: () => undefined,
     });
@@ -466,6 +468,20 @@ describe('tool panel Escape ladder', () => {
     expect(ran).toEqual([]);
     windowTarget.dispatchEvent(key(mapKey));
     expect(ran).toEqual(['diplomacy map']);
+    input.dispose();
+  });
+
+  it('toggles the see-through view on its key, which a held key and a modal dialog leave alone', () => {
+    const { input, windowTarget, ran } = mount();
+    const revealKey = DEFAULT_KEY_BINDINGS.revealToggle;
+    if (revealKey === null) throw new Error('see-through key unbound');
+    const typed = key(revealKey);
+    Object.defineProperty(typed, 'target', { value: new DialogButton() });
+    windowTarget.dispatchEvent(typed);
+    windowTarget.dispatchEvent(Object.assign(key(revealKey), { repeat: true }));
+    expect(ran).toEqual([]);
+    windowTarget.dispatchEvent(key(revealKey));
+    expect(ran).toEqual(['reveal']);
     input.dispose();
   });
 

@@ -635,8 +635,8 @@ export const plGame = {
       close: 'Usuń zaznaczenie',
       prev: 'Poprzedni',
       next: 'Następny',
-      prevTooltip: 'Poprzedni: {trade} · Shift+Tab',
-      nextTooltip: 'Następny: {trade} · Tab',
+      prevTooltip: 'Poprzedni: {trade}',
+      nextTooltip: 'Następny: {trade}',
       selectTrade: 'Dwuklik: zaznacz wszystkich ({trade})',
       rename: 'Zmień imię',
       foreignOwner: 'Gracz {player} · {tribe} · stosunek: {stance}',
@@ -818,8 +818,8 @@ export const plGame = {
     },
     vehiclePanel: {
       classes: { cart: 'Wóz', ship: 'Statek', siege: 'Katapulta' },
-      prevTooltip: 'Poprzedni wehikuł tej klasy · Shift+Tab',
-      nextTooltip: 'Następny wehikuł tej klasy · Tab',
+      prevTooltip: 'Poprzedni wehikuł tej klasy',
+      nextTooltip: 'Następny wehikuł tej klasy',
       selectClass: 'Dwuklik: zaznacz wszystkie ({kind})',
       centre: 'Centruj widok na wehikule',
       health: 'Wytrzymałość {hitpoints} / {max}',
@@ -1054,8 +1054,8 @@ export const plGame = {
       lasting: 'Nie zużywa się',
     },
     buildingPanel: {
-      prevTooltip: 'Poprzedni budynek tego typu · Shift+Tab',
-      nextTooltip: 'Następny budynek tego typu · Tab',
+      prevTooltip: 'Poprzedni budynek tego typu',
+      nextTooltip: 'Następny budynek tego typu',
       centre: 'Centruj widok na budynku',
       orders: {
         upgrade: 'Rozbuduj',

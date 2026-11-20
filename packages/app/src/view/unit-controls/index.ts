@@ -731,19 +731,6 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
     } else if (!e.shiftKey) applySelection([], false); // clearing the selection is no button
   };
 
-  /** Tab steps through the shown settler's trade, vehicle's class or building's type unless a field or
-   *  another HUD window has the focus, whose own focus order Tab keeps. */
-  const browsesTrade = (e: KeyboardEvent): boolean =>
-    !e.altKey &&
-    !e.ctrlKey &&
-    !e.metaKey &&
-    !isFieldKey(e) &&
-    !(
-      e.target instanceof Element &&
-      e.target.closest('.on-hud') !== null &&
-      e.target.closest('.on-selection') === null
-    );
-
   const onKeyDown = (e: KeyboardEvent): void => {
     const groupCommand = isFieldKey(e) ? null : controlGroupCommand(e, opts.bindings);
     if (groupCommand !== null) {
@@ -798,8 +785,6 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
       e.preventDefault();
       if (!chrome.buildingAlarm() && selection.ids().size > 0) cue('fail');
     } else if (keyboardOrders(e)) {
-      e.preventDefault();
-    } else if (e.code === 'Tab' && browsesTrade(e) && chrome.browse(e.shiftKey ? -1 : 1)) {
       e.preventDefault();
     } else if (e.code === 'Escape') {
       // Escape steps back one level: the ring (its job list first), the trade window or the hold's

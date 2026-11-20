@@ -48,6 +48,8 @@ export interface ToolPanelInputDeps {
   /** Step the running speed ×1 → ×2 → ×3 → ×1; a pause resumes at ×1. */
   readonly cycleSpeed: () => void;
   readonly toggleHud: () => void;
+  /** Switch the see-through view of the world's standing sprites. */
+  readonly toggleReveal: () => void;
   /** Open or close the network window; absent outside a relayed game, which leaves its key alone. */
   readonly toggleNetwork?: () => void;
   readonly toggleDiplomacyMap: () => void;
@@ -226,6 +228,7 @@ export function createToolPanelInput(deps: ToolPanelInputDeps): ToolPanelInput {
       ['saveGame', deps.openSave],
       ['network', deps.toggleNetwork],
       ['diplomacyMap', deps.toggleDiplomacyMap],
+      ['revealToggle', deps.toggleReveal],
     ];
     for (const [action, run] of pressed) {
       if (run === undefined || !isActionHotkey(e, deps.bindings, action)) continue;

@@ -28,8 +28,6 @@ export interface VehiclePanel {
    *  paints it into. */
   portrait(): PortraitSubject | VehiclePortraitSubject | null;
   claims(clientX: number, clientY: number): boolean;
-  /** Tab and Shift+Tab: show the seat's next or previous vehicle of the class; false when there is none. */
-  browse(step: 1 | -1): boolean;
   /** Escape: close the add-a-good picker; false when it was not open. */
   closePicker(): boolean;
   /** The HUD scale changed: the portrait's box is measured again. */
@@ -194,7 +192,6 @@ export function createVehiclePanel(deps: VehiclePanelDeps): VehiclePanel {
       };
     },
     claims: (clientX, clientY) => frame.claims(clientX, clientY),
-    browse,
     invalidate: () => frame.invalidate(),
     dispose(): void {
       resizes.disconnect();

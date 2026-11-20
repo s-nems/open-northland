@@ -275,10 +275,10 @@ export const plSurfaces = {
       postFxTip: 'Winieta i ocieplenie barw nakładane na obraz świata.',
       occlusionFill: 'Wypełnienie zasłoniętych jednostek',
       occlusionFillTip:
-        'Rysuje jednostkę stojącą za budynkiem, murem lub drzewem jako półprzezroczyste wypełnienie w kolorze jej drużyny na tym, co ją zasłania. Gdy kontur też jest włączony, wypełnienie pod nim staje się jaśniejsze. Tabulator przełącza prześwitywanie: jedno naciśnięcie czyni przezroczystymi wszystkie drzewa i budynki na ekranie, ponowne wyłącza je.',
+        'Jednostka stojąca za budynkiem, murem lub drzewem jest widoczna jako półprzezroczyste wypełnienie w kolorze swojej drużyny. Przy włączonym konturze wypełnienie jest słabsze.',
       occlusionOutline: 'Kontur zasłoniętych jednostek',
       occlusionOutlineTip:
-        'Rysuje jednostkę stojącą za budynkiem, murem lub drzewem jako kontur w kolorze jej drużyny na tym, co ją zasłania. Tabulator przełącza prześwitywanie: jedno naciśnięcie czyni przezroczystymi wszystkie drzewa i budynki na ekranie, ponowne wyłącza je.',
+        'Jednostka stojąca za budynkiem, murem lub drzewem jest widoczna jako kontur w kolorze swojej drużyny.',
       integerScaling: 'Skalowanie całkowite',
       integerScalingTip:
         'Przybliża tylko pełnymi krokami (½×, 1×, 2×, 3×…), więc każdy piksel grafiki zajmuje całą liczbę pikseli ekranu i nigdy nie jest przeskalowany ułamkowo. Widok przeskakuje między krokami zamiast płynnie się zmieniać.',
@@ -486,7 +486,7 @@ export const plSurfaces = {
         attackMove: 'Atak w marszu',
         dockShips: 'Zacumuj zaznaczone statki',
         hudToggle: 'Ukryj/pokaż interfejs',
-        revealToggle: 'Przełącznik prześwitywania',
+        revealToggle: 'Prześwitujące budynki i drzewa',
         speedCycle: 'Prędkość gry ×1 / ×2 / ×3',
         loadGame: 'Wczytaj grę',
         saveGame: 'Zapisz grę',

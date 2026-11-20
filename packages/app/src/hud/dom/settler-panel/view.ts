@@ -22,8 +22,6 @@ export interface SettlerPanel {
   /** The shown person, or the vehicle they ride, and the client box the renderer paints it into. */
   portrait(): PortraitSubject | VehiclePortraitSubject | null;
   claims(clientX: number, clientY: number): boolean;
-  /** Tab and Shift+Tab: show the next or previous person of the trade; false when there is none. */
-  browse(step: 1 | -1): boolean;
   /** The HUD scale changed: the portraits' boxes are measured again. */
   invalidate(): void;
   /** Once a frame, after the paint: the transfer lines fit again after another section or the plane
@@ -211,7 +209,6 @@ export function createSettlerPanel(deps: SettlerPanelDeps): SettlerPanel {
       };
     },
     claims: (clientX, clientY) => frame.claims(clientX, clientY),
-    browse,
     invalidate: () => frame.invalidate(),
     dispose(): void {
       deps.hoverCard.hide();

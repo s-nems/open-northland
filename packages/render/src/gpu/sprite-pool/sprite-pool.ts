@@ -151,15 +151,14 @@ export interface PoolFrame {
   readonly sailWind?: boolean;
   readonly buildingDamage?: boolean;
   /** Units a standing sprite hides show through it as a team-coloured fill, an outline, or both.
-   *  Both absent leaves every unit hidden, as the baseline renderer always has. */
+   *  Both absent leaves every unit hidden. */
   readonly occlusionFill?: boolean | undefined;
   readonly occlusionOutline?: boolean | undefined;
-  /** The reveal toggle on: the standing sprites that hide a resident draw translucent while it
-   *  lasts. Absent fades nothing. */
+  /** The see-through view: every standing sprite on the screen draws translucent. Absent fades
+   *  nothing. */
   readonly fadeOccluders?: boolean | undefined;
-  /** The frame's visible tall map objects - a decoded map's virgin trees and rocks - as occluder
-   *  candidates, since the retained map-object layer draws them outside this pool's draw list.
-   *  Absent leaves only the pool's own standing sprites as covers. */
+  /** The frame's visible tall map objects as occluder candidates: the map-object layer draws them
+   *  outside this pool's draw list. Absent leaves only the pool's own standing sprites as covers. */
   readonly staticOccluders?: readonly GhostOccluder[] | undefined;
   /** How shadow silhouettes draw; absent means the shadow enhancement is off, which also keeps a
    *  character's projected cast layer off the screen. */
@@ -471,6 +470,8 @@ export class SpritePool {
   private readonly selectionEffects: SelectionEffects;
   /** The frame id a pooled entity's stamped bounds and pixels are valid for, as `reconcile` sees it. */
   private readonly frameOf: (pe: PooledEntity) => number;
+  /** Restamped per frame, so the ghost pass allocates nothing. */
+  private readonly ghostMarks = { fill: false, ring: false };
   private readonly nightBearers = new NightBearers();
   private readonly bloodCoats = new BloodCoats();
   private readonly epoch = new FrameEpoch();
@@ -681,13 +682,14 @@ export class SpritePool {
     this.ghostPass(frame);
   }
 
-  /** The occlusion ghost pass: scan and stamp when the setting draws them, otherwise leave nothing.
-   *  The sheet's animal tribes ride along so the scan leaves wildlife unghosted, and the reveal
-   *  toggle rides along so the scan can draw the occluders translucent. */
+  /** Scan for hidden units and faded occluders while a mark setting or the see-through view asks,
+   *  otherwise leave nothing. */
   private ghostPass(frame: PoolFrame): void {
-    const fill = frame.occlusionFill === true;
-    const ring = frame.occlusionOutline === true;
-    if (fill || ring)
+    const marks = this.ghostMarks;
+    marks.fill = frame.occlusionFill === true;
+    marks.ring = frame.occlusionOutline === true;
+    const fade = frame.fadeOccluders === true;
+    if (marks.fill || marks.ring || fade)
       this.occlusionGhosts.scan(
         this.drawn,
         this.pool,
@@ -696,8 +698,8 @@ export class SpritePool {
         frame.camera.scale ?? 1,
         frame.staticOccluders,
         this.sheet?.characters?.animals?.tribes,
-        frame.fadeOccluders === true,
-        { fill, ring },
+        fade,
+        marks,
       );
     else this.occlusionGhosts.reset();
   }
@@ -1317,12 +1319,6 @@ export class SpritePool {
     return anchorOf(pe, this.currentFrameOf(pe));
   }
 
-  /** The entity's pooled root container, or undefined when nothing pools it: the ghost scan fades a
-   *  covering occluder's art through it. */
-  containerOf(ref: number): Container | undefined {
-    return this.pool.get(ref)?.container;
-  }
-
   depthOf(ref: number): number | undefined {
     const pe = this.pool.get(ref);
     return pe !== undefined && pe.lastSeen === this.currentFrameOf(pe) ? pe.container.zIndex : undefined;
@@ -1345,6 +1341,7 @@ export class SpritePool {
       zoom: inset.camera.scale ?? 1,
     });
     this.selectionEffects.setVisible(false);
+    this.occlusionGhosts.setVisible(false);
     this.placePaletted(inset.camera, inset.width, inset.height);
     this.portrait.show(subjects);
     const soloKeep = this.portrait.beginSolo(subjects);
@@ -1354,6 +1351,7 @@ export class SpritePool {
       this.portrait.endSolo();
       this.portrait.hide(subjects);
       this.selectionEffects.setVisible(true);
+      this.occlusionGhosts.setVisible(true);
       this.placePaletted(main.camera, main.width, main.height);
     }
   }
@@ -1417,6 +1415,7 @@ export class SpritePool {
         if (item.ref === view.solo) solo = pe.container;
       }
       this.selectionEffects.setVisible(false);
+      this.occlusionGhosts.setVisible(false);
       this.placePaletted(view.camera, view.width, view.height);
       this.sheet?.palette?.flush();
       const soloLayer = solo?.parent ?? this.spriteLayer;
@@ -1426,6 +1425,7 @@ export class SpritePool {
       if (stash !== null) restoreStash(stash);
       for (const pe of borrowed) pe.container.removeFromParent();
       this.selectionEffects.setVisible(true);
+      this.occlusionGhosts.setVisible(true);
       this.placePaletted(main.camera, main.width, main.height);
     }
   }

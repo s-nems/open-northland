@@ -440,14 +440,16 @@ void main(void) {
     if (vSelection < SELECTION_OUTLINE + 0.5) {
       // The union of the offset copies blended over one another: a copy covers this fragment only
       // where its quad, the body's frame moved by its offset, does.
-      vec2 tapUV[OUTLINE_TAPS];
+      // The last tap is the body's own texel, which only a ghost ring reads.
+      vec2 tapUV[OUTLINE_TAPS + 1];
       for (int k = 0; k < OUTLINE_TAPS; k++) {
         vec2 uv = outlineUV(k);
         tapUV[k] = WORLD_MAGNIFY > 0.5 ? clamp(uv, stampLow, stampHigh) : uv;
       }
+      tapUV[OUTLINE_TAPS] = WORLD_MAGNIFY > 0.5 ? clamp(vUV, stampLow, stampHigh) : vUV;
       // The page is chosen once for all the taps, as the body's gather does.
-      float coverage[OUTLINE_TAPS];
-${textureChain(maxTextures, 'vTextureId', (i) => `for (int k = 0; k < OUTLINE_TAPS; k++) { vec4 texel = textureGrad(uTextures[${i}], tapUV[k], uvDx, uvDy); coverage[k] = indexed ? texel.g : texel.a; }`)}
+      float coverage[OUTLINE_TAPS + 1];
+${textureChain(maxTextures, 'vTextureId', (i) => `for (int k = 0; k <= OUTLINE_TAPS; k++) { vec4 texel = textureGrad(uTextures[${i}], tapUV[k], uvDx, uvDy); coverage[k] = indexed ? texel.g : texel.a; }`)}
       float uncovered = 1.0;
       for (int k = 0; k < OUTLINE_TAPS; k++) {
         vec2 uv = outlineUV(k);
@@ -457,12 +459,10 @@ ${textureChain(maxTextures, 'vTextureId', (i) => `for (int k = 0; k < OUTLINE_TA
       float alpha = 1.0 - uncovered;
       if (vSelection < SELECTION_GHOST_OUTLINE + 0.5) {
         // An occlusion ghost draws its ring alone: the copies' union less the body's own coverage,
-        // which nothing draws under the ghost to fill.
-        vec2 centreUV = WORLD_MAGNIFY > 0.5 ? clamp(vUV, stampLow, stampHigh) : vUV;
-        bool over = all(greaterThanEqual(centreUV, vFrame.xy)) && all(lessThan(centreUV, vFrame.zw));
-        vec4 centreTexel = sampleTexture(centreUV, uvDx, uvDy);
-        float centre = indexed ? centreTexel.g : centreTexel.a;
-        alpha *= over ? 1.0 - centre : 1.0;
+        // which nothing draws under the ghost to fill. The quad reaches past the body's frame, where
+        // the body covers nothing.
+        bool over = all(greaterThanEqual(vUV, vFrame.xy)) && all(lessThan(vUV, vFrame.zw));
+        alpha *= over ? 1.0 - coverage[OUTLINE_TAPS] : 1.0;
       }
       finalColor = vColor.a > 0.0 ? vec4(vColor.rgb * (alpha / vColor.a), alpha) : vec4(0.0);
       return;

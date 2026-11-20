@@ -261,6 +261,7 @@ export interface ToolPanelOptions {
   readonly onSaveGame?: () => void;
   /** The HUD-toggle hotkey was pressed. */
   readonly onToggleHud?: () => void;
+  readonly onToggleReveal?: () => void;
   /** True while a modal screen owns the keyboard, so Escape is not the shell's to take. */
   readonly modalOpen?: () => boolean;
   /** True while the unit controls would take an Escape (a job list, an armed pick, a selection); the
@@ -932,6 +933,7 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
           }
         : {}),
       toggleHud: () => opts.onToggleHud?.(),
+      toggleReveal: () => opts.onToggleReveal?.(),
       ...(network !== undefined
         ? {
             toggleNetwork: () => {

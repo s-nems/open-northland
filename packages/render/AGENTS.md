@@ -87,7 +87,7 @@ Windows and froze the game at the loading screen while Metal compiled it in mill
 walked once per magnifier tap still compiled for tens of seconds there. Gather every tap a fragment
 reads in one pass over the chain, as `gpu/world-batch/shader.ts` does for a body's magnifier taps,
 and keep xBR and the other magnifiers out of per-slot code. Its selection outline picks the page once
-and reads its eight plain coverage taps there, a cost the budget below and the Windows compile check bound.
+and reads its eight plain coverage taps and the body's own texel there, a cost the budget below and the Windows compile check bound.
 The chain picks its slot through a switch, which the Direct3D compiler handled in half the time of
 the same reads in a nested if-chain. A loop the compiler unrolls in every branch costs the same way:
 `gpu/map-objects/decor-shadow-shader.ts` reads its page sizes in one chain and works out the blur

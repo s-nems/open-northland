@@ -111,9 +111,6 @@ export interface UnitChromeHandle {
   portraits(): readonly PortraitBox[];
   /** True over any details panel or the trade window. */
   claimsPointer(clientX: number, clientY: number): boolean;
-  /** Tab and Shift+Tab: show the next or previous person of the shown settler's trade, vehicle of the
-   *  shown vehicle's class, or building of the shown building's type. */
-  browse(step: 1 | -1): boolean;
   /** The upgrade key: raise the shown building's tier; false when no building is shown or it refuses. */
   upgradeBuilding(): boolean;
   /** The priority key: toggle the shown site's build priority; false when no site of the seat is shown. */
@@ -558,7 +555,6 @@ export async function createUnitChrome(
         signpostPanel.claims(x, y) ||
         tradeWindow.claims(x, y),
     ),
-    browse: (step) => settlerPanel.browse(step) || vehiclePanel.browse(step) || buildingPanel.browse(step),
     upgradeBuilding: () => buildingPanel.upgrade(),
     prioritizeSite: () => buildingPanel.prioritize(),
     buildingAlarm: () => buildingPanel.alarm(),

@@ -335,8 +335,8 @@ export class HumanPaletteLut implements PaletteLut {
     return slot * ROWS_PER_HUMAN;
   }
 
-  /** The team colour the body palette of `row` wears: the step {@link GLOW_PALETTE_INDEX} — the step the
-   *  hero glow reads — as the composed bytes the row draws its human through. A ghost ring reads it to
+  /** The team colour the body palette of `row` wears: the step {@link GLOW_PALETTE_INDEX} (the step the
+   *  hero glow reads) as the composed bytes the row draws its human through. A ghost ring reads it to
    *  tint with the exact colour the unit itself shows, its sex and palette rolls included. */
   teamColourAt(row: number): number {
     const at = row * ROW_BYTES + GLOW_PALETTE_INDEX * RGBA;

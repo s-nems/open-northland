@@ -26,8 +26,6 @@ export interface BuildingPanel {
   /** The shown building and the client box the renderer paints it into. */
   portrait(): BuildingPortraitSubject | null;
   claims(clientX: number, clientY: number): boolean;
-  /** Tab and Shift+Tab: show the owner's next or previous building of the type; false when there is none. */
-  browse(step: 1 | -1): boolean;
   /** The upgrade key: press the shown building's Upgrade tile; false when none is shown or it refuses. */
   upgrade(): boolean;
   /** The priority key: press the shown site's Priority tile; false when no site is shown or it refuses. */
@@ -204,7 +202,6 @@ export function createBuildingPanel(deps: BuildingPanelDeps): BuildingPanel {
       return rect === null ? null : { entityRef: shown.entityId, kind: 'building', rect };
     },
     claims: (clientX, clientY) => frame.claims(clientX, clientY),
-    browse,
     upgrade: () => portrait.press('upgrade'),
     prioritize: () => portrait.press('prioritize'),
     alarm: () => alarm.press(),
