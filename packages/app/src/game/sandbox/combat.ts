@@ -36,13 +36,13 @@ import {
 const ARROW_MUNITION = 1;
 const ROCK_MUNITION = 2;
 const CATAPULT_MAIN_TYPE = 7;
-const CATAPULT_SPEED = 3;
 const SIEGE_DAMAGE_TYPE = 2;
 /** The catapult's `weapons.ini` type 21 row as the data pack sets it: the pack's balance raises the far
- *  reach from 24 and every damage column to 125%, rounded down. Extracted damage columns: bare, wool,
- *  leather, chain, plate, vehicle/wood, house. */
+ *  reach from 24 and the stone's speed from 3, and every damage column to 125%, rounded down. Extracted
+ *  damage columns: bare, wool, leather, chain, plate, vehicle/wood, house. */
 export const CATAPULT_MIN_RANGE = 8;
 export const CATAPULT_MAX_RANGE = 26;
+const CATAPULT_SPEED = 4;
 const EXTRACTED_CATAPULT_DAMAGE = {
   '0': 8000,
   '1': 4000,
