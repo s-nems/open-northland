@@ -22,7 +22,12 @@ import {
   positionOfNode,
 } from '../../../src/nav/halfcell.js';
 import { targetMaterial, weaponDamageVsTarget } from '../../../src/systems/conflict/weapons.js';
-import { ARMOR_MATERIAL, WEAPON_MAIN_TYPE, WILDLIFE_DAMAGE_COLUMN } from '../../../src/systems/index.js';
+import {
+  ARMOR_MATERIAL,
+  MONSTER_DAMAGE_COLUMN,
+  WEAPON_MAIN_TYPE,
+  WILDLIFE_DAMAGE_COLUMN,
+} from '../../../src/systems/index.js';
 import { landedDamage } from '../../../src/systems/settlers/atomics/effects/combat/hit/damage.js';
 import type { PendingHitReaction } from '../../../src/systems/settlers/atomics/effects/combat/hit/reaction.js';
 import { resolveCombatHit } from '../../../src/systems/settlers/atomics/effects/combat/hit/resolution.js';
@@ -154,10 +159,35 @@ describe('landedDamage - animals and buildings', () => {
     const wolf = fighterAtNode(sim, VICTIM.hx, VICTIM.hy, WOLF_TRIBE, null);
     const leather = targetMaterial(sim.world, ctxOf(sim), wolf);
     const bow = { damage: { [String(ARMOR_MATERIAL.LEATHER)]: 245, [String(WILDLIFE_DAMAGE_COLUMN)]: 525 } };
-    expect(weaponDamageVsTarget(sim.world, bow, wolf, leather)).toBe(525);
+    expect(weaponDamageVsTarget(sim.world, sim.content, bow, wolf, leather)).toBe(525);
     expect(
-      weaponDamageVsTarget(sim.world, { damage: { [String(ARMOR_MATERIAL.LEATHER)]: 245 } }, wolf, leather),
+      weaponDamageVsTarget(
+        sim.world,
+        sim.content,
+        { damage: { [String(ARMOR_MATERIAL.LEATHER)]: 245 } },
+        wolf,
+        leather,
+      ),
     ).toBe(245);
+  });
+
+  it("a monster takes a weapon's monster column, the column of its armour where the weapon has none", () => {
+    const MONSTER_TRIBE = 42;
+    const base = combatCadenceContent();
+    const content = parseContentSet({
+      ...base,
+      tribes: [...base.tribes, { typeId: MONSTER_TRIBE, id: 'dragon', monster: {} }],
+    });
+    const sim = new Simulation({ seed: 1, content, map: grass(6, 6) });
+    const dragon = fighterAtNode(sim, VICTIM.hx, VICTIM.hy, MONSTER_TRIBE, null);
+    const bare = targetMaterial(sim.world, ctxOf(sim), dragon);
+    const spear = { damage: { [String(bare)]: 500, [String(MONSTER_DAMAGE_COLUMN)]: 750 } };
+    expect(weaponDamageVsTarget(sim.world, content, spear, dragon, bare)).toBe(750);
+    expect(weaponDamageVsTarget(sim.world, content, { damage: { [String(bare)]: 500 } }, dragon, bare)).toBe(
+      500,
+    );
+    const person = fighterAtNode(sim, 0, 4, VIKING, WOMAN);
+    expect(weaponDamageVsTarget(sim.world, content, spear, person, bare)).toBe(500);
   });
 
   it('a building takes the house column, a zero base does nothing, and no side or armor counts', () => {

@@ -68,11 +68,20 @@ export const UnitVariant = z.strictObject({
 });
 export type UnitVariant = z.infer<typeof UnitVariant>;
 
+/** Authored monster rules (`catalog/creatures.ts` in the app): the tribe is a monster, whose blows take a
+ *  weapon's monster column. Unset fields keep the common rule: 5000 hitpoints, a fighter starting in DEFEND. */
+export const MonsterRules = z.strictObject({
+  hitpoints: z.number().int().positive().optional(),
+  startsInAttack: z.boolean().optional(),
+});
+export type MonsterRules = z.infer<typeof MonsterRules>;
+
 export const TribeType = z.strictObject({
   typeId: TypeId,
   id: z.string(),
   name: z.string().optional(),
   unitVariants: z.array(UnitVariant).optional(),
+  monster: MonsterRules.optional(),
   /** Reset weapon type (original behavior: a person's weapon resets to type 1). Keeping it equipped
    *  across a monster's body-form job changes is an approximation, not traced for all five body jobs. */
   naturalWeaponType: TypeId.optional(),

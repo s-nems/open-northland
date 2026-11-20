@@ -1,4 +1,4 @@
-import type { JobEnables, JobRequirement } from '@open-northland/data';
+import type { JobEnables, JobRequirement, MonsterRules } from '@open-northland/data';
 import { systems } from '@open-northland/sim';
 import {
   ATTACK_ATOMIC,
@@ -25,7 +25,7 @@ import {
   WELL_DRAW_ATOMIC,
   WHEAT_HARVEST_ATOMIC,
 } from '../../../../catalog/atomics.js';
-import { CREATURE_ATTACKS, SANDBOX_MONSTER_TRIBES } from '../../../../catalog/creatures.js';
+import { CREATURE_ATTACKS, SANDBOX_MONSTER_TRIBES, withMonsterRules } from '../../../../catalog/creatures.js';
 import { PRODUCE_ATOMIC_BY_GOOD_ID, SLAY_ATOMIC_BY_GOOD_ID } from '../../../../catalog/goods.js';
 import {
   JOB_ARCHER,
@@ -87,6 +87,7 @@ export interface SandboxTribe {
   readonly typeId: number;
   readonly id: string;
   readonly naturalWeaponType?: number;
+  readonly monster?: MonsterRules;
   readonly jobEnables?: readonly JobEnables[];
   readonly jobRequirements?: readonly JobRequirement[];
   readonly atomicBindings?: unknown[];
@@ -203,18 +204,21 @@ export function buildSandboxTribes(
     ],
   });
   for (const tribe of [...SANDBOX_ANIMAL_TRIBES, ...SANDBOX_MONSTER_TRIBES]) {
-    tribes.set(tribe.typeId, {
-      typeId: tribe.typeId,
-      id: tribe.id,
-      ...('naturalWeaponType' in tribe ? { naturalWeaponType: tribe.naturalWeaponType } : {}),
-      atomicBindings: CREATURE_ATTACKS.filter((attack) => attack.tribeType === tribe.typeId).map(
-        (attack) => ({
-          jobType: attack.jobType,
-          atomicId: ATTACK_ATOMIC,
-          animation: attack.name,
-        }),
-      ),
-    });
+    tribes.set(
+      tribe.typeId,
+      withMonsterRules({
+        typeId: tribe.typeId,
+        id: tribe.id,
+        ...('naturalWeaponType' in tribe ? { naturalWeaponType: tribe.naturalWeaponType } : {}),
+        atomicBindings: CREATURE_ATTACKS.filter((attack) => attack.tribeType === tribe.typeId).map(
+          (attack) => ({
+            jobType: attack.jobType,
+            atomicId: ATTACK_ATOMIC,
+            animation: attack.name,
+          }),
+        ),
+      }),
+    );
   }
   for (const tribe of [
     { typeId: 2, id: 'frank' },

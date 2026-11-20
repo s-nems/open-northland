@@ -8,6 +8,7 @@ import {
   isWildlife,
   Palisade,
   Position,
+  Settler,
   type SettlerIdentity,
   Vehicle,
   type VehicleStateView,
@@ -38,9 +39,11 @@ import {
   eventTick,
   isAnimalTribe,
   isAreaWeapon,
+  isMonsterTribe,
   isRangedWeapon,
   isShipVehicle,
   weaponDamageVsMaterial,
+  weaponDamageVsMonster,
   weaponDamageVsWildlife,
 } from '../readviews/index.js';
 
@@ -216,15 +219,19 @@ export function targetMaterial(world: World, ctx: SystemContext, target: Entity)
 }
 
 /** The damage `weapon` deals `target` of armor `material` ({@link targetMaterial}): a wild animal takes the
- *  animal column ({@link weaponDamageVsWildlife}), everything else its material's. */
+ *  animal column ({@link weaponDamageVsWildlife}), a monster the monster column ({@link weaponDamageVsMonster}),
+ *  everything else its material's. */
 export function weaponDamageVsTarget(
   world: World,
+  content: ContentSet,
   weapon: Pick<WeaponType, 'damage'>,
   target: Entity,
   material: number,
 ): number {
-  return isWildlife(world, target)
-    ? weaponDamageVsWildlife(weapon)
+  if (isWildlife(world, target)) return weaponDamageVsWildlife(weapon);
+  const tribe = world.tryGet(target, Settler)?.tribe;
+  return tribe !== undefined && isMonsterTribe(content, tribe)
+    ? weaponDamageVsMonster(weapon, material)
     : weaponDamageVsMaterial(weapon, material);
 }
 

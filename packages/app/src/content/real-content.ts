@@ -11,6 +11,7 @@ import {
 } from '@open-northland/data';
 import { HARVEST_CADAVER_ATOMIC } from '../catalog/atomics.js';
 import { VIKING_BUILDINGS } from '../catalog/buildings.js';
+import { withMonsterRules } from '../catalog/creatures.js';
 import { shelterCapacityFor } from '../catalog/defence.js';
 import { FARMING_BALANCE_BY_ID } from '../catalog/farming.js';
 import { GATHERING_BALANCE_BY_ID } from '../catalog/gathering.js';
@@ -181,7 +182,7 @@ export function mergeRealContent(real: ContentSet): RealContentMerge {
       buildings,
       landscape,
       weapons,
-      tribes: real.tribes.map((tribe) => withUnitVariants(tribe, weapons)),
+      tribes: real.tribes.map((tribe) => withUnitVariants(withMonsterRules(tribe), weapons)),
     }),
     unbalancedGoods,
     unfarmedFieldGoods,

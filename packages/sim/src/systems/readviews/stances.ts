@@ -10,7 +10,7 @@ import {
 } from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import { isFighterJob } from './jobs.js';
-import { declaresNoTrades } from './tribes/civilizations.js';
+import { monsterRulesOf } from './tribes/monsters.js';
 
 /**
  * The ids are verbatim from `logicdefines.inc` `MILITARY_MODE_{NONE, ATTACK, DEFEND, IGNORE, FLEE}`. The
@@ -53,9 +53,9 @@ export function isMilitaryMode(mode: number): mode is MilitaryMode {
 /**
  * The stance stamped on an owned settler at spawn and on a profession change, until `setStance` overrides
  * it. Original behavior: every human starts in DEFEND, except a weresnake or werewolf fighter, which
- * starts in ATTACK unless its map gives it {@link MISSION_BEHAVIOUR.SPAWNS_DEFENDING}. The monsters are
- * told by data: a person whose tribe declares no trades. Approximation: everyone who is not a fighter
- * starts in IGNORE, the mode under which this build's civilian keeps working beside an enemy, runs only
+ * starts in ATTACK unless its map gives it {@link MISSION_BEHAVIOUR.SPAWNS_DEFENDING}. Which monsters
+ * start in ATTACK is content: a person whose tribe's monster rules say `startsInAttack`. Approximation:
+ * everyone who is not a fighter starts in IGNORE, the mode under which this build's civilian keeps working beside an enemy, runs only
  * from a blow, and a scout or hunter keeps its own drives.
  */
 export function defaultStance(
@@ -66,8 +66,9 @@ export function defaultStance(
 ): MilitaryMode {
   if (!isFighterJob(content, jobType)) return MILITARY_MODE.IGNORE;
   const tribe = world.tryGet(e, Settler)?.tribe;
-  const monster = tribe !== undefined && world.has(e, Person) && declaresNoTrades(content, tribe);
-  if (!monster) return MILITARY_MODE.DEFEND;
+  const attacks =
+    tribe !== undefined && world.has(e, Person) && monsterRulesOf(content, tribe)?.startsInAttack === true;
+  if (!attacks) return MILITARY_MODE.DEFEND;
   return hasMissionBehaviour(world, e, MISSION_BEHAVIOUR.SPAWNS_DEFENDING)
     ? MILITARY_MODE.DEFEND
     : MILITARY_MODE.ATTACK;

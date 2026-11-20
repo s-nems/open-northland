@@ -320,7 +320,12 @@ export {
 } from './readviews/buildings.js';
 // The weapon and armour classes the data's `mainType` carries, which the HUD groups soldiers by.
 export { ARMOR_MAIN_TYPE } from './readviews/classes/armor.js';
-export { ARMOR_MATERIAL, WEAPON_MAIN_TYPE, WILDLIFE_DAMAGE_COLUMN } from './readviews/combat.js';
+export {
+  ARMOR_MATERIAL,
+  MONSTER_DAMAGE_COLUMN,
+  WEAPON_MAIN_TYPE,
+  WILDLIFE_DAMAGE_COLUMN,
+} from './readviews/combat.js';
 export { heroMayChangeSlot } from './readviews/equip-pick.js';
 export { EDIBLE_FORM_BY_DISH, edibleGoodFormOf, isFoodIn } from './readviews/food.js';
 // The content-derived job roles, so the profession picker and the action ring offer exactly what the

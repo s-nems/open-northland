@@ -18,6 +18,7 @@ import {
 } from '@open-northland/sim';
 import { ANIMAL_PALETTE_BY_TRIBE } from '../../catalog/animal-roster.js';
 import { ATTACK_ATOMIC } from '../../catalog/atomics.js';
+import { withMonsterTribes } from '../../catalog/creatures.js';
 import { JOB_CIVILIST, JOB_HEROINE_BOW, JOB_SOLDIER_UNARMED, JOB_WOMAN } from '../../catalog/jobs.js';
 import { professionDefForJob } from '../../catalog/professions.js';
 import { withUnitVariants } from '../../catalog/unit-variants.js';
@@ -508,7 +509,8 @@ function goodsByType(
  * The typed, localized reference over `content`, decoded or merged alike: the app's clean-room overlays
  * apply to each row. Names are read once, so a language change needs a new base.
  */
-export function createKnowledgeBase(content: ContentSet, help: ObjectHelp | null = null): KnowledgeBase {
+export function createKnowledgeBase(decoded: ContentSet, help: ObjectHelp | null = null): KnowledgeBase {
+  const content = withMonsterTribes(decoded);
   const joins = createJoins(content, help);
   const goods = buildGoods(joins);
   const buildings = buildBuildings(joins);

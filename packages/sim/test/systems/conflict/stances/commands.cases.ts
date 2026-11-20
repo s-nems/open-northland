@@ -1,6 +1,13 @@
 import { type ContentSet, parseContentSet, WERESNAKE_TRIBE, WEREWOLF_TRIBE } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
-import { addPerson, MISSION_BEHAVIOUR, Position, Settler, Stance } from '../../../../src/components/index.js';
+import {
+  addPerson,
+  Health,
+  MISSION_BEHAVIOUR,
+  Position,
+  Settler,
+  Stance,
+} from '../../../../src/components/index.js';
 import { fx } from '../../../../src/core/fixed.js';
 import type { Entity } from '../../../../src/ecs/world.js';
 import { Simulation } from '../../../../src/index.js';
@@ -11,15 +18,19 @@ import { spawnSettler } from '../../../../src/systems/spawn/index.js';
 import { testContent } from '../../../fixtures/content.js';
 import { cell, combatant, ctxOf, grassMap, P0, VIKING, WOODCUTTER } from './support.js';
 
-/** The fixture plus the two monster tribes as the shipped data declares them: records with no trades. */
+const DRAGON_TRIBE = 42;
+const DRAGON_HITPOINTS = 20000;
+
+/** The fixture plus the monster tribes with the rules the app stamps on them. */
 function monsterContent(): ContentSet {
   const base = testContent();
   return parseContentSet({
     ...base,
     tribes: [
       ...base.tribes,
-      { typeId: WERESNAKE_TRIBE, id: 'weresnake' },
-      { typeId: WEREWOLF_TRIBE, id: 'werewolf' },
+      { typeId: WERESNAKE_TRIBE, id: 'weresnake', monster: { startsInAttack: true } },
+      { typeId: WEREWOLF_TRIBE, id: 'werewolf', monster: { startsInAttack: true } },
+      { typeId: DRAGON_TRIBE, id: 'dragon', monster: { hitpoints: DRAGON_HITPOINTS } },
     ],
   });
 }
@@ -69,6 +80,15 @@ describe('stance defaults - the job → military-mode lookup', () => {
     expect(spawnedStance(SOLDIER, WERESNAKE_TRIBE, MISSION_BEHAVIOUR.SPAWNS_DEFENDING)).toBe(
       MILITARY_MODE.DEFEND,
     );
+  });
+
+  it('starts a dragon in DEFEND with its own hitpoint pool', () => {
+    expect(spawnedStance(SOLDIER, DRAGON_TRIBE)).toBe(MILITARY_MODE.DEFEND);
+    const sim = new Simulation({ seed: 1, content: monsterContent(), map: grassMap(4, 1) });
+    expect(sim.world.get(spawn(sim, SOLDIER, DRAGON_TRIBE), Health)).toEqual({
+      hitpoints: DRAGON_HITPOINTS,
+      max: DRAGON_HITPOINTS,
+    });
   });
 
   it('starts the fighters of a seat the computer does not command in DEFEND', () => {

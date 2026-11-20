@@ -1,3 +1,4 @@
+import type { ContentSet, MonsterRules } from '@open-northland/data';
 import {
   ANIMAL_TRIBE_BEARS,
   ANIMAL_TRIBE_LIONESSES,
@@ -6,6 +7,33 @@ import {
   ANIMAL_TRIBE_WOLVES,
 } from './animal-tribes.js';
 import { JOB_SOLDIER_UNARMED } from './jobs.js';
+
+/** Original behavior: the dragon's hitpoint pool. */
+const DRAGON_HITPOINTS = 20000;
+
+/**
+ * The monster tribes by `[tribetype]` slug, and their rules. Original behavior: a weresnake or werewolf
+ * fighter starts in ATTACK; the dragon starts in DEFEND like a person.
+ */
+const MONSTER_RULES: ReadonlyMap<string, MonsterRules> = new Map([
+  ['weresnake', { startsInAttack: true }],
+  ['werewolf', { startsInAttack: true }],
+  ['dragon', { hitpoints: DRAGON_HITPOINTS }],
+]);
+
+/** `tribe` with its {@link MONSTER_RULES} stamped on; idempotent, and any other tribe passes unchanged. */
+export function withMonsterRules<
+  T extends { readonly id: string; readonly monster?: MonsterRules | undefined },
+>(tribe: T): T {
+  const rules = MONSTER_RULES.get(tribe.id);
+  return rules === undefined || tribe.monster !== undefined ? tribe : { ...tribe, monster: { ...rules } };
+}
+
+/** `content` with {@link withMonsterRules} on every tribe; the same object when no tribe needed it. */
+export function withMonsterTribes(content: ContentSet): ContentSet {
+  const tribes = content.tribes.map((tribe) => withMonsterRules(tribe));
+  return tribes.every((tribe, i) => tribe === content.tribes[i]) ? content : { ...content, tribes };
+}
 
 export const MONSTER_TRIBE_WERESNAKE = 5;
 export const MONSTER_TRIBE_WEREWOLF = 6;

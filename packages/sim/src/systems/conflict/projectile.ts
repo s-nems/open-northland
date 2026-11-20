@@ -173,7 +173,7 @@ function strike(
       world,
       ctx,
       victim,
-      weaponDamageVsTarget(world, proj, victim, material),
+      weaponDamageVsTarget(world, ctx.content, proj, victim, material),
       proj.impact !== null,
     ),
     weaponMainType: proj.weaponMainType,

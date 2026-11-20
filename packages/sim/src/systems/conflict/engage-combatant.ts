@@ -537,7 +537,7 @@ function swingAt(
   // experience raises the blow as it lands, with his amulets (`landedDamage`). A ranged swing's shot
   // resolves the column again against whatever it strikes.
   const material = targetMaterial(world, ctx, target);
-  const base = weaponDamageVsTarget(world, weapon.weapon, target, material);
+  const base = weaponDamageVsTarget(world, ctx.content, weapon.weapon, target, material);
   const damage = world.has(target, Palisade) ? wallBlowDamage(base) : base;
   const blow = { damage, hitSoundType: hitSoundVsMaterial(weapon.weapon, material) };
   startAttack(world, ctx, attacker, e, target, blow, weapon.weapon);
