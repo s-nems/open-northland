@@ -194,7 +194,7 @@ export const deSurfaces = {
         changed: 'Geändert',
         rulesGroup: 'Spielregeln',
         worldGroup: 'Welt',
-        reset: 'Standard wiederherstellen',
+        reset: 'Standardwerte wiederherstellen',
         done: 'Fertig',
         close: 'Schließen',
         hostOnly: 'Diese Einstellungen ändert nur der Raumersteller.',

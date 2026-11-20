@@ -42,19 +42,22 @@ export function advancedSettings(options: {
   readonly reset: () => void;
 }) {
   const { text } = options;
+  const id = ++windowIds;
   const entry = node('button', 'main-menu__advanced-entry');
   entry.type = 'button';
   entry.setAttribute('aria-haspopup', 'dialog');
   const state = node('span', 'main-menu__advanced-entry-state');
   entry.append(node('span', 'main-menu__advanced-entry-name', text.label), state);
   const summary = node('p', 'main-menu__advanced-summary');
+  summary.id = `lobby-advanced-summary-${id}`;
+  entry.setAttribute('aria-describedby', summary.id);
 
   const shade = node('div', 'main-menu__dialog-shade');
   const box = node('div', 'main-menu__dialog main-menu__advanced');
   box.setAttribute('role', 'dialog');
   box.setAttribute('aria-modal', 'true');
   const title = node('h2', 'main-menu__dialog-title', text.title);
-  title.id = `lobby-advanced-${++windowIds}`;
+  title.id = `lobby-advanced-${id}`;
   box.setAttribute('aria-labelledby', title.id);
   const note = node('p', 'main-menu__advanced-note');
   const groups = options.groups.map((group) => {
@@ -74,25 +77,29 @@ export function advancedSettings(options: {
   shade.append(box);
   dismissOnBackdropClick([shade], () => close());
 
-  const focusable = (): HTMLElement[] =>
+  const focusable = (): HTMLButtonElement[] =>
     [...box.querySelectorAll<HTMLButtonElement>('button')].filter(
       (button) => !button.disabled && button.getClientRects().length > 0,
     );
-  // Capture phase, so the screen's own Escape stays behind the window; an open choice list keeps
-  // its keys, and closing it leaves the window open.
+  // Capture phase, so the screen's own keys stay behind the window. An open choice list keeps its
+  // other keys, and Escape there closes only the list.
   const onKey = (event: KeyboardEvent): void => {
     if (!shade.isConnected) {
       detach();
       return;
     }
-    if (event.target instanceof Element && event.target.closest('[popover]') !== null) return;
-    if (event.key === 'Escape') {
+    const list = event.target instanceof Element ? event.target.closest<HTMLElement>('[popover]') : null;
+    if (event.key === 'Escape' && list === null) {
       event.preventDefault();
       event.stopPropagation();
       close();
     } else if (event.key === 'Tab') {
+      // Tab leaves an open list as it leaves its closed field, so it steps on from that field: the
+      // button the dropdown lays beside its list.
+      list?.hidePopover();
       const all = focusable();
-      const active = document.activeElement;
+      const active =
+        list === null ? document.activeElement : all.find((b) => b.parentElement?.contains(list) === true);
       const at = active instanceof HTMLButtonElement ? all.indexOf(active) : -1;
       const next = event.shiftKey ? (at <= 0 ? all.length - 1 : at - 1) : (at + 1) % all.length;
       event.preventDefault();
@@ -124,6 +131,9 @@ export function advancedSettings(options: {
      *  they cannot be changed. */
     update(changes: readonly string[], frozen: boolean, why: string): void {
       const changed = changes.length > 0;
+      // A reset that leaves nothing to reset, or a lost right to change, takes the button away from
+      // under the focus; Done keeps it inside the window.
+      if (document.activeElement === reset && (frozen || !changed)) done.focus();
       state.textContent = changed ? text.changed : text.standard;
       entry.classList.toggle('is-changed', changed);
       summary.textContent = changes.join(' · ');

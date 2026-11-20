@@ -183,7 +183,7 @@ export const itSurfaces = {
         changed: 'Modificate',
         rulesGroup: 'Regole di gioco',
         worldGroup: 'Mondo',
-        reset: 'Ripristina predefinite',
+        reset: 'Ripristina predefiniti',
         done: 'Fatto',
         close: 'Chiudi',
         hostOnly: 'Solo il creatore della stanza può cambiare queste impostazioni.',

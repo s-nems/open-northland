@@ -29,6 +29,8 @@ export function ruleChoiceState<T>(choices: readonly T[], change: (value: T) => 
       disabled = frozen;
     },
     value: () => current,
+    /** The choice still waiting for its acknowledgement, else the shown one. */
+    pending: () => requested,
     /** Take `value` as requested without sending it, for a caller that sends several rules as one
      *  change; false when it is no new request. */
     claim,

@@ -26,19 +26,25 @@ function mount() {
     const drawn = this.closest('[hidden], [popover]') === null;
     return (drawn ? [new DOMRect()] : []) as unknown as DOMRectList;
   };
+  // Nor does it implement popovers; a hidden list draws nothing either way.
+  const popovers = HTMLElement.prototype as Partial<Pick<HTMLElement, 'hidePopover'>>;
+  popovers.hidePopover = () => {};
   onTestFinished(() => {
     proto.getClientRects = original;
+    delete popovers.hidePopover;
   });
+  // A dropdown field with its choice list open inside the window, laid out as the dropdown does.
   const rule = document.createElement('button');
   rule.textContent = 'rule';
-  // An open choice list inside the window, as the dropdown's popover is.
   const list = document.createElement('div');
   list.setAttribute('popover', '');
   const option = document.createElement('button');
   list.append(option);
+  const field = document.createElement('div');
+  field.append(rule, list);
   const advanced = advancedSettings({
     text: TEXT,
-    groups: [{ title: TEXT.rulesGroup, rows: [rule, list] }],
+    groups: [{ title: TEXT.rulesGroup, rows: [field] }],
     reset: () => undefined,
   });
   const screen = document.createElement('div');
@@ -49,25 +55,28 @@ function mount() {
     advanced.dispose();
     screen.remove();
   });
-  const [entry] = advanced.elements;
+  const [entry, summary] = advanced.elements;
   if (!(entry instanceof HTMLButtonElement)) throw new Error('the entry is a button');
   const shade = (): Element | null => screen.querySelector('.main-menu__dialog-shade');
+  const button = (label: string): HTMLButtonElement | undefined =>
+    [...(shade()?.querySelectorAll('button') ?? [])].find((b) => b.textContent === label);
   const key = (target: Element, name: string, shiftKey = false): void => {
     target.dispatchEvent(new KeyboardEvent('keydown', { key: name, shiftKey, bubbles: true }));
   };
-  return { advanced, entry, rule, option, shade, key };
+  return { advanced, entry, summary, rule, option, shade, button, key };
 }
 
 describe('the advanced settings window', () => {
   it('opens on the entry, keeps Tab inside and closes on Escape back to the entry', () => {
-    const { advanced, entry, rule, option, shade, key } = mount();
+    const { advanced, entry, summary, rule, option, shade, button, key } = mount();
     advanced.update(['Storage capacity: ×3'], false, '');
     expect(entry.textContent).toContain(TEXT.changed);
+    expect(entry.getAttribute('aria-describedby')).toBe(summary?.id);
     entry.click();
     expect(shade()).not.toBeNull();
     expect(document.activeElement).toBe(rule);
     // Tab walks the drawn buttons and wraps: the rule, Restore defaults, Done, back to the rule.
-    const done = [...(shade()?.querySelectorAll('button') ?? [])].find((b) => b.textContent === TEXT.done);
+    const done = button(TEXT.done);
     key(rule, 'Tab', true);
     expect(document.activeElement).toBe(done);
     if (done !== undefined) key(done, 'Tab');
@@ -78,6 +87,24 @@ describe('the advanced settings window', () => {
     key(rule, 'Escape');
     expect(shade()).toBeNull();
     expect(document.activeElement).toBe(entry);
+  });
+
+  it('steps on from an open list as from its closed field, never out of the window', () => {
+    const { advanced, entry, option, button, key } = mount();
+    advanced.update([], false, '');
+    entry.click();
+    // Past the field, Restore defaults has nothing to restore: Done is next.
+    key(option, 'Tab');
+    expect(document.activeElement).toBe(button(TEXT.done));
+  });
+
+  it('moves the focus to Done when a reset leaves nothing to restore', () => {
+    const { advanced, entry, button } = mount();
+    advanced.update(['Storage capacity: ×3'], false, '');
+    entry.click();
+    button(TEXT.reset)?.focus();
+    advanced.update([], false, '');
+    expect(document.activeElement).toBe(button(TEXT.done));
   });
 
   it('shows a frozen window read-only with its reason and no reset', () => {

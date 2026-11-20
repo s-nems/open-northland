@@ -569,8 +569,6 @@
 }
 .network-room .main-menu__advanced .main-menu__advanced-group-title {
   font: 500 calc(var(--u) * 13) / 1 var(--font-body);
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
   color: var(--muted);
 }
 .network-room .main-menu__advanced .main-menu__lobby-option-row {

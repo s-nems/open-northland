@@ -193,7 +193,7 @@ export const ruSurfaces = {
         changed: 'Изменены',
         rulesGroup: 'Правила игры',
         worldGroup: 'Мир',
-        reset: 'Вернуть по умолчанию',
+        reset: 'Восстановить по умолчанию',
         done: 'Готово',
         close: 'Закрыть',
         hostOnly: 'Эти настройки меняет только создатель комнаты.',

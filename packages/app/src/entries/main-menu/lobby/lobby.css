@@ -629,10 +629,6 @@
   align-items: flex-start;
 }
 
-.main-menu__advanced .main-menu__lobby-option-row > :last-child {
-  flex: none;
-}
-
 /* Done keeps the right edge while the reset is hidden. */
 .main-menu__advanced-done {
   margin-left: auto;
@@ -668,6 +664,7 @@
 
 .is-readonly .main-menu__toggle,
 .is-readonly .main-menu__seg,
-.is-readonly .main-menu__dropdown {
+.is-readonly .main-menu__dropdown,
+.is-readonly .main-menu__rule-note {
   display: none;
 }

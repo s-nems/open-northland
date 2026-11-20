@@ -242,8 +242,9 @@ export function lobbyScreen(
   gateStart();
 
   // Capture phase: Esc closes an open colour picker before the menu shell reads it as
-  // back-navigation.
+  // back-navigation. A window open over the seats takes its own Esc.
   const onKeydown = (event: KeyboardEvent): void => {
+    if (event.target instanceof Element && event.target.closest('[aria-modal="true"]') !== null) return;
     if (event.key === 'Escape' && pickerSlot !== null) {
       event.stopPropagation();
       refocus = `chip:${pickerSlot}`;

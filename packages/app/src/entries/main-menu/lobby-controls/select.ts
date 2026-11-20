@@ -22,6 +22,8 @@ export function selectControl(
   return {
     root,
     caption,
+    /** The field's button, which a written detail describes. */
+    button: dropdown.button,
     update(value: string, disabled: boolean, label = value): void {
       // Custom protocol values remain readable even when the menu offers only the usual choices.
       const next = choices.some((choice) => choice.id === value) ? null : value;

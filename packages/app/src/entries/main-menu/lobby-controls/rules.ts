@@ -173,6 +173,7 @@ export function gameRuleControls(options: GameRuleControlOptions) {
       placement === 'advanced' ? OPTION_ROW_CLASS : (options.fieldClassName ?? OPTION_ROW_CLASS),
     );
     const written = placement === 'advanced' ? ruleDetail(control.caption, undefined) : null;
+    if (written !== null) control.button.setAttribute('aria-describedby', written.id);
     const show = readout(control.root);
     return {
       elements: [control.root],
@@ -262,9 +263,10 @@ export function gameRuleControls(options: GameRuleControlOptions) {
     return {
       elements: [row],
       state,
-      update(value: T | null, disabled: boolean, changed = false): void {
+      /** `unlisted` is read in place of a value no segment stands for. */
+      update(value: T | null, disabled: boolean, changed = false, unlisted = ''): void {
         state.update(value, disabled);
-        show(choices.find((choice) => choice.value === value)?.label ?? '', changed);
+        show(choices.find((choice) => choice.value === value)?.label ?? unlisted, changed);
         segments.setActive(value ?? '');
         for (const button of segments.root.querySelectorAll('button')) button.disabled = disabled;
       },
@@ -286,8 +288,11 @@ export function gameRuleControls(options: GameRuleControlOptions) {
     return {
       elements: [...control.elements, inheritedMap],
       update(shown: ShownMap, disabled: boolean): void {
-        control.update(shown === 'revealed' ? null : shown, disabled);
-        inheritedMap.textContent = shown === 'revealed' ? (text.revealed ?? '') : (inherited ?? '');
+        // Neither segment stands for the map's own rule or no fog: the note says which, and a
+        // read-only viewer reads it as the row's value.
+        const note = shown === 'revealed' ? (text.revealed ?? '') : (inherited ?? '');
+        control.update(shown === 'revealed' ? null : shown, disabled, false, note);
+        inheritedMap.textContent = note;
         inheritedMap.hidden = shown !== null && shown !== 'revealed';
       },
     };
@@ -405,9 +410,10 @@ export function gameRuleControls(options: GameRuleControlOptions) {
     ],
     reset(): void {
       const standard = STANDARD_ADVANCED;
-      // A rule kept at the map's own already plays as the map meant; only one switched off goes back.
+      // A rule kept at the map's own already plays as the map meant; only one switched off, or
+      // being switched off, goes back.
       const restores = (rule: typeof progression): boolean =>
-        rule.state.value() === false && rule.state.claim(true);
+        rule.state.pending() === false && rule.state.claim(true);
       const change: Partial<GameRules> = {
         ...(restores(progression) ? { progression: standard.progression } : {}),
         ...(restores(needs) ? { needs: standard.needs } : {}),

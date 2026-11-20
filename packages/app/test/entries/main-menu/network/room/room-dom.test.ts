@@ -504,6 +504,60 @@ describe('room guidance and chat', () => {
       .querySelector(`[role="switch"][aria-label="${lobbyCopy.needsLabel}"]`)
       ?.closest('.main-menu__lobby-option-row');
     expect(needsRow?.classList.contains('is-changed')).toBe(true);
+    // The map's own rule has no segment of its own: the guest reads the note as the row's value.
+    const mapRow = room.element
+      .querySelector('.main-menu__lobby-map')
+      ?.closest('.main-menu__lobby-option-row');
+    expect(mapRow?.querySelector('.main-menu__rule-value')?.textContent).toBe(
+      messages().networkRoom.authored,
+    );
+  });
+
+  it("restores the standard game in one change and leaves a rule kept at the map's own", () => {
+    const { room, client } = mount();
+    const view = lobby();
+    room.update(
+      {
+        ...view,
+        settings: { ...view.settings, rules: { ...view.settings.rules, needs: false, storageCapacity: 3 } },
+      },
+      true,
+    );
+    room.element.querySelector<HTMLButtonElement>('.main-menu__advanced-entry')?.click();
+    const sent = client.setSettings.mock.calls.length;
+    [...room.element.querySelectorAll<HTMLButtonElement>('.main-menu__advanced button')]
+      .find((b) => b.textContent === messages().mainMenu.lobby.advanced.reset)
+      ?.click();
+    expect(client.setSettings).toHaveBeenCalledTimes(sent + 1);
+    expect(client.setSettings).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        rules: expect.objectContaining({ progression: null, needs: true, storageCapacity: null }),
+      }),
+    );
+  });
+
+  it('restores a rule whose switch-off the room has not acknowledged yet', () => {
+    const { room, client } = mount();
+    const view = lobby();
+    const withRules = (rules: Partial<RoomView['settings']['rules']>): RoomView => ({
+      ...view,
+      settings: { ...view.settings, rules: { ...view.settings.rules, ...rules } },
+    });
+    room.update(withRules({ needs: true, storageCapacity: 3 }), true);
+    room.element.querySelector<HTMLButtonElement>('.main-menu__advanced-entry')?.click();
+    room.element
+      .querySelector<HTMLButtonElement>(
+        `[role="switch"][aria-label="${messages().mainMenu.lobby.needsLabel}"]`,
+      )
+      ?.click();
+    [...room.element.querySelectorAll<HTMLButtonElement>('.main-menu__advanced button')]
+      .find((b) => b.textContent === messages().mainMenu.lobby.advanced.reset)
+      ?.click();
+    // The switch-off lands, then the reset waiting behind it goes out.
+    room.update(withRules({ needs: false, storageCapacity: 3 }), true);
+    expect(client.setSettings).toHaveBeenLastCalledWith(
+      expect.objectContaining({ rules: expect.objectContaining({ needs: true, storageCapacity: null }) }),
+    );
   });
 
   it('keeps departed seats idle when hosting an existing room with AI takeover', () => {

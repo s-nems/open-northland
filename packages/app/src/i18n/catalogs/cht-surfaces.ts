@@ -164,7 +164,7 @@ export const chtSurfaces = {
         changed: '已變更',
         rulesGroup: '遊戲規則',
         worldGroup: '世界',
-        reset: '恢復預設',
+        reset: '恢復預設值',
         done: '完成',
         close: '關閉',
         hostOnly: '這些設定只能由房間建立者變更。',
