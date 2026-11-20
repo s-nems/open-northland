@@ -1,4 +1,4 @@
-import { mkdtemp, rename, rm, writeFile } from 'node:fs/promises';
+import { chmod, mkdtemp, rename, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { NEWS_FILE_MAX_BYTES } from '@open-northland/data';
@@ -8,9 +8,21 @@ import { NewsFile } from '../../src/news/news-file.js';
 import { type ApiServer, startApiServer } from '../../src/server.js';
 import { DataStore } from '../../src/store.js';
 
-const FIRST = { schema: 1, entries: [{ title: { eng: 'Showmatch tonight' } }] };
-const SECOND = { schema: 1, entries: [{ title: { eng: 'Patch notes' } }, { title: { eng: 'Tournament' } }] };
+const FIRST = { schema: 1, entries: [{ title: { eng: 'Showmatch tonight', pol: 'Pokaz dziś wieczorem' } }] };
+const SECOND = {
+  schema: 1,
+  entries: [
+    { title: { eng: 'Patch notes', pol: 'Poprawki' } },
+    { title: { eng: 'Tournament', pol: 'Turniej' } },
+  ],
+};
+const INVALID = { schema: 1, entries: [{ title: { pol: 'Bez angielskiego' } }] };
 const NOT_MODIFIED = 304;
+const NO_ACCESS = 0o000;
+const READABLE = 0o644;
+const BYTE_ORDER_MARK = '\uFEFF';
+/** Root reads a file whatever its mode, so the unreadable-file case cannot happen as root. */
+const RUNS_AS_ROOT = process.getuid?.() === 0;
 
 describe('news endpoint', () => {
   let dir: string;
@@ -71,7 +83,7 @@ describe('news endpoint', () => {
   it('keeps the last good news over an invalid file and logs it once', async () => {
     await publish(FIRST);
     expect(await news()).toEqual(FIRST);
-    await publish({ schema: 1, entries: [{ title: { pol: 'Bez angielskiego' } }] });
+    await publish(INVALID);
     // Requests arriving together share one reload, so the refusal is logged once.
     expect(await Promise.all([news(), news()])).toEqual([FIRST, FIRST]);
     expect(await news()).toEqual(FIRST);
@@ -81,5 +93,31 @@ describe('news endpoint', () => {
       ['news refused', expect.stringMatching(/^entries\.0\.title\.eng: /)],
       ['news refused', expect.stringContaining(`over the ${NEWS_FILE_MAX_BYTES}-byte cap`)],
     ]);
+  });
+
+  it.skipIf(RUNS_AS_ROOT)('logs a file it cannot open once and reads it after a permission fix', async () => {
+    await publish(FIRST);
+    expect(await news()).toEqual(FIRST);
+    await publish(SECOND);
+    await chmod(file, NO_ACCESS);
+    expect(await news()).toEqual(FIRST);
+    expect(await news()).toEqual(FIRST);
+    expect(logged).toHaveLength(1);
+    await chmod(file, READABLE);
+    expect(await news()).toEqual(SECOND);
+  });
+
+  it('serves no news after the file is deleted, even over a later invalid file', async () => {
+    await publish(FIRST);
+    expect(await news()).toEqual(FIRST);
+    await rm(file);
+    expect(await news()).toEqual({ schema: 1, entries: [] });
+    await publish(INVALID);
+    expect(await news()).toEqual({ schema: 1, entries: [] });
+  });
+
+  it('reads a file saved with a byte order mark', async () => {
+    await publish(`${BYTE_ORDER_MARK}${JSON.stringify(FIRST)}`);
+    expect(await news()).toEqual(FIRST);
   });
 });

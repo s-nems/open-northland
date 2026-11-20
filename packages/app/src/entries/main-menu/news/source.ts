@@ -2,8 +2,8 @@ import {
   type NewsDocument,
   type ReleaseFeed,
   type Validated,
-  validateNewsDocument,
   validateReleaseFeed,
+  validateServedNewsDocument,
 } from '@open-northland/data';
 import { API_PARAM, apiBase, apiBaseUrl, automationWithoutServer } from '../../../content/map-source/api.js';
 import { diag } from '../../../diag/index.js';
@@ -64,7 +64,7 @@ export async function loadMenuNews(
   const named = (param: string): boolean => !automationWithoutServer(param, env.search, env.automated);
   const [news, feed] = await Promise.all([
     named(API_PARAM)
-      ? fetchValidated<NewsDocument>(newsUrl(apiBaseUrl(env.search)), validateNewsDocument, env, signal)
+      ? fetchValidated<NewsDocument>(newsUrl(apiBaseUrl(env.search)), validateServedNewsDocument, env, signal)
       : null,
     named(SITE_PARAM)
       ? fetchValidated<ReleaseFeed>(releaseFeedUrl(siteBaseUrl(env.search)), validateReleaseFeed, env, signal)

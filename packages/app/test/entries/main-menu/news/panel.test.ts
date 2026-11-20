@@ -14,7 +14,7 @@ const NEWS: MenuNews = {
   news: {
     schema: 1,
     entries: [
-      { title: { eng: 'Notes' } },
+      { title: { eng: 'Notes', pol: 'Notatki' } },
       {
         title: { eng: 'Showmatch', pol: 'Pokaz' },
         link: { url: 'https://stream.test/' },
@@ -85,7 +85,7 @@ describe('news panel', () => {
   it('lists the entries and the releases under their headings and opens every link outside the game', async () => {
     const { host, dispose } = await mounted(NEWS);
     const titles = [...host.querySelectorAll('.main-menu__news-title')].map((node) => node.textContent);
-    expect(titles).toEqual(['Pokaz', 'Notes']);
+    expect(titles).toEqual(['Pokaz', 'Notatki']);
     const headings = [...host.querySelectorAll('.main-menu__news-column > .main-menu__news-heading')];
     expect(headings.map((shown) => shown.textContent)).toEqual(['Nowości', 'Ostatnie wersje']);
     const links = [...host.querySelectorAll('a')];

@@ -9,23 +9,26 @@ import { newsSizeProblem, parseNewsBytes } from './document.js';
 const MISSING = 'missing';
 const EMPTY_BODY = jsonBody(EMPTY_NEWS_DOCUMENT);
 
+/** The change time also moves on a chmod or chown, so a permission fix is read again, and on a copy
+ *  that keeps the size and the modification time. */
 function identityOf(stats: Stats): string {
-  return `${stats.dev}:${stats.ino}:${stats.size}:${stats.mtimeMs}`;
+  return `${stats.dev}:${stats.ino}:${stats.size}:${stats.mtimeMs}:${stats.ctimeMs}`;
 }
 
 function isMissing(error: unknown): boolean {
   return error instanceof Error && 'code' in error && error.code === 'ENOENT';
 }
 
-/** A file the server cannot read keeps one identity per error code, so it is logged once. */
+/** A path the server cannot even stat keeps one identity per error code, so it is logged once. */
 function unreadable(error: unknown): string {
   return `unreadable:${error instanceof Error && 'code' in error ? String(error.code) : errorMessage(error)}`;
 }
 
 /**
- * The news file, read again whenever its identity (inode, size, mtime) changes, so an edit or an
- * atomic rename shows on the next request. An invalid or unreadable file keeps the last good news
- * and is logged once per identity. A missing file serves no news.
+ * The news file, read again whenever its identity (inode, size, modification and change time)
+ * changes, so an edit or an atomic rename shows on the next request. An invalid or unreadable file
+ * keeps the last good news and is logged once per identity. A missing file serves no news, and its
+ * old news does not come back after it.
  */
 export class NewsFile {
   private identity: string | null = null;
@@ -45,7 +48,7 @@ export class NewsFile {
     if (identity === this.identity) return this.body;
     // Another request may have started the reload while this one waited for its stat.
     if (this.loading !== null) return this.loading;
-    this.loading = this.reload().finally(() => {
+    this.loading = this.reload(identity).finally(() => {
       this.loading = null;
     });
     return this.loading;
@@ -59,19 +62,22 @@ export class NewsFile {
     }
   }
 
-  private async reload(): Promise<Body> {
+  /** `statIdentity` is the identity the request saw, which a file that cannot be opened keeps. */
+  private async reload(statIdentity: string): Promise<Body> {
     let handle: FileHandle;
     try {
       handle = await open(this.path);
     } catch (error) {
-      if (!isMissing(error)) return this.refuse(unreadable(error), errorMessage(error));
+      if (!isMissing(error)) return this.refuse(statIdentity, errorMessage(error));
       this.identity = MISSING;
+      this.lastGood = EMPTY_BODY;
       this.body = EMPTY_BODY;
       return this.body;
     }
+    let identity = statIdentity;
     try {
       const stats = await handle.stat();
-      const identity = identityOf(stats);
+      identity = identityOf(stats);
       const tooLarge = newsSizeProblem(stats.size);
       const result: Validated<NewsDocument> =
         tooLarge === null ? parseNewsBytes(await handle.readFile()) : { ok: false, reason: tooLarge };
@@ -81,7 +87,7 @@ export class NewsFile {
       this.body = this.lastGood;
       return this.body;
     } catch (error) {
-      return this.refuse(unreadable(error), errorMessage(error));
+      return this.refuse(identity, errorMessage(error));
     } finally {
       await handle.close();
     }

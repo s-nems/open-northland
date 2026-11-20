@@ -5,12 +5,13 @@ import {
   type NewsEntry,
   validateNewsDocument,
   validateReleaseFeed,
+  validateServedNewsDocument,
 } from '../../src/index.js';
 
 const ENTRY = {
   title: { eng: ' Showmatch tonight ', pol: 'Showmatch dziś wieczorem' },
-  text: { eng: 'Two clans, one island.' },
-  link: { url: 'https://example.org/stream', label: { eng: 'Watch' } },
+  text: { eng: 'Two clans, one island.', pol: 'Dwa klany, jedna wyspa.' },
+  link: { url: 'https://example.org/stream', label: { eng: 'Watch', pol: 'Oglądaj' } },
   startsAt: '2026-11-25T19:00+01:00',
   until: '2026-11-25T23:00:00.000Z',
 };
@@ -20,7 +21,7 @@ const withEntry = (change: Readonly<Record<string, unknown>>) => document({ ...E
 
 describe('news document', () => {
   it('accepts a full entry and trims its texts', () => {
-    const result = validateNewsDocument(document(ENTRY, { title: { eng: 'Undated' } }));
+    const result = validateNewsDocument(document(ENTRY, { title: { eng: 'Undated', pol: 'Bez daty' } }));
     expect(result.ok).toBe(true);
     const first: NewsEntry | undefined = result.ok ? result.value.entries[0] : undefined;
     expect(first?.title.eng).toBe('Showmatch tonight');
@@ -29,10 +30,11 @@ describe('news document', () => {
   it('refuses each malformed field with its path', () => {
     const cases: readonly [unknown, string][] = [
       [withEntry({ title: { pol: 'Tylko po polsku' } }), 'entries.0.title.eng'],
-      [withEntry({ titel: { eng: 'Typo' } }), 'entries.0'],
-      [withEntry({ title: { eng: 'x', fra: 'y' } }), 'entries.0.title'],
-      [withEntry({ title: { eng: '   ' } }), 'entries.0.title.eng'],
-      [withEntry({ title: { eng: 'x'.repeat(NEWS_TITLE_MAX_CHARS + 1) } }), 'entries.0.title.eng'],
+      [withEntry({ title: { eng: 'English only' } }), 'entries.0.title.pol'],
+      [withEntry({ titel: { eng: 'Typo', pol: 'Literówka' } }), 'entries.0'],
+      [withEntry({ title: { eng: 'x', pol: 'x', fra: 'y' } }), 'entries.0.title'],
+      [withEntry({ title: { eng: '   ', pol: 'x' } }), 'entries.0.title.eng'],
+      [withEntry({ title: { eng: 'x'.repeat(NEWS_TITLE_MAX_CHARS + 1), pol: 'x' } }), 'entries.0.title.eng'],
       [withEntry({ startsAt: '2026-11-25T19:00:00' }), 'entries.0.startsAt'],
       [withEntry({ startsAt: '2026-02-30T19:00+01:00' }), 'entries.0.startsAt'],
       [withEntry({ until: '2026-11-25T18:00:00Z' }), 'entries.0.until'],
@@ -45,6 +47,20 @@ describe('news document', () => {
       const result = validateNewsDocument(raw);
       expect(result.ok ? 'accepted' : result.reason.split(': ', 1)[0]).toBe(path);
     }
+  });
+
+  it('reads a served document that grew a field or a language, without them', () => {
+    const grown = document({
+      ...ENTRY,
+      image: 'https://example.org/a.png',
+      title: { ...ENTRY.title, fra: 'Ce soir' },
+    });
+    expect(validateNewsDocument(grown).ok).toBe(false);
+    const served = validateServedNewsDocument(grown);
+    expect(served.ok && served.value.entries[0]).toEqual({
+      ...ENTRY,
+      title: { eng: 'Showmatch tonight', pol: 'Showmatch dziś wieczorem' },
+    });
   });
 });
 

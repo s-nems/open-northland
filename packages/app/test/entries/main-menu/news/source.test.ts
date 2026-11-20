@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { loadMenuNews, type NewsSourceEnv } from '../../../../src/entries/main-menu/news/source.js';
 
-const NEWS = { schema: 1, entries: [{ title: { eng: 'Showmatch' } }] };
+const NEWS = { schema: 1, entries: [{ title: { eng: 'Showmatch', pol: 'Pokaz' } }] };
 const FEED = {
   schema: 1,
   download: { en: 'https://site.test/download/' },

@@ -22,7 +22,8 @@ export function parseNewsBytes(bytes: Uint8Array): Validated<NewsDocument> {
   if (tooLarge !== null) return { ok: false, reason: tooLarge };
   let raw: unknown;
   try {
-    raw = JSON.parse(Buffer.from(bytes).toString('utf8'));
+    // The decoder drops the byte order mark some editors save a UTF-8 file with.
+    raw = JSON.parse(new TextDecoder().decode(bytes));
   } catch (error) {
     return { ok: false, reason: `not JSON: ${errorMessage(error)}` };
   }

@@ -21,7 +21,7 @@ const MINUTE_MS = 60_000;
 const DESKTOP = { version: '0.6.0', browser: false };
 
 const entry = (title: string, dates: Pick<NewsEntry, 'startsAt' | 'until'> = {}): NewsEntry => ({
-  title: { eng: title },
+  title: { eng: title, pol: title },
   ...dates,
 });
 const titles = (entries: readonly NewsEntry[], nowMs = NOW): readonly string[] =>
@@ -123,7 +123,7 @@ describe('news panel model', () => {
       entries: [
         {
           title: { eng: 'Showmatch', pol: 'Pokaz' },
-          link: { url: 'https://stream.test/', label: { eng: 'Watch' } },
+          link: { url: 'https://stream.test/', label: { eng: 'Watch', pol: 'Oglądaj' } },
           startsAt,
         },
       ],
@@ -133,7 +133,7 @@ describe('news panel model', () => {
         key: 0,
         title: 'Pokaz',
         text: null,
-        link: { url: 'https://stream.test/', label: 'Watch' },
+        link: { url: 'https://stream.test/', label: 'Oglądaj' },
         startsAt: Date.parse(startsAt),
         identity: expect.any(String),
       },
