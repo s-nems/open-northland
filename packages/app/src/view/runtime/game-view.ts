@@ -1469,8 +1469,9 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
 
     // Toggling the reveal key fades every standing sprite on the screen - tree, wall or house,
     // whether or not a unit hides behind one - so a look around costs no click; the frame loop reads
-    // the toggle each frame.
-    const revealKey = createRevealKey();
+    // the toggle each frame. The key is the settings' revealToggle binding, and the shared bindings
+    // object updates in place, so a rebind applies to the next press.
+    const revealKey = createRevealKey(() => keyBindings.revealToggle);
     cleanup.push(() => revealKey.dispose());
 
     // A seat switch from the picker: the selection was the last seat's. The camera stays put, so a

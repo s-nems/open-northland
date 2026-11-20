@@ -69,6 +69,7 @@ export const KEYBINDING_ACTIONS = [
   'knowledge',
   'network',
   'hudToggle',
+  'revealToggle',
   'jumpToStore',
   'actionRing',
   'professionPicker',
@@ -151,6 +152,9 @@ export const DEFAULT_KEY_BINDINGS: KeyBindings = {
   knowledge: 'F7',
   network: 'KeyN',
   hudToggle: 'F8',
+  // Tab, not Space: the action ring holds Space, and a hold-to-fade key asks for a hand the camera
+  // and the orders already take.
+  revealToggle: 'Tab',
   jumpToStore: 'KeyH',
   actionRing: 'Space',
   professionPicker: 'KeyC',
@@ -231,9 +235,9 @@ export function isFunctionKeyCode(code: string): boolean {
 }
 
 /** Codes a binding may take. Escape stays the fixed cancel key and may hold only the game menu, which
- *  opens once there is nothing left to cancel (`bindingAllowedFor`); Tab and Enter stay out. */
+ *  opens once there is nothing left to cancel (`bindingAllowedFor`); Enter stays out. */
 const BINDABLE_KEY_CODE =
-  /^(Key[A-Z]|Digit[0-9]|Numpad[0-9]|Arrow(Left|Right|Up|Down)|Space|Escape|Comma|Period|Slash|Semicolon|Quote|BracketLeft|BracketRight|Minus|Equal|Backquote|Home|End|PageUp|PageDown|Insert|Delete)$/;
+  /^(Key[A-Z]|Digit[0-9]|Numpad[0-9]|Arrow(Left|Right|Up|Down)|Space|Escape|Tab|Comma|Period|Slash|Semicolon|Quote|BracketLeft|BracketRight|Minus|Equal|Backquote|Home|End|PageUp|PageDown|Insert|Delete)$/;
 const ESCAPE_ACTION: KeybindingAction = 'gameMenu';
 const BINDABLE_POINTER_CODE = /^Mouse[012]$/;
 const MODIFIER_ORDER = ['Primary', 'Ctrl', 'Shift', 'Alt', 'Meta'] as const;
