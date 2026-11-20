@@ -25,6 +25,7 @@ import type { Entity, World } from '../../../ecs/world.js';
 import { nodeOfPosition } from '../../../nav/halfcell.js';
 import type { SpatialGate } from '../../../nav/node-circle.js';
 import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
+import { pileUnderEnemyTowers } from '../../conflict/tower-reach.js';
 import type { SystemContext } from '../../context.js';
 import { buildingBlockedCells } from '../../footprint/index.js';
 import { isTravelling } from '../../movement/nav-state.js';
@@ -245,7 +246,7 @@ export interface ReachableStock {
 /**
  * The stock inside `reach` (null: anywhere) that `player`'s arming and dressing errands can fetch: the
  * stores the {@link FetchableStock} ledger lists that {@link storeYieldsGood} accepts, the side's own or
- * nobody's, a standing place inside the reach. The seat stock ledger also counts goods in a carrier's
+ * nobody's, a standing place inside the reach, no pile under an enemy tower. The seat stock ledger also counts goods in a carrier's
  * hands, goods kept aside for an upgrade and heaps past the network, none of which an errand reaches, so a
  * seat sizing its draft or its vetoes on it books recruits who wait unarmed beside a vetoed weapon.
  * Each good's units are counted once, so read the stock within one state of the world.
@@ -274,7 +275,10 @@ export function reachableStock(
     if (!ownersCompatible(player, ownerOf(world, store))) return false;
     if (!reached(store)) return false;
     walls ??= buildingBlockedCells(world, ctx, terrain);
-    return storeYieldsGood(world, ctx, terrain, walls, store, good);
+    return (
+      storeYieldsGood(world, ctx, terrain, walls, store, good) &&
+      !pileUnderEnemyTowers(world, ctx, player, store)
+    );
   };
   return {
     holds: (good) => {

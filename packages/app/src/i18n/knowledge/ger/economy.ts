@@ -563,7 +563,7 @@ export const ECONOMY: ArticleGroup = {
           h: 'Haufen am Boden',
         },
         {
-          p: 'Ein Haufen am Boden gehört niemandem, jeder darf ihn nehmen. Wo ein Träger Haufen aufsammelt: [[article:work-flag|Arbeitsfahne]].',
+          p: 'Ein Haufen am Boden gehört niemandem, jeder darf ihn nehmen. Deine Leute lassen einen Haufen liegen, der bis zu {{tower.groundReach}} Hexfelder von einem fertigen feindlichen Turm entfernt liegt, besetzt oder leer, damit niemand dafür in dessen Beschuss läuft. Nur dein eigener Befehl, ein Ausrüstungsstück anzulegen, schickt einen Mann dorthin. Wo ein Träger Haufen aufsammelt: [[article:work-flag|Arbeitsfahne]].',
         },
       ],
       see: [

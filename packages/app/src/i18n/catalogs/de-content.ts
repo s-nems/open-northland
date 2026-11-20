@@ -889,6 +889,11 @@ export const deContent = {
       summary:
         'Eine sarazenische Töpferei mit ihrem Töpfer, deren Schildpfahl weit neben der Tür steht, und volle Holzhaufen rund um den Pfahl. Das Schild des Töpfers bleibt über jedem Haufen sichtbar: Waren am Boden werden unter allem gezeichnet, was steht.',
     },
+    'piles-under-towers': {
+      title: 'Ausrüstung unter einem feindlichen Turm',
+      summary:
+        'Dein Hauptquartier mit zwei Trägern und nicht weit davon ein leerer feindlicher Turm neben dem feindlichen Hauptquartier. Schwerter und Kettenhemden der Gefallenen liegen in zwei Streifen: der nahe außerhalb der Reichweite des Turms, der ferne darunter. Die Träger holen den nahen Streifen ein und lassen die Ausrüstung unter dem Turm liegen, obwohl sie in ihrem Sammelbereich liegt.',
+    },
     signposts: {
       title: 'Wegweiser',
       summary:

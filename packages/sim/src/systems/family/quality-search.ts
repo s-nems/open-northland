@@ -15,6 +15,7 @@ import type { Entity, World } from '../../ecs/world.js';
 import { nodeHxOfPosition, nodeHyOfPosition } from '../../nav/halfcell.js';
 import type { SpatialGate } from '../../nav/node-circle.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
+import { pileUnderEnemyTowers } from '../conflict/tower-reach.js';
 import type { SystemContext } from '../context.js';
 import { templeFuelSlotOf } from '../readviews/index.js';
 import { interactionCell, unclaimedGoodsAt } from '../settlers/targets/index.js';
@@ -56,7 +57,7 @@ export class ExternalQualityIndex {
     const accept = (store: Entity): boolean => {
       if (!ownersCompatible(owner, ownerOf(this.world, store))) return false;
       const goodType = this.lowestDemanded(store, demanded);
-      if (goodType === null) return false;
+      if (goodType === null || pileUnderEnemyTowers(this.world, this.ctx, owner, store)) return false;
       const cell =
         this.terrain !== undefined && here !== undefined
           ? interactionCell(this.world, this.ctx, this.terrain, store, here)

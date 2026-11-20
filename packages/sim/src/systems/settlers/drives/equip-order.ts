@@ -1,4 +1,11 @@
-import { Carrying, EquipOrder, ownerOf, type SettlerIdentity, wornSlot } from '../../../components/index.js';
+import {
+  Carrying,
+  EquipOrder,
+  isMachinePlayer,
+  ownerOf,
+  type SettlerIdentity,
+  wornSlot,
+} from '../../../components/index.js';
 import { contentIndex } from '../../../core/content-index.js';
 import type { DeepReadonly, Entity, World } from '../../../ecs/world.js';
 import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
@@ -152,7 +159,9 @@ function planTakeOff(errand: EquipErrand): boolean {
 
 /**
  * The `acquire` stage of a wear order: fetch `goodType` from the nearest reachable store or pile.
- * Nothing reachable to fetch ends the errand rather than parking the settler.
+ * Nothing reachable to fetch ends the errand rather than parking the settler. Only a human seat's own
+ * order takes a pile under an enemy tower (owner ruling); a computer seat's order passes over it as the
+ * assistant's errands do.
  */
 function planFetch(errand: EquipErrand, goodType: number): boolean {
   const { world, ctx, entity, order, here, owner, gate, rank, avoid, targets, supply } = errand;
@@ -168,7 +177,20 @@ function planFetch(errand: EquipErrand, goodType: number): boolean {
   }
   if (errand.fetches.remaining <= 0) return true; // stands this pass, searches on the next
   errand.fetches.remaining--;
-  const src = nearestStoreHolding(targets.bands, world, here, rank, goodType, owner, supply, gate, avoid);
+  const humanOrder = order.issuer === 'player' && owner !== undefined && !isMachinePlayer(world, owner);
+  const underFire = humanOrder ? 'take' : 'pass-over';
+  const src = nearestStoreHolding(
+    targets.bands,
+    world,
+    here,
+    rank,
+    goodType,
+    owner,
+    supply,
+    gate,
+    avoid,
+    underFire,
+  );
   if (src === null) {
     errand.failedGood = goodType;
     return endErrand(errand);

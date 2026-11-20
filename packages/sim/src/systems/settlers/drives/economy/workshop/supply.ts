@@ -3,6 +3,7 @@ import { Building, Settler, Stockpile, sameSideAs } from '../../../../../compone
 import { ONE } from '../../../../../core/fixed.js';
 import type { Entity, World } from '../../../../../ecs/world.js';
 import type { NodeId } from '../../../../../nav/terrain/index.js';
+import { pileUnderEnemyTowers } from '../../../../conflict/tower-reach.js';
 import type { SystemContext } from '../../../../context.js';
 import { craftablePoolInto } from '../../../../economy/production/rotation.js';
 import { startableCycleCount } from '../../../../economy/production.js';
@@ -116,7 +117,7 @@ export interface InputShortfall {
  * rank by how full they are against their target, emptiest first, ties in recipe order; an input no
  * reachable store holds falls through to the next. The trip brings one unit, so a shortfall of two is two
  * trips. Never from another player's store, nor a cell the worker failed to reach, nor a source whose units
- * of the good are all claimed by settlers already walking to it.
+ * of the good are all claimed by settlers already walking to it, nor a pile under an enemy tower.
  *
  * Original behavior: the source search starts from the work centre, here the door, not the worker. A
  * self-filling house of the good qualifies even empty or claimed, so a fetcher always uses the nearest
@@ -175,7 +176,9 @@ export function nearestMissingInputSource(
     // The workplace never supplies itself; a self-filling house qualifies empty or claimed.
     const source = (e: Entity): Qualified<boolean> | null => {
       if (e === workplace) return null;
-      if (unclaimedStockOf(world, ctx, plan.supply, e, goodType) > 0) return LENDS;
+      if (unclaimedStockOf(world, ctx, plan.supply, e, goodType) > 0) {
+        return pileUnderEnemyTowers(world, ctx, plan.owner, e) ? null : LENDS;
+      }
       return refillingGoodsOf(world, ctx, e).includes(goodType) ? REFILLS : null;
     };
     const winner =

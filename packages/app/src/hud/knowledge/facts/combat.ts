@@ -109,6 +109,13 @@ const towerMax = (id: string): Fact =>
     return max === undefined ? undefined : max + systems.TOWER_RANGE_BONUS_NODES;
   });
 
+/** How far from a finished tower its owner's enemies leave the ground piles: its post bows' tower reach. */
+const towerGroundReach = (id: string): Fact =>
+  whole((base) => {
+    const tower = buildingOf(base, id);
+    return tower === undefined ? undefined : systems.towerShotReach(base.content, tower.typeId, VIKING);
+  });
+
 const standoff = (id: string): Fact => whole((base) => standoffOf(base, VIKING, id));
 
 const hit = (tribe: number, id: string, target: TargetId): Fact =>
@@ -277,6 +284,7 @@ export const WALL_FACTS: Readonly<Record<string, Fact>> = {
 export const COMBAT_FACTS: Readonly<Record<string, Fact>> = {
   'shortBow.towerMax': towerMax('short_bow'),
   'longBow.towerMax': towerMax('long_bow'),
+  'tower.groundReach': towerGroundReach('tower_00'),
   'shortBow.standoff': standoff('short_bow'),
   'longBow.standoff': standoff('long_bow'),
   'heroBow.standoff': standoff('hero_bow'),

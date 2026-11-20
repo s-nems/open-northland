@@ -81,6 +81,10 @@ residents: each stands beside its house, never on a red walk-block cell or insid
 man's home, a home with a child and a bakery with its baker and carrier. Compare the flags and marks
 on the buildings, and the settlers' team colours, across the colours.
 
+`?scene=piles-under-towers` gives your headquarters two carriers and lays the gear of the fallen in two
+bands toward an empty enemy tower. Watch the carriers bring in the near band and never walk out to the far
+one under the tower's reach, though it lies inside their pickup area.
+
 `?scene=clay-gatherers` places two collectors per civilization beside a clay deposit, in rows:
 viking, frank, byzantine, saracen, egyptian. Watch both heads through the shovel cycle and the return
 to the flag, especially the byzantine collector with a hat.

@@ -570,7 +570,7 @@ export const ECONOMY: ArticleGroup = {
           h: 'Mucchi a terra',
         },
         {
-          p: 'Un mucchio a terra non è di nessuno, e chiunque può prenderlo. Dove un trasportatore raccoglie i mucchi: [[article:work-flag|Bandierina di lavoro]].',
+          p: 'Un mucchio a terra non è di nessuno, e chiunque può prenderlo. La tua gente lascia stare un mucchio che giace entro {{tower.groundReach}} esagoni da una torre nemica finita, presidiata o vuota, così nessuno va a prenderlo sotto il suo tiro. Solo un tuo ordine di indossare un equipaggiamento manda un uomo lì. Dove un trasportatore raccoglie i mucchi: [[article:work-flag|Bandierina di lavoro]].',
         },
       ],
       see: [

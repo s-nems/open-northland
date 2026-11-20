@@ -560,7 +560,7 @@ export const ECONOMY: ArticleGroup = {
           h: 'Piles on the ground',
         },
         {
-          p: 'A pile on the ground belongs to nobody, and anyone can take it. Where a Carrier picks up piles: [[article:work-flag|Work flag]].',
+          p: 'A pile on the ground belongs to nobody, and anyone can take it. Your people leave a pile lying within {{tower.groundReach}} hexes of a finished enemy tower, manned or empty, so nobody walks under its fire for it. Only your own order to put on a piece of gear sends a man there. Where a Carrier picks up piles: [[article:work-flag|Work flag]].',
         },
       ],
       see: [

@@ -76,6 +76,7 @@ import { farPostScene } from './economy/far-post.js';
 import { goodsCatalogScene } from './economy/goods-catalog.js';
 import { householdGoodsScene } from './economy/household-goods.js';
 import { idleWorkScene } from './economy/idle-work.js';
+import { pilesUnderTowersScene } from './economy/piles-under-towers.js';
 import { signpostsScene } from './economy/signposts.js';
 import { storageFullScene } from './economy/storage-full.js';
 import { storageMinimumScene } from './economy/storage-minimum.js';
@@ -263,6 +264,7 @@ export const SCENES: readonly SceneDefinition[] = [
   storageFullScene,
   farPostScene,
   doorSignHeapsScene,
+  pilesUnderTowersScene,
   livestockScene,
   livestockYardScene,
   farmLarderScene,

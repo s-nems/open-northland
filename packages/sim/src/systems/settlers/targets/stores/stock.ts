@@ -14,6 +14,7 @@ import type { Entity, World } from '../../../../ecs/world.js';
 import { nodeHxOfPosition, nodeHyOfPosition } from '../../../../nav/halfcell.js';
 import type { SpatialGate } from '../../../../nav/node-circle.js';
 import type { NodeId, TerrainGraph } from '../../../../nav/terrain/index.js';
+import { pileUnderEnemyTowers } from '../../../conflict/tower-reach.js';
 import type { ContentContext, SystemContext } from '../../../context.js';
 import { anchoredStanceCells, positionedStanceCells } from '../../../footprint/index.js';
 import type { RankFrom } from '../../../spatial/walk-rank.js';
@@ -247,7 +248,7 @@ export function unclaimedGoodsAt(
  * a pile buried under a building's walls, and a workshop's own input reserve are excluded. An upgrade
  * site keeps its ordinary inventory available while its separate construction hold stays protected.
  * A store whose units of the good are all claimed by settlers walking to it is skipped: a claim steers
- * the choice, never the pickup.
+ * the choice, never the pickup. A loose pile under an enemy tower is passed over unless `underFire` takes it.
  */
 export function nearestStoreHolding(
   bands: TargetBands,
@@ -264,6 +265,7 @@ export function nearestStoreHolding(
   gate?: SpatialGate,
   /** The fetcher's failed-goal veto. */
   avoid?: (cell: NodeId) => boolean,
+  underFire: PilesUnderFire = 'pass-over',
 ): Entity | null {
   if (sideLendsNone(bands, world, owner, goodType)) return null;
   // An empty band answers null whatever the gate, so its goods limit is never asked.
@@ -278,6 +280,7 @@ export function nearestStoreHolding(
     supply,
     bands.goodsGate(here, owner, gate),
     avoid,
+    underFire,
   );
 }
 
@@ -297,22 +300,48 @@ export function nearestStoreHoldingWithin(
   supply: SupplyTally,
   goodsGate: SpatialGate | undefined,
   avoid?: (cell: NodeId) => boolean,
+  underFire: PilesUnderFire = 'pass-over',
 ): Entity | null {
   if (sideLendsNone(bands, world, owner, goodType)) return null;
   const holders = bands.holding(goodType);
   if (!holders.hasCandidates()) return null;
+  const fetcher = underFire === 'pass-over' ? owner : undefined;
   if (owner === undefined) {
-    return nearestHolderIn(bands, holders, world, here, goodType, owner, supply, goodsGate, avoid, rank);
+    return nearestHolderIn(
+      bands,
+      holders,
+      world,
+      here,
+      rank,
+      goodType,
+      owner,
+      supply,
+      goodsGate,
+      avoid,
+      fetcher,
+    );
   }
   const filed = storesFiledNear(holders, owner, goodsGate);
   // Mostly none: the stock lies outside the gate, and the search ends before its filter is made.
   if (filed === 0) return null;
-  const lends = holdsUnclaimed(world, bands.ctx, supply, goodType);
+  const lends = holdsUnclaimed(world, bands.ctx, supply, goodType, fetcher);
   const count = keepLenders(filed, lends);
   if (count === 0) return null;
   // Past the ring search's own linear threshold its rings answer, with the identical winner.
   if (count > RING_MIN_BUCKETS) {
-    return nearestHolderIn(bands, holders, world, here, goodType, owner, supply, goodsGate, avoid, rank);
+    return nearestHolderIn(
+      bands,
+      holders,
+      world,
+      here,
+      rank,
+      goodType,
+      owner,
+      supply,
+      goodsGate,
+      avoid,
+      fetcher,
+    );
   }
   sortAscending(narrowedField, count);
   return holders.nearestAmong(narrowedField, count, here, rank, lends, goodsGate, avoid)?.entity ?? null;
@@ -339,7 +368,7 @@ export function storesHoldingRanked(
   const goodsGate = bands.goodsGate(here, owner, gate);
   const filed = storesFiledNear(holders, owner, goodsGate);
   if (filed === 0) return [];
-  const lends = holdsUnclaimed(world, bands.ctx, supply, goodType);
+  const lends = holdsUnclaimed(world, bands.ctx, supply, goodType, owner);
   const count = keepLenders(filed, lends);
   // The ranking orders by entity id too, so the field needs no sort.
   return holders.rankedAmong(narrowedField, count, here, rank, lends, goodsGate, avoid);
@@ -402,18 +431,19 @@ function nearestHolderIn(
   holders: InteractionCellIndex,
   world: World,
   here: NodeId,
+  rank: RankFrom,
   goodType: number,
   owner: number | undefined,
   supply: SupplyTally,
   goodsGate: SpatialGate | undefined,
   avoid: ((cell: NodeId) => boolean) | undefined,
-  rank: RankFrom,
+  fetcher: number | undefined,
 ): Entity | null {
   return (
     holders.nearest(
       here,
       rank,
-      holdsUnclaimed(world, bands.ctx, supply, goodType),
+      holdsUnclaimed(world, bands.ctx, supply, goodType, fetcher),
       goodsGate,
       avoid,
       sameSideAs(world, owner),
@@ -447,7 +477,7 @@ export function storeHoldingMayLieIn(
     if (bounded && area?.mayAllowNear?.(filed[i + 1] as number, filed[i + 2] as number, slack) !== true) {
       continue;
     }
-    lends ??= holdsUnclaimed(world, bands.ctx, supply, goodType);
+    lends ??= holdsUnclaimed(world, bands.ctx, supply, goodType, owner);
     if (lends(filed[i] as Entity) !== null) return true;
   }
   return false;
@@ -472,7 +502,7 @@ export function nearestStoreHoldingAnywhere(
       .nearest(
         here,
         here,
-        holdsUnclaimed(world, bands.ctx, supply, goodType),
+        holdsUnclaimed(world, bands.ctx, supply, goodType, owner),
         undefined,
         avoid,
         ownedBy(world, owner),
@@ -509,14 +539,19 @@ function storehouseKeepsMinimums(world: World, ctx: ContentContext, store: Entit
   );
 }
 
+/** Whether a fetch passes over a loose pile under an enemy tower ({@link pileUnderEnemyTowers}), as every
+ *  settler's own fetch does, or takes it, as a human player's equip order does (owner ruling). */
+export type PilesUnderFire = 'pass-over' | 'take';
+
 /** A band accept admitting a store that still lends `goodType` beyond the walkers' claims and its owner's
- *  minimum. The minimum's surplus is the same for every storehouse of one owner, so a scan rejecting a
- *  run of them sums the owner's claims once. */
+ *  minimum, and that is no loose pile under a tower fighting `fetcher`. The minimum's surplus is the same
+ *  for every storehouse of one owner, so a scan rejecting a run of them sums the owner's claims once. */
 function holdsUnclaimed(
   world: World,
   ctx: ContentContext,
   supply: SupplyTally,
   goodType: number,
+  fetcher: number | undefined,
 ): (store: Entity) => typeof QUALIFIES | null {
   let surplusByOwner: Map<number, number> | undefined;
   return (store) => {
@@ -524,14 +559,16 @@ function holdsUnclaimed(
       (accessibleStockAmounts(world, store)?.get(goodType) ?? 0) - supply.reservedAt(store, goodType);
     if (held <= 0) return null;
     const owner = minimumBoundOwner(world, ctx, store, goodType);
-    if (owner === undefined) return QUALIFIES;
-    surplusByOwner ??= new Map();
-    let surplus = surplusByOwner.get(owner);
-    if (surplus === undefined) {
-      surplus = storageSurplus(world, ctx, owner, goodType, supply);
-      surplusByOwner.set(owner, surplus);
+    if (owner !== undefined) {
+      surplusByOwner ??= new Map();
+      let surplus = surplusByOwner.get(owner);
+      if (surplus === undefined) {
+        surplus = storageSurplus(world, ctx, owner, goodType, supply);
+        surplusByOwner.set(owner, surplus);
+      }
+      if (surplus <= 0) return null;
     }
-    return surplus > 0 ? QUALIFIES : null;
+    return pileUnderEnemyTowers(world, ctx, fetcher, store) ? null : QUALIFIES;
   };
 }
 

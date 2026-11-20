@@ -2,6 +2,7 @@ import { ownerOf, ownersCompatible, Position, sameSideAs } from '../../component
 import type { Entity, World } from '../../ecs/world.js';
 import { nodeOfPosition } from '../../nav/halfcell.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
+import { pileUnderEnemyTowers } from '../conflict/tower-reach.js';
 import type { SystemContext } from '../context.js';
 import { QUALIFIES } from '../settlers/targets/cell-index.js';
 import { heldBands } from '../settlers/targets/held-bands.js';
@@ -61,14 +62,15 @@ export function inputReach(
   producers: Iterable<Entity>,
 ): StoreReach {
   const stock = FetchableStock.of(world, ctx);
+  const owner = ownerOf(world, operator);
   // A store the fetch lifts from: one lending a unit past its owner's storage minimum, or a self-filling
-  // house of the good, never the workplace's own shelf. Units other walkers claimed are not held back, as
-  // their claims come and go.
+  // house of the good, never the workplace's own shelf nor a pile under an enemy tower. Units other walkers
+  // claimed are not held back, as their claims come and go.
   const lends = (e: Entity): boolean =>
     e !== workplace &&
-    (unclaimedStockOf(world, ctx, undefined, e, goodType) > 0 ||
-      refillingGoodsOf(world, ctx, e).includes(goodType));
-  const owner = ownerOf(world, operator);
+    (unclaimedStockOf(world, ctx, undefined, e, goodType) > 0
+      ? !pileUnderEnemyTowers(world, ctx, owner, e)
+      : refillingGoodsOf(world, ctx, e).includes(goodType));
   const terrain = ctx.terrain;
   const here = terrain === undefined ? null : nodeOf(world, terrain, operator);
   if (terrain === undefined || here === null) {

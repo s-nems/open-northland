@@ -8,6 +8,7 @@ import {
   sameSideAs,
 } from '../../../../components/index.js';
 import type { Entity } from '../../../../ecs/world.js';
+import { pileUnderEnemyTowers } from '../../../conflict/tower-reach.js';
 import { buildingBlockedCells } from '../../../footprint/index.js';
 import { manhattan } from '../../../spatial/metric.js';
 import { bankedSlot, isCarrierJob, isLoosePile, lowestStockedGood } from '../../../stores/index.js';
@@ -144,7 +145,8 @@ function nextCartPickup(
   return workshopCartPickup(plan, workplace, seatClaims, beside, room, mixes);
 }
 
-/** A store's porter: the nearest heap of its own pickup area, else a heap or finished output close by. */
+/** A store's porter: the nearest heap of its own pickup area, else a heap or finished output close by, never
+ *  a heap under an enemy tower. */
 function storeCartPickup(
   plan: PlannerContext,
   room: number,
@@ -178,8 +180,8 @@ function storeCartPickup(
       world.get(candidate, Stockpile),
       (g) => (unclaimed?.(g) ?? true) && wanted(g),
     );
-    if (good === null) return null;
-    return strandedPile(world, ctx, terrain, walls, candidate) ? null : { payload: good };
+    if (good === null || strandedPile(world, ctx, terrain, walls, candidate)) return null;
+    return pileUnderEnemyTowers(world, ctx, plan.owner, candidate) ? null : { payload: good };
   };
   const found = targets.stockpileCells.nearest(
     here,

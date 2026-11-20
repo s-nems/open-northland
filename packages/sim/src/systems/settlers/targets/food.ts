@@ -10,6 +10,7 @@ import { hexDistanceBetween } from '../../../nav/halfcell.js';
 import type { SpatialGate } from '../../../nav/node-circle.js';
 import { intersectReach, reachBox } from '../../../nav/range-search.js';
 import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
+import { pileUnderEnemyTowers } from '../../conflict/tower-reach.js';
 import type { SystemContext } from '../../context.js';
 import { lowestStockedFood } from '../../family/food-sources.js';
 import { builtHomeType, HOME_ERRAND_RANGE_NODES, homeUsedBy, isHome } from '../../family/households.js';
@@ -115,7 +116,7 @@ export type MealTarget = (
  *    larder's lowest stocked edible. Owner's rule: not beyond the walk range (see the constant), so a
  *    settler working far from home eats near its work.
  * 2. The nearest of its own side's stocked food outside a home - a storehouse, a kitchen's loaves, a
- *    farm's meat, a pile on the ground - inside the goods search reach ({@link goodsSearchLimitAt}: the
+ *    farm's meat, a pile on the ground but not under an enemy tower - inside the goods search reach ({@link goodsSearchLimitAt}: the
  *    original's local search and the signposts it finds), and a ripe bush within {@link BUSH_AT_HAND_NODES}.
  *    Every home is skipped. Project rule: without signpost navigation the other goods searches run
  *    unbounded, while the reach here stays the original's range as a plain disc, so the bush rule below
@@ -169,17 +170,19 @@ export function chooseMeal(
     }
   }
 
+  const owner = ownerOf(world, eater);
   const stocked = (source: Entity): Qualified<Meal> | null => {
     if (isHome(world, ctx, source)) return null;
     const goodType = storedFoodGood(world, ctx, source, supply);
-    return goodType === null ? null : { payload: { kind: 'store', goodType, atHome: false } };
+    if (goodType === null) return null;
+    if (pileUnderEnemyTowers(world, ctx, owner, source)) return null;
+    return { payload: { kind: 'store', goodType, atHome: false } };
   };
   const ripe = (source: Entity): Qualified<Meal> | null =>
     world.tryGet(source, BerryBush)?.stage === 'ripe' && !bushClaimed(world, source) ? RIPE_BUSH : null;
   const anyMeal = (source: Entity): Qualified<Meal> | null =>
     ripe(source) ?? (isHome(world, ctx, source) ? larder(source) : stocked(source));
 
-  const owner = ownerOf(world, eater);
   const onSide = sameSideAs(world, owner);
   const nearest = (accept: (e: Entity) => Qualified<Meal> | null, within?: SpatialGate) =>
     targets.mealCells.nearest(here, rank, accept, within, avoid, onSide);

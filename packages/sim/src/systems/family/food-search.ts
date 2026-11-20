@@ -5,6 +5,7 @@ import type { Entity, World } from '../../ecs/world.js';
 import { nodeHxOfPosition, nodeHyOfPosition } from '../../nav/halfcell.js';
 import type { SpatialGate, WalkLengths } from '../../nav/node-circle.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
+import { pileUnderEnemyTowers } from '../conflict/tower-reach.js';
 import type { SystemContext } from '../context.js';
 import { edibleGoodFormOf, isFoodIn } from '../readviews/index.js';
 import { hasRoom } from '../settlers/drives/economy/store-policy.js';
@@ -55,10 +56,10 @@ export class ExternalFoodIndex {
    * room for; null when none exists anywhere. A food whose slot is full is skipped, since the delivery
    * would be refused and the unit carried straight back. `gate` is the seeker's signpost confinement (null
    * when unlimited), `avoid` her failed-goal veto, probed at the source's interaction cell, the node
-   * `fetchFrom` walks to. `owner` is her player: she hauls only out of her own side's stores. The shared
-   * candidate list is owner-blind, so her side is checked per seeker. Nearest is by the Manhattan distance
-   * of the source's own node, or under a walk `rank`, measured from `from`, by the steps to the cell she
-   * lifts at.
+   * `fetchFrom` walks to. `owner` is her player: she hauls only out of her own side's stores, and never off
+   * a pile under an enemy tower. The shared candidate list is owner-blind, so her side is checked per seeker.
+   * Nearest is by the Manhattan distance of the source's own node, or under a walk `rank`, measured from
+   * `from`, by the steps to the cell she lifts at.
    *
    * Departure (owner ruling): the original takes the nearest source of any food. Meat goes first, the
    * reason at `MEAT_GOOD_ID`.
@@ -84,6 +85,7 @@ export class ExternalFoodIndex {
       ownersCompatible(owner, ownerOf(this.world, e)) &&
       this.inArea(e, from, gate) &&
       this.liftableFood(e, roomy, only) !== null &&
+      !pileUnderEnemyTowers(this.world, this.ctx, owner, e) &&
       !this.standRetired(e, from, avoid);
     const meat = meatGoodOf(this.ctx.content);
     if (meat !== null && roomy.includes(meat)) {

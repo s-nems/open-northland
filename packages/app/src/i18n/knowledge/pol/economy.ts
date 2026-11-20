@@ -557,7 +557,7 @@ export const ECONOMY: ArticleGroup = {
           h: 'Stosy na ziemi',
         },
         {
-          p: 'Stos na ziemi jest niczyj, może go wziąć każdy. Skąd Tragarz zbiera stosy: [[article:work-flag|Flaga robocza]].',
+          p: 'Stos na ziemi jest niczyj, może go wziąć każdy. Twoi ludzie omijają stos leżący do {{tower.groundReach}} hexów od gotowej wrogiej wieży, obsadzonej czy pustej, żeby nikt nie szedł po niego pod jej ostrzał. Tam posyła człowieka tylko Twój własny rozkaz założenia przedmiotu. Skąd Tragarz zbiera stosy: [[article:work-flag|Flaga robocza]].',
         },
       ],
       see: [

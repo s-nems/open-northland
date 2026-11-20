@@ -883,6 +883,11 @@ export const enContent = {
       summary:
         "A saracen pottery with its potter, its sign post standing far out beside the door, and full wood heaps lying around the post. The potter's sign stays in view over every heap: goods on the ground paint under everything that stands.",
     },
+    'piles-under-towers': {
+      title: 'Gear under an enemy tower',
+      summary:
+        "Your headquarters with two carriers, and close by an empty enemy tower beside the enemy headquarters. Swords and chain armor of the fallen lie in two bands: the near one outside the tower's reach, the far one under it. The carriers bring in the near band and leave the gear under the tower, though it lies inside their pickup area.",
+    },
     signposts: {
       title: 'Signposts',
       summary: 'A scout erects a signpost; settlers work only within the connected signpost network.',

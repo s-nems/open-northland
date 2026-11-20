@@ -30,6 +30,7 @@ import { landscapeTopologyRevision } from '../../../../components/landscape.js';
 import type { Entity, World } from '../../../../ecs/world.js';
 import { type NodeArea, nodeOfPosition } from '../../../../nav/halfcell.js';
 import type { NodeId, TerrainGraph } from '../../../../nav/terrain/index.js';
+import { towerFireRevision } from '../../../conflict/tower-reach.js';
 import type { SystemContext } from '../../../context.js';
 import { liveHaulFlag } from '../../../economy/work-flag.js';
 import { roadRevision } from '../../../roads/index.js';
@@ -157,7 +158,8 @@ function porterScanVersion(world: World): number {
     world.componentValueGeneration(StorageRules) +
     world.componentGeneration(Owner) +
     landscapeTopologyRevision(world) +
-    roadRevision(world) // the goods search reach floods over road resistance
+    roadRevision(world) + // the goods search reach floods over road resistance
+    towerFireRevision(world) // a pile under an enemy tower is passed over
   );
 }
 

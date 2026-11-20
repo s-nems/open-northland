@@ -17,6 +17,7 @@ import {
 import type { Entity, World } from '../../../../ecs/world.js';
 import type { SpatialGate } from '../../../../nav/node-circle.js';
 import type { NodeId } from '../../../../nav/terrain/index.js';
+import { pileUnderEnemyTowers } from '../../../conflict/tower-reach.js';
 import type { SystemContext } from '../../../context.js';
 import { WORKPLACE_COLLECT_RADIUS } from '../../../economy/haul-flag.js';
 import { buildingBlockedCells } from '../../../footprint/index.js';
@@ -59,13 +60,14 @@ import { isFarmCarrierHaulOutRole } from './store-policy.js';
  * Approximation: the original favours a ground heap lying a few steps beyond the nearest such building,
  * and picks at random among the finds; here plain distance decides.
  *
- * A ground pile is an {@link isLoosePile} heap not buried under a building's walls or out of every unit's
- * reach; a wall or road site's delivered material is never one. The good lifted is the pile's lowest-id
- * stocked one passing `deliverable`, and the scan is canonical by the index's length order then ascending
- * cell id. The tests run per candidate, so a lift or claim earlier in the pass is seen by the next porter, and
- * a good every unit of which a walker already claimed is passed over. `rankFrom` replaces the flag as
- * the node a flagged porter's finds are ranked from, for the next stop of a cart's round. Either ranks by
- * the porter's walk from that node ({@link planRank}).
+ * A ground pile is an {@link isLoosePile} heap not buried under a building's walls, out of every unit's
+ * reach or under an enemy tower ({@link pileUnderEnemyTowers}); a wall or road site's delivered material
+ * is never one. The good lifted is the pile's lowest-id stocked one passing `deliverable`, and the scan is
+ * canonical by the index's length order then ascending cell id. The tests run per candidate, so a lift or
+ * claim earlier in the pass is seen by the next porter, and a good every unit of which a walker already
+ * claimed is passed over. `rankFrom` replaces the flag as the node a flagged porter's finds are ranked
+ * from, for the next stop of a cart's round. Either ranks by the porter's walk from that node
+ * ({@link planRank}).
  */
 export function nearestLoosePickup(
   plan: PlannerContext,
@@ -81,8 +83,8 @@ export function nearestLoosePickup(
       world.get(e, Stockpile),
       (g) => (unclaimed?.(g) ?? true) && deliverable(g),
     );
-    if (good === null) return null;
-    return strandedPile(world, ctx, terrain, walls, e) ? null : { payload: good };
+    if (good === null || strandedPile(world, ctx, terrain, walls, e)) return null;
+    return pileUnderEnemyTowers(world, ctx, plan.owner, e) ? null : { payload: good };
   };
   const avoid = unreachableGoalVeto(world, ctx, plan.entity);
   const onSide = sameSideAs(world, plan.owner);
@@ -112,11 +114,11 @@ export function nearestLoosePickup(
 /**
  * While its player's storehouses hold less of a good than the storage minimum, a porter posted at a
  * storehouse or the headquarters fetches it first (our rule): the nearest unclaimed unit in a workplace's
- * finished output, a self-filling house or a ground pile, a dish counting as the food it becomes. Only a
- * load bound for the porter's own storehouse qualifies, so the delivery cannot turn elsewhere on the way.
- * With a flag it looks inside the flag's area, without one anywhere it may fetch goods. The search walks
- * the holders of each short good, ascending by good. A unit already on its way still counts as missing,
- * so several porters may overshoot the minimum by a load each.
+ * finished output, a self-filling house or a ground pile not under an enemy tower, a dish counting as the
+ * food it becomes. Only a load bound for the porter's own storehouse qualifies, so the delivery cannot turn
+ * elsewhere on the way. With a flag it looks inside the flag's area, without one anywhere it may fetch
+ * goods. The search walks the holders of each short good, ascending by good. A unit already on its way
+ * still counts as missing, so several porters may overshoot the minimum by a load each.
  */
 function nearestMinimumRestock(
   plan: PlannerContext,
@@ -133,9 +135,7 @@ function nearestMinimumRestock(
   const lifts = (goodType: number): boolean => goodType === lifted;
   const accept = (e: Entity): Qualified<number> | null => {
     if (world.has(e, Building)) return qualifiedGood(haulableOutputGood(world, ctx, supply, lifts, e));
-    return isLoosePile(world, e) && unclaimedStockOf(world, ctx, supply, e, lifted) > 0
-      ? { payload: lifted }
-      : null;
+    return loosePileLends(plan, e, lifted) ? { payload: lifted } : null;
   };
   // Built on the first short good with holders, so a porter whose minimums are met pays for no gate.
   let search: RestockSearch | null = null;
@@ -158,6 +158,17 @@ function nearestMinimumRestock(
   return best === null ? null : { from: best.entity, goodType: best.payload };
 }
 
+/** Whether `e` is a ground pile with an unclaimed unit of `goodType` that `plan`'s porter may lift: none
+ *  lying under an enemy tower. */
+function loosePileLends(plan: PlannerContext, e: Entity, goodType: number): boolean {
+  const { world, ctx, supply, owner } = plan;
+  return (
+    isLoosePile(world, e) &&
+    unclaimedStockOf(world, ctx, supply, e, goodType) > 0 &&
+    !pileUnderEnemyTowers(world, ctx, owner, e)
+  );
+}
+
 /** Where a restock search looks: the flag's area or the goods reach, ranked from the flag or the porter. */
 interface RestockSearch {
   readonly gate: SpatialGate | undefined;
@@ -178,9 +189,10 @@ function restockSearch(plan: PlannerContext, owner: number): RestockSearch {
 /**
  * The nearest unit of a good the porter's own store marks as priority or burns ({@link restockGoodsOf}),
  * while the store has room for it: in another of the owner's storehouses that does not prioritize the good
- * too, in a workplace's finished output or in a ground heap. Searched like {@link nearestMinimumRestock},
- * ascending by good, and only a load the porter carries as itself and delivers home qualifies. The lift is
- * capped at the room its fellow porters' loads and claims leave, so no surplus walks back to its source.
+ * too, in a workplace's finished output or in a ground heap not under an enemy tower. Searched like
+ * {@link nearestMinimumRestock}, ascending by good, and only a load the porter carries as itself and
+ * delivers home qualifies. The lift is capped at the room its fellow porters' loads and claims leave, so no
+ * surplus walks back to its source.
  * A storehouse source lends only past the owner's storage minimum, even to another storehouse.
  */
 function nearestPriorityRestock(
@@ -198,11 +210,7 @@ function nearestPriorityRestock(
   const accept = (e: Entity): Qualified<number> | null => {
     if (e === home) return null;
     const type = world.tryGet(e, Building)?.buildingType;
-    if (type === undefined) {
-      return isLoosePile(world, e) && unclaimedStockOf(world, ctx, supply, e, lifted) > 0
-        ? { payload: lifted }
-        : null;
-    }
+    if (type === undefined) return loosePileLends(plan, e, lifted) ? { payload: lifted } : null;
     if (!isStorehouseType(ctx.content, type)) {
       return qualifiedGood(haulableOutputGood(world, ctx, supply, lifts, e));
     }

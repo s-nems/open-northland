@@ -3,6 +3,7 @@ import type { Entity, World } from '../../ecs/world.js';
 import type { HalfCellNode } from '../../nav/halfcell.js';
 import type { SpatialGate } from '../../nav/node-circle.js';
 import type { TerrainGraph } from '../../nav/terrain/index.js';
+import { pileUnderEnemyTowers, towerFireRevision } from '../conflict/tower-reach.js';
 import type { ContentContext, SystemContext } from '../context.js';
 import { interactionNodeId } from '../footprint/interaction.js';
 import type { InteractionCellIndex } from '../settlers/targets/cell-index.js';
@@ -54,6 +55,7 @@ interface HeldGround {
   readonly versions: readonly number[];
   readonly owners: number;
   readonly ownerValues: number;
+  readonly towerFire: number;
 }
 
 const heldGrounds = new WeakMap<World, Map<string, HeldGround>>();
@@ -62,10 +64,10 @@ const HELD_GROUNDS_CAP = 1024;
 
 /**
  * The loose ground piles of `anchor`'s settlement holding `good` or a dish of its edible class: unowned or
- * the trader's player's, in the anchor's settlement reach. Read off the holding bands, so a pile no
- * fetcher reaches (buried under walls, boxed in) stays out, and only the piles filed in the reach's box are
- * visited. Held until a band's candidates, the reach or an owner change, so the trader's scopes and its
- * helpers share one read.
+ * the trader's player's, in the anchor's settlement reach and under no enemy tower. Read off the holding
+ * bands, so a pile no fetcher reaches (buried under walls, boxed in) stays out, and only the piles filed in
+ * the reach's box are visited. Held until a band's candidates, the reach, an owner or the towers change, so
+ * the trader's scopes and its helpers share one read.
  */
 export function settlementGround(
   world: World,
@@ -86,6 +88,7 @@ export function settlementGround(
     if (sameFoodClass(ctx, form, good)) bands.push(holding(form));
   const owners = world.componentGeneration(Owner);
   const ownerValues = world.componentValueGeneration(Owner);
+  const towerFire = towerFireRevision(world);
   let byKey = heldGrounds.get(world);
   if (byKey === undefined) {
     byKey = new Map();
@@ -98,6 +101,7 @@ export function settlementGround(
     held.reach === reach &&
     held.owners === owners &&
     held.ownerValues === ownerValues &&
+    held.towerFire === towerFire &&
     held.bands.length === bands.length &&
     held.bands.every((band, i) => band === bands[i] && band.version === held.versions[i])
   )
@@ -111,6 +115,7 @@ export function settlementGround(
     versions: bands.map((band) => band.version),
     owners,
     ownerValues,
+    towerFire,
   });
   return ground;
 }
@@ -131,6 +136,7 @@ function readGround(
       const owner = ownerOf(world, pile);
       if (owner !== undefined && owner !== player) return;
       if (!reach.allowsNode(terrain.nodeAt(hx, hy))) return;
+      if (pileUnderEnemyTowers(world, ctx, player, pile)) return;
       found.set(pile, { hx, hy });
     });
   }

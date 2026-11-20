@@ -12,6 +12,7 @@ import {
 import { contentIndex } from '../../../../core/content-index.js';
 import type { DeepReadonly, Entity } from '../../../../ecs/world.js';
 import type { NodeId } from '../../../../nav/terrain/index.js';
+import { pileUnderEnemyTowers } from '../../../conflict/tower-reach.js';
 import { atomicDuration } from '../../../readviews/animations.js';
 import { edibleClassOf } from '../../../readviews/food.js';
 import { manhattan } from '../../../spatial/metric.js';
@@ -244,8 +245,8 @@ interface CargoSource {
  * The nearest store holding any of `goods`: a loose pile within the search radius of the door, else a
  * house within it, both ranked from the door, else any store within the hand's signpost area ranked
  * from where it stands; a dish answers for its edible. Food in a home is never a source (the holding band
- * leaves it out), nor a unit another settler already walks to lift. Ties fall to the lower hold line, its
- * edible before the dishes that become it.
+ * leaves it out), nor a unit another settler already walks to lift, nor a pile under an enemy tower. Ties
+ * fall to the lower hold line, its edible before the dishes that become it.
  */
 function nearestCargoSource(
   plan: PlannerContext,
@@ -274,7 +275,9 @@ function nearestCargoSource(
     let best: (CargoSource & { readonly distance: number }) | null = null;
     for (const goodType of forms) {
       const accept = (e2: Entity): boolean =>
-        phase.accept(e2) && unclaimedStockOf(world, ctx, plan.supply, e2, goodType) > 0;
+        phase.accept(e2) &&
+        unclaimedStockOf(world, ctx, plan.supply, e2, goodType) > 0 &&
+        !pileUnderEnemyTowers(world, ctx, plan.owner, e2);
       const hit = targets.bands
         .holding(goodType)
         .nearest(phase.origin, rank, (e2) => (accept(e2) ? QUALIFIES : null), goodsGate, avoid, onSide);

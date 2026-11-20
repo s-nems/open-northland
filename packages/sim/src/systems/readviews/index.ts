@@ -18,6 +18,7 @@ export {
 export {
   type BuildingCombatClass,
   buildingCombatClass,
+  combatClassOfType,
   HEADQUARTERS_BUILDING_ID,
   isBarracks,
   isBarracksOrFoundation,
