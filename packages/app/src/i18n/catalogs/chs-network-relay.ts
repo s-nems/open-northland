@@ -3,6 +3,12 @@ export const chsNetworkRelay = {
   serverSays: '服务器提示：{reason}',
   closedPlain: '连接已关闭',
   versionMismatch: '服务器运行的是另一个游戏版本',
+  version: {
+    outdated: '你的游戏版本是 {running}，服务器需要 {required}。{hint}',
+    outdatedUnnamed: '你的游戏版本 {running} 比服务器的旧。{hint}',
+    ahead: '服务器仍在运行版本 {server}，而你已是 {running}。服务器可能正在更新，请几分钟后再试',
+    aheadUnnamed: '服务器运行的游戏版本比你的（{running}）旧。服务器可能正在更新，请几分钟后再试',
+  },
   joinRoomFailed: '无法加入房间',
   createRoomFailed: '无法创建房间',
   worldRefused: '房间不接受这个世界',
@@ -15,7 +21,6 @@ export const chsNetworkRelay = {
   reasons: {
     helloFirst: '游戏没有先表明身份',
     helloOverdue: '游戏迟迟没有表明身份',
-    protocolUnsupported: '服务器使用网络协议 {relay}，而本游戏使用 {client}',
     replaced: '同一名玩家从别处再次连接',
     messageTooLarge: '本游戏发送的消息过大',
     malformed: '服务器无法读取本游戏发送的消息',

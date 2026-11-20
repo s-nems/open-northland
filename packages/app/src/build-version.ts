@@ -10,3 +10,13 @@ export const GAME_VERSION = typeof __GAME_VERSION__ === 'string' ? __GAME_VERSIO
 /** What a save must share to restore in another build (`build/game-version.ts`); null when unknown. */
 export const RESTORE_IDENTITY: string | null =
   typeof __RESTORE_IDENTITY__ === 'string' ? __RESTORE_IDENTITY__ : null;
+
+/** A release name as a server reports it: `1.2.3` with an optional short suffix. */
+const RELEASE_NAME = /^\d+\.\d+\.\d+[0-9A-Za-z.+-]{0,20}$/;
+
+/** The release a server names, to show beside this game's; null for a label that is no release,
+ *  and for this game's own name, which tells the two apart no better than none. */
+export function otherRelease(named: string | null | undefined): string | null {
+  if (named === null || named === undefined || named === GAME_VERSION) return null;
+  return RELEASE_NAME.test(named) ? named : null;
+}

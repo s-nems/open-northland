@@ -38,6 +38,7 @@ describe('api server', () => {
       port: 0,
       host: '127.0.0.1',
       build: 'test-build',
+      gameVersion: '0.8.0',
       store,
       files: {
         keptFile: async (id) => {
@@ -72,6 +73,7 @@ describe('api server', () => {
     expect(await before.json()).toEqual({
       ok: false,
       build: 'test-build',
+      gameVersion: '0.8.0',
       lastSyncAt: null,
       staleSeconds: null,
       entryCount: 0,
@@ -87,6 +89,7 @@ describe('api server', () => {
     expect(await after.json()).toEqual({
       ok: true,
       build: 'test-build',
+      gameVersion: '0.8.0',
       lastSyncAt: SYNCED_AT.toISOString(),
       staleSeconds: LATER_SECONDS,
       entryCount: ACCEPTED_RECORDS.length,
@@ -102,7 +105,8 @@ describe('api server', () => {
     const response = await fetch(`${base}/v1/catalog`);
     expect(response.status).toBe(200);
     expect(response.headers.get('access-control-allow-origin')).toBe('*');
-    expect(response.headers.get('access-control-expose-headers')).toBe('ETag');
+    expect(response.headers.get('access-control-expose-headers')).toBe('ETag, x-game-version');
+    expect(response.headers.get('x-game-version')).toBe('0.8.0');
     expect(response.headers.get('cache-control')).toBe('public, max-age=300');
     const catalog = CatalogBrowse.parse(await response.json());
     expect(catalog).toHaveLength(ACCEPTED_RECORDS.length);

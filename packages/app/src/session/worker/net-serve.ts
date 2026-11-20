@@ -8,7 +8,7 @@ import {
   type RelayLinkEvents,
   RelaySocket,
 } from '@open-northland/net-client';
-import { type ServerMessage, withFlag } from '@open-northland/net-protocol';
+import { type RelayReason, type ServerMessage, withFlag } from '@open-northland/net-protocol';
 import {
   type FromNetWorker,
   type RelayAnswer,
@@ -63,6 +63,8 @@ class RelayConnection<B, E> {
   private lastFacts: RelayFacts | null = null;
   /** Off while the client applies a notice the runtime applied on its own side. */
   private forwarding = true;
+  /** The relay's last `error`; the close that follows it names only its code. */
+  private lastRefusal: RelayReason | null = null;
 
   constructor(
     private readonly post: Post<E>,
@@ -105,7 +107,10 @@ class RelayConnection<B, E> {
       },
       onQuiet: (quietMs) => post({ kind: 'link', state: 'quiet', quietMs }),
       onHeard: () => post({ kind: 'link', state: 'ok' }),
-      onClosed: (reason) => post({ kind: 'link', state: 'closed', reason }),
+      onClosed: (reason) => {
+        const refusal = this.lastRefusal?.code === reason ? this.lastRefusal : null;
+        post({ kind: 'link', state: 'closed', reason, ...(refusal === null ? {} : { refusal }) });
+      },
       awaitsTransfer: () => client.awaitsTransfer,
     });
     client.attach((message) => {
@@ -175,6 +180,7 @@ class RelayConnection<B, E> {
   }
 
   private forward(message: ServerMessage): void {
+    if (message.kind === 'error') this.lastRefusal = message.reason;
     // A world the client dropped is served no more.
     if (this.served !== null && this.client.worldId !== this.servedWorldId) this.endServed();
     // A frame, or the clock, the client waited on may have come.

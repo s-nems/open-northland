@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
-import { catalogBrowseEntry } from '@open-northland/data';
+import { CATALOG_GAME_VERSION_HEADER, catalogBrowseEntry } from '@open-northland/data';
+import { IR_VERSION } from '@open-northland/data/ir-version';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import * as mapList from '../../../../src/content/map/maps-index.js';
 import * as sources from '../../../../src/content/map-source/index.js';
@@ -220,4 +221,26 @@ it('keeps the remembered installed selection until the library loads', async () 
   expect(view.body.querySelector('.catalogue-installed .is-selected')?.getAttribute('data-entry-id')).toBe(
     'cn-01',
   );
+});
+it('names the release the catalogue maps need when they were converted for a newer game', async () => {
+  const newer = entries.slice(0, 2).map((entry) => {
+    const browse = catalogBrowseEntry(entry);
+    const conversion = browse.conversion;
+    if (conversion?.verdict !== 'ok') throw new Error('fixture entry is not converted');
+    return { ...browse, conversion: { ...conversion, irVersion: IR_VERSION + 1 } };
+  });
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async () => Response.json(newer, { headers: { [CATALOG_GAME_VERSION_HEADER]: '0.9.0' } })),
+  );
+  const { view } = await mounted();
+  const notice = view.body.querySelector('.catalogue__version-notice');
+  expect(notice?.textContent).toContain('0.9.0');
+  const button = notice?.querySelector('button');
+  expect(button?.textContent).toBe(messages().versionGap.reload);
+  // A search repaints the grid, not the unchanged notice the live region already read out.
+  const input = view.body.querySelector('input[type="search"]') as HTMLInputElement;
+  input.value = 'mapa';
+  input.dispatchEvent(new Event('input', { bubbles: true }));
+  expect(notice?.querySelector('button')).toBe(button);
 });

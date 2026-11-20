@@ -25,6 +25,7 @@ import {
   worldFailureTitle,
 } from '../../net/relay-reason.js';
 import { networkSaveSession } from '../../net/save-session.js';
+import type { LinkReport } from '../../session/worker/net-protocol.js';
 import { dismissBootProgress } from '../../view/boot/progress.js';
 import type { NetSignalSource } from '../../view/map-ping/pings.js';
 import type { NetReadout } from '../../view/net/readout.js';
@@ -203,7 +204,7 @@ export function renderNetworkGame(
       // and the in-game screen's one way out is the menu: a seat the relay may still hold is offered
       // back by the halt notice instead.
       if (event.state === 'closed' && (hud === null || closeKeepsSeat(event.reason))) {
-        failClosed(event.reason);
+        failClosed(event);
         return;
       }
       startWait.link(event.state);
@@ -238,11 +239,11 @@ export function renderNetworkGame(
     startWait.observe(event.message);
     hud?.observe(event.message);
   });
-  function failClosed(reason: string | undefined): void {
-    fail(relayCloseText(reason), null, closeKeepsSeat(reason));
+  function failClosed(link: Pick<LinkReport, 'reason' | 'refusal'>): void {
+    fail(relayCloseText(link), null, closeKeepsSeat(link.reason));
   }
   // A link that closed between the handover and this subscription would otherwise never be heard of.
-  if (connection.linkState?.state === 'closed') failClosed(connection.linkState.reason);
+  if (connection.linkState?.state === 'closed') failClosed(connection.linkState);
 
   function build(
     session: GameSession,

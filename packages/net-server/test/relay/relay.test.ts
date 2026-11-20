@@ -84,6 +84,22 @@ describe('relay identity', () => {
     expect(() => new Relay({ build: 'two\nlines' })).toThrow(/build/);
   });
 
+  it('names its build when it refuses a client of another protocol', () => {
+    const sent: ServerMessage[] = [];
+    const relay = new Relay({ build: '0.8.0' });
+    const handle = relay.connect({ send: (message) => sent.push(message), close: () => undefined });
+    relay.receive(handle, { kind: 'hello', protocol: PROTOCOL_VERSION - 1, token: TOKEN_A, nick: 'Ania' });
+    expect(sent).toContainEqual({
+      kind: 'error',
+      reason: {
+        code: 'protocolUnsupported',
+        client: PROTOCOL_VERSION - 1,
+        relay: PROTOCOL_VERSION,
+        build: '0.8.0',
+      },
+    });
+  });
+
   it('suffixes a duplicate nick within a room', () => {
     const s = stage();
     const a = s.introduce(TOKEN_A, 'Ania');

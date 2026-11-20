@@ -23,6 +23,7 @@ describe('apiConfigFromEnvironment', () => {
       convertConcurrency: 1,
       convertTimeoutMs: 120_000,
       build: null,
+      gameVersion: null,
       reports: {
         dir: resolve('/checkout', '.api-reports'),
         trustForwardedFor: false,
@@ -81,6 +82,7 @@ describe('apiConfigFromEnvironment', () => {
         ON_API_DATA_DIR: '/data',
         ON_API_UPSTREAM: 'http://localhost:1337/',
         API_BUILD: 'abc',
+        API_GAME_VERSION: '0.8.0',
         API_CONVERT_CONCURRENCY: '3',
         API_CONVERT_TIMEOUT_SECONDS: '30',
       },
@@ -92,6 +94,7 @@ describe('apiConfigFromEnvironment', () => {
       dataDir: resolve('/data'),
       upstream: 'http://localhost:1337',
       build: 'abc',
+      gameVersion: '0.8.0',
       convertConcurrency: 3,
       convertTimeoutMs: 30_000,
     });
@@ -102,6 +105,7 @@ describe('apiConfigFromEnvironment', () => {
       /API_CONVERT_TIMEOUT_SECONDS/,
     );
     expect(() => apiConfigFromEnvironment({ PORT: '70000' }, '/')).toThrow(/PORT/);
+    expect(() => apiConfigFromEnvironment({ API_GAME_VERSION: 'v0.8.0' }, '/')).toThrow(/API_GAME_VERSION/);
     expect(() => apiConfigFromEnvironment({ API_CONVERT_CONCURRENCY: '0' }, '/')).toThrow(
       /API_CONVERT_CONCURRENCY/,
     );

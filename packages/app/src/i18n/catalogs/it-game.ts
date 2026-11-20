@@ -2355,6 +2355,7 @@ export const itGame = {
     roomEnded: 'La stanza è stata chiusa',
     compatibilityMissing: '{nick}: manca {kind}',
     compatibilityMismatch: '{nick}: {kind} non corrisponde',
+    compatibilityVersion: '{nick} ha la versione {version} del gioco, il creatore della stanza la {expected}',
     compatibilityKinds: {
       save: 'salvataggio iniziale',
       report: 'rapporto di compatibilità',
@@ -2362,6 +2363,7 @@ export const itGame = {
       map: 'mappa',
       client: 'build del client',
       protocol: 'versione del protocollo',
+      version: 'versione del gioco',
     },
     roomTitle: 'Stanza {id}',
     roomWaiting: '{count} giocatori su {players}',

@@ -6,7 +6,13 @@ import { formatMessage, messages } from '../../../i18n/index.js';
 import type { LaunchEntry } from '../../../launch.js';
 import { type ConnectionEvent, NetworkConnection } from '../../../net/connection.js';
 import { type RelayMapRequest, relayMapRequest } from '../../../net/map-request.js';
-import { relayCloseText, relayFailureText, relayReasonText } from '../../../net/relay-reason.js';
+import {
+  relayCloseText,
+  relayFailureText,
+  relayReasonText,
+  relayVersionGap,
+} from '../../../net/relay-reason.js';
+import { runningGame } from '../../../update/outdated.js';
 import { nextPaint } from '../../../view/next-paint.js';
 import { relayIdentity, rememberFlag } from '../../relay/identity.js';
 import { node } from '../dom.js';
@@ -14,6 +20,7 @@ import { type MapSelectItem, mapSourceItem } from '../map-select/model.js';
 import type { MenuScreen } from '../model.js';
 import type { MenuSound } from '../music.js';
 import { screenHead } from '../screen-head.js';
+import { versionGapCard } from '../version-gap.js';
 import { roomAssets } from './assets.js';
 import { connectionForm } from './connection-form.js';
 import { createPanel } from './create.js';
@@ -48,7 +55,7 @@ export function networkScreen(
   const copy = messages().network;
   const element = node('section', 'main-menu__screen network-menu');
   const browser = node('div', 'network-menu__browser');
-  const status = node('p', 'network-menu__notice');
+  const status = node('div', 'network-menu__notice');
   status.setAttribute('role', 'status');
   const roomHost = node('div');
   const {
@@ -120,8 +127,9 @@ export function networkScreen(
     browser.hidden = false;
     head.hidden = false;
   };
-  /** Ends this screen's connection and room, leaving `text` as the notice; Connect works again. */
-  const dropConnection = (text: string): void => {
+  /** Ends this screen's connection and room, leaving `text` as the notice, or `card` in its place;
+   *  Connect works again. */
+  const dropConnection = (text: string, card: HTMLElement | null = null): void => {
     generation++;
     busy = false;
     mapRequest?.cancel();
@@ -136,6 +144,7 @@ export function networkScreen(
     leftNotice = null;
     resetRoom();
     notice(text);
+    if (card !== null) status.replaceChildren(card);
     sync();
     nick.focus();
   };
@@ -303,7 +312,11 @@ export function networkScreen(
         notice(copy.reconnecting);
       } else if (event.state === 'closed') {
         // A link that will not reopen leaves nothing to wait for, a restarted relay no room to show.
-        dropConnection(relayCloseText(event.reason));
+        const gap = relayVersionGap(event);
+        dropConnection(
+          relayCloseText(event),
+          gap === null ? null : versionGapCard(gap, 'relay', runningGame()),
+        );
         return;
       }
       room && current.client.room && room.update(current.client.room, current.connected);

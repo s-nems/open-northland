@@ -18,6 +18,7 @@ export function parseCompatibility(value: unknown, at: string): LobbyCompatibili
     content: fingerprint(raw.content, `${at}.content`),
     map: raw.map === null ? null : fingerprint(raw.map, `${at}.map`),
     client: parseLine(raw.client, `${at}.client`, MAX_CLIENT_VERSION_LENGTH),
+    version: parseLine(raw.version, `${at}.version`, MAX_CLIENT_VERSION_LENGTH),
     protocol: asCount(raw.protocol, `${at}.protocol`),
     ...(raw.save === undefined
       ? {}

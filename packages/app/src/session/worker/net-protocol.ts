@@ -31,10 +31,12 @@ import {
 export type LinkState = 'ok' | 'quiet' | 'reconnecting' | 'closed';
 
 /** The link as the worker reports it. `quietMs` is how long no relay message had arrived when a quiet
- *  or a drop was noticed; `reason` is why a closed link closed. */
+ *  or a drop was noticed; `reason` is why a closed link closed, and `refusal` the relay's `error` naming
+ *  that close with the values a close frame cannot carry. */
 export interface LinkReport {
   readonly state: LinkState;
   readonly reason?: string;
+  readonly refusal?: RelayReason;
   readonly quietMs?: number;
 }
 

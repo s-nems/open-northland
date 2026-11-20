@@ -3,6 +3,12 @@ export const chtNetworkRelay = {
   serverSays: '伺服器回報：{reason}',
   closedPlain: '連線已關閉',
   versionMismatch: '伺服器執行的是不同版本的遊戲',
+  version: {
+    outdated: '你的遊戲版本是 {running}，伺服器需要 {required}。{hint}',
+    outdatedUnnamed: '你的遊戲版本 {running} 比伺服器的舊。{hint}',
+    ahead: '伺服器仍在執行 {server} 版，而你已是 {running}。伺服器可能正在更新，請幾分鐘後再試',
+    aheadUnnamed: '伺服器執行的遊戲版本比你的（{running}）舊。伺服器可能正在更新，請幾分鐘後再試',
+  },
   joinRoomFailed: '無法加入房間',
   createRoomFailed: '無法建立房間',
   worldRefused: '房間不接受這個世界',
@@ -15,7 +21,6 @@ export const chtNetworkRelay = {
   reasons: {
     helloFirst: '遊戲沒有先表明身分',
     helloOverdue: '遊戲過了太久才表明身分',
-    protocolUnsupported: '伺服器使用網路協定 {relay}，這個遊戲使用 {client}',
     replaced: '同一名玩家從其他地方再次連線',
     messageTooLarge: '這個遊戲傳送的訊息過大',
     malformed: '伺服器無法讀取這個遊戲傳送的訊息',

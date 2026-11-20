@@ -23,6 +23,10 @@ export const CatalogBrowseEntry = CatalogEntry.extend({ conversion: CatalogBrows
 export type CatalogBrowseEntry = z.infer<typeof CatalogBrowseEntry>;
 export const CatalogBrowse = z.array(CatalogBrowseEntry);
 
+/** The `/v1/catalog` response header naming the game release the API converts maps for; absent when
+ *  its deployment names none. */
+export const CATALOG_GAME_VERSION_HEADER = 'x-game-version';
+
 export function catalogBrowseEntry(entry: CatalogEntry): CatalogBrowseEntry {
   const { conversion, ...fields } = entry;
   if (conversion?.verdict !== 'ok') return { ...fields, conversion };

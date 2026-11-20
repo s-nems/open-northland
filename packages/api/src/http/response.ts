@@ -1,4 +1,5 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
+import { CATALOG_GAME_VERSION_HEADER } from '@open-northland/data';
 import { type Body, jsonBody } from '../catalog/snapshot.js';
 import { acceptsGzip } from './encoding.js';
 
@@ -6,10 +7,11 @@ const JSON_TYPE = 'application/json; charset=utf-8';
 const OK = 200;
 const NOT_MODIFIED = 304;
 
-/** Every `/v1` endpoint is public and read-only, so every origin may read it and its validator. */
+/** Every `/v1` endpoint is public and read-only, so every origin may read it, its validator and the
+ *  catalogue's game version. */
 export const V1_HEADERS = {
   'access-control-allow-origin': '*',
-  'access-control-expose-headers': 'ETag',
+  'access-control-expose-headers': `ETag, ${CATALOG_GAME_VERSION_HEADER}`,
 } as const;
 
 /** The request target up to its query, taken as text: nothing here needs more than the path. */

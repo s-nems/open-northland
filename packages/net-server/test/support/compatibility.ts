@@ -5,5 +5,6 @@ export const TEST_COMPATIBILITY: LobbyCompatibility = {
   content: 'a'.repeat(64),
   map: 'b'.repeat(64),
   client: 'fixture-client',
+  version: 'dev',
   protocol: PROTOCOL_VERSION,
 };

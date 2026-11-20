@@ -11,6 +11,7 @@ const REPORT: LobbyCompatibility = {
   content: 'a'.repeat(64),
   map: 'b'.repeat(64),
   client: 'test',
+  version: 'dev',
   protocol: PROTOCOL_VERSION,
 };
 
@@ -108,13 +109,17 @@ describe('lobby compatibility reporter', () => {
   });
 });
 
-it('names the member and the file that differ, so a stale build reads as one', () => {
+it('names the member and the file that differ, and another release by both versions', () => {
   const copy = messages().net;
   const text = compatibilityIssuesText([
     { nick: 'Ania', kind: 'client', reason: 'mismatch' },
     { nick: 'Bartek', kind: 'map', reason: 'missing' },
+    { nick: 'Cezary', kind: 'version', reason: 'mismatch', version: '0.7.0', expected: '0.8.0' },
   ]);
   expect(text).toContain(copy.compatibilityKinds.client);
   expect(text).toContain('Ania');
   expect(text).toContain(copy.compatibilityKinds.map);
+  expect(text).toContain('Cezary');
+  expect(text).toContain('0.7.0');
+  expect(text).toContain('0.8.0');
 });

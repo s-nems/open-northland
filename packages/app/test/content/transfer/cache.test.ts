@@ -93,7 +93,7 @@ function runningRoom(fingerprint: string): RoomView {
         nick: 'Host',
         seat: 0,
         connected: true,
-        compatibility: { map: fingerprint, content: 'c', client: 'b', protocol: 3 },
+        compatibility: { map: fingerprint, content: 'c', client: 'b', version: 'dev', protocol: 3 },
         load: null,
         loading: null,
         roundTripMs: null,

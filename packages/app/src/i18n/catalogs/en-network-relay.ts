@@ -3,6 +3,14 @@ export const enNetworkRelay = {
   serverSays: 'The server reports: {reason}',
   closedPlain: 'Connection closed',
   versionMismatch: 'the server runs a different version of the game',
+  version: {
+    outdated: 'you have game version {running}, the server needs {required}. {hint}',
+    outdatedUnnamed: "your game version {running} is older than the server's. {hint}",
+    ahead:
+      'the server still runs version {server} and you already have {running}. It is probably being updated, so try again in a few minutes',
+    aheadUnnamed:
+      'the server runs an older game version than yours ({running}). It is probably being updated, so try again in a few minutes',
+  },
   joinRoomFailed: 'Could not join the room',
   createRoomFailed: 'Could not create the room',
   worldRefused: 'The room did not accept this world',
@@ -16,7 +24,6 @@ export const enNetworkRelay = {
   reasons: {
     helloFirst: 'the game did not introduce itself first',
     helloOverdue: 'the game took too long to introduce itself',
-    protocolUnsupported: 'the server speaks network protocol {relay}, this game speaks {client}',
     replaced: 'the same player connected again from elsewhere',
     messageTooLarge: 'a message from this game was too large',
     malformed: 'the server could not read a message from this game',

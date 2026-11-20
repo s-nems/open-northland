@@ -21,6 +21,7 @@ const REPORT: LobbyCompatibility = {
   content: 'a'.repeat(64),
   map: MAP.fingerprint,
   client: 'test',
+  version: 'dev',
   protocol: PROTOCOL_VERSION,
   save: null,
 };

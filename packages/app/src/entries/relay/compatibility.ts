@@ -6,20 +6,12 @@ import {
   sameCompatibility,
 } from '@open-northland/net-protocol';
 import { loadLobbyCompatibility } from '../../content/lobby-identity.js';
-import { formatMessage, messages } from '../../i18n/index.js';
+import { compatibilityIssueText } from '../../net/relay-reason.js';
 
-/** Each member and file that differs, in the player's language: a stale client or protocol after a
- *  deploy reads as such, not as different game files. */
+/** Each member and file that differs, in the player's language: another release reads as its
+ *  version, not as different game files. */
 export function compatibilityIssuesText(issues: readonly CompatibilityIssue[]): string {
-  const copy = messages().net;
-  return issues
-    .map((issue) =>
-      formatMessage(issue.reason === 'missing' ? copy.compatibilityMissing : copy.compatibilityMismatch, {
-        nick: issue.nick,
-        kind: copy.compatibilityKinds[issue.kind],
-      }),
-    )
-    .join('; ');
+  return issues.map((issue) => compatibilityIssueText(issue)).join('; ');
 }
 
 type Client = Pick<RelayClientView, 'room' | 'nick' | 'setCompatibility'>;

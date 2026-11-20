@@ -9,7 +9,13 @@ import type { VacantSeatMode } from './messages.js';
 export type RelayReason =
   | { readonly code: 'helloFirst' }
   | { readonly code: 'helloOverdue' }
-  | { readonly code: 'protocolUnsupported'; readonly client: number; readonly relay: number }
+  /** `build` is the relay's `RELAY_BUILD`, a release's game version; left out when unset. */
+  | {
+      readonly code: 'protocolUnsupported';
+      readonly client: number;
+      readonly relay: number;
+      readonly build?: string;
+    }
   | { readonly code: 'replaced' }
   | { readonly code: 'messageTooLarge' }
   | { readonly code: 'malformed'; readonly detail: string }

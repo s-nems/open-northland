@@ -41,7 +41,7 @@ function room(state: RoomView['state']): RoomView {
         nick: NICK,
         seat: 0,
         connected: true,
-        compatibility: { content: 'a', map: 'b', client: 'test', protocol: PROTOCOL_VERSION },
+        compatibility: { content: 'a', map: 'b', client: 'test', version: 'dev', protocol: PROTOCOL_VERSION },
         load: null,
         loading: null,
         roundTripMs: null,
@@ -90,10 +90,13 @@ function fakeConnection() {
     if (message.kind === 'hallChat') client.hallChat = [...client.hallChat, message];
     listener?.({ kind: 'message', message });
   };
+  const link = (report: Omit<Extract<ConnectionEvent, { kind: 'link' }>, 'kind' | 'atMs'>): void =>
+    listener?.({ kind: 'link', ...report, atMs: 0 });
   return {
     connection: connection as unknown as NetworkConnection,
     client,
     relay,
+    link,
     dispose: connection.dispose,
   };
 }
@@ -355,5 +358,25 @@ it('tells a member the host banned that the removal is for good, past the room i
   expect(screen.element.querySelector('.network-room')).toBeNull();
   expect(screen.element.textContent).toContain(copy.banned);
   expect(screen.element.textContent).not.toContain(copy.left);
+  screen.dispose();
+});
+
+it('names both versions when the relay refuses an older game, with the step that updates it', () => {
+  const fake = fakeConnection();
+  const screen = connectedScreen(fake, vi.fn());
+  fake.link({
+    state: 'closed',
+    reason: 'protocolUnsupported',
+    refusal: {
+      code: 'protocolUnsupported',
+      client: PROTOCOL_VERSION - 1,
+      relay: PROTOCOL_VERSION,
+      build: '0.9.0',
+    },
+  });
+  const card = screen.element.querySelector('.network-menu__notice .version-gap');
+  expect(card?.textContent).toContain('0.9.0');
+  // The test page is served over http, as the web game is: the step is a reload.
+  expect(card?.querySelector('button')?.textContent).toBe(messages().versionGap.reload);
   screen.dispose();
 });

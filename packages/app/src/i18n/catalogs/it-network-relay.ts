@@ -2,6 +2,14 @@ export const itNetworkRelay = {
   serverSays: 'Il server segnala: {reason}',
   closedPlain: 'Connessione chiusa',
   versionMismatch: "il server usa un'altra versione del gioco",
+  version: {
+    outdated: 'hai la versione {running} del gioco, il server richiede la {required}. {hint}',
+    outdatedUnnamed: 'la tua versione del gioco {running} è più vecchia di quella del server. {hint}',
+    ahead:
+      'il server usa ancora la versione {server} e tu hai già la {running}. Probabilmente si sta aggiornando, riprova tra qualche minuto',
+    aheadUnnamed:
+      'il server usa una versione del gioco più vecchia della tua ({running}). Probabilmente si sta aggiornando, riprova tra qualche minuto',
+  },
   joinRoomFailed: 'Impossibile entrare nella stanza',
   createRoomFailed: 'Impossibile creare la stanza',
   worldRefused: 'La stanza non ha accettato questo mondo',
@@ -15,7 +23,6 @@ export const itNetworkRelay = {
   reasons: {
     helloFirst: 'il gioco non si è presentato per primo',
     helloOverdue: 'il gioco ha impiegato troppo tempo a presentarsi',
-    protocolUnsupported: 'il server usa il protocollo di rete {relay}, questo gioco usa il {client}',
     replaced: 'lo stesso giocatore si è connesso di nuovo da un altro luogo',
     messageTooLarge: 'un messaggio di questo gioco era troppo grande',
     malformed: 'il server non ha potuto leggere un messaggio di questo gioco',

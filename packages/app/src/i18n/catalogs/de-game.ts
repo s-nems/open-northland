@@ -2486,6 +2486,7 @@ export const deGame = {
     roomEnded: 'Der Raum wurde geschlossen',
     compatibilityMissing: '{nick}: Nicht vorhanden: {kind}',
     compatibilityMismatch: '{nick}: abweichend: {kind}',
+    compatibilityVersion: '{nick} hat Spielversion {version}, der Raumersteller {expected}',
     compatibilityKinds: {
       save: 'anfänglicher Spielstand',
       report: 'Kompatibilitätsbericht',
@@ -2493,6 +2494,7 @@ export const deGame = {
       map: 'Karte',
       client: 'Client-Build',
       protocol: 'Protokollversion',
+      version: 'Spielversion',
     },
     roomTitle: 'Raum {id}',
     roomWaiting: 'Spieler: {count}/{players}',

@@ -1,10 +1,10 @@
 import type { CompatibilityIssue } from '../compatibility.js';
-import { MAX_REASON_LENGTH } from '../limits.js';
+import { MAX_CLIENT_VERSION_LENGTH, MAX_REASON_LENGTH, MAX_RELAY_BUILD_LENGTH } from '../limits.js';
 import type { VacantSeatMode } from '../messages.js';
 import type { ClosingCode, RelayReason, RelayReasonCode } from '../reasons.js';
 import { asCount, asOneOf, asRecord, asString, keysOf } from '../untrusted.js';
 import { parseSeatIndex, VACANT_SEAT_MODES } from './room.js';
-import { assertNever, parseNick } from './text.js';
+import { assertNever, parseLine, parseNick } from './text.js';
 
 type ParamKind =
   | 'count'
@@ -13,17 +13,22 @@ type ParamKind =
   | 'detail'
   | 'seatMode'
   | 'compatibilityKind'
-  | 'compatibilityReason';
+  | 'compatibilityReason'
+  | 'version';
 
-type KindOf<V> = [V] extends [number]
-  ? 'count' | 'seat'
-  : [V] extends [VacantSeatMode]
-    ? 'seatMode'
-    : [V] extends [CompatibilityIssue['kind']]
-      ? 'compatibilityKind'
-      : [V] extends [CompatibilityIssue['reason']]
-        ? 'compatibilityReason'
-        : 'nick' | 'detail';
+/** The optional values are version lines: the relay's build, which an older relay leaves out, and the
+ *  two versions only a version mismatch carries. */
+type KindOf<V> = undefined extends V
+  ? 'version'
+  : [V] extends [number]
+    ? 'count' | 'seat'
+    : [V] extends [VacantSeatMode]
+      ? 'seatMode'
+      : [V] extends [CompatibilityIssue['kind']]
+        ? 'compatibilityKind'
+        : [V] extends [CompatibilityIssue['reason']]
+          ? 'compatibilityReason'
+          : 'nick' | 'detail';
 
 type ParamsOf<R> = { readonly [K in Exclude<keyof R, 'code'>]-?: KindOf<R[K]> };
 
@@ -31,7 +36,7 @@ type ParamsOf<R> = { readonly [K in Exclude<keyof R, 'code'>]-?: KindOf<R[K]> };
 const REASON_PARAMS: { readonly [C in RelayReasonCode]: ParamsOf<Extract<RelayReason, { code: C }>> } = {
   helloFirst: {},
   helloOverdue: {},
-  protocolUnsupported: { client: 'count', relay: 'count' },
+  protocolUnsupported: { client: 'count', relay: 'count', build: 'version' },
   replaced: {},
   messageTooLarge: {},
   malformed: { detail: 'detail' },
@@ -62,7 +67,13 @@ const REASON_PARAMS: { readonly [C in RelayReasonCode]: ParamsOf<Extract<RelayRe
   banned: {},
   banSelf: {},
   memberNotReady: { nick: 'nick' },
-  incompatible: { nick: 'nick', kind: 'compatibilityKind', reason: 'compatibilityReason' },
+  incompatible: {
+    nick: 'nick',
+    kind: 'compatibilityKind',
+    reason: 'compatibilityReason',
+    version: 'version',
+    expected: 'version',
+  },
   initialSaveMissing: {},
   mapDeliveryOff: {},
   mapUploadHasTick: {},
@@ -111,6 +122,9 @@ const REASON_PARAMS: { readonly [C in RelayReasonCode]: ParamsOf<Extract<RelayRe
 
 const REASON_CODES = Object.keys(REASON_PARAMS) as readonly RelayReasonCode[];
 
+/** Long enough for a relay's build and a client's version alike. */
+const MAX_VERSION_LINE_LENGTH = Math.max(MAX_RELAY_BUILD_LENGTH, MAX_CLIENT_VERSION_LENGTH);
+
 const CLOSING_CODES = keysOf<ClosingCode>({
   helloFirst: true,
   helloOverdue: true,
@@ -124,6 +138,7 @@ const CLOSING_CODES = keysOf<ClosingCode>({
 
 const COMPATIBILITY_KINDS = keysOf<CompatibilityIssue['kind']>({
   report: true,
+  version: true,
   content: true,
   map: true,
   client: true,
@@ -137,7 +152,8 @@ export function parseRelayReason(value: unknown, at: string): RelayReason {
   const code = asOneOf(raw.code, REASON_CODES, `${at}.code`);
   const reason: Record<string, string | number> = { code };
   for (const [name, kind] of Object.entries<ParamKind>(REASON_PARAMS[code])) {
-    reason[name] = parseParam(raw[name], kind, `${at}.${name}`);
+    const value = parseParam(raw[name], kind, `${at}.${name}`);
+    if (value !== undefined) reason[name] = value;
   }
   // Each value was read as the table names it, and the table is checked against the union.
   return reason as unknown as RelayReason;
@@ -148,7 +164,7 @@ export function closingCode(text: string): ClosingCode | null {
   return CLOSING_CODES.find((code) => code === text) ?? null;
 }
 
-function parseParam(value: unknown, kind: ParamKind, at: string): string | number {
+function parseParam(value: unknown, kind: ParamKind, at: string): string | number | undefined {
   switch (kind) {
     case 'count':
       return asCount(value, at);
@@ -164,6 +180,8 @@ function parseParam(value: unknown, kind: ParamKind, at: string): string | numbe
       return asOneOf(value, COMPATIBILITY_KINDS, at);
     case 'compatibilityReason':
       return asOneOf(value, COMPATIBILITY_REASONS, at);
+    case 'version':
+      return value === undefined ? undefined : parseLine(value, at, MAX_VERSION_LINE_LENGTH);
     default:
       return assertNever(kind);
   }

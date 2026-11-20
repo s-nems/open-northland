@@ -1,4 +1,4 @@
-import { catalogBrowseEntry, type MapTextLanguage } from '@open-northland/data';
+import { CATALOG_GAME_VERSION_HEADER, catalogBrowseEntry, type MapTextLanguage } from '@open-northland/data';
 import { IR_VERSION } from '@open-northland/data/ir-version';
 import { encodePng } from '@open-northland/formats/png';
 import { describe, expect, it, vi } from 'vitest';
@@ -122,8 +122,19 @@ describe('the catalogue server address', () => {
     const entry = catalogEntry('cn-a');
     const server: typeof fetch = async () =>
       Response.json([catalogBrowseEntry(entry), { id: 'cn-new-shape' }]);
-    expect((await fetchCatalog(API, server)).map((item) => item.id)).toEqual(['cn-a']);
+    const listing = await fetchCatalog(API, server);
+    expect(listing.entries.map((item) => item.id)).toEqual(['cn-a']);
+    expect(listing.gameVersion).toBeNull();
     await expect(fetchCatalog(API, async () => new Response(null, { status: 503 }))).rejects.toThrow(/503/);
+  });
+
+  it('reads the release the server converts for, and drops a header that is no version', async () => {
+    const named =
+      (value: string): typeof fetch =>
+      async () =>
+        Response.json([], { headers: { [CATALOG_GAME_VERSION_HEADER]: value } });
+    expect((await fetchCatalog(API, named('0.8.0'))).gameVersion).toBe('0.8.0');
+    expect((await fetchCatalog(API, named('<html>oops</html>'))).gameVersion).toBeNull();
   });
 });
 

@@ -1,6 +1,7 @@
 import { type ChatLine, MAX_CHAT_LENGTH, type RoomView } from '@open-northland/net-protocol';
 import { quietTextField } from '../../../../hud/dom/parts/text-field.js';
 import { formatClockTime, formatMessage, messages } from '../../../../i18n/index.js';
+import { compatibilityIssueText } from '../../../../net/relay-reason.js';
 import { node } from '../../dom.js';
 import { createMapDetailsCard } from '../../map-select/card.js';
 import type { MapSelectItem } from '../../map-select/model.js';
@@ -128,18 +129,8 @@ export function mountNetworkRoom(deps: NetworkRoomDeps) {
         else preview.show(map);
       }
       observers.update(room, connected);
-      const net = messages().net;
       issues.replaceChildren(
-        ...permissions.issues.map((issue) =>
-          node(
-            'p',
-            '',
-            formatMessage(issue.reason === 'missing' ? net.compatibilityMissing : net.compatibilityMismatch, {
-              nick: issue.nick,
-              kind: net.compatibilityKinds[issue.kind],
-            }),
-          ),
-        ),
+        ...permissions.issues.map((issue) => node('p', '', compatibilityIssueText(issue))),
       );
       compatible.hidden = permissions.issues.length !== 0;
       checks.hidden = permissions.issues.length === 0;

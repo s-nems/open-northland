@@ -100,12 +100,24 @@ export interface ApiConfig {
   readonly convertTimeoutMs: number;
   /** The build this image came from, for the health endpoint. */
   readonly build: string | null;
+  /** The game release whose content version the image converts maps for; null names none. */
+  readonly gameVersion: string | null;
   readonly reports: ReportsConfig;
 }
 
 function setting(env: Environment, name: string): string | null {
   const raw = env[name];
   return raw === undefined || raw.trim() === '' ? null : raw.trim();
+}
+
+/** A release as the game names itself: a semantic version without the tag's `v`. */
+const RELEASE_VERSION = /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/;
+
+function gameVersionSetting(env: Environment): string | null {
+  const raw = setting(env, 'API_GAME_VERSION');
+  if (raw !== null && !RELEASE_VERSION.test(raw))
+    throw new Error(`API_GAME_VERSION must be a release version like 1.2.3, got ${raw}`);
+  return raw;
 }
 
 function portSetting(env: Environment): number {
@@ -239,6 +251,7 @@ export function apiConfigFromEnvironment(env: Environment, cwd: string): ApiConf
     ),
     convertTimeoutMs: convertTimeoutSetting(env),
     build: setting(env, 'API_BUILD'),
+    gameVersion: gameVersionSetting(env),
     reports: reportsConfig(env, cwd),
   };
 }

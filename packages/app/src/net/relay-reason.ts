@@ -1,28 +1,34 @@
 import { RelayRefusal } from '@open-northland/net-client';
 import {
+  type CompatibilityIssue,
   closingCode,
   type RelayReason,
   type RelayReasonCode,
   type ServerMessage,
 } from '@open-northland/net-protocol';
+import { otherRelease } from '../build-version.js';
 import { errorText } from '../diag/error-text.js';
 import { formatMessage, type Messages, messages } from '../i18n/index.js';
+import type { LinkReport } from '../session/worker/net-protocol.js';
+import { outdatedHint, type RunningGame, runningGame, type VersionGap } from '../update/outdated.js';
 import type { FailureSource } from './connection.js';
 
+type ProtocolRefusal = Extract<RelayReason, { readonly code: 'protocolUnsupported' }>;
+
 /** A relay reason worded for the player, as a clause for a surrounding template. */
-export function relayReasonText(reason: RelayReason, copy: Messages = messages()): string {
-  const net = copy.net;
-  const templates: Readonly<Record<Exclude<RelayReasonCode, 'incompatible'>, string>> =
-    copy.networkRelay.reasons;
+export function relayReasonText(
+  reason: RelayReason,
+  copy: Messages = messages(),
+  game?: RunningGame,
+): string {
+  const templates: Readonly<
+    Record<Exclude<RelayReasonCode, 'incompatible' | 'protocolUnsupported'>, string>
+  > = copy.networkRelay.reasons;
   switch (reason.code) {
     case 'incompatible':
-      return formatMessage(
-        reason.reason === 'missing' ? net.compatibilityMissing : net.compatibilityMismatch,
-        {
-          nick: reason.nick,
-          kind: net.compatibilityKinds[reason.kind],
-        },
-      );
+      return compatibilityIssueText(reason, copy);
+    case 'protocolUnsupported':
+      return versionGapText(refusalGap(reason), copy, game);
     case 'seatModeUnavailable':
       return formatMessage(templates[reason.code], {
         seat: seatNumber(reason.player),
@@ -52,14 +58,67 @@ function seatNumber(player: number): number {
   return player + 1;
 }
 
-/** The line for a connection the relay will not reopen. A close frame names only a code, so a reason
- *  that carries values is worded without them. */
-export function relayCloseText(closeReason: string | undefined, copy: Messages = messages()): string {
-  const code = closeReason === undefined ? null : closingCode(closeReason);
+/** A room member whose files differ from the creator's, as one line for the lobby. */
+export function compatibilityIssueText(issue: CompatibilityIssue, copy: Messages = messages()): string {
+  const net = copy.net;
+  if (issue.kind === 'version' && issue.version !== undefined && issue.expected !== undefined)
+    return formatMessage(net.compatibilityVersion, {
+      nick: issue.nick,
+      version: issue.version,
+      expected: issue.expected,
+    });
+  return formatMessage(issue.reason === 'missing' ? net.compatibilityMissing : net.compatibilityMismatch, {
+    nick: issue.nick,
+    kind: net.compatibilityKinds[issue.kind],
+  });
+}
+
+/** The gap a refused `hello` names: the protocol only ever goes up, so the lower number is older. */
+function refusalGap(refusal: ProtocolRefusal): VersionGap {
+  const named = otherRelease(refusal.build);
+  return refusal.client < refusal.relay
+    ? { kind: 'outdated', required: named }
+    : { kind: 'ahead', server: named };
+}
+
+/** Both versions and what to do, as a clause; the relay's version only when it names its build. */
+function versionGapText(gap: VersionGap, copy: Messages, game = runningGame()): string {
+  const text = copy.networkRelay.version;
+  const running = game.version;
+  if (gap.kind === 'outdated') {
+    const hint = outdatedHint(game, copy);
+    return gap.required === null
+      ? formatMessage(text.outdatedUnnamed, { running, hint })
+      : formatMessage(text.outdated, { running, required: gap.required, hint });
+  }
+  return gap.server === null
+    ? formatMessage(text.aheadUnnamed, { running })
+    : formatMessage(text.ahead, { running, server: gap.server });
+}
+
+/** The release gap behind a closed link, when the relay refused this game's protocol before closing. */
+export function relayVersionGap(link: Pick<LinkReport, 'reason' | 'refusal'>): VersionGap | null {
+  const refusal = link.refusal;
+  return link.reason === 'protocolUnsupported' && refusal?.code === 'protocolUnsupported'
+    ? refusalGap(refusal)
+    : null;
+}
+
+/** The line for a connection the relay will not reopen. A close frame names only a code; the relay's
+ *  `error` before it, when the link kept one, supplies the values. */
+export function relayCloseText(
+  link: Pick<LinkReport, 'reason' | 'refusal'>,
+  copy: Messages = messages(),
+  game?: RunningGame,
+): string {
+  const code = link.reason === undefined ? null : closingCode(link.reason);
   if (code === null) return copy.networkRelay.closedPlain;
+  const gap = relayVersionGap(link);
   const reason =
     code === 'protocolUnsupported'
-      ? copy.networkRelay.versionMismatch
+      ? gap === null
+        ? copy.networkRelay.versionMismatch
+        : versionGapText(gap, copy, game)
       : code === 'malformed'
         ? copy.networkRelay.reasons.malformed
         : relayReasonText({ code }, copy);

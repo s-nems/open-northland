@@ -1,5 +1,5 @@
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http';
-import { CATALOG_MAP_ID } from '@open-northland/data';
+import { CATALOG_GAME_VERSION_HEADER, CATALOG_MAP_ID } from '@open-northland/data';
 import type { CatalogSnapshot } from './catalog/snapshot.js';
 import { bytesBody, jsonBody } from './catalog/snapshot.js';
 import type { Log } from './catalog/thumbnails.js';
@@ -39,6 +39,7 @@ const UNAVAILABLE = 503;
 export interface ApiHealth {
   readonly ok: boolean;
   readonly build: string | null;
+  readonly gameVersion: string | null;
   readonly lastSyncAt: string | null;
   readonly staleSeconds: number | null;
   readonly entryCount: number;
@@ -55,6 +56,8 @@ export interface ApiServerOptions {
   readonly port: number;
   readonly host?: string | null;
   readonly build?: string | null;
+  /** Sent with the catalogue, so a game of another release can name the one the maps are for. */
+  readonly gameVersion?: string | null;
   readonly store: DataStore;
   /** Serves `/v1/content/<irVersion>/maps/*`; without it every content request is a 404. */
   readonly content?: ContentSource;
@@ -81,11 +84,13 @@ export function startApiServer(options: ApiServerOptions): Promise<ApiServer> {
   const log = options.log ?? (() => undefined);
   const now = options.now ?? (() => new Date());
   const build = options.build ?? null;
+  const gameVersion = options.gameVersion ?? null;
   let snapshot: CatalogSnapshot | null = null;
 
   const health = (): ApiHealth => ({
     ok: snapshot !== null,
     build,
+    gameVersion,
     lastSyncAt: snapshot?.syncedAt.toISOString() ?? null,
     staleSeconds:
       snapshot === null
@@ -135,7 +140,8 @@ export function startApiServer(options: ApiServerOptions): Promise<ApiServer> {
     }
     const headers = { ...V1_HEADERS, 'cache-control': CATALOG_CACHE };
     if (path === CATALOG_PATH) {
-      send(request, response, OK, snapshot.catalog, headers);
+      const named = gameVersion === null ? {} : { [CATALOG_GAME_VERSION_HEADER]: gameVersion };
+      send(request, response, OK, snapshot.catalog, { ...headers, ...named });
       return;
     }
     const match = MAP_PATH.exec(path);

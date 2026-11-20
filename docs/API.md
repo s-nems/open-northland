@@ -15,6 +15,7 @@ archives and converted maps, and stores the bug reports players send. It runs no
 | `PORT` | `8790` | HTTP port |
 | `HOST` | all interfaces | Bind address |
 | `API_BUILD` | unset | Build name in `/healthz` |
+| `API_GAME_VERSION` | unset | Game release, like `0.8.0`, whose IR the image converts for; sent with the catalogue so a game of another release names it to the player |
 | `ON_API_UPSTREAM` | `https://api.culturesnation.pl` | Upstream catalogue |
 | `ON_API_DATA_DIR` | `.api-data` | Storage directory, relative to the working directory |
 | `API_SYNC_INTERVAL` | `6h` | Whole seconds or one `s`, `m`, `h`, `d` unit; 1 minute to 7 days |
@@ -93,8 +94,8 @@ All resource routes accept `GET` and `HEAD`; the report routes accept only `POST
 
 | Path | Response |
 | --- | --- |
-| `/healthz` | Build, last sync time, staleness, entry count, conversion counts, whether the report store is `full` and whether the report decoder is failing (`decoderFailing`); 503 until a catalogue is loaded |
-| `/v1/catalog` | Compact `CatalogBrowse` list, sorted by id |
+| `/healthz` | Build, game version, last sync time, staleness, entry count, conversion counts, whether the report store is `full` and whether the report decoder is failing (`decoderFailing`); 503 until a catalogue is loaded |
+| `/v1/catalog` | Compact `CatalogBrowse` list, sorted by id; `X-Game-Version` names `API_GAME_VERSION` when set |
 | `/v1/maps/<id>` | Full `CatalogEntry`, including map indexes and lobby rosters |
 | `/v1/maps/<id>/thumbnail` | Screenshot or 404 |
 | `/v1/maps/<id>/file` | Original archive as an attachment, or 404 |
@@ -107,7 +108,8 @@ Map suffixes: `.json`, `.meta.json`, `.strings.json`, `.script.json`, `.briefing
 
 HTTP behavior:
 
-- `/v1` reads allow all CORS origins. `OPTIONS` returns 204 and allows `GET`, `HEAD`, `If-None-Match`.
+- `/v1` reads allow all CORS origins and expose `ETag` and `X-Game-Version`. `OPTIONS` returns 204 and
+  allows `GET`, `HEAD`, `If-None-Match`.
 - Resources have SHA-256 ETags and cache policies. Matching `If-None-Match` returns 304.
   Errors are non-cacheable JSON: `{ "error": "..." }`.
 - The list supports precompressed gzip, `Vary: Accept-Encoding` and a separate ETag per representation.
@@ -335,5 +337,6 @@ map-import, formats, data and translations packages, the repository's `translati
 converted maps stay in `/data`, bug reports in their own volume `/reports`. A new overlay reaches the
 catalogue with the next image.
 
-Defaults: `PORT=8790`, `ON_API_DATA_DIR=/data`, `ON_API_REPORTS_DIR=/reports`. The `API_BUILD` build argument sets the reported build.
+Defaults: `PORT=8790`, `ON_API_DATA_DIR=/data`, `ON_API_REPORTS_DIR=/reports`. The `API_BUILD` build argument sets the reported build,
+`API_GAME_VERSION` the catalogue's game release.
 Health becomes ready after the first catalogue sync; conversion continues in the background.

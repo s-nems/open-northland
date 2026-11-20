@@ -56,7 +56,7 @@ export function renderNetworkReload(canvas: HTMLCanvasElement, params: URLSearch
   const exit = roomExitObserver((reason) => fail(roomEndText(reason), false));
   const unsubscribe = connection.subscribe((event) => {
     if (event.kind === 'link' && event.state === 'closed') {
-      fail(relayCloseText(event.reason), closeKeepsSeat(event.reason));
+      fail(relayCloseText(event), closeKeepsSeat(event.reason));
       return;
     }
     if (event.kind === 'failure') {

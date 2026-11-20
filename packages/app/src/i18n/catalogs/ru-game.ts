@@ -2463,6 +2463,7 @@ export const ruGame = {
     roomEnded: 'Комната закрыта',
     compatibilityMissing: '{nick}: отсутствует: {kind}',
     compatibilityMismatch: '{nick}: отличается: {kind}',
+    compatibilityVersion: '{nick}: версия игры {version}, у создателя комнаты {expected}',
     compatibilityKinds: {
       save: 'начальное сохранение',
       report: 'отчёт о совместимости',
@@ -2470,6 +2471,7 @@ export const ruGame = {
       map: 'карта',
       client: 'сборка клиента',
       protocol: 'версия протокола',
+      version: 'версия игры',
     },
     roomTitle: 'Комната {id}',
     roomWaiting: 'Игроки: {count}/{players}',

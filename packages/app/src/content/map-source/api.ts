@@ -1,4 +1,10 @@
-import { CatalogBrowseEntry, type CatalogConvertedMap, CatalogEntry } from '@open-northland/data';
+import {
+  CATALOG_GAME_VERSION_HEADER,
+  CatalogBrowseEntry,
+  type CatalogConvertedMap,
+  CatalogEntry,
+} from '@open-northland/data';
+import { otherRelease } from '../../build-version.js';
 import { diag } from '../../diag/log.js';
 import type { MapFileSuffix } from './files.js';
 
@@ -81,12 +87,18 @@ export function convertedMaps(entry: CatalogEntry): readonly CatalogConvertedMap
   return entry.conversion?.verdict === 'ok' ? entry.conversion.maps : [];
 }
 
+export interface CatalogListing {
+  readonly entries: readonly CatalogBrowseEntry[];
+  /** The game release the server converts its maps for; null when it names none. */
+  readonly gameVersion: string | null;
+}
+
 /** The catalogue, keeping every entry this build reads; throws when the server cannot be reached. */
 export async function fetchCatalog(
   api: string,
   fetchImpl: typeof fetch = fetch,
   signal?: AbortSignal,
-): Promise<readonly CatalogBrowseEntry[]> {
+): Promise<CatalogListing> {
   const response = await fetchImpl(catalogUrl(api), { signal: catalogRequestSignal(signal) });
   if (!response.ok) throw new Error(`Map catalogue: HTTP ${response.status}`);
   const body: unknown = await response.json();
@@ -100,7 +112,7 @@ export async function fetchCatalog(
   }
   // A newer server may add entry shapes this build does not know; the rest still list.
   if (skipped > 0) diag.warn('content', 'map catalogue: skipped entries this build cannot read', { skipped });
-  return entries;
+  return { entries, gameVersion: otherRelease(response.headers.get(CATALOG_GAME_VERSION_HEADER)?.trim()) };
 }
 
 /** One entry, or null when the server does not know it; throws when the server cannot be reached. */

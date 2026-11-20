@@ -5,14 +5,19 @@ export interface LobbyCompatibility {
   readonly content: string;
   readonly map: string | null;
   readonly client: string;
+  /** The game version the client was released as, `dev` for a build of no release. */
+  readonly version: string;
   readonly protocol: number;
   readonly save?: string | null;
 }
 
 export interface CompatibilityIssue {
   readonly nick: string;
-  readonly kind: 'report' | 'content' | 'map' | 'client' | 'protocol' | 'save';
+  readonly kind: 'report' | 'version' | 'content' | 'map' | 'client' | 'protocol' | 'save';
   readonly reason: 'missing' | 'mismatch';
+  /** A `version` mismatch names the member's game version and the creator's. */
+  readonly version?: string;
+  readonly expected?: string;
 }
 
 /** The creator is the reference for locally generated content, map bytes and client build. */
@@ -27,6 +32,12 @@ export function compatibilityIssues(
     const report = member.compatibility;
     if (report === null) {
       issues.push({ nick: member.nick, kind: 'report', reason: 'missing' });
+      continue;
+    }
+    if (reference !== null && reference !== undefined && report.version !== reference.version) {
+      // Another release differs in its files as well; the versions are what the player can act on.
+      const versions = { version: report.version, expected: reference.version };
+      issues.push({ nick: member.nick, kind: 'version', reason: 'mismatch', ...versions });
       continue;
     }
     const expectedSave = initialSave?.fingerprint ?? null;
@@ -52,6 +63,7 @@ export function sameCompatibility(a: LobbyCompatibility | null, b: LobbyCompatib
     a.content === b.content &&
     a.map === b.map &&
     a.client === b.client &&
+    a.version === b.version &&
     a.protocol === b.protocol &&
     (a.save ?? null) === (b.save ?? null)
   );

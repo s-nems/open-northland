@@ -2254,6 +2254,7 @@ export const chsGame = {
     roomEnded: '房间已关闭',
     compatibilityMissing: '{nick}：缺少{kind}',
     compatibilityMismatch: '{nick}：{kind}不一致',
+    compatibilityVersion: '{nick} 的游戏版本是 {version}，房间创建者是 {expected}',
     compatibilityKinds: {
       save: '初始存档',
       report: '兼容性报告',
@@ -2261,6 +2262,7 @@ export const chsGame = {
       map: '地图',
       client: '客户端版本',
       protocol: '协议版本',
+      version: '游戏版本',
     },
     roomTitle: '房间 {id}',
     roomWaiting: '{count} / {players} 名玩家',

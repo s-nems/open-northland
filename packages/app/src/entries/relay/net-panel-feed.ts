@@ -57,7 +57,7 @@ function linkLoss(current: NetLinkLoss | null, report: LinkReport, atMs: number)
         ? current
         : { kind: 'dropped', waitedSinceMs: waitedSince(report, atMs) };
     case 'closed':
-      return { kind: 'closed', reason: relayCloseText(report.reason) };
+      return { kind: 'closed', reason: relayCloseText(report) };
   }
 }
 

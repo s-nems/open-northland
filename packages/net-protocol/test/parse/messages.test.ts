@@ -33,6 +33,7 @@ const COMPATIBILITY = {
   content: 'a'.repeat(64),
   map: 'b'.repeat(64),
   client: 'fixture',
+  version: 'dev',
   protocol: PROTOCOL_VERSION,
 };
 
@@ -658,6 +659,19 @@ const SERVER_MESSAGES: readonly ServerMessage[] = [
     reason: { code: 'incompatible', nick: 'Ania', kind: 'map', reason: 'missing' },
   },
   { kind: 'error', reason: { code: 'protocolUnsupported', client: 7, relay: 9 } },
+  { kind: 'error', reason: { code: 'protocolUnsupported', client: 7, relay: 9, build: '0.8.0' } },
+  {
+    kind: 'rejected',
+    of: 'start',
+    reason: {
+      code: 'incompatible',
+      nick: 'Ania',
+      kind: 'version',
+      reason: 'mismatch',
+      version: '0.7.0',
+      expected: '0.8.0',
+    },
+  },
 ];
 
 describe('server messages', () => {

@@ -10,6 +10,7 @@ const compatibility: LobbyCompatibility = {
   content: 'a'.repeat(64),
   map: 'b'.repeat(64),
   client: 'fixture',
+  version: 'dev',
   protocol: PROTOCOL_VERSION,
 };
 
@@ -34,6 +35,20 @@ describe('lobby compatibility protocol', () => {
     ]);
   });
 
+  it('names another release as the one issue of its member, with both versions', () => {
+    const creator = { ...compatibility, version: '0.8.0' };
+    const older = { ...compatibility, version: '0.7.0', content: 'c'.repeat(64), client: 'other' };
+    expect(
+      compatibilityIssues(
+        [
+          { nick: 'Ania', compatibility: creator },
+          { nick: 'Bartek', compatibility: older },
+        ],
+        'Ania',
+      ),
+    ).toEqual([{ nick: 'Bartek', kind: 'version', reason: 'mismatch', version: '0.7.0', expected: '0.8.0' }]);
+  });
+
   it('requires the creator to hold the map and speak this protocol too', () => {
     expect(
       compatibilityIssues(
@@ -52,6 +67,8 @@ describe('lobby compatibility protocol', () => {
     { ...compatibility, client: 'a\nb' },
     { ...compatibility, client: ' ' },
     { ...compatibility, client: 'x'.repeat(129) },
+    { ...compatibility, version: undefined },
+    { ...compatibility, version: '0.8\n0' },
     { ...compatibility, protocol: Number.MAX_SAFE_INTEGER + 1 },
   ])('rejects malformed or unbounded compatibility fields: %j', (report) => {
     expect(() => parseClientMessage({ kind: 'setCompatibility', compatibility: report })).toThrow();

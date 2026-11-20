@@ -2259,6 +2259,7 @@ export const chtGame = {
     roomEnded: '房間已結束',
     compatibilityMissing: '{nick}：缺少{kind}',
     compatibilityMismatch: '{nick}：{kind}不一致',
+    compatibilityVersion: '{nick} 的遊戲版本是 {version}，房間建立者是 {expected}',
     compatibilityKinds: {
       save: '初始存檔',
       report: '相容性報告',
@@ -2266,6 +2267,7 @@ export const chtGame = {
       map: '地圖',
       client: '用戶端版本',
       protocol: '協定版本',
+      version: '遊戲版本',
     },
     roomTitle: '房間 {id}',
     roomWaiting: '{count} / {players} 名玩家',

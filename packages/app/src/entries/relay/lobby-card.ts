@@ -1,5 +1,6 @@
 import { compatibilityIssues, type RoomView } from '@open-northland/net-protocol';
 import { formatMessage, messages } from '../../i18n/index.js';
+import { compatibilityIssueText } from '../../net/relay-reason.js';
 import { el, PANEL_STYLE } from '../../view/overlay.js';
 
 export interface LobbyCard {
@@ -46,12 +47,7 @@ export function mountLobbyCard(): LobbyCard {
           : formatMessage(copy.roomWaiting, { count: view.members.length, players }),
         seated.join(', '),
         formatMessage(copy.roomJoinHint, { id: view.id }),
-        ...compatibilityIssues(view.members, view.creator).map((issue) =>
-          formatMessage(issue.reason === 'missing' ? copy.compatibilityMissing : copy.compatibilityMismatch, {
-            nick: issue.nick,
-            kind: copy.compatibilityKinds[issue.kind],
-          }),
-        ),
+        ...compatibilityIssues(view.members, view.creator).map((issue) => compatibilityIssueText(issue)),
       ].join('\n');
     },
     note(text): void {

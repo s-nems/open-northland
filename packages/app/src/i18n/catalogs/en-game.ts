@@ -2341,6 +2341,7 @@ export const enGame = {
     roomEnded: 'The room has ended',
     compatibilityMissing: '{nick}: missing {kind}',
     compatibilityMismatch: '{nick}: different {kind}',
+    compatibilityVersion: '{nick} has game version {version}, the room creator {expected}',
     compatibilityKinds: {
       save: 'initial save',
       report: 'compatibility report',
@@ -2348,6 +2349,7 @@ export const enGame = {
       map: 'map',
       client: 'client build',
       protocol: 'protocol version',
+      version: 'game version',
     },
     roomTitle: 'Room {id}',
     roomWaiting: '{count} of {players} players',

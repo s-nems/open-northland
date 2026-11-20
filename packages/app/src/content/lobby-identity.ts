@@ -1,5 +1,6 @@
 import { contentFingerprint, jsonFingerprint } from '@open-northland/data';
 import { type LobbyCompatibility, PROTOCOL_VERSION } from '@open-northland/net-protocol';
+import { GAME_VERSION } from '../build-version.js';
 import { mapFetch } from './map-source/sources.js';
 import { loadRealContent, mergeRealContent } from './real-content.js';
 import {
@@ -39,6 +40,7 @@ export async function loadLobbyCompatibility(
     }),
     map: documents?.fingerprint ?? null,
     client,
+    version: GAME_VERSION,
     protocol: PROTOCOL_VERSION,
   };
 }

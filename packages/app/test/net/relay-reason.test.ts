@@ -2,13 +2,19 @@ import { RelayRefusal } from '@open-northland/net-client';
 import type { RelayReason, RelayReasonCode } from '@open-northland/net-protocol';
 import { describe, expect, it } from 'vitest';
 import { messages } from '../../src/i18n/index.js';
-import { relayCloseText, relayFailureText, relayReasonText } from '../../src/net/relay-reason.js';
+import {
+  relayCloseText,
+  relayFailureText,
+  relayReasonText,
+  relayVersionGap,
+} from '../../src/net/relay-reason.js';
+import type { RunningGame } from '../../src/update/outdated.js';
 
 /** One reason per code, so a new code without a worded template fails to compile here. */
 const SAMPLES: { readonly [C in RelayReasonCode]: Extract<RelayReason, { code: C }> } = {
   helloFirst: { code: 'helloFirst' },
   helloOverdue: { code: 'helloOverdue' },
-  protocolUnsupported: { code: 'protocolUnsupported', client: 8, relay: 9 },
+  protocolUnsupported: { code: 'protocolUnsupported', client: 8, relay: 9, build: '0.8.0' },
   replaced: { code: 'replaced' },
   messageTooLarge: { code: 'messageTooLarge' },
   malformed: { code: 'malformed', detail: 'setSettings: the room world is immutable' },
@@ -88,16 +94,18 @@ const SAMPLES: { readonly [C in RelayReasonCode]: Extract<RelayReason, { code: C
 
 const en = messages('eng');
 const pl = messages('pol');
+const WEB: RunningGame = { version: '0.7.0', web: true };
+const DESKTOP: RunningGame = { version: '0.7.0', web: false };
 
 describe('relay reasons in the player language', () => {
   it('words every code in both languages with every value filled in', () => {
     for (const reason of Object.values(SAMPLES)) {
       for (const copy of [en, pl]) {
-        const text = relayReasonText(reason, copy);
+        const text = relayReasonText(reason, copy, WEB);
         expect(text, reason.code).not.toMatch(/[{}]/);
         expect(text.length, reason.code).toBeGreaterThan(0);
       }
-      expect(relayReasonText(reason, pl), reason.code).not.toBe(relayReasonText(reason, en));
+      expect(relayReasonText(reason, pl, WEB), reason.code).not.toBe(relayReasonText(reason, en, WEB));
     }
   });
 
@@ -112,12 +120,46 @@ describe('relay reasons in the player language', () => {
   });
 
   it('words a close by its code, and any other close as a plain one', () => {
-    expect(relayCloseText('trafficLimit', pl)).toBe('Połączenie zamknięte: ta gra wysłała zbyt dużo danych');
-    expect(relayCloseText('protocolUnsupported', en)).toBe(
+    expect(relayCloseText({ reason: 'trafficLimit' }, pl)).toBe(
+      'Połączenie zamknięte: ta gra wysłała zbyt dużo danych',
+    );
+    expect(relayCloseText({ reason: 'protocolUnsupported' }, en)).toBe(
       'Connection closed: the server runs a different version of the game',
     );
-    expect(relayCloseText('closed with code 1002', pl)).toBe('Połączenie zamknięte');
-    expect(relayCloseText(undefined, en)).toBe('Connection closed');
+    expect(relayCloseText({ reason: 'closed with code 1002' }, pl)).toBe('Połączenie zamknięte');
+    expect(relayCloseText({}, en)).toBe('Connection closed');
+  });
+
+  it('leaves out a relay build that is no release name', () => {
+    const labelled = { ...SAMPLES.protocolUnsupported, build: 'test relay of a branch' };
+    expect(relayVersionGap({ reason: 'protocolUnsupported', refusal: labelled })).toEqual({
+      kind: 'outdated',
+      required: null,
+    });
+  });
+
+  it('names both releases when the relay refuses another protocol, and what the older side does', () => {
+    const outdated = { reason: 'protocolUnsupported', refusal: SAMPLES.protocolUnsupported } as const;
+    expect(relayCloseText(outdated, pl, WEB)).toBe(
+      'Połączenie zamknięte: masz wersję gry 0.7.0, a serwer wymaga 0.8.0. Przeładuj stronę, aby wczytać nową wersję',
+    );
+    expect(relayCloseText(outdated, pl, DESKTOP)).toContain(
+      'Pobierz nową wersję ze strony opennorthland.org',
+    );
+    expect(relayVersionGap(outdated)).toEqual({ kind: 'outdated', required: '0.8.0' });
+
+    const ahead = { code: 'protocolUnsupported', client: 9, relay: 8, build: '0.6.0' } as const;
+    expect(relayReasonText(ahead, en, WEB)).toContain('still runs version 0.6.0');
+    expect(relayVersionGap({ reason: 'protocolUnsupported', refusal: ahead })).toEqual({
+      kind: 'ahead',
+      server: '0.6.0',
+    });
+
+    // A relay that predates its build in the refusal still tells which side is older.
+    const { build: _build, ...unnamed } = SAMPLES.protocolUnsupported;
+    expect(relayReasonText(unnamed, en, WEB)).toBe(
+      "your game version 0.7.0 is older than the server's. Reload the page to load the new version",
+    );
   });
 
   it('words a refusal carried as an error, and leaves other errors their message', () => {

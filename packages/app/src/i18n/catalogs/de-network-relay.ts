@@ -2,6 +2,14 @@ export const deNetworkRelay = {
   serverSays: 'Der Server meldet: {reason}',
   closedPlain: 'Verbindung geschlossen',
   versionMismatch: 'auf dem Server läuft eine andere Spielversion',
+  version: {
+    outdated: 'du hast die Spielversion {running}, der Server verlangt {required}. {hint}',
+    outdatedUnnamed: 'deine Spielversion {running} ist älter als die des Servers. {hint}',
+    ahead:
+      'auf dem Server läuft noch Version {server}, du hast schon {running}. Er wird wohl gerade aktualisiert, versuche es in ein paar Minuten erneut',
+    aheadUnnamed:
+      'auf dem Server läuft eine ältere Spielversion als deine ({running}). Er wird wohl gerade aktualisiert, versuche es in ein paar Minuten erneut',
+  },
   joinRoomFailed: 'Raum konnte nicht betreten werden',
   createRoomFailed: 'Raum konnte nicht erstellt werden',
   worldRefused: 'Der Raum hat diese Welt nicht angenommen',
@@ -15,8 +23,6 @@ export const deNetworkRelay = {
   reasons: {
     helloFirst: 'das Spiel hat nicht zuerst die Begrüßungsnachricht gesendet',
     helloOverdue: 'das Spiel hat die Begrüßungsnachricht nicht rechtzeitig gesendet',
-    protocolUnsupported:
-      'der Server verwendet das Netzwerkprotokoll {relay}, dieses Spiel verwendet {client}',
     replaced: 'derselbe Spieler hat sich erneut von einem anderen Ort aus verbunden',
     messageTooLarge: 'eine Nachricht dieses Spiels war zu groß',
     malformed: 'der Server konnte eine Nachricht dieses Spiels nicht lesen',

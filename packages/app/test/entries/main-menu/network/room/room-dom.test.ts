@@ -52,6 +52,7 @@ function lobby(): RoomView {
           content: 'a'.repeat(64),
           map: 'b'.repeat(64),
           client: 'test',
+          version: 'dev',
           protocol: PROTOCOL_VERSION,
         },
         load: null,

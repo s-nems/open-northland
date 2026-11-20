@@ -88,7 +88,7 @@ export async function renderRelayGame(canvas: HTMLCanvasElement, params: URLSear
       halt(title ?? formatMessage(copy.bootFailed, { reason }), title === null ? '' : reason);
     } else if (event.kind === 'message') {
       if (stage === 'walking') observe(event.message);
-    } else if (event.state === 'closed') halt(relayCloseText(event.reason), '');
+    } else if (event.state === 'closed') halt(relayCloseText(event), '');
     // The developer walk asks for its room once; a dropped lobby link ends it instead of stalling.
     else if (event.state === 'reconnecting' && stage === 'walking') halt(copy.reconnecting, '');
   });

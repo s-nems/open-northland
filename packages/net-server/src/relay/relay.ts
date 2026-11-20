@@ -526,7 +526,12 @@ export class Relay {
     if (message.protocol !== PROTOCOL_VERSION) {
       // The one refusal of a connection that names a player: a client of another build.
       this.log('hello refused', { nick: message.nick, protocol: message.protocol });
-      this.fail(client, { code: 'protocolUnsupported', client: message.protocol, relay: PROTOCOL_VERSION });
+      this.fail(client, {
+        code: 'protocolUnsupported',
+        client: message.protocol,
+        relay: PROTOCOL_VERSION,
+        ...this.build,
+      });
       return;
     }
     const previous = this.byToken.get(message.token);

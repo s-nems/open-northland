@@ -1,6 +1,6 @@
 # Network protocol
 
-The wire contract between a game client and the relay server, version `PROTOCOL_VERSION = 72` in
+The wire contract between a game client and the relay server, version `PROTOCOL_VERSION = 73` in
 `packages/net-protocol`. A change one side of the current version could not honour (a message shape, or
 the value set of a validated field such as the fog mode ids) bumps the version; the relay refuses a
 `hello` that names another.
@@ -51,9 +51,10 @@ version; a client draws the codes its flag set has and nothing for others. A mem
 `hallChat` and `chat` lines and room members carry that `flag` beside the nick, left out likewise; a
 client that knows no flags ignores the field.
 The relay answers `welcome { protocol, nick, build? }`, `build` being its `RELAY_BUILD` when set, or,
-speaking another version, `error { reason: { code: "protocolUnsupported", client, relay } }` and a close.
-`hello`, `welcome` and `error` keep their shapes across versions, so a mismatch reads the same on any
-pair. A connection without `hello` within `HELLO_TIMEOUT_MS` is closed, and the host closes a socket with
+speaking another version, `error { reason: { code: "protocolUnsupported", client, relay, build? } }`
+and a close. `hello`, `welcome` and `error` keep their shapes across versions, so a mismatch reads the
+same on any pair; a client that predates `build` ignores it. The protocol only goes up, so the lower
+number is the older release, and the client names its own version beside the relay's `build`. A connection without `hello` within `HELLO_TIMEOUT_MS` is closed, and the host closes a socket with
 no incoming transport data, a pong included, for `SILENT_SOCKET_MS`; the token may return on a new socket.
 
 A `hello` with a token already connected replaces that connection: the older one gets
@@ -181,13 +182,16 @@ joining or leaving keep it, and Start checks compatibility again. A reconnect in
 member's report and readiness, so the new client must check its files; a reconnect into a started game
 is checked by its snapshot tick and digests instead.
 
-A compatibility report is `{ content, map, client, protocol, save? }`: lowercase SHA-256 hex digests of
-content and map (`map: null` when the client lacks the map), a non-empty printable client version, the
-protocol version it speaks, and the initial-save fingerprint (absent or null in a fresh room). The relay
-requires content, map and client to match the creator's report, its own protocol version from every
-member, and in a saved room every `save` to equal the room's immutable fingerprint. Missing reports or maps
-and mismatches block ready and are checked again at Start, refused naming the member and category;
-`compatibilityIssues` exposes them as pure data (`nick`, `kind`, `reason`) for a lobby display. The hashes
+A compatibility report is `{ content, map, client, version, protocol, save? }`: lowercase SHA-256 hex
+digests of content and map (`map: null` when the client lacks the map), a non-empty printable client
+build identity, the game release it was built as (`dev` for none), the protocol version it speaks, and
+the initial-save fingerprint (absent or null in a fresh room). The relay requires version, content, map
+and client to match the creator's report, its own protocol version from every member, and in a saved room
+every `save` to equal the room's immutable fingerprint. Another release is the member's one issue, `kind:
+"version"` naming its `version` and the creator's as `expected`, since its files differ too. Missing
+reports or maps and mismatches block ready and are checked again at Start, refused naming the member and
+category; `compatibilityIssues` exposes them as pure data (`nick`, `kind`, `reason`, and a version
+mismatch's `version` and `expected`) for a lobby display. The hashes
 are client reports, not server-side validation: the relay reads no content or map files.
 
 ### Starting

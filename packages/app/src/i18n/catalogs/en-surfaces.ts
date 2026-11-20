@@ -674,8 +674,28 @@ export const enSurfaces = {
     reloadNow: 'Reload now',
     reloadAndContinue: 'Reload and continue',
     reload: 'Reload',
+    reloadHint: 'Reload the page to load the new version',
+    downloadHint: 'Download the new version from opennorthland.org',
     later: 'Later',
     dismiss: 'Close',
+  },
+  /** The card a server of another release shows in the multiplayer menu and the map catalogue. */
+  versionGap: {
+    outdatedTitle: 'Your game is out of date',
+    relayAheadTitle: 'The server is being updated',
+    catalogueAheadTitle: 'Maps not ready for your version',
+    yours: 'Your version',
+    required: 'Required',
+    server: 'Server version',
+    newer: 'newer',
+    older: 'older',
+    relayOutdated: 'The game server already runs a newer version.',
+    relayAhead: 'The server is switching to the new version. Try connecting again in a few minutes.',
+    catalogueOutdated: 'The catalogue maps are prepared for a newer version of the game.',
+    catalogueAhead: 'The map server has no maps for your version yet. They appear once it is updated.',
+    reload: 'Reload the page',
+    download: 'Download version {version}',
+    downloadUnnamed: 'Download the new version',
   },
   // One label per `BootPhase`.
   loading: {

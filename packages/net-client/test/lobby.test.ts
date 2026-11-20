@@ -23,6 +23,7 @@ const COMPATIBILITY: LobbyCompatibility = {
   content: 'a'.repeat(64),
   map: 'b'.repeat(64),
   client: 'test-client',
+  version: 'dev',
   protocol: PROTOCOL_VERSION,
 };
 const ROOM: RoomView = {

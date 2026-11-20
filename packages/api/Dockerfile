@@ -24,11 +24,13 @@ RUN --mount=type=cache,target=/root/.npm \
 FROM node:22-alpine
 
 ARG API_BUILD=
+ARG API_GAME_VERSION=
 ENV NODE_ENV=production \
     PORT=8790 \
     ON_API_DATA_DIR=/data \
     ON_API_REPORTS_DIR=/reports \
-    API_BUILD=$API_BUILD
+    API_BUILD=$API_BUILD \
+    API_GAME_VERSION=$API_GAME_VERSION
 
 ARG SOURCE_URL=https://github.com/s-nems/open-northland
 LABEL org.opencontainers.image.source=$SOURCE_URL \

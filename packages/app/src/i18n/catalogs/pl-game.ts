@@ -2309,6 +2309,7 @@ export const plGame = {
     roomEnded: 'Pokój został zamknięty',
     compatibilityMissing: '{nick}: brak: {kind}',
     compatibilityMismatch: '{nick}: niezgodność: {kind}',
+    compatibilityVersion: '{nick} ma wersję gry {version}, a twórca pokoju {expected}',
     compatibilityKinds: {
       save: 'zapis początkowy',
       report: 'raport zgodności',
@@ -2316,6 +2317,7 @@ export const plGame = {
       map: 'mapa',
       client: 'wersja klienta',
       protocol: 'wersja protokołu',
+      version: 'wersja gry',
     },
     roomTitle: 'Pokój {id}',
     roomWaiting: '{count} z {players} graczy',

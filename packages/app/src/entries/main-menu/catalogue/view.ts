@@ -15,9 +15,11 @@ import {
 } from '../../../content/map-source/index.js';
 import { errorText } from '../../../diag/error-text.js';
 import { bcp47Tag, compareLabels, formatMessage, messages, pluralForm } from '../../../i18n/index.js';
+import { runningGame, type VersionGap } from '../../../update/outdated.js';
 import { menuConfirm } from '../confirm.js';
 import { node } from '../dom.js';
 import { type MapSelectItem, mapSourceItem } from '../map-select/model.js';
+import { versionGapCard } from '../version-gap.js';
 import { type CardDate, type CatalogueContext, formatCount } from './card.js';
 import { catalogueCardGrid } from './card-grid.js';
 import { catalogueDetail } from './detail.js';
@@ -82,6 +84,8 @@ export function catalogueView(options: CatalogueViewOptions): CatalogueView {
   const scope = new AbortController();
 
   let entries: readonly CatalogBrowseEntry[] | null = null;
+  /** The release the server converts its maps for, as it names it. */
+  let serverVersion: string | null = null;
   let failure: unknown = null;
   let installed: readonly InstalledMapRecord[] = [];
   let localSources: readonly LocalSourceRecord[] = [];
@@ -133,6 +137,11 @@ export function catalogueView(options: CatalogueViewOptions): CatalogueView {
     memory.query = query;
     render();
   });
+  const versionNotice = node('div', 'catalogue__version-notice');
+  versionNotice.hidden = true;
+  versionNotice.setAttribute('role', 'status');
+  /** The gap the card shows; a render that leaves it alone keeps the card and its live region as they are. */
+  let versionKey: string | null = null;
   const storageNotice = node('div', 'catalogue__storage-notice');
   const main = node('div', 'catalogue__main');
   const results = node('div', 'catalogue__results');
@@ -167,7 +176,7 @@ export function catalogueView(options: CatalogueViewOptions): CatalogueView {
   importTools.hidden = true;
   body.append(filters.root, importTools);
   if (imports !== null) body.append(imports.root);
-  body.append(storageNotice, main);
+  body.append(versionNotice, storageNotice, main);
 
   /** A line in the grid's place, with the one button that can change it. */
   const notice = (line: string, action: { label: string; run: () => void } | null): HTMLElement => {
@@ -286,8 +295,25 @@ export function catalogueView(options: CatalogueViewOptions): CatalogueView {
     paintDetail(text.panelEmpty);
   }
 
+  /** Converted for another release than this game: the card naming both versions. */
+  function paintVersionNotice(): void {
+    // A reload empties the rows for a moment; the notice waits for what it brings.
+    if (entries === null && failure === null) return;
+    const gap: VersionGap | null = rows.some((row) => row.status === 'gameTooOld')
+      ? { kind: 'outdated', required: serverVersion }
+      : rows.some((row) => row.status === 'serverTooOld')
+        ? { kind: 'ahead', server: serverVersion }
+        : null;
+    const key = gap === null ? null : JSON.stringify(gap);
+    if (key === versionKey) return;
+    versionKey = key;
+    versionNotice.hidden = gap === null;
+    versionNotice.replaceChildren(...(gap === null ? [] : [versionGapCard(gap, 'catalogue', runningGame())]));
+  }
+
   /** The tabs and the open tab's content and panel, after any change to the rows, query or tab. */
   function render(): void {
+    paintVersionNotice();
     main.inert = storageState !== 'ready';
     main.setAttribute('aria-busy', String(storageState === 'loading'));
     storageNotice.hidden = storageState === 'ready';
@@ -435,7 +461,7 @@ export function catalogueView(options: CatalogueViewOptions): CatalogueView {
     entries = null;
     refreshAll();
     try {
-      entries = await fetchCatalog(api, fetch, scope.signal);
+      ({ entries, gameVersion: serverVersion } = await fetchCatalog(api, fetch, scope.signal));
     } catch (error) {
       failure = error;
     }

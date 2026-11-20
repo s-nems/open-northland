@@ -126,6 +126,33 @@ it('leaves the lobby room on the worker as soon as its link drops, not when the 
   expect(sent.map((message) => message.kind)).not.toContain('leaveRoom');
 });
 
+it('hands the closed link the refusal before it, for the versions a close frame cannot carry', () => {
+  const { worker, link, open } = servedRelay();
+  open();
+  const refusal = {
+    code: 'protocolUnsupported',
+    client: PROTOCOL_VERSION - 1,
+    relay: PROTOCOL_VERSION,
+    build: '0.8.0',
+  } as const;
+  link().onMessage({ kind: 'error', reason: refusal });
+  link().onClosed('protocolUnsupported');
+  expect(worker.posted.at(-1)).toEqual({
+    kind: 'link',
+    state: 'closed',
+    reason: 'protocolUnsupported',
+    refusal,
+  });
+});
+
+it('leaves a refusal off a link closed for another reason', () => {
+  const { worker, link, open } = servedRelay();
+  open();
+  link().onMessage({ kind: 'error', reason: { code: 'malformed', detail: 'x' } });
+  link().onClosed('serverRestart');
+  expect(worker.posted.at(-1)).toEqual({ kind: 'link', state: 'closed', reason: 'serverRestart' });
+});
+
 it('posts a relay refusal as a failure that keeps its coded reason across the worker', () => {
   const { worker, link, open } = servedRelay();
   open();

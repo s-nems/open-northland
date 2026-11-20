@@ -3,6 +3,14 @@ export const plNetworkRelay = {
   serverSays: 'Komunikat serwera: {reason}',
   closedPlain: 'Połączenie zamknięte',
   versionMismatch: 'serwer działa w innej wersji gry',
+  version: {
+    outdated: 'masz wersję gry {running}, a serwer wymaga {required}. {hint}',
+    outdatedUnnamed: 'twoja wersja gry {running} jest starsza niż wersja serwera. {hint}',
+    ahead:
+      'serwer działa jeszcze w wersji {server}, a ty masz już {running}. Pewnie właśnie jest aktualizowany, spróbuj za kilka minut',
+    aheadUnnamed:
+      'serwer działa w starszej wersji gry niż twoja ({running}). Pewnie właśnie jest aktualizowany, spróbuj za kilka minut',
+  },
   joinRoomFailed: 'Nie udało się dołączyć do pokoju',
   createRoomFailed: 'Nie udało się utworzyć pokoju',
   worldRefused: 'Pokój nie przyjął tego świata',
@@ -16,7 +24,6 @@ export const plNetworkRelay = {
   reasons: {
     helloFirst: 'gra nie przedstawiła się na początku połączenia',
     helloOverdue: 'gra zbyt długo się nie przedstawiała',
-    protocolUnsupported: 'serwer używa protokołu sieciowego {relay}, a ta gra {client}',
     replaced: 'ten sam gracz połączył się ponownie z innego miejsca',
     messageTooLarge: 'wiadomość z tej gry była za duża',
     malformed: 'serwer nie zrozumiał wiadomości z tej gry',
