@@ -322,7 +322,16 @@ describe('directAudio one-shots', () => {
   it('ignores events with no binding and bindings with no bank group', () => {
     const frame = direct([
       { kind: 'buildingUpgraded', entity: entity(7), level: 2 }, // no binding
-      { kind: 'goodProduced', building: entity(7), goodType: 2, amount: 1 }, // bound to a group absent from the fixture bank
+      // Bound to a group absent from the fixture bank.
+      {
+        kind: 'resourceFelled',
+        node: entity(7),
+        trunk: entity(8),
+        stump: entity(9),
+        goodType: 1,
+        amount: 1,
+        at: { hx: 11, hy: 10 },
+      },
       { kind: 'atomicSound', entity: entity(3), soundType: 999 }, // no group carries this id
     ]);
     expect(frame.oneShots).toHaveLength(0);

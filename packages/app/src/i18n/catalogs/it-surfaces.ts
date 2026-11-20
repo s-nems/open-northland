@@ -996,10 +996,6 @@ export const itSurfaces = {
         label: 'Veicolo completato',
         trigger: 'quando viene creato un carro, una nave o una catapulta',
       },
-      goodProduced: {
-        label: 'Merce prodotta',
-        trigger: 'quando una bottega completa una merce',
-      },
       resourceFelled: {
         label: 'Albero abbattuto',
         trigger: 'quando un estrattore abbatte un albero',

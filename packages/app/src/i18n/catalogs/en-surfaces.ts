@@ -940,7 +940,6 @@ export const enSurfaces = {
     bedUnreached: 'no ground loops it in play',
     actionsCatalog: {
       vehicleCreated: { label: 'Finish vehicle', trigger: 'when a cart, ship or catapult is created' },
-      goodProduced: { label: 'Produce good', trigger: 'when a workshop completes a good' },
       resourceFelled: { label: 'Tree falls', trigger: 'when an extractor fells a tree' },
       buildingFinished: {
         label: 'Finish construction',

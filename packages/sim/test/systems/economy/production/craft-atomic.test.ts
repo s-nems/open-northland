@@ -78,9 +78,41 @@ function craftablePlankContent(): ContentSet {
   };
 }
 
+/** The animation event type of a sound cue, and the bank's `logicSoundType` of the baker's long shovel. */
+const PLAY_SOUND_FX = 34;
+const BAKER_SHOVEL_LONG = 14;
+/** The bread clip's frames, and the frame its shovel sounds on. */
+const BAKE_CLIP_TICKS = 12;
+const SHOVEL_FRAME = 4;
+
+/** The fixture content with the bread clip bound to the cook's trade, authoring one shovel cue. */
+function soundingBreadContent(): ContentSet {
+  const base = testContent();
+  return {
+    ...base,
+    tribes: base.tribes.map((t) => ({
+      ...t,
+      atomicBindings: [
+        ...t.atomicBindings,
+        { jobType: CARPENTER, atomicId: PRODUCE_BREAD_ATOMIC, animation: 'bake' },
+      ],
+    })),
+    atomicAnimations: [
+      ...base.atomicAnimations,
+      {
+        id: 'bake',
+        name: 'bake',
+        length: BAKE_CLIP_TICKS,
+        interruptible: true,
+        events: [{ at: SHOVEL_FRAME, type: PLAY_SOUND_FX, value: BAKER_SHOVEL_LONG, extended: false }],
+      },
+    ],
+  };
+}
+
 /** A staffed kitchen holding `stock` wood, with its operator standing on the door. */
-function staffedKitchen(stock: number): Shop {
-  const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(4, 1) });
+function staffedKitchen(stock: number, content: ContentSet = testContent()): Shop {
+  const sim = new Simulation({ seed: 1, content, map: grassMap(4, 1) });
   const shop = buildingAt(sim, KITCHEN, 1, 0, stock > 0 ? [[WOOD, stock]] : []);
   const cook = settlerAt(sim, 1, 0, CARPENTER, shop);
   return { sim, shop, cook };
@@ -140,6 +172,22 @@ describe('a workshop operator performing its craft', () => {
     // With the input spent and the batch banked, nothing is left to perform.
     tick(shop);
     expect(shop.sim.world.has(shop.cook, CurrentAtomic)).toBe(false);
+  });
+
+  it("sounds the clip's own cues once a batch, on the batch's clock", () => {
+    const shop = staffedKitchen(2, soundingBreadContent());
+    const batchTicksAtCue: number[] = [];
+    for (let i = 0; i < 3 * BAKE_CLIP_TICKS; i++) {
+      shop.sim.events.clear();
+      tick(shop);
+      for (const ev of shop.sim.events.current()) {
+        if (ev.kind !== 'atomicSound') continue;
+        expect(ev).toMatchObject({ entity: shop.cook, soundType: BAKER_SHOVEL_LONG });
+        batchTicksAtCue.push(shop.sim.world.tryGet(shop.shop, Production)?.cycles[0]?.elapsed ?? -1);
+      }
+    }
+    // A frame sounds on the tick after it, as on any clip; each of the two loaves sounds it once.
+    expect(batchTicksAtCue).toEqual([SHOVEL_FRAME + 1, SHOVEL_FRAME + 1]);
   });
 
   it('drops the clip the moment the operator is no longer working the seat', () => {

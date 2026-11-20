@@ -997,10 +997,6 @@ export const deSurfaces = {
         label: 'Fahrzeug fertigstellen',
         trigger: 'wenn ein Karren, Schiff oder Katapult fertiggestellt wird',
       },
-      goodProduced: {
-        label: 'Ware herstellen',
-        trigger: 'wenn eine Werkstatt eine Ware fertigstellt',
-      },
       resourceFelled: { label: 'Baum fällt', trigger: 'wenn ein Abbauer einen Baum fällt' },
       buildingFinished: {
         label: 'Bau abschließen',

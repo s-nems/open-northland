@@ -909,7 +909,6 @@ export const chtSurfaces = {
     bedUnreached: '遊戲中沒有任何地面會循環播放它',
     actionsCatalog: {
       vehicleCreated: { label: '完成載具', trigger: '當手推車、船或投石機建造完成時' },
-      goodProduced: { label: '生產貨物', trigger: '當工坊完成一件貨物時' },
       resourceFelled: { label: '樹木倒下', trigger: '當採集者砍倒一棵樹時' },
       buildingFinished: {
         label: '完成建造',

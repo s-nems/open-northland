@@ -942,7 +942,6 @@ export const plSurfaces = {
     bedUnreached: 'żaden teren nie zapętla go w grze',
     actionsCatalog: {
       vehicleCreated: { label: 'Ukończenie wehikułu', trigger: 'gdy powstaje wóz, statek lub katapulta' },
-      goodProduced: { label: 'Produkcja towaru', trigger: 'gdy warsztat wytwarza towar' },
       resourceFelled: { label: 'Upadek drzewa', trigger: 'gdy drwal ścina drzewo' },
       buildingFinished: {
         label: 'Ukończenie budowy',

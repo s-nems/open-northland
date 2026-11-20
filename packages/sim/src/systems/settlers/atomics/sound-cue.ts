@@ -10,18 +10,20 @@ import {
   clipEventFactsOf,
 } from '../../readviews/animations.js';
 
-/** The running atomic a cue lookup reads - its join key, its length, and the effect that tells a real
- *  swing from a craft clip. */
+/** The running atomic a cue lookup reads - its join key, its length, and the effect that tells whether
+ *  its clip plays at its own pace or stretched over the atomic. */
 export interface SoundingAtomic {
   readonly atomicId: number;
   readonly duration: number;
   readonly effect?: { readonly kind: AtomicEffect['kind'] };
 }
 
-/** A lift into or out of a hold, whose length the cart's kind sets: its clip plays once over the
- *  whole atomic, shortened or stretched by the cart, and its cues ride that scaled clock. */
+/** An atomic whose clip plays once over its whole length, shortened or stretched to fit, so its cues
+ *  ride that scaled clock: a lift into or out of a hold, whose length the cart's kind sets, and a craft,
+ *  which plays over its workplace's batch. */
 function scalesClip(kind: AtomicEffect['kind'] | undefined): boolean {
   return (
+    kind === 'produce' ||
     kind === 'haulLoad' ||
     kind === 'haulUnload' ||
     kind === 'tradeLoad' ||
@@ -58,9 +60,6 @@ function soundingClipOf(
   atomic: SoundingAtomic,
   clip: AtomicAnimation | undefined,
 ): AtomicAnimation | undefined {
-  // A craft clip is stretched over its workplace's batch, so its authored cue frames do not line up with
-  // the batch clock below and a workshop stays silent rather than sounding early.
-  if (atomic.effect?.kind === 'produce') return undefined;
   let anim = clip;
   if (isWildlife(world, settler)) {
     const s = world.get(settler, Settler);
