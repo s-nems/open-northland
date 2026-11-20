@@ -2388,6 +2388,8 @@ export const enGame = {
     memberJoined: '{nick} joined',
     memberDropped: '{nick} lost the connection',
     memberReturned: '{nick} is back',
+    memberLeft: '{nick} left',
+    surrendered: '{nick} surrendered',
     desync: 'Out of sync since tick {tick}, waiting for a snapshot (reference: {nick})',
     desyncTip:
       'From tick {tick} this world no longer matches the room. It waits for a snapshot of the reference world, kept by {nick}, to rebuild from; the game reloads once it arrives.',

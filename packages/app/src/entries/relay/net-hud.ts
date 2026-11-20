@@ -1,5 +1,6 @@
 import type { ClockState } from '@open-northland/net-client';
 import type { RoomView, ServerMessage } from '@open-northland/net-protocol';
+import type { SimEvent } from '@open-northland/sim';
 import { diag } from '../../diag/index.js';
 import type { NetLineCue, NetPanelModel } from '../../hud/network/model.js';
 import { desyncNotice } from '../../hud/network/text.js';
@@ -15,6 +16,8 @@ export interface NetHudDeps {
   readonly readout: () => NetReadout;
   /** The relay this client is linked to, which the panel names. */
   readonly relayUrl: string | null;
+  /** Who played a seat, which a surrender's line names. */
+  readonly nickOf: (player: number) => string | undefined;
 }
 
 export interface NetHud {
@@ -28,6 +31,8 @@ export interface NetHud {
   link(report: LinkReport, atMs?: number): void;
   /** The world this HUD mounted over was rebuilt from a snapshot after `desync`; the log says so. */
   resynced(desync: Extract<ServerMessage, { kind: 'desync' }>): void;
+  /** The sim events of a stepped frame; a seat's surrender gets a line. */
+  worldEvents(events: readonly SimEvent[]): void;
 }
 
 /** A relayed game's side of the network panel: the model it reads, the chat with the session's
@@ -39,6 +44,8 @@ export function mountNetHud(deps: NetHudDeps): NetHud {
   let previousRoom: RoomView | null = client.room;
   let previousClock: ClockState | null = client.clockState;
   let previousResponsiveness = client.responsiveness;
+  // The nicks a `kicked` line already saw off: its room view, which follows it, drops them silently.
+  const farewelled = new Set<string>();
   // A frame's readers all run in one animation-frame callback; its microtasks run after them.
   let built: NetPanelModel | null = null;
   const forget = (): void => {
@@ -48,6 +55,12 @@ export function mountNetHud(deps: NetHudDeps): NetHud {
   const announce = (text: string, cue?: NetLineCue): void => feed.announce(text, cue);
   const announceRoom = (room: RoomView): void => {
     const before = new Map(previousRoom?.members.map((member) => [member.nick, member.connected]) ?? []);
+    const present = new Set(room.members.map((member) => member.nick));
+    for (const nick of before.keys()) {
+      if (!present.has(nick) && !farewelled.has(nick))
+        announce(formatMessage(copy.memberLeft, { nick }), 'departure');
+    }
+    farewelled.clear();
     for (const member of room.members) {
       const was = before.get(member.nick);
       if (was === undefined) {
@@ -90,6 +103,7 @@ export function mountNetHud(deps: NetHudDeps): NetHud {
           announceRoom(message.room);
           return;
         case 'kicked':
+          farewelled.add(message.nick);
           announce(
             formatMessage(copy.departed[message.cause][message.mode], { nick: message.nick }),
             'departure',
@@ -128,6 +142,13 @@ export function mountNetHud(deps: NetHudDeps): NetHud {
     },
     link(report, atMs): void {
       feed.link(report, atMs);
+    },
+    worldEvents(events): void {
+      for (const event of events) {
+        if (event.kind !== 'playerSurrendered') continue;
+        const nick = deps.nickOf(event.player);
+        if (nick !== undefined) announce(formatMessage(copy.surrendered, { nick }), 'departure');
+      }
     },
   };
 }

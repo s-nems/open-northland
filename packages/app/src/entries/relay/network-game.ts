@@ -378,6 +378,7 @@ export function renderNetworkGame(
       onReturnToMenu: returnToMenu,
       onWatchAfterResult: () => client.claimSeat(null),
       playerNickOf: seatNicks.nickOf,
+      onEvents: (events) => hud?.worldEvents(events),
       seatHeld: (player) =>
         client.room?.seats.some((seat) => seat.player === player && seat.mode === 'human') ?? true,
     })
@@ -388,7 +389,7 @@ export function renderNetworkGame(
           return;
         }
         view = presented;
-        hud = mountNetHud({ client, readout, relayUrl: connection.url });
+        hud = mountNetHud({ client, readout, relayUrl: connection.url, nickOf: seatNicks.nickOf });
         dismissPlaque();
         if (resyncing !== null) {
           hud.resynced(resyncing);

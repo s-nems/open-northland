@@ -2307,6 +2307,8 @@ export const chtGame = {
     memberJoined: '{nick} 已加入',
     memberDropped: '{nick} 連線中斷',
     memberReturned: '{nick} 回來了',
+    memberLeft: '{nick} 已離開',
+    surrendered: '{nick} 已投降',
     desync: '自邏輯幀 {tick} 起不同步，正在等待快照（基準：{nick}）',
     desyncTip:
       '從邏輯幀 {tick} 起，這個世界已與房間不一致。它正在等待由 {nick} 保存的基準世界快照以重建；快照抵達後遊戲會重新載入。',

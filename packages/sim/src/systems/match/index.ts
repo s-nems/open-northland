@@ -81,6 +81,7 @@ function markDeaths(world: World, ctx: SystemContext, participants: number, anno
  *  is; under a goal table the loss lands on the table's next check. */
 export function surrenderSeat(world: World, ctx: SystemContext, player: number): void {
   if (!isMatchParticipant(world, player) || matchOutcome(world, player) !== 'undecided') return;
+  ctx.events.emit({ kind: 'playerSurrendered', player });
   defeatSeat(world, ctx, player, !goalsMatchVictory(world));
 }
 

@@ -273,7 +273,12 @@ describe('matchSystem - death and victory over the declared participants', () =>
     sim.enqueue(playerCommand(P1, { kind: 'surrender', player: P0 }));
     sim.enqueue(playerCommand(P1, { kind: 'surrender', player: P1 }));
     sim.step();
-    expect(sim.events.current().filter((event) => event.kind === 'playerDefeated')).toEqual([
+    expect(
+      sim.events
+        .current()
+        .filter((event) => event.kind === 'playerSurrendered' || event.kind === 'playerDefeated'),
+    ).toEqual([
+      { kind: 'playerSurrendered', player: P1 },
       { kind: 'playerDefeated', player: P1 },
     ]);
     expect(sim.matchOutcome(P0)).toBe('undecided');
@@ -283,6 +288,7 @@ describe('matchSystem - death and victory over the declared participants', () =>
     expect(runTo(sim, FIRST_CHECK_TICK).map((e) => e.event)).toEqual([{ kind: 'playerWon', player: P0 }]);
     sim.enqueue(playerCommand(P0, { kind: 'surrender', player: P0 }));
     sim.step();
+    expect(sim.events.current()).not.toContainEqual({ kind: 'playerSurrendered', player: P0 });
     expect(sim.matchOutcome(P0)).toBe('victory');
   });
 

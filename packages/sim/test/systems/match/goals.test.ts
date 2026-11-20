@@ -131,12 +131,13 @@ describe('multiplayer goal table', () => {
     expect(sim.matchOutcome(0)).toBe('undecided');
   });
 
-  it('loses a seat that surrendered on its next check, announcing it only there', () => {
+  it('tells a surrender at once and loses the seat on its next check, announcing the loss only there', () => {
     const sim = goalsSim([0, 1], [{ kind: 'wonByMission' }]);
     man(sim, 0);
     man(sim, 1);
     sim.enqueue(playerCommand(1, { kind: 'surrender', player: 1 }));
     sim.step();
+    expect(sim.events.current()).toContainEqual({ kind: 'playerSurrendered', player: 1 });
     expect(verdicts(sim.events.current())).toEqual([]);
     expect(verdicts(check(sim, FIRST_CHECK))).toEqual([{ kind: 'playerDefeated', player: 1 }]);
     expect(sim.matchOutcome(1)).toBe('defeat');

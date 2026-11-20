@@ -18,7 +18,7 @@ import {
   unseenHistory,
 } from '../../../src/entries/relay/net-panel-feed.js';
 import { KICK_COUNTDOWN_MS as SHOWN_KICK_COUNTDOWN_MS } from '../../../src/hud/network/model.js';
-import { messages } from '../../../src/i18n/index.js';
+import { formatMessage, messages } from '../../../src/i18n/index.js';
 import { RelayClientMirror } from '../../../src/net/net-worker-client.js';
 import type { RelayFacts } from '../../../src/session/worker/net-protocol.js';
 import type { NetReadout } from '../../../src/view/net/readout.js';
@@ -343,7 +343,7 @@ describe('the chat line cues', () => {
   it("rings another player's line and players coming and going, never the player's own line", () => {
     const client = new RelayClientMirror('Ania', () => undefined);
     for (const message of [{ kind: 'room', room: ROOM }, clock(null)] as const) client.apply(message);
-    const hud = mountNetHud({ client, readout: () => READOUT, relayUrl: null });
+    const hud = mountNetHud({ client, readout: () => READOUT, relayUrl: null, nickOf: () => undefined });
     const send = (message: ServerMessage): void => {
       client.apply(message);
       hud.observe(message);
@@ -358,5 +358,38 @@ describe('the chat line cues', () => {
         .chat.slice(-4)
         .map((line) => line.cue ?? null),
     ).toEqual([null, 'chat', 'arrival', 'departure']);
+  });
+
+  it('tells who surrendered and who left without a seat, and a player the room saw off only once', () => {
+    const client = new RelayClientMirror('Ania', () => undefined);
+    for (const message of [{ kind: 'room', room: ROOM }, clock(null)] as const) client.apply(message);
+    const nicks = new Map([[2, 'Bartek']]);
+    const hud = mountNetHud({ client, readout: () => READOUT, relayUrl: null, nickOf: (p) => nicks.get(p) });
+    const send = (message: ServerMessage): void => {
+      client.apply(message);
+      hud.observe(message);
+    };
+    const copy = messages().net;
+    const without = (...nicks: string[]): RoomView => ({
+      ...ROOM,
+      members: ROOM.members.filter((m) => !nicks.includes(m.nick)),
+    });
+    send({ kind: 'kicked', player: 5, nick: 'Edek', mode: 'computer', cause: 'left', tick: 7 });
+    send({ kind: 'room', room: without('Edek') });
+    send({ kind: 'room', room: without('Edek', 'Franek') });
+    hud.worldEvents([
+      { kind: 'playerSurrendered', player: 2 },
+      { kind: 'playerDefeated', player: 2 },
+    ]);
+    expect(
+      hud
+        .model()
+        .chat.slice(-3)
+        .map((line) => [line.text, line.cue ?? null]),
+    ).toEqual([
+      [formatMessage(copy.departed.left.computer, { nick: 'Edek' }), 'departure'],
+      [formatMessage(copy.memberLeft, { nick: 'Franek' }), 'departure'],
+      [formatMessage(copy.surrendered, { nick: 'Bartek' }), 'departure'],
+    ]);
   });
 });

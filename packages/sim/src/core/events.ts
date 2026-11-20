@@ -491,6 +491,12 @@ export type SimEvent =
       readonly notificationAlreadySent?: true;
     }
   | {
+      /** The player gave the match up this tick; its `playerDefeated` follows at once, or on the next
+       *  check of a multiplayer goal table. */
+      readonly kind: 'playerSurrendered';
+      readonly player: number;
+    }
+  | {
       /** The lobby peace (`PeaceRules`) ends in `minutesLeft` minutes of match time; one event per notice. */
       readonly kind: 'peaceEnding';
       readonly minutesLeft: number;

@@ -2405,6 +2405,8 @@ export const itGame = {
     memberJoined: '{nick} è entrato',
     memberDropped: '{nick} ha perso la connessione',
     memberReturned: '{nick} è tornato',
+    memberLeft: '{nick} è uscito',
+    surrendered: '{nick} si è arreso',
     desync: "Fuori sincronia dal tick {tick}, in attesa di un'istantanea (riferimento: {nick})",
     desyncTip:
       "Dal tick {tick} questo mondo non corrisponde più alla stanza. Attende un'istantanea del mondo di riferimento, conservato da {nick}, per ricostruirlo; la partita si ricarica quando arriva.",

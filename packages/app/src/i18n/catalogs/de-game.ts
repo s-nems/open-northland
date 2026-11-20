@@ -2537,6 +2537,8 @@ export const deGame = {
     memberJoined: '{nick} ist beigetreten',
     memberDropped: '{nick} hat die Verbindung verloren',
     memberReturned: '{nick} ist wieder da',
+    memberLeft: '{nick} ist gegangen',
+    surrendered: '{nick} hat aufgegeben',
     desync: 'Seit Tick {tick} nicht synchron. Warten auf Zustandsabbild (Referenz: {nick})',
     desyncTip:
       'Seit Tick {tick} stimmt diese Welt nicht mehr mit dem Raum überein. Sie wartet auf ein Zustandsabbild der Referenzwelt von {nick}, um sich daraus neu aufzubauen. Sobald es eintrifft, lädt das Spiel neu.',

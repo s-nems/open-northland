@@ -65,6 +65,8 @@ export interface MapRuntime {
   readonly playerNickOf?: GameViewDeps['playerNickOf'];
   /** Present for a relayed session: whether a person still holds the seat, not left or turned to watching. */
   readonly seatHeld?: (player: number) => boolean;
+  /** Present for a relayed session: the sim events of each frame that stepped. */
+  readonly onEvents?: GameViewDeps['onEvents'];
   readonly introAtStart: boolean;
   /** Present for a relayed session: the connection readouts the overlays show. */
   readonly netReadout?: () => NetReadout | null;
@@ -303,6 +305,7 @@ export async function presentMapWorld(
     onEvents: (events) => {
       staticLayer?.onEvents(events);
       landscapes?.onEvents(events);
+      runtime.onEvents?.(events);
     },
     ...(staticLayer !== null ? { onFogSight: () => staticLayer.onSight() } : {}),
     ...(staticLayer !== null ? { staticHarvestableSprite: staticLayer.harvestableSpriteOf } : {}),

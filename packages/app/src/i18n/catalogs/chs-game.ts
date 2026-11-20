@@ -2302,6 +2302,8 @@ export const chsGame = {
     memberJoined: '{nick} 加入了',
     memberDropped: '{nick} 断开了连接',
     memberReturned: '{nick} 回来了',
+    memberLeft: '{nick} 离开了',
+    surrendered: '{nick} 投降了',
     desync: '自逻辑帧 {tick} 起不同步，正在等待快照（参照：{nick}）',
     desyncTip:
       '从逻辑帧 {tick} 起，这个世界与房间不再一致。它正在等待由 {nick} 保存的参照世界快照，以便据此重建；快照送达后游戏将重新载入。',
