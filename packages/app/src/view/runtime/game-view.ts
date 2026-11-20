@@ -14,6 +14,7 @@ import type {
   MapObjectSprite,
   SceneTerrain,
   SpriteSheet,
+  WorldEnhancements,
   WorldRenderer,
 } from '@open-northland/render';
 import {
@@ -130,7 +131,7 @@ import {
   palisadeToolsOf,
 } from '../game-tool-panel.js';
 import { holdWorldAfterContextRestore } from '../graphics/context-restore.js';
-import { detailModeOf } from '../graphics/enhancements.js';
+import { detailModeOf, drawnEnhancementsOf, enhancementsOf } from '../graphics/enhancements.js';
 import { applyWhenWarmed, relinkAfterContextRestore } from '../graphics/shader-warmup.js';
 import { createSignpostMapOverlay } from '../map-overlays/signposts.js';
 import { type NetSignalSource, pingColour } from '../map-ping/pings.js';
@@ -1410,6 +1411,8 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       mountedMinimap.setHidden(hudHidden);
       controls.setHudHidden(hudHidden);
       debugMounts.setHudHidden(hudHidden);
+      // The ghost marks and the reveal fade follow at once, not at the next settings change.
+      applyGraphicsEnhancements(enhancementsOf(liveSettings.settings.current()));
     };
 
     // A building's card reads content alone: names, store slots and construction bills. No species
@@ -1496,6 +1499,13 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       (enabled: boolean) => renderer.setWeatherEnabled(enabled),
       turnedOn,
     );
+    // While the chrome hides (F8), the ghost marks draw neither, and with them no reveal or
+    // cover fade: a screenshot or a recording wants the plain world. The stored settings keep
+    // their values, so the toggle re-applies them on show, and a change made while hidden
+    // applies suppressed.
+    const applyGraphicsEnhancements = applyWhenWarmed((next: WorldEnhancements) => {
+      renderer.setGraphicsEnhancements(drawnEnhancementsOf(next, hudHidden));
+    });
     const liveSettings = createLiveGameSettings({
       screen: app.screen,
       initialViewport: deps.initialViewport,
@@ -1511,7 +1521,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       setSelectionStyle: (style) => renderer.setSelectionStyle(style),
       setHoverOutline: (enabled) => renderer.setHoverOutline(enabled),
       setGroupNumbersShown: (shown) => renderer.setGroupNumbersShown(shown),
-      setGraphicsEnhancements: applyWhenWarmed((next) => renderer.setGraphicsEnhancements(next)),
+      setGraphicsEnhancements: applyGraphicsEnhancements,
       setDistantDetail: (enabled) => renderer.setDetailMode(detailModeOf(enabled)),
       setBloodEnabled: applyWhenWarmed((enabled) => renderer.setBloodEnabled(enabled), turnedOn),
       setBonesFade: (fades) => renderer.setBonesFade(fades),
@@ -1646,7 +1656,9 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       ...(mapPing === undefined ? {} : { mapPings: mapPing.live }),
       rallyColourOf: (player) => pingColour(deps.playerColourOf?.(player) ?? player),
       worldHover,
-      fadeOccluders: revealKey.toggled,
+      // The reveal fade rides no hidden-chrome frame, whatever the toggle says: a screenshot wants
+      // every occluder at its full opacity.
+      fadeOccluders: () => !hudHidden && revealKey.toggled(),
       geometryDebug: debugMounts.geometryDebug,
       overlayFrame,
       signpostOverlayFrame,

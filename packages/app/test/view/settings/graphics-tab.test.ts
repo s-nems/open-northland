@@ -68,16 +68,16 @@ describe('the hidden-unit fill and outline rows', () => {
     expect(nextHeading?.textContent).toBe(text.accessibilityHeading);
   });
 
-  it('start off, and each pill patches its own setting on', async () => {
+  it('start on, and each pill patches its own setting off', async () => {
     const patches: Partial<MenuSettings>[] = [];
     graphicsTab(patches);
     for (const key of ['occlusionFill', 'occlusionOutline'] as const) {
       const pill = document.querySelector<HTMLButtonElement>(`[data-settings-focus="${key}"]`);
-      expect(pill?.getAttribute('aria-checked')).toBe('false');
+      expect(pill?.getAttribute('aria-checked')).toBe('true');
       pill?.click();
       await Promise.resolve();
-      expect(pill?.getAttribute('aria-checked')).toBe('true');
+      expect(pill?.getAttribute('aria-checked')).toBe('false');
     }
-    expect(patches).toEqual([{ occlusionFill: true }, { occlusionOutline: true }]);
+    expect(patches).toEqual([{ occlusionFill: false }, { occlusionOutline: false }]);
   });
 });

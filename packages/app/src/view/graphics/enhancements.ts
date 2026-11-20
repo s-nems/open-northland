@@ -37,3 +37,10 @@ export function enhancementsOf(settings: WorldEnhancements): WorldEnhancements {
 export function detailModeOf(distantDetail: boolean): DetailMode {
   return distantDetail ? 'full' : 'automatic';
 }
+
+/** The enhancements a mounted game draws: while the HUD chrome hides (F8), the ghost marks stay off
+ *  with the reveal and cover fades they carry, so a screenshot or a recording gets the plain world.
+ *  The stored settings keep their values; showing the chrome applies them again. */
+export function drawnEnhancementsOf(settings: WorldEnhancements, chromeHidden: boolean): WorldEnhancements {
+  return chromeHidden ? { ...settings, occlusionFill: false, occlusionOutline: false } : settings;
+}
