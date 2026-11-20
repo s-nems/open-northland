@@ -286,10 +286,12 @@ export {
   FIGHT_EXPERIENCE_FULL_UNITS,
   FIGHT_EXPERIENCE_TYPE,
   FIGHT_EXPERIENCE_UNITS_PER_POINT,
+  FIGHT_GAIN_PCT_AT_FULL,
   fightUnitsOfPoints,
   MELEE_BLOW_POINTS_RATE,
   SHOT_POINTS_RATE,
   STRUCTURE_BLOW_SHARE,
+  slowedFightUnits,
   startingExperience,
 } from './progression/experience.js';
 export { type FightExperienceEffects, fightExperienceEffects } from './progression/fight-effects.js';

@@ -130,6 +130,9 @@ export const EXPERIENCE: ArticleGroup = {
           ],
         },
         {
+          p: 'The more points, the slower battle adds them: at {{combat.fightGainSamplePoints}} points blows and shots, dealt and taken, give {{combat.fightGainSamplePct}}% of their points, and just short of a full counter {{combat.fightGainAtFullPct}}%. The coin drill always gives its full {{coinDrill.points}} points.',
+        },
+        {
           p: "Fists and every weapon count alike, and [[job:hunter|Hunter's]] shots count too. Experience stays after a change of weapon or profession. A soldier with {{coinDrill.limit}} points or more no longer drills and earns the rest in battle. A drill cut short by a fight or a new order gives the coin back and no points. Only as many soldiers go as the Barracks has free coins, the nearest first; the rest stay where they are.",
         },
         {

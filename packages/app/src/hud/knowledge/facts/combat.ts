@@ -47,6 +47,9 @@ const FIGHT_SAMPLE_POINTS = [10, 25, 50, 75] as const;
 
 const AIM_SAMPLE_POINTS = 50;
 
+/** The fight points the article samples a slowed fight gain at. */
+const GAIN_SAMPLE_POINTS = 50;
+
 const STONE_SAMPLE_HITS = [0, 25, 50] as const;
 
 /** The value the fight-experience table shows a blow of. */
@@ -296,6 +299,12 @@ export const COMBAT_FACTS: Readonly<Record<string, Fact>> = {
   'combat.fightMeleePerSecond': twoDecimals(pointsPerSecond(systems.MELEE_BLOW_POINTS_RATE)),
   'combat.fightShotPerSecond': twoDecimals(pointsPerSecond(systems.SHOT_POINTS_RATE)),
   'combat.fightTakenPerSecond': twoDecimals(pointsPerSecond(systems.BLOW_TAKEN_POINTS_RATE)),
+  'combat.fightGainSamplePoints': whole(GAIN_SAMPLE_POINTS),
+  'combat.fightGainSamplePct': whole(
+    (systems.slowedFightUnits(SAMPLE_BLOW, systems.fightUnitsOfPoints(GAIN_SAMPLE_POINTS)) * PERCENT) /
+      SAMPLE_BLOW,
+  ),
+  'combat.fightGainAtFullPct': whole(systems.FIGHT_GAIN_PCT_AT_FULL),
   'combat.fightStructurePct': whole(
     (PERCENT * systems.STRUCTURE_BLOW_SHARE.numerator) / systems.STRUCTURE_BLOW_SHARE.denominator,
   ),

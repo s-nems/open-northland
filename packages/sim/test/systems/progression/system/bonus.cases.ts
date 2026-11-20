@@ -26,6 +26,7 @@ import {
   FIGHT_EXPERIENCE_FULL_UNITS,
   FIGHT_EXPERIENCE_TYPE,
   FIGHT_EXPERIENCE_UNITS_PER_POINT,
+  FIGHT_GAIN_PCT_AT_FULL,
   fightUnitsOfPoints,
   fightUnitsPerClipTick,
   fightUnitsWith,
@@ -33,6 +34,7 @@ import {
   MELEE_BLOW_POINTS_RATE,
   personalFightPoints,
   SHOT_POINTS_RATE,
+  slowedFightUnits,
   stampResourceFootprintData,
   strokesPerUnit,
   WEAPON_MAIN_TYPE,
@@ -96,6 +98,15 @@ describe('the blow-time rates of the personal fight counter', () => {
     for (const rate of [MELEE_BLOW_POINTS_RATE, SHOT_POINTS_RATE, BLOW_TAKEN_POINTS_RATE]) {
       expect(Number.isInteger(fightUnitsPerClipTick(rate))).toBe(true);
     }
+  });
+
+  it('slows a fight gain linearly with the counter it lands on, to its share at full', () => {
+    const gain = fightUnitsOfPoints(10);
+    const halfwayPct = (100 + FIGHT_GAIN_PCT_AT_FULL) / 2;
+    expect(slowedFightUnits(gain, 0)).toBe(gain);
+    expect(slowedFightUnits(gain, FIGHT_EXPERIENCE_FULL_UNITS / 2)).toBe((gain * halfwayPct) / 100);
+    expect(slowedFightUnits(gain, FIGHT_EXPERIENCE_FULL_UNITS)).toBe((gain * FIGHT_GAIN_PCT_AT_FULL) / 100);
+    expect(slowedFightUnits(1, FIGHT_EXPERIENCE_FULL_UNITS / 2)).toBe(1); // rounded to the nearest unit
   });
 });
 

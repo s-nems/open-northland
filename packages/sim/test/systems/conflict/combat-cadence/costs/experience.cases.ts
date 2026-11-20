@@ -19,6 +19,7 @@ import {
   FIGHT_EXPERIENCE_TYPE,
   FIGHT_EXPERIENCE_UNITS_PER_POINT,
   fightUnitsOfPoints,
+  slowedFightUnits,
   WEAPON_MAIN_TYPE,
 } from '../../../../../src/systems/index.js';
 import { nextTickCtxOf } from '../../../../fixtures/context.js';
@@ -100,7 +101,8 @@ describe('atomicSystem - a damaging swing accrues fight XP into the personal cou
       atomicSystem(sim.world, nextTickCtxOf(sim));
     }
     const xp = sim.world.get(attacker, SettlerProgress).experience;
-    expect(xp.get(PERSONAL)).toBe(classes.length * meleeUnits(sim, attacker));
+    const blow = meleeUnits(sim, attacker);
+    expect(xp.get(PERSONAL)).toBe(classes.reduce((held) => held + slowedFightUnits(blow, held), 0));
     expect(xp.size).toBe(1);
   });
 

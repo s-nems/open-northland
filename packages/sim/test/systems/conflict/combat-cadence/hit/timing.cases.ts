@@ -35,6 +35,7 @@ import {
   fightUnitsPerClipTick,
   MELEE_BLOW_POINTS_RATE,
   REGENERATION_HITPOINTS_PER_TICK,
+  slowedFightUnits,
   WEAPON_MAIN_TYPE,
   withFightExperience,
   withTakenBonuses,
@@ -377,16 +378,20 @@ describe('atomicSystem - repeating swings at the animation cadence', () => {
     if (firstHit === undefined || secondHit === undefined) throw new Error('expected two hits');
     expect(secondHit - firstHit).toBe(27);
     // Each blow took the spear-vs-unarmored column off the pool, raised by the blow time the striker landed
-    // before it and cut by the blow time the target took. The needs pass runs ahead of the blow, so every
-    // blow after the first lands on a tick that also heals.
+    // before it and cut by the blow time the target took, each gain slowed by what its counter held. The
+    // needs pass runs ahead of the blow, so every blow after the first lands on a tick that also heals.
     const column = IRON_SPEAR_DAMAGE['0'];
     const clip = attackClipTiming(sim.content, sim.world.get(attacker, Settler)).length;
     const struck = clip * fightUnitsPerClipTick(MELEE_BLOW_POINTS_RATE);
     const taken = clip * fightUnitsPerClipTick(BLOW_TAKEN_POINTS_RATE);
-    const blows = hitTicks.reduce(
-      (sum, _, k) => sum + withTakenBonuses(withFightExperience(column, k * struck), k * taken),
-      0,
-    );
+    let struckHeld = 0;
+    let takenHeld = 0;
+    let blows = 0;
+    for (let k = 0; k < hitTicks.length; k++) {
+      blows += withTakenBonuses(withFightExperience(column, struckHeld), takenHeld);
+      struckHeld += slowedFightUnits(struck, struckHeld);
+      takenHeld += slowedFightUnits(taken, takenHeld);
+    }
     const expected = blows - (hitTicks.length - 1) * REGENERATION_HITPOINTS_PER_TICK;
     expect(dealt).toBe(expected);
   });

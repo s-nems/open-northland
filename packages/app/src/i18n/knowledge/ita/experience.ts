@@ -130,6 +130,9 @@ export const EXPERIENCE: ArticleGroup = {
           ],
         },
         {
+          p: 'Più punti si hanno, più lentamente la battaglia ne aggiunge: a {{combat.fightGainSamplePoints}} punti colpi e tiri, inferti e subiti, danno il {{combat.fightGainSamplePct}}% dei loro punti, e poco prima del contatore pieno il {{combat.fightGainAtFullPct}}%. L’esercitazione dà sempre tutti i suoi {{coinDrill.points}} punti.',
+        },
+        {
           p: 'Pugni e ogni arma contano allo stesso modo, anche i tiri del [[job:hunter|cacciatore]]. L’esperienza resta dopo un cambio d’arma o di professione. Chi ha {{coinDrill.limit}} punti o più non si esercita più e guadagna il resto in battaglia. Se una battaglia o un nuovo ordine interrompe l’esercitazione, la moneta torna indietro e non dà punti. Partono solo tanti soldati quante sono le monete libere della caserma, i più vicini per primi; gli altri restano dove sono.',
         },
         {

@@ -130,6 +130,9 @@ export const EXPERIENCE: ArticleGroup = {
           ],
         },
         {
+          p: 'Je mehr Punkte, desto langsamer kommen im Kampf neue hinzu: bei {{combat.fightGainSamplePoints}} Punkten bringen ausgeteilte und erlittene Schläge und Schüsse {{combat.fightGainSamplePct}}% ihrer Punkte, kurz vor dem vollen Zähler {{combat.fightGainAtFullPct}}%. Das Exerzieren bringt immer die vollen {{coinDrill.points}} Punkte.',
+        },
+        {
           p: 'Faust und jede Waffe zählen gleich, die Schüsse des [[job:hunter|Jägers]] auch. Die Erfahrung bleibt nach einem Waffen- oder Berufswechsel. Wer {{coinDrill.limit}} Punkte oder mehr hat, exerziert nicht mehr und holt sich den Rest im Kampf. Unterbrechen ein Kampf oder ein neuer Befehl das Exerzieren, kommt die Münze zurück, Punkte gibt es keine. Es gehen nur so viele Soldaten, wie die Kaserne freie Münzen hat, die nächsten zuerst; die übrigen bleiben stehen.',
         },
         {

@@ -125,6 +125,9 @@ export const EXPERIENCE: ArticleGroup = {
           ],
         },
         {
+          p: 'Im więcej punktów, tym wolniej przybywają w walce: przy {{combat.fightGainSamplePoints}} pkt ciosy i strzały, zadane i przyjęte, dają {{combat.fightGainSamplePct}}% swoich punktów, a tuż przed pełnym licznikiem {{combat.fightGainAtFullPct}}%. Musztra zawsze daje pełne {{coinDrill.points}} pkt.',
+        },
+        {
           p: 'Pięść i każda broń liczą się tak samo, strzały [[job:hunter|Myśliwego]] też. Doświadczenie zostaje po zmianie broni i zawodu. Kto ma {{coinDrill.limit}} pkt lub więcej, już nie ćwiczy, resztę zdobywa w walce. Gdy walka albo nowy rozkaz przerwie musztrę, moneta wraca, a punktów nie ma. Idzie tylu żołnierzy, ile Koszary mają wolnych monet, najpierw najbliżsi; reszta zostaje na miejscu.',
         },
         {

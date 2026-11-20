@@ -287,6 +287,37 @@ export function sharedFightUnits(units: number, share: BlowShare): number {
 }
 
 /**
+ * The percent of a fight gain a person still earns at full fight experience. Our rule: what a blow earns
+ * falls linearly with the counter it lands on, from the whole gain at 0 to this share at full, so the
+ * counter fills slower the more it holds. The coin drill and a map's starting experience stay whole.
+ */
+export const FIGHT_GAIN_PCT_AT_FULL = 40;
+
+const PERCENT = 100;
+/** Full fight experience in units times percent, the scale a slowed gain's share is kept in. */
+const FIGHT_GAIN_SCALE = FIGHT_EXPERIENCE_FULL_UNITS * PERCENT;
+
+/** The part of a fight gain of `units` a person whose counter holds `heldUnits` earns, rounded to the
+ *  nearest unit. */
+export function slowedFightUnits(units: number, heldUnits: number): number {
+  const held = Math.min(Math.max(heldUnits, 0), FIGHT_EXPERIENCE_FULL_UNITS);
+  const kept = FIGHT_GAIN_SCALE - (PERCENT - FIGHT_GAIN_PCT_AT_FULL) * held;
+  return Math.floor((2 * units * kept + FIGHT_GAIN_SCALE) / (2 * FIGHT_GAIN_SCALE));
+}
+
+/** Accrue this blow's `units` on `e`'s personal counter, slowed by what the counter already holds. */
+function accruePersonalFight(world: World, e: Entity, units: number): void {
+  const held = world.tryGet(e, SettlerProgress)?.experience.get(FIGHT_EXPERIENCE_TYPE.PERSONAL) ?? 0;
+  accrueExperience(
+    world,
+    e,
+    FIGHT_EXPERIENCE_TYPE.PERSONAL,
+    slowedFightUnits(units, held),
+    FIGHT_EXPERIENCE_FULL_UNITS,
+  );
+}
+
+/**
  * The fight-experience bucket a `weaponMainType` accrues into: the catapult's own, the personal counter for
  * every other weapon class, and `undefined` for no class. Our rule: the original trains no bucket with a
  * saber or the hero axe; here every personal weapon trains the one counter.
@@ -307,7 +338,8 @@ function earnsFightExperience(world: World, ctx: SystemContext, e: Entity): bool
  * Grant an attacker fight XP for a landed hit, melee or ranged. The catapult bucket gains one raw point
  * per hit under {@link CATAPULT_EXPERIENCE_MAX}; the personal counter gains the blow time of `clipTicks`,
  * the attacker's own attack clip, at the `delivery`'s rate and the `target`'s share
- * ({@link strikerFightUnits}), cut to this blow's `share` of the clip, under {@link FIGHT_EXPERIENCE_FULL_UNITS}.
+ * ({@link strikerFightUnits}), cut to this blow's `share` of the clip and slowed by what it holds
+ * ({@link slowedFightUnits}), under {@link FIGHT_EXPERIENCE_FULL_UNITS}.
  */
 export function grantFightExperience(
   world: World,
@@ -326,13 +358,13 @@ export function grantFightExperience(
     accrueExperience(world, attacker, bucket, CATAPULT_EXPERIENCE_PER_HIT, CATAPULT_EXPERIENCE_MAX);
   } else if (bucket === FIGHT_EXPERIENCE_TYPE.PERSONAL) {
     const rate = delivery === 'melee' ? MELEE_BLOW_POINTS_RATE : SHOT_POINTS_RATE;
-    const units = sharedFightUnits(strikerFightUnits(rate, clipTicks, target), share);
-    accrueExperience(world, attacker, bucket, units, FIGHT_EXPERIENCE_FULL_UNITS);
+    accruePersonalFight(world, attacker, sharedFightUnits(strikerFightUnits(rate, clipTicks, target), share));
   }
 }
 
 /** Grant person `victim` the personal fight XP of a blow that wounded him: his `share` of the blow time of
- *  `clipTicks`, the attacker's attack cadence, at {@link BLOW_TAKEN_POINTS_RATE}. */
+ *  `clipTicks`, the attacker's attack cadence, at {@link BLOW_TAKEN_POINTS_RATE}, slowed by what he
+ *  holds. */
 export function grantBlowTakenExperience(
   world: World,
   ctx: SystemContext,
@@ -341,8 +373,11 @@ export function grantBlowTakenExperience(
   share: BlowShare,
 ): void {
   if (!earnsFightExperience(world, ctx, victim)) return;
-  const units = sharedFightUnits(clipTicks * fightUnitsPerClipTick(BLOW_TAKEN_POINTS_RATE), share);
-  accrueExperience(world, victim, FIGHT_EXPERIENCE_TYPE.PERSONAL, units, FIGHT_EXPERIENCE_FULL_UNITS);
+  accruePersonalFight(
+    world,
+    victim,
+    sharedFightUnits(clipTicks * fightUnitsPerClipTick(BLOW_TAKEN_POINTS_RATE), share),
+  );
 }
 
 /** Add a coin drill's `points` to `settler`'s personal fight counter, capped at {@link FIGHT_EXPERIENCE_FULL}.

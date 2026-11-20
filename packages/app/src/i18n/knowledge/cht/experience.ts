@@ -120,6 +120,9 @@ export const EXPERIENCE: ArticleGroup = {
           ],
         },
         {
+          p: '點數越多，戰鬥中漲得越慢：到 {{combat.fightGainSamplePoints}} 點時，出手和挨打的每一擊、每一箭只給原來 {{combat.fightGainSamplePct}}% 的點數，快滿時只給 {{combat.fightGainAtFullPct}}%。金幣操練始終給足 {{coinDrill.points}} 點。',
+        },
+        {
           p: '拳頭和任何武器都一樣，[[job:hunter|獵人]]的射擊也算。更換武器或職業後經驗保留。達到 {{coinDrill.limit}} 點及以上的人不再操練，其餘的要在戰鬥中獲得。戰鬥或新命令打斷操練時，金幣退回，不得點數。兵營有幾枚空閒金幣就去幾名士兵，離得最近的先去；其餘的留在原地。',
         },
         {

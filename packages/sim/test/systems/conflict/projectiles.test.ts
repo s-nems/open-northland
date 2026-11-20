@@ -41,6 +41,7 @@ import {
   FIGHT_EXPERIENCE_TYPE,
   FIGHT_EXPERIENCE_UNITS_PER_POINT,
   fightUnitsOfPoints,
+  slowedFightUnits,
   stampResourceFootprintData,
 } from '../../../src/systems/index.js';
 import { ARMOR_MATERIAL } from '../../../src/systems/readviews/index.js';
@@ -219,6 +220,12 @@ function marksmanAt(sim: Simulation, x: number, y: number): Entity {
     .mut(archer, SettlerProgress)
     .experience.set(FIGHT_EXPERIENCE_TYPE.PERSONAL, fightUnitsOfPoints(MARKSMAN_POINTS));
   return archer;
+}
+
+/** The stored units a landed bow shot earns a marksman: its blow time, slowed by the points he holds. */
+function marksmanShotGain(): number {
+  const whole = fightUnitsOfPoints((BOW_LEN / TICKS_PER_SECOND) * SHOT_POINTS_PER_SECOND);
+  return slowedFightUnits(whole, fightUnitsOfPoints(MARKSMAN_POINTS));
 }
 
 /** The projectiles currently in flight. */
@@ -535,8 +542,7 @@ describe('projectiles - frozen flight chord + on-contact damage', () => {
     for (let i = 0; i < 30 && sim.world.get(target, Health).hitpoints === TARGET_HP; i++) sim.step();
     expect(sim.world.get(target, Health).hitpoints).toBe(TARGET_HP - BOW_DAMAGE);
     const units = sim.world.get(archer, SettlerProgress).experience.get(FIGHT_EXPERIENCE_TYPE.PERSONAL) ?? 0;
-    const earned = (units - fightUnitsOfPoints(MARKSMAN_POINTS)) / FIGHT_EXPERIENCE_UNITS_PER_POINT;
-    expect(earned).toBe((BOW_LEN / TICKS_PER_SECOND) * SHOT_POINTS_PER_SECOND);
+    expect(units - fightUnitsOfPoints(MARKSMAN_POINTS)).toBe(marksmanShotGain());
   });
 
   it("earns a struck person 1/2 point per second of a tower shot's cadence", () => {
@@ -761,8 +767,7 @@ describe('projectiles - area shots', () => {
     sim.world.mut(p, Projectile).weaponMainType = BOW_MAIN_TYPE;
     sim.step();
     const bow = sim.world.get(shooter, SettlerProgress).experience.get(FIGHT_EXPERIENCE_TYPE.PERSONAL) ?? 0;
-    const earned = (bow - fightUnitsOfPoints(MARKSMAN_POINTS)) / FIGHT_EXPERIENCE_UNITS_PER_POINT;
-    expect(earned).toBe((BOW_LEN / TICKS_PER_SECOND) * SHOT_POINTS_PER_SECOND);
+    expect(bow - fightUnitsOfPoints(MARKSMAN_POINTS)).toBe(marksmanShotGain());
   });
 
   const WOOD = 1;
