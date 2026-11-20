@@ -12,6 +12,13 @@ const MACHINE_SEAT = 1;
  *  and a dragon on the machine seat beside them. */
 const COLUMNS = [HUMAN_SEAT, MACHINE_SEAT] as const;
 const DRAGON_COLUMN = COLUMNS.length;
+/** Cell layout: columns this far apart from the first, rows likewise, the dragon between the rows, so the
+ *  whole line fits the opening view. */
+const FIRST_COLUMN_CELL = 3;
+const COLUMN_STEP_CELLS = 4;
+const FIRST_ROW_CELL = 5;
+const ROW_STEP_CELLS = 5;
+const LAIR_ROW_CELL = 7;
 
 function build(sim: Simulation): void {
   sim.enqueueSetup({ kind: 'setDiplomacy', from: HUMAN_SEAT, to: MACHINE_SEAT, state: 'friend' });
@@ -19,11 +26,14 @@ function build(sim: Simulation): void {
   sim.enqueueSetup({ kind: 'setAiControl', player: MACHINE_SEAT, enabled: true, mapAiEnabled: false });
   for (const [column, owner] of COLUMNS.entries()) {
     for (const [row, jobType] of [JOB_SOLDIER_SPEAR_WOODEN, JOB_SOLDIER_SPEAR].entries()) {
-      const node = cellAnchorNode(4 + column * 5, 5 + row * 5);
+      const node = cellAnchorNode(
+        FIRST_COLUMN_CELL + column * COLUMN_STEP_CELLS,
+        FIRST_ROW_CELL + row * ROW_STEP_CELLS,
+      );
       sim.enqueueSetup({ kind: 'spawnSettler', tribe: BYZANTINE, jobType, owner, x: node.hx, y: node.hy });
     }
   }
-  const lair = cellAnchorNode(4 + DRAGON_COLUMN * 5, 7);
+  const lair = cellAnchorNode(FIRST_COLUMN_CELL + DRAGON_COLUMN * COLUMN_STEP_CELLS, LAIR_ROW_CELL);
   sim.enqueueSetup({
     kind: 'spawnSettler',
     tribe: MONSTER_TRIBE_DRAGON,
