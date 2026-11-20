@@ -18,14 +18,16 @@ import {
   setPeaceTime,
   setSettlerJob,
   stampOwner,
+  UnderConstruction,
   Weapon,
 } from '../../../src/components/index.js';
 import type { Entity } from '../../../src/ecs/world.js';
 import { fx, ONE, Simulation } from '../../../src/index.js';
-import { TOWER_RANGE_BONUS_NODES } from '../../../src/systems/conflict/tower-post.js';
+import { upgradeBuilding } from '../../../src/systems/command/placement.js';
+import { isManningPost, TOWER_RANGE_BONUS_NODES } from '../../../src/systems/conflict/tower-post.js';
 import { pileUnderEnemyTowers } from '../../../src/systems/conflict/tower-reach.js';
 import { bindHaulFlag } from '../../../src/systems/economy/work-flag.js';
-import { plannerSystem } from '../../../src/systems/index.js';
+import { constructionSystem, plannerSystem } from '../../../src/systems/index.js';
 import { inputReach } from '../../../src/systems/readviews/store-reach.js';
 import { stepOut, takePost } from '../../../src/systems/settlers/indoors.js';
 import { reachableStock } from '../../../src/systems/settlers/planner/recruit-arming.js';
@@ -59,6 +61,10 @@ const TOWER_TYPE = 92;
 const WIDE_TOWER_TYPE = 93;
 /** The node of {@link WIDE_TOWER_TYPE}'s east wall, counted from its anchor along the row. */
 const WIDE_TOWER_EAST_NODE = 2;
+/** A one-node tower that upgrades into {@link GROWN_TOWER_TYPE}, as tower_00 grows into tower_01. */
+const SMALL_TOWER_TYPE = 94;
+/** {@link SMALL_TOWER_TYPE}'s upgrade, as wide as {@link WIDE_TOWER_TYPE}. */
+const GROWN_TOWER_TYPE = 95;
 const WOOD = 1;
 const SHOES = 8;
 const ARROW_MUNITION = 1;
@@ -101,6 +107,32 @@ function towerContent(): ContentSet {
         ],
         stock: [],
         footprint: { blocked: [{ dx: 0, dy: 0 }], door: { dx: 0, dy: 1 } },
+      },
+      {
+        typeId: SMALL_TOWER_TYPE,
+        id: 'small_tower',
+        kind: 'tower',
+        workers: [{ jobType: SOLDIER_JOB, count: 1 }],
+        stock: [],
+        construction: [{ goodType: WOOD, amount: 1 }],
+        upgradeTarget: GROWN_TOWER_TYPE,
+        footprint: { blocked: [{ dx: 0, dy: 0 }], door: { dx: 0, dy: 1 } },
+      },
+      {
+        typeId: GROWN_TOWER_TYPE,
+        id: 'grown_tower',
+        kind: 'tower',
+        workers: [{ jobType: SOLDIER_JOB, count: 1 }],
+        stock: [],
+        construction: [{ goodType: WOOD, amount: 1 }],
+        footprint: {
+          blocked: [
+            { dx: 0, dy: 0 },
+            { dx: 1, dy: 0 },
+            { dx: WIDE_TOWER_EAST_NODE, dy: 0 },
+          ],
+          door: { dx: 0, dy: 1 },
+        },
       },
       {
         typeId: WIDE_TOWER_TYPE,
@@ -288,6 +320,30 @@ describe('the ground under an enemy tower', () => {
 
     expect(pileUnderEnemyTowers(sim.world, ctxOf(sim), HUMAN, atReach)).toBe(true);
     expect(pileUnderEnemyTowers(sim.world, ctxOf(sim), HUMAN, past)).toBe(false);
+  });
+
+  it("reads the grown tower's walls once its bowman takes his post again after the upgrade", () => {
+    const sim = freshSim();
+    const tower = towerAt(sim, 0, 0, ENEMY, SMALL_TOWER_TYPE);
+    sim.world.add(tower, Stockpile, { amounts: new Map([[WOOD, 1]]) });
+    const bowman = bowmanFor(sim, tower);
+    takePost(sim.world, bowman, tower);
+    const pastSmall = pileAlongRow(sim, WIDE_TOWER_EAST_NODE + TOWER_REACH, WOOD);
+    const underWalls = (): boolean => pileUnderEnemyTowers(sim.world, ctxOf(sim), HUMAN, pastSmall);
+    expect(underWalls()).toBe(false);
+
+    // No read between the order and his return: the cache must not keep the small tower's walls.
+    upgradeBuilding(sim.world, ctxOf(sim), { kind: 'upgradeBuilding', building: tower });
+    sim.world.mut(tower, UnderConstruction).labor = ONE;
+    constructionSystem(sim.world, ctxOf(sim));
+    expect(sim.world.get(tower, Building).buildingType).toBe(GROWN_TOWER_TYPE);
+    // The upgrade put him off the footprint, so he cannot hold the post through it.
+    expect(isManningPost(sim.world, ctxOf(sim), bowman)).toBe(false);
+    stepOut(sim.world, bowman);
+    takePost(sim.world, bowman, tower);
+
+    expect(underWalls()).toBe(true);
+    expect(sim.world.verifyCaches()).toEqual([]);
   });
 
   it('is covered only while a bowman whose owner fights the fetcher stands on the post', () => {
