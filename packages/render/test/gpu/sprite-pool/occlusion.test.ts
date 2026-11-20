@@ -368,36 +368,18 @@ describe('SpritePool - a unit a standing sprite hides shows as an occlusion ghos
     pool.destroy();
   });
 
-  it('fades the cover of a hidden unit the selection names, and none other', () => {
+  it('leaves every occluder opaque however a covered unit is selected, the marks riding alone', () => {
     const layer = new Container();
     const pool = new SpritePool(layer, new TextureCache(), undefined);
+    // Only the reveal toggle fades a cover: a selection draws the unit's ghost marks and nothing else.
     pool.reconcile({
       ...frame(snapshotOf([settler(1, 0, 0), house(2, 0, 0.4), house(3, 4, 0.4)])),
+      tick: 1,
       selection: new Set([1]),
     });
-    expect(pool.containerOf(2)?.alpha).toBe(OCCLUDER_FADE_ALPHA);
-    expect(pool.containerOf(3)?.alpha).toBe(1);
-    pool.destroy();
-  });
-
-  it('fades the cover while the cursor rests near the hidden unit, and not from far away', () => {
-    const layer = new Container();
-    const pool = new SpritePool(layer, new TextureCache(), undefined);
-    pool.reconcile(frame(snapshotOf([settler(1, 0, 0), house(2, 0, 0.4)])));
-    const anchor = pool.anchorOf(1);
-    if (anchor === undefined) throw new Error('the unit drew no anchor');
-    pool.reconcile({
-      ...frame(snapshotOf([settler(1, 0, 0), house(2, 0, 0.4)])),
-      tick: 1,
-      pointerWorld: { x: anchor.x + 8, y: anchor.y + 8 },
-    });
-    expect(pool.containerOf(2)?.alpha).toBe(OCCLUDER_FADE_ALPHA);
-    pool.reconcile({
-      ...frame(snapshotOf([settler(1, 0, 0), house(2, 0, 0.4)])),
-      tick: 2,
-      pointerWorld: { x: anchor.x + 4000, y: anchor.y + 4000 },
-    });
     expect(pool.containerOf(2)?.alpha).toBe(1);
+    expect(pool.containerOf(3)?.alpha).toBe(1);
+    expect(pool.occlusionGhosts.container.children[0]?.alpha).toBe(1);
     pool.destroy();
   });
 

@@ -63,10 +63,6 @@ export interface WorldHover {
    *  walls and vehicles. Null on nothing and while the pointer is claimed or off the canvas. The frame loop hands it to the renderer one frame later, for the
    *  hovered-target outline. */
   hovered(): number | null;
-  /** The cursor's world position the last {@link update} resolved, or null while the pointer is off
-   *  the canvas or a tool owns it. The frame loop hands it to the renderer one frame later, like the
-   *  hovered outline: a resident the cursor rests near fades the sprites that hide it. */
-  pointerWorld(): { x: number; y: number } | null;
   destroy(): void;
 }
 
@@ -221,9 +217,6 @@ export function createWorldHover(opts: WorldHoverOptions): WorldHover {
   let restingSince = 0;
   // The target of the current hover, for the renderer's outline; the suppressed frames hold none.
   let outlined: number | null = null;
-  // The cursor's world position of the last update, for the renderer's occluder fade; the suppressed
-  // frames hold none.
-  let world: { x: number; y: number } | null = null;
   const restedOn = (ref: number, nowMs: number): boolean => {
     if (ref !== restingOn) {
       restingOn = ref;
@@ -262,7 +255,6 @@ export function createWorldHover(opts: WorldHoverOptions): WorldHover {
   return {
     destroy: () => hideCard(),
     hovered: () => outlined,
-    pointerWorld: () => world,
     update(snap: WorldSnapshot, nowMs: number): void {
       const p = opts.pointer();
       if (p === null || opts.suppressed(p.clientX, p.clientY)) {
@@ -270,12 +262,10 @@ export function createWorldHover(opts: WorldHoverOptions): WorldHover {
         held = null;
         heldByProxy = false;
         outlined = null;
-        world = null;
         hideCard();
         return;
       }
       const w = toWorld(p.clientX, p.clientY);
-      world = w;
       const moved = pointerMoved(p.clientX, p.clientY);
       const found = hitsAt(snap, w.x, w.y, held);
       const marked = proxyAt(snap, p.clientX, p.clientY);

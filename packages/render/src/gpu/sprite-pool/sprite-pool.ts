@@ -136,12 +136,9 @@ export interface PoolFrame {
    *  Both absent leaves every unit hidden, as the baseline renderer always has. */
   readonly occlusionFill?: boolean | undefined;
   readonly occlusionOutline?: boolean | undefined;
-  /** The hold-to-reveal key held down: the standing sprites that hide a resident draw translucent
-   *  while it lasts. Absent fades nothing. */
+  /** The reveal toggle on: the standing sprites that hide a resident draw translucent while it
+   *  lasts. Absent fades nothing. */
   readonly fadeOccluders?: boolean | undefined;
-  /** The cursor's world position while it inspects the world: a resident the cursor rests near fades
-   *  the sprites that hide it. Absent while the pointer is off the canvas or a tool claims it. */
-  readonly pointerWorld?: { readonly x: number; readonly y: number } | undefined;
   /** The frame's visible tall map objects - a decoded map's virgin trees and rocks - as occluder
    *  candidates, since the retained map-object layer draws them outside this pool's draw list.
    *  Absent leaves only the pool's own standing sprites as covers. */
@@ -655,9 +652,8 @@ export class SpritePool {
   }
 
   /** The occlusion ghost pass: scan and stamp when the setting draws them, otherwise leave nothing.
-   *  The sheet's animal tribes ride along so the scan leaves wildlife unghosted, and the frame's fade
-   *  asks - the reveal toggle, a selected hidden unit, the cursor's world position - ride along so
-   *  the scan can draw the occluders translucent. */
+   *  The sheet's animal tribes ride along so the scan leaves wildlife unghosted, and the reveal
+   *  toggle rides along so the scan can draw the occluders translucent. */
   private ghostPass(frame: PoolFrame): void {
     const fill = frame.occlusionFill === true;
     const ring = frame.occlusionOutline === true;
@@ -670,11 +666,7 @@ export class SpritePool {
         frame.camera.scale ?? 1,
         frame.staticOccluders,
         this.sheet?.characters?.animals?.tribes,
-        {
-          selection: frame.selection,
-          pointer: frame.pointerWorld,
-          revealAll: frame.fadeOccluders === true,
-        },
+        frame.fadeOccluders === true,
         { fill, ring },
       );
     else this.occlusionGhosts.reset();

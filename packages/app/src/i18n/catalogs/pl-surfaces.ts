@@ -226,10 +226,10 @@ export const plSurfaces = {
       postFxTip: 'Winieta i ocieplenie barw nakładane na obraz świata.',
       occlusionFill: 'Wypełnienie zasłoniętych jednostek',
       occlusionFillTip:
-        'Rysuje jednostkę stojącą za budynkiem, murem lub drzewem jako półprzezroczyste wypełnienie w kolorze jej drużyny na tym, co ją zasłania. Gdy kontur też jest włączony, wypełnienie pod nim staje się jaśniejsze. Spacja przełącza prześwitywanie: jedno naciśnięcie czyni przezroczystymi wszystkie drzewa i budynki na ekranie, ponowne wyłącza je. Zaznaczenie zasłoniętej jednostki lub kursor w jej pobliżu czyni przezroczystą tylko jej własną zasłonę.',
+        'Rysuje jednostkę stojącą za budynkiem, murem lub drzewem jako półprzezroczyste wypełnienie w kolorze jej drużyny na tym, co ją zasłania. Gdy kontur też jest włączony, wypełnienie pod nim staje się jaśniejsze. Spacja przełącza prześwitywanie: jedno naciśnięcie czyni przezroczystymi wszystkie drzewa i budynki na ekranie, ponowne wyłącza je.',
       occlusionOutline: 'Kontur zasłoniętych jednostek',
       occlusionOutlineTip:
-        'Rysuje jednostkę stojącą za budynkiem, murem lub drzewem jako kontur w kolorze jej drużyny na tym, co ją zasłania. Spacja przełącza prześwitywanie: jedno naciśnięcie czyni przezroczystymi wszystkie drzewa i budynki na ekranie, ponowne wyłącza je. Zaznaczenie zasłoniętej jednostki lub kursor w jej pobliżu czyni przezroczystą tylko jej własną zasłonę.',
+        'Rysuje jednostkę stojącą za budynkiem, murem lub drzewem jako kontur w kolorze jej drużyny na tym, co ją zasłania. Spacja przełącza prześwitywanie: jedno naciśnięcie czyni przezroczystymi wszystkie drzewa i budynki na ekranie, ponowne wyłącza je.',
       integerScaling: 'Skalowanie całkowite',
       integerScalingTip:
         'Przybliża tylko pełnymi krokami (½×, 1×, 2×, 3×…), więc każdy piksel grafiki zajmuje całą liczbę pikseli ekranu i nigdy nie jest przeskalowany ułamkowo. Widok przeskakuje między krokami zamiast płynnie się zmieniać.',

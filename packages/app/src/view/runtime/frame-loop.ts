@@ -564,10 +564,9 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
         // against the freshly drawn list: that hovered-target outline trails the cursor's read by one
         // frame, like the card does its rest.
         hovered: (pickMarks !== null ? aimed : worldHover.hovered()) ?? undefined,
-        // The reveal key and the cursor's world position trail the frame like the hovered outline
-        // does: both read the worldHover and key state the previous update settled.
+        // The reveal key trails the frame like the hovered outline does: it reads the key state the
+        // previous update settled.
         fadeOccluders: fadeOccluders(),
-        pointerWorld: worldHover.pointerWorld() ?? undefined,
         selectionTime: nowMs / 1000,
         alpha: renderAlpha,
         doorBadges,

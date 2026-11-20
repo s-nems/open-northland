@@ -224,10 +224,10 @@ export const enSurfaces = {
       postFxTip: 'A vignette and warm colour grade layered over the world.',
       occlusionFill: 'Hidden-unit fill',
       occlusionFillTip:
-        'Draws a unit standing behind a building, wall or tree as a translucent fill in its team colour over what hides it. With the outline also on, the fill turns light under the outline. Space toggles the see-through: one press fades every tree and building on the screen, another turns it back off. Selecting a hidden unit or resting the cursor near one fades only its own cover.',
+        'Draws a unit standing behind a building, wall or tree as a translucent fill in its team colour over what hides it. With the outline also on, the fill turns light under the outline. Space toggles the see-through: one press fades every tree and building on the screen, another turns it back off.',
       occlusionOutline: 'Hidden-unit outline',
       occlusionOutlineTip:
-        'Draws a unit standing behind a building, wall or tree as an outline in its team colour over what hides it. Space toggles the see-through: one press fades every tree and building on the screen, another turns it back off. Selecting a hidden unit or resting the cursor near one fades only its own cover.',
+        'Draws a unit standing behind a building, wall or tree as an outline in its team colour over what hides it. Space toggles the see-through: one press fades every tree and building on the screen, another turns it back off.',
       integerScaling: 'Integer scaling',
       integerScalingTip:
         'Zooms only in whole steps (½×, 1×, 2×, 3×…), so every pixel of the art covers a whole number of screen pixels and is never resampled by a fractional scale. The view jumps between steps instead of gliding.',
