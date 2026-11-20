@@ -3,6 +3,7 @@ import { bcp47Tag, currentLocale, formatMessage, messages } from '../../../i18n/
 import { servedByBrowser } from '../../../view/platform/host.js';
 import type { MenuNewsColumn, MenuNewsColumns } from '../../../view/settings/store.js';
 import { menuSettings, updateSettings } from '../settings/state.js';
+import { fitPanel } from './fit.js';
 import {
   hasUnseen,
   type MenuNews,
@@ -91,29 +92,6 @@ function releasesElement(releases: readonly ReleaseView[], tag: string): HTMLEle
   return list;
 }
 
-const childElements = (parent: HTMLElement): HTMLElement[] =>
-  [...parent.children].filter((child): child is HTMLElement => child instanceof HTMLElement);
-
-/** Hides, and takes out of Tab order and the accessibility tree, each block that reaches past its
- *  column's height cap and every block after it, so a short window drops whole blocks instead of
- *  cutting one. An unfolded column left without blocks hides its heading too. */
-function retireHiddenBlocks(column: HTMLElement): void {
-  const [heading, body] = childElements(column);
-  if (heading === undefined || body === undefined) return;
-  if (body.hidden) {
-    heading.inert = false;
-    return;
-  }
-  const limit = column.getBoundingClientRect().bottom;
-  const blocks = childElements(body);
-  let fits = true;
-  for (const block of blocks) {
-    fits &&= block.getBoundingClientRect().bottom <= limit;
-    block.inert = !fits;
-  }
-  heading.inert = blocks.every((block) => block.inert);
-}
-
 /** Where the panel keeps each column's fold and what the player saw in it; the menu settings by
  *  default. */
 export interface NewsColumnStore {
@@ -171,7 +149,8 @@ function columnElement(spec: ColumnSpec, store: NewsColumnStore): HTMLElement {
     heading.setAttribute('aria-expanded', String(!collapsed));
     heading.title = collapsed ? copy.expand : copy.collapse;
     unseen.hidden = !collapsed || !hasUnseen(spec.marks, state.seen);
-    retireHiddenBlocks(column);
+    // Folding one column gives the other its full size again; the panel fits once it is shown.
+    if (column.parentElement !== null) fitPanel(column.parentElement);
   };
   heading.addEventListener('click', () => show(heading.getAttribute('aria-expanded') === 'true'));
   show(store.read()[spec.id].collapsed);
@@ -234,10 +213,12 @@ export function mountNewsPanel(
   let timer: ReturnType<typeof setInterval> | undefined;
   let shown: HTMLElement | null = null;
   let shownKeys = '';
-  // A window or interface scale change resizes the columns, which may hide or reveal blocks.
-  const resizes = new ResizeObserver(() => {
-    if (shown !== null) for (const column of childElements(shown)) retireHiddenBlocks(column);
-  });
+  // A window resize changes the columns' room. The panel covers the screen, so a new fit never
+  // resizes what is observed.
+  const refit = (): void => {
+    if (!disposed && shown !== null) fitPanel(shown);
+  };
+  const resizes = new ResizeObserver(refit);
   const modelAt = (data: MenuNews, nowMs: number): NewsPanelModel =>
     newsPanelModel(data, nowMs, currentLocale(), { version: GAME_VERSION, browser: servedByBrowser() });
   const render = (data: MenuNews): void => {
@@ -257,7 +238,7 @@ export function mountNewsPanel(
     shown?.remove();
     if (next !== null) {
       host.append(next);
-      for (const column of childElements(next)) resizes.observe(column);
+      resizes.observe(next);
     }
     shown = next;
     shownKeys = keys;
@@ -266,6 +247,8 @@ export function mountNewsPanel(
     if (disposed) return;
     render(data);
     timer = setInterval(() => render(data), RELABEL_INTERVAL_MS);
+    // A web font that arrives later changes the text's size, not the panel's.
+    void document.fonts.ready.then(refit);
   });
   return () => {
     disposed = true;

@@ -26,6 +26,9 @@
     max(var(--u-base-width-cap), var(--u-frame))
   );
   --u: var(--u-base);
+  /* The screen margins' unit: --u without the factor's growth above 1, so a larger factor leaves the
+     margins' room to the content (the fullscreen control and the news panel on the main screen). */
+  --u-edge: min(var(--u-base), var(--u-frame));
   --bg-base: #0c1420;
   --accent-rgb: 201 114 90;
   --accent: rgb(var(--accent-rgb));

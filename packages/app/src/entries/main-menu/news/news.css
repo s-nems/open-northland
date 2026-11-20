@@ -1,20 +1,29 @@
 /* The main screen's news panel (news/panel.ts). News entries stand in the top-left corner above the
-   brand block, on its left edge and as far from the top as the block stands from the bottom
-   (menu.css .main-menu__home). The versions mirror them in the top-right corner on the nav's right
+   brand block, on its left edge; the versions mirror them in the top-right corner on the nav's right
    edge, under the fullscreen control in the screen's margin (fullscreen-prompt.css) and above the
-   nav. Each column is capped
-   to its room; panel.ts hides the blocks that reach past the cap, so a short window drops whole
-   blocks instead of cutting one. Each heading folds its column's body. */
+   nav. Each column is capped to its room. fit.ts shrinks the content while a column overflows, then
+   hides the blocks that still reach past the cap, so a short window drops whole blocks instead of
+   cutting one. Each heading folds its column's body. */
 
 .main-menu__news {
+  /* menu.css .main-menu__home stands this far from the screen's bottom and sides. */
+  --news-home-edge: 96;
+  --news-side: 120;
   /* The brand block's height in design units: eyebrow 19 + 20, logo 336, version 28 + 18. */
   --news-brand-height: 421;
   /* The desktop's eight nav items, its tallest nav: 8 x (30 + 2 x 6) + 7 x 22 gaps. */
   --news-nav-height: 490;
-  --news-edge: 96;
-  --news-side: 120;
+  /* The content's design unit: 0.8 of the menu's, the density of the sub-screens (menu.css
+     .main-menu__screen), times fit.ts's --news-fit. The floor keeps the smallest labels at about
+     10 px; a unit a small window already holds lower keeps its size. */
+  --news-fit: 1;
+  --news-u-floor: 0.7px;
+  --news-u: max(calc(var(--u) * 0.8 * var(--news-fit)), min(var(--news-u-floor), calc(var(--u) * 0.8)));
+  /* The column margins shrink with the fit down to their minimum; the top one stays clear of the
+     fullscreen control, which ends at 60 (fullscreen-prompt.css). */
+  --news-top: max(96 * var(--news-fit), 72);
   /* Space kept free above the brand block or the nav; it also holds an eyebrow that wraps. */
-  --news-floor-gap: 40;
+  --news-floor-gap: max(40 * var(--news-fit), 24);
   --news-block-gap: 18;
   position: absolute;
   inset: 0;
@@ -23,25 +32,34 @@
 
 .main-menu__news-column {
   position: absolute;
+  top: calc(var(--u-edge) * var(--news-top));
   display: flex;
   flex-direction: column;
-  gap: calc(var(--u) * var(--news-block-gap));
+  gap: calc(var(--news-u) * var(--news-block-gap));
   overflow: hidden;
   pointer-events: auto;
 }
 
 .main-menu__news-entries {
-  top: calc(var(--u) * var(--news-edge));
-  bottom: calc(var(--u) * (2 * var(--news-edge) + var(--news-brand-height) + var(--news-floor-gap)));
+  bottom: calc(
+    var(--u) *
+    (var(--news-home-edge) + var(--news-brand-height)) +
+    var(--u-edge) *
+    var(--news-floor-gap)
+  );
   left: calc(var(--u) * var(--news-side));
-  width: calc(var(--u) * 460);
+  width: calc(var(--news-u) * 460);
 }
 
 .main-menu__news-versions {
-  top: calc(var(--u) * var(--news-edge));
-  bottom: calc(var(--u) * (var(--news-edge) + var(--news-nav-height) + var(--news-floor-gap)));
+  bottom: calc(
+    var(--u) *
+    (var(--news-home-edge) + var(--news-nav-height)) +
+    var(--u-edge) *
+    var(--news-floor-gap)
+  );
   right: calc(var(--u) * var(--news-side));
-  max-width: calc(var(--u) * 460);
+  max-width: calc(var(--news-u) * 460);
   align-items: flex-end;
   text-align: right;
 }
@@ -84,9 +102,9 @@
   all: unset;
   display: flex;
   align-items: center;
-  gap: calc(var(--u) * 14);
+  gap: calc(var(--news-u) * 14);
   cursor: var(--cursor-pointer, pointer);
-  font: 500 calc(var(--u) * 17) / 1 var(--font-body);
+  font: 500 calc(var(--news-u) * 17) / 1 var(--font-body);
   letter-spacing: 0.3em;
   text-transform: uppercase;
   color: var(--text-label);
@@ -106,8 +124,8 @@
 /* Points where a click moves the column: up to fold it, down to unfold it. */
 .main-menu__news-chevron {
   flex: none;
-  width: calc(var(--u) * 7);
-  height: calc(var(--u) * 7);
+  width: calc(var(--news-u) * 7);
+  height: calc(var(--news-u) * 7);
   border-right: 2px solid currentColor;
   border-bottom: 2px solid currentColor;
   transform: translateY(25%) rotate(-135deg);
@@ -127,11 +145,11 @@
 
 .main-menu__news-unseen {
   flex: none;
-  width: calc(var(--u) * 9);
-  height: calc(var(--u) * 9);
+  width: calc(var(--news-u) * 9);
+  height: calc(var(--news-u) * 9);
   border-radius: 50%;
   background: var(--accent-bright);
-  box-shadow: 0 0 calc(var(--u) * 8) rgb(var(--accent-rgb) / 0.8);
+  box-shadow: 0 0 calc(var(--news-u) * 8) rgb(var(--accent-rgb) / 0.8);
 }
 
 .main-menu__news-unseen[hidden] {
@@ -141,8 +159,8 @@
 .main-menu__news-heading::before {
   content: "";
   flex: none;
-  width: calc(var(--u) * 8);
-  height: calc(var(--u) * 8);
+  width: calc(var(--news-u) * 8);
+  height: calc(var(--news-u) * 8);
   background: var(--accent);
   transform: rotate(45deg);
 }
@@ -152,21 +170,21 @@
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: calc(var(--u) * 16);
-  padding: calc(var(--u) * 12) calc(var(--u) * 16);
+  gap: calc(var(--news-u) * 16);
+  padding: calc(var(--news-u) * 12) calc(var(--news-u) * 16);
   border: 1px solid rgb(var(--accent-rgb) / 0.55);
   border-radius: 6px;
   background: rgb(var(--accent-rgb) / 0.16);
-  font: 500 calc(var(--u) * 20) / 1.25 var(--font-body);
+  font: 500 calc(var(--news-u) * 20) / 1.25 var(--font-body);
   color: var(--accent-bright);
 }
 
 .main-menu__news-download {
   flex: none;
-  padding: calc(var(--u) * 8) calc(var(--u) * 16);
+  padding: calc(var(--news-u) * 8) calc(var(--news-u) * 16);
   border: 2px solid rgb(var(--accent-rgb) / 0.7);
   border-radius: 6px;
-  font: 600 calc(var(--u) * 18) / 1 var(--font-body);
+  font: 600 calc(var(--news-u) * 18) / 1 var(--font-body);
   color: var(--accent-bright);
   text-decoration: none;
   transition:
@@ -184,13 +202,13 @@
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: calc(var(--u) * 4);
-  padding-left: calc(var(--u) * 18);
+  gap: calc(var(--news-u) * 4);
+  padding-left: calc(var(--news-u) * 18);
   border-left: 2px solid rgb(var(--accent-rgb) / 0.45);
 }
 
 .main-menu__news-when {
-  font: 600 calc(var(--u) * 15) / 1.2 var(--font-body);
+  font: 600 calc(var(--news-u) * 15) / 1.2 var(--font-body);
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--accent-bright);
@@ -207,19 +225,19 @@
 }
 
 .main-menu__news-title {
-  font: 600 calc(var(--u) * 24) / 1.25 var(--font-body);
+  font: 600 calc(var(--news-u) * 24) / 1.25 var(--font-body);
   color: var(--text-primary);
 }
 
 .main-menu__news-text {
   margin: 0;
-  font: 400 calc(var(--u) * 18) / 1.35 var(--font-body);
+  font: 400 calc(var(--news-u) * 18) / 1.35 var(--font-body);
   color: var(--text-muted);
 }
 
 .main-menu__news-link,
 .main-menu__news-changelog {
-  font: 500 calc(var(--u) * 18) / 1.2 var(--font-body);
+  font: 500 calc(var(--news-u) * 18) / 1.2 var(--font-body);
   color: var(--text-body);
   text-decoration: none;
   border-bottom: 2px solid rgb(var(--accent-rgb) / 0.4);
@@ -241,7 +259,7 @@
   justify-content: end;
   grid-template-columns: repeat(3, max-content);
   align-items: baseline;
-  gap: calc(var(--u) * 6) calc(var(--u) * 18);
+  gap: calc(var(--news-u) * 6) calc(var(--news-u) * 18);
   margin: 0;
   padding: 0;
   list-style: none;
@@ -252,11 +270,11 @@
 }
 
 .main-menu__news-version {
-  font: 600 calc(var(--u) * 19) / 1.2 var(--font-body);
+  font: 600 calc(var(--news-u) * 19) / 1.2 var(--font-body);
   color: var(--text-primary);
 }
 
 .main-menu__news-date {
-  font: 400 calc(var(--u) * 17) / 1.2 var(--font-body);
+  font: 400 calc(var(--news-u) * 17) / 1.2 var(--font-body);
   color: var(--text-muted);
 }

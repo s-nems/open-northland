@@ -35,7 +35,11 @@ class NoResizes {
   disconnect(): void {}
 }
 
-beforeEach(() => vi.stubGlobal('ResizeObserver', NoResizes));
+beforeEach(() => {
+  vi.stubGlobal('ResizeObserver', NoResizes);
+  // jsdom has no font loading.
+  Object.defineProperty(document, 'fonts', { configurable: true, value: { ready: Promise.resolve() } });
+});
 afterEach(() => {
   vi.unstubAllGlobals();
   document.body.replaceChildren();

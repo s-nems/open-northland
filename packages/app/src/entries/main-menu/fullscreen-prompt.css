@@ -1,16 +1,17 @@
 /* The menu's fullscreen control (main-menu/fullscreen-prompt.ts): a quiet button in the screen's
-   top-right margin, above the content's top edge, where the news panel's versions start (news.css). */
+   top-right margin. It sizes in the margin unit, so it ends 60 units down at every interface scale,
+   above where the news panel's versions start (news.css). */
 
 .main-menu__fullscreen {
   position: absolute;
-  top: calc(var(--u) * 28);
-  right: calc(var(--u) * 32);
+  top: calc(var(--u-edge) * 28);
+  right: calc(var(--u-edge) * 32);
   display: flex;
   align-items: center;
-  gap: calc(var(--u) * 10);
-  padding: calc(var(--u) * 7) calc(var(--u) * 12);
+  gap: calc(var(--u-edge) * 10);
+  padding: calc(var(--u-edge) * 7) calc(var(--u-edge) * 12);
   cursor: var(--cursor-pointer, pointer);
-  font: 500 calc(var(--u) * 16) / 1 var(--font-body);
+  font: 500 calc(var(--u-edge) * 16) / 1 var(--font-body);
   letter-spacing: 0.04em;
   color: var(--text-label);
   background: rgba(12, 20, 32, 0.5);
@@ -40,8 +41,8 @@
 /* Arrows into the four corners: the same idea as the browser's own fullscreen control. */
 .main-menu__fullscreen-icon {
   flex: none;
-  width: calc(var(--u) * 15);
-  height: calc(var(--u) * 15);
+  width: calc(var(--u-edge) * 15);
+  height: calc(var(--u-edge) * 15);
   background:
     url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath fill='none' stroke='%23c9725a' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round' d='M6 1.8H1.8V6M10 1.8h4.2V6M6 14.2H1.8V10M10 14.2h4.2V10'/%3E%3C/svg%3E")
     center / contain no-repeat;
