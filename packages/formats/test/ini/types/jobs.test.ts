@@ -135,14 +135,24 @@ describe('extractJobExperience', () => {
 });
 
 describe('extractTribes', () => {
-  it('marks only the two monster tribes with their initial natural weapon type', () => {
+  it('gives every tribe that equips but builds nothing, the monsters, its initial natural weapon type', () => {
     const tribes = extractTribes(
       parseIniSections(
-        '[tribetype]\ntype 1\n[tribetype]\ntype 5\n[tribetype]\ntype 6\n[tribetype]\ntype 8\n',
+        [
+          '[tribetype]\ntype 1\nallowjob 31\nallowhouse 3\nallowequip 30\n', // a playable tribe
+          '[tribetype]\ntype 6\nallowjob 31\nallowequip 30\nallowequip 33\n', // the werewolf
+          '[tribetype]\ntype 42\nname "dragon"\nallowjob 31\nallowequip 30\n', // its copy, the dragon
+          '[tribetype]\ntype 8\nallowjob 34\nallowjob 48\n', // an animal tribe
+        ].join(''),
       ),
       { file: 'synthetic.ini' },
     );
-    expect(tribes.map((tribe) => tribe.naturalWeaponType)).toEqual([undefined, 1, 1, undefined]);
+    expect(tribes.map((tribe) => [tribe.typeId, tribe.naturalWeaponType])).toEqual([
+      [1, undefined],
+      [6, 1],
+      [42, 1],
+      [8, undefined],
+    ]);
   });
   it('maps `setatomic` triples to (jobType, atomicId, animation) bindings in file order', () => {
     const tribes = extractTribes(parseIniSections(TRIBETYPES_INI), {

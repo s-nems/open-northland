@@ -8,8 +8,6 @@ import {
   type JobRequirementTarget,
   JobType,
   TribeType,
-  WERESNAKE_TRIBE,
-  WEREWOLF_TRIBE,
 } from '@open-northland/data';
 import type { RuleSection } from '../grammar.js';
 import { makeSource, requireTypeId, type SourceRef, slug } from '../ir-fields.js';
@@ -128,6 +126,13 @@ function extractJobRequirements(sec: RuleSection): JobRequirement[] {
  *  across all five body-form job changes is not traced; keeping it there is an approximation. */
 const MONSTER_INITIAL_WEAPON_TYPE = 1;
 
+/** Whether a `tribetype` record is a monster's: it allows equipment but no house. In the pack's
+ *  `tribetypes.ini` that holds for the weresnake (5), the werewolf (6) and the dragon (42) alone; the
+ *  playable tribes allow houses, the animal tribes no equipment. */
+function isMonsterRecord(sec: RuleSection): boolean {
+  return findProps(sec, 'allowequip').length > 0 && findProps(sec, 'allowhouse').length === 0;
+}
+
 /** The readable mod `tribetypes.ini` covers the playable tribes and the animal tribes alike. */
 export function extractTribes(sections: readonly RuleSection[], src: SourceRef): TribeType[] {
   const tribes: TribeType[] = [];
@@ -148,8 +153,7 @@ export function extractTribes(sections: readonly RuleSection[], src: SourceRef):
         typeId,
         id: name ? slug(name) : `tribe_${typeId}`,
         name,
-        naturalWeaponType:
-          typeId === WERESNAKE_TRIBE || typeId === WEREWOLF_TRIBE ? MONSTER_INITIAL_WEAPON_TYPE : undefined,
+        naturalWeaponType: isMonsterRecord(sec) ? MONSTER_INITIAL_WEAPON_TYPE : undefined,
         atomicBindings,
         permissions: {
           job: getIntList(sec, 'allowjob'),
