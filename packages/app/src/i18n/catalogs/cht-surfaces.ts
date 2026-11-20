@@ -32,6 +32,9 @@ export const chtSurfaces = {
       live: '正在進行',
       releases: '最近版本',
       changelog: '更新日誌',
+      collapse: '隱藏',
+      expand: '顯示',
+      unseen: '新',
     },
     originalGame: {
       message: '本遊戲需要安裝以下其中一款遊戲：',

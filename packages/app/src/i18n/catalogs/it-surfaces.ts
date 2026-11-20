@@ -31,6 +31,9 @@ export const itSurfaces = {
       live: 'In corso',
       releases: 'Ultime versioni',
       changelog: 'Note di rilascio',
+      collapse: 'Nascondi',
+      expand: 'Mostra',
+      unseen: 'Novità',
     },
     originalGame: {
       message: 'Il gioco richiede che sia installato uno di questi giochi:',

@@ -3,13 +3,16 @@ import { describe, expect, it } from 'vitest';
 import {
   compareReleaseVersions,
   EVENT_DEFAULT_SHOWN_MS,
+  hasUnseen,
   MAX_SHOWN_ENTRIES,
   MAX_SHOWN_RELEASES,
+  newsColumnMarks,
   newsPanelModel,
   panelIsEmpty,
   pickText,
   siteLink,
   updateNotice,
+  versionsColumnMarks,
   visibleEntries,
 } from '../../../../src/entries/main-menu/news/model.js';
 
@@ -132,6 +135,7 @@ describe('news panel model', () => {
         text: null,
         link: { url: 'https://stream.test/', label: 'Watch' },
         startsAt: Date.parse(startsAt),
+        identity: expect.any(String),
       },
     ]);
   });
@@ -140,5 +144,35 @@ describe('news panel model', () => {
     expect(panelIsEmpty(newsPanelModel({ news: null, feed: null }, NOW, 'eng', DESKTOP))).toBe(true);
     const ended = { schema: 1 as const, entries: [entry('ended', { until: '2026-11-01T00:00:00Z' })] };
     expect(panelIsEmpty(newsPanelModel({ news: ended, feed: null }, NOW, 'eng', DESKTOP))).toBe(true);
+  });
+});
+
+describe('unseen column content', () => {
+  const news = (...entries: readonly NewsEntry[]) => ({ schema: 1 as const, entries });
+  const newsMarks = (entries: readonly NewsEntry[], lang: 'eng' | 'pol' = 'eng') =>
+    newsColumnMarks(newsPanelModel({ news: news(...entries), feed: null }, NOW, lang, DESKTOP));
+  const versionMarks = (feed: ReleaseFeed, build = DESKTOP) =>
+    versionsColumnMarks(newsPanelModel({ news: null, feed }, NOW, 'eng', build));
+
+  it('counts a new entry, not one that left or another language', () => {
+    const seen = newsMarks([entry('Patch'), entry('Cup', { startsAt: '2026-11-26T18:00:00Z' })]);
+    const translated = { title: { eng: 'Patch', pol: 'Łatka' } };
+    expect(hasUnseen(newsMarks([translated], 'pol'), seen)).toBe(false);
+    expect(
+      hasUnseen(newsMarks([entry('Patch'), entry('Cup', { startsAt: '2026-11-27T18:00:00Z' })]), seen),
+    ).toBe(true);
+    expect(hasUnseen(newsMarks([entry('Patch'), entry('Survey')]), seen)).toBe(true);
+  });
+
+  it('counts a newer release or update notice, not an older release leaving', () => {
+    const seen = versionMarks(FEED);
+    expect(hasUnseen(versionMarks({ ...FEED, releases: FEED.releases.slice(0, 1) }), seen)).toBe(false);
+    expect(
+      hasUnseen(
+        versionMarks({ ...FEED, releases: [release('0.8.0', '2026-11-30'), ...FEED.releases] }),
+        seen,
+      ),
+    ).toBe(true);
+    expect(hasUnseen(versionMarks(FEED, { version: '0.7.0', browser: false }), seen)).toBe(false);
   });
 });

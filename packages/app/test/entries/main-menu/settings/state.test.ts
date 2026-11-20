@@ -114,6 +114,10 @@ describe('parseStoredSettings', () => {
       originalGameFolder: 'Cultures Northland',
       autosaveMinutes: 15,
       autosaveCount: 3,
+      menuNews: {
+        news: { collapsed: true, seen: ['0a1b2c3d'] },
+        versions: { collapsed: false, seen: ['89abcdef', '01234567'] },
+      },
     } as const;
     expect(
       parseStoredSettings(JSON.stringify({ ...settings, changedKeyBindings: { pauseToggle: 'KeyJ' } })),
@@ -122,7 +126,7 @@ describe('parseStoredSettings', () => {
 
   it('falls back per field, not per blob', () => {
     const parsed = parseStoredSettings(
-      '{"language":"eng","uiScaleFactor":"big","displayMode":"borderless","renderScale":"max","backingDensity":"half","postFxEnabled":1,"fpsLimit":45,"minimapSize":"huge","constructionView":"tiles"}',
+      '{"language":"eng","uiScaleFactor":"big","displayMode":"borderless","renderScale":"max","backingDensity":"half","postFxEnabled":1,"fpsLimit":45,"minimapSize":"huge","constructionView":"tiles","menuNews":{"news":{"collapsed":true,"seen":["a long mark",7,"0a1b2c3d"]},"versions":"open"}}',
     );
     expect(parsed.language).toBe('eng');
     expect(parsed.uiScaleFactor).toBe(defaultSettings().uiScaleFactor);
@@ -135,6 +139,10 @@ describe('parseStoredSettings', () => {
     expect(parsed.keyBindings).toEqual(DEFAULT_KEY_BINDINGS);
     expect(parsed.minimapSize).toBe(defaultSettings().minimapSize);
     expect(parsed.constructionView).toBe(defaultSettings().constructionView);
+    expect(parsed.menuNews).toEqual({
+      news: { collapsed: true, seen: ['0a1b2c3d'] },
+      versions: defaultSettings().menuNews.versions,
+    });
   });
 
   it('keeps the display-rate frame cap and defaults a missing one', () => {

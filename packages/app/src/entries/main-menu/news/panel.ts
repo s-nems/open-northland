@@ -1,14 +1,19 @@
 import { GAME_VERSION } from '../../../build-version.js';
 import { bcp47Tag, currentLocale, formatMessage, messages } from '../../../i18n/index.js';
 import { servedByBrowser } from '../../../view/platform/host.js';
+import type { MenuNewsColumn, MenuNewsColumns } from '../../../view/settings/store.js';
+import { menuSettings, updateSettings } from '../settings/state.js';
 import {
+  hasUnseen,
   type MenuNews,
   type NewsEntryView,
   type NewsPanelModel,
+  newsColumnMarks,
   newsPanelModel,
   panelIsEmpty,
   type ReleaseView,
   type UpdateNotice,
+  versionsColumnMarks,
 } from './model.js';
 import { formatCalendarDate, formatEventStart, formatUntilStart } from './when.js';
 import './news.css';
@@ -86,13 +91,94 @@ function releasesElement(releases: readonly ReleaseView[], tag: string): HTMLEle
   return list;
 }
 
-function columnElement(className: string, heading: string, blocks: readonly HTMLElement[]): HTMLElement {
-  const column = element('div', `main-menu__news-column ${className}`);
-  column.append(element('div', 'main-menu__news-heading', heading), ...blocks);
+const childElements = (parent: HTMLElement): HTMLElement[] =>
+  [...parent.children].filter((child): child is HTMLElement => child instanceof HTMLElement);
+
+/** Hides, and takes out of Tab order and the accessibility tree, each block that reaches past its
+ *  column's height cap and every block after it, so a short window drops whole blocks instead of
+ *  cutting one. An unfolded column left without blocks hides its heading too. */
+function retireHiddenBlocks(column: HTMLElement): void {
+  const [heading, body] = childElements(column);
+  if (heading === undefined || body === undefined) return;
+  if (body.hidden) {
+    heading.inert = false;
+    return;
+  }
+  const limit = column.getBoundingClientRect().bottom;
+  const blocks = childElements(body);
+  let fits = true;
+  for (const block of blocks) {
+    fits &&= block.getBoundingClientRect().bottom <= limit;
+    block.inert = !fits;
+  }
+  heading.inert = blocks.every((block) => block.inert);
+}
+
+/** Where the panel keeps each column's fold and what the player saw in it; the menu settings by
+ *  default. */
+export interface NewsColumnStore {
+  readonly read: () => MenuNewsColumns;
+  readonly write: (columns: MenuNewsColumns) => void;
+}
+
+const menuSettingsColumns: NewsColumnStore = {
+  read: () => menuSettings().menuNews,
+  write: (columns) => void updateSettings({ menuNews: columns }),
+};
+
+interface ColumnSpec {
+  readonly id: MenuNewsColumn;
+  readonly className: string;
+  readonly heading: string;
+  readonly blocks: readonly HTMLElement[];
+  readonly marks: readonly string[];
+}
+
+function sameMarks(a: readonly string[], b: readonly string[]): boolean {
+  return a.length === b.length && a.every((mark, i) => mark === b[i]);
+}
+
+/** A column whose heading folds and unfolds its blocks. Shown unfolded, the column records its items
+ *  as seen; folded, its heading carries a dot while it holds an item the player has not seen. */
+function columnElement(spec: ColumnSpec, store: NewsColumnStore): HTMLElement {
+  const copy = messages().mainMenu.news;
+  const column = element('div', `main-menu__news-column ${spec.className}`);
+  const body = element('div', 'main-menu__news-body');
+  body.id = `main-menu-news-${spec.id}`;
+  body.append(...spec.blocks);
+  const heading = element('button', 'main-menu__news-heading');
+  heading.type = 'button';
+  heading.setAttribute('aria-controls', body.id);
+  const unseen = element('span', 'main-menu__news-unseen');
+  unseen.setAttribute('role', 'img');
+  unseen.setAttribute('aria-label', copy.unseen);
+  unseen.title = copy.unseen;
+  const chevron = element('span', 'main-menu__news-chevron');
+  chevron.setAttribute('aria-hidden', 'true');
+  heading.append(element('span', 'main-menu__news-label', spec.heading), unseen, chevron);
+  column.append(heading, body);
+
+  const show = (collapsed: boolean): void => {
+    const state = store.read()[spec.id];
+    if (state.collapsed !== collapsed || (!collapsed && !sameMarks(state.seen, spec.marks))) {
+      store.write({
+        ...store.read(),
+        [spec.id]: { collapsed, seen: collapsed ? state.seen : spec.marks },
+      });
+    }
+    body.hidden = collapsed;
+    column.classList.toggle('is-collapsed', collapsed);
+    heading.setAttribute('aria-expanded', String(!collapsed));
+    heading.title = collapsed ? copy.expand : copy.collapse;
+    unseen.hidden = !collapsed || !hasUnseen(spec.marks, state.seen);
+    retireHiddenBlocks(column);
+  };
+  heading.addEventListener('click', () => show(heading.getAttribute('aria-expanded') === 'true'));
+  show(store.read()[spec.id].collapsed);
   return column;
 }
 
-function panelElement(model: NewsPanelModel, nowMs: number): HTMLElement {
+function panelElement(model: NewsPanelModel, nowMs: number, store: NewsColumnStore): HTMLElement {
   const copy = messages().mainMenu.news;
   const tag = bcp47Tag();
   const versions: HTMLElement[] = [];
@@ -104,33 +190,32 @@ function panelElement(model: NewsPanelModel, nowMs: number): HTMLElement {
   if (model.entries.length > 0) {
     panel.append(
       columnElement(
-        'main-menu__news-entries',
-        copy.heading,
-        model.entries.map((entry) => entryElement(entry, nowMs, tag)),
+        {
+          id: 'news',
+          className: 'main-menu__news-entries',
+          heading: copy.heading,
+          blocks: model.entries.map((entry) => entryElement(entry, nowMs, tag)),
+          marks: newsColumnMarks(model),
+        },
+        store,
       ),
     );
   }
-  if (versions.length > 0) panel.append(columnElement('main-menu__news-versions', copy.releases, versions));
-  return panel;
-}
-
-const childElements = (parent: HTMLElement): HTMLElement[] =>
-  [...parent.children].filter((child): child is HTMLElement => child instanceof HTMLElement);
-
-/** Hides, and takes out of Tab order and the accessibility tree, each block that reaches past its
- *  column's height cap and every block after it, so a short window drops whole blocks instead of
- *  cutting one. A column left without blocks hides its heading too. */
-function retireHiddenBlocks(panel: HTMLElement): void {
-  for (const column of childElements(panel)) {
-    const limit = column.getBoundingClientRect().bottom;
-    const [heading, ...blocks] = childElements(column);
-    let fits = true;
-    for (const block of blocks) {
-      fits &&= block.getBoundingClientRect().bottom <= limit;
-      block.inert = !fits;
-    }
-    if (heading !== undefined) heading.inert = blocks.every((block) => block.inert);
+  if (versions.length > 0) {
+    panel.append(
+      columnElement(
+        {
+          id: 'versions',
+          className: 'main-menu__news-versions',
+          heading: copy.releases,
+          blocks: versions,
+          marks: versionsColumnMarks(model),
+        },
+        store,
+      ),
+    );
   }
+  return panel;
 }
 
 const entryKeys = (model: NewsPanelModel): string => model.entries.map((entry) => entry.key).join(',');
@@ -143,6 +228,7 @@ export function mountNewsPanel(
   host: HTMLElement,
   news: Promise<MenuNews>,
   now: () => number = Date.now,
+  store: NewsColumnStore = menuSettingsColumns,
 ): () => void {
   let disposed = false;
   let timer: ReturnType<typeof setInterval> | undefined;
@@ -150,7 +236,7 @@ export function mountNewsPanel(
   let shownKeys = '';
   // A window or interface scale change resizes the columns, which may hide or reveal blocks.
   const resizes = new ResizeObserver(() => {
-    if (shown !== null) retireHiddenBlocks(shown);
+    if (shown !== null) for (const column of childElements(shown)) retireHiddenBlocks(column);
   });
   const modelAt = (data: MenuNews, nowMs: number): NewsPanelModel =>
     newsPanelModel(data, nowMs, currentLocale(), { version: GAME_VERSION, browser: servedByBrowser() });
@@ -165,7 +251,7 @@ export function mountNewsPanel(
       }
       return;
     }
-    const next = panelIsEmpty(model) ? null : panelElement(model, nowMs);
+    const next = panelIsEmpty(model) ? null : panelElement(model, nowMs, store);
     if (shown === null && next !== null) next.classList.add('is-entering');
     resizes.disconnect();
     shown?.remove();

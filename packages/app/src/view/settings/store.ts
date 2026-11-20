@@ -93,6 +93,28 @@ export const SCROLL_SPEED_MIN = 0.5;
 export const SCROLL_SPEED_MAX = 3;
 export const DEFAULT_SCROLL_SPEED = 1.5;
 
+/** The main menu's two news columns. */
+export type MenuNewsColumn = 'news' | 'versions';
+
+export interface MenuNewsColumnState {
+  readonly collapsed: boolean;
+  /** Marks of the items the player last saw in the column expanded (`news/model.ts` `columnMarks`). */
+  readonly seen: readonly string[];
+}
+
+export type MenuNewsColumns = Readonly<Record<MenuNewsColumn, MenuNewsColumnState>>;
+
+/** More marks than a column can show at once are never stored. */
+export const MAX_SEEN_MARKS = 8;
+/** A mark is a 32-bit hash in hex. */
+export const SEEN_MARK_DIGITS = 8;
+const SEEN_MARK = new RegExp(`^[0-9a-f]{${SEEN_MARK_DIGITS}}$`);
+
+const DEFAULT_MENU_NEWS: MenuNewsColumns = {
+  news: { collapsed: false, seen: [] },
+  versions: { collapsed: false, seen: [] },
+};
+
 export interface MenuSettings {
   /** Fullscreen preference, written by whatever changes the window; `view/platform/fullscreen.ts` owns how a
    *  document gets back into it. */
@@ -214,6 +236,8 @@ export interface MenuSettings {
   readonly originalGameFolder: string | null;
   readonly autosaveMinutes: AutosaveMinutes;
   readonly autosaveCount: AutosaveCount;
+  /** Which main-menu news columns the player folded, and what each last showed them. */
+  readonly menuNews: MenuNewsColumns;
 }
 
 /** The desktop game, known by its shell's bridge, owns its window and keeps sounding behind another
@@ -297,6 +321,7 @@ export function defaultSettings(): MenuSettings {
     originalGameFolder: null,
     autosaveMinutes: 0,
     autosaveCount: DEFAULT_AUTOSAVE_COUNT,
+    menuNews: DEFAULT_MENU_NEWS,
   };
 }
 
@@ -396,6 +421,23 @@ function parseVolumes(value: unknown): MixerVolumes {
     ambient: position('ambient'),
     ui: position('ui'),
   };
+}
+
+function parseMenuNewsColumn(value: unknown): MenuNewsColumnState {
+  if (typeof value !== 'object' || value === null) return { collapsed: false, seen: [] };
+  const record = value as Record<string, unknown>;
+  const seen = Array.isArray(record.seen) ? record.seen : [];
+  return {
+    collapsed: record.collapsed === true,
+    seen: seen
+      .filter((mark): mark is string => typeof mark === 'string' && SEEN_MARK.test(mark))
+      .slice(0, MAX_SEEN_MARKS),
+  };
+}
+
+function parseMenuNews(value: unknown): MenuNewsColumns {
+  const record = typeof value === 'object' && value !== null ? (value as Record<string, unknown>) : {};
+  return { news: parseMenuNewsColumn(record.news), versions: parseMenuNewsColumn(record.versions) };
 }
 
 /** Parse a stored settings blob; a missing or deformed field falls back to its default. */
@@ -501,6 +543,7 @@ export function parseStoredSettings(raw: string | null): MenuSettings {
     originalGameVerified: record.originalGameVerified === true,
     originalGameLabel: optionalText(record.originalGameLabel),
     originalGameFolder: optionalText(record.originalGameFolder),
+    menuNews: parseMenuNews(record.menuNews),
   };
 }
 

@@ -31,6 +31,9 @@ export const deSurfaces = {
       live: 'Läuft gerade',
       releases: 'Letzte Versionen',
       changelog: 'Änderungen',
+      collapse: 'Ausblenden',
+      expand: 'Einblenden',
+      unseen: 'Neu',
     },
     originalGame: {
       message: 'Zum Spielen muss eines dieser Spiele installiert sein:',

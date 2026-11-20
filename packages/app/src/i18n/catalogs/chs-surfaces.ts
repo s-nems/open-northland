@@ -32,6 +32,9 @@ export const chsSurfaces = {
       live: '正在进行',
       releases: '最近版本',
       changelog: '更新日志',
+      collapse: '隐藏',
+      expand: '显示',
+      unseen: '新',
     },
     originalGame: {
       message: '本游戏需要已安装以下任意一款游戏：',

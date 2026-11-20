@@ -32,6 +32,9 @@ export const plSurfaces = {
       live: 'Trwa teraz',
       releases: 'Ostatnie wersje',
       changelog: 'Lista zmian',
+      collapse: 'Ukryj',
+      expand: 'Pokaż',
+      unseen: 'Nowe',
     },
     originalGame: {
       message: 'Do gry potrzebna jest zainstalowana jedna z gier:',

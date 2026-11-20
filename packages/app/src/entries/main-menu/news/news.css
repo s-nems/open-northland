@@ -3,7 +3,7 @@
    (menu.css .main-menu__home). The versions stand in the top-right corner on the nav's right edge,
    below the fullscreen prompt's slot (fullscreen-prompt.css) and above the nav. Each column is capped
    to its room; panel.ts hides the blocks that reach past the cap, so a short window drops whole
-   blocks instead of cutting one. */
+   blocks instead of cutting one. Each heading folds its column's body. */
 
 .main-menu__news {
   /* The brand block's height in design units: eyebrow 19 + 20, logo 336, version 28 + 18. */
@@ -47,11 +47,27 @@
   text-align: right;
 }
 
-.main-menu__news-column > * {
+.main-menu__news-column > *,
+.main-menu__news-body > * {
   flex: none;
 }
 
-.main-menu__news-column > [inert] {
+.main-menu__news-body {
+  display: flex;
+  flex-direction: column;
+  gap: inherit;
+}
+
+.main-menu__news-body[hidden] {
+  display: none;
+}
+
+.main-menu__news-versions > .main-menu__news-body {
+  align-items: flex-end;
+}
+
+.main-menu__news-column > [inert],
+.main-menu__news-body > [inert] {
   visibility: hidden;
 }
 
@@ -66,13 +82,61 @@
 }
 
 .main-menu__news-heading {
+  all: unset;
   display: flex;
   align-items: center;
   gap: calc(var(--u) * 14);
+  cursor: var(--cursor-pointer, pointer);
   font: 500 calc(var(--u) * 17) / 1 var(--font-body);
   letter-spacing: 0.3em;
   text-transform: uppercase;
   color: var(--text-label);
+  transition: color 150ms ease-out;
+}
+
+.main-menu__news-heading:hover,
+.main-menu__news-heading:focus-visible {
+  color: var(--accent-bright);
+}
+
+/* The label's letter spacing trails after its last letter; the chevron keeps the gap even. */
+.main-menu__news-label {
+  margin-right: -0.3em;
+}
+
+/* Points where a click moves the column: up to fold it, down to unfold it. */
+.main-menu__news-chevron {
+  flex: none;
+  width: calc(var(--u) * 7);
+  height: calc(var(--u) * 7);
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  transform: translateY(25%) rotate(-135deg);
+  opacity: 0.75;
+  transition: transform 150ms ease-out;
+}
+
+.main-menu__news-column.is-collapsed .main-menu__news-chevron {
+  transform: translateY(-25%) rotate(45deg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .main-menu__news-chevron {
+    transition: none;
+  }
+}
+
+.main-menu__news-unseen {
+  flex: none;
+  width: calc(var(--u) * 9);
+  height: calc(var(--u) * 9);
+  border-radius: 50%;
+  background: var(--accent-bright);
+  box-shadow: 0 0 calc(var(--u) * 8) rgb(var(--accent-rgb) / 0.8);
+}
+
+.main-menu__news-unseen[hidden] {
+  display: none;
 }
 
 .main-menu__news-heading::before {

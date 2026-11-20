@@ -9,6 +9,7 @@ import {
   type ReleaseFeed,
   type SiteLinks,
 } from '@open-northland/data';
+import { SEEN_MARK_DIGITS } from '../../../view/settings/store.js';
 
 const MINUTE_MS = 60_000;
 const HOUR_MS = 60 * MINUTE_MS;
@@ -32,6 +33,9 @@ export interface NewsEntryView {
   readonly link: { readonly url: string; readonly label: string | null } | null;
   /** Epoch ms; null for an undated entry. */
   readonly startsAt: number | null;
+  /** The same in every language and session, while the owner leaves the entry's English title and
+   *  start alone. */
+  readonly identity: string;
 }
 
 export interface ReleaseView {
@@ -140,6 +144,7 @@ function entryView(entry: NewsEntry, key: number, lang: Language): NewsEntryView
         ? null
         : { url: link.url, label: link.label === undefined ? null : pickText(link.label, lang) },
     startsAt: entry.startsAt === undefined ? null : Date.parse(entry.startsAt),
+    identity: `${entry.title.eng}\n${entry.startsAt ?? ''}`,
   };
 }
 
@@ -164,4 +169,37 @@ export function newsPanelModel(
 
 export function panelIsEmpty(model: NewsPanelModel): boolean {
   return model.notice === null && model.entries.length === 0 && model.releases.length === 0;
+}
+
+const FNV_OFFSET_BASIS = 0x811c9dc5;
+const FNV_PRIME = 0x01000193;
+const HEX = 16;
+
+/** A short FNV-1a hash of `text`, kept to mark what a column showed. */
+function seenMark(text: string): string {
+  let hash = FNV_OFFSET_BASIS;
+  for (let i = 0; i < text.length; i++) {
+    hash ^= text.charCodeAt(i);
+    hash = Math.imul(hash, FNV_PRIME);
+  }
+  return (hash >>> 0).toString(HEX).padStart(SEEN_MARK_DIGITS, '0');
+}
+
+/** One mark per item the news column shows. */
+export function newsColumnMarks(model: NewsPanelModel): readonly string[] {
+  return model.entries.map((entry) => seenMark(entry.identity));
+}
+
+/** The versions column changes for the player when a newer release or update notice comes. */
+export function versionsColumnMarks(model: NewsPanelModel): readonly string[] {
+  const newest = model.releases[0];
+  return [
+    ...(newest === undefined ? [] : [seenMark(`release ${newest.version}`)]),
+    ...(model.notice === null ? [] : [seenMark(`notice ${model.notice.version}`)]),
+  ];
+}
+
+/** Something in the column the player has not seen yet; an item that left does not count. */
+export function hasUnseen(marks: readonly string[], seen: readonly string[]): boolean {
+  return marks.some((mark) => !seen.includes(mark));
 }

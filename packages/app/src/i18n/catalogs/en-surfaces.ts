@@ -32,6 +32,9 @@ export const enSurfaces = {
       live: 'On now',
       releases: 'Recent releases',
       changelog: 'Changelog',
+      collapse: 'Hide',
+      expand: 'Show',
+      unseen: 'New',
     },
     originalGame: {
       message: 'The game needs one of these games installed:',

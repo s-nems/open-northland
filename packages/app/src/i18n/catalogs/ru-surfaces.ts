@@ -31,6 +31,9 @@ export const ruSurfaces = {
       live: 'Идёт сейчас',
       releases: 'Последние версии',
       changelog: 'Список изменений',
+      collapse: 'Скрыть',
+      expand: 'Показать',
+      unseen: 'Новое',
     },
     originalGame: {
       message: 'Для игры должна быть установлена одна из этих игр:',
