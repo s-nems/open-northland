@@ -57,7 +57,6 @@ import {
   fighterAt,
   fighterAtNode,
   grass,
-  HERO_AXE_MAIN_TYPE,
   IRON_SPEAR_DAMAGE,
   OTHER,
   QUIET_FORM_JOB,
@@ -309,7 +308,7 @@ describe('combatSystem - the swing carries the ATTACK-event hit-frame + the weap
     combatSystem(sim.world, ctxOf(sim));
     const effect = sim.world.get(swinger, CurrentAtomic).effect;
     expect(effect).toMatchObject({ hitFrames: [] }); // no ATTACK event -> the clip lands no blow
-    expect(effect).toMatchObject({ weaponMainType: HERO_AXE_MAIN_TYPE });
+    expect(effect).toMatchObject({ weaponMainType: WEAPON_MAIN_TYPE.SWORD });
   });
 });
 

@@ -21,7 +21,7 @@ import { withMonsterTribes } from '../../catalog/creatures.js';
 import { JOB_CIVILIST, JOB_HEROINE_BOW, JOB_SOLDIER_UNARMED, JOB_WOMAN } from '../../catalog/jobs.js';
 import { professionDefForJob } from '../../catalog/professions.js';
 import { WEAPON_XP_KEY_BY_TYPE } from '../../catalog/weapon-experience.js';
-import { withGoodOverlays, withHeroFistJob, withShelterCapacity } from '../../content/real-content.js';
+import { withGoodOverlays, withShelterCapacity } from '../../content/real-content.js';
 import { PRIMARY_TRIBE } from '../../game/rules.js';
 import { goodName, messages, tribeName } from '../../i18n/index.js';
 import type {
@@ -362,11 +362,12 @@ function buildWeapons(
   joins: Joins,
   tribes: readonly TribeType[],
 ): ReadonlyMap<number, readonly KnowledgeWeapon[]> {
-  const rows = joins.content.weapons.map(withHeroFistJob);
   return new Map(
     tribes.map((tribe) => [
       tribe.typeId,
-      rows.filter((w) => w.tribeType === tribe.typeId).map((w) => weaponRow(joins, tribe, w)),
+      joins.content.weapons
+        .filter((w) => w.tribeType === tribe.typeId)
+        .map((w) => weaponRow(joins, tribe, w)),
     ]),
   );
 }

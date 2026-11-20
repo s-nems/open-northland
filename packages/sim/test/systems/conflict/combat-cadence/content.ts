@@ -29,8 +29,6 @@ export const SOLDIER_SILENT = 36;
 /** A short-bow soldier: a ranged weapon with a dead zone, `minimumrange 3`. */
 export const SOLDIER_BOW = 37;
 export const BOW_MIN_RANGE = 3;
-/** The hero axe's `mainType` in `weapons.ini`. */
-export const HERO_AXE_MAIN_TYPE = 5;
 export const HERO = 42; // hero band
 
 export const CHAIN_CLASS = 3; // armor typeId/material 3
@@ -158,7 +156,7 @@ export function combatCadenceContent(): ContentSet {
       id: 'silent_blade',
       tribeType: tribe,
       jobType: SOLDIER_SILENT,
-      mainType: HERO_AXE_MAIN_TYPE,
+      mainType: WEAPON_MAIN_TYPE.SWORD,
       minRange: 1,
       maxRange: 1,
       damage: SHORT_SWORD_DAMAGE,

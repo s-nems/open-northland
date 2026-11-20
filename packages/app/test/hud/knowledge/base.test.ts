@@ -9,10 +9,10 @@ import {
   HARE_TRIBE,
   HOUSE,
   knowledgeContent,
-  SABER_JOB,
   SMITH_JOB,
   SMITHY_HITPOINTS,
   SPEAR_CLIP_TICKS,
+  UNPERMITTED_JOB,
   VIKING,
   WOLF_TRIBE,
 } from '../../support/knowledge-content.js';
@@ -97,7 +97,7 @@ describe('the knowledge base jobs', () => {
   it('lists only the trades the reference tribe may hold', () => {
     const knowledge = base();
     expect(knowledge.jobByType.has(SMITH_JOB)).toBe(true);
-    expect(knowledge.jobByType.has(SABER_JOB)).toBe(false);
+    expect(knowledge.jobByType.has(UNPERMITTED_JOB)).toBe(false);
   });
 
   it('keeps a civil trade school course, unnamed marker dropped, and refuses a fighter one', () => {
@@ -129,7 +129,7 @@ describe('the knowledge base fighters', () => {
       blows: 2,
       usable: true,
     });
-    expect(rows.find((w) => w.id === 'short_saber')).toMatchObject({
+    expect(rows.find((w) => w.id === 'unpermitted_blade')).toMatchObject({
       clipTicks: null,
       blows: 1,
       usable: false,

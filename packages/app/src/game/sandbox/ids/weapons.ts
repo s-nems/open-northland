@@ -1,7 +1,6 @@
 import {
   JOB_ARCHER,
   JOB_ARCHER_LONG,
-  JOB_HERO_AXE,
   JOB_HERO_SABER,
   JOB_HERO_SPEAR,
   JOB_HERO_SWORD,
@@ -40,7 +39,6 @@ export const WEAPON_GOOD_SLUG_BY_JOB: Readonly<Record<number, string>> = {
   [JOB_HERO_SPEAR]: 'spear_iron',
   [JOB_HERO_SWORD]: 'sword_shord',
   [JOB_HERO_SABER]: 'sword_long',
-  [JOB_HERO_AXE]: 'sword_long',
   [JOB_HEROINE_BOW]: 'bow_long',
 };
 

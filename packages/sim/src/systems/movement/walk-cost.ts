@@ -183,7 +183,7 @@ function equipmentWeight(
 ): number {
   const weaponType = world.tryGet(e, Weapon)?.weaponTypeId;
   const classWeapon = job === null ? undefined : index.weaponsByTribeAndJob.get(tribe)?.get(job);
-  // Several weapon classes share a good (sword/saber). Preserve the equipped combat identity;
+  // Several weapon classes can share a good. Preserve the equipped combat identity;
   // a good lookup alone loses the class's weight. A spawned class may have no explicit Weapon yet.
   const weapon =
     weaponType !== undefined

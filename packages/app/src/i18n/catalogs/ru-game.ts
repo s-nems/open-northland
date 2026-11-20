@@ -1848,7 +1848,6 @@ export const ruGame = {
     hero_spear_siegfried: 'Сигурд',
     hero_sword_bjarni: 'Бьярни',
     hero_saber_hatschi: 'Хатчи',
-    hero_axe: 'Герой с топором',
     heroine_bow_xena: 'Кира',
   },
   admin: {

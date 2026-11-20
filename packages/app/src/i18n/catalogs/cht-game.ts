@@ -1692,7 +1692,6 @@ export const chtGame = {
     hero_spear_siegfried: '西格德',
     hero_sword_bjarni: '比亞尼',
     hero_saber_hatschi: '哈奇',
-    hero_axe: '戰斧英雄',
     heroine_bow_xena: '希拉',
   },
   admin: {

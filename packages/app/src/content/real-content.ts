@@ -7,7 +7,6 @@ import {
   type JobType,
   parseContentSet,
   parseGeneratedContentSet,
-  type WeaponType,
 } from '@open-northland/data';
 import { HARVEST_CADAVER_ATOMIC } from '../catalog/atomics.js';
 import { VIKING_BUILDINGS } from '../catalog/buildings.js';
@@ -31,7 +30,6 @@ const HERO_ARMOR_BY_JOB_ID: Readonly<Record<string, number | undefined>> = {
   hero_spear_siegfried: 4,
   hero_sword_bjarni: 3,
   hero_saber_hatschi: 3,
-  hero_axe: 3,
   heroine_bow_xena: 2,
 };
 
@@ -98,15 +96,6 @@ function withHeroArmor(job: JobType): JobType {
   return fixedArmorType === undefined ? job : { ...job, fixedArmorType };
 }
 
-/** Repair the Byzantine and Egyptian `hero fist` rows whose readable `weapons.ini` anomalously binds job
- * 32: the same named type-3 row with the same stats binds unarmed-hero job 42 for all three other playable
- * tribes. This inferred correction keeps the raw pipeline faithful and closes the runtime join here. */
-export function withHeroFistJob(weapon: WeaponType): WeaponType {
-  return weapon.id === 'hero_fist' && weapon.typeId === 3 && weapon.jobType === 32
-    ? { ...weapon, jobType: 42 }
-    : weapon;
-}
-
 /** Overlay the garrison size: the flag decides who offers the mode, so an unflagged row is zeroed whatever
  *  it arrived with. */
 export function withShelterCapacity(building: BuildingType): BuildingType {
@@ -160,7 +149,6 @@ export function mergeRealContent(real: ContentSet): RealContentMerge {
   const landscapeIds = new Set(real.landscape.map((t) => t.typeId));
   const navRows = NAV_LANDSCAPE_TYPES.filter((t) => !landscapeIds.has(t.typeId));
   const landscape = [...real.landscape, ...navRows];
-  const weapons = real.weapons.map(withHeroFistJob);
   // Only a good felled or mined off a landscape node reads the felling/mining balance. A field crop, a
   // carcass yield and a hive's honey (no harvest stage) are supplied by their own loops.
   const unbalancedGoods = goods
@@ -180,7 +168,6 @@ export function mergeRealContent(real: ContentSet): RealContentMerge {
       jobs,
       buildings,
       landscape,
-      weapons,
       tribes: real.tribes.map(withMonsterRules),
     }),
     unbalancedGoods,

@@ -1858,7 +1858,6 @@ export const deGame = {
     hero_spear_siegfried: 'Sigurd',
     hero_sword_bjarni: 'Bjarni',
     hero_saber_hatschi: 'Hatschi',
-    hero_axe: 'Axtheld',
     heroine_bow_xena: 'Cyra',
   },
   admin: {

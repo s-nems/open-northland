@@ -47,7 +47,7 @@ const CARRIER_JOB = 24;
 const SOLDIER_JOB = 31;
 const SPEAR_JOB = 32;
 const SWORD_JOB = 34;
-const SABER_JOB = 37;
+const LONG_SWORD_JOB = 35;
 const BOW_JOB = 40;
 const BARRACKS_TYPE = 91;
 /** A house whose one walk-blocked node is its own. */
@@ -60,7 +60,7 @@ const POINTS_FRAME = 22;
 const POINTS_PER_COIN = 25;
 /** A served term: whole repetitions until the term's ticks are drawn down, the last one overrunning. */
 const SERVED_TERM_TICKS = Math.ceil(COIN_DRILL_TERM_TICKS / TRAIN_CLIP_TICKS) * TRAIN_CLIP_TICKS;
-const WEAPON_CLASS = { SPEAR: 2, SWORD: 3, SABER: 4, BOW: 6 } as const;
+const WEAPON_CLASS = { SPEAR: 2, SWORD: 3, BOW: 6 } as const;
 /** The walk between the soldiers' row and the barracks door at the fixture's gait, with slack. */
 const WALK_TICKS = 120;
 /** Enough hitpoints to outlast the few blows a test reads. */
@@ -88,7 +88,7 @@ function coinDrillContent(seats?: number): ContentSet {
       ...base.jobs,
       { typeId: SPEAR_JOB, id: 'soldier_spear_wooden', baseJob: SOLDIER_JOB, ignoresHomeHouse: true },
       { typeId: SWORD_JOB, id: 'soldier_sword_short', baseJob: SOLDIER_JOB, ignoresHomeHouse: true },
-      { typeId: SABER_JOB, id: 'soldier_saber_long', baseJob: SOLDIER_JOB, ignoresHomeHouse: true },
+      { typeId: LONG_SWORD_JOB, id: 'soldier_sword_long', baseJob: SOLDIER_JOB, ignoresHomeHouse: true },
       { typeId: BOW_JOB, id: 'soldier_bow_short', baseJob: SOLDIER_JOB, ignoresHomeHouse: true },
     ],
     weapons: [
@@ -96,7 +96,7 @@ function coinDrillContent(seats?: number): ContentSet {
       weapon(40, SPEAR_JOB, WEAPON_CLASS.SPEAR),
       weapon(41, SWORD_JOB, WEAPON_CLASS.SWORD),
       weapon(42, BOW_JOB, WEAPON_CLASS.BOW),
-      weapon(43, SABER_JOB, WEAPON_CLASS.SABER),
+      weapon(43, LONG_SWORD_JOB, WEAPON_CLASS.SWORD),
     ],
     buildings: [
       ...base.buildings,
@@ -197,7 +197,7 @@ function nodeOf(sim: Simulation, e: Entity): NodeId {
 describe('orderCoinDrill - the coin-paid soldier drill', () => {
   it('drills every soldier for a coin each, armed or bare, and refuses a civilian', () => {
     const sim = freshSim();
-    const soldierJobs = [SWORD_JOB, SPEAR_JOB, SABER_JOB, BOW_JOB, SOLDIER_JOB];
+    const soldierJobs = [SWORD_JOB, SPEAR_JOB, LONG_SWORD_JOB, BOW_JOB, SOLDIER_JOB];
     const house = barracksAt(sim, 8, 3, soldierJobs.length);
     const soldiers = soldierJobs.map((job, i) => soldierAt(sim, job, 2, 1 + i, 40));
     const civilian = soldierAt(sim, CIVILIST_JOB, 3, 6);

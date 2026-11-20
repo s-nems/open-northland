@@ -14,7 +14,6 @@ import {
   JOB_BUILDER,
   JOB_CHILD_MALE,
   JOB_COLLECTOR,
-  JOB_HERO_AXE,
   JOB_HERO_SABER,
   JOB_HERO_SPEAR,
   JOB_HERO_SWORD,
@@ -206,7 +205,6 @@ describe('selection details panel model', () => {
       [JOB_HERO_SPEAR, 'hero_spear_siegfried', 'Bohater'],
       [JOB_HERO_SWORD, 'hero_sword_bjarni', 'Bohater'],
       [JOB_HERO_SABER, 'hero_saber_hatschi', 'Bohater'],
-      [JOB_HERO_AXE, 'hero_axe', 'Bohater'],
       [JOB_HEROINE_BOW, 'heroine_bow_xena', 'Bohater'],
     ] as const;
     const ctx = {

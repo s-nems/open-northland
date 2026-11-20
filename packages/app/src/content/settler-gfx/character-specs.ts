@@ -37,8 +37,6 @@ import {
   JOB_CIVILIST,
   JOB_DRUID,
   JOB_FISHER,
-  JOB_GFX_AXE_WARRIOR,
-  JOB_HERO_AXE,
   JOB_HERO_SABER,
   JOB_HERO_SPEAR,
   JOB_HERO_SWORD,
@@ -536,10 +534,6 @@ export const CHARACTER_SPECS = {
     gfxJobs: [JOB_HERO_SABER, JOB_SOLDIER_BROADSWORD, JOB_SOLDIER_UNARMED],
     logicJob: JOB_HERO_SABER,
   },
-  'hero-axe': {
-    gfxJobs: [JOB_HERO_AXE, JOB_GFX_AXE_WARRIOR, JOB_SOLDIER_UNARMED],
-    logicJob: JOB_HERO_AXE,
-  },
   'hero-bow': {
     gfxJobs: [JOB_HEROINE_BOW, JOB_ARCHER_LONG, JOB_SOLDIER_UNARMED],
     logicJob: JOB_HEROINE_BOW,
@@ -578,7 +572,6 @@ export const ADULT_CHARACTER_BY_JOB: Readonly<Record<number, CharacterSpecId>> =
   [JOB_HERO_SPEAR]: 'hero-spear',
   [JOB_HERO_SWORD]: 'hero-sword',
   [JOB_HERO_SABER]: 'hero-saber',
-  [JOB_HERO_AXE]: 'hero-axe',
   [JOB_HEROINE_BOW]: 'hero-bow',
 };
 
@@ -588,7 +581,6 @@ export const HERO_JOBS: readonly number[] = [
   JOB_HERO_SPEAR,
   JOB_HERO_SWORD,
   JOB_HERO_SABER,
-  JOB_HERO_AXE,
   JOB_HEROINE_BOW,
 ];
 

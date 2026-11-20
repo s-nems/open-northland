@@ -13,7 +13,7 @@ export const SMITH_JOB = 13;
 export const CARRIER_JOB = 24;
 export const COLLECTOR_JOB = 8;
 export const SOLDIER_SPEAR_JOB = 32;
-export const SABER_JOB = 36;
+export const UNPERMITTED_JOB = 36;
 
 export const GOOD = {
   water: 1,
@@ -83,7 +83,7 @@ export function knowledgeContent(): ContentSet {
       { typeId: SMITH_JOB, id: 'smith' },
       { typeId: CARRIER_JOB, id: 'carrier' },
       { typeId: SOLDIER_SPEAR_JOB, id: 'soldier_spear_wooden' },
-      { typeId: SABER_JOB, id: 'soldier_saber_short' },
+      { typeId: UNPERMITTED_JOB, id: 'soldier_unpermitted' },
       { typeId: 49, id: 'adult_animal' },
     ],
     buildings: [
@@ -164,11 +164,11 @@ export function knowledgeContent(): ContentSet {
       },
       {
         typeId: 10,
-        id: 'short_saber',
+        id: 'unpermitted_blade',
         tribeType: VIKING,
-        jobType: SABER_JOB,
+        jobType: UNPERMITTED_JOB,
         goodType: GOOD.spear_wooden,
-        mainType: 4,
+        mainType: 3,
       },
       { typeId: 1, id: 'bite', tribeType: WOLF_TRIBE, damage: { '0': 30 }, minRange: 1, maxRange: 2 },
     ],

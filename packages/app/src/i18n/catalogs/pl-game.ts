@@ -1708,7 +1708,6 @@ export const plGame = {
     hero_spear_siegfried: 'Sigurd',
     hero_sword_bjarni: 'Bjarni',
     hero_saber_hatschi: 'Hatchie',
-    hero_axe: 'Bohater topornik',
     heroine_bow_xena: 'Cyra',
   },
   admin: {

@@ -30,7 +30,6 @@ import {
   fighterAt,
   grass,
   HERO,
-  HERO_AXE_MAIN_TYPE,
   IRON_SPEAR_DAMAGE,
   OTHER,
   SOLDIER_SPEAR,
@@ -85,7 +84,7 @@ describe('atomicSystem - a damaging swing accrues fight XP into the personal cou
     expect(xp.size).toBe(1); // no other bucket, no trade track
   });
 
-  it('a change of weapon keeps the counter: every class but the catapult adds to it, saber and axe too', () => {
+  it('a change of weapon keeps the counter: every class but the catapult adds to it', () => {
     const sim = new Simulation({ seed: 1, content: combatCadenceContent(), map: grass(3, 1) });
     const attacker = fighterAt(sim, 0, 0, VIKING, SOLDIER_UNARMED);
     const target = fighterAt(sim, 1, 0, OTHER, null, { hitpoints: 10_000 });
@@ -93,8 +92,7 @@ describe('atomicSystem - a damaging swing accrues fight XP into the personal cou
       WEAPON_MAIN_TYPE.UNARMED,
       WEAPON_MAIN_TYPE.SPEAR,
       WEAPON_MAIN_TYPE.SWORD,
-      WEAPON_MAIN_TYPE.SABER,
-      HERO_AXE_MAIN_TYPE,
+      WEAPON_MAIN_TYPE.BOW,
     ];
     for (const mainType of classes) {
       startSwing(sim, attacker, { target, damage: 100, hitFrames: [0], weaponMainType: mainType }, 2);

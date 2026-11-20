@@ -106,7 +106,7 @@ export function originalNameOverlay(strings: GuiStrings, content: NameContent): 
   const jobOfKey = professionJobs(content);
   const rosterJobs = new Set(PROFESSIONS.map((p) => p.jobType));
   const heroJobs = content.jobs.filter((row) => systems.isHeroJobRow(row));
-  // Only the classes a soldier can hold: the sabre and axe rows stay decoded but unnamed.
+  // Only the classes a soldier can hold.
   const soldierJobs = content.jobs.filter((row) => SOLDIER_CLASS_OF_JOB.has(row.typeId));
   const roleJobs = content.jobs.filter(
     (row) => !rosterJobs.has(row.typeId) && !isSoldierJob(row.typeId) && !systems.isHeroJobRow(row),

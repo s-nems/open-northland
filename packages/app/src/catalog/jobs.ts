@@ -54,9 +54,6 @@ export const JOB_SOLDIER_SPEAR_WOODEN = 32; // soldier_spear_wooden
 export const JOB_SOLDIER_SPEAR = 33; // soldier_spear_iron
 export const JOB_SOLDIER_SWORD = 34; // soldier_sword_short
 export const JOB_SOLDIER_BROADSWORD = 35; // soldier_sword_long
-// Jobs 36..39 (sabre and axe soldiers) are decoded but unreachable: no sabre or axe good exists.
-/** `soldier_axe_big`, kept only as the graphics row the axe hero borrows its drawn axe from. */
-export const JOB_GFX_AXE_WARRIOR = 39;
 export const JOB_ARCHER = 40; // soldier_bow_short
 export const JOB_ARCHER_LONG = 41; // soldier_bow_long
 // The named heroes, placed by decoded mission-map `sethuman` records.
@@ -64,7 +61,6 @@ export const JOB_HERO_UNARMED = 42; // hero_unarmed
 export const JOB_HERO_SPEAR = 43; // hero_spear_siegfried
 export const JOB_HERO_SWORD = 44; // hero_sword_bjarni
 export const JOB_HERO_SABER = 45; // hero_saber_hatschi
-export const JOB_HERO_AXE = 46; // hero_axe
 export const JOB_HEROINE_BOW = 47; // heroine_bow_xena
 
 /** The Frankish tribe, whose heroine slot's graphics row is Santa Claus rather than a heroine. */

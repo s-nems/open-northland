@@ -319,8 +319,7 @@ function accruePersonalFight(world: World, e: Entity, units: number): void {
 
 /**
  * The fight-experience bucket a `weaponMainType` accrues into: the catapult's own, the personal counter for
- * every other weapon class, and `undefined` for no class. Our rule: the original trains no bucket with a
- * saber or the hero axe; here every personal weapon trains the one counter.
+ * every other weapon class, and `undefined` for no class.
  */
 export function fightExperienceTypeFor(weaponMainType: number): number | undefined {
   if (weaponMainType === WEAPON_MAIN_TYPE.CATAPULT) return FIGHT_EXPERIENCE_TYPE.CATAPULT;

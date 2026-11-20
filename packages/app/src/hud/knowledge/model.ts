@@ -138,7 +138,7 @@ export interface KnowledgeWeapon {
   readonly clipTicks: number | null;
   /** Blows one clip lands. */
   readonly blows: number;
-  /** Whether the tribe's permissions admit the row's job: no tribe fields the saber and axe trades. */
+  /** Whether the tribe's permissions admit the row's job. */
   readonly usable: boolean;
 }
 

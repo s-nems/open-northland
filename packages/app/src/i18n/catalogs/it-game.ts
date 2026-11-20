@@ -1749,7 +1749,6 @@ export const itGame = {
     hero_spear_siegfried: 'Sigurd',
     hero_sword_bjarni: 'Bjarni',
     hero_saber_hatschi: 'Hatchie',
-    hero_axe: "Eroe dell'ascia",
     heroine_bow_xena: 'Cyra',
   },
   admin: {

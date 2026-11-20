@@ -1739,7 +1739,6 @@ export const enGame = {
     hero_spear_siegfried: 'Sigurd',
     hero_sword_bjarni: 'Bjarni',
     hero_saber_hatschi: 'Hatchie',
-    hero_axe: 'Axe Hero',
     heroine_bow_xena: 'Cyra',
   },
   admin: {
