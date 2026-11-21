@@ -1,6 +1,6 @@
 import { Position } from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
-import { type HalfCellNode, nodeOfPosition } from '../../nav/halfcell.js';
+import { type HalfCellNode, nodeHxOfPosition, nodeHyOfPosition, nodeOfPosition } from '../../nav/halfcell.js';
 
 /** The half-cell node under an entity's Position, or null for an unpositioned entity. */
 export function anchorNodeOf(world: World, e: Entity): HalfCellNode | null {
@@ -14,11 +14,11 @@ export function anchorCentroid(world: World, entities: readonly Entity[]): HalfC
   let sx = 0;
   let sy = 0;
   let n = 0;
-  for (const e of entities) {
-    const node = anchorNodeOf(world, e);
-    if (node === null) continue;
-    sx += node.hx;
-    sy += node.hy;
+  for (let i = 0; i < entities.length; i++) {
+    const pos = world.tryGet(entities[i] as Entity, Position);
+    if (pos === undefined) continue;
+    sx += nodeHxOfPosition(pos.x, pos.y);
+    sy += nodeHyOfPosition(pos.x, pos.y);
     n++;
   }
   return n === 0 ? null : { hx: Math.floor(sx / n), hy: Math.floor(sy / n) };

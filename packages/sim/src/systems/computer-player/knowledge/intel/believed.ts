@@ -1,7 +1,7 @@
-import { diplomacyStance, type IntelBuilding, MAX_PLAYERS } from '../../../../components/index.js';
+import { diplomacyStance, type IntelBuilding, MAX_PLAYERS, Position } from '../../../../components/index.js';
 import type { DeepReadonly, Entity, World } from '../../../../ecs/world.js';
+import { nodeHxOfPosition, nodeHyOfPosition } from '../../../../nav/halfcell.js';
 import { everyBuildingOf } from '../../../ai-shared/home-roster.js';
-import { anchorNodeOf } from '../../../ai-shared/node-geometry.js';
 import type { SystemContext } from '../../../context.js';
 import { fogHides, playerSeesNode } from '../../../vision/gates.js';
 import { rememberedBuildings } from './read.js';
@@ -36,8 +36,9 @@ export function believedBuildings(
   const seen: Entity[] = [];
   for (let i = 0; i < live.length; i++) {
     const e = live[i] as Entity;
-    const node = anchorNodeOf(world, e);
-    if (node !== null && playerSeesNode(fog, seat, node.hx, node.hy)) seen.push(e);
+    const p = world.tryGet(e, Position);
+    if (p === undefined) continue;
+    if (playerSeesNode(fog, seat, nodeHxOfPosition(p.x, p.y), nodeHyOfPosition(p.x, p.y))) seen.push(e);
   }
   const remembered = rememberedBuildings(world, seat).filter(
     (b) => owns(b.owner) && !playerSeesNode(fog, seat, b.hx, b.hy),
