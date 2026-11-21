@@ -279,6 +279,13 @@ interface FramedInset {
   readonly zoom: number;
 }
 
+/** One view a pass re-places the paletted quads for, and the cull box of each kind met so far in it. */
+interface FramedView {
+  readonly view: Viewport;
+  readonly zoom: number;
+  readonly boxes: Partial<Record<DrawItem['kind'], Viewport>>;
+}
+
 /** The refs this frame's portrait insets frame. */
 function portraitSubjectsOf(frame: PoolFrame): number[] {
   const subjects = [...(frame.insetRefs ?? [])];
@@ -1346,14 +1353,13 @@ export class SpritePool {
     main: PortraitView,
     render: (soloKeep: Container | null) => void,
   ): void {
-    this.framing.push({
-      subjects: [...subjects],
-      view: cameraViewport(inset.camera, inset.width, inset.height),
-      zoom: inset.camera.scale ?? 1,
-    });
+    const view = cameraViewport(inset.camera, inset.width, inset.height);
+    const zoom = inset.camera.scale ?? 1;
+    this.framing.push({ subjects: [...subjects], view, zoom });
+    const framed: FramedView = { view, zoom, boxes: {} };
     this.selectionEffects.setVisible(false);
     this.occlusionGhosts.setVisible(false);
-    this.placePaletted(inset.camera, inset.width, inset.height);
+    this.placePaletted(inset.camera, inset.width, inset.height, framed);
     this.portrait.show(subjects);
     const soloKeep = this.portrait.beginSolo(subjects);
     try {
@@ -1363,7 +1369,7 @@ export class SpritePool {
       this.portrait.hide(subjects);
       this.selectionEffects.setVisible(true);
       this.occlusionGhosts.setVisible(true);
-      this.placePaletted(main.camera, main.width, main.height);
+      this.placePaletted(main.camera, main.width, main.height, framed);
     }
   }
 
@@ -1444,8 +1450,9 @@ export class SpritePool {
 
   /** Re-place every drawn paletted layer for a camera and target size (logical px): a mesh its screen
    *  origin, a quad its snap to that camera's device grid. Must mirror the {@link LayerBinder}'s
-   *  placement exactly. */
-  private placePaletted(camera: Camera, resWidth: number, resHeight: number): void {
+   *  placement exactly. `framed` leaves the quads of an entity that draws nothing in that view where
+   *  they stand, on the way into the view and back out of it. */
+  private placePaletted(camera: Camera, resWidth: number, resHeight: number, framed?: FramedView): void {
     const camScale = camera.scale ?? 1;
     const snap = this.snapResolution;
     this.sinkings.place(camera, resWidth, resHeight, snap);
@@ -1454,6 +1461,8 @@ export class SpritePool {
     const quadsHold = snap === undefined;
     for (const pe of this.attached) {
       if (!pe.paletted || (quadsHold && pe.kind !== 'vehicle')) continue;
+      // A mesh places itself on the screen, so it must follow every camera; a quad stands in the world.
+      if (framed !== undefined && pe.kind !== 'vehicle' && this.drawsOutside(pe, framed)) continue;
       const originX = snapToDevicePixels(cameraScreenX(camera, pe.motion.drawX), snap);
       const originY = snapToDevicePixels(cameraScreenY(camera, pe.motion.drawY), snap);
       for (const spr of pe.sprites) {
@@ -1471,6 +1480,27 @@ export class SpritePool {
         );
       }
     }
+  }
+
+  /** Whether `pe` stands where none of its kind's art reaches into the `framed` view; false for a
+   *  kind without a reach or an entity that has bound no item. */
+  private drawsOutside(pe: PooledEntity, framed: FramedView): boolean {
+    const reach = this.reaches[pe.kind];
+    const item = pe.bound.item;
+    if (reach === undefined || item === undefined) return false;
+    let box = framed.boxes[pe.kind];
+    if (box === undefined) {
+      box = cullBox(framed.view, reach, this.cullShear, framed.zoom);
+      framed.boxes[pe.kind] = box;
+    }
+    const slack = scaledSlack(reach, item);
+    const { drawX, drawY } = pe.motion;
+    return (
+      drawX < box.minX - slack ||
+      drawX > box.maxX + slack ||
+      drawY < box.minY - slack ||
+      drawY > box.maxY + slack
+    );
   }
 
   /**

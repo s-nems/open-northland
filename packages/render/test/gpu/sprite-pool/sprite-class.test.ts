@@ -377,6 +377,46 @@ describe('LayerBinder - a paletted character body draws as a batched quad throug
     const mainPx = anchorDevicePx(main);
     expect(mainPx).toBeCloseTo(Math.round(mainPx), 9);
   });
+
+  it('leaves the quad of a settler outside a portrait view on the main grid', () => {
+    const layer = new Container();
+    const pool = new SpritePool(layer, new TextureCache(), {
+      ...sheet,
+      characters: { byJob: {}, default: { body: { source: indexed, atlas }, binding: { idle: BODY_BOB } } },
+      palette: lut,
+    });
+    const main: Camera = { offsetX: 10.3, offsetY: 5.6, scale: 1.5 };
+    const inset: Camera = { offsetX: 3.7, offsetY: 8.2, scale: 2.25 };
+    const FAR_COLUMN = 5;
+    pool.reconcile({
+      ...poolFrame(
+        snapshotOf([
+          entity(1, 0.37, 0.61, { Settler: { tribe: 0 } }),
+          entity(2, FAR_COLUMN + 0.37, 0.61, { Settler: { tribe: 0 } }),
+        ]),
+      ),
+      camera: main,
+      snapResolution: 2,
+    });
+    const quads = layer.children.map((c) =>
+      c.children.find((q): q is PalettedQuad => q instanceof PalettedQuad),
+    );
+    const placed = (): (number | undefined)[] => quads.flatMap((q) => [q?.position.x, q?.position.y]);
+    const [nearX, nearY, farX, farY] = placed();
+    let inView: (number | undefined)[] = [];
+    pool.portraitPass(
+      [],
+      { camera: inset, width: 92, height: 92 },
+      { camera: main, width: 800, height: 600 },
+      () => {
+        inView = placed();
+      },
+    );
+    // The framed settler snapped to the inset's grid; the one far outside it never moved.
+    expect([inView[0], inView[1]]).not.toEqual([nearX, nearY]);
+    expect([inView[2], inView[3]]).toEqual([farX, farY]);
+    expect(placed()).toEqual([nearX, nearY, farX, farY]);
+  });
 });
 
 describe('LayerBinder - an animal settler is never paletted, even with the LUT loaded', () => {
