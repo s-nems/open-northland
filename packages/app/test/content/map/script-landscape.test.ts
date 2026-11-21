@@ -223,18 +223,19 @@ describe('script landscape walls', () => {
   });
 
   it('joins the player wall rows to their hitpoints, repair steps, gate pairs and wood', () => {
-    // A post holds one and a half pools; a gate one per closed cell, its open state included.
+    // A post holds one and a half pools; a gate one per closed cell, its open state included. Each
+    // valency point and repair step is a hundred hitpoints, applied after the valency rounds.
     expect(scriptLandscapeTypes(wallIr(true)).map((t) => t.wall)).toEqual([
-      { maxHitpoints: 150, repairPerStrike: 5, construction: [{ goodType: WOOD, amount: 1 }] },
+      { maxHitpoints: 15_000, repairPerStrike: 500, construction: [{ goodType: WOOD, amount: 1 }] },
       {
-        maxHitpoints: 500,
-        repairPerStrike: 5,
+        maxHitpoints: 50_000,
+        repairPerStrike: 500,
         construction: [{ goodType: WOOD, amount: 1 }],
         gate: { open: false, counterpartGfxIndex: 700 },
       },
       {
-        maxHitpoints: 500,
-        repairPerStrike: 5,
+        maxHitpoints: 50_000,
+        repairPerStrike: 500,
         construction: [{ goodType: WOOD, amount: 1 }],
         gate: { open: true, counterpartGfxIndex: 696 },
       },

@@ -301,13 +301,13 @@ describe('palisades', () => {
     expect(sim.world.get(gate, Stockpile).amounts.get(5) ?? 0).toBe(0);
   });
 
-  it('uses landscape damage hundreds and marks an owned wall a blow damaged for its crew to mend', () => {
+  it('takes the whole house column and marks an owned wall a blow damaged for its crew to mend', () => {
     const sim = fresh();
     sim.enqueueSetup({ kind: 'placePalisade', gfxIndex: WALL.typeId, x: 4, y: 4, tribe: 0, owner: 0 });
     sim.step();
     const wall = onlyPalisade(sim);
-    expect(damageVsTarget(sim.world, ctxOf(sim), wall, 450, false)).toBe(4);
-    expect(damageVsTarget(sim.world, ctxOf(sim), wall, 99, false)).toBe(0);
+    expect(damageVsTarget(sim.world, ctxOf(sim), wall, 450, false)).toBe(450);
+    expect(damageVsTarget(sim.world, ctxOf(sim), wall, 99, false)).toBe(99);
 
     strike(sim, wall, 10);
     expect(sim.world.get(wall, Damaged).lastHitTick).toBe(ctxOf(sim).tick);

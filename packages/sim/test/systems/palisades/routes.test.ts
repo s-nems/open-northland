@@ -69,8 +69,10 @@ const STRIKER_CLASS = WEAPON_MAIN_TYPE.SWORD;
 const SEASONED_HITS = 100;
 /** The fixture axe's far reach (map points). */
 const WEAPON_REACH = 2;
-/** Building-column damage that takes one valency off a wall per blow. */
+/** Building-column damage of one blow at a wall. */
 const HOUSE_DAMAGE = 150;
+/** A 100-valency wall's pool in hitpoints. */
+const WALL_POOL = 10_000;
 
 const WALL: ScriptLandscapeType = {
   typeId: 691,
@@ -78,7 +80,7 @@ const WALL: ScriptLandscapeType = {
   build: [{ dx: 0, dy: 0 }],
   groups: [],
   wall: {
-    maxHitpoints: 100,
+    maxHitpoints: WALL_POOL,
     repairPerStrike: 3,
     construction: [{ goodType: 5, amount: 1 }],
   },
@@ -100,7 +102,7 @@ const CLOSED_GATE: ScriptLandscapeType = {
   build: GATE_SPAN,
   groups: [],
   wall: {
-    maxHitpoints: 100,
+    maxHitpoints: WALL_POOL,
     repairPerStrike: 1,
     construction: [{ goodType: 5, amount: 1 }],
     gate: { open: false, counterpartGfxIndex: 700 },
@@ -116,7 +118,7 @@ const OPEN_GATE: ScriptLandscapeType = {
   build: GATE_SPAN,
   groups: [],
   wall: {
-    maxHitpoints: 100,
+    maxHitpoints: WALL_POOL,
     repairPerStrike: 1,
     construction: [{ goodType: 5, amount: 1 }],
     gate: { open: true, counterpartGfxIndex: 696 },
@@ -270,7 +272,9 @@ describe('walls that start blocking a route', () => {
     });
     const gate = wallRow(sim, P1);
     // Three landed blows per segment keep this route regression short while exercising real damage.
-    for (const wall of sim.world.query(Palisade, Health)) sim.world.mut(wall, Health).hitpoints = 3;
+    for (const wall of sim.world.query(Palisade, Health)) {
+      sim.world.mut(wall, Health).hitpoints = 3 * HOUSE_DAMAGE;
+    }
     const squad = Array.from({ length: BREACH_SQUAD }, (_, i) =>
       fighter(sim, { hx: 2 + (i % 10) * 2, hy: 25 + Math.floor(i / 10) * 2 }, P0),
     );
@@ -657,7 +661,7 @@ describe('walls as targets', () => {
       return full - sim.world.get(wall, Health).hitpoints;
     };
     const rookie = firstBlow(false);
-    expect(rookie).toBeGreaterThan(0);
+    expect(rookie).toBe(HOUSE_DAMAGE);
     expect(firstBlow(true)).toBe(rookie);
   });
 
@@ -841,7 +845,7 @@ describe('attack-move planning around open enemy gates', () => {
       expect(sim.world.has(raider, AttackOrder)).toBe(false);
     }
     expect(nodeRow(sim, raider)).toEqual(SOUTH);
-    expect(sim.world.get(gate, Health).hitpoints).toBe(100);
+    expect(sim.world.get(gate, Health).hitpoints).toBe(WALL_POOL);
   });
 
   it('keeps virtual gate bodies and open corners consistent when a door changes', () => {

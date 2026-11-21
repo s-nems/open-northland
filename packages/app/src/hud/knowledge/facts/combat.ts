@@ -10,7 +10,7 @@ import {
   WALL_LOGIC_ID,
 } from '../../../content/map/palisade-rows.js';
 import { coinDrillCoinsOf, coinDrillPointsOf, coinDrillServedTicksOf } from '../../../game/coin-drill.js';
-import { buildingHitpoints } from '../base.js';
+import { buildingHitpoints, SHELTER_WEAPON } from '../base.js';
 import {
   CAP_POINTS,
   type CombatTarget,
@@ -61,14 +61,6 @@ const CAP_UNITS = systems.fightUnitsOfPoints(CAP_POINTS);
 /** A blow-time rate as points per second of attack clip. */
 const pointsPerSecond = (rate: { readonly points: number; readonly seconds: number }): number =>
   rate.points / rate.seconds;
-
-/** `read` times `pct` percent, rounded down as a blow's percent is. */
-const scaledDown =
-  (read: FactReader, pct: number) =>
-  (base: KnowledgeBase): FactValue => {
-    const value = read(base);
-    return value === undefined ? undefined : Math.floor((value * pct) / PERCENT);
-  };
 
 function targetOf(base: KnowledgeBase, id: TargetId): CombatTarget | undefined {
   return combatTargets(base).find((target) => target.id === id);
@@ -237,18 +229,25 @@ const WALL_WEAPONS = [
   ['shortSword', VIKING, 'short_sword'],
   ['woodenSpear', VIKING, 'wooden_spear'],
   ['longBow', VIKING, 'long_bow'],
+  ['shortBow', VIKING, 'short_bow'],
+  ['fist', VIKING, 'fist'],
+  ['houseBow', VIKING, 'house_bow'],
 ] as const;
 
-const wallBlow = (base: KnowledgeBase, tribe: number, id: string): FactValue => {
-  const blow = hitOf(base, tribe, id, 'building');
-  return blow === undefined ? undefined : Math.floor(blow / systems.HOUSE_DAMAGE_PER_WALL_VALENCY);
-};
+const wallBlow = (base: KnowledgeBase, tribe: number, id: string): FactValue =>
+  hitOf(base, tribe, id, 'building');
 
-/** A blow under the Amulet of Strength; a shot no amulet raises keeps its plain blow. */
-const strongWallBlow = (tribe: number, id: string): Fact => {
-  const blow: FactReader = (base) => wallBlow(base, tribe, id);
-  return whole(takesStrengthAmulet({ id }) ? scaledDown(blow, STRENGTH_PCT) : blow);
-};
+/** A blow under the Amulet of Strength, raised as the sim raises it. */
+const strongWallBlow = (tribe: number, id: string): Fact =>
+  whole((base) => {
+    const blow = wallBlow(base, tribe, id);
+    return blow === undefined ? undefined : systems.withDealtBonuses(blow, 0, STRENGTH_PCT);
+  });
+
+/** Seconds between one striker's blows at a wall: a building's shot stands for one defender's share of
+ *  its fire. */
+const wallStrikeSeconds = (base: KnowledgeBase, tribe: number, id: string): FactValue =>
+  id === SHELTER_WEAPON ? seconds(systems.SHELTER_SHOT_PERIOD_TICKS) : clipOfWeapon(base, tribe, id);
 
 export const WALL_FACTS: Readonly<Record<string, Fact>> = {
   'wall.segmentHp': whole((base) => segmentRules(base)?.maxHitpoints),
@@ -268,8 +267,10 @@ export const WALL_FACTS: Readonly<Record<string, Fact>> = {
           rules(base)?.maxHitpoints;
       return [
         [`wall.${name}.blow`, whole(blow)],
-        // A Catapult cannot take an Amulet of Strength, so its stones have no strong blow.
-        ...(name === 'catapult' ? [] : [[`wall.${name}.strongBlow`, strongWallBlow(tribe, id)] as const]),
+        // A Catapult and a building cannot take an Amulet of Strength, so their shots have no strong blow.
+        ...(takesStrengthAmulet({ id })
+          ? [[`wall.${name}.strongBlow`, strongWallBlow(tribe, id)] as const]
+          : []),
         [`wall.${name}.segmentHits`, killedBy(blow, pool(segmentRules))],
         [`wall.${name}.gateHits`, killedBy(blow, pool(gateRules))],
         [
@@ -277,7 +278,7 @@ export const WALL_FACTS: Readonly<Record<string, Fact>> = {
           duration((base) => {
             const blows = blow(base);
             const hitpoints = pool(segmentRules)(base);
-            const clip = clipOfWeapon(base, tribe, id);
+            const clip = wallStrikeSeconds(base, tribe, id);
             if (blows === undefined || hitpoints === undefined || clip === undefined) return undefined;
             const hits = hitsToKill(blows, hitpoints);
             return hits === null ? undefined : hits * clip;
@@ -356,7 +357,6 @@ export const COMBAT_FACTS: Readonly<Record<string, Fact>> = {
   'peace.noticeFirstMinutes': whole(systems.PEACE_NOTICE_MINUTES[0]),
   'peace.noticeLastMinutes': whole(systems.PEACE_NOTICE_MINUTES[1]),
   'wall.gateEnemyNear': whole(systems.GATE_ENEMY_NEAR_POINTS),
-  'wall.damagePerPoint': whole(systems.HOUSE_DAMAGE_PER_WALL_VALENCY),
   'shelter.hq': whole((base) => buildingOf(base, 'headquarters')?.shelterCapacity),
   'shelter.tower2': whole((base) => buildingOf(base, 'tower_01')?.shelterCapacity),
   'shelter.tower1': whole((base) => buildingOf(base, 'tower_00')?.shelterCapacity),

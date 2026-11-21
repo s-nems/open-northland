@@ -70,7 +70,7 @@ import { routeAhead } from '../../fixtures/vehicle-route.js';
 
 // The catapult's fight (docs/formats/VEHICLES.md "Catapult"): the stance scans, the band's back-off
 // and approach, the scatter roll, the ground burst on whatever stands on the landing node (the owner's
-// own men included), wall demolition through the wall's own valency rule, and vehicles as targets of
+// own men included), wall demolition by the house column, and vehicles as targets of
 // every other weapon.
 
 const VIKING = 1;
@@ -93,7 +93,8 @@ const HEADQUARTERS = 4;
 const LONG_TOWER = 6;
 const LONG_TOWER_WALLS = [0, 1, 2, 3, 4, 5, 6, 7].map((dx) => ({ dx, dy: 0 }));
 const WALL_TYPE = 1;
-const WALL_HITPOINTS = 100;
+/** A 100-valency wall in hitpoints. */
+const WALL_HITPOINTS = 10_000;
 /** The extracted catapult row (`weapons.ini` type 21). */
 const CATAPULT_WEAPON = 21;
 const CATAPULT_MAIN_TYPE = 7;
@@ -115,8 +116,6 @@ const ALL_MATERIALS = Object.values(ARMOR_MATERIAL);
 const CATAPULT_SMOKE_TICKS = 20;
 /** 16 map points at `speed 3`: `16 * 8 / 3` ticks of flight. */
 const SIXTEEN_POINT_FLIGHT_TICKS = 42;
-/** `damage[7] / 100`: the valency one stone knocks off a wall. */
-const WALL_STEPS_PER_STONE = 36;
 const BOW_VS_VEHICLE = 40;
 const MACE_VS_VEHICLE = 40;
 /** A commander this practised never scatters: the roll (0..99) can never exceed `skill + 10`. */
@@ -1026,7 +1025,7 @@ describe('the clip and its target', () => {
     s.step();
     expect(s.world.get(catapult, Vehicle).attack?.target).toEqual({ kind: 'entity', entity: wall });
     collect(s, VEHICLE_ATTACK_CLIP_TICKS + VEHICLE_SHOT_SETTLE_TICKS, ['projectileHit']);
-    expect(s.world.get(wall, Health).hitpoints).toBe(WALL_HITPOINTS - WALL_STEPS_PER_STONE);
+    expect(s.world.get(wall, Health).hitpoints).toBe(WALL_HITPOINTS - CATAPULT_VS_HOUSE);
   });
 
   it('survives a save round trip with a live attack, a worn wall and a stone in flight', () => {
@@ -1690,7 +1689,7 @@ describe('the ground burst', () => {
 });
 
 describe('wall demolition', () => {
-  it('knocks damage[7] / 100 valency off a wall per stone and razes it once none is left', () => {
+  it('knocks its whole house column off a wall per stone and razes it once none is left', () => {
     const at = { hx: 22, hy: 8 };
     const s = sim(grass(40, 10, true));
     s.enqueueSetup({
@@ -1714,7 +1713,7 @@ describe('wall demolition', () => {
     );
     const struck = collect(s, VEHICLE_ATTACK_CLIP_TICKS + VEHICLE_SHOT_SETTLE_TICKS, ['projectileHit']);
     expect(struck.map((ev) => (ev.kind === 'projectileHit' ? ev.target : -1))).toEqual([wall]);
-    expect(s.world.get(wall, Health).hitpoints).toBe(WALL_HITPOINTS - WALL_STEPS_PER_STONE);
+    expect(s.world.get(wall, Health).hitpoints).toBe(WALL_HITPOINTS - CATAPULT_VS_HOUSE);
     collect(s, 3 * VEHICLE_ATTACK_CLIP_TICKS, ['projectileHit']);
     expect(s.world.isAlive(wall)).toBe(false);
   });

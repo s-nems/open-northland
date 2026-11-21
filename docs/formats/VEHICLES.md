@@ -556,8 +556,8 @@ whose bodies cover one, then the walls, from the combat pass's index; a house is
 cells, as every weapon reaches it (approximation: the original's in-house test area is not read), and a
 garrison standing on its tower's node is struck (*open*: whether the original's hidden-human skip
 covers a posted archer is not read). A wall stands as a palisade entity, so the burst strikes the
-segment whose body covers the node and takes `damage[7] / 100` off its hitpoints through the walls'
-own rule, the one every other weapon's blow goes through. A stone strikes with the bare column: neither
+segment whose body covers the node and takes the whole `damage[7]` off its hitpoints, as every other
+weapon's blow does (our rule: a wall holds a hundred hitpoints per valency point). A stone strikes with the bare column: neither
 the commander's experience nor his amulets raise it. A stone that damages anything trains the
 commander once. A settler resting indoors is passed over, as every other shot passes over it, and an
 ordered stone may name a wall. A struck settler runs from an armed vehicle, a warship with a bowman

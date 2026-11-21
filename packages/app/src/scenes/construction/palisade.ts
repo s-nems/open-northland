@@ -10,6 +10,7 @@ import {
 } from '@open-northland/sim';
 import { grassTerrain } from '../../catalog/buildings.js';
 import { JOB_BUILDER, JOB_CIVILIST, JOB_SOLDIER_SWORD, JOB_WOMAN } from '../../catalog/jobs.js';
+import { WALL_HITPOINTS_PER_VALENCY } from '../../content/map/palisade-rows.js';
 import { ENEMY_PLAYER, HUMAN_PLAYER, PRIMARY_TRIBE } from '../../game/rules.js';
 import {
   BUILDING_WAREHOUSE_00,
@@ -29,7 +30,8 @@ import type { SceneDefinition } from '../types.js';
  * The detached seven-post rosette makes all six source wall-connection directions visible at once.
  *
  * Source basis: readable wall records pin 100 maximum valency and +3 repair progress; a post holds one
- * and a half of each, its step rounded up to +5 (`wallStrengthScale`). Original behavior: one wood per
+ * and a half of each, its step rounded up to +5 (`wallStrengthScale`), in hundreds of hitpoints
+ * (`WALL_HITPOINTS_PER_VALENCY`). Original behavior: one wood per
  * placed anchor, interpolated posts along three canonical neighbour directions,
  * and the instant conversion of a straight five-wall span into a gate, which lives in
  * `palisadeGateProbe`. The original reserves a segment before travel; the physical visit before its
@@ -53,8 +55,8 @@ export const PALISADE_WORK_SITES = {
   // Enemy ground, north of the barrier, well away from the owned work yard.
   unclaimed: { hx: 44, hy: 12 },
 } as const;
-/** Authored at 100 of 150 hitpoints: ten repair swings. */
-const DAMAGED_YARD_WALL = { hx: 8, hy: 40, valency: 100 } as const;
+/** Authored at 100 of 150 valency points: ten repair swings. */
+const DAMAGED_YARD_WALL = { hx: 8, hy: 40, valency: 100 * WALL_HITPOINTS_PER_VALENCY } as const;
 const COMMAND_CHAIN = [
   { hx: 30, hy: 36 },
   { hx: 31, hy: 36 },

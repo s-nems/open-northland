@@ -205,7 +205,7 @@ export function sandboxPalisadeGfx(): LandscapeGfx[] {
 
 /**
  * Shared fallback wall rules. Readable data pins max valency 100 and repairs +3 for walls, +1 for gates, both
- * scaled by `wallStrengthScale`; one wood per new anchor is the original's behavior. Gate pairing follows the
+ * scaled by `wallStrengthScale` and turned into hitpoints by `scaledWallRules`; one wood per new anchor is the original's behavior. Gate pairing follows the
  * adjacent closed/open decoded records. Construction blocking after completion is an explicit adaptation.
  */
 export function sandboxPalisadeTypes(): ScriptLandscapeType[] {

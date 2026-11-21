@@ -27,9 +27,11 @@ const WOODCUTTER = 1;
 const HUNTER = 15;
 const P0 = 0;
 const P1 = 1;
-/** Building-column damage that takes one valency off a wall per blow, and one too weak to take any. */
+/** Building-column damage of a sword-like blow, of a short-bow arrow, and of a weapon with no building
+ *  column. */
 const DENTING = 150;
-const GLANCING = 50;
+const WEAK = 80;
+const NO_HOUSE_DAMAGE = 0;
 const WALL_HIT_SOUND = 84;
 const ARROW = 1;
 const ARROW_SPEED = 8;
@@ -43,8 +45,8 @@ const CLOSED_GATE: ScriptLandscapeType = {
   build: GATE_SPAN,
   groups: [],
   wall: {
-    maxHitpoints: 100,
-    repairPerStrike: 1,
+    maxHitpoints: 30000,
+    repairPerStrike: 300,
     construction: [{ goodType: 5, amount: 1 }],
     gate: { open: false, counterpartGfxIndex: 700 },
   },
@@ -153,7 +155,7 @@ describe('arrows at a wall', () => {
     shootAt(sim, archer, gate, { hx: GATE_AT.hx + 2, hy: GATE_AT.hy }, DENTING);
     for (let tick = 0; tick < 60 && [...sim.world.query(Projectile)].length > 0; tick++) sim.step();
     const health = sim.world.get(gate, Health);
-    expect(health.hitpoints).toBe(health.max - 1);
+    expect(health.hitpoints).toBe(health.max - DENTING);
   });
 
   it("are aimed along a gate's whole body by an archer ordered at it", () => {
@@ -169,29 +171,39 @@ describe('arrows at a wall', () => {
     expect(hits.every((ev) => ev.target === gate)).toBe(true);
     expect(hits.some((ev) => ev.at.hx !== GATE_AT.hx)).toBe(true);
     const health = sim.world.get(gate, Health);
-    expect(health.max - health.hitpoints).toBe(hits.length);
+    expect(health.max - health.hitpoints).toBe(hits.length * DENTING);
   });
 });
 
-describe('a blow too weak to dent a wall', () => {
-  it('lands no hit and leaves the wall whole, where a denting one sounds', () => {
-    const firstBlow = (houseDamage: number) => {
-      const { sim, gate } = gated(houseDamage);
-      const soldier = striker(sim, WOODCUTTER, { hx: GATE_AT.hx, hy: GATE_AT.hy - 1 });
-      attackUnit(sim.world, ctxOf(sim), { kind: 'attackUnit', entity: soldier, target: gate });
-      const [blow] = eventsOver(sim, 200, struck);
-      return { blow, health: sim.world.get(gate, Health) };
-    };
-    const glancing = firstBlow(GLANCING);
-    expect(glancing.blow).toBeUndefined();
-    expect(glancing.health.hitpoints).toBe(glancing.health.max);
-    expect(firstBlow(DENTING).blow?.soundType).toBe(WALL_HIT_SOUND);
+describe('a weak blow at a wall', () => {
+  const firstBlow = (houseDamage: number) => {
+    const { sim, gate } = gated(houseDamage);
+    const soldier = striker(sim, WOODCUTTER, { hx: GATE_AT.hx, hy: GATE_AT.hy - 1 });
+    attackUnit(sim.world, ctxOf(sim), { kind: 'attackUnit', entity: soldier, target: gate });
+    let blow: Struck | undefined;
+    for (let tick = 0; tick < 200 && blow === undefined; tick++) {
+      sim.step();
+      blow = sim.snapshot().events.find(struck);
+    }
+    return { blow, health: sim.world.get(gate, Health) };
+  };
+
+  it('under a hundred takes exactly its building column off the wall', () => {
+    const weak = firstBlow(WEAK);
+    expect(weak.blow?.soundType).toBe(WALL_HIT_SOUND);
+    expect(weak.health.hitpoints).toBe(weak.health.max - WEAK);
   });
 
-  it('thuds like a miss from an arrow too', () => {
-    const { sim, gate } = gated(GLANCING);
+  it('with no building column lands no hit and leaves the wall whole', () => {
+    const none = firstBlow(NO_HOUSE_DAMAGE);
+    expect(none.blow).toBeUndefined();
+    expect(none.health.hitpoints).toBe(none.health.max);
+  });
+
+  it('thuds like a miss from an arrow with no building column', () => {
+    const { sim, gate } = gated(NO_HOUSE_DAMAGE);
     const archer = striker(sim, HUNTER, { hx: GATE_AT.hx, hy: GATE_AT.hy - 8 });
-    shootAt(sim, archer, gate, GATE_AT, GLANCING);
+    shootAt(sim, archer, gate, GATE_AT, NO_HOUSE_DAMAGE);
     const missed = (ev: SimEvent): ev is Extract<SimEvent, { kind: 'projectileMissed' }> =>
       ev.kind === 'projectileMissed';
     const events = eventsOver(
@@ -202,5 +214,14 @@ describe('a blow too weak to dent a wall', () => {
     expect(events.map((ev) => ev.kind)).toEqual(['projectileMissed']);
     const health = sim.world.get(gate, Health);
     expect(health.hitpoints).toBe(health.max);
+  });
+
+  it('from a short-bow arrow takes exactly its building column off the wall', () => {
+    const { sim, gate } = gated(WEAK);
+    const archer = striker(sim, HUNTER, { hx: GATE_AT.hx, hy: GATE_AT.hy - 8 });
+    shootAt(sim, archer, gate, GATE_AT, WEAK);
+    for (let tick = 0; tick < 60 && [...sim.world.query(Projectile)].length > 0; tick++) sim.step();
+    const health = sim.world.get(gate, Health);
+    expect(health.hitpoints).toBe(health.max - WEAK);
   });
 });

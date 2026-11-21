@@ -18,7 +18,7 @@ import { hexNeighboursOf, nodeOfPosition } from '../../nav/halfcell.js';
 import { findPath } from '../../nav/pathfinding/index.js';
 import { type NodeId, StepBuffer, type TerrainGraph } from '../../nav/terrain/index.js';
 import { isValidOrderedTarget } from '../conflict/targeting.js';
-import { attackerWeapon, wallBlowDamage } from '../conflict/weapons.js';
+import { attackerWeapon } from '../conflict/weapons.js';
 import type { SystemContext } from '../context.js';
 import { buildingWalkBodyOf } from '../footprint/blocked.js';
 import { translatedCells } from '../footprint/geometry.js';
@@ -145,7 +145,7 @@ export interface Breach {
  * the route that treats every such wall as open ground, or a joined segment further along the line when the
  * first one's near-side nodes are all taken. Null when walls are not what blocks the way: the goal is
  * reachable as it is, out of reach for another reason, or barred only by walls `e` may not attack or whose
- * blow would not dent them. The cheap refusals come first; past them it costs the standing walls and a few
+ * weapon has no house column to dent them with. The cheap refusals come first; past them it costs the standing walls and a few
  * searches.
  */
 export function palisadeBarring(
@@ -159,7 +159,7 @@ export function palisadeBarring(
   const settler = world.tryGet(e, Settler);
   if (settler === undefined || !world.has(e, Owner)) return null;
   const arms = attackerWeapon(ctx, settler.tribe, settler.jobType, world.tryGet(e, Weapon)?.weaponTypeId);
-  if (arms === null || wallBlowDamage(weaponDamageVsMaterial(arms.weapon, ARMOR_MATERIAL.HOUSE)) === 0) {
+  if (arms === null || weaponDamageVsMaterial(arms.weapon, ARMOR_MATERIAL.HOUSE) <= 0) {
     return null;
   }
   const player = world.get(e, Owner).player;

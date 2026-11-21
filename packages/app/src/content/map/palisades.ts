@@ -2,7 +2,7 @@ import type { TerrainObjects } from '@open-northland/data';
 import type { Command } from '@open-northland/sim';
 import type { WorldSetup } from '../../game/world/index.js';
 import type { ContentIr } from '../ir/rows.js';
-import { playerWallRows, wallStrengthScales } from './palisade-rows.js';
+import { playerWallRows, wallLevelHitpoints, wallStrengthScales } from './palisade-rows.js';
 import { forEachPlacement } from './placements.js';
 
 export interface MapPalisadeSpawn {
@@ -11,7 +11,7 @@ export interface MapPalisadeSpawn {
   readonly hy: number;
   readonly placement: number;
   readonly owner: number | undefined;
-  /** The authored level as hitpoints: its valency times the graphic's `wallStrengthScale`. */
+  /** The authored level as hitpoints ({@link wallLevelHitpoints}). */
   readonly valency: number | undefined;
 }
 
@@ -41,7 +41,7 @@ export function mapPalisadeSpawns(objects: TerrainObjects, ir: ContentIr): MapPa
         hy,
         placement,
         owner: objects.owners?.[placement] ?? undefined,
-        valency: level === undefined ? undefined : Math.round(level * (scales.get(gfxIndex) ?? 1)),
+        valency: level === undefined ? undefined : wallLevelHitpoints(level, scales.get(gfxIndex) ?? 1),
       });
     }
   });

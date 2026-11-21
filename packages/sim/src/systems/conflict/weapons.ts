@@ -222,25 +222,12 @@ export function weaponDamageVsTarget(
     : weaponDamageVsMaterial(weapon, material);
 }
 
-/** How much of a blow's HOUSE damage takes one valency off a wall. */
-export const HOUSE_DAMAGE_PER_WALL_VALENCY = 100;
-
-/**
- * The valency a wall loses to a blow of `houseDamage`, the weapon's HOUSE column. Source basis:
- * landscapetypes.ini gives the wall and both gates `maximumValency 100` and `transition 10 ... -1`, one
- * valency per hit; original behavior: a blow lands one such hit per whole hundred, so under 100 does nothing.
- */
-export function wallBlowDamage(houseDamage: number): number {
-  return Math.trunc(Math.max(0, houseDamage) / HOUSE_DAMAGE_PER_WALL_VALENCY);
-}
-
 /** How many times its vehicle column a siege stone deals to a ship. Owner rule: ships hold twice the
  *  original's pool, and a catapult on the shore stays the answer to a fleet. */
 export const SHIP_SIEGE_DAMAGE_FACTOR = 2;
 
-/** A blow's resolved damage against `target`: {@link wallBlowDamage} for a wall, a `siege` stone's
- *  {@link SHIP_SIEGE_DAMAGE_FACTOR} on a ship, else `damage` itself. A blow that takes no valency off a
- *  wall resolves to 0 and, like every zero-damage blow, lands nothing. */
+/** A blow's resolved damage against `target`: a `siege` stone's {@link SHIP_SIEGE_DAMAGE_FACTOR} on a ship,
+ *  else `damage` itself, a wall taking the whole house column. */
 export function damageVsTarget(
   world: World,
   ctx: SystemContext,
@@ -248,7 +235,6 @@ export function damageVsTarget(
   damage: number,
   siege: boolean,
 ): number {
-  if (world.has(target, Palisade)) return wallBlowDamage(damage);
   const vehicle = siege ? world.tryGet(target, Vehicle) : undefined;
   const type =
     vehicle === undefined ? undefined : contentIndex(ctx.content).vehicles.get(vehicle.vehicleType);

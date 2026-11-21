@@ -14,7 +14,7 @@ export const Palisade = defineComponent<{
   /** Placement-only occupied body. An open gate retains its closed counterpart's full passage here. */
   placementWalk: FootprintCell[];
   construction: { goodType: number; amount: number }[];
-  /** Source transition-9 valency gain per completed repair strike. */
+  /** Hitpoints a completed repair strike restores: the source transition-9 valency gain, in hitpoints. */
   repairPerStrike: number;
   /** Exclusive builder claim for an unfinished segment, taken when a builder picks it; its work flag
    * shows from then on. */
