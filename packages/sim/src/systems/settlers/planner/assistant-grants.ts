@@ -33,7 +33,7 @@ import { isFighterJob, isScoutJob, mayChangeEquipment } from '../../readviews/in
 import { equipFetchLimitFor } from '../../signposts/index.js';
 import { anotherSystemOwns } from '../action-owner.js';
 import { equipFetchesHeld } from '../drives/equip-fetches.js';
-import { FetchableStock, nearestStoreHoldingWithin } from '../targets/index.js';
+import { FetchableStock, lenderWithin, storesLendingOnSide } from '../targets/index.js';
 import { unreachableGoalVeto } from '../unreachable-goals.js';
 import { wakeIdle } from './idle-replan.js';
 import type { PlannerPass } from './pass.js';
@@ -138,6 +138,23 @@ export function dispatchAssistantGrants(pass: PlannerPass): void {
     return byGroup[group];
   };
 
+  // Each player's stores lending each granted good, read on first ask and again after an errand is stamped,
+  // which may claim a unit: most takers find none in reach, and many find no lender at all.
+  const lenders = new Map<number, Map<number, readonly Entity[]>>();
+  const lendersOf = (player: number, goodType: number): readonly Entity[] => {
+    let byGood = lenders.get(player);
+    if (byGood === undefined) {
+      byGood = new Map();
+      lenders.set(player, byGood);
+    }
+    let stores = byGood.get(goodType);
+    if (stores === undefined) {
+      stores = storesLendingOnSide(targets.bands, world, goodType, player, pass.supply);
+      byGood.set(goodType, stores);
+    }
+    return stores;
+  };
+
   // Indexed loops: on this every-tick pass a for-of costs an iterator result per step.
   const due = dueThisBeat(world, ctx.tick);
   for (let d = 0; d < due.length; d++) {
@@ -180,20 +197,14 @@ export function dispatchAssistantGrants(pass: PlannerPass): void {
       if (slot === null) continue;
       const underway = (heldAtStart?.get(spec.goodType) ?? 0) + stampedHere.of(owner, spec.goodType);
       if (!stock.exceeds(owner, spec.goodType, underway)) continue;
+      const lending = lendersOf(owner, spec.goodType);
+      if (lending.length === 0) continue;
       route ??= grantRouteFor(pass, e, owner);
       const here = route.here;
-      const src = nearestStoreHoldingWithin(
-        targets.bands,
-        world,
-        here,
-        here, // by distance: the grant reads only whether a store is found
-        spec.goodType,
-        owner,
-        pass.supply,
-        route.gate,
-        route.veto,
-      );
-      if (src === null) continue; // nothing reachable through this settler's signpost network
+      // By distance from the settler: the grant reads only whether a store is found.
+      if (!lenderWithin(targets.bands, lending, here, spec.goodType, route.gate, route.veto)) {
+        continue; // nothing reachable through this settler's signpost network
+      }
       world.add(e, EquipOrder, {
         group: spec.category,
         slot,
@@ -206,6 +217,7 @@ export function dispatchAssistantGrants(pass: PlannerPass): void {
       });
       wakeIdle(world, e); // planned onto the errand this pass
       stampedHere.add(owner, spec.goodType);
+      lenders.clear();
       break; // one errand per settler; it chains the rest of its slots from the store
     }
   }

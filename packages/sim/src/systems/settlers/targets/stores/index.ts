@@ -2,6 +2,7 @@ export { nearestBuilderSite, nearestPrayerSite } from './buildings.js';
 export { FetchableStock } from './fetchable-stock.js';
 export { hasHaulableOutput, haulableOutputGood, nearestWorkplaceOutput } from './outputs.js';
 export {
+  lenderWithin,
   nearestFreeYardNode,
   nearestStoreFor,
   nearestStoreHolding,
@@ -9,6 +10,7 @@ export {
   nearestStoreHoldingWithin,
   storeHoldingMayLieIn,
   storesHoldingRanked,
+  storesLendingOnSide,
   storeYieldsGood,
   strandedPile,
   unclaimedGoodsAt,

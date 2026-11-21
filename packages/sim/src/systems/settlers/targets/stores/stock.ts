@@ -374,6 +374,48 @@ export function storesHoldingRanked(
   return holders.rankedAmong(narrowedField, count, here, rank, lends, goodsGate, avoid);
 }
 
+/**
+ * The stores of `owner`'s side that lend a unit of `goodType` to a fetcher of that owner now, ascending:
+ * every store {@link nearestStoreHoldingWithin} could pick for any such fetcher. The list holds while
+ * the stores, the claims in `supply` and the towers stay as they are, so a pass that asks for many
+ * fetchers reads each store's stock once, and an empty list answers every one of them.
+ */
+export function storesLendingOnSide(
+  bands: TargetBands,
+  world: World,
+  goodType: number,
+  owner: number,
+  supply: SupplyTally,
+): readonly Entity[] {
+  if (sideLendsNone(bands, world, owner, goodType)) return [];
+  const holders = bands.holding(goodType);
+  if (!holders.hasCandidates()) return [];
+  const filed = holders.filedOnSide(owner);
+  const lends = holdsUnclaimed(world, bands.ctx, supply, goodType, owner);
+  const lenders: Entity[] = [];
+  for (let i = 0; i < filed.length; i += FILED_STRIDE) {
+    const store = filed[i] as Entity;
+    if (lends(store) !== null) lenders.push(store);
+  }
+  sortAscending(lenders, lenders.length);
+  return lenders;
+}
+
+/** Whether {@link nearestStoreHoldingWithin} finds a store for a fetcher at `here` under `goodsGate` and
+ *  `avoid`, asked of `lenders`, the {@link storesLendingOnSide} of its owner and `goodType`. */
+export function lenderWithin(
+  bands: TargetBands,
+  lenders: readonly Entity[],
+  here: NodeId,
+  goodType: number,
+  goodsGate: SpatialGate | undefined,
+  avoid?: (cell: NodeId) => boolean,
+): boolean {
+  if (lenders.length === 0) return false;
+  const holders = bands.holding(goodType);
+  return holders.nearestAmong(lenders, lenders.length, here, here, ACCEPT_ALL, goodsGate, avoid) !== null;
+}
+
 /** Keep the first `count` stores of {@link narrowedField} that `lends` passes, in order, and return how
  *  many those are. */
 function keepLenders(count: number, lends: (store: Entity) => typeof QUALIFIES | null): number {
