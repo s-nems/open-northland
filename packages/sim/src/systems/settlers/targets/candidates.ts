@@ -134,7 +134,6 @@ class TickTargets implements TargetCandidates {
   readonly sinks: SinkAvailability;
   readonly bands: TargetBands;
   readonly yard: YardTargets;
-  private mealCellsMemo: InteractionCellIndex | undefined;
   private resourcesMemo: readonly Entity[] | undefined;
   private sites: SiteSplit | undefined;
   private cropsByFarmMemo: ReadonlyMap<Entity, readonly Entity[]> | undefined;
@@ -164,9 +163,9 @@ class TickTargets implements TargetCandidates {
     };
   }
 
+  /** Caught up on each read: its membership follows the stock, which a pass may move. */
   get mealCells(): InteractionCellIndex {
-    this.mealCellsMemo ??= mealCells(this.world, this.ctx.content, this.terrain);
-    return this.mealCellsMemo;
+    return mealCells(this.world, this.ctx.content, this.terrain);
   }
 
   /** Read on first ask: the canonical list is copied for its readers whenever a resource comes or goes,
