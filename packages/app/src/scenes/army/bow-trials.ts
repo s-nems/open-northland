@@ -1,17 +1,18 @@
-import {
-  type Command,
-  cellAnchorNode,
-  components,
-  type Entity,
-  type Simulation,
-  systems,
-} from '@open-northland/sim';
+import { type Command, components, type Entity, type Simulation, systems } from '@open-northland/sim';
 import { grassTerrain, resolveVikingBuilding } from '../../catalog/buildings.js';
 import { JOB_ARCHER, JOB_ARCHER_LONG, JOB_SOLDIER_SWORD } from '../../catalog/jobs.js';
 import { ENEMY_PLAYER, HUMAN_PLAYER, PRIMARY_TRIBE } from '../../game/rules.js';
 import { VEHICLE_CATAPULT } from '../../game/sandbox/index.js';
-import { goodBySlug } from '../sandbox-queries.js';
 import type { SceneDefinition } from '../types.js';
+import {
+  type ArmourSlug,
+  anchorNear,
+  type Formation,
+  headcount,
+  type Squad,
+  spawnSquads,
+  squad,
+} from './arenas.js';
 
 /**
  * Bow trials: arenas of small fights the viewer starts with blue's own orders, while red holds in its
@@ -19,15 +20,6 @@ import type { SceneDefinition } from '../types.js';
  * armour, as veterans and behind a sword line; then bows against chain-mailed swords, sword duels that
  * weigh leather, red towers manned at every post and red catapults for either bow to attack.
  */
-
-type ArmourSlug = 'armor_wool' | 'armor_leather' | 'armor_chain' | 'armor_plate';
-
-interface Squad {
-  readonly job: number;
-  readonly count: number;
-  readonly armour: ArmourSlug | null;
-  readonly points: number;
-}
 
 type Arena =
   | { readonly kind: 'field'; readonly blue: readonly Squad[]; readonly red: readonly Squad[] }
@@ -51,10 +43,7 @@ const MARGIN = 20;
 const COLUMNS = 4;
 const PITCH_X = ARENA_W + ARENA_GAP;
 const PITCH_Y = ARENA_H + ARENA_GAP;
-/** A squad stands in columns of five, files four nodes apart, each column three nodes behind the last. */
-const FILE_SIZE = 5;
-const FILE_STEP = 4;
-const COLUMN_STEP = 3;
+const FORMATION: Formation = { fileSize: 5, fileStep: 4, columnStep: 3 };
 /** East of the tower, clear of its footprint: where the garrison stands before it takes its posts. */
 const GARRISON_OFFSET = 12;
 /** East of the catapult, beside it. */
@@ -71,13 +60,6 @@ const CATAPULT_SKILL = 50;
 /** Every tower post: `logicworker 40` short bows and `41` long ones. */
 const TOWER_POSTS: Readonly<Record<string, number>> = { tower_00: 3, tower_01: 4 };
 const BOW_JOBS = [JOB_ARCHER, JOB_ARCHER_LONG] as const;
-
-const squad = (job: number, count: number, armour: ArmourSlug | null, points = 0): Squad => ({
-  job,
-  count,
-  armour,
-  points,
-});
 
 const otherBow = (bow: number): number => (bow === JOB_ARCHER ? JOB_ARCHER_LONG : JOB_ARCHER);
 
@@ -176,61 +158,26 @@ function frameOf(index: number): Frame {
   };
 }
 
-/** The node nearest (hx, hy) that anchors a cell, the only nodes a building or vehicle stands on. */
-function anchorNear(hx: number, hy: number): { hx: number; hy: number } {
-  return cellAnchorNode(Math.floor(hx / 2), Math.floor(hy / 2));
-}
-
-function spawnSquads(
+/** `squads` of `owner` with their front file at `frontHx`; columns deepen west for blue, east for red. */
+function squadsAt(
   sim: Simulation,
   squads: readonly Squad[],
   frontHx: number,
   frame: Frame,
   owner: number,
 ): Command[] {
-  // Columns deepen away from the enemy: west for blue, east for red.
   const away = owner === HUMAN_PLAYER ? -1 : 1;
-  const commands: Command[] = [];
-  let place = 0;
-  for (const s of squads) {
-    for (let i = 0; i < s.count; i++, place++) {
-      const column = Math.floor(place / FILE_SIZE);
-      const file = place % FILE_SIZE;
-      // Every other column stands half a file over, so the ranks read as loose rather than a grid.
-      const hy = frame.centreHy + (file - (FILE_SIZE - 1) / 2) * FILE_STEP + (column % 2) * (FILE_STEP / 2);
-      commands.push(fighter(sim, s, frontHx + away * column * COLUMN_STEP, hy, owner));
-    }
-  }
-  return commands;
-}
-
-function fighter(sim: Simulation, s: Squad, hx: number, hy: number, owner: number): Command {
-  return {
-    kind: 'spawnSettler',
-    jobType: s.job,
-    x: hx,
-    y: hy,
-    tribe: PRIMARY_TRIBE,
-    owner,
-    ...(s.armour === null ? {} : { equipment: { armor: { goodType: goodBySlug(sim, s.armour) } } }),
-    ...(s.points > 0
-      ? {
-          experience: [
-            [systems.FIGHT_EXPERIENCE_TYPE.PERSONAL, systems.fightUnitsOfPoints(s.points)] as const,
-          ],
-        }
-      : {}),
-  };
+  return spawnSquads(sim, squads, { frontHx, centreHy: frame.centreHy, away }, owner, FORMATION);
 }
 
 const postsOf = (arena: Arena): number => (arena.kind === 'tower' ? (TOWER_POSTS[arena.tower] ?? 0) : 0);
 
 function arenaSpawns(sim: Simulation, arena: Arena, frame: Frame): Command[] {
-  const blue = spawnSquads(sim, arena.blue, frame.blueHx, frame, HUMAN_PLAYER);
+  const blue = squadsAt(sim, arena.blue, frame.blueHx, frame, HUMAN_PLAYER);
   const at = anchorNear(frame.redHx, frame.centreHy);
   switch (arena.kind) {
     case 'field':
-      return [...blue, ...spawnSquads(sim, arena.red, frame.redHx, frame, ENEMY_PLAYER)];
+      return [...blue, ...squadsAt(sim, arena.red, frame.redHx, frame, ENEMY_PLAYER)];
     case 'tower': {
       const posts = postsOf(arena);
       const garrison = [squad(JOB_ARCHER, posts, null), squad(JOB_ARCHER_LONG, posts, null)];
@@ -246,7 +193,7 @@ function arenaSpawns(sim: Simulation, arena: Arena, frame: Frame): Command[] {
           // Served content gates the tower behind progression; the sandbox catalog does not.
           ignoreTechnology: true,
         },
-        ...spawnSquads(sim, garrison, at.hx + GARRISON_OFFSET, frame, ENEMY_PLAYER).map((c) =>
+        ...squadsAt(sim, garrison, at.hx + GARRISON_OFFSET, frame, ENEMY_PLAYER).map((c) =>
           c.kind === 'spawnSettler' ? { ...c, workplace: { x: at.hx, y: at.hy } } : c,
         ),
       ];
@@ -281,8 +228,6 @@ function build(sim: Simulation): void {
     for (const command of arenaSpawns(sim, arena, frameOf(index))) sim.enqueueSetup(command);
   });
 }
-
-const headcount = (squads: readonly Squad[]): number => squads.reduce((n, s) => n + s.count, 0);
 
 function settlersOf(arena: Arena): number {
   switch (arena.kind) {
