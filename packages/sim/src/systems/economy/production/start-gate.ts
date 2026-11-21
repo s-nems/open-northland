@@ -108,8 +108,9 @@ function crewTribe(world: World, worker: Entity): number | undefined {
 }
 
 /** Whether every tribe the recipe gate may read has a technology table: the crew's, or the house's
- *  while nobody is bound. */
-function tribesTabled(world: World, ctx: SystemContext, building: Entity): boolean {
+ *  while nobody is bound. A gate of tabled tribes reads the stock, batches, building, owner, crew tribes
+ *  and unlocks, and a breeding one the herd besides. */
+export function tribesTabled(world: World, ctx: SystemContext, building: Entity): boolean {
   const tribes = contentIndex(ctx.content).tribes;
   const workers = assignedWorkers(world, building);
   if (workers.length === 0) {

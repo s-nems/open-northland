@@ -1,19 +1,30 @@
 import {
   JobAssignment,
+  needsEnabled,
   Production,
   type ProductionCycle,
   Settler,
+  SettlerNeeds,
   workClockTicks,
 } from '../../../components/index.js';
+import { ONE } from '../../../core/fixed.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import type { SystemContext } from '../../context.js';
-import { religionAllowsAtomic } from '../../lifecycle/needs/religion.js';
+import { religionAllowsClip } from '../../lifecycle/needs/religion.js';
 import { emptyNeedSubject, needSubjectInto, settlerMeetsNeed } from '../../progression/index.js';
+import { atomicClip } from '../../readviews/animations.js';
 import { productionAtomic } from '../../readviews/production-atomic.js';
+import { clipSpendsReligion } from '../../readviews/religion.js';
 import { isWorkplaceOperator } from '../../stores/operators.js';
 
 /** The assignment of a present operator no batch is executable for. */
 export const FREE_SEAT = -1;
+
+/** What an assignment read: set when a claim met an empty religion reserve, whose answer reads state
+ *  the production pass does not watch. */
+export interface ClaimProbe {
+  emptyReserve: boolean;
+}
 
 /**
  * The batch each present operator works ({@link claimInto}), or {@link FREE_SEAT}. A suspended batch
@@ -43,10 +54,11 @@ export function productionAssignmentsInto(
   operators: readonly Entity[],
   out: number[],
   batchTick: number,
+  probe?: ClaimProbe,
 ): number[] {
   const cycles = world.tryGet(building, Production)?.cycles ?? NO_CYCLES;
   for (let i = 0; i < operators.length; i++) {
-    out[i] = claimInto(world, ctx, building, cycles, operators[i] as Entity, out, i, batchTick);
+    out[i] = claimInto(world, ctx, building, cycles, operators[i] as Entity, out, i, batchTick, probe);
   }
   if (out.length !== operators.length) out.length = operators.length;
   return out;
@@ -63,6 +75,7 @@ function claimInto(
   claims: readonly number[],
   taken: number,
   batchTick: number,
+  probe?: ClaimProbe,
 ): number {
   for (let sweep = OWN_SWEEP; sweep <= OPEN_SWEEP; sweep++) {
     const open = sweep === OPEN_SWEEP;
@@ -71,7 +84,7 @@ function claimInto(
       if (
         cycle === undefined ||
         heldBy(claims, taken, index) ||
-        !worksBatch(world, ctx, building, operator, cycle, open, batchTick)
+        !worksBatch(world, ctx, building, operator, cycle, open, batchTick, probe)
       )
         continue;
       return index;
@@ -141,10 +154,11 @@ function worksBatch(
   cycle: Readonly<ProductionCycle>,
   open: boolean,
   batchTick: number,
+  probe?: ClaimProbe,
 ): boolean {
   const own = cycle.operator === operator;
-  if (open ? own || !leftOpenTo(world, ctx, building, operator, cycle, batchTick) : !own) return false;
-  return mayCraft(world, ctx, operator, cycle, batchTick);
+  if (open ? own || !leftOpenTo(world, ctx, building, operator, cycle, batchTick, probe) : !own) return false;
+  return mayCraft(world, ctx, operator, cycle, batchTick, probe);
 }
 
 /**
@@ -159,10 +173,11 @@ function leftOpenTo(
   operator: Entity,
   cycle: Readonly<ProductionCycle>,
   batchTick: number,
+  probe?: ClaimProbe,
 ): boolean {
   const owner = cycle.operator;
   if (owner === null || !worksAt(world, ctx, building, owner)) return true;
-  if (mayCraft(world, ctx, owner, cycle, batchTick)) return false;
+  if (mayCraft(world, ctx, owner, cycle, batchTick, probe)) return false;
   return settlerMeetsNeed(
     world,
     ctx,
@@ -175,16 +190,25 @@ function leftOpenTo(
 /** The need subject {@link leftOpenTo} reads, rewritten per call. */
 const subjectScratch = emptyNeedSubject();
 
-/** Whether `operator`'s religion lets it advance `cycle` now. */
+/** Whether `operator`'s religion lets it advance `cycle` now, as {@link religionAllowsAtomic} answers: a
+ *  clip with no spend left and a reserve not yet empty always may. */
 function mayCraft(
   world: World,
   ctx: SystemContext,
   operator: Entity,
   cycle: Readonly<ProductionCycle>,
   batchTick: number,
+  probe?: ClaimProbe,
 ): boolean {
-  const atomic = productionAtomic(ctx.content, world.get(operator, Settler), cycle.goodType);
-  return religionAllowsAtomic(world, ctx, operator, atomic, workClockTicks(cycle, batchTick));
+  const settler = world.get(operator, Settler);
+  const atomic = productionAtomic(ctx.content, settler, cycle.goodType);
+  if (atomic === undefined) return true;
+  const clip = atomicClip(ctx.content, settler, atomic);
+  const worked = workClockTicks(cycle, batchTick);
+  if (!clipSpendsReligion(clip, worked)) return true;
+  if ((world.tryGet(operator, SettlerNeeds)?.piety ?? 0) < ONE) return true;
+  if (probe !== undefined) probe.emptyReserve = true;
+  return !needsEnabled(world) || religionAllowsClip(world, ctx, operator, settler, clip, worked);
 }
 
 /** Whether `operator` is still posted to `building` in one of its operator trades. */

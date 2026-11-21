@@ -89,6 +89,18 @@ describe('production tick cost', () => {
     expect(idle.filter((e) => read.has(e))).toEqual([]);
   });
 
+  it('reads nothing while a batch runs between its events', () => {
+    const sim = new Simulation({ seed: 1, content: technologyContent() });
+    const mill = buildingAt(sim, SAWMILL, 0, 0, [[WOOD, 2]]);
+    settlerAt(sim, 0, 0, CARPENTER, mill);
+    // The start, the clock's anchor and the first settled visit.
+    for (let tick = 0; tick < 3; tick++) productionSystem(sim.world, nextTickCtxOf(sim));
+    const read = entitiesRead(sim.world, () => productionSystem(sim.world, nextTickCtxOf(sim)));
+    expect(sim.world.get(mill, Production).cycles).toHaveLength(1);
+    expect([...read]).toEqual([]);
+    expect(sim.world.verifyCaches()).toEqual([]);
+  });
+
   it('starts a remembered starved workshop once its stock changes', () => {
     const sim = new Simulation({ seed: 1, content: technologyContent() });
     const mill = buildingAt(sim, SAWMILL, 0, 0, [[WOOD, 0]]);
