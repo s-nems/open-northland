@@ -39,6 +39,15 @@ class WalkFrontier<N extends number = NodeId> {
     return this.size === 0 ? undefined : (this.costs[0] as Fixed | undefined);
   }
 
+  /** The entry in heap slot `i < size`, in no order a caller may rely on. */
+  costAt(i: number): Fixed {
+    return (this.costs[i] ?? 0) as Fixed;
+  }
+
+  nodeAt(i: number): N {
+    return (this.nodes[i] ?? 0) as N;
+  }
+
   push(cost: Fixed, node: N): void {
     if (this.size === this.nodes.length) this.grow();
     const { costs, nodes } = this;
@@ -148,6 +157,11 @@ class WalkCosts {
   settledCost(node: NodeId): Fixed | undefined {
     const slot = this.pageAt(node >> COST_PAGE_SHIFT)?.[node & COST_PAGE_MASK];
     return slot !== undefined && slot < 0 ? slotCost(slot) : undefined;
+  }
+
+  /** `node`'s slot, read without allocating its page: {@link UNREACHED_COST} where no walk has reached. */
+  slot(node: NodeId): number {
+    return this.pageAt(node >> COST_PAGE_SHIFT)?.[node & COST_PAGE_MASK] ?? UNREACHED_COST;
   }
 
   private pageAt(index: number): Float64Array | undefined {
@@ -284,6 +298,60 @@ export class WalkFlood implements WalkDistances {
       if (next === node) return cost;
     }
     return undefined;
+  }
+
+  /**
+   * Whether a walk to `target`, a node this flood has not settled, costs at most `cap`: an A* over
+   * {@link walkLowerBound} out of the flood's open frontier, which every walk to an unsettled node leaves
+   * through at the cost held there, so the ground the flood settled is never searched again. False once
+   * every open walk's bound passes the cap, null once it has settled `budget` nodes without an answer.
+   */
+  walkOnWithin(target: NodeId, cap: Fixed, budget: number): boolean | null {
+    this.assertHeldCurrent();
+    const { terrain, costs: flooded } = this;
+    const tx = terrain.xOf(target);
+    const ty = terrain.yOf(target);
+    const aim = (node: NodeId): Fixed => walkLowerBound(terrain.xOf(node), terrain.yOf(node), tx, ty);
+    const costs = new WalkCosts();
+    const frontier = new WalkFrontier();
+    for (let i = 0; i < this.frontier.size; i++) {
+      const node = this.frontier.nodeAt(i);
+      const cost = this.frontier.costAt(i);
+      // A settled node's entry, or one a cheaper walk has since replaced, opens nothing.
+      if (flooded.slot(node) !== cost) continue;
+      costs.page(node)[node & COST_PAGE_MASK] = cost;
+      frontier.push(fx.add(cost, aim(node)), node);
+    }
+    const steps = this.steps;
+    const level = passOverlay(this.blocked);
+    while (frontier.size > 0) {
+      if ((frontier.peekCost() ?? cap) > cap) return false;
+      if (costs.settledCount >= budget) return null;
+      const next = frontier.pop();
+      const page = costs.page(next);
+      const at = next & COST_PAGE_MASK;
+      const slot = page[at] ?? UNREACHED_COST;
+      if (slot < 0) continue;
+      const cost = slot as Fixed;
+      if (next === target) return true;
+      page[at] = settledSlot(cost);
+      costs.settledCount++;
+      terrain.stepsInto(next, level, steps);
+      for (let i = 0; i < steps.length; i++) {
+        const stepNode = steps.nodeAt(i);
+        // The flood settled it at its least cost: no walk on from here improves it.
+        if (flooded.slot(stepNode) < 0) continue;
+        const candidate = costs.page(stepNode);
+        const offset = stepNode & COST_PAGE_MASK;
+        const held = candidate[offset] ?? UNREACHED_COST;
+        if (held < 0) continue;
+        const stepCost = fx.add(cost, steps.costAt(i));
+        if (held <= stepCost) continue;
+        candidate[offset] = stepCost;
+        frontier.push(fx.add(stepCost, aim(stepNode)), stepNode);
+      }
+    }
+    return false;
   }
 
   /**

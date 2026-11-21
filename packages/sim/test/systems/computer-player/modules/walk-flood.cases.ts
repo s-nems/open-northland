@@ -175,6 +175,35 @@ describe('computer-player walk flood', () => {
     expect(pastFloodBudget).toBeGreaterThan(0);
   });
 
+  it('walks on from a spent flood to the same verdict as the whole walk, and stops at its own budget', () => {
+    const { terrain, blocked, seed } = walledMap();
+    const whole = new WalkFlood(terrain, blocked, [seed], WHOLE_BANK);
+    let within = 0;
+    let past = 0;
+    let unreachable = 0;
+    for (const budget of [SMALL_BUDGET, SPENT_BUDGET]) {
+      const spent = new WalkFlood(terrain, blocked, [seed], budget);
+      spent.costTo(terrain.nodeAt(0, 0)); // a far corner: the flood spends its budget
+      for (let id = 0; id < terrain.nodeCount; id += WALK_ON_PROBE_STRIDE) {
+        const node = id as NodeId;
+        if (spent.costFloor(node) !== undefined) continue; // settled: the flood answers it
+        const cost = whole.costTo(node);
+        for (const cap of WALK_ON_CAPS) {
+          const expected = cost !== undefined && cost <= cap;
+          expect(spent.walkOnWithin(node, cap, WHOLE_BANK)).toBe(expected);
+          if (cost === undefined) unreachable++;
+          else if (expected) within++;
+          else past++;
+        }
+      }
+    }
+    expect([within, past, unreachable].every((count) => count > 0)).toBe(true);
+    const spent = new WalkFlood(terrain, blocked, [seed], SMALL_BUDGET);
+    const far = terrain.nodeAt(WALLED_FAR.hx, WALLED_FAR.hy);
+    spent.costTo(far);
+    expect(spent.walkOnWithin(far, fx.fromInt(WHOLE_BANK), SMALL_BUDGET)).toBeNull();
+  });
+
   it('answers over a byte mask exactly as a reference flood and as the same blocks behind any overlay', () => {
     let state = RANDOM_SEED;
     const draw = (bound: number): number => {
@@ -229,6 +258,12 @@ const WALLED_TARGETS = [
   { hx: 2, hy: 62 },
 ];
 const WALLED_BUDGETS = [SMALL_BUDGET, 400, WHOLE_BANK];
+/** A flood budget that ends among the walls, and a node far past either spent budget. */
+const SPENT_BUDGET = 400;
+const WALLED_FAR = { hx: 60, hy: 50 };
+/** Walk caps in tiles, from one every asked node lies past to one past every walk on the map. */
+const WALK_ON_CAPS = [2, 8, 14, 20, 200].map((tiles) => fx.fromInt(tiles));
+const WALK_ON_PROBE_STRIDE = 3;
 const WALLED_REACH = 6;
 const RANDOM_TRIALS = 24;
 const RANDOM_BLOCKED_PERCENT = 30;

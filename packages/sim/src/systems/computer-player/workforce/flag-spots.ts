@@ -183,9 +183,11 @@ export function flagGround(
       const key = `${seed.node}:${node}:${cap}`;
       let verdict = aimedVerdicts.get(key);
       if (verdict === undefined) {
-        // Past the decision's allowance, a far candidate counts as too far unmeasured.
+        // Past the decision's allowance, a far candidate counts as too far unmeasured. The walk on from
+        // the flood refuses cheaply what the cap rules out; the walk from the seed decides the rest.
         verdict =
           aimedVerdicts.size < AIMED_DETOURS_PER_DECISION &&
+          flood.walkOnWithin(node, cap, AIMED_DETOUR_BUDGET_NODES) !== false &&
           walkWithinCap(terrain, blocked, seed.node, node, cap, AIMED_DETOUR_BUDGET_NODES);
         aimedVerdicts.set(key, verdict);
       }
