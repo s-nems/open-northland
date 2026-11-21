@@ -115,7 +115,9 @@ describe.runIf(hasRealIr())('the dragon tribe and the retired trades in our data
     expect(ir.jobGraphics.filter((row) => RETIRED_JOBS.includes(row.job))).toEqual([]);
     // The Frankish hero bow keeps its own weak row; it and every monster and animal row repeat column 8.
     const expected = (w: (typeof content.weapons)[number]) =>
-      NATION_TRIBES.includes(w.tribeType) && !(w.tribeType === FRANK && w.id === 'hero_bow')
+      w.tribeType !== undefined &&
+      NATION_TRIBES.includes(w.tribeType) &&
+      !(w.tribeType === FRANK && w.id === 'hero_bow')
         ? ORIGINAL_MONSTER_DAMAGE[w.id]
         : w.damage[ANIMAL_COLUMN];
     const wrong = content.weapons.filter(
