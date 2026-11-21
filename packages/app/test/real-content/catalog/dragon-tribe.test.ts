@@ -26,33 +26,35 @@ const FRANK = 2;
 const SHIELD_NATIONS: readonly number[] = [1, 2, 3, 7];
 const SHIELD_DAMAGE_PCT = 90;
 const PERCENT = 100;
-/** What each weapon did to a weresnake or werewolf in the original, which wore leather there. */
+/** What each weapon did to a weresnake or werewolf in the original, which wore leather there, rounded to five
+ *  from 100 up. */
 const ORIGINAL_MONSTER_DAMAGE: Readonly<Record<string, number>> = {
-  fist: 229,
-  woman_fist: 229,
-  hero_fist: 229,
+  fist: 230,
+  woman_fist: 230,
+  hero_fist: 230,
   wooden_spear: 1400,
-  iron_spear: 2121,
+  iron_spear: 2120,
   short_sword: 850,
   long_sword: 2900,
   short_bow: 150,
   long_bow: 400,
   hunter_bow: 500,
   house_bow: 85,
-  catapult: 5486,
-  hero_spear: 1886,
-  hero_sword: 2229,
-  hero_saber: 1857,
-  hero_bow: 857,
+  catapult: 5485,
+  hero_spear: 1885,
+  hero_sword: 2230,
+  hero_saber: 1855,
+  hero_bow: 855,
 };
 const SPEAR_MAIN_TYPE = 2;
-/** The dragon's natural weapon: the Byzantine wooden spear values the pack carried before the pool. */
+/** The dragon's natural weapon: the Byzantine wooden spear values the pack carried before the pool, its
+ *  leather toughened and rounded to five. */
 const DRAGON_WEAPON = {
   mainType: SPEAR_MAIN_TYPE,
   weight: 1,
   minRange: 1,
   maxRange: 3,
-  damage: { '0': 500, '1': 250, '2': 318, '3': 125, '4': 125, '6': 85, '7': 215, '8': 375, '9': 375 },
+  damage: { '0': 500, '1': 250, '2': 320, '3': 125, '4': 125, '6': 85, '7': 215, '8': 375, '9': 375 },
 };
 const DRAGON_ATTACK_TICKS = 59;
 const DRAGON_BLOWS = 5;
