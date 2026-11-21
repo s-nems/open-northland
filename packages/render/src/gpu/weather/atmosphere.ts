@@ -330,6 +330,7 @@ export class WeatherAtmosphere {
   readonly veil: Mesh<Geometry, Shader>;
   /** The grade and the veil in one draw, where the context blends with two sources; null elsewhere. */
   readonly air: Mesh<Geometry, Shader> | null;
+  private readonly meshes: readonly Mesh<Geometry, Shader>[];
   private readonly frameUniforms: FrameUniforms;
   private readonly gradeUniforms: GradeUniforms;
   private readonly veilUniforms: VeilUniforms;
@@ -373,7 +374,8 @@ export class WeatherAtmosphere {
         ? null
         : this.mesh(WEATHER_AIR_SOURCE, { weatherGrade: this.gradeUniforms, ...this.veilResources() });
     if (this.air !== null) this.air.blendMode = AIR_BLEND;
-    for (const mesh of this.meshes()) parent.addChild(mesh);
+    this.meshes = this.air === null ? [this.grade, this.veil] : [this.grade, this.veil, this.air];
+    for (const mesh of this.meshes) parent.addChild(mesh);
   }
 
   update(look: AtmosphereLook, frame: AtmosphereFrame): void {
@@ -423,7 +425,7 @@ export class WeatherAtmosphere {
     this.grade.visible = graded && !merged;
     this.veil.visible = veiled && !merged;
     if (this.air !== null) this.air.visible = merged;
-    for (const mesh of this.meshes()) mesh.scale.set(screenW, screenH);
+    for (const mesh of this.meshes) mesh.scale.set(screenW, screenH);
   }
 
   /** Re-bind the fog texture after the reach replaced it. */
@@ -434,20 +436,16 @@ export class WeatherAtmosphere {
   }
 
   hide(): void {
-    for (const mesh of this.meshes()) mesh.visible = false;
+    for (const mesh of this.meshes) mesh.visible = false;
   }
 
   destroy(): void {
-    for (const mesh of this.meshes()) {
+    for (const mesh of this.meshes) {
       mesh.shader?.destroy();
       mesh.destroy();
     }
     this.grid.destroy(true);
     this.noise.destroy();
-  }
-
-  private meshes(): readonly Mesh<Geometry, Shader>[] {
-    return this.air === null ? [this.grade, this.veil] : [this.grade, this.veil, this.air];
   }
 
   private veilResources(): Record<string, UniformGroup | TextureSource> {
@@ -478,7 +476,7 @@ export class WeatherAtmosphere {
     this.columns = columns;
     this.rows = rows;
     this.grid = screenGrid(columns, rows);
-    for (const mesh of this.meshes()) mesh.geometry = this.grid;
+    for (const mesh of this.meshes) mesh.geometry = this.grid;
     retired.destroy(true);
   }
 }
