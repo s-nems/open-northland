@@ -39,6 +39,7 @@ export const MILITARY: ArticleGroup = {
           list: [
             'Doświadczenie atakującego nie wzmacnia strzał, kamieni ani ciosów w pojazdy i palisady. Doświadczenie celu zmniejsza każdy cios i strzał w człowieka.',
             'Kierunek ciosu liczy się przy ludziach i potworach, Amulet Obrony tylko przy ludziach. Przy strzale kierunek liczy się od miejsca, z którego strzelano.',
+            'Żołnierz z [[good:sword_shord|Krótkim Mieczem]] u Wikingów, Franków, Bizantyjczyków i Egipcjan nosi tarczę: zatrzymuje nią {{combat.shieldPct}}% strzał z przodu i z boków, także z budynków, ale żadnej od tyłu i żadnego kamienia z Katapulty. Zatrzymana strzała nie zadaje obrażeń i nie daje nikomu doświadczenia. Krótki Miecz Saracenów nie ma tarczy.',
             'Katapulta nie może mieć Amuletu Siły.',
             'Palisada liczy obrażenia inaczej: [[article:walls|Palisady i bramy]].',
             'Dziecka nie da się zranić.',
@@ -48,7 +49,7 @@ export const MILITARY: ArticleGroup = {
           h: 'Różnice plemion',
         },
         {
-          p: 'Tabela liczy broń plemienia, którego herb wybierzesz u góry okna. Broń żołnierza zadaje te same obrażenia i sięga tak samo daleko w każdym plemieniu; bohaterowie mają własne wartości.',
+          p: 'Tabela liczy broń plemienia, którego herb wybierzesz u góry okna. Broń żołnierza zadaje te same obrażenia i sięga tak samo daleko w każdym plemieniu poza [[good:sword_shord|Krótkim Mieczem]]: u Saracenów bije mocniej, ale nie ma tarczy. Bohaterowie mają własne wartości.',
         },
         {
           h: 'Zwierzęta i potwory',
@@ -763,15 +764,22 @@ export const MILITARY: ArticleGroup = {
             rows: [
               ['Druga Katapulta', '{{stone.vehicle}}', '{{stone.vehicleKills}}'],
               [
-                'Włócznie, [[good:sword_long|Długi Miecz]], [[good:bow_long|Długi Łuk]]',
+                'Włócznie, [[good:sword_long|Długi Miecz]]',
                 '{{vs.catapult.spear}}',
                 '{{vs.catapult.spearHits}}',
               ],
+              ['[[good:bow_long|Długi Łuk]]', '{{vs.catapult.longBow}}', '{{vs.catapult.longBowHits}}'],
               [
-                '[[good:sword_shord|Krótki Miecz]], [[good:bow_short|Krótki Łuk]]',
+                '[[good:sword_shord|Krótki Miecz]]',
                 '{{vs.catapult.shortSword}}',
                 '{{vs.catapult.shortSwordHits}}',
               ],
+              [
+                '[[good:sword_shord|Krótki Miecz]] Saracenów',
+                '{{vs.catapult.saracenShortSword}}',
+                '{{vs.catapult.saracenShortSwordHits}}',
+              ],
+              ['[[good:bow_short|Krótki Łuk]]', '{{vs.catapult.shortBow}}', '{{vs.catapult.shortBowHits}}'],
               ['Pięści', '{{vs.catapult.fist}}', '{{vs.catapult.fistHits}}'],
               ['Strzała z budynku', '{{arrow.vehicle}}', '{{vs.catapult.arrowHits}}'],
             ],

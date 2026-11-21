@@ -39,6 +39,7 @@ export const MILITARY: ArticleGroup = {
           list: [
             'Die Erfahrung des Angreifers verstärkt keine Pfeile und Steine und keine Schläge gegen Fahrzeuge und Palisaden. Die Erfahrung des Ziels senkt jeden Schlag und Schuss auf einen Menschen.',
             'Die Schlagrichtung zählt bei Menschen und Monstern, das Verteidigungsamulett nur bei Menschen. Beim Pfeil richtet sich die Richtung nach dem Ort, von dem er abgeschossen wurde.',
+            'Ein Soldat mit [[good:sword_shord|Kurzschwert]] bei Wikingern, Franken, Byzantinern und Ägyptern trägt einen Schild: Er hält {{combat.shieldPct}}% der Pfeile von vorn und von den Seiten auf, auch die aus Gebäuden, aber keinen von hinten und keinen Stein eines Katapults. Ein aufgehaltener Pfeil macht keinen Schaden und bringt niemandem Erfahrung. Das Kurzschwert der Sarazenen hat keinen Schild.',
             'Ein Katapult kann kein Amulett der Stärke tragen.',
             'Palisaden rechnen Schaden anders: [[article:walls|Palisaden und Tore]].',
             'Kinder lassen sich nicht verwunden.',
@@ -48,7 +49,7 @@ export const MILITARY: ArticleGroup = {
           h: 'Unterschiede der Stämme',
         },
         {
-          p: 'Die Tabelle rechnet mit den Waffen des Stammes, dessen Wappen du oben im Fenster wählst. Die Waffe eines Soldaten macht in jedem Stamm denselben Schaden und reicht gleich weit; Helden haben eigene Werte.',
+          p: 'Die Tabelle rechnet mit den Waffen des Stammes, dessen Wappen du oben im Fenster wählst. Die Waffe eines Soldaten macht in jedem Stamm denselben Schaden und reicht gleich weit, außer dem [[good:sword_shord|Kurzschwert]]: Das der Sarazenen trifft härter, hat aber keinen Schild. Helden haben eigene Werte.',
         },
         {
           h: 'Tiere und Monster',
@@ -765,15 +766,22 @@ export const MILITARY: ArticleGroup = {
             rows: [
               ['Zweites Katapult', '{{stone.vehicle}}', '{{stone.vehicleKills}}'],
               [
-                'Speere, [[good:sword_long|Langschwert]], [[good:bow_long|Langbogen]]',
+                'Speere, [[good:sword_long|Langschwert]]',
                 '{{vs.catapult.spear}}',
                 '{{vs.catapult.spearHits}}',
               ],
+              ['[[good:bow_long|Langbogen]]', '{{vs.catapult.longBow}}', '{{vs.catapult.longBowHits}}'],
               [
-                '[[good:sword_shord|Kurzschwert]], [[good:bow_short|Kurzbogen]]',
+                '[[good:sword_shord|Kurzschwert]]',
                 '{{vs.catapult.shortSword}}',
                 '{{vs.catapult.shortSwordHits}}',
               ],
+              [
+                '[[good:sword_shord|Kurzschwert]] der Sarazenen',
+                '{{vs.catapult.saracenShortSword}}',
+                '{{vs.catapult.saracenShortSwordHits}}',
+              ],
+              ['[[good:bow_short|Kurzbogen]]', '{{vs.catapult.shortBow}}', '{{vs.catapult.shortBowHits}}'],
               ['Fäuste', '{{vs.catapult.fist}}', '{{vs.catapult.fistHits}}'],
               ['Pfeil aus Gebäude', '{{arrow.vehicle}}', '{{vs.catapult.arrowHits}}'],
             ],

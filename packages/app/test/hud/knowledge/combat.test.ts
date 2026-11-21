@@ -45,6 +45,7 @@ const weapon = (over: Partial<KnowledgeWeapon> = {}): KnowledgeWeapon => ({
   clipTicks: 24,
   blows: 2,
   usable: true,
+  arrowBlockPct: null,
   ...over,
 });
 

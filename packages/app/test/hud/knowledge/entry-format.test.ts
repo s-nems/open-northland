@@ -33,6 +33,7 @@ const weapon = (over: Partial<KnowledgeWeapon>): KnowledgeWeapon => ({
   clipTicks: TICKS_PER_SECOND * 2,
   blows: 1,
   usable: true,
+  arrowBlockPct: null,
   ...over,
 });
 

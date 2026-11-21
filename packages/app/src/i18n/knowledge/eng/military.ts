@@ -39,6 +39,7 @@ export const MILITARY: ArticleGroup = {
           list: [
             "The attacker's experience doesn't strengthen arrows, stones or blows on vehicles and stockades. The target's experience cuts every blow and shot on a person.",
             'Blow direction counts against people and monsters, the Amulet of Defence only against people. For an arrow, direction is taken from where it was fired.',
+            'A [[good:sword_shord|Shortsword]] soldier of the Vikings, Franks, Byzantines or Egyptians carries a shield: it stops {{combat.shieldPct}}% of arrows from the front and the sides, those from buildings too, but none from behind and no Catapult stone. A stopped arrow does no damage and gives no one experience. The Saracen Shortsword has no shield.',
             'A Catapult cannot take an Amulet of Strength.',
             'A stockade counts damage its own way: [[article:walls|Stockades and Gates]].',
             "Children can't be hurt.",
@@ -48,7 +49,7 @@ export const MILITARY: ArticleGroup = {
           h: 'Tribe differences',
         },
         {
-          p: "The table counts the weapons of the tribe whose emblem you pick at the top of the window. A soldier's weapon deals the same damage and reaches as far in every tribe; heroes have values of their own.",
+          p: "The table counts the weapons of the tribe whose emblem you pick at the top of the window. A soldier's weapon deals the same damage and reaches as far in every tribe except the [[good:sword_shord|Shortsword]]: the Saracen one hits harder but has no shield. Heroes have values of their own.",
         },
         {
           h: 'Animals and monsters',
@@ -766,16 +767,19 @@ export const MILITARY: ArticleGroup = {
             head: ['Weapon', 'Damage', 'Hits to destroy'],
             rows: [
               ['A second Catapult', '{{stone.vehicle}}', '{{stone.vehicleKills}}'],
+              ['Spears, [[good:sword_long|Longsword]]', '{{vs.catapult.spear}}', '{{vs.catapult.spearHits}}'],
+              ['[[good:bow_long|Longbow]]', '{{vs.catapult.longBow}}', '{{vs.catapult.longBowHits}}'],
               [
-                'Spears, [[good:sword_long|Longsword]], [[good:bow_long|Longbow]]',
-                '{{vs.catapult.spear}}',
-                '{{vs.catapult.spearHits}}',
-              ],
-              [
-                '[[good:sword_shord|Shortsword]], [[good:bow_short|Short Bow]]',
+                '[[good:sword_shord|Shortsword]]',
                 '{{vs.catapult.shortSword}}',
                 '{{vs.catapult.shortSwordHits}}',
               ],
+              [
+                'Saracen [[good:sword_shord|Shortsword]]',
+                '{{vs.catapult.saracenShortSword}}',
+                '{{vs.catapult.saracenShortSwordHits}}',
+              ],
+              ['[[good:bow_short|Short Bow]]', '{{vs.catapult.shortBow}}', '{{vs.catapult.shortBowHits}}'],
               ['Fists', '{{vs.catapult.fist}}', '{{vs.catapult.fistHits}}'],
               ['Arrow from a building', '{{arrow.vehicle}}', '{{vs.catapult.arrowHits}}'],
             ],

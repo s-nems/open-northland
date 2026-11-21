@@ -24,6 +24,7 @@ const weapon = (id: string, bare: number): KnowledgeWeapon => ({
   clipTicks: 24,
   blows: 1,
   usable: true,
+  arrowBlockPct: null,
 });
 
 const makeContext = (): KnowledgeContext =>

@@ -354,6 +354,7 @@ function weaponRow(joins: Joins, tribe: TribeType, w: WeaponType): KnowledgeWeap
     clipTicks: w.id === SHELTER_WEAPON ? null : (clip?.length ?? null),
     blows: Math.max(1, blows),
     usable: w.jobType === undefined || permitted === undefined || permitted.includes(w.jobType),
+    arrowBlockPct: w.arrowBlock?.chancePct ?? null,
   };
 }
 

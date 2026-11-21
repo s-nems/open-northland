@@ -65,6 +65,7 @@ const row = (over: Partial<KnowledgeWeapon> = {}): KnowledgeWeapon => ({
   clipTicks: CLIP_TICKS,
   blows: 1,
   usable: true,
+  arrowBlockPct: null,
   ...over,
 });
 

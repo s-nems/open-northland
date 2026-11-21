@@ -138,6 +138,8 @@ export interface KnowledgeWeapon {
   readonly blows: number;
   /** Whether the tribe's permissions admit the row's job. */
   readonly usable: boolean;
+  /** Percent of arrows from the front or a side its bearer's shield stops; null without a shield. */
+  readonly arrowBlockPct: number | null;
 }
 
 export interface KnowledgeArmor {

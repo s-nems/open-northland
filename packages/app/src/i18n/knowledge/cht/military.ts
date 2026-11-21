@@ -36,6 +36,7 @@ export const MILITARY: ArticleGroup = {
           list: [
             '攻擊者的經驗不加強箭矢、石彈，也不加強對載具和木柵欄的攻擊。目標的經驗會減少打在人身上的每次攻擊和射擊。',
             '攻擊方向對人和怪物起作用，防禦護符只對人起作用。箭矢的方向按射出的位置計算。',
+            '維京人、法蘭克人、拜占庭人和埃及人的[[good:sword_shord|短劍]]士兵帶著盾牌：能擋住從正面和側面射來的{{combat.shieldPct}}%箭矢，建築射出的箭也算，但擋不住背後射來的箭，也擋不住投石機的石彈。被擋住的箭不造成傷害，也不給任何人經驗。撒拉遜人的短劍沒有盾牌。',
             '投石機不能使用力量護符。',
             '木柵欄的傷害另算：[[article:walls|木柵欄與柵門]]。',
             '兒童不會受傷。',
@@ -45,7 +46,7 @@ export const MILITARY: ArticleGroup = {
           h: '民族差異',
         },
         {
-          p: '表格按你在視窗頂部選中徽章的民族計算武器。士兵的武器在每個民族的傷害和射程都相同；英雄有自己的數值。',
+          p: '表格按你在視窗頂部選中徽章的民族計算武器。士兵的武器在每個民族的傷害和射程都相同，只有[[good:sword_shord|短劍]]例外：撒拉遜人的短劍傷害更高，但沒有盾牌。英雄有自己的數值。',
         },
         {
           h: '動物與怪物',
@@ -734,16 +735,15 @@ export const MILITARY: ArticleGroup = {
             head: ['武器', '傷害', '摧毀所需命中數'],
             rows: [
               ['另一臺投石機', '{{stone.vehicle}}', '{{stone.vehicleKills}}'],
+              ['矛、[[good:sword_long|長劍]]', '{{vs.catapult.spear}}', '{{vs.catapult.spearHits}}'],
+              ['[[good:bow_long|長弓]]', '{{vs.catapult.longBow}}', '{{vs.catapult.longBowHits}}'],
+              ['[[good:sword_shord|短劍]]', '{{vs.catapult.shortSword}}', '{{vs.catapult.shortSwordHits}}'],
               [
-                '矛、[[good:sword_long|長劍]]、[[good:bow_long|長弓]]',
-                '{{vs.catapult.spear}}',
-                '{{vs.catapult.spearHits}}',
+                '撒拉遜人的[[good:sword_shord|短劍]]',
+                '{{vs.catapult.saracenShortSword}}',
+                '{{vs.catapult.saracenShortSwordHits}}',
               ],
-              [
-                '[[good:sword_shord|短劍]]、[[good:bow_short|短弓]]',
-                '{{vs.catapult.shortSword}}',
-                '{{vs.catapult.shortSwordHits}}',
-              ],
+              ['[[good:bow_short|短弓]]', '{{vs.catapult.shortBow}}', '{{vs.catapult.shortBowHits}}'],
               ['拳頭', '{{vs.catapult.fist}}', '{{vs.catapult.fistHits}}'],
               ['建築射出的箭', '{{arrow.vehicle}}', '{{vs.catapult.arrowHits}}'],
             ],

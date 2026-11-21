@@ -1,6 +1,6 @@
 import { hexDistanceBetween, systems, TICKS_PER_SECOND } from '@open-northland/sim';
 import { VIKING } from '../../../catalog/buildings.js';
-import { FRANK } from '../../../catalog/civilizations.js';
+import { FRANK, SARACEN } from '../../../catalog/civilizations.js';
 import { MONSTER_TRIBE_DRAGON } from '../../../catalog/creatures.js';
 import {
   CLOSED_GATE_LOGIC_ID,
@@ -288,6 +288,16 @@ export const WALL_FACTS: Readonly<Record<string, Fact>> = {
   ),
 };
 
+/** What one blow of a weapon takes off a Catapult, by the name its table reads it under. */
+const CATAPULT_FOES = [
+  ['spear', VIKING, 'iron_spear'],
+  ['longBow', VIKING, 'long_bow'],
+  ['shortSword', VIKING, 'short_sword'],
+  ['saracenShortSword', SARACEN, 'short_sword'],
+  ['shortBow', VIKING, 'short_bow'],
+  ['fist', VIKING, 'fist'],
+] as const;
+
 export const COMBAT_FACTS: Readonly<Record<string, Fact>> = {
   'shortBow.towerMax': towerMax('short_bow'),
   'longBow.towerMax': towerMax('long_bow'),
@@ -328,6 +338,7 @@ export const COMBAT_FACTS: Readonly<Record<string, Fact>> = {
   }),
   'combat.backSideFactor': twoDecimals(HIT_DIRECTION.backSide / PERCENT),
   'combat.behindFactor': twoDecimals(HIT_DIRECTION.behind / PERCENT),
+  'combat.shieldPct': whole((base) => weaponRow(base, VIKING, 'short_sword')?.arrowBlockPct ?? undefined),
   'aim.basePct': whole(systems.trueShotPct(0)),
   'aim.samplePct': whole(systems.trueShotPct(AIM_SAMPLE_POINTS)),
   'stance.search': whole(systems.DEFEND_RADIUS_NODES),
@@ -390,11 +401,11 @@ export const COMBAT_FACTS: Readonly<Record<string, Fact>> = {
   'hp.tower2': whole((base) => buildingHp(base, 'tower_01')),
   'hp.hq': whole((base) => buildingHp(base, 'headquarters')),
   'hp.frankHq': whole((base) => buildingHp(base, 'headquarters', FRANK)),
-  'vs.catapult.spear': hit(VIKING, 'iron_spear', 'vehicle'),
-  'vs.catapult.spearHits': killedBy((base) => hitOf(base, VIKING, 'iron_spear', 'vehicle'), catapultHp),
-  'vs.catapult.shortSword': hit(VIKING, 'short_sword', 'vehicle'),
-  'vs.catapult.shortSwordHits': killedBy((base) => hitOf(base, VIKING, 'short_sword', 'vehicle'), catapultHp),
-  'vs.catapult.fist': hit(VIKING, 'fist', 'vehicle'),
-  'vs.catapult.fistHits': killedBy((base) => hitOf(base, VIKING, 'fist', 'vehicle'), catapultHp),
+  ...Object.fromEntries(
+    CATAPULT_FOES.flatMap(([name, tribe, id]) => [
+      [`vs.catapult.${name}`, hit(tribe, id, 'vehicle')],
+      [`vs.catapult.${name}Hits`, killedBy((base) => hitOf(base, tribe, id, 'vehicle'), catapultHp)],
+    ]),
+  ),
   'vs.catapult.arrowHits': killedBy((base) => hitOf(base, VIKING, 'house_bow', 'vehicle'), catapultHp),
 };

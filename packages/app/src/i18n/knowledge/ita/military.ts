@@ -42,6 +42,7 @@ export const MILITARY: ArticleGroup = {
           list: [
             "L'esperienza dell'attaccante non rafforza frecce, pietre né colpi contro veicoli e palizzate. L'esperienza del bersaglio riduce ogni colpo e tiro su una persona.",
             "La direzione del colpo conta contro persone e mostri, l'Amuleto della difesa solo contro le persone. Per una freccia la direzione si calcola dal punto da cui è stata scoccata.",
+            'Il soldato con la [[good:sword_shord|Spada corta]] di Vichinghi, Franchi, Bizantini ed Egizi porta uno scudo: ferma il {{combat.shieldPct}}% delle frecce che arrivano di fronte e dai lati, anche quelle degli edifici, ma nessuna da dietro e nessuna pietra di catapulta. Una freccia fermata non fa danno e non dà esperienza a nessuno. La Spada corta dei Saraceni non ha scudo.',
             "Una catapulta non può ricevere l'Amuleto della forza.",
             'Una palizzata calcola il danno a modo suo: [[article:walls|Palizzate e cancelli]].',
             'I bambini non possono essere feriti.',
@@ -51,7 +52,7 @@ export const MILITARY: ArticleGroup = {
           h: 'Differenze tra le tribù',
         },
         {
-          p: "La tabella considera le armi della tribù di cui scegli lo stemma in cima alla finestra. L'arma di un soldato fa lo stesso danno e arriva alla stessa distanza in ogni tribù; gli eroi hanno valori propri.",
+          p: "La tabella considera le armi della tribù di cui scegli lo stemma in cima alla finestra. L'arma di un soldato fa lo stesso danno e arriva alla stessa distanza in ogni tribù, tranne la [[good:sword_shord|Spada corta]]: quella dei Saraceni colpisce più forte ma non ha scudo. Gli eroi hanno valori propri.",
         },
         {
           h: 'Animali e mostri',
@@ -782,15 +783,22 @@ export const MILITARY: ArticleGroup = {
             rows: [
               ['Una seconda catapulta', '{{stone.vehicle}}', '{{stone.vehicleKills}}'],
               [
-                'Lance, [[good:sword_long|Spada lunga]], [[good:bow_long|Arco lungo]]',
+                'Lance, [[good:sword_long|Spada lunga]]',
                 '{{vs.catapult.spear}}',
                 '{{vs.catapult.spearHits}}',
               ],
+              ['[[good:bow_long|Arco lungo]]', '{{vs.catapult.longBow}}', '{{vs.catapult.longBowHits}}'],
               [
-                '[[good:sword_shord|Spada corta]], [[good:bow_short|Arco corto]]',
+                '[[good:sword_shord|Spada corta]]',
                 '{{vs.catapult.shortSword}}',
                 '{{vs.catapult.shortSwordHits}}',
               ],
+              [
+                '[[good:sword_shord|Spada corta]] dei Saraceni',
+                '{{vs.catapult.saracenShortSword}}',
+                '{{vs.catapult.saracenShortSwordHits}}',
+              ],
+              ['[[good:bow_short|Arco corto]]', '{{vs.catapult.shortBow}}', '{{vs.catapult.shortBowHits}}'],
               ['Pugni', '{{vs.catapult.fist}}', '{{vs.catapult.fistHits}}'],
               ['Freccia da un edificio', '{{arrow.vehicle}}', '{{vs.catapult.arrowHits}}'],
             ],
