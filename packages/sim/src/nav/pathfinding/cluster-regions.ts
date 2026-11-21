@@ -102,8 +102,8 @@ export class ClusterRegions {
   private readonly factorCounts = new Int32Array(ROUTE_FACTORS);
   private epoch = 0;
   private builds = 0;
-  /** How many clusters are held as too fragmented to label. */
-  private fragmented = 0;
+  /** How many times {@link linksOf} has met a cluster too fragmented to label beside its region's. */
+  private fragmentsMet = 0;
   private seenMask = Number.NaN;
   private seenResistance = Number.NaN;
 
@@ -133,10 +133,13 @@ export class ClusterRegions {
     return this.state.length;
   }
 
-  /** Whether some cluster levelled so far holds no regions for its fragments, so a walk may cross ground
-   *  no chain of regions shows. */
-  get anyFragmented(): boolean {
-    return this.fragmented > 0;
+  /**
+   * A count that moves whenever {@link linksOf} reads a region beside a cluster too fragmented to label,
+   * whose ground no chain of regions shows. A flood over the links that leaves it unmoved has seen every
+   * walk out of its regions.
+   */
+  get fragmentedLinks(): number {
+    return this.fragmentsMet;
   }
 
   /** Write `value` over every node of `cluster` in a per-node `lane`. */
@@ -205,6 +208,7 @@ export class ClusterRegions {
       for (let c = Math.max(0, column - 1); c <= Math.min(this.columns - 1, column + 1); c++) {
         const near = r * this.columns + c;
         this.level(near);
+        if (this.state[near] === FRAGMENTED) this.fragmentsMet += 1;
         const at = this.labelledAt[near] ?? 0;
         if (at > latest) latest = at;
       }
@@ -262,8 +266,6 @@ export class ClusterRegions {
         this.centreY,
         this.weights,
       );
-      if (this.state[cluster] === FRAGMENTED) this.fragmented -= 1;
-      if (regions === NO_REGION) this.fragmented += 1;
       this.state[cluster] = regions === NO_REGION ? FRAGMENTED : LABELLED;
       this.regionCounts[cluster] = regions === NO_REGION ? 0 : regions;
     }

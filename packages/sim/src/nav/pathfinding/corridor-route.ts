@@ -149,7 +149,10 @@ export class CorridorRoutes {
     const from = regions.regionOf(start);
     const to = regions.regionOf(goal);
     if (from === NO_REGION || to === NO_REGION) return null;
-    if (!this.chainRegions(from, to, goal, stats)) return regions.anyFragmented ? null : 'unreachable';
+    const fragmentedLinks = regions.fragmentedLinks;
+    if (!this.chainRegions(from, to, goal, stats)) {
+      return regions.fragmentedLinks === fragmentedLinks ? 'unreachable' : null;
+    }
     this.openCorridor(to);
     this.blocks.searchUnder(bodies);
     const path = findPathWithin(this.terrain, start, goal, this.blocks, stats, UNCAPPED);
