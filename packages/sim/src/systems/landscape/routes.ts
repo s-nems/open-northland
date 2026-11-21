@@ -7,6 +7,7 @@ import {
   Stranded,
   UnreachableGoals,
   VehicleYardRefusals,
+  WalkFacing,
   type Waypoint,
 } from '../../components/index.js';
 import type { Fixed } from '../../core/fixed.js';
@@ -138,6 +139,10 @@ function haltBefore(world: World, terrain: TerrainGraph, e: Entity, stop: number
       route.legCost = 0;
       route.legPace = undefined;
       route.departureCharged = undefined;
+      // A walker without a turn heading is drawn facing the stop it walks toward, now the one behind it.
+      const turns = world.has(e, WalkFacing);
+      route.towardX = turns ? undefined : back.x;
+      route.towardY = turns ? undefined : back.y;
     }
   }
   requestFromHere(world, terrain, e, true);

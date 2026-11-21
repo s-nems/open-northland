@@ -93,6 +93,21 @@ describe('script landscape route invalidation', () => {
     });
   });
 
+  it('faces a walker without a turn heading toward the node it turns back to', () => {
+    const sim = fresh();
+    const terrain = terrainOf(sim);
+    const left = stopAt(terrain, 4, 8);
+    const ahead = stopAt(terrain, 8, 8);
+    const e = sim.world.create();
+    sim.world.add(e, Position, { x: fx.add(left.x, fx.fromFloat(0.5)), y: left.y });
+    sim.world.add(e, MoveGoal, { cell: terrain.nodeAt(12, 8) });
+    sim.world.add(e, PathRoute, { waypoints: [left, ahead, stopAt(terrain, 12, 8)] });
+    sim.world.add(e, PathFollow, { index: 1, legElapsed: 0, legCost: 0, towardX: ahead.x, towardY: ahead.y });
+    invalidateLandscapeRoutes(sim.world, terrain, new Set([ahead.node]));
+    expect(sim.world.get(e, PathRoute).waypoints).toEqual([left]);
+    expect(sim.world.get(e, PathFollow)).toMatchObject({ index: 0, towardX: left.x, towardY: left.y });
+  });
+
   it('requeues a diagonal whose endpoints remain free when its midpoint flanks close', () => {
     const source = map();
     const sim = new Simulation({
