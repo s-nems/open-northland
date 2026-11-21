@@ -185,14 +185,12 @@ export const itSurfaces = {
       needsDetail: 'Fame, stanchezza e altri bisogni.',
       storage: {
         label: 'Capacità dei magazzini',
-        detail:
-          'Moltiplica lo spazio per ogni merce nei magazzini e nel Quartier generale. Le officine contengono quanto al solito.',
+        detail: 'Moltiplica lo spazio per le merci nei magazzini e nel Quartier generale.',
         factor: '×{factor}',
       },
       basicYield: {
         label: 'Risorse di base',
-        detail:
-          "Moltiplica il legno, i funghi, l'argilla e la pietra con cui iniziano gli alberi, i funghi e i giacimenti della mappa.",
+        detail: "Moltiplica il legno, i funghi, l'argilla e la pietra sulla mappa.",
         factor: '×{factor}',
       },
       oreYield: {
@@ -202,8 +200,7 @@ export const itSurfaces = {
       },
       papers: {
         label: 'Documenti',
-        detail:
-          'I documenti delle casse e della mappa erigono subito un edificio. Disattivati, nessuno ne riceve, tranne il documento per il Quartier generale con cui la mappa fa iniziare un giocatore.',
+        detail: 'Documenti per edifici gratuiti dalle casse e dalla mappa.',
         on: 'Attivi',
         off: 'Disattivati',
       },

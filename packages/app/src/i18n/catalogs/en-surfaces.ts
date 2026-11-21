@@ -169,14 +169,12 @@ export const enSurfaces = {
       needsDetail: 'Hunger, fatigue and other needs.',
       storage: {
         label: 'Storage capacity',
-        detail:
-          'Multiplies the room for each good in warehouses and the Headquarters. Workshops hold as much as ever.',
+        detail: 'Multiplies the room for goods in warehouses and the Headquarters.',
         factor: '×{factor}',
       },
       basicYield: {
         label: 'Basic resources',
-        detail:
-          'Multiplies the wood, mushrooms, clay and stone that the trees, mushrooms and deposits on the map start with.',
+        detail: 'Multiplies the wood, mushrooms, clay and stone on the map.',
         factor: '×{factor}',
       },
       oreYield: {
@@ -186,8 +184,7 @@ export const enSurfaces = {
       },
       papers: {
         label: 'Papers',
-        detail:
-          'Papers from chests and the map place a building at once. Off, nobody gets one, except the Headquarters paper a map starts a player with.',
+        detail: 'Papers for free buildings from chests and the map.',
         on: 'Enabled',
         off: 'Disabled',
       },

@@ -167,12 +167,12 @@ export const chtSurfaces = {
       needsDetail: '飢餓、疲勞與其他需求。',
       storage: {
         label: '倉庫容量',
-        detail: '成倍提高倉庫和大本營中每種貨物的存放空間。工坊容量不變。',
+        detail: '成倍提高倉庫和大本營的貨物存放空間。',
         factor: '×{factor}',
       },
       basicYield: {
         label: '基礎資源',
-        detail: '成倍提高地圖上樹木、蘑菇和礦藏初始的木材、蘑菇、黏土和石料儲量。',
+        detail: '成倍提高地圖上木材、蘑菇、黏土和石料的儲量。',
         factor: '×{factor}',
       },
       oreYield: {
@@ -182,8 +182,7 @@ export const chtSurfaces = {
       },
       papers: {
         label: '文書',
-        detail:
-          '箱子和地圖給的文書能立即建起一座建築。停用後誰都得不到文書，地圖開局給玩家的大本營文書除外。',
+        detail: '箱子和地圖給的免費建築文書。',
         on: '啟用',
         off: '停用',
       },

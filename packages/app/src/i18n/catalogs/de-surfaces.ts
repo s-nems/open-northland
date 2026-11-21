@@ -196,14 +196,12 @@ export const deSurfaces = {
       needsDetail: 'Hunger, Müdigkeit und andere Bedürfnisse.',
       storage: {
         label: 'Lagerkapazität',
-        detail:
-          'Vervielfacht den Platz für jede Ware in den Lagerhäusern und im Hauptquartier. Werkstätten fassen so viel wie sonst.',
+        detail: 'Vervielfacht den Platz für Waren in den Lagerhäusern und im Hauptquartier.',
         factor: '×{factor}',
       },
       basicYield: {
         label: 'Grundrohstoffe',
-        detail:
-          'Vervielfacht Holz, Pilze, Lehm und Stein, mit denen die Bäume, Pilze und Vorkommen der Karte beginnen.',
+        detail: 'Vervielfacht Holz, Pilze, Lehm und Stein auf der Karte.',
         factor: '×{factor}',
       },
       oreYield: {
@@ -213,8 +211,7 @@ export const deSurfaces = {
       },
       papers: {
         label: 'Briefe',
-        detail:
-          'Briefe aus Kisten und von der Karte stellen ein Gebäude sofort auf. Deaktiviert bekommt niemand einen, außer dem Brief für das Hauptquartier, mit dem die Karte einen Spieler beginnen lässt.',
+        detail: 'Briefe für kostenlose Gebäude aus Kisten und von der Karte.',
         on: 'Aktiviert',
         off: 'Deaktiviert',
       },

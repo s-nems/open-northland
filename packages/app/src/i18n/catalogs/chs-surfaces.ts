@@ -167,12 +167,12 @@ export const chsSurfaces = {
       needsDetail: '饥饿、疲劳及其他需求。',
       storage: {
         label: '仓库容量',
-        detail: '成倍提高仓库和大本营中每种货物的存放空间。工坊容量不变。',
+        detail: '成倍提高仓库和大本营的货物存放空间。',
         factor: '×{factor}',
       },
       basicYield: {
         label: '基础资源',
-        detail: '成倍提高地图上树木、蘑菇和矿藏初始的木材、蘑菇、黏土和石料储量。',
+        detail: '成倍提高地图上木材、蘑菇、黏土和石料的储量。',
         factor: '×{factor}',
       },
       oreYield: {
@@ -182,8 +182,7 @@ export const chsSurfaces = {
       },
       papers: {
         label: '文书',
-        detail:
-          '箱子和地图给的文书能立即建起一座建筑。关闭后谁都得不到文书，地图开局给玩家的大本营文书除外。',
+        detail: '箱子和地图给的免费建筑文书。',
         on: '开启',
         off: '关闭',
       },

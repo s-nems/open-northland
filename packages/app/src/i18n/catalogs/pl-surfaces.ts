@@ -168,14 +168,12 @@ export const plSurfaces = {
       needsDetail: 'Głód, zmęczenie i pozostałe potrzeby.',
       storage: {
         label: 'Pojemność magazynów',
-        detail:
-          'Mnoży miejsce na każdy towar w magazynach i Kwaterze głównej. Warsztaty mieszczą tyle, co zwykle.',
+        detail: 'Mnoży miejsce na towary w magazynach i Kwaterze głównej.',
         factor: '×{factor}',
       },
       basicYield: {
         label: 'Surowce podstawowe',
-        detail:
-          'Mnoży zapas drewna, grzybów, gliny i kamienia, z którym zaczynają drzewa, grzyby i złoża na mapie.',
+        detail: 'Mnoży zapas drewna, grzybów, gliny i kamienia na mapie.',
         factor: '×{factor}',
       },
       oreYield: {
@@ -185,8 +183,7 @@ export const plSurfaces = {
       },
       papers: {
         label: 'Papiery',
-        detail:
-          'Papiery ze skrzyń i z mapy stawiają budynek od razu. Wyłączone: nikt ich nie dostaje, oprócz papieru na Kwaterę główną, z którym mapa zaczyna grę.',
+        detail: 'Papiery na darmowe budynki ze skrzyń i z mapy.',
         on: 'Włączone',
         off: 'Wyłączone',
       },
