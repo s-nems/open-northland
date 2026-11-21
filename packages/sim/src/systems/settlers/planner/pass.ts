@@ -1,4 +1,3 @@
-import { Position, Stockpile } from '../../../components/index.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import type { TerrainGraph } from '../../../nav/terrain/index.js';
 import { BattleFront, holdsGround } from '../../conflict/battle-alert.js';
@@ -115,8 +114,7 @@ export function beginPlannerPass(world: World, ctx: SystemContext, terrain: Terr
     ctx,
     terrain,
     targets,
-    // Any one store answers, so the stores need no canonical order.
-    anyHaulable: hasHaulableOutput(world, ctx, world.query(Stockpile, Position)),
+    anyHaulable: hasHaulableOutput(world, ctx, targets.buildings),
     externalFood: new ExternalFoodIndex(world, ctx, terrain, supply),
     externalQuality: new ExternalQualityIndex(world, ctx, terrain, supply),
     spacing,

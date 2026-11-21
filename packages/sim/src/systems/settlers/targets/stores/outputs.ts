@@ -1,4 +1,4 @@
-import { sameSideAs, stockpileEntries } from '../../../../components/index.js';
+import { Stockpile, sameSideAs, stockpileEntries } from '../../../../components/index.js';
 import type { Entity, World } from '../../../../ecs/world.js';
 import type { SpatialGate } from '../../../../nav/node-circle.js';
 import { intersectReach } from '../../../../nav/range-search.js';
@@ -20,13 +20,15 @@ import { type InteractionCellIndex, qualifiedGood } from '../cell-index.js';
  * {@link nearestWorkplaceOutput}. It applies the same "holds an output" test as that scan's inner loop,
  * so a false here means every per-settler scan would return null. It is deliberately weaker (no claim or
  * "a store can take it" check), so a true still runs the real scan and only a provably empty scan is
- * elided.
+ * elided. Only a building carries a recipe or fills itself, so `buildings` are every store that can hold
+ * one and the loose piles are never read.
  */
-export function hasHaulableOutput(world: World, ctx: SystemContext, stockpiles: Iterable<Entity>): boolean {
-  for (const e of stockpiles) {
+export function hasHaulableOutput(world: World, ctx: SystemContext, buildings: readonly Entity[]): boolean {
+  for (let i = 0; i < buildings.length; i++) {
+    const e = buildings[i] as Entity;
+    if (isPassiveStore(world, ctx, e) || !world.has(e, Stockpile)) continue;
     const stock = accessibleStockAmounts(world, e);
     if (stock === undefined) continue;
-    if (isPassiveStore(world, ctx, e)) continue;
     // An existence test is order-free, so it reads the stock in its own order, unsorted.
     for (const goodType of stock.keys()) {
       if ((stock.get(goodType) ?? 0) > 0 && isWorkplaceOutput(world, ctx, e, goodType)) return true;
