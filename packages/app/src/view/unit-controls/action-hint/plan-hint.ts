@@ -92,7 +92,7 @@ export type PlanHint =
   | {
       readonly tone: 'action';
       readonly action: HintAction;
-      /** The trade a workplace order gives every worker it seats, when it changes someone's. */
+      /** The one trade a workplace order seats every worker in, kept or new, when it is known. */
       readonly job: number | null;
       readonly target: HintTarget | null;
     }
@@ -371,7 +371,7 @@ function buildingDefOf(ctx: HintContext, building: number) {
  * The workers the sim tries at a workplace, as its group placement picks them: the unemployed while
  * any is, otherwise everyone not already working there. Each takes the first trade of its list with a
  * free slot that the job-choice answers do not refuse it, as the sim falls through a trade the worker
- * has not earned; a worker it cannot confirm leaves the new trade unnamed. Every tried worker left with
+ * has not earned; a worker it cannot confirm leaves the trade unnamed. Every tried worker left with
  * no such trade is refused, and so is a group of whom the sim takes nobody: women and children take no
  * post.
  */
@@ -388,7 +388,7 @@ function workersHint(ctx: HintContext, building: number, workers: readonly Build
     const self = entityById(ctx.snapshot, worker.unit.ref);
     return self !== undefined && isAdult(self) && !isFemale(self);
   });
-  if (candidates.length === 0) return action('work');
+  if (candidates.length === 0) return action('work', null, heldTradeOf(ctx, workers));
   if (tried.length === 0) return refusal('cannotWorkHere');
   const staffed = staffingOf(ctx.snapshot, building);
   const room = (jobType: number): number => {
@@ -397,7 +397,7 @@ function workersHint(ctx: HintContext, building: number, workers: readonly Build
   };
   if (tried.every((worker) => worker.jobPriority.every((jobType) => !mayTake(ctx, worker, jobType, room))))
     return refusal('noFreePlaces');
-  return action('work', null, newTradeOf(ctx, tried, staffed, room));
+  return action('work', null, seatedTradeOf(ctx, tried, staffed, room));
 }
 
 /** Whether `worker` may take a free `jobType` slot: its own trade always, another unless refused. */
@@ -413,28 +413,38 @@ function mayTake(
   return ctx.answers.jobChoice(worker.unit.ref, jobType) !== false;
 }
 
-/** The one trade every seated worker ends up in, when it changes someone's and every pick is known. */
-function newTradeOf(
+/** The one trade every seated worker ends up in, kept or new, when every pick is known. */
+function seatedTradeOf(
   ctx: HintContext,
   tried: readonly BuildingWorker[],
   staffed: Map<number, number>,
   room: (jobType: number) => number,
 ): number | null {
   let trade: number | null = null;
-  let changes = false;
   for (const worker of tried) {
     const self = entityById(ctx.snapshot, worker.unit.ref);
     const current = self === undefined ? undefined : settlerJobType(self);
     const jobType = worker.jobPriority.find((job) => mayTake(ctx, worker, job, room));
     if (jobType === undefined) continue;
-    if (systems.isFighterJob(ctx.content, jobType) && current !== jobType) return null;
     if (jobType !== current) {
+      if (systems.isFighterJob(ctx.content, jobType)) return null;
       if (ctx.answers.jobChoice(worker.unit.ref, jobType) !== true) return null;
-      changes = true;
     }
     if (trade !== null && trade !== jobType) return null;
     trade = jobType;
     staffed.set(jobType, (staffed.get(jobType) ?? 0) + 1);
   }
-  return changes ? trade : null;
+  return trade;
+}
+
+/** The one trade every worker already posted here holds. */
+function heldTradeOf(ctx: HintContext, workers: readonly BuildingWorker[]): number | null {
+  const held = new Set(
+    workers.map((worker) => {
+      const self = entityById(ctx.snapshot, worker.unit.ref);
+      return self === undefined ? undefined : settlerJobType(self);
+    }),
+  );
+  const [trade] = held;
+  return held.size === 1 && trade !== undefined ? trade : null;
 }

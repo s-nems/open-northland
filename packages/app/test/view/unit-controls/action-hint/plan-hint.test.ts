@@ -1,10 +1,11 @@
 import { ONE, systems } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
-import { JOB_IDLE, JOB_SOLDIER_UNARMED } from '../../../../src/catalog/jobs.js';
+import { JOB_COLLECTOR, JOB_IDLE, JOB_SOLDIER_UNARMED } from '../../../../src/catalog/jobs.js';
 import { HUMAN_PLAYER } from '../../../../src/game/rules.js';
 import {
   BUILDING_BARRACKS,
   BUILDING_HOME_00,
+  rebaseSlotJob,
   sandboxContent,
   VEHICLE_HANDCART,
   VEHICLE_SHIP_SMALL,
@@ -27,10 +28,12 @@ const buildingType = (slug: string): number => {
   if (row === undefined) throw new Error(`the sandbox has no ${slug}`);
   return row.typeId;
 };
-/** One smith's post and one carrier's. */
+/** One smith's post, one carrier's and two collectors'. */
 const SMITHY = buildingType('work_smithy_00');
 const SMITH_JOB = 1013;
 const CARRIER_JOB = 24;
+/** The smithy's gatherer post, in the sandbox's rebased id space. */
+const SANDBOX_COLLECTOR_JOB = rebaseSlotJob(JOB_COLLECTOR);
 /** Only a gatherer's post, which takes no settler outside that trade. */
 const GATHERERS_ONLY = buildingType('work_joinery_00');
 /** A home for one family. */
@@ -177,8 +180,27 @@ describe('the right-click hint', () => {
     expect(hintOf([idle[0] as Ent, smithy], [1], ON_BUILDING)).toMatchObject(action('work', null));
     // One smith's post: the second man becomes the carrier.
     expect(hintOf([...idle, smithy], [1, 2], ON_BUILDING, mayChoose)).toMatchObject(action('work', null));
-    // A smith keeps his trade.
-    expect(hintOf([settler(1, SMITH_JOB), smithy], [1], ON_BUILDING)).toMatchObject(action('work', null));
+    // A kept trade is named too, and so is the one everyone already posted here holds.
+    expect(hintOf([settler(1, SMITH_JOB), smithy], [1], ON_BUILDING)).toMatchObject(
+      action('work', SMITH_JOB),
+    );
+    expect(hintOf([settler(1, CARRIER_JOB), smithy], [1], ON_BUILDING)).toMatchObject(
+      action('work', CARRIER_JOB),
+    );
+    const posted = settler(1, SMITH_JOB, { JobAssignment: { workplace: BUILDING } });
+    expect(hintOf([posted, smithy], [1], ON_BUILDING)).toMatchObject(action('work', SMITH_JOB));
+  });
+
+  it("names the smith's trade for a collector who earned it, its own for one who has not", () => {
+    const collector = settler(1, SANDBOX_COLLECTOR_JOB);
+    const smithy = house(SMITHY);
+    expect(hintOf([collector, smithy], [1], ON_BUILDING, { jobChoice: () => true })).toMatchObject(
+      action('work', SMITH_JOB),
+    );
+    expect(hintOf([collector, smithy], [1], ON_BUILDING, { jobChoice: () => false })).toMatchObject(
+      action('work', SANDBOX_COLLECTOR_JOB),
+    );
+    expect(hintOf([collector, smithy], [1], ON_BUILDING)).toMatchObject(action('work', null));
   });
 
   it('refuses a full post, a full home and a post or building nobody selected may take', () => {
