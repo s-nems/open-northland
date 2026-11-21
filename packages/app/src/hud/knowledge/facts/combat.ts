@@ -10,7 +10,7 @@ import {
   WALL_LOGIC_ID,
 } from '../../../content/map/palisade-rows.js';
 import { coinDrillCoinsOf, coinDrillPointsOf, coinDrillServedTicksOf } from '../../../game/coin-drill.js';
-import { buildingHitpoints, SHELTER_WEAPON } from '../base.js';
+import { buildingHitpoints } from '../base.js';
 import {
   CAP_POINTS,
   type CombatTarget,
@@ -231,7 +231,6 @@ const WALL_WEAPONS = [
   ['longBow', VIKING, 'long_bow'],
   ['shortBow', VIKING, 'short_bow'],
   ['fist', VIKING, 'fist'],
-  ['houseBow', VIKING, 'house_bow'],
 ] as const;
 
 const wallBlow = (base: KnowledgeBase, tribe: number, id: string): FactValue =>
@@ -244,11 +243,6 @@ const strongWallBlow = (tribe: number, id: string): Fact =>
     return blow === undefined ? undefined : systems.withDealtBonuses(blow, 0, STRENGTH_PCT);
   });
 
-/** Seconds between one striker's blows at a wall: a building's shot stands for one defender's share of
- *  its fire. */
-const wallStrikeSeconds = (base: KnowledgeBase, tribe: number, id: string): FactValue =>
-  id === SHELTER_WEAPON ? seconds(systems.SHELTER_SHOT_PERIOD_TICKS) : clipOfWeapon(base, tribe, id);
-
 export const WALL_FACTS: Readonly<Record<string, Fact>> = {
   'wall.segmentHp': whole((base) => segmentRules(base)?.maxHitpoints),
   'wall.gateHp': whole((base) => gateRules(base)?.maxHitpoints),
@@ -258,6 +252,8 @@ export const WALL_FACTS: Readonly<Record<string, Fact>> = {
   'wall.gateMinHealthPct': whole(systems.GATE_MIN_HEALTH_PCT),
   'wall.heroBow.blow': whole((base) => wallBlow(base, VIKING, 'hero_bow')),
   'wall.frankHeroBow.blow': whole((base) => wallBlow(base, FRANK, 'hero_bow')),
+  // A building never aims at a wall, so its row shows only what a stray arrow takes.
+  'wall.houseBow.blow': whole((base) => wallBlow(base, VIKING, 'house_bow')),
   ...Object.fromEntries(
     WALL_WEAPONS.flatMap(([name, tribe, id]) => {
       const blow: FactReader = (base) => wallBlow(base, tribe, id);
@@ -267,7 +263,7 @@ export const WALL_FACTS: Readonly<Record<string, Fact>> = {
           rules(base)?.maxHitpoints;
       return [
         [`wall.${name}.blow`, whole(blow)],
-        // A Catapult and a building cannot take an Amulet of Strength, so their shots have no strong blow.
+        // A Catapult cannot take an Amulet of Strength, so its stones have no strong blow.
         ...(takesStrengthAmulet({ id })
           ? [[`wall.${name}.strongBlow`, strongWallBlow(tribe, id)] as const]
           : []),
@@ -278,7 +274,7 @@ export const WALL_FACTS: Readonly<Record<string, Fact>> = {
           duration((base) => {
             const blows = blow(base);
             const hitpoints = pool(segmentRules)(base);
-            const clip = wallStrikeSeconds(base, tribe, id);
+            const clip = clipOfWeapon(base, tribe, id);
             if (blows === undefined || hitpoints === undefined || clip === undefined) return undefined;
             const hits = hitsToKill(blows, hitpoints);
             return hits === null ? undefined : hits * clip;
