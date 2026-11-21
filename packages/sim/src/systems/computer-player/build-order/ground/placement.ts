@@ -255,6 +255,8 @@ export function placementSpot(
   reserveGrass: boolean,
 ): HalfCellNode | null {
   const line = scriptedFrontLine(world, ctx, player, owned);
+  // One acceptor for both passes: the unbounded one re-walks the nodes the bounded one judged.
+  const acceptor = seatSpotAcceptor(world, ctx, terrain, player, type.typeId, tribe);
   const spot = (front: SpotBound) =>
     boundedSpot(
       world,
@@ -269,6 +271,7 @@ export function placementSpot(
       underFire,
       reserveGrass,
       front,
+      acceptor,
     );
   if (line === null) return spot(null);
   return spot((x, y) => !line.beyond(x, y)) ?? spot(null);
@@ -288,10 +291,10 @@ function boundedSpot(
   underFire: EnemyFire,
   reserveGrass: boolean,
   front: SpotBound,
+  acceptor: SpotAcceptor,
 ): HalfCellNode | null {
   const tuning = seatTuning(world, player);
   const settlement = buildReach(world, owned, anchor, tuning.reachNodes);
-  const acceptor = seatSpotAcceptor(world, ctx, terrain, player, type.typeId, tribe);
   const search = searchCentre(
     world,
     ctx,

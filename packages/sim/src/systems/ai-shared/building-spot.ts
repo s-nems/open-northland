@@ -54,6 +54,44 @@ export interface SpotAcceptor {
   grassBeside(x: number, y: number): boolean;
 }
 
+/** Bits of a node's remembered answers within one {@link SpotAcceptor}. */
+const UNJUDGED = 0;
+const PLACE_JUDGED = 1;
+/** The building may be placed there: the seat's probe passes and it covers no kept deposit and no road. */
+const PLACEABLE = 2;
+const GRASS_JUDGED = 4;
+const ON_GRASS = 8;
+const VERDICT_BITS = 4;
+const BITS_PER_BYTE = 8;
+const VERDICT_MASK = (1 << VERDICT_BITS) - 1;
+/** The last acceptor number a `Uint32` cell holds above its verdict bits. */
+const LAST_ACCEPTOR = 2 ** (Uint32Array.BYTES_PER_ELEMENT * BITS_PER_BYTE - VERDICT_BITS) - 1;
+
+/** Per node, the number of the acceptor that last judged it above that acceptor's verdict bits. */
+interface VerdictScratch {
+  readonly cells: Uint32Array;
+  acceptor: number;
+}
+
+/** One scratch grid per terrain, shared by every acceptor: an acceptor reads only cells stamped with its
+ *  own number, so a search allocates no grid of its own. Derived scratch, never hashed. */
+const verdictScratch = new WeakMap<TerrainGraph, VerdictScratch>();
+
+/** The terrain's scratch under a fresh acceptor number. */
+function nextVerdicts(terrain: TerrainGraph): VerdictScratch {
+  let scratch = verdictScratch.get(terrain);
+  if (scratch === undefined || scratch.cells.length !== terrain.width * terrain.height) {
+    scratch = { cells: new Uint32Array(terrain.width * terrain.height), acceptor: 0 };
+    verdictScratch.set(terrain, scratch);
+  }
+  if (scratch.acceptor === LAST_ACCEPTOR) {
+    scratch.cells.fill(0);
+    scratch.acceptor = 0;
+  }
+  scratch.acceptor++;
+  return scratch;
+}
+
 /** Whether a live deposit of `goodType` with `remaining` units keeps the seat's buildings off it; by default
  *  every one does. */
 export type DepositKept = (goodType: number, remaining: number) => boolean;
@@ -93,6 +131,9 @@ export function spotAcceptor(
   const body = buildingFlagBody(ctx.content, { buildingType: buildingTypeId, tribe });
   const roadSites = roadSitesByNode(world, terrain);
   let zones: Uint16Array | null = null;
+  // A failed search walks its fan once per ground rule, land bound and centre; the acceptor lives within
+  // one decision, so each node's placement and grass answers are judged once.
+  const { cells, acceptor: stamp } = nextVerdicts(terrain);
   return {
     grassBeside(x, y) {
       if (!terrain.inBounds(x, y)) return false;
@@ -117,12 +158,24 @@ export function spotAcceptor(
         if (!terrain.inBounds(x, y)) return false;
         const node = terrain.nodeAt(x, y);
         if (!terrain.isBuildable(node) || occupied.has(node) || fire.reaches(x, y, span)) return false;
-        if (spareGrass && coversGrass(terrain, zone, x, y)) return false;
-        return (
-          probe.canPlace(x, y) &&
-          !coversLiveDeposit(world, deposits, depositKept, zone, x, y) &&
-          !coversRoad(terrain, roadSites, body, x, y)
-        );
+        const slot = y * terrain.width + x;
+        const held = cells[slot] ?? 0;
+        let verdict = held >>> VERDICT_BITS === stamp ? held & VERDICT_MASK : UNJUDGED;
+        if ((verdict & PLACE_JUDGED) === 0) {
+          const placeable =
+            probe.canPlace(x, y) &&
+            !coversLiveDeposit(world, deposits, depositKept, zone, x, y) &&
+            !coversRoad(terrain, roadSites, body, x, y);
+          verdict |= placeable ? PLACE_JUDGED | PLACEABLE : PLACE_JUDGED;
+          cells[slot] = stamp * (1 << VERDICT_BITS) + verdict;
+        }
+        if ((verdict & PLACEABLE) === 0) return false;
+        if (!spareGrass) return true;
+        if ((verdict & GRASS_JUDGED) === 0) {
+          verdict |= coversGrass(terrain, zone, x, y) ? GRASS_JUDGED | ON_GRASS : GRASS_JUDGED;
+          cells[slot] = stamp * (1 << VERDICT_BITS) + verdict;
+        }
+        return (verdict & ON_GRASS) === 0;
       };
     },
   };
