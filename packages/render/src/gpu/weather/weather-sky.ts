@@ -104,9 +104,9 @@ export class WeatherSky {
     const layers = {
       rain: new PrecipitationLayer('rain', this.field, this.reach),
       snow: new PrecipitationLayer('snow', this.field, this.reach),
-      sand: new PrecipitationLayer('sand', this.field, this.reach),
+      sand: new PrecipitationLayer('sand', this.field, this.reach, 'dashes'),
     };
-    this.sandWisps = new PrecipitationLayer('sand', this.field, this.reach, true);
+    this.sandWisps = new PrecipitationLayer('sand', this.field, this.reach, 'wisps');
     this.wispUpscale = new Filter({
       glProgram: glProgramFor(WISP_UPSCALE_SOURCE),
       resources: {},

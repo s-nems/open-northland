@@ -74,6 +74,9 @@ const EDGE_FADE_PX = 0.5;
  *  the quad, so the margin only has to absorb the rasterizer's sub-pixel vertex snapping. */
 const QUAD_GUARD_PX = 0.125;
 
+/** Share of the sand's seeds drawn as wisps: those whose fourth independent draw is under it. */
+export const SAND_WISP_SHARE = 0.14;
+
 const glslFloat = (value: number): string => (Number.isInteger(value) ? `${value}.0` : String(value));
 const vec2Of = (pair: readonly [number, number]): string =>
   `vec2(${glslFloat(pair[0])}, ${glslFloat(pair[1])})`;
@@ -395,7 +398,7 @@ const SAND_VERTEX = `
   const float STREAK_SECONDS = 0.045;
   // A full sandstorm lengthens the dashes by this share.
   const float STORM_STRETCH = 0.6;
-  const float PUFF_SHARE = 0.14;
+  const float PUFF_SHARE = ${glslFloat(SAND_WISP_SHARE)};
   const vec2 PUFF_SIZE = vec2(36.0, 110.0);
   const float PUFF_ALPHA = 0.09;
   // A wisp is this many times longer along the wind than across it.
@@ -405,13 +408,11 @@ const SAND_VERTEX = `
   // Vertical wobble of a dash, whole cycles per time split.
   const vec2 WOBBLE_CYCLES = vec2(20.0, 50.0);
   const float WOBBLE_PX = 5.0;
-  // 1 draws the wisps alone, 0 the dashes alone: the wisps go to a coarser target of their own.
-  uniform float uPuffPass;
   void main(void) {
     float depth = aSeedA.z;
     vec2 box = uScreen + 2.0 * MARGIN;
+    // A layer's buffer holds the wisps or the dashes alone: the wisps go to a coarser target.
     bool puff = aSeedB.w < PUFF_SHARE;
-    if (puff != (uPuffPass > 0.5)) { cull(); return; }
     float fall = mix(FALL.x, FALL.y, depth) * jitterOf(aSeedB.x);
     float windBase = WIND_RESPONSE * (puff ? PUFF_WIND : mix(0.7, 1.15, depth) * (0.8 + 0.4 * aSeedB.x));
     vec2 centre = wrapped(box, fall, windBase, mix(PARALLAX.x, PARALLAX.y, depth));

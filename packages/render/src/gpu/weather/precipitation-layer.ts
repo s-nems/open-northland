@@ -11,7 +11,7 @@ import {
 } from '../../data/weather/precipitation.js';
 import { WEATHER_KINDS, type WeatherKind } from '../../data/weather/types.js';
 import type { WeatherFieldTextures } from './field-textures.js';
-import { precipitationProgram } from './precipitation-shader.js';
+import { precipitationProgram, SAND_WISP_SHARE } from './precipitation-shader.js';
 import type { WeatherReach } from './weather-reach.js';
 
 /** Depth draws are skewed towards the far layer: most particles are small and faint, a few big and near. */
@@ -59,19 +59,69 @@ type PrecipitationUniforms = UniformGroup & {
   };
 };
 
-function seedBuffers(kind: WeatherKind, capacity: number): { a: Float32Array; b: Float32Array } {
+/** The shader compares the stored float32 draw with its float32 constant. */
+const SAND_WISP_BELOW = Math.fround(SAND_WISP_SHARE);
+const WISP_DRAW = SEED_B_WIDTH - 1;
+
+/** Which of a kind's seeds a layer draws. Only sand splits: its wisps and dashes go to separate targets. */
+export type PrecipitationPart = 'all' | 'wisps' | 'dashes';
+
+export interface PrecipitationSeeds {
+  readonly a: Float32Array;
+  readonly b: Float32Array;
+  /** Seeds held, in rank order. */
+  readonly held: number;
+  /** The held seeds' ranks, ascending; null when every rank is held. */
+  readonly ranks: Uint32Array | null;
+}
+
+/** The seeds of `part` among the first `capacity` ranks of `kind`. A seed keeps its rank and its draws
+ *  whichever part holds it, so a split kind draws the particles the whole buffer would. */
+export function precipitationSeeds(
+  kind: WeatherKind,
+  capacity: number,
+  part: PrecipitationPart,
+): PrecipitationSeeds {
   const a = new Float32Array(capacity * SEED_A_WIDTH);
   const b = new Float32Array(capacity * SEED_B_WIDTH);
+  const ranks = part === 'all' ? null : new Uint32Array(capacity);
   const salt = KIND_SALT[kind];
+  let held = 0;
   for (let i = 0; i < capacity; i++) {
     const draw = (k: number): number => frac(salt, i * (SEED_A_WIDTH + SEED_B_WIDTH) + k);
-    a[i * SEED_A_WIDTH] = draw(0);
-    a[i * SEED_A_WIDTH + 1] = draw(1);
-    a[i * SEED_A_WIDTH + 2] = draw(2) ** DEPTH_SKEW;
-    a[i * SEED_A_WIDTH + 3] = i;
-    for (let k = 0; k < SEED_B_WIDTH; k++) b[i * SEED_B_WIDTH + k] = draw(SEED_A_WIDTH + k);
+    for (let k = 0; k < SEED_B_WIDTH; k++) b[held * SEED_B_WIDTH + k] = draw(SEED_A_WIDTH + k);
+    if (ranks !== null) {
+      const wisp = (b[held * SEED_B_WIDTH + WISP_DRAW] ?? 0) < SAND_WISP_BELOW;
+      if (wisp !== (part === 'wisps')) continue;
+      ranks[held] = i;
+    }
+    a[held * SEED_A_WIDTH] = draw(0);
+    a[held * SEED_A_WIDTH + 1] = draw(1);
+    a[held * SEED_A_WIDTH + 2] = draw(2) ** DEPTH_SKEW;
+    a[held * SEED_A_WIDTH + 3] = i;
+    held++;
   }
-  return { a, b };
+  if (ranks === null) return { a, b, held, ranks };
+  return {
+    a: a.slice(0, held * SEED_A_WIDTH),
+    b: b.slice(0, held * SEED_B_WIDTH),
+    held,
+    ranks: ranks.slice(0, held),
+  };
+}
+
+/** How many of `seeds` rank under `drawn`: the instances of a frame that draws the first `drawn` ranks. */
+export function instancesUnder(seeds: PrecipitationSeeds, drawn: number): number {
+  const ranks = seeds.ranks;
+  if (ranks === null) return Math.min(drawn, seeds.held);
+  let low = 0;
+  let high = seeds.held;
+  while (low < high) {
+    const mid = (low + high) >>> 1;
+    if ((ranks[mid] ?? 0) < drawn) low = mid + 1;
+    else high = mid;
+  }
+  return low;
 }
 
 /** Writes `x` and `y` split on `step` into `out` as coarse x, coarse y, fine x, fine y. */
@@ -94,13 +144,13 @@ export class PrecipitationLayer {
   private readonly uniforms: PrecipitationUniforms;
   private readonly shader: Shader;
   private capacity = 0;
+  private seeds: PrecipitationSeeds;
 
   constructor(
     private readonly kind: WeatherKind,
     private readonly field: WeatherFieldTextures,
     private readonly reach: WeatherReach,
-    /** Sand only: this layer draws the large wisps, not the dashes. */
-    puffs = false,
+    private readonly part: PrecipitationPart = 'all',
   ) {
     const channel = new Float32Array(WEATHER_KINDS.length);
     channel[WEATHER_KINDS.indexOf(kind)] = 1;
@@ -121,7 +171,6 @@ export class PrecipitationLayer {
         type: 'vec2<f32>',
       },
       uDraw: { value: new Float32Array([1, 1, 1]), type: 'vec3<f32>' },
-      ...(kind === 'sand' ? { uPuffPass: { value: puffs ? 1 : 0, type: 'f32' } } : {}),
     }) as PrecipitationUniforms;
     this.shader = new Shader({
       glProgram: precipitationProgram(kind),
@@ -133,6 +182,7 @@ export class PrecipitationLayer {
         uReachFog: reach.fogSource,
       },
     });
+    this.seeds = precipitationSeeds(kind, 0, part);
     this.mesh = new Mesh({ geometry: this.makeGeometry(0), shader: this.shader });
     this.mesh.visible = false;
   }
@@ -171,8 +221,9 @@ export class PrecipitationLayer {
     u.uDraw[1] = intensity;
     u.uDraw[2] = frame.sizeScale;
     this.uniforms.update();
-    this.mesh.geometry.instanceCount = drawn;
-    this.mesh.visible = true;
+    const instances = instancesUnder(this.seeds, drawn);
+    this.mesh.geometry.instanceCount = instances;
+    this.mesh.visible = instances > 0;
   }
 
   /** Re-bind the field's sources after it replaced them. */
@@ -205,12 +256,16 @@ export class PrecipitationLayer {
 
   private makeGeometry(capacity: number): Geometry {
     this.capacity = capacity;
-    const seeds = seedBuffers(this.kind, Math.max(1, capacity));
+    const seeds = precipitationSeeds(this.kind, capacity, this.part);
+    this.seeds = seeds;
+    // A buffer of no seeds still needs one instance's bytes.
+    const padded = (data: Float32Array, width: number): Float32Array =>
+      data.length > 0 ? data : new Float32Array(width);
     return new Geometry({
       attributes: {
         aPosition: { buffer: QUAD_CORNERS, format: 'float32x2' },
-        aSeedA: { buffer: seeds.a, format: 'float32x4', instance: true },
-        aSeedB: { buffer: seeds.b, format: 'float32x4', instance: true },
+        aSeedA: { buffer: padded(seeds.a, SEED_A_WIDTH), format: 'float32x4', instance: true },
+        aSeedB: { buffer: padded(seeds.b, SEED_B_WIDTH), format: 'float32x4', instance: true },
       },
       indexBuffer: QUAD_INDICES,
       instanceCount: 0,
