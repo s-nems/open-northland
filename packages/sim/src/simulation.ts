@@ -153,7 +153,7 @@ import {
 import { type WorkStatus, workStatus } from './systems/readviews/work-status.js';
 import { syncRoadLane } from './systems/roads/index.js';
 import { roadSitePlacementVersion } from './systems/roads/sites.js';
-import { SYSTEM_ORDER } from './systems/schedule.js';
+import { type ScheduledSystem, SYSTEM_ORDER } from './systems/schedule.js';
 import { INTENT_WEAPON_CLASS } from './systems/settlers/atomics/effects/goods/weapon-class.js';
 import type { SignpostProbe } from './systems/signposts/index.js';
 import { type SignpostReachView, signpostReachKey, signpostReachView } from './systems/signposts/reach.js';
@@ -383,9 +383,13 @@ export class Simulation {
     const ctx = this.context();
     const instrument = this.instrument;
     if (instrument === null) {
-      for (const { system } of SYSTEM_ORDER) system(this.world, ctx);
+      for (let i = 0; i < SYSTEM_ORDER.length; i++) {
+        const { system } = SYSTEM_ORDER[i] as ScheduledSystem;
+        system(this.world, ctx);
+      }
     } else {
-      for (const { name, system } of SYSTEM_ORDER) {
+      for (let i = 0; i < SYSTEM_ORDER.length; i++) {
+        const { name, system } = SYSTEM_ORDER[i] as ScheduledSystem;
         const hooked = this.hooked ?? { system, ctx, runs: 0 };
         this.hooked = hooked;
         hooked.system = system;

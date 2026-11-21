@@ -118,11 +118,15 @@ export class CanonicalQueries {
   private join(required: readonly Component<unknown>[], lent: boolean): Joint | null {
     // Asked before any list is tracked or settled: a query naming a component nothing carried yet is
     // repeated every tick, and must not pay the other components' merges to learn it is empty.
-    for (const c of required) if (!this.stores.has(c)) return null;
+    for (let i = 0; i < required.length; i++) {
+      const c = required[i] as Component<unknown>;
+      if (!this.stores.has(c)) return null;
+    }
     const stores: Array<ComponentStore<unknown>> = [];
     const tracked: Members[] = [];
     let smallest: Members | null = null;
-    for (const c of required) {
+    for (let i = 0; i < required.length; i++) {
+      const c = required[i] as Component<unknown>;
       const m = this.track(c);
       if (m === null) return null;
       settle(m);
@@ -134,7 +138,10 @@ export class CanonicalQueries {
     const ids = smallest.ids.filter((e) => carriesAll(stores, e));
     const joint: Joint = { required, stores, ids, pending: [], pendingCount: 0 };
     if (lent) joint.spare = [];
-    for (const m of tracked) if (!m.joints.includes(joint)) m.joints.push(joint);
+    for (let i = 0; i < tracked.length; i++) {
+      const m = tracked[i] as Members;
+      if (!m.joints.includes(joint)) m.joints.push(joint);
+    }
     this.joints.push(joint);
     return joint;
   }

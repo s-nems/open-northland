@@ -71,7 +71,7 @@ import { visionSystem } from './vision/index.js';
 import { wildlifeSystem } from './wildlife/index.js';
 
 /** One schedule slot: the system plus its stable display name (perf marks, bench reports). */
-interface ScheduledSystem {
+export interface ScheduledSystem {
   readonly name: string;
   readonly system: System;
 }
