@@ -559,7 +559,7 @@ export function goodsSearchCatchAt(
 class ReachLimit implements WalkReach {
   /** Per nearby group, whether the own search catches it, once asked; made on the first ask, since most
    *  rebased limits are never asked. */
-  private caught: Uint8Array | undefined;
+  private caught: boolean[] | undefined;
   private local: ReachSearch | undefined;
   /** {@link heldFlood}'s answer, null for none; undefined until asked. */
   private held: ReachSearch | null | undefined;
@@ -701,26 +701,27 @@ class ReachLimit implements WalkReach {
 
   /** Whether the own search marks a post of nearby group `i`. */
   private catches(i: number): boolean {
-    this.caught ??= new Uint8Array(this.spot.groups.nearby.length);
+    this.caught ??= [];
     const known = this.caught[i];
-    if (known !== UNASKED) return known === CAUGHT;
+    if (known !== undefined) return known;
     const posts = this.spot.groups.nearbyPosts[i] as readonly SignpostSite[];
     let caught = false;
     const { world, content, terrain, shape } = this.spot;
     if (this.local === undefined && floodMayEnter(world, content, terrain, this.spot.hx, this.spot.hy)) {
-      for (const p of posts) {
+      for (let k = 0; k < posts.length && !caught; k++) {
+        const p = posts[k] as SignpostSite;
         if (!floodMayEnter(world, content, terrain, p.hx, p.hy)) continue;
         const reach = postReach(world, content, terrain, p.entity, p.hx, p.hy, shape.post);
-        if (reachContains(reach, this.spot.hx, this.spot.hy)) {
-          caught = true;
-          break;
-        }
+        caught = reachContains(reach, this.spot.hx, this.spot.hy);
       }
     } else {
       const local = this.ownSearch().area;
-      caught = posts.some((p) => reachContains(local, p.hx, p.hy));
+      for (let k = 0; k < posts.length && !caught; k++) {
+        const p = posts[k] as SignpostSite;
+        caught = reachContains(local, p.hx, p.hy);
+      }
     }
-    this.caught[i] = caught ? CAUGHT : MISSED;
+    this.caught[i] = caught;
     return caught;
   }
 }
@@ -763,8 +764,10 @@ function limitGroups(
   const own = reachBox(terrain, hx, hy, range);
   const end = cache.network.sites.collect(tileBoxOf(own), postScratch);
   // Groups in the order their first post was collected; a spot catches a handful, so a scan beats a map.
-  const nearby: GroupCoverage[] = [];
-  const nearbyPosts: SignpostSite[][] = [];
+  const nearby = nearbyScratch;
+  const nearbyPosts = nearbyPostsScratch;
+  for (let g = 0; g < nearbyPosts.length; g++) (nearbyPosts[g] as SignpostSite[]).length = 0;
+  let count = 0;
   let { minX, maxX, minY, maxY } = own;
   let nearMinX = hx - range + 1;
   let nearMaxX = hx + range - 1;
@@ -774,14 +777,16 @@ function limitGroups(
     const p = postScratch[i] as SignpostSite & { player: number };
     if (p.player !== player || hexDistanceBetween(hx, hy, p.hx, p.hy) >= shape.catchRange) continue;
     let g = 0;
-    while (g < nearby.length && (nearbyPosts[g] as SignpostSite[])[0]?.group !== p.group) g++;
-    if (g < nearby.length) {
+    while (g < count && (nearbyPosts[g] as SignpostSite[])[0]?.group !== p.group) g++;
+    if (g < count) {
       (nearbyPosts[g] as SignpostSite[]).push(p);
       continue;
     }
     const coverage = coverageOf(world, content, terrain, cache, p.group, shape);
-    nearby.push(coverage);
-    nearbyPosts.push([p]);
+    nearby[count] = coverage;
+    nearbyPosts[count] ??= [];
+    (nearbyPosts[count] as SignpostSite[]).push(p);
+    count++;
     const b = coverage.bounds;
     if (b.minX < minX) minX = b.minX;
     if (b.maxX > maxX) maxX = b.maxX;
@@ -792,25 +797,32 @@ function limitGroups(
     if (b.minY < nearMinY) nearMinY = b.minY;
     if (b.maxY > nearMaxY) nearMaxY = b.maxY;
   }
-  return {
+  // Copied out of the scratch at their own length, since a spot holds its groups while its network stands.
+  const groups: LimitGroups = {
     bounds: { minX, maxX, minY, maxY },
     reaches: { minX: nearMinX, maxX: nearMaxX, minY: nearMinY, maxY: nearMaxY },
-    // Copied at their own length: a list built by pushes keeps spare slots, and a spot holds its groups
-    // while its network stands.
-    nearby: nearby.slice(),
-    nearbyPosts: nearbyPosts.map(sizedPosts),
+    nearby: nearby.slice(0, count),
+    nearbyPosts: sizedPostsOf(nearbyPosts, count),
   };
+  nearby.length = 0;
+  for (let g = 0; g < count; g++) (nearbyPosts[g] as SignpostSite[]).length = 0;
+  return groups;
 }
 
-const sizedPosts = (posts: readonly SignpostSite[]): readonly SignpostSite[] => posts.slice();
+/** Copies of the first `count` post lists, each at its own length. */
+function sizedPostsOf(posts: readonly (readonly SignpostSite[])[], count: number): SignpostSite[][] {
+  const sized = posts.slice(0, count) as SignpostSite[][];
+  for (let g = 0; g < count; g++) sized[g] = (posts[g] as readonly SignpostSite[]).slice();
+  return sized;
+}
+
+/** {@link limitGroups}'s nearby groups and their posts while it collects them, emptied before it returns;
+ *  a post list slot is kept for the next spot. */
+const nearbyScratch: GroupCoverage[] = [];
+const nearbyPostsScratch: SignpostSite[][] = [];
 
 /** The posts {@link limitGroups} last collected; slots past its end hold stale entries. */
 const postScratch: (SignpostSite & { player: number })[] = [];
-
-/** {@link ReachLimit} per nearby group states: not asked yet, caught, or not caught. */
-const UNASKED = 0;
-const CAUGHT = 1;
-const MISSED = 2;
 
 /** The tile box over a node box, whose buckets file a superset of the posts inside it. */
 function tileBoxOf(box: NodeBox): TileBox {
