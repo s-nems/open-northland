@@ -18,7 +18,11 @@ import {
 import { isPlayerDead } from '../../../../components/match.js';
 import type { Entity, World } from '../../../../ecs/world.js';
 import { nodeHxOfPosition, nodeHyOfPosition } from '../../../../nav/halfcell.js';
-import { computerDecisionDue } from '../../../ai-shared/cadence.js';
+import {
+  COMPUTER_DECISION_INTERVAL_TICKS,
+  computerDecisionDue,
+  moduleBeatDue,
+} from '../../../ai-shared/cadence.js';
 import { everyBuildingOf, everySettlerOf } from '../../../ai-shared/home-roster.js';
 import { mannedPostOf } from '../../../conflict/tower-post.js';
 import type { SystemContext } from '../../../context.js';
@@ -32,9 +36,20 @@ import { everyFighterPoints, isLiveFighter, unitPoints } from '../../military/po
  *  build order phases, one phase before its military decision reads it. */
 export const INTEL_DECISION_PHASE = 4;
 
+/** Every how many of a seat's decisions its intel is refreshed (authored, a performance trade): 12 s at
+ *  the 4 s beat. The refresh costs every fighter in the seat's sight, and what it keeps ages over minutes:
+ *  a peak of fighters halves in two, a zone is looked at again after several. The settlement defence and
+ *  the scout's danger read the seat's sight directly. */
+export const INTEL_EVERY_DECISIONS = 3;
+
+/** The intel's beat (authored): the decision before the posture review's, the reader that weighs the
+ *  believed armies on the same {@link INTEL_EVERY_DECISIONS}-decision round. */
+export const INTEL_BEAT = INTEL_EVERY_DECISIONS - 1;
+
 /**
  * Update each running computer seat's memory of the others from its own sight: create it, seeded with the
- * map brief's start buildings, on the seat's first pass, then refresh it on the seat's decision beat.
+ * map brief's start buildings, on the seat's first pass, then refresh it on the seat's intel beat
+ * ({@link INTEL_EVERY_DECISIONS}).
  * The cost is the other seats' buildings and fighters, the memory, and a few cell samples per zone.
  */
 export function updateComputerIntel(world: World, ctx: SystemContext, seats: readonly number[]): void {
@@ -44,9 +59,16 @@ export function updateComputerIntel(world: World, ctx: SystemContext, seats: rea
     const carrier = aiControlEntity(world, seat);
     if (carrier === null || !computerControllerRuns(world, seat) || isPlayerDead(world, seat)) continue;
     if (!world.has(carrier, ComputerIntel)) world.add(carrier, ComputerIntel, seededIntel(brief, seat));
-    if (!computerDecisionDue(ctx.tick - INTEL_DECISION_PHASE, seat)) continue;
+    if (!intelDue(ctx.tick, seat)) continue;
     observe(world, ctx, brief, seat, world.mut(carrier, ComputerIntel));
   }
+}
+
+/** Whether `tick` is one of `seat`'s intel refreshes. */
+export function intelDue(tick: number, seat: number): boolean {
+  const decision = tick - INTEL_DECISION_PHASE;
+  if (!computerDecisionDue(decision, seat)) return false;
+  return moduleBeatDue(decision - INTEL_BEAT * COMPUTER_DECISION_INTERVAL_TICKS, seat, INTEL_EVERY_DECISIONS);
 }
 
 /** Record that `seat`'s scout turned back at `tick` from a goal in `zone`; nothing before its intel exists. */

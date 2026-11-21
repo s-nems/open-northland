@@ -22,10 +22,14 @@ import { ownedBuildings, ownedSettlers } from '../../../../../src/systems/ai-sha
 import {
   believedEnemyBuildings,
   believedFighterStrength,
-  computerDecisionDue,
+  COMPUTER_DECISION_INTERVAL_TICKS,
   FORCE_PEAK_HALF_LIFE_TICKS,
   INTEL_DECISION_PHASE,
+  INTEL_EVERY_DECISIONS,
+  intelDue,
   LAND_FORCES_HALF_LIFE_TICKS,
+  moduleBeatDue,
+  POSTURE_REVIEW_EVERY_DECISIONS,
   peakFighterPoints,
   rememberedLandPoints,
   SCOUT_LOSS_MEMORY_TICKS,
@@ -106,7 +110,7 @@ function newestOther(sim: Simulation): Entity {
 /** The first tick from `after` on which the seat's intel pass runs. */
 function intelTick(after: number): number {
   let tick = after;
-  while (!computerDecisionDue(tick - INTEL_DECISION_PHASE, SEAT)) tick++;
+  while (!intelDue(tick, SEAT)) tick++;
   return tick;
 }
 
@@ -193,6 +197,17 @@ describe('computer seat intel - lost scouts', () => {
 });
 
 describe('computer seat intel', () => {
+  it('is refreshed once a round of decisions, on the decision before the posture review', () => {
+    const round = INTEL_EVERY_DECISIONS * COMPUTER_DECISION_INTERVAL_TICKS;
+    const refreshes: number[] = [];
+    for (let tick = 0; tick < 2 * round; tick++) if (intelDue(tick, SEAT)) refreshes.push(tick);
+    expect(refreshes).toHaveLength(2);
+    for (const tick of refreshes) {
+      const nextDecision = tick - INTEL_DECISION_PHASE + COMPUTER_DECISION_INTERVAL_TICKS;
+      expect(moduleBeatDue(nextDecision, SEAT, POSTURE_REVIEW_EVERY_DECISIONS)).toBe(true);
+    }
+  });
+
   it('knows the start buildings of the other seats before seeing them', () => {
     const sim = intelSim();
     expect(believedEnemyBuildings(sim.world, SEAT)).toEqual([
