@@ -237,16 +237,24 @@ ${Array.from({ length: SUB_WINDOW_TAPS }, (_, k) => `      taps[${k}] = resolved
     outColor = one ? sum : MINIFY_TAP_WEIGHT * sum;`;
 }
 
-/** xBR's window around the corner of p nearest the fragment, read in one pass over the chain; only an
- *  edge corner resolves its outer eight taps. */
+/** xBR's window around the corner of p nearest the fragment: its 2x2 in one pass over the chain, and
+ *  the outer eight taps in a second pass that only an edge corner takes. */
 function xbrGather(maxTextures: number): string {
+  const fetches = (from: string, to: string): string =>
+    textureChain(
+      maxTextures,
+      'vTextureId',
+      (i) =>
+        `for (int k = ${from}; k < ${to}; k++) taps[k] = texelFetch(uTextures[${i}], centre + windowStep * XBR_OFFSETS[k], 0);`,
+    );
   return /* glsl */ `    ivec2 centre = ivec2(floor(p));
     ivec2 windowStep = magnifyWindowStep(fract(p));
     vec4 taps[XBR_TAPS];
-${textureChain(maxTextures, 'vTextureId', (i) => `for (int k = 0; k < XBR_TAPS; k++) taps[k] = texelFetch(uTextures[${i}], centre + windowStep * XBR_OFFSETS[k], 0);`)}
+${fetches('0', 'SUB_WINDOW_TAPS')}
 ${Array.from({ length: SUB_WINDOW_TAPS }, (_, k) => `    taps[${k}] = resolvedTap(taps[${k}], centre + windowStep * XBR_OFFSETS[${k}], texSize, indexed, paletted, lutRow);`).join('\n')}
     outColor = windowSharp(taps[0], taps[1], taps[2], taps[3], p, texelsPerPixel, windowStep);
     if (!magnifyXbrKeepsBase(taps[0], taps[1], taps[2])) {
+${fetches('SUB_WINDOW_TAPS', 'XBR_TAPS').replace(/^/gm, '  ')}
       for (int k = SUB_WINDOW_TAPS; k < XBR_TAPS; k++) {
         taps[k] = resolvedTap(taps[k], centre + windowStep * XBR_OFFSETS[k], texSize, indexed, paletted, lutRow);
       }

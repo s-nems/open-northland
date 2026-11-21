@@ -84,8 +84,9 @@ The Direct3D shader compiler behind ANGLE on Windows inlines every GLSL function
 optimises, so a fragment shader's cost there is its body after inlining, not its line count. A sampling path called from
 each branch of a sampler if-chain compiles once per branch; that shape took minutes to compile on
 Windows and froze the game at the loading screen while Metal compiled it in milliseconds, and a chain
-walked once per magnifier tap still compiled for tens of seconds there. Gather every tap a fragment
-reads in one pass over the chain, as `gpu/world-batch/shader.ts` does for a body's magnifier taps,
+walked once per magnifier tap still compiled for tens of seconds there. Gather the taps a fragment
+reads in one pass over the chain, as `gpu/world-batch/shader.ts` does for a body's magnifier taps
+(xBR's in two: its 2x2, then the outer eight only an edge corner reads),
 and keep xBR and the other magnifiers out of per-slot code. Its selection outline picks the page once
 and reads its eight plain coverage taps and the body's own texel there, a cost the budget below and the Windows compile check bound.
 The chain picks its slot through a switch, which the Direct3D compiler handled in half the time of
