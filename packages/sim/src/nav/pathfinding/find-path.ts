@@ -106,6 +106,64 @@ export function findPath(
   goalOpen = false,
   stopOn?: NodeStops,
 ): NodeId[] | null {
+  const verdict = searchPath(
+    graph,
+    start,
+    goal,
+    blocked,
+    stats,
+    traversal,
+    goalSliceExplored,
+    goalOpen,
+    stopOn,
+    UNCAPPED,
+  );
+  return verdict === 'aborted' ? null : verdict;
+}
+
+/**
+ * {@link findPath} that gives up with `'aborted'` once its forward search has settled `forwardCap` nodes
+ * with no verdict, for a caller with a cheaper search to hand a long one to. Null stays exact. The cap
+ * must not exceed {@link FLOOD_GUARD_MAX_EXPLORED}: past the guard the race runs to its verdict.
+ */
+export function findPathUntil(
+  graph: TerrainGraph,
+  start: NodeId,
+  goal: NodeId,
+  blocked: BlockOverlay | undefined,
+  stats: SearchStats | undefined,
+  traversal: Traversal,
+  goalSliceExplored: number,
+  goalOpen: boolean,
+  forwardCap: number,
+): NodeId[] | null | 'aborted' {
+  if (forwardCap > FLOOD_GUARD_MAX_EXPLORED) throw new Error('the forward cap exceeds the flood guard');
+  return searchPath(
+    graph,
+    start,
+    goal,
+    blocked,
+    stats,
+    traversal,
+    goalSliceExplored,
+    goalOpen,
+    undefined,
+    forwardCap,
+  );
+}
+
+function searchPath(
+  graph: TerrainGraph,
+  start: NodeId,
+  goal: NodeId,
+  blocked: BlockOverlay | undefined,
+  stats: SearchStats | undefined,
+  traversal: Traversal,
+  goalSliceExplored: number,
+  goalOpen: boolean,
+  stopOn: NodeStops | undefined,
+  forwardCap: number,
+): NodeId[] | null | 'aborted' {
   if (!graph.traversable(start, traversal) || !graph.traversable(goal, traversal)) return null;
   // Already-there wins over the overlay, consistent with the blocked-start exemption.
   if (start === goal) return [start];
@@ -125,7 +183,7 @@ export function findPath(
     stopOn,
   );
   // Without an overlay a shared static component means reachable, so the search can never flood.
-  if (blocked === undefined || blocked.size === 0) return pathOf(forward.advance(UNCAPPED));
+  if (blocked === undefined || blocked.size === 0) return verdictOf(forward.advance(forwardCap));
   let reverse: ResumableSearch | undefined;
   if (!goalOpen) {
     // A goal the forward search reaches, or a start region it exhausts, within the probe's own cost
@@ -137,12 +195,13 @@ export function findPath(
     if (probe === 'unreachable') return null;
     // Reverse costs are asymmetric, so a proved route still needs the forward search, with nothing left to
     // guard against.
-    if (probe !== 'aborted') return pathOf(forward.advance(UNCAPPED));
+    if (probe !== 'aborted') return verdictOf(forward.advance(forwardCap));
   }
   // Pausing never changes a search's settle order, so every forward answer below is byte-identical to one
   // unguarded search, and a goal side exhausted first refutes the goal.
-  const guarded = forward.advance(FLOOD_GUARD_MAX_EXPLORED);
+  const guarded = forward.advance(Math.min(FLOOD_GUARD_MAX_EXPLORED, forwardCap));
   if (guarded !== 'aborted') return pathOf(guarded);
+  if (forward.explored >= forwardCap) return 'aborted';
   reverse ??= goalSideSearch(graph, start, goal, blocked, stats, traversal);
   for (;;) {
     const goalSide = reverse.advance(
@@ -245,6 +304,11 @@ const NO_GAP_READ = -2;
 
 function pathOf(verdict: NodeId[] | 'unreachable' | 'aborted'): NodeId[] | null {
   return typeof verdict === 'string' ? null : verdict;
+}
+
+/** A capped search's answer: an exact refusal as null, the cap running out as `'aborted'`. */
+function verdictOf(verdict: NodeId[] | 'unreachable' | 'aborted'): NodeId[] | null | 'aborted' {
+  return verdict === 'unreachable' ? null : verdict;
 }
 
 /**

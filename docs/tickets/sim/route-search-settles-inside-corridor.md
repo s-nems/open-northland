@@ -3,32 +3,24 @@
 **Area:** sim · **Focus:** nav, movement · **Priority:** P3
 
 A ghost walker's walk of 16 columns and more searches a corridor of cluster regions
-(`nav/pathfinding/corridor-route.ts`), which bounds the search by the corridor instead of by the detour.
-What is left is the search inside the corridor and the walks the corridor does not take: the land heuristic of `nav/pathfinding/find-path.ts`
-weighs ground as grass (2) while about 30% of walkable ground weighs 3 or 4, so the search settles the
-ground behind the walker too. Measured on two late sessions (six computer seats on `magiczny_las` from
-tick 100000, eight on `diamentowa_dolina` from tick 80000), 2200 ticks each:
+(`nav/pathfinding/corridor-route.ts`), and any other land walk under the structures, a collider's
+included, is handed to it once its map-wide search has settled 2048 nodes (512 for a collider's long
+walk). What is left is the search inside the corridor: the land heuristic of
+`nav/pathfinding/find-path.ts` weighs ground as grass (2) while about 30% of walkable ground weighs 3 or
+4, so the search settles the ground behind the walker too. Measured on two late sessions (six computer
+seats on `magiczny_las` from tick 100000, eight on `diamentowa_dolina` from tick 80000), 2200 ticks each,
+before the handover:
 
 - Searches of at most 2048 settles are 99% of the ghost walkers' searches and 65-71% of their settles,
   and the corridor leaves them about as they were: a walk of 32 nodes and more settles 4-5 nodes per
   node of its route.
 - The longest corridor searches still settle most of their corridor: 15,313 nodes for a 513-node walk,
-  8,000-9,500 for walks of 220-260 nodes.
-- A walk under 16 columns that detours round a wall or water floods as before, up to 31,355 settles for
-  a 227-node route on the first session.
-- A goal walled into a pocket of more than 512 nodes costs 5,161 settles to refuse: 118 refusals hold
-  609,000 of the 1,350,000 settles of 2200 ticks from tick 40000 of the first session.
+  8,000-9,500 for walks of 220-260 nodes. A chase handed over on `magiczny_las` from tick 60000 settles
+  8,361 nodes where the map-wide search settled 21,913.
 
 ## Scope
 
-- Hand a shorter walk to the corridor once the map-wide search has settled 2048 nodes without an answer:
-  the corridor then returned the same route on all 60 such walks of the two sessions, at 5,837 settles for
-  the 31,355 one. An unreachable goal then pays those settles twice unless the next item lands first.
-- Refuse a walk whose endpoints no chain of cluster regions joins without the map-wide search. The
-  regions are the mask's exact connectivity, and the corridor already hands such a walk back after a
-  goal-side probe of 64 regions.
-
-Two more measured levers, both of which move routes and need the owner's sign-off on route cost:
+Two measured levers, both of which move routes and need the owner's sign-off on route cost:
 
 - Weigh the land heuristic heavier. Over 23,813 searches of the first session, 1.25 times heavier settles
   39% fewer nodes (47% fewer on routes of 64 nodes and more) for routes 1.1% dearer on average, the worst

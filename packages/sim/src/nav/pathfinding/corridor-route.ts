@@ -44,20 +44,41 @@ const UNCAPPED = Number.POSITIVE_INFINITY;
 /** A closed node's byte, the value a block lane holds for a blocked node. */
 const OUTSIDE = 1;
 
-/** The mask's blocks inside the open clusters and every node outside them, as one byte lane. */
+/** The standing bodies a collider's node search also keeps off: per-node player bits and the bits that
+ *  block the walker, as a {@link BlockLanes} holds them. */
+export interface CorridorBodies {
+  readonly players: Uint16Array;
+  readonly hostile: number;
+}
+
+/** The mask's blocks inside the open clusters and every node outside them, as one byte lane, with the
+ *  running search's bodies beside it. */
 class CorridorBlocks implements BlockOverlay {
   /** Never empty: the corridor always closes some node. */
   readonly size = 1;
   /** One byte per node: {@link OUTSIDE} except in the clusters a search has open, which hold the mask's
    *  own bytes. */
   readonly bytes: Uint8Array;
-  private readonly lanes: BlockLanes;
+  private readonly plain: BlockLanes;
+  private lanes: BlockLanes;
+  private bodies: CorridorBodies | undefined;
   constructor(nodeCount: number) {
     this.bytes = new Uint8Array(nodeCount).fill(OUTSIDE);
-    this.lanes = { bytes: this.bytes, extra: undefined, players: undefined, hostile: 0 };
+    this.plain = { bytes: this.bytes, extra: undefined, players: undefined, hostile: 0 };
+    this.lanes = this.plain;
+  }
+  /** Keep the next search off `bodies` too, or off the mask alone. */
+  searchUnder(bodies: CorridorBodies | undefined): void {
+    this.bodies = bodies;
+    this.lanes =
+      bodies === undefined
+        ? this.plain
+        : { bytes: this.bytes, extra: undefined, players: bodies.players, hostile: bodies.hostile };
   }
   has(node: NodeId): boolean {
-    return this.bytes[node] === OUTSIDE;
+    if (this.bytes[node] === OUTSIDE) return true;
+    const bodies = this.bodies;
+    return bodies !== undefined && ((bodies.players[node] ?? 0) & bodies.hostile) !== 0;
   }
   blockLanes(): BlockLanes {
     return this.lanes;
@@ -100,25 +121,37 @@ export class CorridorRoutes {
     this.blocks = new CorridorBlocks(terrain.nodeCount);
   }
 
-  /** {@link find} for a walk long enough to pay for the corridor; null hands a shorter one back too. */
-  route(start: NodeId, goal: NodeId, stats: SearchStats): NodeId[] | null {
-    if (nodeLatticeDistance(this.terrain, start, goal) < LONG_WALK_MIN_DISTANCE) return null;
-    return this.find(start, goal, stats);
+  /** Whether a walk is long enough for the corridor to pay for itself from its first settle. */
+  isLongWalk(start: NodeId, goal: NodeId): boolean {
+    return nodeLatticeDistance(this.terrain, start, goal) >= LONG_WALK_MIN_DISTANCE;
+  }
+
+  /** {@link find} for a long walk; null hands a shorter one back too. */
+  route(start: NodeId, goal: NodeId, stats: SearchStats): NodeId[] | 'unreachable' | null {
+    return this.isLongWalk(start, goal) ? this.find(start, goal, stats) : null;
   }
 
   /**
-   * A land route from `start` to `goal` under the regions' mask, or null when the corridor gives none: an
-   * endpoint outside every region (a blocked start stepping off, a blocked goal) or no chain of regions
-   * between them. Null is no verdict on reachability; the caller searches the whole map. `stats` is
-   * charged the regions and the nodes settled.
+   * A land route from `start` to `goal` under the regions' mask and `bodies`, or `'unreachable'` when no
+   * chain of regions joins the two, which no walk under the mask does either. Null is no verdict: an
+   * endpoint outside every region (a blocked start stepping off, a blocked goal), bodies closing the
+   * corridor, or a cluster too fragmented to label; the caller searches the whole map. `stats` is charged
+   * the regions and the nodes settled.
    */
-  find(start: NodeId, goal: NodeId, stats: SearchStats): NodeId[] | null {
+  find(
+    start: NodeId,
+    goal: NodeId,
+    stats: SearchStats,
+    bodies?: CorridorBodies,
+  ): NodeId[] | 'unreachable' | null {
     const { regions } = this;
     regions.refresh();
     const from = regions.regionOf(start);
     const to = regions.regionOf(goal);
-    if (from === NO_REGION || to === NO_REGION || !this.chainRegions(from, to, goal, stats)) return null;
+    if (from === NO_REGION || to === NO_REGION) return null;
+    if (!this.chainRegions(from, to, goal, stats)) return regions.anyFragmented ? null : 'unreachable';
     this.openCorridor(to);
+    this.blocks.searchUnder(bodies);
     const path = findPathWithin(this.terrain, start, goal, this.blocks, stats, UNCAPPED);
     this.closeCorridor();
     return typeof path === 'string' ? null : path;

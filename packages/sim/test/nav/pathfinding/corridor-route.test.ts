@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { buildTerrainGraph, findPath, type NodeId, Rng, type TerrainGraph } from '../../../src/index.js';
-import { ClusterRegions } from '../../../src/nav/pathfinding/cluster-regions.js';
+import { ClusterRegions, NO_REGION } from '../../../src/nav/pathfinding/cluster-regions.js';
 import { CorridorRoutes } from '../../../src/nav/pathfinding/corridor-route.js';
 import type { SearchStats } from '../../../src/nav/pathfinding/index.js';
 import { testContent } from '../../fixtures/content.js';
@@ -18,6 +18,8 @@ const WALKS_PER_ROUND = 8;
 /** Rounds between road changes, which move the route factors under the held regions. */
 const ROAD_EVERY = 4;
 const ROAD_NODES = 60;
+/** The slot bit of the player whose bodies block the walker. */
+const HOSTILE = 1;
 /** The side of an open field wide enough for a detour to flood. */
 const FIELD = 176;
 
@@ -78,7 +80,7 @@ describe('CorridorRoutes', () => {
         const route = held.find(start, goal, heldStats);
         expect(route).toEqual(cold.find(start, goal, coldStats));
         expect(heldStats.explored).toBe(coldStats.explored);
-        if (route !== null) routed += 1;
+        if (Array.isArray(route)) routed += 1;
       }
       expect(held.regions.verify()).toEqual([]);
     }
@@ -98,8 +100,14 @@ describe('CorridorRoutes', () => {
         // A blocked start steps off through the map-wide search, which the corridor hands it to.
         if (mask.has(start)) continue;
         const route = routes.find(start, goal, { explored: 0 });
-        expect(route !== null).toBe(findPath(terrain, start, goal, mask) !== null);
-        if (route === null) continue;
+        expect(Array.isArray(route)).toBe(findPath(terrain, start, goal, mask) !== null);
+        if (!Array.isArray(route)) {
+          // Two ends on open land with no walk between them are refused outright.
+          const onLand =
+            routes.regions.regionOf(start) !== NO_REGION && routes.regions.regionOf(goal) !== NO_REGION;
+          expect(route).toBe(onLand ? 'unreachable' : null);
+          continue;
+        }
         expect(route[0]).toBe(start);
         expect(route.at(-1)).toBe(goal);
         for (let step = 1; step < route.length; step++) {
@@ -147,8 +155,31 @@ describe('CorridorRoutes', () => {
       }
     }
     const spent: SearchStats = { explored: 0 };
-    expect(fresh(terrain, mask).route(terrain.nodeAt(4, 4), terrain.nodeAt(85, 85), spent)).toBeNull();
+    expect(fresh(terrain, mask).route(terrain.nodeAt(4, 4), terrain.nodeAt(85, 85), spent)).toBe(
+      'unreachable',
+    );
     expect(spent.explored).toBeLessThan(200);
+  });
+
+  it('keeps the node search off standing bodies and gives no verdict when they close the corridor', () => {
+    const terrain = riverLand();
+    const routes = fresh(terrain, new StampedMask(terrain));
+    const start = terrain.nodeAt(4, 20);
+    const goal = terrain.nodeAt(40, 20);
+    const players = new Uint16Array(terrain.nodeCount);
+    // A line of bodies across the walk with one gap, then with none.
+    const line = 22;
+    const gap = terrain.nodeAt(line, 30);
+    for (let y = 0; y < SIZE; y++) players[terrain.nodeAt(line, y)] = HOSTILE;
+    players[gap] = 0;
+    const round = routes.find(start, goal, { explored: 0 }, { players, hostile: HOSTILE });
+    expect(round).toContain(gap);
+    players[gap] = HOSTILE;
+    expect(routes.find(start, goal, { explored: 0 }, { players, hostile: HOSTILE })).toBeNull();
+    // The bodies of a player the walker is at peace with close nothing.
+    expect(routes.find(start, goal, { explored: 0 }, { players, hostile: HOSTILE << 1 })).toContain(
+      terrain.nodeAt(line, 20),
+    );
   });
 
   it('leaves a short walk to the map-wide search', () => {

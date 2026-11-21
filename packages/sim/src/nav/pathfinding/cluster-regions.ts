@@ -102,6 +102,8 @@ export class ClusterRegions {
   private readonly factorCounts = new Int32Array(ROUTE_FACTORS);
   private epoch = 0;
   private builds = 0;
+  /** How many clusters are held as too fragmented to label. */
+  private fragmented = 0;
   private seenMask = Number.NaN;
   private seenResistance = Number.NaN;
 
@@ -129,6 +131,12 @@ export class ClusterRegions {
 
   get clusterCount(): number {
     return this.state.length;
+  }
+
+  /** Whether some cluster levelled so far holds no regions for its fragments, so a walk may cross ground
+   *  no chain of regions shows. */
+  get anyFragmented(): boolean {
+    return this.fragmented > 0;
   }
 
   /** Write `value` over every node of `cluster` in a per-node `lane`. */
@@ -254,6 +262,8 @@ export class ClusterRegions {
         this.centreY,
         this.weights,
       );
+      if (this.state[cluster] === FRAGMENTED) this.fragmented -= 1;
+      if (regions === NO_REGION) this.fragmented += 1;
       this.state[cluster] = regions === NO_REGION ? FRAGMENTED : LABELLED;
       this.regionCounts[cluster] = regions === NO_REGION ? 0 : regions;
     }

@@ -28,8 +28,10 @@ import { positionXOfNode, positionYOfNode } from '../../nav/halfcell.js';
 import { nearestUnblockedNode } from '../../nav/nearest.js';
 import {
   ClusterRegions,
+  type CorridorBodies,
   CorridorRoutes,
   findPath,
+  findPathUntil,
   type NodeStops,
   POCKET_PROBE_MAX_EXPLORED,
   RACE_SLICE_EXPLORED,
@@ -76,6 +78,19 @@ const PATHFINDING_NODE_BUDGET_PER_TICK = 16384;
  * remainder in goal-side settles rather than all of it). Authored.
  */
 const OVER_BUDGET_GOAL_SLICE_EXPLORED = RACE_SLICE_EXPLORED / 4;
+
+/**
+ * The forward settles after which a map-wide land search hands its walk to the corridor search. Authored
+ * from a replay of two late sessions' walks: the 60 ghost walks under 16 columns that passed it kept their
+ * route in the corridor, the dearest at a fifth of its settles.
+ */
+const CORRIDOR_HANDOVER_SETTLES = 2048;
+
+/**
+ * {@link CORRIDOR_HANDOVER_SETTLES} for a collider's walk long enough for the corridor to pay from its
+ * first settle: past the pocket probes, which answer a goal bodies seal off or stand on. Authored.
+ */
+const LONG_WALK_HANDOVER_SETTLES = 512;
 
 // An open route region stands in for the search's pocket probe, which it must therefore outgrow.
 if (ROUTE_REGION_POCKET_CAP < POCKET_PROBE_MAX_EXPLORED) {
@@ -332,8 +347,8 @@ class PathDrain {
   /**
    * A member's search ending on the first node of a shared route by `goal` it settles, followed from there.
    * A remembered sealed goal refuses that search at the plain search's charge, so a search that met a route
-   * it then failed to follow off, and the corridor's null after it, charge nothing: a sealed goal then costs
-   * the plain search's settles alone on every client, whether or not it remembers the seal.
+   * it then failed to follow off charges nothing: a sealed goal then costs its own search's settles alone
+   * on every client, whether or not it remembers the seal.
    */
   private meetingRoute(
     groupRoutes: GroupRoutes,
@@ -365,16 +380,16 @@ class PathDrain {
       spent.explored += attempt.explored;
       return answer;
     }
-    attempt.explored = 0;
-    const corridor = this.corridorRoute(overlay, start, goal, traversal, attempt);
-    if (corridor !== null) {
-      spent.explored += attempt.explored;
-      return corridor;
-    }
-    return resolvePath(pockets, start, goal, overlay, spent, traversal, this.goalSlice, goalOpen);
+    return this.ownRoute(pockets, overlay, start, goal, traversal, goalOpen);
   }
 
-  /** A request's own search to its goal: the corridor's for a long ghost walk, else the map-wide one. */
+  /**
+   * A request's own search to its goal. A long ghost walk takes the corridor at once. Any other land walk
+   * under the structures, a collider's bodies included, starts map-wide, where a near goal or a small
+   * sealed pocket answers in a few settles, and hands over to the corridor after
+   * {@link CORRIDOR_HANDOVER_SETTLES}. The corridor's refusal is exact; with no verdict from it the
+   * map-wide search runs to its end.
+   */
   private ownRoute(
     pockets: SealedPockets,
     overlay: BlockOverlay,
@@ -383,26 +398,51 @@ class PathDrain {
     traversal: Traversal,
     goalOpen: boolean,
   ): NodeId[] | null {
-    return (
-      this.corridorRoute(overlay, start, goal, traversal, this.spent) ??
-      resolvePath(pockets, start, goal, overlay, this.spent, traversal, this.goalSlice, goalOpen)
+    const { spent, goalSlice } = this;
+    const corridors = this.corridorsUnder(overlay, start, goal, traversal);
+    if (corridors === null)
+      return resolvePath(pockets, start, goal, overlay, spent, traversal, goalSlice, goalOpen);
+    const bodies = corridorBodiesOf(overlay);
+    if (bodies === undefined) {
+      const long = corridors.route(start, goal, spent);
+      if (long !== null) return long === 'unreachable' ? null : long;
+      if (corridors.isLongWalk(start, goal)) {
+        return resolvePath(pockets, start, goal, overlay, spent, traversal, goalSlice, goalOpen);
+      }
+    }
+    // Not through the remembered pockets: what a client remembers must not move what a request charges.
+    const near = findPathUntil(
+      this.terrain,
+      start,
+      goal,
+      overlay,
+      spent,
+      traversal,
+      goalSlice,
+      goalOpen,
+      corridors.isLongWalk(start, goal) ? LONG_WALK_HANDOVER_SETTLES : CORRIDOR_HANDOVER_SETTLES,
     );
+    if (near !== 'aborted') return near;
+    const handed = corridors.find(start, goal, spent, bodies);
+    if (handed !== null) return handed === 'unreachable' ? null : handed;
+    return resolvePath(pockets, start, goal, overlay, spent, traversal, goalSlice, goalOpen);
   }
 
   /**
-   * A long land walk under the structures alone, routed inside a corridor of cluster regions; null hands
-   * the request to the map-wide search. A collider's overlay moves with every standing body, which the
-   * cluster regions do not follow, so only a walk that passes through bodies qualifies.
+   * The corridor search for a land walk between two lattice nodes under `overlay`, when that is the
+   * structure mask alone or with standing bodies beside it; null for any other walk. A collider's bodies
+   * move without the cluster regions following, so the regions stay the mask's and only the node search
+   * inside the corridor keeps off the bodies.
    */
-  private corridorRoute(
+  private corridorsUnder(
     overlay: BlockOverlay,
     start: NodeId,
     goal: NodeId,
     traversal: Traversal,
-    stats: SearchStats,
-  ): NodeId[] | null {
-    const { mask, terrain } = this;
-    if (mask === undefined || overlay !== this.dynamic || traversal !== 'land') return null;
+  ): CorridorRoutes | null {
+    const { mask, terrain, dynamic } = this;
+    if (mask === undefined || dynamic === undefined || traversal !== 'land') return null;
+    if (overlay !== dynamic && !(overlay instanceof ColliderWalkBlocks && overlay.over(dynamic))) return null;
     if (!isValidNodeId(terrain, start) || !isValidNodeId(terrain, goal)) return null;
     let corridors = this.corridors;
     if (corridors === undefined || corridors.regions.mask !== mask) {
@@ -411,8 +451,13 @@ class PathDrain {
       this.corridors = corridors;
       this.world.registerCacheVerifier('corridorClusterRegions', () => regions.verify());
     }
-    return corridors.route(start, goal, stats);
+    return corridors;
   }
+}
+
+/** The standing bodies `overlay` adds to the structures it is built over, for the corridor's node search. */
+function corridorBodiesOf(overlay: BlockOverlay): CorridorBodies | undefined {
+  return overlay instanceof ColliderWalkBlocks ? overlay.bodies() : undefined;
 }
 
 const drains = new WeakMap<World, PathDrain>();

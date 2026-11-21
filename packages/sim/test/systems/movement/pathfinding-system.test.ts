@@ -331,6 +331,41 @@ describe('pathfindingSystem - per-tick search budget', () => {
   });
 });
 
+describe('pathfindingSystem - corridor handover', () => {
+  it('hands a short walk that floods round a long wall to the corridor, for under half the settles', () => {
+    const SIDE = 176;
+    const WALL_HY = SIDE / 2;
+    const typeIds = new Array<number>(SIDE * SIDE).fill(GRASS);
+    // Water across the field that only its west end leaves open.
+    for (let hx = 8; hx < SIDE; hx++) typeIds[WALL_HY * SIDE + hx] = WATER;
+    const { sim, request } = mappedSim({ resolution: 'half-cell', width: SIDE, height: SIDE, typeIds });
+    const terrain = sim.terrain;
+    if (terrain === undefined) throw new Error('mapped sim must have terrain');
+    const start = terrain.nodeAt(SIDE - 10, WALL_HY - 3);
+    const goal = terrain.nodeAt(SIDE - 10, WALL_HY + 3);
+    const flood = { explored: 0 };
+    const mapWide = findPath(terrain, start, goal, undefined, flood);
+    const walker = request(start, goal);
+    const next = request(terrain.nodeAt(0, 0), terrain.nodeAt(1, 0));
+    const ctx: SystemContext = {
+      content: testContent(),
+      rng: sim.rng,
+      names: sim.names,
+      tick: 1,
+      events: sim.events,
+      commands: sim.commands,
+      terrain,
+    };
+
+    // The second request is served only while the first left the budget unspent.
+    drainPathRequests(sim.world, ctx, terrain, flood.explored / 2);
+
+    expect(sim.world.get(walker, PathRoute).waypoints.at(-1)?.node).toBe(goal);
+    expect(sim.world.get(walker, PathRoute).waypoints.length).toBeLessThanOrEqual(mapWide?.length ?? 0);
+    expect(sim.world.has(next, PathRequest)).toBe(false);
+  });
+});
+
 describe('pathfindingSystem - a group move shares one route', () => {
   const SOLDIER = 31;
   const CIVILIAN = 1;

@@ -6,10 +6,11 @@ export {
   followCorridor,
   joinCorridor,
 } from './corridor.js';
-export { CorridorRoutes } from './corridor-route.js';
+export { type CorridorBodies, CorridorRoutes } from './corridor-route.js';
 export {
   FLOOD_GUARD_MAX_EXPLORED,
   findPath,
+  findPathUntil,
   findPathWithin,
   GOAL_EXHAUST_MAX_EXPLORED,
   type NodeStops,

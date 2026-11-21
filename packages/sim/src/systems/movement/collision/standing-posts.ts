@@ -474,6 +474,14 @@ export class ColliderWalkBlocks implements BlockOverlay {
   has(node: NodeId): boolean {
     return this.dynamic.has(node) || ((this.playersAt[node] ?? 0) & this.hostile) !== 0;
   }
+  /** Whether this view adds its bodies to exactly `structures`. */
+  over(structures: BlockOverlay): boolean {
+    return this.dynamic === structures;
+  }
+  /** The bodies alone, as per-node player bits and the bits that block this requester. */
+  bodies(): { readonly players: Uint16Array; readonly hostile: number } {
+    return { players: this.playersAt, hostile: this.hostile };
+  }
   /** The dynamic overlay's byte lanes with the hostile posts beside them; none when the dynamic overlay
    *  has no byte lanes of its own. */
   blockLanes(): BlockLanes | undefined {
