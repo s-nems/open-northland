@@ -68,6 +68,12 @@ const LOOKS: Readonly<Record<WeatherKind, PrecipitationLook>> = {
   },
 };
 
+/** A shape's cover reaches zero this far past its edge: the half pixel that antialiases it. */
+const EDGE_FADE_PX = 0.5;
+/** A quad ends this far past its shape's last covered point. A pixel is drawn where its centre lies in
+ *  the quad, so the margin only has to absorb the rasterizer's sub-pixel vertex snapping. */
+const QUAD_GUARD_PX = 0.125;
+
 const glslFloat = (value: number): string => (Number.isInteger(value) ? `${value}.0` : String(value));
 const vec2Of = (pair: readonly [number, number]): string =>
   `vec2(${glslFloat(pair[0])}, ${glslFloat(pair[1])})`;
@@ -128,6 +134,8 @@ const VERTEX_HEAD = `#version 300 es
 
   const float TAU = 6.28318530718;
   const float MARGIN = ${glslFloat(PARTICLE_WRAP_MARGIN_PX)};
+  const float EDGE_FADE = ${glslFloat(EDGE_FADE_PX)};
+  const float QUAD_GUARD = ${glslFloat(QUAD_GUARD_PX)};
   const vec2 NODES_PER_WORLD = vec2(${glslFloat(WEATHER_NODES_PER_WORLD_X)}, ${glslFloat(WEATHER_NODES_PER_WORLD_Y)});
   // Speed spread between particles of one depth.
   const float SPEED_JITTER = 0.18;
@@ -242,7 +250,7 @@ const RAIN_VERTEX = `
       * (1.0 + 0.3 * uStorm);
     float core = 0.5 * mix(SIZE.x, SIZE.y, depth) * uDraw.z;
     float blur = NEAR_BLUR * depth * depth;
-    float halfWidth = core + blur + 1.0;
+    float halfWidth = core + EDGE_FADE + blur + QUAD_GUARD;
     vLocal = vec2(aPosition.x * halfWidth, aPosition.y);
     vShape = vec4(core, blur, 0.0, 0.0);
     vShade = vec2(0.0);
@@ -257,7 +265,7 @@ const RAIN_FRAGMENT = `
   // The streak head softens over this last share of its length instead of ending in a hard cap.
   const float HEAD_SOFT = 0.12;
   void main(void) {
-    float coverage = 1.0 - smoothstep(vShape.x - 0.5, vShape.x + 0.5 + vShape.y, abs(vLocal.x));
+    float coverage = 1.0 - smoothstep(vShape.x - EDGE_FADE, vShape.x + EDGE_FADE + vShape.y, abs(vLocal.x));
     float along = 0.5 * (vLocal.y + 1.0);
     float a = vAlpha * coverage * along * sqrt(along) * (1.0 - smoothstep(1.0 - HEAD_SOFT, 1.0, along));
     finalColor = vec4(vColour * a, a);
@@ -334,11 +342,13 @@ const SNOW_VERTEX = `
     float soft = mix(SOFT_PX.x, SOFT_PX.y, depth);
     // Radii across and along the flight direction.
     vec2 radii = 0.5 * size * vec2(tumble, stretch);
-    vec2 extent = radii + soft + SHADE_DROP + 1.0;
-    vLocal = aPosition * extent;
-    vShape = vec4(2.0, soft, radii);
     // Screen down in the flake's (across, along) frame.
     vShade = SHADE_DROP * vec2(across.y, dir.y);
+    // The disc's cover ends EDGE_FADE past its narrow radius, scaled with the ellipse along the wide
+    // one, and the blur lies inside it. The quad spans the disc and its copy moved by the shade.
+    vec2 reach = radii * (1.0 + EDGE_FADE / min(radii.x, radii.y));
+    vLocal = 0.5 * vShade + aPosition * (reach + 0.5 * abs(vShade) + QUAD_GUARD);
+    vShape = vec4(2.0, soft, radii);
     place(centre + across * vLocal.x + dir * vLocal.y);
   }
 `;
@@ -353,7 +363,7 @@ const SNOW_FRAGMENT = `
   // 0..1 cover of a soft ellipse with 'radii' at 'p', blurred over 'soft' px inside its edge.
   float discAt(vec2 p, vec2 radii, float soft) {
     float edge = (length(p / radii) - 1.0) * min(radii.x, radii.y);
-    return 1.0 - smoothstep(-soft, 0.5, edge);
+    return 1.0 - smoothstep(-soft, EDGE_FADE, edge);
   }
   void main(void) {
     float flake;
@@ -428,7 +438,7 @@ const SAND_VERTEX = `
     float len = clamp(length(velocity) * STREAK_SECONDS * (0.6 + 0.8 * aSeedB.y),
       STREAK_LENGTH.x * uDraw.z, STREAK_LENGTH.y * uDraw.z) * (1.0 + STORM_STRETCH * uStorm);
     float core = 0.5 * mix(SIZE.x, SIZE.y, depth) * uDraw.z;
-    float halfWidth = core + 1.0;
+    float halfWidth = core + EDGE_FADE + QUAD_GUARD;
     vLocal = vec2(aPosition.x * halfWidth, aPosition.y);
     vShape = vec4(-core, 0.0, 0.0, 0.0);
     vColour = COLOUR * (0.85 + 0.3 * aSeedB.z);
@@ -447,7 +457,7 @@ const SAND_FRAGMENT = `
       float r = length(vLocal) * (1.0 + 0.18 * sin(3.0 * angle + 6.2831 * seed) + 0.1 * sin(5.0 * angle - 4.0 * seed));
       a = 1.0 - smoothstep(0.15, 1.0, r);
     } else {
-      float coverage = clamp(-seed + 0.5 - abs(vLocal.x), 0.0, 1.0);
+      float coverage = clamp(-seed + EDGE_FADE - abs(vLocal.x), 0.0, 1.0);
       a = coverage * (1.0 - vLocal.y * vLocal.y);
     }
     a *= vAlpha;
@@ -457,6 +467,7 @@ const SAND_FRAGMENT = `
 
 const FRAGMENT_HEAD = `#version 300 es
   precision highp float;
+  const float EDGE_FADE = ${glslFloat(EDGE_FADE_PX)};
   in vec2 vLocal;
   in float vAlpha;
   // Per-kind shape parameters; see each body.
