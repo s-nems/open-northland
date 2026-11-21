@@ -48,10 +48,12 @@ The pack's combat rules differ from the original data in these ways:
   (a whole percent, 1 to 100) and `soundtype_ArrowBlock <logic sound type>`, the sound group the block
   plays, an id like those of `soundtype_Hit`. A row without them blocks nothing. The engine blocks an
   arrow from the front or a side, never from behind and never a siege shot.
-- The basic weapons of every nation carry the Viking values. Hero rows keep their own values.
+- The basic weapons of every nation carry the Viking values, except the short sword: the Viking,
+  Frankish, Byzantine and Egyptian rows carry a shield, deal 90% in every column and block a quarter
+  of arrows; the Saracen row keeps the full values and blocks nothing. Hero rows keep their own values.
 - A row's leather column is never below its tunic column. The wooden spear does 360 against chain
-  and plate, the long bow 700 against no armour and 200 against a building, the short bow 80 against
-  a building, so a short bow arrow takes no health off a stockade.
+  and plate, the long bow 700 against no armour and 200 against a building, the short bow 100 against
+  chain and plate and 80 against a building, so a short bow arrow takes no health off a stockade.
 - `rules/tribes/tribetypes.ini` has tribe 42 `dragon`, a monster like the weresnake (5) and the
   werewolf (6): fighter job 31, natural weapon at weapon type 1, no trade it can be trained into.
   A map placement or script spawn of a Byzantine `soldier_spear_wooden` (tribe 3, job 32) joins as
