@@ -100,6 +100,9 @@ export class CanonicalQueries {
   /** Walks the smallest required member list once and registers the joint with every required component.
    *  Null while a required store does not exist yet. */
   private join(required: readonly Component<unknown>[]): Joint | null {
+    // Asked before any list is tracked or settled: a query naming a component nothing carried yet is
+    // repeated every tick, and must not pay the other components' merges to learn it is empty.
+    for (const c of required) if (!this.stores.has(c)) return null;
     const stores: Array<ComponentStore<unknown>> = [];
     const tracked: Members[] = [];
     let smallest: Members | null = null;
