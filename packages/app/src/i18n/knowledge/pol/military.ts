@@ -41,7 +41,7 @@ export const MILITARY: ArticleGroup = {
             'Kierunek ciosu liczy się przy ludziach i potworach, Amulet Obrony tylko przy ludziach. Przy strzale kierunek liczy się od miejsca, z którego strzelano.',
             'Żołnierz z [[good:sword_shord|Krótkim Mieczem]] u Wikingów, Franków, Bizantyjczyków i Egipcjan nosi tarczę: zatrzymuje nią {{combat.shieldPct}}% strzał z przodu i z boków, także z budynków, ale żadnej od tyłu i żadnego kamienia z Katapulty. Zatrzymana strzała nie zadaje obrażeń i nie daje nikomu doświadczenia. Krótki Miecz Saracenów nie ma tarczy.',
             'Katapulta nie może mieć Amuletu Siły.',
-            'Palisada liczy obrażenia inaczej: [[article:walls|Palisady i bramy]].',
+            'Palisada dostaje obrażenia z kolumny Budynek: [[article:walls|Palisady i bramy]].',
             'Dziecka nie da się zranić.',
           ],
         },
@@ -517,7 +517,7 @@ export const MILITARY: ArticleGroup = {
     {
       id: 'walls',
       name: 'Palisady i bramy',
-      lead: 'Palisada traci 1 zdrowia za każde pełne {{wall.damagePerPoint}} obrażeń z kolumny Budynek. Słabszy cios nic jej nie robi.',
+      lead: 'Palisada traci całe obrażenia ciosu z kolumny Budynek, bez dzielenia i zaokrąglania. Rani ją więc każdy cios i strzał, który rani budynek.',
       blocks: [
         {
           table: {
@@ -629,10 +629,33 @@ export const MILITARY: ArticleGroup = {
                 '{{wall.longBow.gateHits}}',
                 '{{wall.longBow.segmentSeconds}}',
               ],
-              ['[[good:bow_short|Krótki Łuk]], pięści, strzały z budynku', '0', '0', '-', '-', '-'],
+              [
+                '[[good:bow_short|Krótki Łuk]]',
+                '{{wall.shortBow.blow}}',
+                '{{wall.shortBow.strongBlow}}',
+                '{{wall.shortBow.segmentHits}}',
+                '{{wall.shortBow.gateHits}}',
+                '{{wall.shortBow.segmentSeconds}}',
+              ],
+              [
+                'Pięści',
+                '{{wall.fist.blow}}',
+                '{{wall.fist.strongBlow}}',
+                '{{wall.fist.segmentHits}}',
+                '{{wall.fist.gateHits}}',
+                '{{wall.fist.segmentSeconds}}',
+              ],
+              [
+                'Strzały z budynku',
+                '{{wall.houseBow.blow}}',
+                '-',
+                '{{wall.houseBow.segmentHits}}',
+                '{{wall.houseBow.gateHits}}',
+                '{{wall.houseBow.segmentSeconds}}',
+              ],
             ],
             num: [1, 2, 3, 4, 5],
-            foot: 'Czas dla jednego żołnierza. Katapulta nie może mieć Amuletu Siły. Cyra zabiera {{wall.heroBow.blow}} zdrowia palisady na strzał, Cyra Franków {{wall.frankHeroBow.blow}}.',
+            foot: 'Czas dla jednego żołnierza, a przy strzałach z budynku dla jednego obrońcy w środku. Katapulta i budynek nie mogą mieć Amuletu Siły. Cyra zabiera {{wall.heroBow.blow}} zdrowia palisady na strzał, Cyra Franków {{wall.frankHeroBow.blow}}.',
           },
         },
         {
@@ -675,7 +698,7 @@ export const MILITARY: ArticleGroup = {
           h: 'Kamień',
         },
         {
-          p: 'Ile kamień zabiera ludziom, pojazdom i budynkom, pokazuje wiersz Katapulty w tabeli [[article:damage|Kalkulator obrażeń]]. Palisada liczy to inaczej: [[article:walls|Palisady i bramy]].',
+          p: 'Ile kamień zabiera ludziom, pojazdom i budynkom, pokazuje wiersz Katapulty w tabeli [[article:damage|Kalkulator obrażeń]]. Palisada dostaje tyle samo co budynek: [[article:walls|Palisady i bramy]].',
         },
         {
           table: {

@@ -44,7 +44,7 @@ export const MILITARY: ArticleGroup = {
             "La direzione del colpo conta contro persone e mostri, l'Amuleto della difesa solo contro le persone. Per una freccia la direzione si calcola dal punto da cui è stata scoccata.",
             'Il soldato con la [[good:sword_shord|Spada corta]] di Vichinghi, Franchi, Bizantini ed Egizi porta uno scudo: ferma il {{combat.shieldPct}}% delle frecce che arrivano di fronte e dai lati, anche quelle degli edifici, ma nessuna da dietro e nessuna pietra di catapulta. Una freccia fermata non fa danno e non dà esperienza a nessuno. La Spada corta dei Saraceni non ha scudo.',
             "Una catapulta non può ricevere l'Amuleto della forza.",
-            'Una palizzata calcola il danno a modo suo: [[article:walls|Palizzate e cancelli]].',
+            'Una palizzata subisce il danno della colonna Edificio: [[article:walls|Palizzate e cancelli]].',
             'I bambini non possono essere feriti.',
           ],
         },
@@ -531,7 +531,7 @@ export const MILITARY: ArticleGroup = {
     {
       id: 'walls',
       name: 'Palizzate e cancelli',
-      lead: 'Una palizzata perde 1 punto di salute per ogni {{wall.damagePerPoint}} danni interi della colonna Edificio. Un colpo più debole non le fa nulla.',
+      lead: 'Una palizzata perde tutto il danno di un colpo della colonna Edificio, senza divisioni né arrotondamenti. Ogni colpo e tiro che ferisce un edificio ferisce quindi anche lei.',
       blocks: [
         {
           table: {
@@ -648,10 +648,33 @@ export const MILITARY: ArticleGroup = {
                 '{{wall.longBow.gateHits}}',
                 '{{wall.longBow.segmentSeconds}}',
               ],
-              ['[[good:bow_short|Arco corto]], pugni, frecce da un edificio', '0', '0', '-', '-', '-'],
+              [
+                '[[good:bow_short|Arco corto]]',
+                '{{wall.shortBow.blow}}',
+                '{{wall.shortBow.strongBlow}}',
+                '{{wall.shortBow.segmentHits}}',
+                '{{wall.shortBow.gateHits}}',
+                '{{wall.shortBow.segmentSeconds}}',
+              ],
+              [
+                'Pugni',
+                '{{wall.fist.blow}}',
+                '{{wall.fist.strongBlow}}',
+                '{{wall.fist.segmentHits}}',
+                '{{wall.fist.gateHits}}',
+                '{{wall.fist.segmentSeconds}}',
+              ],
+              [
+                'Frecce da un edificio',
+                '{{wall.houseBow.blow}}',
+                '-',
+                '{{wall.houseBow.segmentHits}}',
+                '{{wall.houseBow.gateHits}}',
+                '{{wall.houseBow.segmentSeconds}}',
+              ],
             ],
             num: [1, 2, 3, 4, 5],
-            foot: "Tempo per un soldato. Una catapulta non può ricevere l'Amuleto della forza. Cyra toglie {{wall.heroBow.blow}} punti di salute alla palizzata per tiro, la Cyra dei Franchi {{wall.frankHeroBow.blow}}.",
+            foot: "Tempo per un soldato, e per le frecce da un edificio per un difensore all'interno. Una catapulta e un edificio non possono ricevere l'Amuleto della forza. Cyra toglie {{wall.heroBow.blow}} punti di salute alla palizzata per tiro, la Cyra dei Franchi {{wall.frankHeroBow.blow}}.",
           },
         },
         {
@@ -694,7 +717,7 @@ export const MILITARY: ArticleGroup = {
           h: 'Pietra',
         },
         {
-          p: 'Quanto toglie una pietra a persone, veicoli ed edifici è nella riga Catapulta della tabella di [[article:damage|Calcolatore dei danni]]. Una palizzata lo calcola in modo diverso: [[article:walls|Palizzate e cancelli]].',
+          p: 'Quanto toglie una pietra a persone, veicoli ed edifici è nella riga Catapulta della tabella di [[article:damage|Calcolatore dei danni]]. Una palizzata ne subisce quanto un edificio: [[article:walls|Palizzate e cancelli]].',
         },
         {
           table: {

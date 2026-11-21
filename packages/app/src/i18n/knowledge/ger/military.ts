@@ -41,7 +41,7 @@ export const MILITARY: ArticleGroup = {
             'Die Schlagrichtung zählt bei Menschen und Monstern, das Verteidigungsamulett nur bei Menschen. Beim Pfeil richtet sich die Richtung nach dem Ort, von dem er abgeschossen wurde.',
             'Ein Soldat mit [[good:sword_shord|Kurzschwert]] bei Wikingern, Franken, Byzantinern und Ägyptern trägt einen Schild: Er hält {{combat.shieldPct}}% der Pfeile von vorn und von den Seiten auf, auch die aus Gebäuden, aber keinen von hinten und keinen Stein eines Katapults. Ein aufgehaltener Pfeil macht keinen Schaden und bringt niemandem Erfahrung. Das Kurzschwert der Sarazenen hat keinen Schild.',
             'Ein Katapult kann kein Amulett der Stärke tragen.',
-            'Palisaden rechnen Schaden anders: [[article:walls|Palisaden und Tore]].',
+            'Palisaden nehmen Schaden aus der Spalte Gebäude: [[article:walls|Palisaden und Tore]].',
             'Kinder lassen sich nicht verwunden.',
           ],
         },
@@ -519,7 +519,7 @@ export const MILITARY: ArticleGroup = {
     {
       id: 'walls',
       name: 'Palisaden und Tore',
-      lead: 'Eine Palisade verliert 1 Gesundheit je volle {{wall.damagePerPoint}} Schaden aus der Spalte Gebäude. Ein schwächerer Schlag macht ihr nichts.',
+      lead: 'Eine Palisade verliert den ganzen Schaden eines Schlags aus der Spalte Gebäude, ohne Teilen oder Runden. Jeder Schlag und Schuss, der einem Gebäude schadet, schadet also auch ihr.',
       blocks: [
         {
           table: {
@@ -631,10 +631,33 @@ export const MILITARY: ArticleGroup = {
                 '{{wall.longBow.gateHits}}',
                 '{{wall.longBow.segmentSeconds}}',
               ],
-              ['[[good:bow_short|Kurzbogen]], Fäuste, Pfeile aus Gebäuden', '0', '0', '-', '-', '-'],
+              [
+                '[[good:bow_short|Kurzbogen]]',
+                '{{wall.shortBow.blow}}',
+                '{{wall.shortBow.strongBlow}}',
+                '{{wall.shortBow.segmentHits}}',
+                '{{wall.shortBow.gateHits}}',
+                '{{wall.shortBow.segmentSeconds}}',
+              ],
+              [
+                'Fäuste',
+                '{{wall.fist.blow}}',
+                '{{wall.fist.strongBlow}}',
+                '{{wall.fist.segmentHits}}',
+                '{{wall.fist.gateHits}}',
+                '{{wall.fist.segmentSeconds}}',
+              ],
+              [
+                'Pfeile aus Gebäuden',
+                '{{wall.houseBow.blow}}',
+                '-',
+                '{{wall.houseBow.segmentHits}}',
+                '{{wall.houseBow.gateHits}}',
+                '{{wall.houseBow.segmentSeconds}}',
+              ],
             ],
             num: [1, 2, 3, 4, 5],
-            foot: 'Dauer für einen Soldaten. Ein Katapult kann kein Amulett der Stärke tragen. Cyra nimmt der Palisade {{wall.heroBow.blow}} Gesundheit pro Schuss, die Cyra der Franken {{wall.frankHeroBow.blow}}.',
+            foot: 'Dauer für einen Soldaten, bei Pfeilen aus Gebäuden für einen Verteidiger darin. Katapulte und Gebäude können kein Amulett der Stärke tragen. Cyra nimmt der Palisade {{wall.heroBow.blow}} Gesundheit pro Schuss, die Cyra der Franken {{wall.frankHeroBow.blow}}.',
           },
         },
         {
@@ -677,7 +700,7 @@ export const MILITARY: ArticleGroup = {
           h: 'Stein',
         },
         {
-          p: 'Wie viel ein Stein Menschen, Fahrzeugen und Gebäuden abzieht, zeigt die Zeile Katapult in der Tabelle unter [[article:damage|Schadensrechner]]. Palisaden rechnen das anders: [[article:walls|Palisaden und Tore]].',
+          p: 'Wie viel ein Stein Menschen, Fahrzeugen und Gebäuden abzieht, zeigt die Zeile Katapult in der Tabelle unter [[article:damage|Schadensrechner]]. Palisaden nehmen davon so viel wie Gebäude: [[article:walls|Palisaden und Tore]].',
         },
         {
           table: {

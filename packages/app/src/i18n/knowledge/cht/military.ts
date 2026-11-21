@@ -38,7 +38,7 @@ export const MILITARY: ArticleGroup = {
             '攻擊方向對人和怪物起作用，防禦護符只對人起作用。箭矢的方向按射出的位置計算。',
             '維京人、法蘭克人、拜占庭人和埃及人的[[good:sword_shord|短劍]]士兵帶著盾牌：能擋住從正面和側面射來的{{combat.shieldPct}}%箭矢，建築射出的箭也算，但擋不住背後射來的箭，也擋不住投石機的石彈。被擋住的箭不造成傷害，也不給任何人經驗。撒拉遜人的短劍沒有盾牌。',
             '投石機不能使用力量護符。',
-            '木柵欄的傷害另算：[[article:walls|木柵欄與柵門]]。',
+            '木柵欄按「建築」列受傷：[[article:walls|木柵欄與柵門]]。',
             '兒童不會受傷。',
           ],
         },
@@ -504,7 +504,7 @@ export const MILITARY: ArticleGroup = {
     {
       id: 'walls',
       name: '木柵欄與柵門',
-      lead: '「建築」列的傷害每滿{{wall.damagePerPoint}}點，木柵欄掉1點生命值。較弱的攻擊對它無效。',
+      lead: '木柵欄承受攻擊在「建築」列的全部傷害，不除也不取整。所以凡是能傷到建築的攻擊和射擊，都能傷到它。',
       blocks: [
         {
           table: {
@@ -606,10 +606,33 @@ export const MILITARY: ArticleGroup = {
                 '{{wall.longBow.gateHits}}',
                 '{{wall.longBow.segmentSeconds}}',
               ],
-              ['[[good:bow_short|短弓]]、拳頭、建築射出的箭', '0', '0', '-', '-', '-'],
+              [
+                '[[good:bow_short|短弓]]',
+                '{{wall.shortBow.blow}}',
+                '{{wall.shortBow.strongBlow}}',
+                '{{wall.shortBow.segmentHits}}',
+                '{{wall.shortBow.gateHits}}',
+                '{{wall.shortBow.segmentSeconds}}',
+              ],
+              [
+                '拳頭',
+                '{{wall.fist.blow}}',
+                '{{wall.fist.strongBlow}}',
+                '{{wall.fist.segmentHits}}',
+                '{{wall.fist.gateHits}}',
+                '{{wall.fist.segmentSeconds}}',
+              ],
+              [
+                '建築射出的箭',
+                '{{wall.houseBow.blow}}',
+                '-',
+                '{{wall.houseBow.segmentHits}}',
+                '{{wall.houseBow.gateHits}}',
+                '{{wall.houseBow.segmentSeconds}}',
+              ],
             ],
             num: [1, 2, 3, 4, 5],
-            foot: '用時按一名士兵計算。投石機不能使用力量護符。希拉每箭打掉柵欄{{wall.heroBow.blow}}點生命值，法蘭克人的希拉{{wall.frankHeroBow.blow}}點。',
+            foot: '用時按一名士兵計算，建築射出的箭按裡面一名守衛計算。投石機和建築不能使用力量護符。希拉每箭打掉柵欄{{wall.heroBow.blow}}點生命值，法蘭克人的希拉{{wall.frankHeroBow.blow}}點。',
           },
         },
         {
@@ -652,7 +675,7 @@ export const MILITARY: ArticleGroup = {
           h: '石彈',
         },
         {
-          p: '石彈對人、載具和建築的傷害，見[[article:damage|傷害計算器]]表中投石機這一行。木柵欄另算：[[article:walls|木柵欄與柵門]]。',
+          p: '石彈對人、載具和建築的傷害，見[[article:damage|傷害計算器]]表中投石機這一行。木柵欄受到的和建築一樣：[[article:walls|木柵欄與柵門]]。',
         },
         {
           table: {

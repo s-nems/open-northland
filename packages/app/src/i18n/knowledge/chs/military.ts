@@ -38,7 +38,7 @@ export const MILITARY: ArticleGroup = {
             '攻击方向对人和怪物起作用，防御护符只对人起作用。箭矢的方向按射出的位置算。',
             '维京人、法兰克人、拜占庭人和埃及人的[[good:sword_shord|短剑]]士兵带着盾牌：能挡住从正面和侧面射来的{{combat.shieldPct}}%箭矢，建筑射出的箭也算，但挡不住背后射来的箭，也挡不住投石机的石弹。被挡住的箭不造成伤害，也不给任何人经验。撒拉逊人的短剑没有盾牌。',
             '投石机不能使用力量护符。',
-            '木栅栏的伤害另算：[[article:walls|木栅栏与栅门]]。',
+            '木栅栏按“建筑”列受伤：[[article:walls|木栅栏与栅门]]。',
             '儿童不会受伤。',
           ],
         },
@@ -504,7 +504,7 @@ export const MILITARY: ArticleGroup = {
     {
       id: 'walls',
       name: '木栅栏与栅门',
-      lead: '“建筑”列的伤害每满{{wall.damagePerPoint}}点，木栅栏掉1点生命值。伤害更低的攻击对它没用。',
+      lead: '木栅栏承受攻击在“建筑”列的全部伤害，不除也不取整。所以凡是能伤到建筑的攻击和射击，都能伤到它。',
       blocks: [
         {
           table: {
@@ -606,10 +606,33 @@ export const MILITARY: ArticleGroup = {
                 '{{wall.longBow.gateHits}}',
                 '{{wall.longBow.segmentSeconds}}',
               ],
-              ['[[good:bow_short|短弓]]、拳头、建筑射出的箭', '0', '0', '-', '-', '-'],
+              [
+                '[[good:bow_short|短弓]]',
+                '{{wall.shortBow.blow}}',
+                '{{wall.shortBow.strongBlow}}',
+                '{{wall.shortBow.segmentHits}}',
+                '{{wall.shortBow.gateHits}}',
+                '{{wall.shortBow.segmentSeconds}}',
+              ],
+              [
+                '拳头',
+                '{{wall.fist.blow}}',
+                '{{wall.fist.strongBlow}}',
+                '{{wall.fist.segmentHits}}',
+                '{{wall.fist.gateHits}}',
+                '{{wall.fist.segmentSeconds}}',
+              ],
+              [
+                '建筑射出的箭',
+                '{{wall.houseBow.blow}}',
+                '-',
+                '{{wall.houseBow.segmentHits}}',
+                '{{wall.houseBow.gateHits}}',
+                '{{wall.houseBow.segmentSeconds}}',
+              ],
             ],
             num: [1, 2, 3, 4, 5],
-            foot: '用时按一名士兵计算。投石机不能使用力量护符。希拉每箭扣栅栏{{wall.heroBow.blow}}点生命值，法兰克人的希拉扣{{wall.frankHeroBow.blow}}点。',
+            foot: '用时按一名士兵计算，建筑射出的箭按里面一名守卫计算。投石机和建筑不能使用力量护符。希拉每箭扣栅栏{{wall.heroBow.blow}}点生命值，法兰克人的希拉扣{{wall.frankHeroBow.blow}}点。',
           },
         },
         {
@@ -652,7 +675,7 @@ export const MILITARY: ArticleGroup = {
           h: '石弹',
         },
         {
-          p: '石弹对人、载具和建筑的伤害，见[[article:damage|伤害计算器]]表中投石机这一行。木栅栏另算：[[article:walls|木栅栏与栅门]]。',
+          p: '石弹对人、载具和建筑的伤害，见[[article:damage|伤害计算器]]表中投石机这一行。木栅栏受到的和建筑一样：[[article:walls|木栅栏与栅门]]。',
         },
         {
           table: {

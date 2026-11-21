@@ -53,7 +53,7 @@ The pack's combat rules differ from the original data in these ways:
   of arrows; the Saracen row keeps the full values and blocks nothing. Hero rows keep their own values.
 - A row's leather column is never below its tunic column. The wooden spear does 360 against chain
   and plate, the long bow 700 against no armour and 200 against a building, the short bow 100 against
-  chain and plate and 80 against a building, so a short bow arrow takes no health off a stockade.
+  chain and plate and 80 against a building.
 - `rules/tribes/tribetypes.ini` has tribe 42 `dragon`, a monster like the weresnake (5) and the
   werewolf (6): fighter job 31, natural weapon at weapon type 1, no trade it can be trained into.
   A map placement or script spawn of a Byzantine `soldier_spear_wooden` (tribe 3, job 32) joins as

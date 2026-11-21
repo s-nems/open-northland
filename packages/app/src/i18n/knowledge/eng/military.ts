@@ -41,7 +41,7 @@ export const MILITARY: ArticleGroup = {
             'Blow direction counts against people and monsters, the Amulet of Defence only against people. For an arrow, direction is taken from where it was fired.',
             'A [[good:sword_shord|Shortsword]] soldier of the Vikings, Franks, Byzantines or Egyptians carries a shield: it stops {{combat.shieldPct}}% of arrows from the front and the sides, those from buildings too, but none from behind and no Catapult stone. A stopped arrow does no damage and gives no one experience. The Saracen Shortsword has no shield.',
             'A Catapult cannot take an Amulet of Strength.',
-            'A stockade counts damage its own way: [[article:walls|Stockades and Gates]].',
+            'A stockade takes damage from the Building column: [[article:walls|Stockades and Gates]].',
             "Children can't be hurt.",
           ],
         },
@@ -521,7 +521,7 @@ export const MILITARY: ArticleGroup = {
     {
       id: 'walls',
       name: 'Stockades and Gates',
-      lead: 'A stockade loses 1 health for every full {{wall.damagePerPoint}} damage from the Building column. A weaker blow does nothing to it.',
+      lead: 'A stockade loses the whole damage of a blow from the Building column, with nothing divided or rounded. So every blow and shot that hurts a building hurts it too.',
       blocks: [
         {
           table: {
@@ -633,10 +633,33 @@ export const MILITARY: ArticleGroup = {
                 '{{wall.longBow.gateHits}}',
                 '{{wall.longBow.segmentSeconds}}',
               ],
-              ['[[good:bow_short|Short Bow]], fists, arrows from a building', '0', '0', '-', '-', '-'],
+              [
+                '[[good:bow_short|Short Bow]]',
+                '{{wall.shortBow.blow}}',
+                '{{wall.shortBow.strongBlow}}',
+                '{{wall.shortBow.segmentHits}}',
+                '{{wall.shortBow.gateHits}}',
+                '{{wall.shortBow.segmentSeconds}}',
+              ],
+              [
+                'Fists',
+                '{{wall.fist.blow}}',
+                '{{wall.fist.strongBlow}}',
+                '{{wall.fist.segmentHits}}',
+                '{{wall.fist.gateHits}}',
+                '{{wall.fist.segmentSeconds}}',
+              ],
+              [
+                'Arrows from a building',
+                '{{wall.houseBow.blow}}',
+                '-',
+                '{{wall.houseBow.segmentHits}}',
+                '{{wall.houseBow.gateHits}}',
+                '{{wall.houseBow.segmentSeconds}}',
+              ],
             ],
             num: [1, 2, 3, 4, 5],
-            foot: "Time for one soldier. A Catapult cannot take an Amulet of Strength. Cyra takes {{wall.heroBow.blow}} stockade health per shot, the Franks' Cyra {{wall.frankHeroBow.blow}}.",
+            foot: "Time for one soldier, and for arrows from a building, one defender inside. A Catapult and a building cannot take an Amulet of Strength. Cyra takes {{wall.heroBow.blow}} stockade health per shot, the Franks' Cyra {{wall.frankHeroBow.blow}}.",
           },
         },
         {
@@ -679,7 +702,7 @@ export const MILITARY: ArticleGroup = {
           h: 'Stone',
         },
         {
-          p: 'What a stone takes from people, vehicles and buildings is in the Catapult row of the table in [[article:damage|Damage calculator]]. A stockade counts it differently: [[article:walls|Stockades and Gates]].',
+          p: 'What a stone takes from people, vehicles and buildings is in the Catapult row of the table in [[article:damage|Damage calculator]]. A stockade takes the same as a building: [[article:walls|Stockades and Gates]].',
         },
         {
           table: {
