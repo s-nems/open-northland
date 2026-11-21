@@ -610,4 +610,73 @@ describe('SpritePool - a unit a standing sprite hides shows as an occlusion ghos
       expect(fill.alpha).toBe(GHOST_FILL_ALPHA);
     pool.destroy();
   });
+
+  it('walks the draw list once while the frame repeats, and again on a new view, snapshot or setting', () => {
+    const layer = new Container();
+    const pool = new SpritePool(layer, new TextureCache(), undefined);
+    const ghosts = pool.occlusionGhosts;
+    const ghosted = snapshotOf([settler(1, 0, 0), house(2, 0, 0.4)]);
+    pool.reconcile(frame(ghosted));
+    pool.reconcile(frame(ghosted));
+    pool.reconcile(frame(ghosted));
+    expect(ghosts.fullScans).toBe(1);
+    expect(ghosts.marks.children[0]?.alpha).toBe(1);
+    pool.reconcile({ ...frame(ghosted), camera: { offsetX: 8, offsetY: 0 } });
+    expect(ghosts.fullScans).toBe(2);
+    pool.reconcile({ ...frame(ghosted), camera: { offsetX: 8, offsetY: 0 }, occlusionFill: true });
+    expect(ghosts.fullScans).toBe(3);
+    pool.reconcile({ ...frame(snapshotOf([settler(1, 0, 0), house(2, 0, 0.4)])), occlusionFill: true });
+    expect(ghosts.fullScans).toBe(4);
+    pool.destroy();
+  });
+
+  it('follows a unit placed between ticks over the kept occluder marks', () => {
+    const layer = new Container();
+    const sheet = sheetWithAnimals();
+    // A look that opts into between-tick placement: its body moves on the frames inside a tick.
+    Object.assign(sheet.characters.default, { interpolateMotion: true });
+    const pool = new SpritePool(layer, new TextureCache(), sheet);
+    const ghosts = pool.occlusionGhosts;
+    pool.reconcile(frame(snapshotOf([settler(1, 0, 0), house(2, 0, 0.1)])));
+    const walking = snapshotOf([settler(1, 0, 0.3), house(2, 0, 0.1)]);
+    pool.reconcile({ ...frame(walking), tick: 1, alpha: 0 });
+    const scans = ghosts.fullScans;
+    const start = pool.anchorOf(1)?.y;
+    expect(ghosts.marks.children[0]?.alpha).toBe(1);
+    // Early in the tick the unit is part of the way down, still behind the house: the stamp rides along.
+    pool.reconcile({ ...frame(walking), tick: 1, alpha: 0.125 });
+    const anchor = pool.anchorOf(1);
+    expect(anchor?.y).toBeGreaterThan(start ?? Number.NaN);
+    expect(ghosts.marks.children[0]?.alpha).toBe(1);
+    expect(ghosts.marks.children[0]?.position.y).toBe(anchor?.y);
+    // At the end of the tick it stands in front of the house, and the stamp hides.
+    pool.reconcile({ ...frame(walking), tick: 1, alpha: 1 });
+    expect(ghosts.marks.children[0]?.alpha).toBe(0);
+    expect(ghosts.fullScans).toBe(scans);
+    pool.destroy();
+  });
+
+  it('walks the draw list again when a static occluder changes under a repeated frame', () => {
+    const layer = new Container();
+    const pool = new SpritePool(layer, new TextureCache(), undefined);
+    const ghosts = pool.occlusionGhosts;
+    const alone = snapshotOf([settler(1, 0, 0)]);
+    const box = { minX: 0, minY: 0, maxX: 0, maxY: 0 };
+    const crown: GhostOccluder = { depth: 0, bounds: () => box, body: () => undefined };
+    const statics = [crown];
+    pool.reconcile({ ...frame(alone), fadeOccluders: true, staticOccluders: statics });
+    const unit = pool.boundsOf(1);
+    const depth = pool.depthOf(1);
+    if (unit === undefined || depth === undefined) throw new Error('the unit drew no bounds or depth');
+    expect(ghosts.marks.children.length).toBe(0);
+    pool.reconcile({ ...frame(alone), fadeOccluders: true, staticOccluders: statics });
+    expect(ghosts.fullScans).toBe(1);
+    // The same list object now holds the tree in a pose hanging over the unit, a step in front.
+    Object.assign(box, { minX: unit.minX - 16, minY: unit.minY - 48, maxX: unit.maxX + 16, maxY: unit.maxY });
+    (crown as { depth: number }).depth = depth + 1;
+    pool.reconcile({ ...frame(alone), fadeOccluders: true, staticOccluders: statics });
+    expect(ghosts.fullScans).toBe(2);
+    expect(ghosts.marks.children[0]?.alpha).toBe(1);
+    pool.destroy();
+  });
 });

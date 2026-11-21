@@ -1,7 +1,7 @@
 import { Container, Matrix, type Sprite } from 'pixi.js';
 import { GLOW_PALETTE_INDEX } from '../../data/palettes/glow-colour.js';
 import { createHumanPaletteColours, type HumanPaletteBook } from '../../data/palettes/human-palettes.js';
-import type { SpriteDrawItem } from '../../data/scene/index.js';
+import type { DrawItem, SpriteDrawItem } from '../../data/scene/index.js';
 import { PalettedSprite } from '../paletted-sprite/index.js';
 import { isShadowTexture } from '../pixel-art/registry.js';
 import {
@@ -55,13 +55,31 @@ export interface GhostMarks {
 export const OCCLUDER_FADE_ALPHA = 0.45;
 
 /** The kinds whose art can hide a unit standing behind it. */
-const OCCLUDER_KINDS: ReadonlySet<SpriteDrawItem['kind']> = new Set([
+const OCCLUDER_KINDS: ReadonlySet<DrawItem['kind']> = new Set([
   'building',
   'palisade',
   'signpost',
   'resource',
   'berrybush',
 ]);
+
+/** Whether an entity of `kind` can stand as an occluder in the scan. */
+export function occludes(kind: DrawItem['kind']): boolean {
+  return OCCLUDER_KINDS.has(kind);
+}
+
+/** One unit candidate's record in {@link OcclusionGhosts.unitSeen}: whether it drew with current
+ *  bounds, then everything the cover walk and its stamp read of it. */
+const SEEN_DRAWN = 0;
+const SEEN_X = 1;
+const SEEN_Y = 2;
+const SEEN_BIND = 3;
+const SEEN_DEPTH = 4;
+const SEEN_MIN_X = 5;
+const SEEN_MIN_Y = 6;
+const SEEN_MAX_X = 7;
+const SEEN_MAX_Y = 8;
+const SEEN_STRIDE = 9;
 
 /** The ghost's tint where no team colour resolves: a sheet without a palette. Approximation, tuned by
  *  eye for legibility. */
@@ -214,12 +232,36 @@ export class OcclusionGhosts {
   private unitRun = 0;
   /** The slots holding a cover, which the sweep hides or frees. */
   private readonly coverSlots = new Set<OccluderSlot>();
-  /** The slots this scan found in front of a unit, laid once every mark has claimed its part. */
+  /** The slots the last unit walk found in front of a unit, laid once every mark has claimed its part
+   *  and again on each frame the walk repeats in, since an occluder's art may sway where it stands. */
   private readonly covering: OccluderSlot[] = [];
-  /** The scan's unit candidates, flat. */
+  /** The settlers of the last walked draw list that may ghost, flat, with what the scan last read of
+   *  each ({@link SEEN_STRIDE} numbers per candidate): a frame repeating the list re-reads only these. */
+  private readonly candidatePe: PooledEntity[] = [];
+  private readonly candidateItem: SpriteDrawItem[] = [];
+  private readonly unitSeen: number[] = [];
+  private candidateCount = 0;
+  /** The candidates that drew with current bounds, flat. */
   private readonly unitPe: (PooledEntity | undefined)[] = [];
   private readonly unitDepth: number[] = [];
+  private readonly unitRef: number[] = [];
   private unitCount = 0;
+  /** The run the grid's occluders were last marked in; a scan that only walks units keeps it. */
+  private markRun = 0;
+  /** The static candidates' slots as the last marking scan saw them, parallel to its list; `undefined`
+   *  where a candidate had no box. */
+  private readonly staticSlots: (OccluderSlot | undefined)[] = [];
+  /** What the last scan ran under, for a frame repeating the draw list to compare; `scanned` falls
+   *  with a {@link reset}, `probed` when the scan left the grid unmarked. */
+  private scanned = false;
+  private probed = false;
+  private lastViewMoved = false;
+  private lastZoom = 1;
+  private lastRevealAll = false;
+  private lastFill = false;
+  private lastRing = false;
+  private lastWildlife: ReadonlySet<number> | undefined;
+  private listWalks = 0;
   /** The units that drew this frame and the ones a ghost shows, so a stamp hides or dies by them. */
   private readonly drawnUnits = new Set<number>();
   private readonly ghostedUnits = new Set<number>();
@@ -242,6 +284,10 @@ export class OcclusionGhosts {
    * pool's list never holds. The walkers of `wildlifeTribes` stay unghosted: a herd would fill the
    * overlay and tells the player nothing.
    *
+   * `restless` marks a frame that repeats the last scan's draw list, pool entities and view: it names
+   * the occluder-kind items presented since. Such a frame keeps the occluder marks and walks the units
+   * again only when one of them moved or rebound.
+   *
    * Depth is the painter depth the shared entity layer sorts at ({@link pooledDepth}, or a static
    * candidate's own), never the scene item's sort key, which lives on another scale.
    */
@@ -255,48 +301,210 @@ export class OcclusionGhosts {
     wildlifeTribes?: ReadonlySet<number>,
     revealAll = false,
     marks: GhostMarks = { fill: false, ring: true },
+    restless?: readonly DrawItem[],
   ): void {
+    const repeats =
+      restless !== undefined &&
+      this.scanned &&
+      zoom === this.lastZoom &&
+      revealAll === this.lastRevealAll &&
+      marks.fill === this.lastFill &&
+      marks.ring === this.lastRing &&
+      wildlifeTribes === this.lastWildlife &&
+      this.rescanRepeated(restless, pool, frameOf, viewMoved, zoom, staticOccluders, marks);
+    this.lastViewMoved = viewMoved;
+    if (repeats) return;
+    this.scanned = true;
+    this.lastZoom = zoom;
+    this.lastRevealAll = revealAll;
+    this.lastFill = marks.fill;
+    this.lastRing = marks.ring;
+    this.lastWildlife = wildlifeTribes;
+    this.listWalks++;
     this.run++;
-    this.unitCount = 0;
     this.fadedNowPes.clear();
     this.fadedNowStatic.clear();
     this.occluderCount = 0;
-    this.drawnUnits.clear();
-    this.ghostedUnits.clear();
+    this.candidateCount = 0;
+    this.covering.length = 0;
     for (const item of items) {
       // A portrait cutout hides on the main map, and a fog ghost is a dimmed memory, not a live body.
       if (item.portraitOnly === true || item.ghost === true) continue;
       const pe = pool.get(item.ref);
       if (pe === undefined || !pe.attached) continue;
       if (item.kind === 'settler') {
-        if (pe.boundsFrame !== frameOf(pe)) continue;
         if (wildlifeTribes !== undefined && item.tribe !== undefined && wildlifeTribes.has(item.tribe))
           continue;
-        this.drawnUnits.add(item.ref);
-        const at = this.unitCount++;
-        this.unitPe[at] = pe;
-        this.unitDepth[at] = pooledDepth(pe, item);
+        const at = this.candidateCount++;
+        this.candidatePe[at] = pe;
+        this.candidateItem[at] = item;
       } else if (OCCLUDER_KINDS.has(item.kind) && pe.boundsFrame === frameOf(pe)) {
         const at = this.occluderCount++;
         this.occluderPe[at] = pe;
         this.occluderDepth[at] = pooledDepth(pe, item);
       }
     }
+    this.candidatePe.length = this.candidateCount;
+    this.candidateItem.length = this.candidateCount;
+    this.readUnits(frameOf);
+    this.collectDrawnUnits();
     // Nothing probes the grid, so it stays as the last probing scan left it for the next eviction.
     const marking = marks.fill || marks.ring;
-    if ((this.unitCount === 0 || !marking) && !revealAll) {
+    this.probed = (this.unitCount !== 0 && marking) || revealAll;
+    if (!this.probed) {
       this.restoreFades();
       this.sweep();
       return;
     }
+    this.markRun = this.run;
     for (let o = 0; o < this.occluderCount; o++) {
       const pe = this.occluderPe[o];
       if (pe !== undefined) this.mark(pe, undefined, pe, this.occluderDepth[o] ?? 0, pe.bounds);
     }
-    for (const occ of staticOccluders) this.mark(occ, occ, undefined, occ.depth, occ.bounds());
+    this.staticSlots.length = staticOccluders.length;
+    for (let i = 0; i < staticOccluders.length; i++) {
+      const occ = staticOccluders[i];
+      this.staticSlots[i] =
+        occ === undefined ? undefined : this.mark(occ, occ, undefined, occ.depth, occ.bounds());
+    }
     // Before the eviction swaps this scan's marks away.
     if (revealAll) this.fadeAllMarked();
     this.evictUnmarked();
+    this.coverUnits(viewMoved, zoom, marks);
+    this.restoreFades();
+    this.sweep();
+  }
+
+  /**
+   * A frame repeating the last scan's draw list: re-mark the `restless` occluders, then leave the
+   * overlay as laid when no occluder and no unit changed, or walk the units again over the kept marks.
+   * False when an occluder joined or left the marks, which only a walk of the draw list settles.
+   */
+  private rescanRepeated(
+    restless: readonly DrawItem[],
+    pool: ReadonlyMap<number, PooledEntity>,
+    frameOf: (pe: PooledEntity) => number,
+    viewMoved: boolean,
+    zoom: number,
+    staticOccluders: readonly GhostOccluder[],
+    marks: GhostMarks,
+  ): boolean {
+    if (!this.probed) {
+      // The last scan found no unit to probe for and marked nothing: that stands while none turns up.
+      this.readUnits(frameOf);
+      return this.unitCount === 0;
+    }
+    let changed = viewMoved !== this.lastViewMoved;
+    for (const item of restless) {
+      if (item.portraitOnly === true || item.ghost === true) continue;
+      const pe = pool.get(item.ref);
+      if (pe === undefined) return false;
+      const slot = this.slots.get(pe);
+      const marked = slot !== undefined && slot.run === this.markRun;
+      const stands = pe.attached && OCCLUDER_KINDS.has(item.kind) && pe.boundsFrame === frameOf(pe);
+      if (stands !== marked) return false;
+      if (slot === undefined || !stands) continue;
+      const depth = pooledDepth(pe, item);
+      if (depth === slot.depth && sameBox(slot.bounds, pe.bounds)) continue;
+      this.mark(pe, undefined, pe, depth, pe.bounds);
+      changed = true;
+    }
+    if (!this.staticsStand(staticOccluders)) return false;
+    if (this.readUnits(frameOf)) changed = true;
+    if (!changed) {
+      for (const slot of this.covering) this.layCover(slot);
+      return true;
+    }
+    this.run++;
+    this.covering.length = 0;
+    this.collectDrawnUnits();
+    this.coverUnits(viewMoved, zoom, marks);
+    this.sweep();
+    return true;
+  }
+
+  /** Whether the static candidates are the ones the last marking scan saw, each at the depth and box
+   *  it was marked by. */
+  private staticsStand(staticOccluders: readonly GhostOccluder[]): boolean {
+    if (staticOccluders.length !== this.staticSlots.length) return false;
+    for (let i = 0; i < staticOccluders.length; i++) {
+      const occ = staticOccluders[i];
+      const slot = this.staticSlots[i];
+      const bounds = occ?.bounds();
+      if (occ === undefined || bounds === undefined) {
+        if (slot !== undefined) return false;
+        continue;
+      }
+      if (slot?.key !== occ || slot.depth !== occ.depth || !sameBox(slot.bounds, bounds)) return false;
+    }
+    return true;
+  }
+
+  /**
+   * Read the candidates into the unit list, those that drew with current bounds; whether any reads
+   * unlike the last time: its place, depth, box or bind, or whether it draws at all.
+   */
+  private readUnits(frameOf: (pe: PooledEntity) => number): boolean {
+    const seen = this.unitSeen;
+    let changed = seen.length !== this.candidateCount * SEEN_STRIDE;
+    seen.length = this.candidateCount * SEEN_STRIDE;
+    this.unitCount = 0;
+    for (let c = 0; c < this.candidateCount; c++) {
+      const pe = this.candidatePe[c];
+      const item = this.candidateItem[c];
+      if (pe === undefined || item === undefined) continue;
+      const at = c * SEEN_STRIDE;
+      if (!pe.attached || pe.boundsFrame !== frameOf(pe)) {
+        if (seen[at + SEEN_DRAWN] !== 0) changed = true;
+        seen[at + SEEN_DRAWN] = 0;
+        continue;
+      }
+      const depth = pooledDepth(pe, item);
+      const { x, y } = pe.container.position;
+      const b = pe.bounds;
+      if (
+        seen[at + SEEN_DRAWN] !== 1 ||
+        seen[at + SEEN_X] !== x ||
+        seen[at + SEEN_Y] !== y ||
+        seen[at + SEEN_BIND] !== pe.bindSerial ||
+        seen[at + SEEN_DEPTH] !== depth ||
+        seen[at + SEEN_MIN_X] !== b.minX ||
+        seen[at + SEEN_MIN_Y] !== b.minY ||
+        seen[at + SEEN_MAX_X] !== b.maxX ||
+        seen[at + SEEN_MAX_Y] !== b.maxY
+      ) {
+        changed = true;
+        seen[at + SEEN_DRAWN] = 1;
+        seen[at + SEEN_X] = x;
+        seen[at + SEEN_Y] = y;
+        seen[at + SEEN_BIND] = pe.bindSerial;
+        seen[at + SEEN_DEPTH] = depth;
+        seen[at + SEEN_MIN_X] = b.minX;
+        seen[at + SEEN_MIN_Y] = b.minY;
+        seen[at + SEEN_MAX_X] = b.maxX;
+        seen[at + SEEN_MAX_Y] = b.maxY;
+      }
+      const u = this.unitCount++;
+      this.unitPe[u] = pe;
+      this.unitDepth[u] = depth;
+      this.unitRef[u] = item.ref;
+    }
+    return changed;
+  }
+
+  /** Start a unit walk's bookkeeping from the unit list: every unit drew, none ghosts yet. */
+  private collectDrawnUnits(): void {
+    this.drawnUnits.clear();
+    this.ghostedUnits.clear();
+    for (let u = 0; u < this.unitCount; u++) {
+      const ref = this.unitRef[u];
+      if (ref !== undefined) this.drawnUnits.add(ref);
+    }
+  }
+
+  /** Walk the unit list over the marked occluders: stamp each covered unit, then lay the covers. */
+  private coverUnits(viewMoved: boolean, zoom: number, marks: GhostMarks): void {
+    const marking = marks.fill || marks.ring;
     for (let u = 0; marking && u < this.unitCount; u++) {
       const pe = this.unitPe[u];
       if (pe === undefined) continue;
@@ -306,9 +514,6 @@ export class OcclusionGhosts {
       if (stamp !== undefined) this.claimCovers(stamp, depth);
     }
     for (const slot of this.covering) this.layCover(slot);
-    this.covering.length = 0;
-    this.restoreFades();
-    this.sweep();
   }
 
   /** Free or hide the stamps whose units no longer ghost: a unit still drawn keeps a hidden stamp it
@@ -335,7 +540,7 @@ export class OcclusionGhosts {
    *  scan's marks the ones the next eviction checks. */
   private evictUnmarked(): void {
     for (const slot of this.previouslyMarked) {
-      if (slot.run === this.run) continue;
+      if (slot.run === this.markRun) continue;
       this.unregisterSlot(slot);
       this.slots.delete(slot.key);
     }
@@ -354,6 +559,11 @@ export class OcclusionGhosts {
     return this.clip.covers;
   }
 
+  /** The scans that walked the whole draw list, which a frame repeating the last one spares. */
+  get fullScans(): number {
+    return this.listWalks;
+  }
+
   /** The slot entries across the grid's cells: the registered occluders, once per cell each touches. */
   get gridEntries(): number {
     let entries = 0;
@@ -364,6 +574,14 @@ export class OcclusionGhosts {
   /** Free every stamp and the occluder grid and undo every fade; the overlay stays mounted. The pool
    *  calls this in the scan's place while nothing asks for one; a cleared overlay walks empty maps. */
   reset(): void {
+    this.scanned = false;
+    this.candidateCount = 0;
+    this.candidatePe.length = 0;
+    this.candidateItem.length = 0;
+    this.unitCount = 0;
+    this.unitPe.length = 0;
+    this.covering.length = 0;
+    this.staticSlots.length = 0;
     for (const stamp of this.stamps.values()) stamp.container.destroy({ children: true });
     this.stamps.clear();
     this.clearGrid();
@@ -410,16 +628,16 @@ export class OcclusionGhosts {
   }
 
   /** Mark `key`'s occluder for the running scan at `depth`, registering its box into the grid when it
-   *  moved. An unchanged box keeps its cell entries from earlier runs, so an unchanged frame costs one
-   *  depth stamp per occluder instead of a grid refill. */
+   *  moved; its slot, or `undefined` without a box. An unchanged box keeps its cell entries from earlier
+   *  runs, so an unchanged frame costs one depth stamp per occluder instead of a grid refill. */
   private mark(
     key: object,
     occ: GhostOccluder | undefined,
     pe: PooledEntity | undefined,
     depth: number,
     bounds: EntityBounds | undefined,
-  ): void {
-    if (bounds === undefined) return;
+  ): OccluderSlot | undefined {
+    if (bounds === undefined) return undefined;
     let slot = this.slots.get(key);
     if (slot === undefined) {
       slot = {
@@ -429,7 +647,7 @@ export class OcclusionGhosts {
         depth,
         bounds: { minX: bounds.minX, minY: bounds.minY, maxX: bounds.maxX, maxY: bounds.maxY },
         cells: [],
-        run: this.run,
+        run: this.markRun,
         visited: -1,
         coverRun: -1,
         cover: undefined,
@@ -439,20 +657,13 @@ export class OcclusionGhosts {
       this.slots.set(key, slot);
       this.marked.push(slot);
       this.registerSlot(slot, bounds);
-      return;
+      return slot;
     }
-    if (slot.run !== this.run) this.marked.push(slot);
-    slot.run = this.run;
+    if (slot.run !== this.markRun) this.marked.push(slot);
+    slot.run = this.markRun;
     slot.depth = depth;
     const b = slot.bounds;
-    if (
-      slot.cells.length !== 0 &&
-      b.minX === bounds.minX &&
-      b.minY === bounds.minY &&
-      b.maxX === bounds.maxX &&
-      b.maxY === bounds.maxY
-    )
-      return;
+    if (slot.cells.length !== 0 && sameBox(b, bounds)) return slot;
     // The box moved: leave the cells it no longer occupies, then register the new extent.
     this.unregisterSlot(slot);
     b.minX = bounds.minX;
@@ -460,6 +671,7 @@ export class OcclusionGhosts {
     b.maxX = bounds.maxX;
     b.maxY = bounds.maxY;
     this.registerSlot(slot, b);
+    return slot;
   }
 
   /** Slot `slot` into every grid cell `b` touches. Cells persist across scans; the probe skips the
@@ -512,7 +724,7 @@ export class OcclusionGhosts {
         for (const slot of cell) {
           // A slot from an earlier run stands unmarked this frame; one big occluder spans several cells
           // the unit's box may share, so the walk dedupes per slot.
-          if (slot.run !== this.run || slot.visited === run) continue;
+          if (slot.run !== this.markRun || slot.visited === run) continue;
           slot.visited = run;
           if (slot.depth <= depth || !boxesOverlap(b, slot.bounds)) continue;
           covered = true;
@@ -546,7 +758,7 @@ export class OcclusionGhosts {
         const cell = this.cellSlots.get(cellKey(gx, gy));
         if (cell === undefined) continue;
         for (const slot of cell) {
-          if (slot.run !== this.run || slot.visited === run) continue;
+          if (slot.run !== this.markRun || slot.visited === run) continue;
           slot.visited = run;
           if (slot.depth <= depth || !boxesOverlap(b, slot.bounds)) continue;
           if (slot.clipRun !== this.run) {
@@ -906,6 +1118,10 @@ function boxOfRect(
 function boxOfQuad(out: MutableBox, placed: Matrix, quad: Sprite): MutableBox {
   const own = quad.visualBounds;
   return boxOfRect(out, placed, own.minX, own.minY, own.maxX, own.maxY);
+}
+
+function sameBox(a: EntityBounds, b: EntityBounds): boolean {
+  return a.minX === b.minX && a.minY === b.minY && a.maxX === b.maxX && a.maxY === b.maxY;
 }
 
 function boxesOverlap(a: EntityBounds, b: EntityBounds): boolean {

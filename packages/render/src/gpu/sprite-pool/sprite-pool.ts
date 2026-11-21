@@ -64,7 +64,7 @@ import { damageScaffoldLayers } from './layers/building.js';
 import { resolvesWithoutClock } from './layers/resolve.js';
 import type { ResolvedLayer } from './layers/resolved-layer.js';
 import { NightBearers } from './night-bearers.js';
-import { type GhostOccluder, ghostTintOf, OcclusionGhosts } from './occlusion.js';
+import { type GhostOccluder, ghostTintOf, OcclusionGhosts, occludes } from './occlusion.js';
 import {
   anchorOf,
   boundsOf,
@@ -354,6 +354,8 @@ export class SpritePool {
   private shadowedSubject: PoolFrame['portraitRef'];
   /** Whether an entity must bind again on a frame that otherwise repeats the last pass. */
   private rebindPending = false;
+  /** The occluder-kind items this frame presented outside a full pass's visits. */
+  private readonly restlessOccluders: DrawItem[] = [];
   /** Bumped whenever a held entity may have to draw otherwise without its draw item changing. */
   private holdGeneration = 0;
   private holdBind = -1;
@@ -574,6 +576,7 @@ export class SpritePool {
     this.epoch.advance(frame, this.textures.textureRevision);
     this.snapResolution = frame.snapResolution;
     this.reviseShadowedSubject(frame);
+    this.restlessOccluders.length = 0;
     if (this.repeatsStill(scene, frame)) {
       // No new palette frame: a human a still frame leaves unpresented keeps its row as drawn.
       this.presentMoving(frame);
@@ -581,7 +584,7 @@ export class SpritePool {
       this.reap(scene.liveRefs);
       this.sheet?.palette?.flush();
       this.drawDamage(frame);
-      this.ghostPass(frame);
+      this.ghostPass(frame, this.restlessOccluders);
       return;
     }
     this.sheet?.palette?.beginFrame();
@@ -682,8 +685,8 @@ export class SpritePool {
   }
 
   /** Scan for hidden units and faded occluders while a mark setting or the see-through view asks,
-   *  otherwise leave nothing. */
-  private ghostPass(frame: PoolFrame): void {
+   *  otherwise leave nothing. A still frame passes the occluders it presented as `restless`. */
+  private ghostPass(frame: PoolFrame, restless?: readonly DrawItem[]): void {
     const marks = this.ghostMarks;
     marks.fill = frame.occlusionFill === true;
     marks.ring = frame.occlusionOutline === true;
@@ -699,6 +702,7 @@ export class SpritePool {
         this.sheet?.characters?.animals?.tribes,
         fade,
         marks,
+        restless,
       );
     else this.occlusionGhosts.reset();
   }
@@ -945,6 +949,7 @@ export class SpritePool {
       const item = pe.bound.item;
       if (pe.loopStep === step || item === undefined) continue;
       pe.loopStep = step;
+      if (occludes(item.kind)) this.restlessOccluders.push(item);
       // As a visit of a held entity: the bounds it stamped stand until this present restamps them.
       if (pe.boundsFrame === pe.lastSeen) pe.boundsFrame = this.frameId - 1;
       pe.lastSeen = this.frameId;
@@ -1006,11 +1011,11 @@ export class SpritePool {
     for (const i of this.moving) {
       const item = this.lastItems[i];
       const pe = this.lastPooled[i];
-      if (item !== undefined && pe !== undefined) this.presentItemAt(pe, item, frame, true);
+      if (item !== undefined && pe !== undefined) this.presentStill(pe, item, frame);
     }
     for (const pe of this.movingHeld) {
       const item = pe.bound.item;
-      if (item !== undefined && pe.attached) this.presentItemAt(pe, item, frame, true);
+      if (item !== undefined && pe.attached) this.presentStill(pe, item, frame);
     }
     const step = loopStepOf(frame.tick, frame.alpha, frame.environmentMotion === true);
     if (step === this.stepperStep) return;
@@ -1019,13 +1024,19 @@ export class SpritePool {
       const item = this.lastItems[i];
       const pe = this.lastPooled[i];
       if (item === undefined || pe === undefined) continue;
-      this.presentItemAt(pe, item, frame, true);
+      this.presentStill(pe, item, frame);
       // A stand-in for a turned-away bake binds again on the next frame, a still one included.
       if (pe.bound.retrying) {
         this.moving.push(i);
         this.movingRefs.add(item.ref);
       }
     }
+  }
+
+  /** Present `item` on a still frame, noting an occluder for the ghost scan, which re-reads only those. */
+  private presentStill(pe: PooledEntity, item: DrawItem, frame: PoolFrame): void {
+    this.presentItemAt(pe, item, frame, true);
+    if (occludes(item.kind)) this.restlessOccluders.push(item);
   }
 
   /** Visit a held entity off the draw list for its emphasis; one the emphasis keeps from holding still
