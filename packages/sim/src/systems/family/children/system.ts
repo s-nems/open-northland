@@ -15,7 +15,7 @@ import { isInside } from '../../settlers/indoors.js';
 import { wakeHumanIdler } from '../../settlers/planner/idle-replan.js';
 import { collectSupplyTally } from '../../stores/index.js';
 import { ExternalFoodIndex } from '../food-search.js';
-import { type ChildOrderPass, DutyClaims, driveOrder } from './order.js';
+import { type ChildOrderPass, DutyClaims, driveOrder, waitsOnWalk } from './order.js';
 
 /**
  * The child-making half of the FamilySystem: drive every married woman's standing {@link ChildOrder} one
@@ -39,6 +39,7 @@ export function driveChildOrders(world: World, ctx: SystemContext, terrain: Terr
     // A sheltering mother keeps her standing order but not her errand; nothing walks her out of cover
     // until the alarm drops.
     if (world.has(e, Sheltering)) continue;
+    if (waitsOnWalk(world, ctx.tick, e, pass)) continue;
     driveOrder(world, ctx, terrain, e, pass);
   }
   for (let i = 0; i < dutyBefore.length; i++) {

@@ -36,7 +36,10 @@ import type { Entity } from '../../../src/ecs/world.js';
 import { fx, ONE, playerCommand, type SimEvent, Simulation } from '../../../src/index.js';
 import { nodeOfPosition, nodesAdjacent, positionOfNode } from '../../../src/nav/halfcell.js';
 import { runFromBlow } from '../../../src/systems/conflict/flee.js';
-import { FOOD_SEARCH_RETRY_TICKS } from '../../../src/systems/family/children/order.js';
+import {
+  FOOD_SEARCH_RETRY_TICKS,
+  WALK_WAIT_CHECK_TICKS,
+} from '../../../src/systems/family/children/order.js';
 import {
   ADULT_AGE_TICKS,
   ageTicksAt,
@@ -1172,6 +1175,25 @@ describe('e2e: marriage → household → child (full step schedule)', () => {
     sim.step();
     expect(missed()).toBe(false);
     expect(sim.world.has(woman, MoveGoal)).toBe(true); // off to the warehouse
+  });
+
+  it('an order whose wife walks for food takes up a new blocker at its next check, keeping her on duty', () => {
+    const { sim, woman, man, home } = familySim(3);
+    sim.world.add(woman(), Marriage, { spouse: man(), child: null });
+    sim.world.add(man(), Marriage, { spouse: woman(), child: null });
+    sim.enqueueSetup({ kind: 'assignHouse', entity: woman(), house: home() });
+    sim.enqueueSetup({ kind: 'makeChild', entity: woman(), child: 'female' });
+    runUntil(sim, () => sim.world.has(woman(), MoveGoal), 4, 'walk to the food');
+    runUntil(sim, () => (sim.tick + woman()) % WALK_WAIT_CHECK_TICKS === 0, WALK_WAIT_CHECK_TICKS, 'check');
+
+    setSettlerJob(sim.world, man(), SOLDIER);
+    for (let i = 1; i < WALK_WAIT_CHECK_TICKS; i++) {
+      sim.step();
+      expect(sim.world.get(woman(), ChildOrder).blocked).toBeUndefined();
+      expect(sim.world.has(woman(), FamilyDuty)).toBe(true);
+    }
+    sim.step();
+    expect(sim.world.get(woman(), ChildOrder).blocked).toBe('husbandAway');
   });
 
   it('a player meal order outranks the child errand, which resumes after the meal', () => {

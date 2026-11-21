@@ -50,6 +50,13 @@ import { birth, makeLoveDuration } from './make-love.js';
 export const FOOD_SEARCH_RETRY_TICKS = TICKS_PER_SECOND;
 
 /**
+ * Ticks between the checks of an order whose awaited spouse is walking, staggered by the wife's id. An
+ * authored cost bound, not original behavior: until the walk ends, a blocker, a larder eaten below the
+ * cost, a pressing need or a voided order is acted on up to this long after it arises.
+ */
+export const WALK_WAIT_CHECK_TICKS = TICKS_PER_SECOND;
+
+/**
  * Settlers a child-order pass is driving; their {@link FamilyDuty} fences them off the planner's economy
  * drives, while needs still fire. Whatever a pass does not re-claim, it strips at its end. Each claim is
  * stamped with its pass number, so the same couples claimed tick after tick rewrite entries in place.
@@ -168,6 +175,36 @@ export function driveOrder(
     duration: makeLoveDuration(ctx, world.get(woman, Settler).tribe),
   });
   wearLodging(world, ctx, home, woman, 'child');
+}
+
+/**
+ * Whether `woman`'s order only waits this tick for a spouse already on duty and walking: she herself on
+ * an errand or on her way in, or her husband coming home to her. Its claims are renewed and its stages
+ * left for the tick the walk ends or the next {@link WALK_WAIT_CHECK_TICKS} check.
+ */
+export function waitsOnWalk(world: World, tick: number, woman: Entity, pass: ChildOrderPass): boolean {
+  if ((tick + woman) % WALK_WAIT_CHECK_TICKS === 0 || !world.has(woman, FamilyDuty)) return false;
+  // A wife between food searches is not on an errand, wherever she walks.
+  if (world.get(woman, ChildOrder).foodSearchMissed === true) return false;
+  const home = world.tryGet(woman, Residence)?.home;
+  if (home === undefined) return false;
+  if (!isInside(world, woman, home)) {
+    if (!isTravelling(world, woman)) return false;
+    pass.dutyClaimed.claim(woman);
+    return true;
+  }
+  const husband = world.tryGet(woman, Marriage)?.spouse;
+  if (
+    husband === undefined ||
+    !world.isAlive(husband) ||
+    !world.has(husband, FamilyDuty) ||
+    !isTravelling(world, husband) ||
+    isInside(world, husband, home)
+  )
+    return false;
+  pass.dutyClaimed.claim(woman);
+  pass.dutyClaimed.claim(husband);
+  return true;
 }
 
 /**
