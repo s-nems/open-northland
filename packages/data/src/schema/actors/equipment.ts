@@ -97,6 +97,14 @@ export const EquipClass = z
   );
 export type EquipClass = z.infer<typeof EquipClass>;
 
+/** A weapon's chance to block an arrow that comes at its bearer (`arrowblockchance`), and the logic sound
+ *  type the block plays (`soundtype_ArrowBlock`, an id like those of `soundtype_Hit`). Our rule. */
+export const WeaponArrowBlock = z.strictObject({
+  chancePct: z.number().int().min(1).max(100),
+  soundType: z.number().int(),
+});
+export type WeaponArrowBlock = z.infer<typeof WeaponArrowBlock>;
+
 export const WeaponType = z.strictObject({
   /** The weapon's `type` id. Not globally unique: the original keys a weapon by `(tribeType, typeId)`,
    *  so the same id (e.g. 2 = "fist") recurs once per tribe. */
@@ -143,6 +151,8 @@ export const WeaponType = z.strictObject({
   /** `createsmoke 1` with `smokelifetime`: the ticks the smoke a landed shot raises where it comes down
    *  lingers at most. Absent when the weapon raises none (only the catapults do). */
   impactSmokeTicks: z.number().int().positive().optional(),
+  /** Absent on a row that blocks nothing. */
+  arrowBlock: WeaponArrowBlock.optional(),
   jobType: TypeId.optional(),
   /** `goodtype` - the good that is this weapon; resolves into the good table. Source `goodtype 0` is the
    *  natural-weapon sentinel (a fist or claw, backed by no craftable good) and is captured as

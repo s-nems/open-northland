@@ -89,6 +89,7 @@ export function extractWeapons(sections: readonly RuleSection[], src: SourceRef)
         hitSounds: indexedInts(sec, 'soundtype_Hit'),
         missSounds: indexedInts(sec, 'soundtype_NoHit'),
         impactSmokeTicks: getInt(sec, 'createsmoke') === 1 ? getInt(sec, 'smokelifetime') : undefined,
+        arrowBlock: arrowBlockOf(sec),
         jobType: getInt(sec, 'jobtype'),
         goodType: goodTypeRaw === 0 ? undefined : goodTypeRaw,
         source: makeSource(src, 'weapontype'),
@@ -96,6 +97,12 @@ export function extractWeapons(sections: readonly RuleSection[], src: SourceRef)
     );
   }
   return weapons;
+}
+
+/** A row's `arrowblockchance` with its `soundtype_ArrowBlock`; absent when the row names no chance. */
+function arrowBlockOf(sec: RuleSection): { chancePct: number; soundType: number | undefined } | undefined {
+  const chancePct = getInt(sec, 'arrowblockchance');
+  return chancePct === undefined ? undefined : { chancePct, soundType: getInt(sec, 'soundtype_ArrowBlock') };
 }
 
 /** An armor's `type` is the armor class a {@link WeaponType.damage} record keys against. */

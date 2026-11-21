@@ -100,6 +100,7 @@ describe('extractWeapons', () => {
         damage: { '0': 360, '1': 70 },
         hitSounds: { '0': 88 },
         missSounds: {},
+        arrowBlock: { chancePct: 25, soundType: 80 },
         jobType: 51,
         // `goodtype 0` is the natural-weapon sentinel -> no `goodType` field (undefined dropped by toEqual).
         // A melee claw fires nothing -> no `munitionType` field either (undefined dropped by toEqual).

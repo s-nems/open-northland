@@ -120,7 +120,8 @@ name "fen_elder_idle"
 // Mirrors DataCnmd/types/weapons.ini: each `[weapontype]` has a `tribetype` + a quoted `name`, a
 // `type`, the `mainType` (coarse weapon class) + `weight` (encumbrance) pair, the
 // `minimumrange`/`maximumrange` pair, repeated `damagevalue <armorClass> <value>` lines, a `jobtype`,
-// and combat extras the schema doesn't carry (`atomicactiontype`, `soundtype_Hit`) that are ignored.
+// and combat extras the schema doesn't carry (`atomicactiontype`) that are ignored. The claw blocks an
+// arrow (`arrowblockchance` with its `soundtype_ArrowBlock`); the sling, naming neither, blocks nothing.
 // Both weapons share `type 4` across different tribes - the real data's `(tribetype, type)` composite key
 // (type alone is not unique). The claw is `mainType 1, weight 0` and a melee weapon (no
 // `munitiontype`/`damagetype` -> the schema omits both, the ranged + damage-class markers absent); the
@@ -146,6 +147,8 @@ damagevalue 1 70
 jobtype 51
 atomicactiontype 77
 soundtype_Hit 0 88
+arrowblockchance 25
+soundtype_ArrowBlock 80
 [weapontype]
 tribetype 2
 type 4

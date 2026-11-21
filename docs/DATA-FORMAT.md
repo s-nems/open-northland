@@ -201,8 +201,8 @@ job ids with its own bob sets. The simulation does not load sprite data.
 
 The sound bank follows the same boundary. The IR describes available groups and bindings - the
 `soundfx.cif` groups, beds and jingles, the creature voice tables (`humans/sounds.cif` per tribe and
-class, `animals/sounds.ini` per animal tribe) and each weapon's `soundtype_Hit` / `soundtype_NoHit`
-group ids - while the audio package decides what to play and owns browser playback.
+class, `animals/sounds.ini` per animal tribe) and each weapon's `soundtype_Hit` / `soundtype_NoHit` /
+`soundtype_ArrowBlock` group ids - while the audio package decides what to play and owns browser playback.
 
 ## Changing the format
 
