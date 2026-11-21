@@ -68,7 +68,7 @@ export const byzantineSpearsScene: SceneDefinition = {
       },
     },
     {
-      label: "a dragon stands beside them with its own tribe's hitpoints where the content gives them",
+      label: "a dragon stands beside them with its own tribe's hitpoints",
       predicate: (sim) => {
         const dragons = [...sim.world.query(components.Settler, components.Health)].filter((e) =>
           isDragon(sim, e),
@@ -76,7 +76,8 @@ export const byzantineSpearsScene: SceneDefinition = {
         const pool = sim.content.tribes.find((t) => t.typeId === MONSTER_TRIBE_DRAGON)?.monster?.hitpoints;
         return (
           dragons.length === 1 &&
-          dragons.every((e) => pool === undefined || sim.world.get(e, components.Health).max === pool)
+          pool !== undefined &&
+          dragons.every((e) => sim.world.get(e, components.Health).max === pool)
         );
       },
     },

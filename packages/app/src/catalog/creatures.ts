@@ -58,6 +58,7 @@ export const NATURAL_WEAPON_TYPE = 1;
 export const SANDBOX_MONSTER_TRIBES = [
   { typeId: MONSTER_TRIBE_WERESNAKE, id: 'weresnake', naturalWeaponType: NATURAL_WEAPON_TYPE },
   { typeId: MONSTER_TRIBE_WEREWOLF, id: 'werewolf', naturalWeaponType: NATURAL_WEAPON_TYPE },
+  { typeId: MONSTER_TRIBE_DRAGON, id: 'dragon' },
 ] as const;
 
 // Readable setatomic and atomicanimation rows. Event 25 lands a blow, 34 cues sound, and 26 moves

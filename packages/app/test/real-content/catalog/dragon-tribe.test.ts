@@ -21,8 +21,8 @@ const RETIRED_WEAPON_TYPES: readonly number[] = [10, 11, 15];
 const BARE_COLUMN = '0';
 const MONSTER_COLUMN = '9';
 const SPEAR_MAIN_TYPE = 2;
-/** The dragon's natural weapon: the Byzantine wooden spear values the pack carried before the pool, its
- *  leather toughened and rounded to five, and its bare value in the monster column. */
+/** The dragon's natural weapon: the shipped Byzantine wooden spear row, its leather toughened and rounded to
+ *  five, and its bare value in the monster column. */
 const DRAGON_WEAPON = {
   mainType: SPEAR_MAIN_TYPE,
   weight: 1,

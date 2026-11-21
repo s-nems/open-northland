@@ -58,10 +58,13 @@ export const creatureBloodScene: SceneDefinition = {
           subjects.length === 4 &&
           subjects.every((e) => {
             const hp = sim.world.get(e, components.Health);
-            const pool = sim.content.tribes.find(
-              (t) => t.typeId === sim.world.get(e, components.Settler).tribe,
-            )?.monster?.hitpoints;
-            return hp.hitpoints > 0 && hp.hitpoints < ENDURANCE && (pool === undefined || hp.max === pool);
+            const tribe = sim.world.get(e, components.Settler).tribe;
+            const pool = sim.content.tribes.find((t) => t.typeId === tribe)?.monster?.hitpoints;
+            return (
+              hp.hitpoints > 0 &&
+              hp.hitpoints < ENDURANCE &&
+              (tribe !== MONSTER_TRIBE_DRAGON || (pool !== undefined && hp.max === pool))
+            );
           })
         );
       },
