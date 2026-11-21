@@ -42,8 +42,9 @@ const FORMATION: Formation = { fileSize: MEN, fileStep: 4, columnStep: 3 };
 /** Map points from a squad's front to its monster, past a long bow's reach and a monster's sight, so
  *  nobody fights before blue is sent. */
 const FRONT_GAP = 28;
-/** Between the weresnake and the werewolf lines: the two are on one side. */
-const MONSTER_GAP = 6;
+/** Between the weresnake and the werewolf lines: past a monster's sight, so neither sees the squad that
+ *  fights the other. */
+const MONSTER_GAP = 24;
 /** Between the werewolf squads and the dragon's: past a monster's sight, so a werewolf fighting its own
  *  squad does not see the dragon's. */
 const SQUAD_GAP = 20;
