@@ -41,6 +41,7 @@ export function pileUnderEnemyTowers(
   const hy = nodeHyOfPosition(p.x, p.y);
   for (const bowman of fire.bowmen) {
     if ((shooters & (1 << bowman.owner)) === 0) continue;
+    if (hx < bowman.minHx || hx > bowman.maxHx || hy < bowman.minHy || hy > bowman.maxHy) continue;
     if (nearestWallDistance(bowman.walls, hx, hy) <= bowman.reach) return true;
   }
   return false;
@@ -80,6 +81,12 @@ interface PostedBowman {
   readonly owner: number;
   readonly walls: readonly number[];
   readonly reach: number;
+  /** The walls' box widened by `reach`: no node outside it lies within `reach` of a wall, since a
+   *  map-point distance is never below its row span or its column span. */
+  readonly minHx: number;
+  readonly maxHx: number;
+  readonly minHy: number;
+  readonly maxHy: number;
 }
 
 /** Every {@link PostedBowman} as of one {@link towerFireRevision}. Derived state, never hashed; the
@@ -116,7 +123,28 @@ function keepBowman(world: World, ctx: MapContext, bowmen: PostedBowman[], e: En
   const owner = ownerOf(world, e);
   const at = world.tryGet(post, Position);
   if (reach === 0 || owner === undefined || at === undefined) return;
-  bowmen.push({ owner, walls: postWalls(world, ctx, post, at.x, at.y), reach });
+  const walls = postWalls(world, ctx, post, at.x, at.y);
+  let minHx = Number.POSITIVE_INFINITY;
+  let maxHx = Number.NEGATIVE_INFINITY;
+  let minHy = Number.POSITIVE_INFINITY;
+  let maxHy = Number.NEGATIVE_INFINITY;
+  for (let i = 0; i < walls.length; i += 2) {
+    const x = walls[i] ?? 0;
+    const y = walls[i + 1] ?? 0;
+    minHx = Math.min(minHx, x);
+    maxHx = Math.max(maxHx, x);
+    minHy = Math.min(minHy, y);
+    maxHy = Math.max(maxHy, y);
+  }
+  bowmen.push({
+    owner,
+    walls,
+    reach,
+    minHx: minHx - reach,
+    maxHx: maxHx + reach,
+    minHy: minHy - reach,
+    maxHy: maxHy + reach,
+  });
 }
 
 /** The nodes {@link postReachDistance} measures `post`'s reach from, as `x, y` pairs: its walls on the map,
