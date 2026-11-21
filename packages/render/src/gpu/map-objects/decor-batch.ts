@@ -13,7 +13,8 @@ import { type MapObjectSprite, objectFrameAt, objectFrameIndexAt } from './map-o
 
 /**
  * Flat ground decor batched into per-block quad meshes, a block's pages sharing its draw calls.
- * Translucency rides in the atlas texture's own alpha channel; there is no per-object opacity. An
+ * Translucency rides in the atlas texture's own alpha channel; there is no per-object opacity, so the
+ * objects the see-through view fades batch into meshes of their own, which fade whole. An
  * object's cast shadow batches the same way from its silhouette page, into a container the layer draws
  * under every decor body, in quads the soft edge's reach wider than their frames. An animated quad of a
  * paged mesh picks its frame on the GPU (`decor-clip.ts`); one of a plain mesh is rewritten here as the
@@ -538,6 +539,14 @@ export interface DecorChunk {
   /** The {@link animated} and {@link clipped} quads by where they draw. */
   readonly animatedBins: readonly AnimatedBin[];
   readonly quads: Map<MapObjectSprite, DecorObjectQuads>;
+  /** The meshes of the {@link MapObjectSprite.seeThrough} objects, bodies and cast shadows, drawn over
+   *  the rest of their lane. */
+  readonly seeThrough: readonly Container[];
+}
+
+/** Fade a chunk's see-through meshes to `alpha`; `undefined` draws them solid again. */
+export function fadeDecorChunk(chunk: DecorChunk, alpha: number | undefined): void {
+  for (const mesh of chunk.seeThrough) mesh.alpha = alpha ?? 1;
 }
 
 /** Batch one lane of a block into `container`: a still and an animated batch per texture source, in
@@ -693,13 +702,25 @@ export function buildDecorChunk(block: readonly MapObjectSprite[], style: DecorB
   const shadowContainer = new Container();
   const animation: ChunkAnimation = { animated: [], clipped: [] };
   const quads = new Map<MapObjectSprite, DecorObjectQuads>();
-  buildLane(block, 'body', container, style, animation, (obj, body) => {
-    quads.set(obj, { body, shadow: null });
-  });
-  buildLane(block, 'shadow', shadowContainer, style, animation, (obj, shadow) => {
-    const placed = quads.get(obj);
-    if (placed !== undefined) placed.shadow = shadow;
-  });
+  // The see-through objects batch after the rest, so their meshes hold nothing else.
+  const solid: MapObjectSprite[] = [];
+  const faded: MapObjectSprite[] = [];
+  for (const obj of block) (obj.seeThrough === true ? faded : solid).push(obj);
+  const seeThrough: Container[] = [];
+  for (const part of [solid, faded]) {
+    if (part.length === 0) continue;
+    const bodies = container.children.length;
+    const shadows = shadowContainer.children.length;
+    buildLane(part, 'body', container, style, animation, (obj, body) => {
+      quads.set(obj, { body, shadow: null });
+    });
+    buildLane(part, 'shadow', shadowContainer, style, animation, (obj, shadow) => {
+      const placed = quads.get(obj);
+      if (placed !== undefined) placed.shadow = shadow;
+    });
+    if (part === faded)
+      seeThrough.push(...container.children.slice(bodies), ...shadowContainer.children.slice(shadows));
+  }
   // Animated quads were written for tick 0 at build; the first update rewrites any other tick.
   const animatedBins = binAnimated(animation);
   return {
@@ -710,6 +731,7 @@ export function buildDecorChunk(block: readonly MapObjectSprite[], style: DecorB
     clipped: animation.clipped,
     animatedBins,
     quads,
+    seeThrough,
   };
 }
 

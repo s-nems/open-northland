@@ -69,6 +69,7 @@ import { PLOT_BOUNDS } from '../placement/plan-road.js';
 import { DEFAULT_SELECTION_STYLE, type SelectionStyle, type TargetTone } from '../selection/style.js';
 import { worldShaderSettings } from '../shaders/warmup.js';
 import { type EntityBounds, SpritePool } from '../sprite-pool/index.js';
+import { OCCLUDER_FADE_ALPHA } from '../sprite-pool/occlusion.js';
 import { StillSpriteMesh } from '../still-mesh/still-mesh.js';
 import { TerrainLayer } from '../terrain/index.js';
 import type { TerrainTextureSet } from '../terrain/textures.js';
@@ -656,6 +657,8 @@ export class WorldRenderer {
       this.wind,
       this.enhancements.occlusionFill || this.enhancements.occlusionOutline || frame.fadeOccluders === true,
     );
+    const decorFade = frame.fadeOccluders === true ? OCCLUDER_FADE_ALPHA : undefined;
+    this.mapObjects.setDecorFade(decorFade);
     const portrait = this.portrait.subjects();
     const erased = this.flagErasures.update(doorBadges);
     this.pool.reconcile({
@@ -763,6 +766,8 @@ export class WorldRenderer {
       toInset: (cam, iw, ih) => {
         const view = cameraViewport(cam, iw, ih, this.elevation.maxLift);
         this.terrain.cull(view);
+        // An inset borrows the world without the see-through view, as the pool's pass does for its own.
+        this.mapObjects.setDecorFade(undefined);
         // The bands the main cull would keep for this view: anchors within the sprite margin, and a
         // claimed road plot sorting back by its plot's top.
         this.spriteLayer.hideBandsOutside(
@@ -773,6 +778,7 @@ export class WorldRenderer {
       },
       restore: () => {
         this.terrain.cull(vp);
+        this.mapObjects.setDecorFade(decorFade);
         this.spriteLayer.showBands(this.insetBands);
       },
       backdrop: this.terrain.groundColour(),
@@ -794,11 +800,13 @@ export class WorldRenderer {
           // The map objects keep the main view's tier: a second detail would rebind every one of
           // them twice a frame while a view is open.
           this.mapObjects.update(viewVp, tick);
+          this.mapObjects.setDecorFade(undefined);
           this.fog.container.visible = false;
         },
         restore: () => {
           this.terrain.cull(vp);
           this.mapObjects.update(vp, tick, this.fog.cellStateAt, fogFrame.fogEpoch);
+          this.mapObjects.setDecorFade(decorFade);
           this.fog.container.visible = true;
         },
         backdrop: this.terrain.groundColour(),

@@ -21,6 +21,9 @@ export interface MapObjectSprite {
    *  object (a felled or save-restored harvestable), it stands still. */
   readonly environmentSway?: number;
   readonly decor: boolean;
+  /** Low vegetation the see-through view fades with the standing sprites, though it draws as flat decor
+   *  under every entity: a bush, or a wheat or herb plant. Decor only. */
+  readonly seeThrough?: true;
   /** A live creature the map places for presentation (a butterfly swarm), not landscape: it shows only
    *  on a cell the viewer currently watches, never as an explored-ground ghost. Tall objects only. */
   readonly creature?: boolean;

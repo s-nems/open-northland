@@ -21,6 +21,7 @@ import { loadLayer, MissingAtlasError } from '../ir/load.js';
 import type { ContentIr, LandscapeGfxRow } from '../ir/rows.js';
 import { forEachPlacement } from '../map/placements.js';
 import { isGroundedWall } from './grounding.js';
+import { seeThroughTypeIds } from './see-through.js';
 import { footprintBrightness, unshadedLogicTypeIds } from './shading.js';
 import { standingVegetationTypeIds, stillVegetationSway } from './sway.js';
 
@@ -159,6 +160,7 @@ export async function loadMapObjects(
   const recordByIndex = new Map((ir.landscapeGfx ?? []).map((row) => [row.index, row]));
   const unshadedLogicTypes = unshadedLogicTypeIds(ir.landscape);
   const standingVegetation = standingVegetationTypeIds(ir.landscape);
+  const seeThroughTypes = seeThroughTypeIds(ir.landscape);
   const typeRecords = objects.types.map((type) => recordByName.get(type));
   // What each one-shot type rests as once its clip has played.
   const restRecords = typeRecords.map((record) =>
@@ -191,6 +193,8 @@ export async function loadMapObjects(
     /** The cast-shadow twin frames, index-paired with {@link frames}; absent when no pose casts one. */
     readonly shadow: MapObjectSprite['shadow'];
     readonly decor: boolean;
+    /** Flat vegetation the see-through view fades. */
+    readonly seeThrough: boolean;
     readonly environmentSway: number | undefined;
     readonly groundPass: boolean;
     /** False for the tree logic types (the measured full-bright exemption). */
@@ -226,6 +230,7 @@ export async function loadMapObjects(
         frames: frames.slice(0, count),
         shadow: hasShadow ? { source: shadowSource, frames: shadowFrames.slice(0, count) } : undefined,
         decor: drawsAsFlatDecor(record),
+        seeThrough: drawsAsFlatDecor(record) && seeThroughTypes.has(record.logicType),
         environmentSway: stillVegetationSway(record, animated || playsOnce, standingVegetation),
         groundPass,
         shaded: record.logicType === undefined || !unshadedLogicTypes.has(record.logicType),
@@ -275,6 +280,7 @@ export async function loadMapObjects(
       scale: 1,
       ...(type.environmentSway !== undefined ? { environmentSway: type.environmentSway } : {}),
       decor: type.decor,
+      ...(type.seeThrough ? { seeThrough: true as const } : {}),
       ...(type.groundPass ? { groundPass: true } : {}),
       ...(type.grounded ? { grounded: true as const } : {}),
       ...(type.burns ? { light: 'fire' as const } : {}),

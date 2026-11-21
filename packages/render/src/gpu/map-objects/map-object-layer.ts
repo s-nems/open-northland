@@ -16,6 +16,7 @@ import {
   buildDecorChunk,
   type DecorBatchStyle,
   type DecorChunk,
+  fadeDecorChunk,
   retireDecorQuad,
 } from './decor-batch.js';
 import { DecorClipTable, makeDecorClipUniforms, writeDecorClipUniforms } from './decor-clip.js';
@@ -74,6 +75,7 @@ export class MapObjectLayer {
   private readonly decorByObject = new Map<MapObjectSprite, string>();
   private readonly objects = new Set<MapObjectSprite>();
   private readonly tall: TallObjectLayer;
+  private decorFade: number | undefined;
   /** The last frame's inputs; an identical frame skips the walk since the retained scene already
    *  matches. `remove` needs no reset - it detaches and zeroes directly. */
   private lastInputs: UpdateInputs | null = null;
@@ -180,6 +182,7 @@ export class MapObjectLayer {
           : this.decorContainer.getChildIndex(previous.container);
       if (previous !== undefined) destroyDecorChunk(previous);
       const chunk = buildDecorChunk(block, this.decorStyle);
+      fadeDecorChunk(chunk, this.decorFade);
       this.decorContainer.addChildAt(chunk.container, index);
       this.decorShadowContainer.addChildAt(chunk.shadowContainer, index);
       this.decorChunks.set(key, chunk);
@@ -324,6 +327,14 @@ export class MapObjectLayer {
       this.detail,
       collectOccluders,
     );
+  }
+
+  /** Fade the see-through decor of every chunk to `alpha`, or draw it solid again on `undefined`. A
+   *  change walks the chunks once; a chunk built later takes the fade in force. */
+  setDecorFade(alpha: number | undefined): void {
+    if (alpha === this.decorFade) return;
+    this.decorFade = alpha;
+    for (const chunk of this.decorChunks.values()) fadeDecorChunk(chunk, alpha);
   }
 
   /** The visible tall objects of the last {@link update} as the occlusion ghost scan's static
