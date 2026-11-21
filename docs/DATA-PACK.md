@@ -41,9 +41,8 @@ The pack's combat rules differ from the original data in these ways:
   is what a wild animal takes, column 9 what a monster with a hide (the weresnake and the werewolf)
   takes. A row without column 8 hits an animal with its leather column; one without column 9 hits such a
   monster with the column of the material it wears. The dragon has no hide and takes the column of the
-  material it wears, as a person does. In the five nations' rows column 9 holds what the weapon did to
-  a weresnake or werewolf in the original, which wore leather there; the Frankish hero bow and every
-  monster and animal row repeat their column 8.
+  material it wears, as a person does. Column 9 holds each row's bare column 0, so such a monster takes
+  what an unarmoured person takes.
 - A `rules/types/weapons.ini` row whose bearer can block an arrow carries `arrowblockchance <percent>`
   (a whole percent, 1 to 100) and `soundtype_ArrowBlock <logic sound type>`, the sound group the block
   plays, an id like those of `soundtype_Hit`. A row without them blocks nothing. The engine blocks an
