@@ -12,14 +12,15 @@ export function pageSamplerDeclarations(): string {
   return Array.from({ length: PAGE_SAMPLER_SLOTS }, (_, i) => `  uniform sampler2D uPage${i};`).join('\n');
 }
 
-/** `statement` run with the fragment's page sampler in place of `$`, through one if-chain on `vPage`.
- *  Inside it a page is read with explicit derivatives, an explicit level or texelFetch: Direct3D's
- *  compiler may hoist an implicit-derivative sample out of the chain and fetch every page per fragment. */
+/** `statement` run with the fragment's page sampler in place of `$`, through one switch on `vPage`,
+ *  which Direct3D runs faster than a nested if-chain. Inside it a page is read with explicit derivatives,
+ *  an explicit level or texelFetch: an implicit-derivative sample may be hoisted out to fetch every page. */
 export function pageChain(statement: string): string {
-  return Array.from({ length: PAGE_SAMPLER_SLOTS }, (_, i) => {
-    const guard = i < PAGE_SAMPLER_SLOTS - 1 ? `if (vPage < ${i}.5) ` : '';
-    return `    ${i > 0 ? 'else ' : ''}${guard}{ ${statement.replace('$', String(i))} }`;
-  }).join('\n');
+  const cases = Array.from({ length: PAGE_SAMPLER_SLOTS }, (_, i) => {
+    const label = i < PAGE_SAMPLER_SLOTS - 1 ? `case ${i}:` : 'default:';
+    return `      ${label} { ${statement.replace('$', String(i))} } break;`;
+  });
+  return ['    switch (int(vPage + 0.5)) {', ...cases, '    }'].join('\n');
 }
 
 /** The `uPage<i>` shader resources for `pages`; an unused slot binds the first page, so every declared

@@ -16,7 +16,7 @@ const FRAGMENT_TEXTURE_OP_BUDGET = 1500;
 
 /**
  * Inlined function calls the paged ground programs may hold. Each picks its page through an eight-way
- * if-chain; only the page reads run inside it and the shading, weather cover included, runs once
+ * switch; only the page reads run inside it and the shading, weather cover included, runs once
  * after. Shading inside every branch measured 672 calls for `shaded-terrain` and 192 for
  * `shaded-decor`; the split shape measures 106 and 39. Each budget is about half again its figure.
  */
