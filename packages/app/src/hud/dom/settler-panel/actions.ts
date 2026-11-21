@@ -28,7 +28,7 @@ export interface SettlerPanelActions {
   readonly centreNode: (node: number) => void;
   /** A link: the workplace, the home, the spouse or the child. */
   readonly select: (id: number) => void;
-  /** Select this entity and bring it into view: a browse chevron or Tab, a trade stop's house. */
+  /** Select this entity and bring it into view: a browse chevron, a trade stop's house. */
   readonly show: (id: number) => void;
   /** A double click on the trade: select every peer as a group. */
   readonly selectGroup: (ids: readonly number[]) => void;

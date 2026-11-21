@@ -1,6 +1,11 @@
 import type { UiCue } from '@open-northland/audio';
 import { isActionHotkey, isFieldKey } from '../hotkeys.js';
-import { isFunctionKeyCode, type KeyBindings, type KeybindingAction } from '../keybindings.js';
+import {
+  isFunctionKeyCode,
+  type KeyBindings,
+  type KeybindingAction,
+  matchesKeyboardBinding,
+} from '../keybindings.js';
 import { NAV_ENTRY_IDS, NAV_KEYS, type NavEntryId } from './nav-effects.js';
 
 /** Every branch here that consumes a press stops it reaching world picking behind the panel. */
@@ -219,6 +224,11 @@ export function createToolPanelInput(deps: ToolPanelInputDeps): ToolPanelInput {
         consume(e);
         return;
       }
+    }
+    // A held see-through key stays the game's: its repeats must not walk the browser's focus away.
+    if (e.repeat && matchesKeyboardBinding(e, deps.bindings.revealToggle) && !keyboardOwned(e)) {
+      consume(e);
+      return;
     }
     const pressed: readonly [KeybindingAction, (() => void) | undefined][] = [
       ['roadTool', deps.roadTool],

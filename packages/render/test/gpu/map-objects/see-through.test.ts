@@ -33,6 +33,18 @@ describe('see-through decor', () => {
     layer.destroy();
   });
 
+  it('fades a chunk off screen once a frame shows it', () => {
+    const layer = new MapObjectLayer(new Container(), new TextureCache());
+    layer.set([decor(10, true), decor(5000, true)]);
+    const near = { minX: 0, minY: -100, maxX: 100, maxY: 100 };
+    layer.update(near, 0);
+    layer.setDecorFade(FADE);
+    expect([alphas(layer, 0), alphas(layer, 1)]).toEqual([[FADE], [1]]);
+    layer.update({ ...near, maxX: 6000 }, 0);
+    expect(alphas(layer, 1)).toEqual([FADE]);
+    layer.destroy();
+  });
+
   it('builds a chunk added under the fade already faded', () => {
     const layer = new MapObjectLayer(new Container(), new TextureCache());
     layer.set([decor(10, false)]);

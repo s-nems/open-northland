@@ -54,6 +54,9 @@ describe('tall objects as occlusion ghost occluders', () => {
     // Off, the scan reads an empty list.
     layer.update(WIDE, 5, undefined, undefined, 5, undefined, false);
     expect(layer.tallOccluders).toHaveLength(0);
+    // Asked for on a frame that changed nothing else, the list fills again.
+    layer.update(WIDE, 5, undefined, undefined, 5, undefined, true);
+    expect(layer.tallOccluders).toHaveLength(1);
   });
 
   it("fades the occluder's body and its cast shadow together, and restores both", () => {

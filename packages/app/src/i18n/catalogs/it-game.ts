@@ -660,7 +660,7 @@ export const itGame = {
       close: 'Annulla la selezione',
       prev: 'Precedente',
       next: 'Successivo',
-      prevTooltip: 'Precedente: {trade} · Maiusc+Tab',
+      prevTooltip: 'Precedente: {trade}',
       nextTooltip: 'Successivo: {trade}',
       selectTrade: 'Doppio clic: seleziona tutti ({trade})',
       rename: 'Rinomina',
@@ -847,7 +847,7 @@ export const itGame = {
     },
     vehiclePanel: {
       classes: { cart: 'Carro', ship: 'Nave', siege: 'Catapulta' },
-      prevTooltip: 'Veicolo precedente di questa classe · Maiusc+Tab',
+      prevTooltip: 'Veicolo precedente di questa classe',
       nextTooltip: 'Veicolo successivo di questa classe',
       selectClass: 'Doppio clic: seleziona tutti ({kind})',
       centre: 'Centra la visuale sul veicolo',
@@ -1092,7 +1092,7 @@ export const itGame = {
       lasting: 'Non si consuma mai',
     },
     buildingPanel: {
-      prevTooltip: 'Edificio precedente di questo tipo · Maiusc+Tab',
+      prevTooltip: 'Edificio precedente di questo tipo',
       nextTooltip: 'Edificio successivo di questo tipo',
       centre: "Centra la visuale sull'edificio",
       orders: {

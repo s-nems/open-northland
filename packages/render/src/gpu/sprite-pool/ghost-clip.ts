@@ -18,13 +18,15 @@ export function clipDepthOf(depth: number): number {
  *
  * Undocumented Pixi behaviour, verified on pixi.js 8.22, re-verify on a bump: the state system applies
  * only the bits that differ between two states, and no 2D state enables the depth test, so the raw depth
- * state set here holds across the batches between the gates. The last gate puts back what Pixi assumes.
+ * state set here holds across the batches between the gates. The last gate puts back the closed depth
+ * mask of Pixi's 2D states; Pixi never sets the depth function, so each clip sets its own.
  */
 export class GhostClip {
-  /** The occluder copies, drawn without colour. */
-  readonly covers = new Container();
+  /** The occluder copies, drawn without colour. Its own render group, as the marks are: a copy or a
+   *  stamp minted or freed rebuilds these short instruction lists, not the whole world's. */
+  readonly covers = new Container({ isRenderGroup: true });
   /** The ghost stamps the covers clip. */
-  readonly marks = new Container();
+  readonly marks = new Container({ isRenderGroup: true });
   /** Whether a ghost shows this frame; an idle clip leaves the depth buffer alone. */
   active = false;
 
@@ -62,7 +64,6 @@ export class GhostClip {
     if (!this.active || !(renderer instanceof WebGLRenderer)) return;
     const gl = renderer.gl;
     gl.disable(gl.DEPTH_TEST);
-    gl.depthFunc(gl.LEQUAL);
-    gl.depthMask(true);
+    gl.depthMask(false);
   }
 }

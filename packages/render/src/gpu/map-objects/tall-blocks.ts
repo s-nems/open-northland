@@ -142,7 +142,8 @@ class TallOccluder implements GhostOccluder {
   }
 
   body(): Sprite | undefined {
-    return this.po.sprite ?? undefined;
+    const sprite = this.po.sprite;
+    return sprite === null || sprite.destroyed ? undefined : sprite;
   }
 
   setFade(alpha: number | undefined): void {

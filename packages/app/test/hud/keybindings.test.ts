@@ -119,7 +119,7 @@ describe('assignBinding', () => {
 
 describe('isBindableCode', () => {
   it('accepts plain game keys', () => {
-    for (const code of ['KeyA', 'Digit5', 'Numpad0', 'ArrowLeft', 'Space', 'Tab', 'Comma', 'Home', 'F1']) {
+    for (const code of ['KeyA', 'Digit5', 'Numpad0', 'ArrowLeft', 'Space', 'Tab', 'Comma', 'Home', 'F1', 'F10']) {
       expect(isBindableCode(code), code).toBe(true);
     }
   });

@@ -471,16 +471,18 @@ describe('tool panel Escape ladder', () => {
     input.dispose();
   });
 
-  it('toggles the see-through view on its key, which a held key and a modal dialog leave alone', () => {
+  it('toggles the see-through view once per press, keeps a held key from the browser and leaves a modal dialog its own', () => {
     const { input, windowTarget, ran } = mount();
     const revealKey = DEFAULT_KEY_BINDINGS.revealToggle;
     if (revealKey === null) throw new Error('see-through key unbound');
     const typed = key(revealKey);
     Object.defineProperty(typed, 'target', { value: new DialogButton() });
     windowTarget.dispatchEvent(typed);
-    windowTarget.dispatchEvent(Object.assign(key(revealKey), { repeat: true }));
-    expect(ran).toEqual([]);
+    expect(typed.defaultPrevented).toBe(false);
     windowTarget.dispatchEvent(key(revealKey));
+    const held = Object.assign(key(revealKey), { repeat: true });
+    windowTarget.dispatchEvent(held);
+    expect(held.defaultPrevented).toBe(true);
     expect(ran).toEqual(['reveal']);
     input.dispose();
   });

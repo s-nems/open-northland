@@ -45,6 +45,7 @@ interface UpdateInputs {
   readonly wind: WindSway | undefined;
   readonly textureRevision: number;
   readonly fogEpoch: number | undefined;
+  readonly collectOccluders: boolean;
 }
 
 /** A one-shot object still showing its clip, with the tick it ends on. */
@@ -294,7 +295,8 @@ export class MapObjectLayer {
       last.motionTime === motionTime &&
       last.wind === wind &&
       last.textureRevision === textureRevision &&
-      last.fogEpoch === fogEpoch
+      last.fogEpoch === fogEpoch &&
+      last.collectOccluders === collectOccluders
     ) {
       return;
     }
@@ -309,13 +311,16 @@ export class MapObjectLayer {
           wind,
           textureRevision,
           fogEpoch,
+          collectOccluders,
         }
       : null;
     for (const chunk of this.decorChunks.values()) {
       const visible = aabbIntersects(vp, chunk);
       chunk.container.visible = visible;
       chunk.shadowContainer.visible = visible && this.detail.landscapeShadows;
-      if (visible) animateDecorChunk(chunk, vp, tick, fogStateOfCell, fogEpoch);
+      if (!visible) continue;
+      fadeDecorChunk(chunk, this.decorFade);
+      animateDecorChunk(chunk, vp, tick, fogStateOfCell, fogEpoch);
     }
     this.tall.update(
       vp,
@@ -329,12 +334,14 @@ export class MapObjectLayer {
     );
   }
 
-  /** Fade the see-through decor of every chunk to `alpha`, or draw it solid again on `undefined`. A
-   *  change walks the chunks once; a chunk built later takes the fade in force. */
+  /** Fade the see-through decor to `alpha`, or draw it solid again on `undefined`. A change reaches the
+   *  chunks on screen; a chunk built or scrolled in later takes the fade in force. */
   setDecorFade(alpha: number | undefined): void {
     if (alpha === this.decorFade) return;
     this.decorFade = alpha;
-    for (const chunk of this.decorChunks.values()) fadeDecorChunk(chunk, alpha);
+    for (const chunk of this.decorChunks.values()) {
+      if (chunk.container.visible) fadeDecorChunk(chunk, alpha);
+    }
   }
 
   /** The visible tall objects of the last {@link update} as the occlusion ghost scan's static
