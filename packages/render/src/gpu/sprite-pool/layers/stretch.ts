@@ -27,7 +27,13 @@ export function placeStretched(
   const halfW = box.width / 2;
   const halfH = box.height / 2;
   sprite.position.set(box.ox + halfW - (xx * halfW + xy * halfH), box.oy + halfH - (xy * halfW + yy * halfH));
-  // Pixi composes an unrotated sprite's matrix from a scale and a skew per axis.
+  setStretchedScale(sprite, scale, stretch);
+}
+
+/** Stretch `sprite` about its anchor; its `rotation` then turns the stretched shaft as a whole. */
+export function setStretchedScale(sprite: Sprite, scale: number, stretch: LayerStretch): void {
+  const { xx, xy, yy } = stretchMatrix(stretch);
+  // Pixi composes the sprite's matrix from a scale and a skew per axis.
   sprite.scale.set(scale * Math.hypot(xx, xy), scale * Math.hypot(xy, yy));
   sprite.skew.set(Math.atan2(xy, yy), Math.atan2(xy, xx));
 }

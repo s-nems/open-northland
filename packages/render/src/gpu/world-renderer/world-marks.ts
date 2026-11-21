@@ -19,6 +19,7 @@ import {
   CombatEffectsLayer,
   type ConstructionSign,
   ConstructionSignLayer,
+  DeflectionLayer,
   type DoorBadge,
   DraughtGlowLayer,
   type ExperienceStar,
@@ -142,6 +143,8 @@ export class WorldMarks {
   /** A siege shot's stone, shadow, trail and landing smoke; in the depth-sorted sprite layer like the
    *  collapses. */
   private readonly shots: ShotLayer;
+  /** The arrows a shield blocked, glancing off to the ground; in the depth-sorted sprite layer. */
+  private readonly deflections: DeflectionLayer;
   /** Sign chains and garrison flags. Also inside the depth-sorted sprite layer, so a settler walking in
    *  front of a chain occludes it. */
   private readonly badges: BadgeLayer;
@@ -183,6 +186,7 @@ export class WorldMarks {
     this.blood.groundSurfaces = this.effects.groundContainer;
     this.collapses = new CollapseLayer(spriteLayer, textures, sheet, captureDamage, wreckAnchor);
     this.shots = new ShotLayer(spriteLayer, textures, sheet);
+    this.deflections = new DeflectionLayer(spriteLayer, textures, sheet);
     this.familyEffects = new FamilyEffectsLayer(spriteLayer, textures, sheet);
     this.draughtGlows = new DraughtGlowLayer(spriteLayer);
     this.amuletArcs = new AmuletArcLayer(spriteLayer);
@@ -218,6 +222,7 @@ export class WorldMarks {
     this.effects.ingest(events, tick);
     this.collapses.ingest(events, tick);
     this.shots.ingest(events, tick);
+    this.deflections.ingest(events, tick, snapshot);
     this.familyEffects.ingest(events, tick);
     this.draughtGlows.ingest(events, tick);
   }
@@ -327,6 +332,7 @@ export class WorldMarks {
     this.blood.draw(frame);
     this.collapses.draw(elevation, viewport, renderTime);
     this.shots.draw({ snapshot: frame.snapshot, drawn, elevation, viewport, renderTime });
+    this.deflections.draw(frame);
     const detail = frame.detail;
     this.badges.draw(frame.doorBadges, elevation, viewport, renderTime, detail.buildingSigns);
     this.familyEffects.draw(frame);
@@ -399,6 +405,7 @@ export class WorldMarks {
     this.blood.destroy();
     this.collapses.destroy();
     this.shots.destroy();
+    this.deflections.destroy();
     this.badges.destroy();
     this.familyEffects.destroy();
     this.draughtGlows.destroy();

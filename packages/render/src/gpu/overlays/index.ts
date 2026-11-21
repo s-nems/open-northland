@@ -26,6 +26,7 @@ export {
   SIGN_STEP,
   signRowAt,
 } from './building-signs/sign-gfx.js';
+export { type DeflectionFrame, DeflectionLayer } from './deflection-layer.js';
 export { DraughtGlowLayer } from './draught-glow-layer.js';
 export { CombatEffectsLayer } from './effects-layer.js';
 export {
