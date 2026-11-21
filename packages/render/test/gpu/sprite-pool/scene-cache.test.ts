@@ -66,6 +66,19 @@ describe('SpritePool - scene build reuse across identical frames', () => {
     lookups.mockRestore();
   });
 
+  it('hands the walker overlays one list while the build is reused, and a new list after a rebuild', () => {
+    const pool = new SpritePool(new Container(), new TextureCache(), undefined);
+    pool.reconcile(frameFor(WORLD));
+    const walkers = pool.walkersDrawn();
+    expect(walkers.map((walker) => walker.ref)).toEqual([2]);
+    pool.reconcile(frameFor(WORLD, { alpha: 0.5 }));
+    expect(pool.walkersDrawn()).toBe(walkers);
+    pool.reconcile(frameFor(WORLD, { viewport: { ...BOX, maxX: 500 } }));
+    expect(pool.walkersDrawn()).not.toBe(walkers);
+    // The old list is never refilled in place, so a reader keyed on it reads its walkers again.
+    expect(walkers.map((walker) => walker.ref)).toEqual([2]);
+  });
+
   it('keys the fog cull on the epoch, and never caches a fog cull that carries no epoch', () => {
     const pool = new SpritePool(new Container(), new TextureCache(), undefined);
     const seeAll = () => true;

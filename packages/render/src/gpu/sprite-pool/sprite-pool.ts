@@ -475,7 +475,8 @@ export class SpritePool {
     if (damageable && pe.attached && item !== undefined) this.applySelection(pe, item, frame, false);
   }
   private readonly ships: ShipAfloat[] = [];
-  private readonly walkers: DrawnWalker[] = [];
+  /** A new list per draw-list change, never refilled in place, so an overlay may key on its identity. */
+  private walkers: DrawnWalker[] = [];
   /** Scratch {@link keelOf} answers in, valid until the next call. */
   private readonly keelScratch: number[] = [];
   private readonly portrait: PortraitSubject;
@@ -1072,7 +1073,7 @@ export class SpritePool {
     this.damaged.length = 0;
     this.damagedShips.length = 0;
     this.ships.length = 0;
-    this.walkers.length = 0;
+    this.walkers = [];
     this.chimneyHouses.length = 0;
     const vehicles = this.sheet?.bindings.vehicle;
     const houses = this.sheet?.bindings.building;
@@ -1304,8 +1305,8 @@ export class SpritePool {
     return this.ships;
   }
 
-  /** This frame's drawn humans on the map ground, valid until the next {@link reconcile}; off the culled
-   *  draw list like {@link shipsAfloat}. */
+  /** This frame's drawn humans on the map ground, off the culled draw list like {@link shipsAfloat}; the
+   *  same list while the draw list holds. */
   walkersDrawn(): readonly DrawnWalker[] {
     return this.walkers;
   }

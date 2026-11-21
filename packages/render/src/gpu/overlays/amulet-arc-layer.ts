@@ -14,6 +14,7 @@ import { readEquipmentMisc } from '../../data/scene/snapshot-readers/index.js';
 import type { DrawnGeometry, DrawnWalker } from '../sprite-pool/index.js';
 import { worldBatched } from '../world-batch/batcher.js';
 import { retireUndrawn } from './retained-pool.js';
+import { WalkerHits } from './walker-hits.js';
 
 /** A wearer's arcs are a bit set of colours, so the strip holds at most this many. */
 const MAX_ARC_COLOURS = 30;
@@ -55,6 +56,12 @@ export class AmuletArcLayer {
   private readonly nodes = new Map<number, ArcNode>();
   private readonly seen = new Set<number>();
   private readonly dot: ArcDot = { x: 0, y: 0, scale: 1, alpha: 1, front: true };
+  /** Each drawn wearer's colours, a bit each. */
+  private readonly wearers = new WalkerHits((snapshot, ref) => {
+    const colourOfGood = this.colourOfGood;
+    const worn = colourOfGood === undefined ? 0 : coloursWorn(snapshot, ref, colourOfGood);
+    return worn === 0 ? undefined : worn;
+  });
 
   constructor(private readonly spriteLayer: Container) {}
 
@@ -63,6 +70,7 @@ export class AmuletArcLayer {
     this.retireAll();
     this.dropTextures();
     this.colourOfGood = undefined;
+    this.wearers.forget();
     if (colourOfGood === null || colourOfGood.size === 0) return;
     const colours: number[] = [];
     const indexOfGood = new Map<number, number>();
@@ -88,12 +96,8 @@ export class AmuletArcLayer {
 
   draw(frame: AmuletArcFrame): void {
     this.seen.clear();
-    const colourOfGood = this.colourOfGood;
-    if (colourOfGood !== undefined) {
-      for (const walker of frame.walkers) {
-        const ref = walker.ref;
-        const worn = coloursWorn(frame.snapshot, ref, colourOfGood);
-        if (worn === 0) continue;
+    if (this.colourOfGood !== undefined) {
+      for (const { ref, value: worn } of this.wearers.of(frame.snapshot, frame.walkers)) {
         const feet = frame.drawn.anchorOf(ref);
         const depth = frame.drawn.depthOf?.(ref);
         if (feet === undefined || depth === undefined) continue;

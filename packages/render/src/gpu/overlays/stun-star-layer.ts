@@ -15,6 +15,7 @@ import { readsStun } from '../../data/scene/snapshot-readers/index.js';
 import type { DrawnGeometry, DrawnWalker } from '../sprite-pool/index.js';
 import { worldBatched } from '../world-batch/batcher.js';
 import { retireUndrawn } from './retained-pool.js';
+import { WalkerHits } from './walker-hits.js';
 
 /** The height of a body whose drawn bounds are not known this frame, world px. */
 const FALLBACK_BODY_HEIGHT = 34;
@@ -40,15 +41,16 @@ export class StunStarLayer {
   private readonly nodes = new Map<number, Sprite[]>();
   private readonly seen = new Set<number>();
   private readonly star: StunStar = { x: 0, y: 0, scale: 1, rotation: 0, front: true };
+  private readonly stunned = new WalkerHits((snapshot, ref) => {
+    const components = entityById(snapshot, ref)?.components;
+    return components !== undefined && readsStun(components) ? true : undefined;
+  });
 
   constructor(private readonly spriteLayer: Container) {}
 
   draw(frame: StunStarFrame): void {
     this.seen.clear();
-    for (const walker of frame.walkers) {
-      const ref = walker.ref;
-      const components = entityById(frame.snapshot, ref)?.components;
-      if (components === undefined || !readsStun(components)) continue;
+    for (const { ref } of this.stunned.of(frame.snapshot, frame.walkers)) {
       const feet = frame.drawn.anchorOf(ref);
       const depth = frame.drawn.depthOf?.(ref);
       if (feet === undefined || depth === undefined) continue;
