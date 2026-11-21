@@ -1,6 +1,7 @@
 import type { MusicStanding } from '@open-northland/audio';
 import type { SessionDriver } from '@open-northland/lockstep';
 import {
+  type BerthMark,
   cameraViewport,
   type DrawItem,
   type HudModel,
@@ -38,6 +39,7 @@ import { createForeignFlags } from '../foreign-flags.js';
 import type { GameToolPanelHandle } from '../game-tool-panel.js';
 import { createFellingPresenter } from '../map-objects/felling-presenter.js';
 import type { SignpostMapOverlay } from '../map-overlays/signposts.js';
+import type { Tile } from '../picking.js';
 import { placementCursor } from '../placement/cursor.js';
 import type { GhostPlotAt } from '../placement/ghost-plot.js';
 import type {
@@ -361,6 +363,20 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
   };
   const dockOverlay = (vehicle: number) =>
     dockOverlayFrame(vehicle, cameraCtl.camera(), app.screen.width, app.screen.height);
+  // The pointer as the running frame read it, for the placement probes bound once below.
+  let pointer: { clientX: number; clientY: number } | null = null;
+  // A pointer over the HUD aims no dock click.
+  const berthsAt = (tile: Tile): readonly BerthMark[] =>
+    pointer !== null && controls.claimsPointer(pointer.clientX, pointer.clientY)
+      ? []
+      : controls.berthPreview(tile).map((berth) => ({ col: berth.col, row: berth.row, hull: berth.dock }));
+  const tileAt = (): Tile | null =>
+    pointer === null ? null : toolPanel.clientToTile(pointer.clientX, pointer.clientY);
+  const palisadePreview = (tile: Tile) => toolPanel.controller.palisadePreview(tile);
+  const roadPreview = (tile: Tile) => toolPanel.controller.roadPreview(tile);
+  const gatePreview = (tile: Tile) => toolPanel.controller.gatePreview(tile);
+  const shipWaterProbe = shipWaterWarnAt === undefined ? {} : { shipWaterAt: shipWaterWarnAt };
+  const blessingProbe = blessingRangeFor === undefined ? {} : { blessingRangeFor };
   // A frame may advance several ticks; `steps` is read back after the driver returns.
   let steps = 0;
   const collect = (): void => {
@@ -380,7 +396,7 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
     stage = 'viewport';
     if (loop.suspended?.() === true && !deps.sharedClock) driver.setPaused(true);
     syncViewport(nowMs);
-    const pointer = pointerAt();
+    pointer = pointerAt();
     const elapsed = nowMs - lastMs;
     lastMs = nowMs;
     // Times our CPU work only, so the overlay can split the frame into CPU vs GPU/compositor.
@@ -441,28 +457,22 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
       roadActive: toolPanel.controller.roadActive(),
       signpostActive: controls.signpostPlacementActive(),
       dockVehicle: controls.dockPickVehicle(),
-      // A pointer over the HUD aims no dock click.
-      berthsAt: (tile) =>
-        pointer !== null && controls.claimsPointer(pointer.clientX, pointer.clientY)
-          ? []
-          : controls
-              .berthPreview(tile)
-              .map((berth) => ({ col: berth.col, row: berth.row, hull: berth.dock })),
+      berthsAt,
       flagActive: controls.workFlagPlacementActive(),
       buildingOverlay,
       signpostOverlay,
       dockOverlay,
-      tileAt: () => (pointer === null ? null : toolPanel.clientToTile(pointer.clientX, pointer.clientY)),
+      tileAt,
       canPlaceAt,
       plotAt: ghostPlotAt,
       exploredNode: fogGates.exploredNode,
-      ...(shipWaterWarnAt === undefined ? {} : { shipWaterAt: shipWaterWarnAt }),
+      ...shipWaterProbe,
       defenceRangeAt,
-      ...(blessingRangeFor === undefined ? {} : { blessingRangeFor }),
+      ...blessingProbe,
       canPlaceSignpostAt,
-      palisadePreview: (tile) => toolPanel.controller.palisadePreview(tile),
-      roadPreview: (tile) => toolPanel.controller.roadPreview(tile),
-      gatePreview: (tile) => toolPanel.controller.gatePreview(tile),
+      palisadePreview,
+      roadPreview,
+      gatePreview,
       anchored: toolPanel.controller.activeLine() !== null,
       palisadeWash,
       localPlayer,
