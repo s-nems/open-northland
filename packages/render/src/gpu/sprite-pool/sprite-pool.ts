@@ -549,9 +549,8 @@ export class SpritePool {
     this.selectionEffects = new SelectionEffects(textures);
     this.occlusionGhosts = new OcclusionGhosts(
       textures,
-      // A paletted body reads its own LUT row's team step, so the ring shows the colour the unit
-      // itself wears; no palette draws every ring in the fallback tint.
-      sheet?.palette !== undefined ? ghostTintOf(sheet.palette) : undefined,
+      // No palette draws every ghost in the fallback tint.
+      sheet?.palette !== undefined ? ghostTintOf(sheet.palette.book) : undefined,
     );
     this.frameOf = (pe) => this.currentFrameOf(pe);
     this.portrait = new PortraitSubject(spriteLayer);

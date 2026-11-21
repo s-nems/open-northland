@@ -1,11 +1,10 @@
 import { Container, Matrix, type Sprite } from 'pixi.js';
 import { GLOW_PALETTE_INDEX } from '../../data/palettes/glow-colour.js';
-import { createHumanPaletteColours } from '../../data/palettes/human-palettes.js';
+import { createHumanPaletteColours, type HumanPaletteBook } from '../../data/palettes/human-palettes.js';
 import type { SpriteDrawItem } from '../../data/scene/index.js';
 import { PalettedSprite } from '../paletted-sprite/index.js';
 import { isShadowTexture } from '../pixel-art/registry.js';
 import { GhostOutlineSprite, SelectionGraphics, SelectionSprite } from '../selection/sprite-effect.js';
-import type { HumanPaletteLut } from '../textures/human-palette-lut.js';
 import type { TextureCache } from '../textures/texture-cache.js';
 import { worldBatched } from '../world-batch/batcher.js';
 import { SELECTION_COVER, SELECTION_STAMP } from '../world-batch/shader.js';
@@ -16,7 +15,7 @@ import { frameTransform, placeOutline } from './selection-effects.js';
 
 /**
  * Occlusion ghosts: the part of a settler a standing sprite hides shows over that sprite as a fill, a
- * ring or both ({@link GhostMarks}), tinted with the team colour its body wears; the part in plain view
+ * ring or both ({@link GhostMarks}), tinted with its owner's team colour; the part in plain view
  * stays unmarked. The see-through view fades every occluder on the screen to
  * {@link OCCLUDER_FADE_ALPHA} instead, with or without the marks.
  *
@@ -74,17 +73,22 @@ export const GHOST_OUTLINE_RADIUS = 2;
 const RGB = 3;
 
 /**
- * The tint a ghost takes, per pooled entity: a body bound through the human LUT reads step
- * {@link GLOW_PALETTE_INDEX} of the row it draws through, so the ghost shows the colour the unit itself
- * wears. A look baked on a plain atlas draws no team band, so its ghost composes the owner's team
- * palette instead. No darkness lift, unlike the hero glow.
+ * The tint a ghost takes, per pooled entity: step {@link GLOW_PALETTE_INDEX} of its owner's plain team
+ * palette, the step a hero's glow reads. The body's own palette is no source: a woman's dress, a
+ * soldier's armor or a hero's recipe repaint that step there. No darkness lift, unlike the hero glow.
  */
-export function ghostTintOf(lut: HumanPaletteLut): (pe: PooledEntity) => number {
+export function ghostTintOf(book: HumanPaletteBook): (pe: PooledEntity) => number {
   const scratch = createHumanPaletteColours();
+  const tintByPlayer = new Map<number, number>();
   return (pe) => {
-    if (pe.paletted && pe.palette === lut) return lut.teamColourAt(pe.lutRow);
-    lut.book.composeTeam(pe.bound.item?.player ?? 0, scratch);
-    return teamTint(scratch.body);
+    const player = pe.bound.item?.player ?? 0;
+    let tint = tintByPlayer.get(player);
+    if (tint === undefined) {
+      book.composeTeam(player, scratch);
+      tint = teamTint(scratch.body);
+      tintByPlayer.set(player, tint);
+    }
+    return tint;
   };
 }
 
@@ -620,8 +624,7 @@ export class OcclusionGhosts {
     const reach = GHOST_OUTLINE_RADIUS / zoom;
     const { fill, ring } = marks;
     const fillAlpha = ring ? GHOST_UNDER_RING_FILL_ALPHA : GHOST_FILL_ALPHA;
-    // The ghost reads the colour the entity draws with; an owner change rebinds the body, which lays
-    // the quads again.
+    // The ghost takes its owner's colour; an owner change rebinds the body, which lays the quads again.
     const tint = this.tintOf?.(pe) ?? GHOST_TINT;
     let fills = 0;
     let rings = 0;

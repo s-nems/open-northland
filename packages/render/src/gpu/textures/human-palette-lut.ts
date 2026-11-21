@@ -6,7 +6,7 @@ import {
   type GlTexture,
   type TextureSource,
 } from 'pixi.js';
-import { GLOW_PALETTE_INDEX, liftDarkGlowColour } from '../../data/palettes/glow-colour.js';
+import { liftDarkGlowColour } from '../../data/palettes/glow-colour.js';
 import {
   type CharacterPalette,
   copyHumanPaletteIdentity,
@@ -333,15 +333,6 @@ export class HumanPaletteLut implements PaletteLut {
       this.writeSlot(slot);
     }
     return slot * ROWS_PER_HUMAN;
-  }
-
-  /** The team colour the body palette of `row` wears: the step {@link GLOW_PALETTE_INDEX} (the step the
-   *  hero glow reads) as the composed bytes the row draws its human through. A ghost ring reads it to
-   *  tint with the exact colour the unit itself shows, its sex and palette rolls included. */
-  teamColourAt(row: number): number {
-    const at = row * ROW_BYTES + GLOW_PALETTE_INDEX * RGBA;
-    const bytes = this.buffer;
-    return ((bytes[at] ?? 0) << 16) | ((bytes[at + 1] ?? 0) << 8) | (bytes[at + 2] ?? 0);
   }
 
   /** Upload what changed since the last flush; call once the frame's rows are all asked for. */

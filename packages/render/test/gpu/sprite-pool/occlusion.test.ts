@@ -132,28 +132,10 @@ function sheetWithTeamPalette(
   };
 }
 
-/** The team-palette sheet whose character is baked on a plain atlas: its settler draws no team band. */
-function sheetWithBakedSettler(male: readonly [number, number, number]): SpriteSheet {
-  const source = new TextureSource({ width: 8, height: 8, scaleMode: 'nearest' });
-  const atlas = {
-    width: 8,
-    height: 8,
-    frames: new Map([[1, { x: 0, y: 0, width: 8, height: 8, offsetX: 0, offsetY: 0 }]]),
-  };
-  const character = { body: { source, atlas }, binding: { idle: 1 }, indexed: false };
-  return {
-    source,
-    atlas,
-    bindings: { settler: 1, building: 1, resource: 1 },
-    characters: { byJob: {}, default: character },
-    palette: teamPaletteLut(male),
-  };
-}
-
 /** A settler of `player`: a ghost ring reads its tint off the owner slot. */
 const ownedSettler = (id: number, col: number, row: number, player: number): ReturnType<typeof entity> =>
   entity(id, col, row, { Settler: { tribe: 0 }, Owner: { player } });
-/** A woman of player 0: her body wears the women's team recipe, so her ring must match it. */
+/** A woman of player 0: her body wears the women's recipe, which paints the team step its own colour. */
 const womanSettler = (id: number, col: number, row: number): ReturnType<typeof entity> =>
   entity(id, col, row, { Settler: { tribe: 0 }, Owner: { player: 0 }, Female: { female: true } });
 
@@ -459,7 +441,7 @@ describe('SpritePool - a unit a standing sprite hides shows as an occlusion ghos
     pool.destroy();
   });
 
-  it('tints the ring of a ghosted settler with the colour its body wears', () => {
+  it("tints the ring of a ghosted settler with its owner's team colour", () => {
     const layer = new Container();
     const pool = new SpritePool(layer, new TextureCache(), sheetWithTeamPalette([0, 255, 0]));
     pool.reconcile({ ...frame(snapshotOf([ownedSettler(1, 0, 0, 0), house(2, 0, 0.1)])), tick: 1 });
@@ -479,27 +461,17 @@ describe('SpritePool - a unit a standing sprite hides shows as an occlusion ghos
     pool.destroy();
   });
 
-  it("tints a woman's ring with the women's recipe she wears", () => {
+  it("tints a woman's ring with her owner's team colour, not the colour her recipe paints there", () => {
     const layer = new Container();
     const pool = new SpritePool(layer, new TextureCache(), sheetWithTeamPalette([0, 255, 0], [255, 0, 0]));
     pool.reconcile({ ...frame(snapshotOf([womanSettler(1, 0, 0), house(2, 0, 0.1)])), tick: 1 });
-    const stamp = pool.occlusionGhosts.marks.children[0];
-    expect(stamp?.children.length).toBeGreaterThan(0);
-    for (const child of stamp?.children ?? []) expect(child.tint).toBe(0xff0000);
-    pool.destroy();
-  });
-
-  it('composes the owner colour for a settler whose look is baked on a plain atlas', () => {
-    const layer = new Container();
-    const pool = new SpritePool(layer, new TextureCache(), sheetWithBakedSettler([0, 255, 0]));
-    pool.reconcile({ ...frame(snapshotOf([ownedSettler(1, 0, 0, 0), house(2, 0, 0.1)])), tick: 1 });
     const stamp = pool.occlusionGhosts.marks.children[0];
     expect(stamp?.children.length).toBeGreaterThan(0);
     for (const child of stamp?.children ?? []) expect(child.tint).toBe(0x00ff00);
     pool.destroy();
   });
 
-  it('falls back to the team step of a player the book lacks, the grey its body draws', () => {
+  it("falls back to the grey base's team step for a player the book lacks", () => {
     const layer = new Container();
     const pool = new SpritePool(layer, new TextureCache(), sheetWithTeamPalette([0, 255, 0]));
     pool.reconcile({ ...frame(snapshotOf([ownedSettler(1, 0, 0, 1), house(2, 0, 0.1)])), tick: 1 });
