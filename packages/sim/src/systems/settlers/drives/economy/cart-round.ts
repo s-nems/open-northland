@@ -156,8 +156,18 @@ function storeCartPickup(
   const home = world.tryGet(plan.entity, JobAssignment)?.workplace;
   if (home === undefined) return null;
   const homeBound = homeBoundGoodProbe(plan);
-  const roomAtHome = (goodType: number): number =>
-    mixes(goodType) && homeBound(goodType) ? roomAtHomeFor(plan, home, goodType) : 0;
+  // Asked of every pile in reach, so kept per good. The shelf's room is read before the routing that
+  // tells whether the good is the store's to take: a full shelf answers without it.
+  const roomByGood = new Map<number, number>();
+  const roomAtHome = (goodType: number): number => {
+    let room = roomByGood.get(goodType);
+    if (room === undefined) {
+      room = mixes(goodType) ? Math.max(0, roomAtHomeFor(plan, home, goodType)) : 0;
+      if (room > 0 && !homeBound(goodType)) room = 0;
+      roomByGood.set(goodType, room);
+    }
+    return room;
+  };
   const wanted = (goodType: number): boolean => roomAtHome(goodType) > 0;
   const pickup = (from: Entity, goodType: number): CartPickup => ({
     from,
