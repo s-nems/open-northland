@@ -3,10 +3,12 @@ import { foodSourcesOf } from '../systems/family/food-sources.js';
 import { qualitySources } from '../systems/family/quality-search.js';
 import { workFlagPlacementBlocks } from '../systems/footprint/index.js';
 import { placementBlockerGrid } from '../systems/footprint/placement/blocker-grid.js';
+import { vehicleClearance } from '../systems/footprint/vehicle-clearance.js';
 import { unitWalkBlocks } from '../systems/movement/collision/standing-posts.js';
 import { constructionSiteCells } from '../systems/settlers/targets/construction-site-cells.js';
 import { cropsByFarm } from '../systems/settlers/targets/crops-by-farm.js';
 import { harvesterMarks } from '../systems/settlers/targets/harvester-marks.js';
+import { mealCells } from '../systems/settlers/targets/meal-cells.js';
 import { stockpileCells } from '../systems/settlers/targets/stockpile-cells.js';
 import { FetchableStock } from '../systems/settlers/targets/stores/fetchable-stock.js';
 import { StoreSinks } from '../systems/settlers/targets/stores/sinks.js';
@@ -41,6 +43,9 @@ export function warmWorldIndexes(sim: Simulation): void {
   yardOccupancy(world, terrain);
   stockpileCells(world, content, terrain);
   constructionSiteCells(world, content, terrain);
+  mealCells(world, content, terrain);
+  // The first vehicle site a yard worker looks for reads the free-size classes of the whole map.
+  vehicleClearance(world, ctx, terrain);
   // The first building placed after a load reads both blocker sets, each a stamp of every blocker.
   placementBlockerGrid(world, content, terrain);
   workFlagPlacementBlocks(world, content, terrain);
