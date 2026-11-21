@@ -15,6 +15,9 @@ import { renderMasked } from '../lighting/night-mask.js';
 import { PIXEL_ART_MAGNIFY_GLSL } from '../pixel-art/magnify.js';
 import { type GlslProgramSource, glProgramFor } from '../shaders/program-source.js';
 
+/** How the quad reads the frame, as `uUpscale.x`. */
+const PRESENT_MODE = { sharp: 0, xbr: 1, direct: 2 } as const;
+
 const VERTEX = `#version 300 es
 in vec2 aPosition;
 out vec2 vUV;
@@ -37,8 +40,10 @@ uniform sampler2D uLight;
 // The night's lit mask in red, texel for texel with the frame (see lighting/night-mask.ts), filtered
 // linearly so a magnified edge blends about as the frame's does.
 uniform sampler2D uMask;
-// x: 0 sharp, 1 xBR; y: world texels per device pixel.
+// x: a PRESENT_MODE; y: world texels per device pixel.
 uniform vec2 uUpscale;
+const float PRESENT_XBR = ${PRESENT_MODE.xbr}.0;
+const float PRESENT_DIRECT = ${PRESENT_MODE.direct}.0;
 // rgb: what a lit texel multiplies by; a: 1 while the night composite is on.
 uniform vec4 uLit;
 #define MAGNIFY_FETCH(px) texelFetch(uFrame, clamp(px, ivec2(0), textureSize(uFrame, 0) - 1), 0)
@@ -46,7 +51,14 @@ ${PIXEL_ART_MAGNIFY_GLSL}
 void main(void) {
   // The frame is drawn as the canvas is, screen top in its last row.
   vec2 p = vec2(vUV.x, 1.0 - vUV.y) * vec2(textureSize(uFrame, 0));
-  vec4 world = uUpscale.x > 0.5 ? magnifyXbr(p, uUpscale.y) : magnifySharp(p, uUpscale.y);
+  vec4 world;
+  if (uUpscale.x == PRESENT_DIRECT) {
+    world = MAGNIFY_FETCH(ivec2(floor(p)));
+  } else if (uUpscale.x == PRESENT_XBR) {
+    world = magnifyXbr(p, uUpscale.y);
+  } else {
+    world = magnifySharp(p, uUpscale.y);
+  }
   if (uLit.a < 0.5) {
     finalColor = world;
     return;
@@ -118,12 +130,12 @@ export class OffscreenWorld {
     private readonly scene: Container,
     private readonly world: Container,
     private readonly lit: Container,
-    filter: 'sharp' | 'xbr',
+    private readonly filter: 'sharp' | 'xbr',
     private readonly resolution: number,
   ) {
     this.uniforms = new UniformGroup({
       uScreen: { value: new Float32Array(2), type: 'vec2<f32>' },
-      uUpscale: { value: new Float32Array([filter === 'xbr' ? 1 : 0, 1]), type: 'vec2<f32>' },
+      uUpscale: { value: new Float32Array([PRESENT_MODE[filter], 1]), type: 'vec2<f32>' },
       uLit: { value: new Float32Array(4), type: 'vec4<f32>' },
     }) as FrameUniforms;
     this.shader = new Shader({
@@ -165,6 +177,7 @@ export class OffscreenWorld {
       const u = this.uniforms.uniforms;
       u.uScreen[0] = width;
       u.uScreen[1] = height;
+      u.uUpscale[0] = this.presentMode(frame, width, height);
       u.uUpscale[1] = resolution / renderer.resolution;
       if (night === null) {
         u.uLit[3] = 0;
@@ -178,6 +191,19 @@ export class OffscreenWorld {
       this.uniforms.update();
     }
     this.app.render();
+  }
+
+  /** A frame that matches the canvas texel for pixel is read with one fetch: the sharp magnifier's
+   *  weights there are 0 and 1. xBR softens edges even at that size, so it keeps its own path. */
+  private presentMode(frame: RenderTexture, width: number, height: number): number {
+    if (this.filter !== 'sharp') return PRESENT_MODE[this.filter];
+    const canvas = this.app.renderer.resolution;
+    // The frame's texture drops a fractional texel that a canvas at the same resolution rounds.
+    const matches = (texels: number, size: number): boolean =>
+      Math.floor(texels) === Math.round(size * canvas);
+    return matches(frame.source.pixelWidth, width) && matches(frame.source.pixelHeight, height)
+      ? PRESENT_MODE.direct
+      : PRESENT_MODE.sharp;
   }
 
   /** Draw the world with its lit mask, then what `scene` draws over it (the weather, the scene light's

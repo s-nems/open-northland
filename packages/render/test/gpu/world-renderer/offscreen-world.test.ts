@@ -50,8 +50,29 @@ const texelsPerPixel = (upscale: OffscreenWorld): number | undefined =>
   (upscale as unknown as { uniforms: { uniforms: { uUpscale: Float32Array } } }).uniforms.uniforms
     .uUpscale[1];
 
+/** How the quad reads the frame: 0 sharp, 1 xBR, 2 one fetch. */
+const presentMode = (upscale: OffscreenWorld): number | undefined =>
+  (upscale as unknown as { uniforms: { uniforms: { uUpscale: Float32Array } } }).uniforms.uniforms
+    .uUpscale[0];
+const NIGHT = { light: Texture.WHITE, lit: [1, 1, 1] } as const;
+
 describe('OffscreenWorld', () => {
   useHeadlessShaderContext();
+
+  it('reads a frame the size of the canvas with one fetch, except through xBR', () => {
+    const modeOf = (filter: 'sharp' | 'xbr', canvas: number, world: number): number | undefined => {
+      const { app, scene, world: worldLayer, lit } = stubApp(canvas);
+      const frame = new OffscreenWorld(app, scene, worldLayer, lit, filter, world);
+      frame.render(NIGHT);
+      const mode = presentMode(frame);
+      frame.destroy();
+      return mode;
+    };
+    expect(modeOf('sharp', 1, Number.POSITIVE_INFINITY)).toBe(2);
+    expect(modeOf('sharp', 2, 1)).toBe(0);
+    expect(modeOf('xbr', 1, Number.POSITIVE_INFINITY)).toBe(1);
+    expect(modeOf('xbr', 2, 1)).toBe(1);
+  });
 
   it('draws the scene into one kept frame while the canvas is denser, the stage over its quad', () => {
     const { app, stage, scene, world, lit, hud, targets } = stubApp(2);
