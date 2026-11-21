@@ -107,16 +107,28 @@ export interface CarriedCombatEffects {
   readonly damageTakenPct: number | undefined;
 }
 
+/** What a bearer of no live fight item carries, shared by every such answer. */
+const NO_COMBAT_EFFECTS: CarriedCombatEffects = {
+  damageDealtPct: undefined,
+  criticalHit: undefined,
+  damageTakenPct: undefined,
+};
+
 export function carriedCombatEffects(world: World, content: ContentSet, e: Entity): CarriedCombatEffects {
+  const misc = world.tryGet(e, Equipment)?.misc;
+  if (misc === undefined) return NO_COMBAT_EFFECTS;
   let damageDealtPct: number | undefined;
   let criticalHit: EquipClass['criticalHit'];
   let damageTakenPct: number | undefined;
-  for (const held of world.tryGet(e, Equipment)?.misc ?? []) {
-    const equip = liveEquipOf(content, held);
+  for (let i = 0; i < misc.length; i++) {
+    const equip = liveEquipOf(content, misc[i]);
     if (equip === undefined) continue;
     damageDealtPct ??= equip.damageDealtPct;
     criticalHit ??= equip.criticalHit;
     damageTakenPct ??= equip.damageTakenPct;
+  }
+  if (damageDealtPct === undefined && criticalHit === undefined && damageTakenPct === undefined) {
+    return NO_COMBAT_EFFECTS;
   }
   return { damageDealtPct, criticalHit, damageTakenPct };
 }
