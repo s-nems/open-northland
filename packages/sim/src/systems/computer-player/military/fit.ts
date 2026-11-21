@@ -45,8 +45,13 @@ export function armourWaiters(world: World, ctx: SystemContext, player: number):
   if (first < 0) return NO_ARMOUR_WAIT;
   const stock = seatArmsStock(world, ctx, player);
   if (stock === null) return NO_ARMOUR_WAIT;
+  // At most the men from `first` on can wait, so the pieces are counted only that far.
+  const most = fighters.length - first;
+  const goods = armorGoodsByProtection(ctx.content);
   let pieces = 0;
-  for (const good of armorGoodsByProtection(ctx.content)) pieces += stock.units(good);
+  for (let i = 0; i < goods.length && pieces < most; i++) {
+    pieces += stock.unitsUpTo(goods[i] as number, most - pieces);
+  }
   if (pieces <= 0) return NO_ARMOUR_WAIT;
   const waiting = new Set<Entity>();
   for (let i = first; i < fighters.length && waiting.size < pieces; i++) {

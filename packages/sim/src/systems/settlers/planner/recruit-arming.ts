@@ -242,6 +242,9 @@ export interface ReachableStock {
   holds(good: number): boolean;
   /** The units of `good` the stores lend, each store's storage minimum held back. */
   units(good: number): number;
+  /** {@link units}, counted only until it reaches `enough`: the full count when below it, else at least
+   *  `enough`. */
+  unitsUpTo(good: number, enough: number): number;
 }
 
 /**
@@ -295,6 +298,18 @@ export function reachableStock(
         if (lends(store, good)) units += unclaimedStockOf(world, ctx, undefined, store, good);
       }
       unitsByGood.set(good, units);
+      return units;
+    },
+    unitsUpTo: (good, enough) => {
+      const known = unitsByGood.get(good);
+      if (known !== undefined) return known;
+      // Each store lends a count of at least zero, so the sum only grows: once at `enough` it stays there.
+      let units = 0;
+      for (const store of ledger.holders(good)) {
+        if (units >= enough) break;
+        if (lends(store, good)) units += unclaimedStockOf(world, ctx, undefined, store, good);
+      }
+      if (units < enough) unitsByGood.set(good, units);
       return units;
     },
   };

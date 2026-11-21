@@ -77,7 +77,7 @@ export type ReachableStockUnits = Pick<ReachableStock, 'units'>;
  * door lend ({@link reachableStock}), the reach its draft judges its classes from; null without a barracks
  * or a map. Errands reach only stores inside the barracks door's signpost network.
  */
-export function seatArmsStock(world: World, ctx: SystemContext, player: number): ReachableStockUnits | null {
+export function seatArmsStock(world: World, ctx: SystemContext, player: number): ReachableStock | null {
   const terrain = ctx.terrain;
   const barracks = seatBarracksOf(world, ctx, player);
   if (terrain === undefined || barracks === null) return null;
