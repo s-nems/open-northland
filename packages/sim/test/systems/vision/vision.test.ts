@@ -909,6 +909,42 @@ describe('first contact - the vision-driven discovery of other players', () => {
     expect(sim.hasMetPlayer(P0, P1)).toBe(true);
   });
 
+  /** A P1 civilian back at (30,2) after standing at (5,2), ground a P0 scout then explored and left for
+   *  (50,2): every mask byte either will stamp again is already set, and P0 has not met P1. */
+  function settledStrangers(): { sim: Simulation; civ: Entity } {
+    const sim = simOn(FOG_MODE.CLASSIC, 60, 8);
+    const civ = unit(sim, 5, 2, P1);
+    const scout = unit(sim, 50, 2, P0, { jobType: SCOUT_JOB });
+    sim.run(1);
+    teleport(sim, civ, 30, 2);
+    sim.run(VISION_CADENCE_TICKS);
+    teleport(sim, scout, 5, 2);
+    sim.run(VISION_CADENCE_TICKS);
+    teleport(sim, scout, 50, 2);
+    sim.run(2 * VISION_CADENCE_TICKS);
+    return { sim, civ };
+  }
+
+  it('CLASSIC: a rebuild that moves no mask byte still meets a unit that walked onto explored ground', () => {
+    const { sim, civ } = settledStrangers();
+    const generation = sim.fog?.generation;
+    expect(sim.hasMetPlayer(P0, P1)).toBe(false);
+    teleport(sim, civ, 5, 2);
+    sim.run(VISION_CADENCE_TICKS);
+    expect(sim.fog?.generation).toBe(generation);
+    expect(sim.hasMetPlayer(P0, P1)).toBe(true);
+    expect(sim.world.verifyCaches()).toEqual([]);
+  });
+
+  it('the cache verifier reports an unmet unit on explored ground that no feed reported', () => {
+    const { sim, civ } = settledStrangers();
+    // A write past `mut`, which no feed hears: the bug the verifier exists for.
+    Reflect.set(sim.world.get(civ, Position), 'x', fx.fromInt(5));
+    expect(sim.world.verifyCaches()).toContain(
+      `fog: entity ${civ} of ${P1} stands unmet on ground ${P0} explored`,
+    );
+  });
+
   it('meets no owner through a road site, even one in plain sight', () => {
     const sim = simOn(FOG_MODE.RECON_FOG_OF_WAR);
     unit(sim, SCOUT_AT.x, SCOUT_AT.y, P0, { jobType: SCOUT_JOB });

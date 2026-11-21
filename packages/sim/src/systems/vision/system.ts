@@ -35,6 +35,7 @@ import { heldMoverNode } from '../spatial/node-moves.js';
 import { alliedVisionGroups } from './allies.js';
 import { eyeChangesOf } from './eye-changes.js';
 import { cellOfNode } from './gates.js';
+import { SettledContacts, type ViewerBits } from './settled-contacts.js';
 import { FOG_STATE, type FogState } from './state.js';
 
 /**
@@ -107,13 +108,6 @@ const EYE_KINDS: readonly Component<unknown>[] = [Settler, Building, Vehicle];
 
 /** The kinds whose sighting introduces their owner: every owned kind but a signpost and a road site. */
 const MET_KINDS: readonly Component<unknown>[] = [Settler, Building, Vehicle, Palisade];
-
-/** A viewer, the players it has met and its group's mask, hoisted out of the contact pass. */
-interface ViewerBits {
-  readonly viewer: number;
-  bits: number;
-  readonly mask: Uint8Array | undefined;
-}
 
 /** The contact pass's viewers plus the owners some viewer other than the owner has yet to meet, so an
  *  entity whose owner everyone has met costs one bit test. */
@@ -197,13 +191,7 @@ export const visionSystem: System = (world, ctx) => {
   // are hoisted out of the loop so a saturated world pays per-pair integer tests only, and an entity of
   // two kinds visited twice meets nobody new; the list is re-read because a stamp may have allocated a group's
   // first mask.
-  const viewers: ViewerBits[] = fog.groupsWithMasks().flatMap((group) =>
-    fog.visionGroupMembers(group).map((viewer) => ({
-      viewer,
-      bits: metContactBits(world, viewer),
-      mask: fog.tryMaskFor(viewer),
-    })),
-  );
+  const viewers = contactViewers(world, fog);
   const contacts: ContactPass = {
     viewers,
     cellsWide: fog.cellsWide,
@@ -213,8 +201,19 @@ export const visionSystem: System = (world, ctx) => {
   for (let owner = 0; owner < MAX_PLAYERS; owner++) {
     if (!everyViewerMet(viewers, owner)) contacts.unmetOwners |= 1 << owner;
   }
-  for (const kind of MET_KINDS) {
-    for (const e of world.query(kind, Owner, Position)) meetOwnerOf(world, contacts, e);
+  // While the last pass's result stands, only an entity changed since can stand on explored ground of a
+  // viewer that has not met its owner: the changed eyes list every entity whose node, owner or position
+  // membership changed, whatever its kind.
+  const settled = settledContactsOf(world);
+  if (changedEyes !== null && !changed && settled.holds(world, fog, viewers)) {
+    for (let i = 0; i < changedEyes.length; i++) {
+      const e = changedEyes[i] as Entity;
+      if (isOwnedMetKind(world, e)) meetOwnerOf(world, contacts, e);
+    }
+  } else {
+    for (const kind of MET_KINDS) {
+      for (const e of world.query(kind, Owner, Position)) meetOwnerOf(world, contacts, e);
+    }
   }
 
   fog.activeMode = mode;
@@ -222,7 +221,65 @@ export const visionSystem: System = (world, ctx) => {
   // Only a rebuild that moved a byte or the mode bumps it: every fog consumer, the sim's contested
   // ground among them, re-reads the masks on a bump, and a quiet Classic rebuild writes nothing.
   if (changed) fog.generation++;
+  settled.settle(world, fog, viewers);
 };
+
+/** The contact pass's viewers over `fog`'s masks, with the players each has met now. */
+function contactViewers(world: World, fog: FogState): ViewerBits[] {
+  return fog.groupsWithMasks().flatMap((group) =>
+    fog.visionGroupMembers(group).map((viewer) => ({
+      viewer,
+      bits: metContactBits(world, viewer),
+      mask: fog.tryMaskFor(viewer),
+    })),
+  );
+}
+
+const settledContacts = new WeakMap<World, SettledContacts>();
+
+function settledContactsOf(world: World): SettledContacts {
+  let settled = settledContacts.get(world);
+  if (settled === undefined) {
+    const created = new SettledContacts();
+    settledContacts.set(world, created);
+    world.registerCacheVerifier('fogContacts', () => verifySettledContacts(world, created));
+    settled = created;
+  }
+  return settled;
+}
+
+/**
+ * While the last contact pass's result stands, no entity without a pending change may stand on ground a
+ * viewer that has not met its owner has explored: the next pass would not visit it. Peeks the feeds, so
+ * it changes nothing.
+ */
+function verifySettledContacts(world: World, settled: SettledContacts): string[] {
+  const fog = settled.fogOf();
+  if (fog === undefined) return [];
+  const viewers = contactViewers(world, fog);
+  if (!settled.holds(world, fog, viewers)) return [];
+  const pending = new Set<Entity>();
+  if (eyeChangesOf(world).peek((e) => pending.add(e))) return [];
+  const violations: string[] = [];
+  for (const kind of MET_KINDS) {
+    for (const e of world.query(kind, Owner, Position)) {
+      if (pending.has(e)) continue;
+      const owner = world.get(e, Owner).player;
+      if (!isValidPlayer(owner)) continue;
+      const node = moverNode(world, e, world.get(e, Position));
+      const { cx, cy } = cellOfNode(node.hx, node.hy);
+      if (cx < 0 || cy < 0 || cx >= fog.cellsWide || cy >= fog.cellsHigh) continue;
+      const index = cy * fog.cellsWide + cx;
+      for (const v of viewers) {
+        if (v.viewer === owner || (v.bits & (1 << owner)) !== 0 || v.mask === undefined) continue;
+        if (v.mask[index] !== FOG_STATE.UNEXPLORED) {
+          violations.push(`fog: entity ${e} of ${owner} stands unmet on ground ${v.viewer} explored`);
+        }
+      }
+    }
+  }
+  return violations;
+}
 
 /** The fog and content the eye-memo verifier of a world reads, updated by each rebuild. */
 interface EyeMemoSubject {
@@ -275,6 +332,15 @@ function verifyEyeMemo(world: World, { fog, content }: EyeMemoSubject): string[]
     if (!eyes.has(e) && !pending.has(e)) violations.push(`fog: entity ${e} holds an eye memo but is no eye`);
   });
   return violations;
+}
+
+/** Whether `e` is alive, owned, positioned and of a kind that introduces its owner: one the full contact
+ *  pass visits. */
+function isOwnedMetKind(world: World, e: Entity): boolean {
+  if (!world.isAlive(e) || !world.has(e, Owner) || !world.has(e, Position)) return false;
+  for (let i = 0; i < MET_KINDS.length; i++)
+    if (world.has(e, MET_KINDS[i] as Component<unknown>)) return true;
+  return false;
 }
 
 /** Whether `e` is alive, owned, positioned and of an eye kind: one the full stamp pass visits. */
