@@ -377,7 +377,9 @@ local port. It checks:
   open the menu and record the install;
 - that a renderer crash leaves a `renderer-gone` fault, reloads the start page and that page clears
   the fault, and that `app://` pages carry the `Document-Policy` header that lets the shell read a
-  hung page's call stack. `ON_BENCH_WINDOW_POSITION=x,y` opens this window at that screen position.
+  hung page's call stack. `ON_BENCH_WINDOW_POSITION=x,y` opens this window at that screen position;
+- that a canvas gets its WebGL context back after the GPU process dies twice, which Chromium would
+  otherwise answer by blocking WebGL for the page.
 
 `ON_DESKTOP_RESTORE_WINDOW=1 npm run test:desktop` also checks fullscreen on first launch, the
 settings switch and Alt+Enter, Escape preserving fullscreen, and restoring the window mode across

@@ -42,6 +42,11 @@ const roots = resolveShellRoots({
 // line and the FPS counter's adapter name (unconfirmed on a dual-GPU Windows machine).
 app.commandLine.appendSwitch('force_high_performance_gpu');
 
+// Chromium blocks WebGL for a page's host for two minutes after two lost contexts, and a canvas that
+// finds itself blocked never restores. One Direct3D driver reset can cost both, leaving the game black.
+// Chromium's GPU process crash limit still ends a loop of resets.
+app.disableDomainBlockingFor3DAPIs();
+
 // One window per profile: a second instance would share the IndexedDB the saves live in.
 if (app.requestSingleInstanceLock()) {
   registerAppScheme();

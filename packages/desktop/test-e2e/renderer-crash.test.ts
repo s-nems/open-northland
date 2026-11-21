@@ -140,3 +140,45 @@ test('records a renderer crash, reloads the start page and lets that page clear 
     }
   }
 });
+
+// Two GPU process deaths are two lost contexts, Chromium's limit for blocking WebGL on the page's host.
+test('a game canvas gets its WebGL context back after the GPU process dies twice', {
+  timeout: 90_000,
+}, async () => {
+  const profile = await openProfile('northland-desktop-gpu-');
+  let desktop: ElectronApplication | undefined;
+  try {
+    desktop = await launchShell(profile, { [ORIGINAL_GAME_CHECK_ENV]: '0' });
+    const page = await desktop.firstWindow();
+    await page.waitForURL(START_URL);
+    await page.goto(MENU);
+    await page.locator('[data-nav-id="newGame"]').waitFor({ timeout: 30_000 });
+    await page.evaluate(() => {
+      const canvas = document.createElement('canvas');
+      // Holding the canvas keeps its context alive for the whole test.
+      const probe = { canvas, restores: 0 };
+      // Like the game's renderer: a lost context comes back only when its loss event is cancelled.
+      canvas.addEventListener('webglcontextlost', (event) => event.preventDefault());
+      canvas.addEventListener('webglcontextrestored', () => probe.restores++);
+      canvas.getContext('webgl2');
+      Object.assign(globalThis, { gpuProbe: probe });
+    });
+    const restores = (): Promise<number> =>
+      page.evaluate(() => (globalThis as unknown as { gpuProbe: { restores: number } }).gpuProbe.restores);
+    for (const death of [1, 2]) {
+      // A debug URL the browser handles without loading a page, so its load is not awaited.
+      await desktop.evaluate(({ BrowserWindow }) => {
+        const crasher = new BrowserWindow({ show: false });
+        crasher.loadURL('chrome://gpucrash').catch(() => undefined);
+        setTimeout(() => crasher.destroy(), 1000);
+      });
+      await waitFor(async () => ((await restores()) >= death ? true : undefined), `restore ${death}`);
+    }
+  } finally {
+    try {
+      await desktop?.close();
+    } finally {
+      await rm(profile, { recursive: true, force: true });
+    }
+  }
+});
