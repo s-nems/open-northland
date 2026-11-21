@@ -9,12 +9,12 @@ import { testContent } from '../../fixtures/content.js';
 import { grassNodeMap } from '../../fixtures/terrain.js';
 
 // The chase's free-cell search walks the rings around the chaser before the band; its answer must be the
-// band walk's: the nearest free cell by (map points from the chaser, cell id), and whether any band cell
-// is open and reachable.
+// band walk's: the nearest free cell and the nearest open and reachable one, each by (map points from the
+// chaser, cell id).
 
 const MAP_NODES = 48;
 const CASES = 1500;
-/** The bands the chase asks for: melee contact, its second rank, and a long bow's standoff. */
+/** The bands the chase asks for: melee contact, a spear's reach, one ring, and a long bow's standoff. */
 const BANDS: readonly WeaponBand[] = [
   { minRange: 1, maxRange: 1 },
   { minRange: 1, maxRange: 2 },
@@ -39,29 +39,29 @@ function reference(
   band: WeaponBand,
   open: (cell: NodeId) => boolean,
   taken: (cell: NodeId) => boolean,
-): { free: NodeId | null; anyOpen: boolean } {
+): { free: NodeId | null; open: NodeId | null } {
   const fx = terrain.xOf(from);
   const fy = terrain.yOf(from);
   const tx = terrain.xOf(target);
   const ty = terrain.yOf(target);
-  let free: NodeId | null = null;
-  let freeDist = Number.POSITIVE_INFINITY;
-  let anyOpen = false;
+  const nearest = { free: null as NodeId | null, open: null as NodeId | null };
+  const dist = { free: Number.POSITIVE_INFINITY, open: Number.POSITIVE_INFINITY };
   for (let hy = 0; hy < terrain.height; hy++) {
     for (let hx = 0; hx < terrain.width; hx++) {
       const reach = hexDistanceBetween(tx, ty, hx, hy);
       const cell = terrain.nodeAt(hx, hy);
       if (reach < band.minRange || reach > band.maxRange || !open(cell)) continue;
-      anyOpen = true;
-      if (taken(cell)) continue;
       const d = hexDistanceBetween(fx, fy, hx, hy);
-      if (d < freeDist || (d === freeDist && free !== null && cell < free)) {
-        free = cell;
-        freeDist = d;
+      for (const kind of taken(cell) ? (['open'] as const) : (['open', 'free'] as const)) {
+        const best = nearest[kind];
+        if (d < dist[kind] || (d === dist[kind] && best !== null && cell < best)) {
+          nearest[kind] = cell;
+          dist[kind] = d;
+        }
       }
     }
   }
-  return { free, anyOpen };
+  return nearest;
 }
 
 describe('nearestFreeInBand', () => {

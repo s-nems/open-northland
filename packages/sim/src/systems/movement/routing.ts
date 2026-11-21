@@ -46,6 +46,7 @@ import { type WalkBlockMask, walkBlockMask } from '../footprint/walk-block-mask.
 import { routeFound } from '../settlers/lost-way.js';
 import { isValidNodeId } from '../spatial/nodes.js';
 import { attackMoveBlocks } from './attack-move-blocks.js';
+import { type ChaseAsk, ChaseStands, chasedUnitNode } from './chase-route.js';
 import {
   ColliderWalkBlocks,
   hasBodyCollision,
@@ -113,6 +114,7 @@ class PathDrain {
   private readonly bodiesByPlayer = new Map<number, ColliderWalkBlocks>();
   private readonly marchingBodiesByPlayer = new Map<number, ColliderWalkBlocks>();
   private readonly besideTargetsByPlayer = new Map<number, ColliderWalkBlocks>();
+  private readonly marchingBesideTargetsByPlayer = new Map<number, ColliderWalkBlocks>();
   private readonly occupiedViews = new Map<BlockOverlay, BlockOverlay>();
   /** Goal stand-ins already handed out this tick, so two walkers aimed at one crowded node fan out to
    *  different free nodes instead of both claiming the same one. */
@@ -130,6 +132,9 @@ class PathDrain {
   private readonly marchingPocketsByPlayer = new Map<number, SealedPockets>();
   /** The corridor search under the structure mask, held across drains with its cluster regions. */
   private corridors: CorridorRoutes | undefined;
+  private chases: ChaseStands | undefined;
+  /** Whether {@link chases} was begun for this drain. */
+  private chasesBegun = false;
 
   constructor(
     private readonly world: World,
@@ -173,7 +178,9 @@ class PathDrain {
     if (this.marchingBodiesByPlayer.size > 0) this.marchingBodiesByPlayer.clear();
     if (this.besideTargetsByPlayer.size > 0) this.besideTargetsByPlayer.clear();
     if (this.occupiedViews.size > 0) this.occupiedViews.clear();
+    if (this.marchingBesideTargetsByPlayer.size > 0) this.marchingBesideTargetsByPlayer.clear();
     if (this.claimedStandIns.size > 0) this.claimedStandIns.clear();
+    this.chasesBegun = false;
     this.groupRoutes = undefined;
     this.groupReachability = undefined;
   }
@@ -230,14 +237,15 @@ class PathDrain {
     return view;
   }
 
-  /** The bodies an attack-move of `player` cannot fight its way through: the hostile ones it does not
-   *  fight itself, as a side that holds it an enemy it holds a friend, or one a lobby peace binds it to. */
-  besideTargetsFor(player: number, structures: BlockOverlay): ColliderWalkBlocks {
-    let view = this.besideTargetsByPlayer.get(player);
+  /** The bodies `player` cannot fight its way through: the hostile ones it does not fight itself, as a
+   *  side that holds it an enemy it holds a friend, or one a lobby peace binds it to. */
+  besideTargetsFor(player: number, structures: BlockOverlay, marching: boolean): ColliderWalkBlocks {
+    const views = marching ? this.marchingBesideTargetsByPlayer : this.besideTargetsByPlayer;
+    let view = views.get(player);
     if (view === undefined) {
       const passable = hostileMaskOf(this.hostileMasks(), player) & ~combatEnemyMask(this.world, player);
       view = new ColliderWalkBlocks(structures, this.unitBlocks(), passable);
-      this.besideTargetsByPlayer.set(player, view);
+      views.set(player, view);
     }
     return view;
   }
@@ -250,6 +258,24 @@ class PathDrain {
       this.occupiedViews.set(structures, view);
     }
     return view;
+  }
+
+  /** The drain's chase routing, begun on its first chase. */
+  chaseStands(requests: readonly Entity[]): ChaseStands {
+    if (this.chases === undefined || this.chases.terrain !== this.terrain) {
+      this.chases = new ChaseStands(this.terrain);
+    }
+    if (!this.chasesBegun) {
+      this.chasesBegun = true;
+      this.chases.begin({
+        world: this.world,
+        content: this.ctx.content,
+        requests,
+        standIns: this.claimedStandIns,
+        doorways: buildingDoorwayNodes(this.world, this.ctx, this.terrain),
+      });
+    }
+    return this.chases;
   }
 
   /** Readies the group route cache for a group request under the mask's current version. */
@@ -450,12 +476,17 @@ export function drainPathRequests(
         : freeStepEnd(world, e, blocked);
     const asked = startBesideBlocks(world, terrain, e, req, traversal, structures);
     const start = stepEnd ?? asked;
+    // A collider's chase, its grind reroute's included. A reroute that keeps the live route on a refusal
+    // (a gate or wall closed across it) is planned as any collider's; the chase asks again on its cadence.
+    const chases = bodies !== null && !req.retainRoute && world.has(e, Engagement);
     // A goal taken only by a standing unit, of any side, is recoverable: re-aim at the nearest free node so
-    // a charge fans out around a crowded target. Collider-only, since a ghost's goal must stay exact.
+    // walkers fan out around a crowded node. Collider-only, since a ghost's goal must stay exact; a chase
+    // finds its own after its route.
     let goal = req.goal;
     let standIn = false;
     if (
       collides &&
+      !chases &&
       goal !== start && // a walker already standing there has arrived, however crowded
       isValidNodeId(terrain, goal) &&
       drain.occupied(structures).has(goal) &&
@@ -480,8 +511,11 @@ export function drainPathRequests(
     const labelled =
       traversal === 'land' && !marching && isValidNodeId(terrain, start) && isValidNodeId(terrain, goal);
     const sealed = labelled && drain.sealedApart(start, goal);
+    // A chase plans under the walls and the bodies it cannot fight its way through, and weighs the ones it
+    // fights after (`chase-route.ts`).
+    const searched = chases ? drain.besideTargetsFor(player ?? -1, structures, marching) : bodies;
     const goalOpen =
-      labelled && !sealed && (bodies === null || bodies.posts === 0) && drain.goalOutgrowsProbe(goal);
+      labelled && !sealed && (searched === null || searched.posts === 0) && drain.goalOutgrowsProbe(goal);
     // A member ordered after its band left takes up a route a band-mate still walks. A chase keeps its
     // own search, its goal being a contact node a few steps off, and so does a reroute, which asks for
     // another way than the one it walks.
@@ -492,12 +526,45 @@ export function drainPathRequests(
             read: () => liveBandRoutes(world, ctx.content, terrain, player, marching, collides, blocked),
           }
         : undefined;
-    let path = sealed
+    let path: readonly NodeId[] | null = sealed
       ? null
-      : drain.routeUnder(blocked, start, goal, group, player ?? -1, marching, traversal, goalOpen, liveBand);
+      : drain.routeUnder(
+          searched ?? structures,
+          start,
+          goal,
+          group,
+          player ?? -1,
+          marching,
+          traversal,
+          goalOpen,
+          liveBand,
+        );
+    if (chases) {
+      const ask: ChaseAsk = {
+        asker: e,
+        player: player ?? -1,
+        start,
+        toward: chasedUnitNode(world, terrain, e) ?? goal,
+        ownNode: standsOn(world, terrain, e, start) ? start : undefined,
+        structures,
+        bodies,
+        occupied: drain.occupied(structures),
+      };
+      path = drain.chaseStands(requests).route(ask, path, drain.spent);
+      const end = path?.at(-1);
+      if (end !== undefined && end !== goal) {
+        goal = end;
+        standIn = true;
+      }
+    }
     // An attack-move goes for what seals its goal off: the bodies it fights shape its route, never refuse it.
-    if (path === null && bodies !== null && world.tryGet(e, PlayerOrder)?.attackMove !== undefined) {
-      const through = drain.besideTargetsFor(player ?? -1, structures);
+    if (
+      !chases &&
+      path === null &&
+      bodies !== null &&
+      world.tryGet(e, PlayerOrder)?.attackMove !== undefined
+    ) {
+      const through = drain.besideTargetsFor(player ?? -1, structures, marching);
       if (through.posts < bodies.posts) {
         path = drain.routeUnder(through, start, goal, group, player ?? -1, marching, traversal, false);
       }
@@ -614,6 +681,14 @@ export function drainPathRequests(
     settleRoute(world, e, req.goal);
   }
   drain.reset();
+}
+
+/** Whether `e` stands still on the centre of `node`. */
+function standsOn(world: World, terrain: TerrainGraph, e: Entity, node: NodeId): boolean {
+  const p = world.tryGet(e, Position);
+  if (p === undefined || world.has(e, PathFollow) || !isValidNodeId(terrain, node)) return false;
+  const y = terrain.yOf(node);
+  return p.x === positionXOfNode(terrain.xOf(node), y) && p.y === positionYOfNode(y);
 }
 
 /** Whether a walk from `start` to `goal` is long enough for a shared route to serve it. */

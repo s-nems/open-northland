@@ -529,7 +529,7 @@ describe('warriors attack enemy buildings', () => {
     expect(new Set(slots).size).toBe(8);
   });
 
-  it('holds surplus chasers as an idle second rank (no nav state) once every face slot is manned', () => {
+  it('holds surplus chasers idle (no nav state) once every face slot is manned', () => {
     const sim = new Simulation({
       seed: 1,
       content: siegeContent({ meleeRange: { min: 1, max: 1 } }),
@@ -581,7 +581,9 @@ describe('warriors attack enemy buildings', () => {
       let near = nearFirst ? makeNear() : undefined;
       const slots = new MeleeSlots(sim.world, ctxOf(sim), terrain);
       const body = buildingBodyNodes(sim.world, ctxOf(sim), terrain, fort);
-      const cells = slots.encircleCandidates(fort, body, { minRange: 1, maxRange: 1 });
+      const cells = slots
+        .encircleCells(fort, body, { minRange: 1, maxRange: 1 })
+        .filter((c) => slots.isOpen(c));
       const reservers = new Map(
         cells.map((cell, i) => {
           const far = warriorAt(sim, 16 + (i % 5), 2 + Math.floor(i / 5), P1);
@@ -612,12 +614,12 @@ describe('warriors attack enemy buildings', () => {
     },
   );
 
-  /** Three times the fort's melee-1 contact slots, so the siege needs more than one waiting rank. */
+  /** Three times the fort's melee-1 contact slots, so most of the siege waits behind its manned faces. */
   const FORT_SLOTS = 10;
   const SIEGE_SIZE = 3 * FORT_SLOTS;
   const SIEGE_SETTLE_TICKS = 500;
 
-  it('brings a large siege into successive waiting ranks and advances when the front leaves', () => {
+  it('holds a large siege waiting behind its manned faces and refills a face the front leaves', () => {
     const sim = new Simulation({
       seed: 1,
       content: siegeContent({ meleeRange: { min: 1, max: 1 } }),
@@ -639,7 +641,7 @@ describe('warriors attack enemy buildings', () => {
     expect(waiting.every((s) => sim.world.get(s, Engagement).waiting === true)).toBe(true);
     expect(waiting.every((s) => !sim.world.has(s, MoveGoal) && !sim.world.has(s, PathFollow))).toBe(true);
 
-    // The rest runs on the restored sim, so the waiting ranks' wake state must survive the save.
+    // The rest runs on the restored sim, so the waiting men's wake state must survive the save.
     const restored = restoreSimulation(exportSaveGame(sim), { content: sim.content, map: grass(24, 14) });
     const front = soldiers.filter((s) => distToFort(restored, s) === 1);
     for (const [i, entity] of front.entries()) {
@@ -1031,10 +1033,11 @@ describe('a held encircle band', () => {
     return { sim, terrain, fort: buildingAt(sim, 4, 1, FORT, P2) };
   }
 
-  /** The tick's open encircle cells around `target`, as a fresh combat pass deals them. */
+  /** The tick's open encircle cells around `target`, as a fresh combat pass reads them. */
   function candidates(sim: Simulation, terrain: TerrainGraph, target: Entity): readonly NodeId[] {
     const body = buildingBodyNodes(sim.world, ctxOf(sim), terrain, target);
-    return new MeleeSlots(sim.world, ctxOf(sim), terrain).encircleCandidates(target, body, STRICT_MELEE);
+    const slots = new MeleeSlots(sim.world, ctxOf(sim), terrain);
+    return slots.encircleCells(target, body, STRICT_MELEE).filter((cell) => slots.isOpen(cell));
   }
 
   it('drops the cells a neighbour raised after the band was held now blocks', () => {

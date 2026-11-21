@@ -25,12 +25,12 @@ import {
 import type { Entity, World } from '../../ecs/world.js';
 import { forEachRingNode, hexDistanceBetween, positionOfNode } from '../../nav/halfcell.js';
 import { nearestUnblockedNode } from '../../nav/nearest.js';
-import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
+import { type NodeId, StepBuffer, type TerrainGraph } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
 import { routeRegions } from '../footprint/index.js';
 import { walkBlockMask } from '../footprint/walk-block-mask.js';
-import { standingFighterPosts } from '../movement/collision/index.js';
-import { clearNavState, isTravelling, redirectRoute } from '../movement/nav-state.js';
+import { hasBodyCollision, standingFighterPosts } from '../movement/collision/index.js';
+import { clearNavState, isTravelling, redirectRoute, stopAtNextNode } from '../movement/nav-state.js';
 import { structureRouteSealed } from '../movement/structure-route.js';
 import { breakThroughWall } from '../palisades/breach.js';
 import { isRangedWeapon, MILITARY_MODE, stanceMode } from '../readviews/index.js';
@@ -38,16 +38,23 @@ import { anyNeedPressing } from '../settlers/drives/needs.js';
 import { markLostWay } from '../settlers/lost-way.js';
 import { closer, hexNodeDistance, nearestHexCell } from '../spatial/metric.js';
 import { entityNode } from '../spatial/nodes.js';
-import { type CombatantStance, DEFEND_LEASH_NODES, type EngageSpec, enemyInReachFrom } from './engagement.js';
+import {
+  type CombatantStance,
+  DEFEND_LEASH_NODES,
+  type EngageSpec,
+  enemyInReachFrom,
+  enemyUnitInReach,
+} from './engagement.js';
 import type { MeleeSlots, OwnClaims } from './melee-slots.js';
 import type { CombatPass } from './pass.js';
 import { combatTargetNode, targetBodyNodes } from './target-node.js';
 import { noteUnreachableTarget } from './unreachable-targets.js';
+import type { WalkLocal } from './walk-local.js';
 import { bandNodeCount, forEachNodeInBand, ringNodeCount, type WeaponBand } from './weapon-band.js';
 import type { ArmedWith } from './weapons.js';
 
 // The walk-into-melee half of combat: advance an owned combatant on an out-of-reach enemy, deal each chaser
-// a distinct contact cell so a converging mass forms ranks rather than a pile, and respect the DEFEND leash.
+// a distinct contact cell near it, park the rest as near the front as they get, and respect the DEFEND leash.
 
 /** The chase's pre-resolved target: the entity, the combat node the reach check measured (its own node for
  *  a unit, its nearest body node for a building or a wall), and that structure's whole body (`null` for a
@@ -81,16 +88,16 @@ export const REPATH_CADENCE = 8;
 /**
  * How long a machine seat's attack-move rests its aggression after a refused chase it found no wall to
  * break through, unless a wall falls first (`endMachineMarchRests`). Such refusals are mostly walls it
- * plans as closed, which stand far longer than a chase cadence; one across water or a ring of bodies rests
- * as long, an approximation chosen for cost. A human's march rests the cadence alone. Authored.
+ * plans as closed, which stand far longer than a chase cadence; one across water rests as long, an
+ * approximation chosen for cost. A human's march rests the cadence alone. Authored.
  */
 export const MACHINE_MARCH_REST_TICKS = 15 * REPATH_CADENCE;
 
 /**
  * How many chase cadences in a row routing may refuse a route to the same target before the chase asks
- * whether buildings and resources alone seal it and, if so, gives it up as unreachable. A seal of standing
- * bodies is re-asked at the cadence for as long as it stands. Approximation: the original's rule is not
- * readable.
+ * whether buildings and resources alone seal it and, if so, gives it up as unreachable. Standing bodies never
+ * refuse a chase, its grind reroutes included (`movement/chase-route.ts`). Approximation: the original's rule
+ * is not readable.
  */
 export const SEALED_TARGET_ROUTE_FAILURES = 3;
 
@@ -243,11 +250,12 @@ function routeDelivered(world: World, e: Entity): boolean {
  * {@link approachCell} at most every {@link REPATH_CADENCE} ticks; between repaths it follows its live
  * route and the distance-based swing check catches it the instant it steps into reach. A refused route is
  * stood out for a cadence; an ordered unit whose route cannot resolve gives the order up at once. A building
- * target's wall list lets a chaser whose nearest face is fully manned encircle to a free slot on another
- * face.
+ * target's wall list lets a chaser whose nearest face is fully manned encircle to a free face it walks to.
  *
- * A melee chaser standing behind a fully taken front of a unit steps along it instead ({@link seamStep});
- * `holder` carries the spec whose targets it may turn to.
+ * A chaser routing stood in short of its cell strikes an enemy it reaches from there ({@link
+ * enemyUnitInReach}), else waits and looks again on its stride: a melee chaser behind a fully taken front of
+ * a unit steps along it ({@link seamStep}), and any steps up once a node nearer frees. `holder` carries the
+ * spec whose targets it may turn to; a breaker stays on its wall.
  *
  * Returns whether it gave the target up this tick.
  */
@@ -280,6 +288,12 @@ export function chase(
   // and walks on: without the rest, an enemy visible across a river holds the marcher in a failing search
   // every tick and the order can never complete.
   const request = world.tryGet(e, PathRequest);
+  // A refused grind reroute is no answer to the chase: routing dropped the walk, so next tick the planner
+  // asks a plain route from where the walker stands to its goal, and a refusal of that one is answered below.
+  if (request?.failed && request.grind === true) {
+    world.remove(e, PathRequest);
+    return false;
+  }
   if (request?.failed) {
     // The breach this chase walks to, whose target a further wall found on the way still leads back to.
     const breach = order?.target === enemy ? order.breach : undefined;
@@ -352,16 +366,18 @@ export function chase(
   const travelling = isTravelling(world, e);
   // Still closing on a live route, or standing out a refused one's cadence: don't re-path.
   if (ctx.tick < engagement.repathAt && (travelling || engagement.stall !== undefined)) return false;
+  // A man waiting at the front holds his node and looks again on his stride.
+  if (engagement.waiting === true && !travelling && !onStride(ctx.tick, e, REPATH_CADENCE)) return false;
 
   // Resolved past the cadence gate, so a chaser still closing on its live route reads no target body.
   const target = chaseTargetOf(world, ctx, terrain, here, enemy);
   const weapon = approachBand(reach);
   // Only a melee fighter holding a unit forms a front to step along; a besieger encircles its wall instead.
-  const front = holder !== null && target.body === null ? holder : null;
+  const front = holder?.hold?.contact === true && target.body === null ? holder : null;
 
   const ownGoal = world.tryGet(e, MoveGoal)?.cell;
   // A close-range breaker without a breach slot must exclude the wall's inaccessible far side.
-  // Ordinary approaches use terrain alone; a full waiting queue asks for structural regions lazily.
+  // Ordinary approaches use terrain alone; a crowded breach asks for structural regions lazily.
   const crowdedBreach =
     weapon.minRange <= 1 && order?.target === target.entity && order.breach?.stand === null;
   const terrainBank = terrain.isWalkable(here) ? terrain.componentOf(here) : null;
@@ -377,39 +393,24 @@ export function chase(
     goal: ownGoal,
     standingOn: onNodeCentre(world, terrain, e, here) && !crossingFriend ? here : undefined,
   };
-  // A waiting second rank re-asks each tick, but draws a contact slot only on its cadence: the draw walks
-  // the whole disc around it, and the nearest free side is what puts it in when a front-liner steps off.
-  const drawSlot = engagement.waiting !== true || onStride(ctx.tick, e, REPATH_CADENCE);
+  const near = slots.nearChaser(e, here);
+  const collides = hasBodyCollision(world, ctx.content, e);
   // The near-side node a breach dealt this breaker comes first, while it is open and untaken.
   const stand = breachStand(world, terrain, e, target, weapon);
   let approach: Approach =
     stand !== null && slots.isOpen(stand) && !slots.isTaken(stand, mine.goal, mine.standingOn, mine.chaser)
-      ? { cell: stand, waiting: false }
+      ? { cell: stand, free: true }
       : target.body !== null && target.body.length > 0
-        ? faceApproach(terrain, slots, here, target, weapon, mine, onOurBank)
-        : approachCell(ctx, terrain, here, target, weapon, slots, mine, onOurBank, drawSlot);
+        ? faceApproach(terrain, slots, here, target, weapon, mine, onOurBank, near, collides)
+        : approachCell(ctx, terrain, here, target, weapon, slots, mine, onOurBank, near, collides);
   // The enemy a step along the front brings into reach, taken up in place of the held one.
   let alongFront: Entity | null = null;
-  if (approach.waiting && approach.cell === here && mine.standingOn !== undefined) {
-    const step =
-      front === null || !drawSlot
-        ? null
-        : seamStep(world, ctx, terrain, pass, front, target.entity, weapon, here, mine, onOurBank);
-    if (step === null) {
-      // A second rank standing where it waits: idle, with no route for the render to read as a walk. It
-      // keeps its target and re-asks each tick, which puts it in the moment a front-liner falls or steps
-      // off. Routing was not asked, so no refusal stands against the target.
-      clearNavState(world, e);
-      slots.claim(here, world.tryGet(e, Owner)?.player ?? null);
-      if (engagement.stall !== undefined || engagement.waiting !== true) {
-        const held = world.mut(e, Engagement);
-        held.stall = undefined;
-        held.waiting = true;
-      }
-      return false;
+  if (!approach.free && front !== null && mine.standingOn !== undefined) {
+    const step = seamStep(world, ctx, terrain, pass, front, target.entity, weapon, here, mine, onOurBank);
+    if (step !== null) {
+      approach = { cell: step.cell, free: true };
+      alongFront = step.enemy;
     }
-    approach = { cell: step.cell, waiting: false };
-    alongFront = step.enemy;
   }
   // A walker crossing a friend's node is never dealt it: it waits on the nearest node no body holds.
   if (crossingFriend && approach.cell === here) {
@@ -419,7 +420,7 @@ export function chase(
       world.mut(e, Engagement).repathAt = ctx.tick + REPATH_CADENCE;
       return false;
     }
-    approach = { cell: off, waiting: true };
+    approach = { cell: off, free: true };
   }
   const dest = approach.cell;
   // `dest` fell back to the target itself: no cell that would bring it into reach is one this unit can stand
@@ -429,8 +430,14 @@ export function chase(
     letGo(world, ctx, e, here, target.entity, aside, defend);
     return true;
   }
-  // Anchor leash: a target hittable only by stepping past `leash` from the anchor is left alone.
-  if (defend !== null && leashDistance(terrain, defend, dest) > defend.leash) {
+  // Anchor leash: a target hittable only by stepping past `leash` from the anchor is left alone, and so is
+  // one routing stands the guard in for past it.
+  const standIn = world.tryGet(e, StandIn);
+  const restsOn = standIn?.goal === dest ? standIn.at : dest;
+  if (
+    defend !== null &&
+    Math.max(leashDistance(terrain, defend, dest), leashDistance(terrain, defend, restsOn)) > defend.leash
+  ) {
     letGo(world, ctx, e, here, target.entity, aside, defend);
     return true;
   }
@@ -453,12 +460,42 @@ export function chase(
     else disengage(world, e);
     return true;
   }
+  if (!travelling && restsOn === here && onNodeCentre(world, terrain, e, here)) {
+    // Standing where routing stood it short of `dest`: it strikes an enemy it reaches from here, else waits
+    // idle, with no route for the render to read as a walk, until a place nearer the front frees. Routing
+    // was not asked, so no refusal stands.
+    const struck =
+      holder === null || order?.breach !== undefined
+        ? null
+        : enemyUnitInReach(world, ctx, terrain, pass, holder, target.entity, reach, here);
+    // Routing ranks a stand-in by its nearness to the unit chased, else to the cell asked for.
+    const ranked = target.body === null ? target.node : dest;
+    const walk = slots.nearChaser(e, here);
+    if (struck !== null || waitsAtFront(ctx, terrain, slots, walk, e, here, target.node, ranked, mine)) {
+      stopAtNextNode(world, e);
+      slots.claim(here, world.tryGet(e, Owner)?.player ?? null);
+      if (engagement.stall !== undefined || engagement.waiting !== true) {
+        const held = world.mut(e, Engagement);
+        held.stall = undefined;
+        held.waiting = true;
+      }
+      if (struck !== null) holdEnemy(world, ctx, e, struck);
+      return false;
+    }
+  }
+  if (travelling && walksToStandIn(world, slots, e, dest, mine)) {
+    world.mut(e, Engagement).repathAt = ctx.tick + REPATH_CADENCE;
+    return false;
+  }
   redirectRoute(world, e, dest); // keep the live route - dropping it reset the gait (chase stutter)
-  slots.claim(
-    dest,
-    world.tryGet(e, Owner)?.player ?? null,
-    alongFront === null ? mine.chaser : { entity: e, target: alongFront },
-  );
+  // A taken front cell is no slot to deal: routing parks the chaser beside it.
+  if (approach.free) {
+    slots.claim(
+      dest,
+      world.tryGet(e, Owner)?.player ?? null,
+      alongFront === null ? mine.chaser : { entity: e, target: alongFront },
+    );
+  }
   const held = world.mut(e, Engagement);
   held.repathAt = ctx.tick + REPATH_CADENCE;
   held.waiting = undefined;
@@ -644,25 +681,27 @@ function onNodeCentre(world: World, terrain: TerrainGraph, e: Entity, node: Node
   return p.x === centre.x && p.y === centre.y;
 }
 
-/** Where a chaser heads: a cell that brings its target into reach, or with every such cell taken a cell
- *  behind the occupied ranks to wait on (`waiting`). */
+/** Where a chaser heads: a cell that brings its target into reach and that it takes (`free`), or a taken
+ *  one: beside it routing parks a body that collides, and a chaser without one fights from it. */
 interface Approach {
   readonly cell: NodeId;
-  readonly waiting: boolean;
+  readonly free: boolean;
 }
 
 /**
- * The cell a chaser should walk to in order to bring `target` into its weapon band, among the {@link
- * MeleeSlots.isOpen open}, `reachable`, untaken cells of the band: a melee contact slot ({@link contactSlot})
- * once one lies near, else the one closest to `from`, canonicalized by (distance, cell id). A melee unit
- * therefore stops a map point short of the enemy rather than on it, where distance 0 would sit below every
- * weapon's near reach. Falls back to the target's own cell when no cell in the band is open and reachable
- * at all.
+ * The cell a chaser should walk to in order to bring `target` into its weapon band: a melee contact slot
+ * ({@link contactSlot}) once one lies near it by walking, else the open `reachable` band cell nearest `from`
+ * by (map points, cell id), taken or not, a free one winning a tie; a ranged chaser takes the nearest free
+ * cell of its wide band before a taken one. A melee unit therefore stops a map point short of the enemy
+ * rather than on it, where distance 0 would sit below every weapon's near reach. Falls back to the target's
+ * own cell when no cell in the band is open and reachable at all.
  *
  * Original behavior: with every side taken the attacker keeps its target, walks up and fights from a taken
- * node, so no cap limits how many strike one enemy. Intentional deviation: a standing fighter's body blocks
- * its node here (authored body collision, `movement/collision`), so the overflow waits on the nearest free
- * cell in successive ranks outside the band and steps forward once a nearer rank frees.
+ * node, so no cap limits how many strike one enemy. Authored: a chaser without body collision takes the
+ * band's nearest free cell however far, else its nearest open one; a standing fighter's body blocks its node
+ * (authored body collision, `movement/collision`), so a colliding overflow heads for the taken front, stands
+ * on the free node nearest it by walking (`movement/chase-route.ts`) and strikes from there an enemy in
+ * reach ({@link enemyUnitInReach}).
  */
 function approachCell(
   ctx: SystemContext,
@@ -673,53 +712,127 @@ function approachCell(
   slots: MeleeSlots,
   mine: OwnClaims,
   reachable: (cell: NodeId) => boolean,
-  drawSlot: boolean,
+  near: WalkLocal,
+  collides: boolean,
 ): Approach {
   const targetCell = target.node;
-  const slot =
-    weapon.contact && drawSlot
-      ? contactSlot(ctx, terrain, from, targetCell, weapon, slots, mine, reachable)
-      : null;
-  if (slot !== null) return { cell: slot, waiting: false };
-  const front = nearestFreeInBand(terrain, from, targetCell, weapon, slots, mine, reachable);
-  if (front.free !== null) return { cell: front.free, waiting: false };
-  if (!front.anyOpen) return { cell: targetCell, waiting: false };
-  return { cell: slots.waitingCell(from, target, weapon, mine), waiting: true };
+  const slot = weapon.contact ? contactSlot(ctx, terrain, from, targetCell, weapon, slots, mine, near) : null;
+  if (slot !== null) return { cell: slot, free: true };
+  const band = nearestFreeInBand(terrain, from, targetCell, weapon, slots, mine, reachable);
+  if (band.open === null) return { cell: targetCell, free: true };
+  if (band.free !== null && (!collides || !weapon.contact || asNear(terrain, from, band.free, band.open))) {
+    return { cell: band.free, free: true };
+  }
+  return { cell: band.open, free: false };
 }
 
-/** {@link approachCell} around a building's walls: its free contact cells on our bank, else successive
- *  waiting ranks around them. With no face on our bank there is no front at all: aim at the body, which the chase's
- *  bank check refuses. */
+/** {@link approachCell} around a building's walls: a melee chaser's nearest free face it walks to round the
+ *  building ({@link walkedFace}), else the face nearest by map points, taken or not; a chaser without body
+ *  collision, or a ranged one, takes the nearest free face however far before a taken one. With no face on
+ *  our bank there is no front at all: aim at the body, which the chase's bank check refuses. */
 function faceApproach(
   terrain: TerrainGraph,
   slots: MeleeSlots,
   here: NodeId,
   target: ChaseTarget,
-  weapon: WeaponBand,
+  weapon: ApproachBand,
   mine: OwnClaims,
   onOurBank: (cell: NodeId) => boolean,
+  near: WalkLocal,
+  collides: boolean,
 ): Approach {
   // The open faces are the held band's cells the walk block leaves, tested lazily rather than copied out.
   const openOnBank = (cell: NodeId): boolean => slots.isOpen(cell) && onOurBank(cell);
   const free = (cell: NodeId): boolean =>
     openOnBank(cell) && !slots.isTaken(cell, mine.goal, mine.standingOn, mine.chaser);
   const faces = slots.encircleCells(target.entity, target.body, weapon);
-  const face = nearestHexCell(terrain, faces, here, free);
-  if (face !== null) return { cell: face, waiting: false };
-  if (!faces.some(openOnBank)) return { cell: target.node, waiting: false };
-  return { cell: slots.waitingCell(here, target, weapon, mine), waiting: true };
+  let slot: NodeId | null = null;
+  const beside = besideBand(weapon);
+  // A chaser more than a step outside the cells beside the building has no walk along it to ask about.
+  if (weapon.contact && hexNodeDistance(terrain, here, target.node) <= beside.maxRange + 1) {
+    near.along(slots.encircleCells(target.entity, target.body, beside));
+    slot = walkedFace(terrain, faces, here, free, near);
+  }
+  if (slot !== null) return { cell: slot, free: true };
+  const face = nearestHexCell(terrain, faces, here, openOnBank);
+  if (face === null) return { cell: target.node, free: true };
+  const freeFace = nearestHexCell(terrain, faces, here, free);
+  if (freeFace !== null && (!collides || !weapon.contact || asNear(terrain, here, freeFace, face)))
+    return { cell: freeFace, free: true };
+  return { cell: face, free: false };
 }
+
+/** How many steps past a melee band a walk round a building may stray from its body: room to pass an enemy
+ *  standing at it. Authored. */
+const BESIDE_STEPS = 1;
+
+/** The cells a walk round a building keeps to: `band` and {@link BESIDE_STEPS} rings past it. */
+function besideBand(band: WeaponBand): WeaponBand {
+  return { minRange: band.minRange, maxRange: band.maxRange + BESIDE_STEPS };
+}
+
+/** Scratch for {@link walkedFace}: the free faces it weighs, as (map points * node count + cell). */
+const faceKeys: number[] = [];
+
+/**
+ * The free face nearest `here` by (map points, cell id) that the chaser walks to within its map distance plus
+ * the longest way round the building, half its ring of faces, keeping beside the building ({@link
+ * besideBand}): round walls and enemy bodies, through friends. A face behind a wall or an enemy line is a
+ * longer walk and stays out, and a chaser farther off heads for the front first. Authored, so a siege mans
+ * every face its army reaches round the building while the rest of it waits at the front.
+ */
+function walkedFace(
+  terrain: TerrainGraph,
+  faces: readonly NodeId[],
+  here: NodeId,
+  free: (cell: NodeId) => boolean,
+  near: WalkLocal,
+): NodeId | null {
+  const round = faces.length >> 1;
+  const hx = terrain.xOf(here);
+  const hy = terrain.yOf(here);
+  const nodes = terrain.nodeCount;
+  faceKeys.length = 0;
+  for (const cell of faces) {
+    if (free(cell))
+      faceKeys.push(hexDistanceBetween(hx, hy, terrain.xOf(cell), terrain.yOf(cell)) * nodes + cell);
+  }
+  // Nearest first, one selection per face asked: the first one asked is usually walked to.
+  for (let next = 0; next < faceKeys.length; next++) {
+    let best = next;
+    for (let i = next + 1; i < faceKeys.length; i++) if ((faceKeys[i] ?? 0) < (faceKeys[best] ?? 0)) best = i;
+    const key = faceKeys[best] ?? 0;
+    faceKeys[best] = faceKeys[next] ?? 0;
+    faceKeys[next] = key;
+    const cell = (key % nodes) as NodeId;
+    if (near.within(cell, (key - cell) / nodes + round)) return cell;
+  }
+  return null;
+}
+
+/** Whether `a` lies as near `from` in map points as `b`. */
+function asNear(terrain: TerrainGraph, from: NodeId, a: NodeId, b: NodeId): boolean {
+  return hexNodeDistance(terrain, from, a) === hexNodeDistance(terrain, from, b);
+}
+
+/**
+ * How many walking steps from a chaser a free contact cell may lie and count as near it: a little past the
+ * contact draw's map-point radius, so a cell that radius finds round a corner of a building still counts.
+ * Authored.
+ */
+const WALK_LOCAL_STEPS = CONTACT_SLOT_RADIUS + 2;
 
 /**
  * A melee attacker's contact slot: its own goal while that is still a free cell of the band, else one
  * drawn at random among up to {@link CONTACT_SLOT_CHOICES} free cells of the band at the nearest distance
  * from the attacker that holds one, searched ring by ring out to {@link CONTACT_SLOT_RADIUS}; null when
- * none lies that near, and the chase closes on the nearest free cell instead. Original behavior: the draw
- * never reaches past the first distance with a free cell, so a lone attacker takes the near side.
- * Approximations: the original searches by walking steps from the attacker where this counts map points,
- * and its taken cell is one an own-side human stands on attacking, where {@link MeleeSlots.isTaken} also
- * counts cells dealt this tick and the goals of chasers still walking. Keeping a goal still free is
- * authored, so a cadence re-path does not redraw the slot.
+ * none lies that near, and the chase heads for the front instead. A free cell counts only when the attacker
+ * walks to it within {@link WALK_LOCAL_STEPS}, never through an enemy body or a wall. Original behavior: the
+ * draw never reaches past the first distance with a free cell, so a lone attacker takes the near side.
+ * Approximations: the original searches by walking steps from the attacker where this counts map points and
+ * bounds the walk, and its taken cell is one an own-side human stands on attacking, where
+ * {@link MeleeSlots.isTaken} also counts cells dealt this tick and the goals of chasers still walking.
+ * Keeping a goal still free is authored, so a cadence re-path does not redraw the slot.
  */
 function contactSlot(
   ctx: SystemContext,
@@ -729,14 +842,16 @@ function contactSlot(
   band: WeaponBand,
   slots: MeleeSlots,
   mine: OwnClaims,
-  reachable: (cell: NodeId) => boolean,
+  near: WalkLocal,
 ): NodeId | null {
   const inBand = (cell: NodeId): boolean => {
     const reach = hexNodeDistance(terrain, targetCell, cell);
     return reach >= band.minRange && reach <= band.maxRange;
   };
   const free = (cell: NodeId): boolean =>
-    slots.isOpen(cell) && reachable(cell) && !slots.isTaken(cell, mine.goal, mine.standingOn, mine.chaser);
+    slots.isOpen(cell) &&
+    !slots.isTaken(cell, mine.goal, mine.standingOn, mine.chaser) &&
+    near.within(cell, WALK_LOCAL_STEPS);
   if (mine.goal !== undefined && inBand(mine.goal) && free(mine.goal)) return mine.goal;
   const choices: NodeId[] = [];
   const at = { hx: terrain.xOf(from), hy: terrain.yOf(from) };
@@ -755,20 +870,84 @@ function contactSlot(
   return choices[ctx.rng.int(choices.length)] ?? null;
 }
 
-/** A band's nearest free cell from a chaser, and whether any cell of the band is open and reachable. */
+/** Whether a chaser routing stood in on `here` short of its approach waits there: it asks again on its
+ *  stride when a node nearer `toward`, the target's combat node, is free beside it ({@link freeNearer}),
+ *  though routing's rest test may still refuse that node. A free approach beyond a line of bodies waits as
+ *  a taken one does. */
+function waitsAtFront(
+  ctx: SystemContext,
+  terrain: TerrainGraph,
+  slots: MeleeSlots,
+  near: WalkLocal,
+  e: Entity,
+  here: NodeId,
+  toward: NodeId,
+  ranked: NodeId,
+  mine: OwnClaims,
+): boolean {
+  return (
+    !onStride(ctx.tick, e, REPATH_CADENCE) || !freeNearer(terrain, slots, near, here, toward, ranked, mine)
+  );
+}
+
+/** Whether a node one step from `here`, nearer `toward` in map points, is free to step onto; or, with one
+ *  beside it free and no farther, as at a gap in a wall the crowd waits beside, a free node nearer `ranked`,
+ *  the node routing ranks a stand-in by, lies within {@link WALK_LOCAL_STEPS} of the chaser's walk. */
+function freeNearer(
+  terrain: TerrainGraph,
+  slots: MeleeSlots,
+  near: WalkLocal,
+  here: NodeId,
+  toward: NodeId,
+  ranked: NodeId,
+  mine: OwnClaims,
+): boolean {
+  const from = hexNodeDistance(terrain, here, toward);
+  const free = (cell: NodeId): boolean =>
+    slots.isOpen(cell) && !slots.isTaken(cell, mine.goal, mine.standingOn, mine.chaser);
+  terrain.stepsInto(here, undefined, nearSteps);
+  let aside = false;
+  for (let i = 0; i < nearSteps.length; i++) {
+    const cell = nearSteps.nodeAt(i);
+    const distance = hexNodeDistance(terrain, cell, toward);
+    if (distance > from || !free(cell)) continue;
+    if (distance < from) return true;
+    aside = true;
+  }
+  const rankedFrom = hexNodeDistance(terrain, here, ranked);
+  return (
+    aside &&
+    near.reachesWithin(
+      WALK_LOCAL_STEPS,
+      (cell) => hexNodeDistance(terrain, cell, ranked) < rankedFrom && free(cell),
+    )
+  );
+}
+
+/** Scratch for {@link freeNearer}'s steps. */
+const nearSteps = new StepBuffer();
+
+/** Whether a chaser walks to the node routing parked it on short of `cell`, and no one else has taken it. */
+function walksToStandIn(world: World, slots: MeleeSlots, e: Entity, cell: NodeId, mine: OwnClaims): boolean {
+  const stood = world.tryGet(e, StandIn);
+  if (stood?.goal !== cell || mine.goal !== stood.at) return false;
+  return slots.isOpen(stood.at) && !slots.isTaken(stood.at, mine.goal, mine.standingOn, mine.chaser);
+}
+
+/** A band's nearest free cell from a chaser, and its nearest open and reachable one, taken or not. */
 interface FreeInBand {
   readonly free: NodeId | null;
-  readonly anyOpen: boolean;
+  readonly open: NodeId | null;
 }
 
 /** What the free-cell search reads of the tick's melee slots. */
 type BandSlots = Pick<MeleeSlots, 'isOpen' | 'isTaken'>;
 
 /**
- * The untaken cell of `band` around `targetCell` nearest `from` among the open, `reachable` ones, by
- * (map points from `from`, cell id), and whether any cell of the band is open and reachable at all.
- * Walks the rings around `from` outward first, since the winner lies on the first one holding a free band
- * cell; when those rings would cost more than the band itself, it walks the band instead.
+ * The untaken cell of `band` around `targetCell` nearest `from` among the open, `reachable` ones, and the
+ * nearest open, `reachable` one taken or not, each by (map points from `from`, cell id). Walks the rings
+ * around `from` outward first, since the winners lie on the first rings holding such a band cell; when
+ * those rings would cost more than the band itself, it walks the band instead.
  */
 export function nearestFreeInBand(
   terrain: TerrainGraph,
@@ -802,26 +981,30 @@ function freeOnRingsFrom(
   const targetY = terrain.yOf(targetCell);
   const toTarget = hexDistanceBetween(at.hx, at.hy, targetX, targetY);
   let budget = bandNodeCount(band);
-  let anyOpen = false;
-  let best: NodeId | null = null;
+  let free: NodeId | null = null;
+  let open: NodeId | null = null;
+  let ring = Math.max(0, toTarget - band.maxRange);
+  let openRing = ring;
   const visit = (hx: number, hy: number): boolean => {
     const reach = hexDistanceBetween(targetX, targetY, hx, hy);
     if (reach < band.minRange || reach > band.maxRange) return true;
     const cell = terrain.nodeAt(hx, hy);
     if (!slots.isOpen(cell) || !reachable(cell)) return true;
-    anyOpen = true;
-    if ((best === null || cell < best) && !slots.isTaken(cell, mine.goal, mine.standingOn, mine.chaser))
-      best = cell;
+    if (open === null || (openRing === ring && cell < open)) {
+      open = cell;
+      openRing = ring;
+    }
+    if ((free === null || cell < free) && !slots.isTaken(cell, mine.goal, mine.standingOn, mine.chaser))
+      free = cell;
     return true;
   };
-  const last = toTarget + band.maxRange;
-  for (let ring = Math.max(0, toTarget - band.maxRange); ring <= last; ring++) {
+  for (const last = toTarget + band.maxRange; ring <= last; ring++) {
     budget -= ringNodeCount(ring);
     if (budget < 0) return null;
     forEachRingNode(at, ring, terrain.width, terrain.height, visit);
-    if (best !== null) return { free: best, anyOpen: true };
+    if (free !== null) return { free, open };
   }
-  return { free: null, anyOpen };
+  return { free: null, open };
 }
 
 /** {@link nearestFreeInBand} over every cell of the band. */
@@ -836,23 +1019,30 @@ function freeOverBand(
 ): FreeInBand {
   const fromX = terrain.xOf(from);
   const fromY = terrain.yOf(from);
-  let best: NodeId | null = null;
-  let bestDist = Number.POSITIVE_INFINITY;
-  let bestCell = Number.POSITIVE_INFINITY;
-  let anyOpen = false;
+  let free: NodeId | null = null;
+  let freeDist = Number.POSITIVE_INFINITY;
+  let freeCell = Number.POSITIVE_INFINITY;
+  let open: NodeId | null = null;
+  let openDist = Number.POSITIVE_INFINITY;
+  let openCell = Number.POSITIVE_INFINITY;
   forEachNodeInBand(terrain, targetCell, band, (cell) => {
     if (!slots.isOpen(cell) || !reachable(cell)) return true;
-    anyOpen = true;
-    if (slots.isTaken(cell, mine.goal, mine.standingOn, mine.chaser)) return true; // someone already fights (or was dealt) here
     const d = hexDistanceBetween(fromX, fromY, terrain.xOf(cell), terrain.yOf(cell));
-    if (closer(d, cell, bestDist, bestCell)) {
-      best = cell;
-      bestDist = d;
-      bestCell = cell;
+    if (closer(d, cell, openDist, openCell)) {
+      open = cell;
+      openDist = d;
+      openCell = cell;
+    }
+    // Someone already fights (or was dealt) here.
+    if (slots.isTaken(cell, mine.goal, mine.standingOn, mine.chaser)) return true;
+    if (closer(d, cell, freeDist, freeCell)) {
+      free = cell;
+      freeDist = d;
+      freeCell = cell;
     }
     return true;
   });
-  return { free: best, anyOpen };
+  return { free, open };
 }
 
 /** Make `target` the enemy `e` holds, written only when it changes. A change re-aims the chase this pass and

@@ -317,6 +317,42 @@ describe('combatSystem - hostile-animal advance', () => {
     expect(sim.world.has(far, Engagement)).toBe(false);
   });
 
+  it('an animal whose nearest contact node is taken heads for the nearest free one, however far', () => {
+    // Half-cell nodes: one row of grass in water. Another bear already holds the contact node east of the
+    // victim nearest the tested bear; the free one past it lies beyond the contact draw. A bear's body
+    // blocks no node, so it takes the free one rather than walk onto the taken one.
+    const WIDTH = 40;
+    const HEIGHT = 5;
+    const ROW = 2;
+    const VICTIM = 20;
+    const FREE = VICTIM + 1;
+    const HELD = VICTIM + 2;
+    const HOLDER = VICTIM + 3;
+    const CHASER = VICTIM + 7;
+    const GRASS = 0;
+    const WATER = 1;
+    const typeIds = Array.from({ length: WIDTH * HEIGHT }, (_, i) =>
+      Math.floor(i / WIDTH) === ROW ? GRASS : WATER,
+    );
+    const sim = new Simulation({
+      seed: 1,
+      content: testContent(),
+      map: { resolution: 'half-cell', width: WIDTH, height: HEIGHT, typeIds },
+    });
+    const terrain = sim.terrain;
+    if (terrain === undefined) throw new Error('fixture: the scene needs a map');
+    const victim = fighterAtNode(sim, VICTIM, ROW, VIKING, WOODCUTTER);
+    const holder = fighterAtNode(sim, HOLDER, ROW, BEAR, null);
+    sim.world.add(holder, Engagement, { target: victim, repathAt: 0 });
+    sim.world.add(holder, MoveGoal, { cell: terrain.nodeAt(HELD, ROW) });
+    const bear = fighterAtNode(sim, CHASER, ROW, BEAR, null);
+
+    combatSystem(sim.world, ctxOf(sim));
+
+    expect(sim.world.get(holder, MoveGoal).cell).toBe(terrain.nodeAt(HELD, ROW));
+    expect(sim.world.get(bear, MoveGoal).cell).toBe(terrain.nodeAt(FREE, ROW));
+  });
+
   it('a passive animal never advances (only a hostile one ambushes)', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(8, 1) });
     const cow = fighterAt(sim, 0, 0, COW, null); // catchable, fully passive

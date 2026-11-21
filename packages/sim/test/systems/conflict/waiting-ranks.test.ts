@@ -67,7 +67,7 @@ it.each(['previous pass', 'current pass', 'mid-stride'])(
   },
 );
 
-it.each(['tie', 'arriving', 'other owner', 'other target', 'occupied'] as const)(
+it.each(['tie', 'arriving', 'other owner', 'other target', 'occupied', 'crossing a friend'] as const)(
   'keeps the incumbent front reservation when %s',
   (reason) => {
     const sim = new Simulation({ seed: 1, content: combatCadenceContent(), map: grass(20, 20) });
@@ -89,6 +89,15 @@ it.each(['tie', 'arriving', 'other owner', 'other target', 'occupied'] as const)
     if (reason === 'occupied') {
       const occupant = fighterAtNode(sim, 9, 10, VIKING, SOLDIER_SWORD_SHORT);
       sim.world.add(occupant, Owner, { player: 0 });
+    }
+    if (reason === 'crossing a friend') {
+      // On the centre of a friend's node, its next leg just begun: a stop would rest it on his node.
+      const friend = fighterAtNode(sim, 20, 10, VIKING, SOLDIER_SWORD_SHORT);
+      sim.world.add(friend, Owner, { player: 0 });
+      sim.world.add(far, PathRoute, {
+        waypoints: [20, 19].map((hx) => ({ ...positionOfNode(hx, 10), node: terrain.nodeAt(hx, 10) })),
+      });
+      sim.world.add(far, PathFollow, { index: 1, legElapsed: 0, legCost: 4 });
     }
     const slots = new MeleeSlots(sim.world, ctxOf(sim), terrain);
     expect(slots.isTaken(cell, undefined, undefined, { entity: near, target })).toBe(true);

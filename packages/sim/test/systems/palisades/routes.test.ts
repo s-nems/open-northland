@@ -133,7 +133,7 @@ const NORTH = { hx: GATE_X, hy: 2 };
 const PRESSED_X = 6;
 const SOUTH = { hx: GATE_X, hy: 18 };
 const DEEP_SOUTH = { hx: GATE_X, hy: DEEP_HEIGHT - 2 };
-/** Enough attackers that the front fills and later ones queue in waiting ranks behind it. */
+/** Enough attackers that the front fills and later ones wait behind it. */
 const PACKED_ARMY = 60;
 /** Attackers enough to share one gate's route refusals. */
 const BREACH_SQUAD = 4;

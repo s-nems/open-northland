@@ -1,6 +1,8 @@
 import {
   AttackOrder,
   Engagement,
+  hostileMaskOf,
+  hostilePlayerMasks,
   MoveGoal,
   Owner,
   PathFollow,
@@ -13,12 +15,18 @@ import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
 import { dynamicBlockOverlay } from '../footprint/index.js';
 import { routeStructureBlocks } from '../movement/attack-move-blocks.js';
-import { standingFighterPosts } from '../movement/collision/index.js';
-import { liveStepEnd, stopAtNextNode } from '../movement/nav-state.js';
+import {
+  ColliderWalkBlocks,
+  hasBodyCollision,
+  standingFighterPosts,
+  unitWalkBlocks,
+} from '../movement/collision/index.js';
+import { liveStepEnd, onNodeCentre, stopAtNextNode } from '../movement/nav-state.js';
 import { structureSameRegion, structureStandable } from '../movement/structure-route.js';
 import { hexNodeDistance } from '../spatial/metric.js';
 import { entityNode } from '../spatial/nodes.js';
 import { encircleBands } from './encircle-bands.js';
+import { WalkLocal } from './walk-local.js';
 import { forEachNodeInBand, type WeaponBand } from './weapon-band.js';
 
 /** Shared so a body-less target allocates nothing. */
@@ -55,18 +63,6 @@ export interface Crowding {
 /** A side that claims a cell: a player, or null for an unowned combatant such as a hostile animal. */
 export type Side = number | null;
 
-/** The first rank still open to the askers standing on one bank; `anchor` is the first such asker's node,
- *  or null for askers off structural ground. */
-interface BankRanks {
-  readonly anchor: NodeId | null;
-  firstOpen: number;
-}
-
-interface WaitingRanks {
-  readonly rows: Map<number, NodeId[]>;
-  readonly banks: BankRanks[];
-}
-
 /**
  * One combat tick's melee-slot bookkeeping: which contact cells are spoken for, and the derived views that
  * answer it. Chasers are served in the canonical combatant order, so the deal is deterministic; every view
@@ -82,16 +78,46 @@ export class MeleeSlots {
   private readonly claimed = new Map<NodeId, Side>();
   private blocked?: BlockOverlay;
   private readonly marchBlocks = new Map<number, BlockOverlay>();
-  /** The tick's open encircle candidates per target and weapon band, so every chaser only filters taken
-   *  slots over them. */
-  private readonly bands = new Map<string, readonly NodeId[]>();
-  private readonly waiting = new Map<string, WaitingRanks>();
+  /** Each chaser kind's step overlay, keyed by {@link walkBlocksKey}. */
+  private readonly walkBlocks = new Map<number, BlockOverlay>();
+  private readonly local: WalkLocal;
 
   constructor(
     private readonly world: World,
     private readonly ctx: SystemContext,
     private readonly terrain: TerrainGraph,
-  ) {}
+  ) {
+    this.local = new WalkLocal(terrain);
+  }
+
+  /** The nodes `chaser` on `here` reaches by walking, valid until the next call. */
+  nearChaser(chaser: Entity, here: NodeId): WalkLocal {
+    this.local.begin(here, this.stepBlocks(chaser));
+    return this.local;
+  }
+
+  /** Where a step of `chaser` may not go: the structures it routes by, and for a collider a standing body
+   *  at war with it. */
+  stepBlocks(chaser: Entity): BlockOverlay {
+    const marching = this.world.tryGet(chaser, PlayerOrder)?.attackMove !== undefined;
+    const collides = hasBodyCollision(this.world, this.ctx.content, chaser);
+    const player = this.world.tryGet(chaser, Owner)?.player ?? UNOWNED;
+    const key = walkBlocksKey(player, marching, collides);
+    let blocks = this.walkBlocks.get(key);
+    if (blocks === undefined) {
+      this.blocked ??= dynamicBlockOverlay(this.world, this.ctx, this.terrain);
+      const structures = this.structuresFor(chaser) ?? this.blocked;
+      blocks = collides
+        ? new ColliderWalkBlocks(
+            structures,
+            unitWalkBlocks(this.world, this.ctx.content, this.terrain),
+            hostileMaskOf(hostilePlayerMasks(this.world), player),
+          )
+        : structures;
+      this.walkBlocks.set(key, blocks);
+    }
+    return blocks;
+  }
 
   /** Whether `cell` is already spoken for: a standing body, a cell dealt earlier this tick, or another
    *  chaser's live goal. `ownGoal` is the asker's own goal and `standingOn` the node it stands on, neither
@@ -228,6 +254,11 @@ export class MeleeSlots {
     if (follow !== undefined && route !== undefined) {
       const end = liveStepEnd(follow.index, route);
       if (end !== undefined && route[end]?.node === cell) return false;
+      // Yielding stops the walker where its live step ends, or where it stands on a node's centre: never on
+      // a node a body stands on, which a walker crossing a friend would share with him.
+      const rest = end === undefined || onNodeCentre(this.world, prior.entity) ? there : route[end]?.node;
+      this.standing ??= standingFighterPosts(this.world, this.ctx.content, this.terrain);
+      if (rest === undefined || this.standing.has(rest)) return false;
     }
     const remaining = hexNodeDistance(this.terrain, there, cell);
     if (remaining <= 1 || hexNodeDistance(this.terrain, here, cell) >= remaining) return false;
@@ -260,131 +291,29 @@ export class MeleeSlots {
     return blocked;
   }
 
-  /** Owner rule: fill successive ranks behind a full front. Full rows are skipped collectively for
-   * this pass; each asker's own standing cell and reserved goal remain eligible even in a full row. */
-  waitingCell(
-    here: NodeId,
-    target: { readonly entity: Entity; readonly node: NodeId; readonly body: readonly NodeId[] | null },
-    weapon: WeaponBand,
-    mine: OwnClaims,
-  ): NodeId {
-    const chaser = mine.chaser?.entity;
-    const marching = chaser !== undefined && this.world.tryGet(chaser, PlayerOrder)?.attackMove !== undefined;
-    const side = marching ? this.world.tryGet(chaser, Owner)?.player : undefined;
-    const key = `${target.entity}:${weapon.maxRange}:${side}`;
-    let ranks = this.waiting.get(key);
-    if (ranks === undefined) {
-      ranks = { rows: new Map(), banks: [] };
-      this.waiting.set(key, ranks);
-    }
-    const terrain = this.terrain;
-    const body = target.body !== null && target.body.length > 0 ? target.body : [target.node];
-    const reach = (cell: NodeId): number => {
-      let distance = Number.POSITIVE_INFINITY;
-      for (const wall of body) distance = Math.min(distance, hexNodeDistance(terrain, cell, wall));
-      return distance;
-    };
-    const distance = reach(here);
-    const banked = this.hasBank(here, chaser);
-    const onBank = (cell: NodeId): boolean => !banked || this.sameBank(here, cell, chaser);
-    const bank = this.bankRanks(ranks, here, banked, chaser, weapon.maxRange + 1);
-    const own = [mine.goal, mine.standingOn].filter((cell): cell is NodeId => cell !== undefined);
-    const ownRanks = own.map(reach);
-    // The ranks walked out to: the asker's own, and its reserved goal's where that lies deeper, since a
-    // route to a deeper rank may pass through nearer ranks and must not drop the goal on the way.
-    const outermost = Math.max(distance, ...ownRanks);
-    let firstOpen = bank.firstOpen;
-    const nextRank = (start: number): number => {
-      let next = Math.max(start, firstOpen);
-      for (const rank of ownRanks) if (rank >= start) next = Math.min(next, rank);
-      return next;
-    };
-    for (let radius = nextRank(weapon.maxRange + 1); radius <= outermost; radius = nextRank(radius + 1)) {
-      let row = ranks.rows.get(radius);
-      if (row === undefined) {
-        row = [...this.encircleCandidates(target.entity, body, { minRange: radius, maxRange: radius })];
-        ranks.rows.set(radius, row);
-      }
-      let best: NodeId | undefined;
-      let bestDistance = Number.POSITIVE_INFINITY;
-      const consider = (cell: NodeId): void => {
-        const dist = hexNodeDistance(terrain, here, cell);
-        if (dist < bestDistance || (dist === bestDistance && (best === undefined || cell < best))) {
-          best = cell;
-          bestDistance = dist;
-        }
-      };
-      // Claims only grow during a pass. Prune once for all later askers, preserving the two own-cell
-      // exceptions separately rather than leaving every occupied cell in every soldier's search.
-      let kept = 0;
-      let openOnBank = false;
-      for (const cell of row) {
-        if (this.isTaken(cell, undefined)) continue;
-        row[kept++] = cell;
-        if (!onBank(cell)) continue;
-        openOnBank = true;
-        consider(cell);
-      }
-      row.length = kept;
-      if (!openOnBank && radius >= firstOpen) {
-        firstOpen = radius + 1;
-        bank.firstOpen = firstOpen;
-      }
-      for (let i = 0; i < own.length; i++) {
-        const cell = own[i] as NodeId;
-        if (
-          ownRanks[i] === radius &&
-          onBank(cell) &&
-          this.isOpen(cell) &&
-          !this.isTaken(cell, mine.goal, mine.standingOn)
-        ) {
-          // Keep a live destination within this rank; choosing another equally deep slot each cadence
-          // can turn a detour around a crowded building back on itself indefinitely.
-          if (cell === mine.goal) return cell;
-          consider(cell);
-        }
-      }
-      if (best !== undefined) return best;
-    }
-    return here;
-  }
-
-  /** The ranks of the bank `here` stands on; regions are disjoint, so at most one anchor shares it. */
-  private bankRanks(
-    ranks: WaitingRanks,
-    here: NodeId,
-    banked: boolean,
-    chaser: Entity | undefined,
-    firstOpen: number,
-  ): BankRanks {
-    for (const bank of ranks.banks) {
-      const shared = bank.anchor === null ? !banked : banked && this.sameBank(bank.anchor, here, chaser);
-      if (shared) return bank;
-    }
-    const bank = { anchor: banked ? here : null, firstOpen };
-    ranks.banks.push(bank);
-    return bank;
-  }
-
   /**
-   * The open in-band contact cells around a building: every {@link isOpen} cell whose distance to the body's
-   * nearest wall is in the weapon band - the same nearest-wall rule the reach check uses, so a body cell
-   * (reach 0) is never dealt. The static band is held across ticks; only the walk block is read per tick.
+   * The contact cells around a building before the walk block: every walkable cell whose distance to the
+   * body's nearest wall is in the weapon band, the nearest-wall rule the reach check uses, so a body cell
+   * (reach 0) is never dealt, and {@link isOpen} tells which a chaser may take this tick. Held across ticks;
+   * never mutate it.
    */
-  encircleCandidates(target: Entity, body: readonly NodeId[] | null, weapon: WeaponBand): readonly NodeId[] {
-    const key = `${target}:${weapon.minRange}:${weapon.maxRange}`;
-    const cached = this.bands.get(key);
-    if (cached !== undefined) return cached;
-    const candidates = this.encircleCells(target, body, weapon).filter((cell) => this.isOpen(cell));
-    this.bands.set(key, candidates);
-    return candidates;
-  }
-
-  /** {@link encircleCandidates} before the walk block: the held static band, every cell of it walkable, so
-   *  {@link isOpen} tells which of them a candidate list would keep. Shared across ticks; never mutate it. */
   encircleCells(target: Entity, body: readonly NodeId[] | null, weapon: WeaponBand): readonly NodeId[] {
     return encircleBands(this.world, this.terrain).cellsOf(target, body ?? NO_CELLS, weapon);
   }
+}
+
+/** The player key an unowned chaser routes under, as routing keys one. */
+const UNOWNED = -1;
+
+/** The bits of {@link walkBlocksKey} below the player. */
+const COLLIDER_KEY_BIT = 1;
+const MARCH_KEY_BIT = 2;
+const KIND_KEYS_PER_PLAYER = 4;
+
+/** One number per (player, march, collider) chaser kind. */
+function walkBlocksKey(player: number, marching: boolean, collides: boolean): number {
+  const kind = (marching ? MARCH_KEY_BIT : 0) | (collides ? COLLIDER_KEY_BIT : 0);
+  return (player - UNOWNED) * KIND_KEYS_PER_PLAYER + kind;
 }
 
 /** How many dead entries per live chaser a {@link ChaseGoals} table holds, past {@link DEAD_GOALS_SLACK},

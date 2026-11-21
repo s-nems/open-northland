@@ -248,7 +248,7 @@ function fight(
     weapon,
     stance,
     spec.defend,
-    spec.hold?.contact === true ? spec : null,
+    spec.hold === undefined ? null : spec,
   );
   if (gaveUp) restPreySearch(world, ctx, e, spec);
 }
@@ -514,7 +514,7 @@ function swingAt(
     const prior = world.tryGet(e, Engagement);
     if (prior === undefined) world.add(e, Engagement, engagementRecord(ctx.tick));
     else if (prior.stall !== undefined || prior.waiting !== undefined) {
-      // It reached its target, and a second rank that strikes stands in the front now.
+      // It reached its target, and a waiting man that strikes stands in the front now.
       const held = world.mut(e, Engagement);
       held.stall = undefined;
       held.waiting = undefined;

@@ -139,6 +139,32 @@ describe('DEFEND - hold an anchor, don’t chase past the leash', () => {
     expect(tileOf(sim, guard)).toEqual({ x: 5, y: 0 }); // stayed on its post, never walked to the wood
   });
 
+  it('lets go of an enemy whose cell lies within the leash when routing stood it in past the leash', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(40, 1) });
+    const terrain = sim.terrain;
+    if (terrain === undefined) throw new Error('mapped sim expected');
+    const ANCHOR = 20;
+    // The axe's band reaches two points, so its leash runs that far past the defend leash.
+    const AXE_REACH = 2;
+    const leash = DEFEND_LEASH_NODES + AXE_REACH;
+    // Held at the leash, struck from the cell at its edge, stood in one point past it.
+    const enemy = combatantAtNode(sim, ANCHOR + DEFEND_LEASH_NODES, 0, P1, MILITARY_MODE.IGNORE, {
+      hitpoints: 100000,
+    });
+    const cellAtLeash = terrain.nodeAt(ANCHOR + leash, 0);
+    const pastLeash = ANCHOR + leash + 1;
+    const guard = combatantAtNode(sim, pastLeash, 0, P0, MILITARY_MODE.DEFEND, { jobType: SOLDIER });
+    sim.world.add(guard, Weapon, { weaponTypeId: TEST_AXE });
+    sim.world.mut(guard, Stance).anchorCell = terrain.nodeAt(ANCHOR, 0);
+    sim.world.add(guard, Engagement, { repathAt: 0, target: enemy });
+    sim.world.add(guard, MoveGoal, { cell: cellAtLeash });
+    sim.world.add(guard, StandIn, { goal: cellAtLeash, at: terrain.nodeAt(pastLeash, 0) });
+
+    combatSystem(sim.world, ctxOf(sim));
+    expect(sim.world.has(guard, Engagement)).toBe(false);
+    expect(sim.world.get(guard, MoveGoal).cell).toBe(terrain.nodeAt(ANCHOR, 0));
+  });
+
   it('walks to a meal, eats it and returns to its post while an enemy stands in sight beyond the defend radius', () => {
     const FOOD = 3; // the fixture's `food_simple`
     const HEADQUARTERS = 1; // the fixture building with a food slot

@@ -55,12 +55,16 @@ import { addSettlerOfTribe } from '../../../fixtures/settler.js';
 import { ctxOf, fighterAt, grassMap, HARVEST_ATOMIC, P0, P1, VIKING, WOOD, WOODCUTTER } from './support.js';
 
 // A chase whose target the walk-block overlay seals off inside the chaser's own static walk component, so only
-// routing can refuse it: an enemy ringed by buildings, which never shift, or by standing bodies, which do.
+// routing can refuse it: an enemy ringed by buildings, which never shift. A ring of standing bodies, which do,
+// refuses a chase only while the chaser does not fight them: it walks up to bodies it fights.
 
 const WALL = 90; // appended: a plain, low-priority building blocking one node
 const SOLDIER = 31; // `soldier_unarmed`: a collider, so standing bodies block its routes and it blocks theirs
 const MACE = 12; // appended: the soldier's melee weapon, a strict one-node band
 const P2 = 2; // a third side, for a ring that blocks the besieger without being his target
+/** A tribe with no content record: its soldier resolves no weapon, so it never strikes, while its standing
+ *  body still blocks an enemy's route. */
+const UNARMED_TRIBE = 99;
 
 /** The shared fixture plus the wall post and the soldier's mace. */
 function siegeContent(): ContentSet {
@@ -127,11 +131,12 @@ function fighterOnNode(
   jobType: number,
   owner: number,
   mode: MilitaryMode,
+  tribe = VIKING,
 ): Entity {
   const e = sim.world.create();
   sim.world.add(e, Position, positionOfNode(hx, hy));
   addSettlerOfTribe(sim, e, {
-    tribe: VIKING,
+    tribe,
     jobType,
     hunger: fx.fromInt(0),
     fatigue: fx.fromInt(0),
@@ -144,10 +149,10 @@ function fighterOnNode(
   return e;
 }
 
-/** Soldiers of the besieger's side standing on every ring node around (hx, hy). */
-function crowdIn(sim: Simulation, hx: number, hy: number, owner = P0): Entity[] {
+/** Soldiers of `owner`, the besieger's side unless told, standing on every ring node around (hx, hy). */
+function crowdIn(sim: Simulation, hx: number, hy: number, owner = P0, tribe = VIKING): Entity[] {
   return ringAround(hx, hy).map((node) =>
-    fighterOnNode(sim, node.hx, node.hy, SOLDIER, owner, MILITARY_MODE.IGNORE),
+    fighterOnNode(sim, node.hx, node.hy, SOLDIER, owner, MILITARY_MODE.IGNORE, tribe),
   );
 }
 
@@ -416,7 +421,7 @@ describe('an attack-move whose target is walled in', () => {
   });
 });
 
-describe('a chase whose target a ring of bodies seals off', () => {
+describe('a chase whose target a ring of bodies it does not fight seals off', () => {
   it('holds at the cadence for as long as the ring stands and takes the gap when a body steps off', () => {
     const scene = standoff({ besiegerJob: SOLDIER });
     // A third side that holds the besieger an enemy while he holds it a friend: its bodies block his
@@ -478,12 +483,13 @@ describe('a chase whose target its own side rings', () => {
     expect(scene.sim.world.has(scene.besieger, UnreachableTargets)).toBe(false);
   });
 
-  it('drops the refusal count while it stands in the second rank', () => {
+  it('drops the refusal count once routing parks it behind a full front, and waits where it stands', () => {
     // A corridor two nodes high: the mace's band around the enemy is four in-bounds cells, each held by
-    // an allied body, so the subject, already a map point outside that band, waits there and routing is
-    // never asked.
+    // an allied body, so the subject, already a map point outside that band, is stood in on its own node.
     const sim = new Simulation({ seed: 1, content: siegeContent(), map: grassMap(9, 1) });
-    const enemy = fighterOnNode(sim, 10, 0, SOLDIER, P1, MILITARY_MODE.IGNORE);
+    const terrain = sim.terrain;
+    if (terrain === undefined) throw new Error('map expected');
+    const enemy = fighterOnNode(sim, 10, 0, SOLDIER, P1, MILITARY_MODE.IGNORE, UNARMED_TRIBE);
     for (const [dx, dy] of [
       [-1, 0],
       [1, 0],
@@ -494,11 +500,17 @@ describe('a chase whose target its own side rings', () => {
     }
     const subject = fighterOnNode(sim, 8, 0, SOLDIER, P0, MILITARY_MODE.ATTACK);
     sim.world.add(subject, Engagement, { repathAt: 0, stall: { target: enemy, routes: 2 } });
+    // One look, its route, the planner retiring the reached goal and the next look.
+    const SETTLE_TICKS = 4;
+    for (let i = 0; i < SETTLE_TICKS; i++) sim.step();
 
-    combatSystem(sim.world, ctxOf(sim));
-
-    expect(sim.world.get(subject, Engagement)).toMatchObject({ stall: undefined, target: enemy });
+    expect(sim.world.get(subject, Engagement)).toMatchObject({
+      stall: undefined,
+      target: enemy,
+      waiting: true,
+    });
     expect(sim.world.has(subject, MoveGoal)).toBe(false);
+    expect(nodeOf(sim, terrain, subject)).toBe(terrain.nodeAt(8, 0));
   });
 
   it('never waits on the friend whose node it is crossing', () => {

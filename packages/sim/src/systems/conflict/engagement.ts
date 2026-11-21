@@ -16,7 +16,7 @@ import {
   Vehicle,
 } from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
-import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
+import { type NodeId, StepBuffer, type TerrainGraph } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
 import { REFERENCE_STEP_TICKS } from '../movement/walk-cost.js';
 import {
@@ -436,8 +436,8 @@ export interface EngageSpec {
 /**
  * The enemy this combatant fights this tick with its reach from `here` in map points, or null. An
  * {@link AttackOrder} focus and a live `spec.lock` resolve ahead of the nearest search; a breach yields to
- * an enemy inside `weapon`'s band ({@link breakerRival}), and any other order that lets its fighter turn
- * aside to a higher-ranked enemy ({@link asideFromOrder}). Otherwise the nearest target `spec.accept`
+ * an enemy inside `weapon`'s band ({@link breakerRival}), and any other order to the enemy its fighter
+ * turned aside to ({@link asideFromOrder}). Otherwise the nearest target `spec.accept`
  * admits within `[spec.minDist, spec.searchRadius]`, with the `spec.lowPriority` tier searched only when the
  * primary tier finds nothing in sight. `moving` is the swing gate's own reading of whether the unit still
  * walks, so the held enemy is weighed against its neighbours on exactly the ticks a swing could start;
@@ -472,19 +472,8 @@ export function resolveTarget(
       found.dist = rival.distance;
       return found;
     }
-    if (spec.hold !== undefined && turnsAsideUnder(world, ctx, order, index.firingNow)) {
-      const aside = asideFromOrder(
-        world,
-        ctx,
-        terrain,
-        pass,
-        self,
-        here,
-        spec,
-        spec.hold,
-        order.target,
-        moving,
-      );
+    if (spec.hold !== undefined && order.breach === undefined) {
+      const aside = asideFromOrder(world, ctx, terrain, pass, self, here, spec, spec.hold, order, moving);
       if (aside !== null) return aside;
     }
     return focusedOn(world, ctx, terrain, here, order.target, focusOf(pass).found);
@@ -638,12 +627,13 @@ function priorityTargetInLook(
 }
 
 /**
- * The enemy a combatant fights ahead of its order's `target` when the order lets it turn aside
- * ({@link turnsAsideUnder}): the one it already turned to while that still outranks the target
- * ({@link strikeRank}), the striker it turned on included, else a first-tier threat in its look
- * ({@link priorityTargetInLook}), between blows or every {@link REPATH_CADENCE} ticks of a walk.
- * Null takes the target up again. The order stands throughout: a chase the enemy escapes lets only that enemy go
- * (`chase.ts`).
+ * The enemy a combatant fights ahead of its order's target. Under an order that lets it turn aside
+ * ({@link turnsAsideUnder}): the one it turned to while that still outranks the target ({@link strikeRank}),
+ * the striker it turned on included, else a first-tier threat in its look ({@link priorityTargetInLook}),
+ * between blows or every {@link REPATH_CADENCE} ticks of a walk. Under any order: the one it struck from
+ * where the bodies held it short of its approach (`chase.ts`), while it stands with that one in reach and the
+ * target out of it. Null takes the target up again. The order stands throughout: a chase the enemy escapes
+ * lets only that enemy go (`chase.ts`).
  */
 function asideFromOrder(
   world: World,
@@ -654,20 +644,23 @@ function asideFromOrder(
   here: NodeId,
   spec: EngageSpec,
   hold: NonNullable<EngageSpec['hold']>,
-  target: Entity,
+  order: { readonly target: Entity; readonly assault?: true | undefined },
   moving: boolean,
 ): { target: Entity; dist: number } | null {
+  const turns = turnsAsideUnder(world, ctx, order, pass.index.firingNow);
   const engaged = world.tryGet(self, Engagement)?.target;
-  if (
-    engaged !== undefined &&
-    engaged !== target &&
-    world.isAlive(engaged) &&
-    hold.keep(engaged) &&
-    ranksAbove(world, ctx, pass, engaged, target)
-  ) {
-    return focusedOn(world, ctx, terrain, here, engaged, focusOf(pass).found);
+  if (engaged !== undefined && engaged !== order.target && world.isAlive(engaged) && hold.keep(engaged)) {
+    if (turns && ranksAbove(world, ctx, pass, engaged, order.target)) {
+      return focusedOn(world, ctx, terrain, here, engaged, focusOf(pass).found);
+    }
+    if (!moving) {
+      const { held, found } = focusOf(pass);
+      const struck = focusedOn(world, ctx, terrain, here, engaged, found);
+      const ordered = focusedOn(world, ctx, terrain, here, order.target, held);
+      if (withinBand(hold.band, struck.dist) && !withinBand(hold.band, ordered.dist)) return struck;
+    }
   }
-  if (moving && !onStride(ctx.tick, self, REPATH_CADENCE)) return null;
+  if (!turns || (moving && !onStride(ctx.tick, self, REPATH_CADENCE))) return null;
   return priorityTargetInLook(world, ctx, terrain, pass, here, spec, hold);
 }
 
@@ -737,7 +730,7 @@ function heldOrPicked(
   }
   if (held !== null && heldTarget !== undefined && !rescanDue(ctx, self, travelling, held.dist, hold.band)) {
     if (asker === null || moving || !withinBand(hold.band, held.dist)) return held;
-    return lessCrowdedInReach(world, ctx, terrain, pass, spec, asker, heldTarget) ?? held;
+    return lessCrowdedInReach(world, ctx, terrain, pass, spec, self, asker, heldTarget) ?? held;
   }
   const x = terrain.xOf(here);
   const y = terrain.yOf(here);
@@ -808,7 +801,7 @@ export const RESCAN_PERIOD_TICKS = RESCAN_WALK_STEPS * REFERENCE_STEP_TICKS;
 /**
  * Whether a combatant holding a target `heldDist` map points off looks again this tick: every
  * {@link RESCAN_PERIOD_TICKS} while it walks, and never while it stands with the target in `band`. A unit
- * standing with its target out of reach, a second rank waiting for a side, looks every
+ * standing with its target out of reach, a man waiting for a side, looks every
  * {@link REPATH_CADENCE} ticks. Intentional deviation: in the original that unit would already be walking up
  * to fight from a taken side, so here it takes an enemy that steps up to it within about a step instead
  * of standing idle beside it.
@@ -870,13 +863,13 @@ function crowdingOf(
 const OPEN_CROWDING: Crowding = { occupied: 0, sealed: false };
 
 /**
- * The enemy a fighter about to strike turns to instead: one within reach or a step outside it, of a kind
- * no worse than `heldTarget`, with strictly fewer bodies standing at it than the held one; among those the
- * nearest, then the lowest id. Null keeps the held one. Asked on the ticks a swing could start, so before
- * a walker's first blow and after every one, and never mid-swing, and it costs one band scan a step wider
- * than the weapon's reach, so the work follows the fighters in contact. Owner rule: the original never
- * lets go of a live target it can reach; here it is what keeps three swords off one man once the lines
- * have mixed.
+ * The enemy a fighter about to strike turns to instead: one within reach, or a step outside it that a step
+ * the fighter may take brings into reach ({@link stepInto}), of a kind no worse than `heldTarget`, with
+ * strictly fewer bodies standing at it than the held one; among those the nearest, then the lowest id. Null
+ * keeps the held one. Asked on the ticks a swing could start, so before a walker's first blow and after every
+ * one, and never mid-swing, and it costs one band scan a step wider than the weapon's reach, so the work
+ * follows the fighters in contact. Owner rule: the original never lets go of a live target it can reach;
+ * here it is what keeps three swords off one man once the lines have mixed.
  */
 function lessCrowdedInReach(
   world: World,
@@ -884,6 +877,7 @@ function lessCrowdedInReach(
   terrain: TerrainGraph,
   pass: CombatPass,
   spec: EngageSpec,
+  self: Entity,
   asker: Asker,
   heldTarget: Entity,
 ): { target: Entity; dist: number } | null {
@@ -914,13 +908,43 @@ function lessCrowdedInReach(
   let bestCrowd = heldCrowd;
   for (const candidate of near) {
     const crowd = crowdingOf(world, ctx, terrain, pass, asker, candidate.entity).occupied;
-    if (crowd < bestCrowd) {
-      best = candidate.entity;
-      bestCrowd = crowd;
-    }
+    if (crowd >= bestCrowd) continue;
+    const pastReach = candidate.distance > asker.band.maxRange;
+    if (
+      pastReach &&
+      !stepInto(
+        terrain,
+        pass,
+        self,
+        asker,
+        combatTargetNode(world, ctx, terrain, asker.here, candidate.entity),
+      )
+    )
+      continue;
+    best = candidate.entity;
+    bestCrowd = crowd;
   }
   return best === null ? null : focusedOn(world, ctx, terrain, asker.here, best, focusOf(pass).found);
 }
+
+/** Whether a step `self` may take from the asker's node, past friends but onto no wall or enemy body, brings
+ *  `node` into its band. */
+function stepInto(
+  terrain: TerrainGraph,
+  pass: CombatPass,
+  self: Entity,
+  asker: Asker,
+  node: NodeId,
+): boolean {
+  terrain.stepsInto(asker.here, pass.slots.stepBlocks(self), askerSteps);
+  for (let i = 0; i < askerSteps.length; i++) {
+    if (withinBand(asker.band, hexNodeDistance(terrain, askerSteps.nodeAt(i), node))) return true;
+  }
+  return false;
+}
+
+/** Scratch for {@link stepInto}'s steps. */
+const askerSteps = new StepBuffer();
 
 /**
  * The pick: the first kind in {@link PICK_TIERS} with a candidate, and among its {@link PICK_CANDIDATES}
@@ -999,6 +1023,34 @@ export function tierRank(world: World, ctx: SystemContext, index: CombatIndex, t
     if (PICK_TIERS[rank]?.(world, ctx, index, t) === true) return rank;
   }
   return PICK_TIERS.length;
+}
+
+/**
+ * The nearest enemy unit `spec` admits within `band` of `here`, of a kind no worse than `than` (the enemy the
+ * chaser holds), or null. Authored, a consequence of the authored body collision: a chaser the bodies hold
+ * short of its approach strikes such an enemy from where it stands rather than wait beside it. A building is
+ * besieged from its faces, never struck from a stand. One small band scan.
+ */
+export function enemyUnitInReach(
+  world: World,
+  ctx: SystemContext,
+  terrain: TerrainGraph,
+  pass: CombatPass,
+  spec: EngageSpec,
+  than: Entity,
+  band: WeaponBand,
+  here: NodeId,
+): Entity | null {
+  const { index } = pass;
+  const x = terrain.xOf(here);
+  const y = terrain.yOf(here);
+  if (spec.player !== null && !index.othersWithin(spec.player, x, y, band.maxRange)) return null;
+  const heldRank = tierRank(world, ctx, index, than);
+  const accept = (t: Entity): boolean =>
+    !world.has(t, Building) && tierRank(world, ctx, index, t) <= heldRank && spec.accept(t);
+  return (
+    index.nearest(x, y, band.minRange, band.maxRange, accept, spec.player, SEARCH_METRIC)?.entity ?? null
+  );
 }
 
 /** An enemy in reach from a node, or null: what a fighter standing behind a full front asks of the free
