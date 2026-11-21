@@ -11,6 +11,7 @@ import {
 import type { Fixed } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
 import { hexDistanceBetween, nodeHxOfPosition, nodeHyOfPosition } from '../../nav/halfcell.js';
+import type { NodeId } from '../../nav/terrain/index.js';
 import type { ContentContext, MapContext } from '../context.js';
 import { isLoosePile } from '../stores/index.js';
 import { mannedPostsOf } from './manned-posts.js';
@@ -122,12 +123,28 @@ function keepBowman(world: World, ctx: MapContext, bowmen: PostedBowman[], e: En
  *  its anchor (`x`, `y`) without one. */
 function postWalls(world: World, ctx: MapContext, post: Entity, x: Fixed, y: Fixed): readonly number[] {
   const terrain = ctx.terrain;
-  const walls = terrain === undefined ? [] : buildingBodyNodes(world, ctx, terrain, post);
+  const walls = terrain === undefined ? NO_WALLS : buildingBodyNodes(world, ctx, terrain, post);
   if (terrain === undefined || walls.length === 0) return [nodeHxOfPosition(x, y), nodeHyOfPosition(x, y)];
+  const held = wallPairs.get(walls);
+  if (held !== undefined && held.width === terrain.width) return held.pairs;
   const pairs: number[] = [];
-  for (const wall of walls) pairs.push(terrain.xOf(wall), terrain.yOf(wall));
+  for (let i = 0; i < walls.length; i++) {
+    const wall = walls[i] as NodeId;
+    pairs.push(terrain.xOf(wall), terrain.yOf(wall));
+  }
+  wallPairs.set(walls, { width: terrain.width, pairs });
   return pairs;
 }
+
+const NO_WALLS: readonly NodeId[] = [];
+
+/** {@link postWalls}' pairs by the body list they were read off, a pure function of its nodes and the
+ *  map's width: a body is held across ticks while its building stands, so every re-listing of its bowmen
+ *  shares one pair list. */
+const wallPairs = new WeakMap<
+  readonly NodeId[],
+  { readonly width: number; readonly pairs: readonly number[] }
+>();
 
 /** The players of `fire`'s bowmen who fight `player`, one way: a bowman shoots at whom his player fights, and
  *  never at his own side. */
