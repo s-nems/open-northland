@@ -1,7 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { ONE, tileToScreen } from '../../../../src/data/projection/index.js';
 import { readSiegeShot, type SiegeShot, shotPath, shotPoseAt } from '../../../../src/data/scene/index.js';
-import { headingValency, type ParticleRef, particleFrame } from '../../../../src/data/sprites/index.js';
+import {
+  headingValency,
+  type ParticleRef,
+  particleFrame,
+  valencyHeading,
+} from '../../../../src/data/sprites/index.js';
 import { type ElevationField, makeElevationField } from '../../../../src/data/terrain/index.js';
 
 /** A catapult's stone east over 16 map points at weapon speed 3: `16 * 8 / 3` ticks, the tick before its
@@ -111,5 +116,11 @@ describe('particle frames', () => {
     expect(headingValency(-Math.PI / 2, 32)).toBe(16); // screen-up
     expect(headingValency(Math.PI, 32)).toBe(24); // screen-west, from either side of the branch cut
     expect(headingValency(-Math.PI, 32)).toBe(24);
+  });
+
+  it('reads each valency back as the heading that picks it', () => {
+    for (let valency = 0; valency < 32; valency++) {
+      expect(headingValency(valencyHeading(valency, 32), 32)).toBe(valency);
+    }
   });
 });

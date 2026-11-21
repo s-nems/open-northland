@@ -212,7 +212,7 @@ export const itContent = {
     'bow-flight': {
       title: 'Volo delle frecce',
       summary:
-        'Quattro arcieri mantengono visibili frecce in scala naturale lungo corsie orizzontali, verticali e diagonali.',
+        'Due arcieri con arco corto e due con arco lungo mantengono visibili le loro frecce lungo corsie orizzontali, verticali e diagonali.',
     },
     'personal-names': {
       title: 'Nomi personali',

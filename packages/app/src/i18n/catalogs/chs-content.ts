@@ -209,7 +209,7 @@ export const chsContent = {
     },
     'bow-flight': {
       title: '箭矢飞行',
-      summary: '四名弓箭手沿水平、垂直和对角线方向射击，箭矢以自然比例始终可见。',
+      summary: '两名短弓手和两名长弓手沿水平、垂直和对角线方向射击，各自的箭矢始终可见。',
     },
     'personal-names': {
       title: '人名',

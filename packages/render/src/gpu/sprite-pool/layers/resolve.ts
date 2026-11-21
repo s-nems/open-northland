@@ -2,6 +2,7 @@ import type { DrawItem, PalisadePostDraw, ShotShape } from '../../../data/scene/
 import {
   DECOR_BINDING_KEY,
   headingValency,
+  type ParticleRef,
   particleFrame,
   resolveCraftFxDraw,
   resolvePalisadeDraw,
@@ -333,25 +334,33 @@ function pushProjectileLayers(out: LayerBuffer, sheet: SpriteSheet, item: DrawIt
   const layer = layeredLayerFor(sheet, 'projectile', { layer: ref.layer, bob });
   if (layer === null) return false;
   const shape = item.shotShape;
-  out.push(
-    ref.directional && shape !== undefined
-      ? stretchedLayer(layer, valencyHeading(valency, ref.valencies.length), shape)
-      : layer,
-  );
+  out.push(ref.directional && shape !== undefined ? stretchedLayer(layer, ref, valency, shape) : layer);
   return true;
 }
 
-/** One record per heading frame and shape, so an arrow in flight allocates none. */
-const stretchedLayers = new WeakMap<ResolvedLayer, WeakMap<ShotShape, ResolvedLayer>>();
+/** One record per frame, heading and shape, so an arrow in flight allocates none. Keyed by the valency
+ *  as well as the frame, since a particle's headings may share one frame. */
+const stretchedLayers = new WeakMap<ResolvedLayer, Map<number, WeakMap<ShotShape, ResolvedLayer>>>();
 
-function stretchedLayer(layer: ResolvedLayer, along: number, shape: ShotShape): ResolvedLayer {
-  let byShape = stretchedLayers.get(layer);
+function stretchedLayer(
+  layer: ResolvedLayer,
+  ref: ParticleRef,
+  valency: number,
+  shape: ShotShape,
+): ResolvedLayer {
+  let byValency = stretchedLayers.get(layer);
+  if (byValency === undefined) {
+    byValency = new Map();
+    stretchedLayers.set(layer, byValency);
+  }
+  let byShape = byValency.get(valency);
   if (byShape === undefined) {
     byShape = new WeakMap();
-    stretchedLayers.set(layer, byShape);
+    byValency.set(valency, byShape);
   }
   let stretched = byShape.get(shape);
   if (stretched === undefined) {
+    const along = valencyHeading(valency, ref.valencies.length);
     stretched = { ...layer, stretch: { along, by: shape.length, across: shape.thickness } };
     byShape.set(shape, stretched);
   }

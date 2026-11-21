@@ -2,6 +2,19 @@ import type { Sprite } from 'pixi.js';
 import type { BoundsUnion, LayerDrawBox } from './box.js';
 import type { LayerStretch } from './resolved-layer.js';
 
+/** The stretch as a symmetric matrix over screen px: `across` everywhere plus `by - across` of the
+ *  projection onto the direction. */
+function stretchMatrix(stretch: LayerStretch): { xx: number; xy: number; yy: number } {
+  const ux = Math.cos(stretch.along);
+  const uy = Math.sin(stretch.along);
+  const extra = stretch.by - stretch.across;
+  return {
+    xx: stretch.across + extra * ux * ux,
+    xy: extra * ux * uy,
+    yy: stretch.across + extra * uy * uy,
+  };
+}
+
 /** Place `sprite` over `box` stretched about the box's middle: a thin shaft lengthens along its
  *  direction and thickens across it by factors of their own. */
 export function placeStretched(
@@ -10,14 +23,7 @@ export function placeStretched(
   box: LayerDrawBox,
   stretch: LayerStretch,
 ): void {
-  const ux = Math.cos(stretch.along);
-  const uy = Math.sin(stretch.along);
-  const extra = stretch.by - stretch.across;
-  // The stretch as a matrix over screen px: `across` everywhere plus `extra` of the projection onto the
-  // direction.
-  const xx = stretch.across + extra * ux * ux;
-  const xy = extra * ux * uy;
-  const yy = stretch.across + extra * uy * uy;
+  const { xx, xy, yy } = stretchMatrix(stretch);
   const halfW = box.width / 2;
   const halfH = box.height / 2;
   sprite.position.set(box.ox + halfW - (xx * halfW + xy * halfH), box.oy + halfH - (xy * halfW + yy * halfH));
@@ -26,13 +32,14 @@ export function placeStretched(
   sprite.skew.set(Math.atan2(xy, yy), Math.atan2(xy, xx));
 }
 
-/** Add `box` as {@link placeStretched} draws it: no corner leaves the box grown by the stretch. */
+/** Add the quad {@link placeStretched} draws over `box`. */
 export function addStretchedBox(bounds: BoundsUnion, box: LayerDrawBox, stretch: LayerStretch): void {
-  const grow = (Math.max(1, stretch.by, stretch.across) - 1) / 2;
-  bounds.add(
-    box.ox - grow * box.width,
-    box.oy - grow * box.height,
-    box.ox + (1 + grow) * box.width,
-    box.oy + (1 + grow) * box.height,
-  );
+  const { xx, xy, yy } = stretchMatrix(stretch);
+  const halfW = box.width / 2;
+  const halfH = box.height / 2;
+  const cx = box.ox + halfW;
+  const cy = box.oy + halfH;
+  const reachX = Math.abs(xx) * halfW + Math.abs(xy) * halfH;
+  const reachY = Math.abs(xy) * halfW + Math.abs(yy) * halfH;
+  bounds.add(cx - reachX, cy - reachY, cx + reachX, cy + reachY);
 }

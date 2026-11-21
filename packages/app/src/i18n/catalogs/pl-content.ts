@@ -209,7 +209,8 @@ export const plContent = {
     },
     'bow-flight': {
       title: 'Lot strzały',
-      summary: 'Czterech łuczników pokazuje strzały w naturalnej skali w poziomie, pionie i po przekątnej.',
+      summary:
+        'Dwóch łuczników z krótkim i dwóch z długim łukiem pokazuje swoje strzały w poziomie, pionie i po przekątnej.',
     },
     'personal-names': {
       title: 'Imiona mieszkańców',

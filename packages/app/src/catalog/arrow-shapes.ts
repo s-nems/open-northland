@@ -2,8 +2,8 @@ import type { ShotShape } from '@open-northland/render';
 
 /**
  * How a bow's arrow draws in flight, as multiples of the one authored arrow sprite, so a long bow's shot
- * reads apart from a short bow's at a glance. Open Northland's presentation: the original draws every
- * arrow alike. Keyed by `ir.json` weapon id-slug.
+ * reads apart from a short bow's at a glance. Open Northland's presentation. Keyed by `ir.json` weapon
+ * id-slug.
  */
 const LONG_ARROW: ShotShape = { length: 1.3, thickness: 1.25 };
 const SHORT_ARROW: ShotShape = { length: 0.8, thickness: 1 };

@@ -212,7 +212,7 @@ export const enContent = {
     'bow-flight': {
       title: 'Bow flight',
       summary:
-        'Four archers keep natural-scale arrows visible along horizontal, vertical and diagonal lanes.',
+        'Two short and two long bowmen keep their arrows visible along horizontal, vertical and diagonal lanes.',
     },
     'personal-names': {
       title: 'Personal names',

@@ -211,7 +211,7 @@ export const deContent = {
     'bow-flight': {
       title: 'Pfeilflug',
       summary:
-        'Vier Bogenschützen halten Pfeile in natürlicher Größe auf waagerechten, senkrechten und diagonalen Flugbahnen sichtbar.',
+        'Zwei Kurz- und zwei Langbogenschützen halten ihre Pfeile auf waagerechten, senkrechten und diagonalen Flugbahnen sichtbar.',
     },
     'personal-names': {
       title: 'Vornamen',

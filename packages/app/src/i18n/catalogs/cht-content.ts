@@ -209,7 +209,7 @@ export const chtContent = {
     },
     'bow-flight': {
       title: '箭矢飛行',
-      summary: '四名弓手讓實際比例的箭矢在水平、垂直與斜向的射線上保持可見。',
+      summary: '兩名短弓手與兩名長弓手讓各自的箭矢在水平、垂直與斜向的射線上保持可見。',
     },
     'personal-names': {
       title: '人名',

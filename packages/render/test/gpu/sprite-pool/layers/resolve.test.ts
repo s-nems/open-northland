@@ -53,6 +53,57 @@ describe('resolveLayers - kinds that bind no atlas layer', () => {
   });
 });
 
+describe('resolveLayers - an arrow drawn at its shot shape', () => {
+  const ARROW = 1;
+  const ROCK = 2;
+  const EAST_VALENCY = 1;
+  const SOUTH_VALENCY = 0;
+  const arrowAtlas: SpriteAtlas = { width: 100, height: 10, frames: new Map([0, 1, 2, 3, 212].map(frame)) };
+  const sheet: SpriteSheet = {
+    source,
+    atlas: { width: 0, height: 0, frames: new Map() },
+    bindings: {
+      settler: 1,
+      resource: 1,
+      building: 1,
+      munition: {
+        byMunition: {
+          [ARROW]: { layer: 'arrow', valencies: [[0], [1], [2], [3]], loop: true, directional: true },
+          [ROCK]: { layer: 'arrow', valencies: [[212]], loop: true, directional: false },
+        },
+        trailByMunition: {},
+      },
+    },
+    families: { arrow: { source, atlas: arrowAtlas } },
+  };
+  const long = { length: 1.3, thickness: 1.25 };
+  const shot = (fields: Partial<DrawItem>): DrawItem => ({
+    kind: 'projectile',
+    ref: 7,
+    x: 0,
+    y: 0,
+    depth: 0,
+    munition: ARROW,
+    rotation: 0,
+    ...fields,
+  });
+
+  it("stretches the heading frame along that frame's own heading, the same record every frame", () => {
+    const east = resolveLayers(sheet, shot({ shotShape: long }), 0);
+    expect(east?.[0]?.frame.x).toBe(EAST_VALENCY);
+    expect(east?.[0]?.stretch).toEqual({ along: 0, by: long.length, across: long.thickness });
+    expect(resolveLayers(sheet, shot({ shotShape: long }), 1)?.[0]).toBe(east?.[0]);
+    const south = resolveLayers(sheet, shot({ shotShape: long, rotation: Math.PI / 2 }), 0);
+    expect(south?.[0]?.frame.x).toBe(SOUTH_VALENCY);
+    expect(south?.[0]?.stretch?.along).toBeCloseTo(Math.PI / 2);
+  });
+
+  it('keeps the authored frame for an arrow without a shape and for an undirected shot', () => {
+    expect(resolveLayers(sheet, shot({}), 0)?.[0]?.stretch).toBeUndefined();
+    expect(resolveLayers(sheet, shot({ munition: ROCK, shotShape: long }), 0)?.[0]?.stretch).toBeUndefined();
+  });
+});
+
 describe('resolveLayers - the animated building overlay is bounds-exempt', () => {
   // The `miller` family atlas carries the bladeless body (70), the still blade (76) and one spin
   // frame (85).

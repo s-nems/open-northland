@@ -16,8 +16,8 @@ const MARKSMAN_POINTS = 90;
 /**
  * Compact staggered-raster sight-lines: east, west, straight down the screen, and a reverse diagonal. Each
  * target is inside both bows' ordinary range, while the four pairs are far enough apart that an archer
- * never substitutes another pair's target. A short and a long bow shoot along each screen axis, so their
- * arrows compare side by side.
+ * never substitutes another pair's target. Short bows shoot east and along the diagonal, long bows west
+ * and down the screen, so the two arrows pass side by side on the top row.
  */
 const LANES = [
   { bow: JOB_ARCHER, archer: { x: 8, y: 6 }, target: { x: 11, y: 6 } },
