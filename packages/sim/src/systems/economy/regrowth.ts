@@ -9,7 +9,7 @@ import {
   Resource,
 } from '../../components/index.js';
 import { contentIndex } from '../../core/content-index.js';
-import type { Entity, World } from '../../ecs/world.js';
+import type { ChangeFeed, Entity, World } from '../../ecs/world.js';
 import type { BlockOverlay } from '../../nav/block-overlay.js';
 import { hexRingHx, hexRingHy, hexRingLength, nodeOfPosition } from '../../nav/halfcell.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
@@ -81,7 +81,7 @@ export function schedulePickRegrowth(world: World, ctx: SystemContext, node: Ent
 }
 
 function scheduleRegrowth(world: World, ctx: SystemContext, node: Entity, regrown: Readonly<Regrown>): void {
-  if (regrowthsPending(world) >= REGROWTH_MAX_PENDING) return;
+  if (world.count(Regrowth) >= REGROWTH_MAX_PENDING) return;
   const res = world.get(node, Resource);
   const pos = world.get(node, Position);
   const { hx, hy } = nodeOfPosition(pos.x, pos.y);
@@ -97,14 +97,56 @@ function scheduleRegrowth(world: World, ctx: SystemContext, node: Entity, regrow
   });
 }
 
-function regrowthsPending(world: World): number {
-  let pending = 0;
-  for (const _ of world.query(Regrowth)) if (++pending >= REGROWTH_MAX_PENDING) break;
-  return pending;
+/**
+ * The tick the earliest waiting regrowth comes due, so a tick with none due walks no regrowth. Derived
+ * from the store: kept up from the changes to it and rescanned once a pass has run, after a load, or
+ * when the changes were lost.
+ */
+class RegrowthClock {
+  private earliest: number | undefined;
+  private readonly note = (e: Entity): void => {
+    const due = this.world.tryGet(e, Regrowth)?.dueAtTick;
+    if (due !== undefined && this.earliest !== undefined && due < this.earliest) this.earliest = due;
+  };
+
+  constructor(
+    private readonly world: World,
+    private readonly feed: ChangeFeed,
+  ) {}
+
+  anyDue(tick: number): boolean {
+    if (this.earliest === undefined || this.feed.drain(this.note)) {
+      this.feed.drain(() => {});
+      let earliest = Number.POSITIVE_INFINITY;
+      for (const e of this.world.query(Regrowth)) {
+        earliest = Math.min(earliest, this.world.get(e, Regrowth).dueAtTick);
+      }
+      this.earliest = earliest;
+    }
+    return this.earliest <= tick;
+  }
+
+  /** A pass ran the due regrowths: the earliest one left is unknown until the next scan. */
+  passed(): void {
+    this.earliest = undefined;
+  }
+}
+
+const regrowthClocks = new WeakMap<World, RegrowthClock>();
+
+function regrowthClock(world: World): RegrowthClock {
+  let clock = regrowthClocks.get(world);
+  if (clock === undefined) {
+    clock = new RegrowthClock(world, world.watchChanges([Regrowth], [Regrowth]));
+    regrowthClocks.set(world, clock);
+  }
+  return clock;
 }
 
 /** Run every regrowth that has come due, in the order the harvests scheduled them. */
 export const regrowthSystem: System = (world, ctx) => {
+  const clock = regrowthClock(world);
+  if (!clock.anyDue(ctx.tick)) return;
   const due: Entity[] = [];
   for (const e of world.query(Regrowth)) if (world.get(e, Regrowth).dueAtTick <= ctx.tick) due.push(e);
   for (const e of due) {
@@ -112,6 +154,7 @@ export const regrowthSystem: System = (world, ctx) => {
     world.destroy(e);
     regrow(world, ctx, regrowth);
   }
+  clock.passed();
 };
 
 function regrow(world: World, ctx: SystemContext, regrowth: Readonly<RegrowthData>): void {
