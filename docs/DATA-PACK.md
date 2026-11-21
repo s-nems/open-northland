@@ -38,8 +38,10 @@ repository's `ita` overlays per map, per object-table id, for the history book a
 The pack's combat rules differ from the original data in these ways:
 
 - Every row of `rules/types/weapons.ini` has `damagevalue` columns past the armour materials: column 8
-  is what a wild animal takes, column 9 what a monster takes. A row without column 8 hits an animal
-  with its leather column; one without column 9 hits a monster with the column of the material it wears.
+  is what a wild animal takes, column 9 what a monster with a hide (the weresnake and the werewolf)
+  takes. A row without column 8 hits an animal with its leather column; one without column 9 hits such a
+  monster with the column of the material it wears. The dragon has no hide and takes the column of the
+  material it wears, as a person does.
 - The basic weapons of every nation carry the Viking values. Hero rows keep their own values.
 - `rules/tribes/tribetypes.ini` has tribe 42 `dragon`, a monster like the weresnake (5) and the
   werewolf (6): fighter job 31, natural weapon at weapon type 1, no trade it can be trained into.

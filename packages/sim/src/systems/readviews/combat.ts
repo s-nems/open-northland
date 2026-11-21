@@ -60,8 +60,8 @@ export function weaponDamageVsWildlife(weapon: Pick<WeaponType, 'damage'>): numb
   );
 }
 
-/** The damage column a monster takes, in our data pack. A weapon without one hits a monster with the
- *  column of the material it wears, as it does any person. */
+/** The damage column a monster with a hide takes, in our data pack. A weapon without one hits such a
+ *  monster with the column of the material it wears, as it does any person. */
 export const MONSTER_DAMAGE_COLUMN = 9;
 
 /** {@link weaponDamageVsMaterial} against a monster of armor `material`. */

@@ -37,9 +37,9 @@ import {
   atomicEventFrame,
   atomicEventFrames,
   eventTick,
+  hasMonsterHide,
   isAnimalTribe,
   isAreaWeapon,
-  isMonsterTribe,
   isRangedWeapon,
   isShipVehicle,
   weaponDamageVsMaterial,
@@ -205,8 +205,9 @@ export function targetMaterial(world: World, ctx: SystemContext, target: Entity)
 }
 
 /** The damage `weapon` deals `target` of armor `material` ({@link targetMaterial}): a wild animal takes the
- *  animal column ({@link weaponDamageVsWildlife}), a monster the monster column ({@link weaponDamageVsMonster}),
- *  everything else its material's. */
+ *  animal column ({@link weaponDamageVsWildlife}), a monster with a hide the monster column
+ *  ({@link weaponDamageVsMonster}), everything else its material's. Original behavior: the weresnake and the
+ *  werewolf wear a leather hide, the dragon wears nothing. */
 export function weaponDamageVsTarget(
   world: World,
   content: ContentSet,
@@ -216,7 +217,7 @@ export function weaponDamageVsTarget(
 ): number {
   if (isWildlife(world, target)) return weaponDamageVsWildlife(weapon);
   const tribe = world.tryGet(target, Settler)?.tribe;
-  return tribe !== undefined && isMonsterTribe(content, tribe)
+  return tribe !== undefined && hasMonsterHide(content, tribe)
     ? weaponDamageVsMonster(weapon, material)
     : weaponDamageVsMaterial(weapon, material);
 }

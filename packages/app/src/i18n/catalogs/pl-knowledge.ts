@@ -509,7 +509,7 @@ export const plKnowledge = {
     matrixRange: 'Zasięg',
     matrixCadence: 'Cios co',
     matrixFoot:
-      'Człowiek ma {hitpoints} zdrowia. Potwór to wężołak, wilkołak albo smok; zdrowie zwierzęcia pokazuje jego karta. Cel nie ma doświadczenia w walce.',
+      'Człowiek ma {hitpoints} zdrowia. Kolumna Potwór to wężołak albo wilkołak, smok dostaje Bez pancerza; zdrowie zwierzęcia pokazuje jego karta. Cel nie ma doświadczenia w walce.',
     directions: { front: 'Przód', backSide: 'Bok z tyłu ×1,25', behind: 'Tył ×1,5' },
     armourName: 'Pancerz',
     armourWeight: 'Ciężar',

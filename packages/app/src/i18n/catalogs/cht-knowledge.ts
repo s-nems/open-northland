@@ -501,7 +501,8 @@ export const chtKnowledge = {
     matrixWeapon: '武器',
     matrixRange: '範圍',
     matrixCadence: '攻擊間隔',
-    matrixFoot: '人有{hitpoints}點生命值。怪物指蛇人、狼人或龍；動物的生命值見牠的卡片。目標沒有戰鬥經驗。',
+    matrixFoot:
+      '人有{hitpoints}點生命值。「怪物」一欄指蛇人或狼人，龍受到「無甲」一欄的傷害；動物的生命值見牠的卡片。目標沒有戰鬥經驗。',
     directions: { front: '正面', backSide: '後側 ×1.25', behind: '背後 ×1.5' },
     armourName: '護甲',
     armourWeight: '重量',

@@ -544,7 +544,7 @@ export const itKnowledge = {
     matrixRange: 'Gittata',
     matrixCadence: 'Colpo ogni',
     matrixFoot:
-      'Una persona ha {hitpoints} di salute. Un mostro è un serpente mannaro, un lupo mannaro o un drago; la salute di un animale è sulla sua scheda. Il bersaglio non ha esperienza in combattimento.',
+      'Una persona ha {hitpoints} di salute. La colonna Mostro vale per serpente mannaro e lupo mannaro, un drago subisce Senza armatura; la salute di un animale è sulla sua scheda. Il bersaglio non ha esperienza in combattimento.',
     directions: {
       front: 'Fronte',
       backSide: 'Fianco posteriore ×1,25',

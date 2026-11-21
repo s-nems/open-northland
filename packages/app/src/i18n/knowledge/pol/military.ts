@@ -54,7 +54,7 @@ export const MILITARY: ArticleGroup = {
           h: 'Zwierzęta i potwory',
         },
         {
-          p: 'Kolumna Zwierzę to obrażenia dzikiego zwierzęcia, kolumna Potwór to obrażenia wężołaka, wilkołaka albo smoka. Potwór nie nosi zbroi ani amuletu i nie ma doświadczenia w walce; kierunek ciosu liczy się jak przy człowieku. Smok ma {{dragon.hitpoints}} zdrowia. Żadne plemię go nie szkoli: smok stoi tylko tam, gdzie postawi go mapa.',
+          p: 'Kolumna Zwierzę to obrażenia dzikiego zwierzęcia, kolumna Potwór to obrażenia wężołaka albo wilkołaka. Smok nie ma skóry i dostaje kolumnę Bez pancerza, jak człowiek bez zbroi. Potwór nie nosi zbroi ani amuletu i nie ma doświadczenia w walce; kierunek ciosu liczy się jak przy człowieku. Smok ma {{dragon.hitpoints}} zdrowia. Żadne plemię go nie szkoli: smok stoi tylko tam, gdzie postawi go mapa.',
         },
         {
           h: 'Pancerze',

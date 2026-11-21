@@ -545,7 +545,7 @@ export const deKnowledge = {
     matrixRange: 'Reichweite',
     matrixCadence: 'Schlag alle',
     matrixFoot:
-      'Ein Mensch hat {hitpoints} Gesundheit. Ein Monster ist ein Schlangenmensch, ein Werwolf oder ein Drache; die Gesundheit eines Tieres zeigt seine Karte. Das Ziel hat keine Kampferfahrung.',
+      'Ein Mensch hat {hitpoints} Gesundheit. Die Spalte Monster gilt für Schlangenmensch und Werwolf, ein Drache bekommt Ohne Rüstung ab; die Gesundheit eines Tieres zeigt seine Karte. Das Ziel hat keine Kampferfahrung.',
     directions: {
       front: 'Vorne',
       backSide: 'Hintere Flanke ×1,25',

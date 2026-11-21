@@ -57,7 +57,7 @@ export const MILITARY: ArticleGroup = {
           h: 'Animali e mostri',
         },
         {
-          p: 'La colonna Animale è il danno che subisce un animale selvatico, la colonna Mostro quello che subisce un serpente mannaro, un lupo mannaro o un drago. Un mostro non porta armatura né amuleti e non ha esperienza in combattimento; la direzione del colpo conta come per una persona. Il drago ha {{dragon.hitpoints}} punti di salute. Nessuna tribù lo addestra: un drago si trova solo dove lo mette una mappa.',
+          p: 'La colonna Animale è il danno che subisce un animale selvatico, la colonna Mostro quello che subisce un serpente mannaro o un lupo mannaro. Un drago non ha pelle e subisce la colonna Senza armatura, come una persona senza armatura. Un mostro non porta armatura né amuleti e non ha esperienza in combattimento; la direzione del colpo conta come per una persona. Il drago ha {{dragon.hitpoints}} punti di salute. Nessuna tribù lo addestra: un drago si trova solo dove lo mette una mappa.',
         },
         {
           h: 'Armature',

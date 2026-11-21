@@ -13,11 +13,12 @@ export const DRAGON_HITPOINTS = 20000;
 
 /**
  * The monster tribes by `[tribetype]` slug, and their rules. Original behavior: a weresnake or werewolf
- * fighter starts in ATTACK; the dragon starts in DEFEND like a person.
+ * fighter starts in ATTACK and wears a leather hide; the dragon starts in DEFEND like a person and wears
+ * nothing.
  */
 const MONSTER_RULES: ReadonlyMap<string, MonsterRules> = new Map([
-  ['weresnake', { startsInAttack: true }],
-  ['werewolf', { startsInAttack: true }],
+  ['weresnake', { startsInAttack: true, hide: true }],
+  ['werewolf', { startsInAttack: true, hide: true }],
   ['dragon', { hitpoints: DRAGON_HITPOINTS }],
 ]);
 

@@ -80,8 +80,9 @@ export const ANIMAL_TARGET: CombatTarget = {
   blocking: 0,
 };
 
-/** A monster (a weresnake, werewolf or dragon) takes the monster column, or the bare one where a weapon has
- *  none: the blow's direction counts, and it wears no armour or amulet and gains no fight experience. */
+/** A monster with a hide (a weresnake or werewolf) takes the monster column, or the bare one where a weapon
+ *  has none: the blow's direction counts, and it wears no armour or amulet and gains no fight experience. The
+ *  dragon has no hide and takes the bare column. */
 export const MONSTER_TARGET: CombatTarget = {
   id: 'monster',
   column: String(systems.MONSTER_DAMAGE_COLUMN),

@@ -6,7 +6,7 @@ export function monsterRulesOf(content: ContentSet, tribeType: number): MonsterR
   return contentIndex(content).tribes.get(tribeType)?.monster;
 }
 
-/** Whether `tribeType` is a monster tribe: its blows land on a weapon's monster column. */
-export function isMonsterTribe(content: ContentSet, tribeType: number): boolean {
-  return monsterRulesOf(content, tribeType) !== undefined;
+/** Whether `tribeType` is a monster with a hide: blows on it land on a weapon's monster column. */
+export function hasMonsterHide(content: ContentSet, tribeType: number): boolean {
+  return monsterRulesOf(content, tribeType)?.hide === true;
 }

@@ -54,7 +54,7 @@ export const MILITARY: ArticleGroup = {
           h: 'Tiere und Monster',
         },
         {
-          p: 'Die Spalte Tier zeigt, was ein wildes Tier abbekommt, die Spalte Monster, was ein Schlangenmensch, ein Werwolf oder ein Drache abbekommt. Ein Monster trägt weder Rüstung noch Amulett und hat keine Kampferfahrung; die Schlagrichtung zählt wie bei einem Menschen. Der Drache hat {{dragon.hitpoints}} Gesundheit. Kein Stamm bildet ihn aus: Ein Drache steht nur dort, wo eine Karte ihn hinstellt.',
+          p: 'Die Spalte Tier zeigt, was ein wildes Tier abbekommt, die Spalte Monster, was ein Schlangenmensch oder ein Werwolf abbekommt. Ein Drache hat kein Fell und bekommt die Spalte Ohne Rüstung ab, wie ein Mensch ohne Rüstung. Ein Monster trägt weder Rüstung noch Amulett und hat keine Kampferfahrung; die Schlagrichtung zählt wie bei einem Menschen. Der Drache hat {{dragon.hitpoints}} Gesundheit. Kein Stamm bildet ihn aus: Ein Drache steht nur dort, wo eine Karte ihn hinstellt.',
         },
         {
           h: 'Rüstungen',

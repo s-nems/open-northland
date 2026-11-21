@@ -171,23 +171,28 @@ describe('landedDamage - animals and buildings', () => {
     ).toBe(245);
   });
 
-  it("a monster takes a weapon's monster column, the column of its armour where the weapon has none", () => {
-    const MONSTER_TRIBE = 42;
+  it("a monster with a hide takes a weapon's monster column, the column of its armour otherwise", () => {
+    const WERESNAKE = 5;
+    const DRAGON = 42;
     const base = combatCadenceContent();
     const content = parseContentSet({
       ...base,
-      tribes: [...base.tribes, { typeId: MONSTER_TRIBE, id: 'dragon', monster: {} }],
+      tribes: [
+        ...base.tribes,
+        { typeId: WERESNAKE, id: 'weresnake', monster: { hide: true } },
+        { typeId: DRAGON, id: 'dragon', monster: {} },
+      ],
     });
     const sim = new Simulation({ seed: 1, content, map: grass(6, 6) });
-    const dragon = fighterAtNode(sim, VICTIM.hx, VICTIM.hy, MONSTER_TRIBE, null);
-    const bare = targetMaterial(sim.world, ctxOf(sim), dragon);
+    const snake = fighterAtNode(sim, VICTIM.hx, VICTIM.hy, WERESNAKE, null);
+    const dragon = fighterAtNode(sim, 0, 4, DRAGON, null);
+    const bare = targetMaterial(sim.world, ctxOf(sim), snake);
     const spear = { damage: { [String(bare)]: 500, [String(MONSTER_DAMAGE_COLUMN)]: 750 } };
-    expect(weaponDamageVsTarget(sim.world, content, spear, dragon, bare)).toBe(750);
-    expect(weaponDamageVsTarget(sim.world, content, { damage: { [String(bare)]: 500 } }, dragon, bare)).toBe(
+    expect(weaponDamageVsTarget(sim.world, content, spear, snake, bare)).toBe(750);
+    expect(weaponDamageVsTarget(sim.world, content, { damage: { [String(bare)]: 500 } }, snake, bare)).toBe(
       500,
     );
-    const person = fighterAtNode(sim, 0, 4, VIKING, WOMAN);
-    expect(weaponDamageVsTarget(sim.world, content, spear, person, bare)).toBe(500);
+    expect(weaponDamageVsTarget(sim.world, content, spear, dragon, bare)).toBe(500);
   });
 
   it('a building takes the house column, a zero base does nothing, and no side or armor counts', () => {

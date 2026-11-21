@@ -54,7 +54,7 @@ export const MILITARY: ArticleGroup = {
           h: 'Animals and monsters',
         },
         {
-          p: 'The Animal column is what a wild animal takes, the Monster column what a Weresnake, a Werewolf or a Dragon takes. A monster wears no armour or amulet and has no combat experience; the direction of a blow counts as on a person. The Dragon has {{dragon.hitpoints}} health. No tribe trains one: a Dragon stands only where a map places it.',
+          p: 'The Animal column is what a wild animal takes, the Monster column what a Weresnake or a Werewolf takes. A Dragon wears no hide and takes the No armour column, like an unarmoured person. A monster wears no armour or amulet and has no combat experience; the direction of a blow counts as on a person. The Dragon has {{dragon.hitpoints}} health. No tribe trains one: a Dragon stands only where a map places it.',
         },
         {
           h: 'Armour',
