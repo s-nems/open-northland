@@ -18,6 +18,11 @@ export const XBR_NEIGHBOURS = [
   ['i5', 1, 2],
 ] as const;
 
+/** The leading neighbours that form the 2x2 window the sharp magnifier blends: e, f, h and i. */
+const XBR_WINDOW_TAPS = 4;
+const XBR_WINDOW = XBR_NEIGHBOURS.slice(0, XBR_WINDOW_TAPS);
+const XBR_OUTER = XBR_NEIGHBOURS.slice(XBR_WINDOW_TAPS);
+
 /**
  * The magnifiers' arithmetic, which reads no texel itself: a host that gathers its taps ahead of the
  * magnifiers hands them in as values, so no tap is addressed at run time. `XBR_NEIGHBOURS_OF(TAP)` builds
@@ -135,12 +140,29 @@ vec4 magnifySharp(vec2 p, float texelsPerPixel) {
   return magnifyBlend(ivec2(floor(p - 0.5)), magnifySharpWeights(p, texelsPerPixel));
 }
 
+// magnifySharp from xBR's own e, f, h and i. They are the 2x2 at floor(p - 0.5) in mirrored order;
+// where rounding puts that window a texel off the mirroring step, its weight there is 0 and e stands.
+vec4 magnifySharpWindow(vec4 e, vec4 f, vec4 h, vec4 i, vec2 p, float texelsPerPixel) {
+  vec2 w = magnifySharpWeights(p, texelsPerPixel);
+  bvec2 leads = equal(ivec2(floor(p - 0.5)), ivec2(floor(p)));
+  vec4 eRow = leads.x ? mix(e, f, w.x) : mix(f, e, w.x);
+  vec4 hRow = leads.x ? mix(h, i, w.x) : mix(i, h, w.x);
+  return leads.y ? mix(eRow, hRow, w.y) : mix(hRow, eRow, w.y);
+}
+
+// For texels at most a pixel wide. Only a corner that can be an edge reads the outer eight texels.
 vec4 magnifyXbr(vec2 p, float texelsPerPixel) {
   ivec2 centre = ivec2(floor(p));
   ivec2 s = magnifyWindowStep(fract(p));
   #define MAGNIFY_TAP(dx, dy) MAGNIFY_FETCH(centre + ivec2(dx, dy) * s)
-  XbrNeighbours n = XBR_NEIGHBOURS_OF(MAGNIFY_TAP);
+${XBR_WINDOW.map(([name, dx, dy]) => `  vec4 ${name} = MAGNIFY_TAP(${dx}, ${dy});`).join('\n')}
+  vec4 colour = magnifySharpWindow(${XBR_WINDOW.map(([name]) => name).join(', ')}, p, texelsPerPixel);
+  if (!magnifyXbrKeepsBase(e, f, h)) {
+    XbrNeighbours n = XbrNeighbours(${XBR_WINDOW.map(([name]) => name).join(', ')},
+      ${XBR_OUTER.map(([, dx, dy]) => `MAGNIFY_TAP(${dx}, ${dy})`).join(', ')});
+    colour = magnifyXbrCorner(n, colour, p, texelsPerPixel);
+  }
   #undef MAGNIFY_TAP
-  return magnifyXbrCorner(n, magnifySharp(p, texelsPerPixel), p, texelsPerPixel);
+  return colour;
 }
 `;
