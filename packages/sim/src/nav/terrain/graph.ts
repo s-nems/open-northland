@@ -352,6 +352,11 @@ export class TerrainGraph extends TerrainEdges {
     return this.checkedSlot(this.components, node);
   }
 
+  /** {@link componentOf} of every node, row-major and read-only, for a whole-map pass. */
+  componentLane(): ArrayLike<number> {
+    return this.components;
+  }
+
   /** The box holding every node labelled `component`, a label {@link componentOf} returned. */
   componentBounds(component: number): ComponentBox {
     this.componentBoxes ??= this.computeComponentBoxes();

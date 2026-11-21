@@ -14,6 +14,8 @@ export type ClearanceProbe = (node: NodeId) => boolean;
 
 /** The class of a node no open node hemmed in within the cap, and of a node that is not open itself. */
 const UNREACHED = -1;
+/** A whole-map sweep's distance on a node not open: its open neighbours sit one step on, at 0. */
+const NOT_OPEN = -1;
 
 /** How far a change reaches in the result: a hemming point d steps from a node caps its class at d - 1,
  *  so past the cap's own distance none moves a class. */
@@ -61,7 +63,8 @@ function withRoom(buffer: Int32Array, used: number): Int32Array {
  * disc radius. {@link recompute} over a region redoes only that region: a node's class depends on the
  * points within {@link MAX_CLEARANCE_CLASS} of it, so a change rewrites the nodes that close to it, and
  * the ring one step farther, whose classes the change cannot reach, seeds the walk into them at the
- * distance it holds. `probe` is read once per scanned node.
+ * distance it holds. A whole-map pass reaches the same distances by two raster sweeps instead.
+ * `probe` is read once per scanned node.
  */
 export class ClearanceField {
   private readonly classes: Uint8Array;
@@ -92,8 +95,10 @@ export class ClearanceField {
   /** Per class `k`, how many times a water node's class crossed `k`: went from below it to at least it,
    *  or back. */
   private readonly waterCrossings = new Uint32Array(MAX_CLEARANCE_CLASS + 1);
-  /** Per hull size asked for, 1 on every node whose class is below it, kept by {@link write}. */
-  private readonly belowLanes = new Map<number, Uint8Array>();
+  /** The hull sizes asked for and, at the same index, 1 on every node whose class is below that size,
+   *  kept by {@link write}: plain lists, so a write walks them without a callback. */
+  private readonly belowSizes: number[] = [];
+  private readonly belowLanes: Uint8Array[] = [];
 
   constructor(
     private readonly graph: TerrainGraph,
@@ -107,7 +112,7 @@ export class ClearanceField {
       Int32Array.from(HEX_DX_EVEN, (dx, i) => (HEX_DY[i] ?? 0) * width + dx),
       Int32Array.from(HEX_DX_ODD, (dx, i) => (HEX_DY[i] ?? 0) * width + dx),
     ];
-    this.joined = joinedNeighbours(graph);
+    this.joined = joinedNeighbours(graph, this.steps);
     this.discStamps = new Uint16Array(graph.nodeCount);
     this.discDepths = new Uint8Array(graph.nodeCount);
     this.recompute(probe, null);
@@ -122,12 +127,13 @@ export class ClearanceField {
   /** 1 on every node whose class is below `logicSize`, 0 elsewhere: the {@link classOf} test a route
    *  search or a flood reads as an array. Live, kept by every recompute; never written by a reader. */
   belowLane(logicSize: number): Uint8Array {
-    const held = this.belowLanes.get(logicSize);
+    const held = this.belowLanes[this.belowSizes.indexOf(logicSize)];
     if (held !== undefined) return held;
     const { classes } = this;
     const lane = new Uint8Array(classes.length);
     for (let node = 0; node < classes.length; node++) lane[node] = (classes[node] ?? 0) < logicSize ? 1 : 0;
-    this.belowLanes.set(logicSize, lane);
+    this.belowSizes.push(logicSize);
+    this.belowLanes.push(lane);
     return lane;
   }
 
@@ -162,16 +168,13 @@ export class ClearanceField {
         if ((discDepths[node] ?? SCAN_RADIUS) <= REWRITE_RADIUS) this.seed(node);
         else this.seedFromHeld(node);
       }
-      this.walk(true);
+      this.walk();
       for (let i = 0; i < discSize; i++) {
         const node = (disc[i] ?? 0) as NodeId;
         if ((discDepths[node] ?? SCAN_RADIUS) <= REWRITE_RADIUS) this.write(node);
       }
     } else {
-      for (let node = 0 as NodeId; node < graph.nodeCount; node++) open[node] = probe(node) ? 1 : 0;
-      for (let node = 0 as NodeId; node < graph.nodeCount; node++) this.seed(node);
-      this.walk(false);
-      for (let node = 0 as NodeId; node < graph.nodeCount; node++) this.write(node);
+      this.sweepWholeMap(probe);
     }
     for (let level = 0; level < MAX_CLEARANCE_CLASS; level++) {
       if ((this.levels[level]?.length ?? 0) > MAX_RETAINED_CAPACITY) {
@@ -181,9 +184,72 @@ export class ClearanceField {
     if (this.disc.length > MAX_RETAINED_CAPACITY) this.disc = new Int32Array(INITIAL_QUEUE_CAPACITY);
   }
 
+  /**
+   * The whole map's classes in two raster sweeps instead of a walk: a node not open holds distance -1, an
+   * open node short of a neighbour (off the map or of another component) 0, and every other node, whose
+   * six neighbours are all on the map, takes the least neighbour plus one, first from the three before it
+   * in node order, then from the three after it. A shortest hexagon path splits into steps toward later
+   * nodes followed by steps toward earlier ones, and one that crossed a hemming point would end at a
+   * nearer one, so the sweeps settle the walk's distances, capped at {@link MAX_CLEARANCE_CLASS}. The
+   * probe, the seeding and the writes ride the sweeps: this pass runs once per world, mostly before the
+   * optimizer has compiled it, where every extra loop and call costs.
+   */
+  private sweepWholeMap(probe: ClearanceProbe): void {
+    const { graph, distance, open, joined, classes } = this;
+    const { width, height, nodeCount } = graph;
+    for (let node = 0; node < nodeCount; node++) {
+      const isOpen = probe(node as NodeId);
+      open[node] = isOpen ? 1 : 0;
+      distance[node] = !isOpen ? NOT_OPEN : joined[node] !== ALL_JOINED ? 0 : MAX_CLEARANCE_CLASS;
+    }
+    const [even, odd] = this.steps;
+    const earlierEven = even.filter((step) => step < 0);
+    const earlierOdd = odd.filter((step) => step < 0);
+    const laterEven = even.filter((step) => step > 0);
+    const laterOdd = odd.filter((step) => step > 0);
+    for (let y = 0; y < height; y++) {
+      const steps = (y & 1) === 0 ? earlierEven : earlierOdd;
+      const a = steps[0] ?? 0;
+      const b = steps[1] ?? 0;
+      const c = steps[2] ?? 0;
+      for (let node = y * width, end = node + width; node < end; node++) {
+        let d = distance[node] ?? 0;
+        if (d <= 0) continue;
+        const da = (distance[node + a] ?? 0) + 1;
+        const db = (distance[node + b] ?? 0) + 1;
+        const dc = (distance[node + c] ?? 0) + 1;
+        if (da < d) d = da;
+        if (db < d) d = db;
+        if (dc < d) d = dc;
+        distance[node] = d;
+      }
+    }
+    for (let y = height - 1; y >= 0; y--) {
+      const steps = (y & 1) === 0 ? laterEven : laterOdd;
+      const a = steps[0] ?? 0;
+      const b = steps[1] ?? 0;
+      const c = steps[2] ?? 0;
+      for (let node = (y + 1) * width - 1, end = y * width; node >= end; node--) {
+        let d = distance[node] ?? 0;
+        if (d > 0) {
+          const da = (distance[node + a] ?? 0) + 1;
+          const db = (distance[node + b] ?? 0) + 1;
+          const dc = (distance[node + c] ?? 0) + 1;
+          if (da < d) d = da;
+          if (db < d) d = db;
+          if (dc < d) d = dc;
+          distance[node] = d;
+        }
+        // Settled now: an open node reads its distance, every other node its -1 as 0.
+        const value = Math.max(d, 0);
+        if (classes[node] !== value) this.store(node as NodeId, value);
+      }
+    }
+  }
+
   /** Walk the queued levels outward in distance order, settling each node the first time a level reaches
-   *  it: open, of the walking node's component, unsettled, and in the rewritten disc of a `local` pass. */
-  private walk(local: boolean): void {
+   *  it: open, of the walking node's component, unsettled, and in the local pass's rewritten disc. */
+  private walk(): void {
     const { graph, distance, open, joined, steps, discStamps, discDepths, levels, levelSizes } = this;
     const { width } = graph;
     const scanned = this.discGeneration;
@@ -199,9 +265,7 @@ export class ClearanceField {
         for (let i = 0; i < NEIGHBOURS; i++) {
           if ((bits & (1 << i)) === 0) continue;
           const neighbour = (current + (step[i] ?? 0)) as NodeId;
-          if (local && (discStamps[neighbour] !== scanned || (discDepths[neighbour] ?? 0) > REWRITE_RADIUS)) {
-            continue;
-          }
+          if (discStamps[neighbour] !== scanned || (discDepths[neighbour] ?? 0) > REWRITE_RADIUS) continue;
           if (distance[neighbour] !== UNREACHED || open[neighbour] === 0) continue;
           distance[neighbour] = next;
           this.enqueue(next, neighbour);
@@ -236,16 +300,21 @@ export class ClearanceField {
     this.levelSizes[level] = size + 1;
   }
 
-  /** Store `node`'s settled class, counting the water class crossings it makes. */
+  /** Store `node`'s settled class. */
   private write(node: NodeId): void {
     const d = this.distance[node] ?? UNREACHED;
     const value = this.open[node] === 0 ? 0 : d === UNREACHED ? MAX_CLEARANCE_CLASS : d;
+    if (this.classes[node] !== value) this.store(node, value);
+  }
+
+  /** Change `node`'s class to `value`, keeping the lanes and counting the water class crossings. */
+  private store(node: NodeId, value: number): void {
     const held = this.classes[node] ?? 0;
-    if (held === value) return;
     this.classes[node] = value;
-    this.belowLanes.forEach((lane, logicSize) => {
-      lane[node] = value < logicSize ? 1 : 0;
-    });
+    const { belowSizes, belowLanes } = this;
+    for (let i = 0; i < belowLanes.length; i++) {
+      (belowLanes[i] as Uint8Array)[node] = value < (belowSizes[i] ?? 0) ? 1 : 0;
+    }
     if (!this.graph.isWater(node)) return;
     for (let k = Math.min(held, value) + 1; k <= Math.max(held, value); k++) {
       this.waterCrossings[k] = (this.waterCrossings[k] ?? 0) + 1;
@@ -311,23 +380,46 @@ export class ClearanceField {
   }
 }
 
-/** Each node's neighbour bits: bit i set when its i-th neighbour is on the map and of its component. */
-function joinedNeighbours(graph: TerrainGraph): Uint8Array {
+/** Each node's neighbour bits: bit i set when its i-th neighbour is on the map and of its component. Only
+ *  the map's outer ring has neighbours off it, so the inner nodes skip the bounds test. */
+function joinedNeighbours(graph: TerrainGraph, steps: readonly [Int32Array, Int32Array]): Uint8Array {
   const { width, height } = graph;
   const joined = new Uint8Array(graph.nodeCount);
-  for (let y = 0; y < height; y++) {
-    const dxs = neighbourDxOf(y);
-    for (let x = 0; x < width; x++) {
-      const node = graph.nodeAt(x, y);
-      const component = graph.componentOf(node);
+  const components = graph.componentLane();
+  for (let y = 1; y < height - 1; y++) {
+    const step = (y & 1) === 0 ? steps[0] : steps[1];
+    for (let node = y * width + 1, end = (y + 1) * width - 1; node < end; node++) {
+      const component = components[node];
       let bits = 0;
       for (let i = 0; i < NEIGHBOURS; i++) {
-        const nx = x + (dxs[i] ?? 0);
-        const ny = y + (HEX_DY[i] ?? 0);
-        if (graph.inBounds(nx, ny) && graph.componentOf(graph.nodeAt(nx, ny)) === component) bits |= 1 << i;
+        if (components[node + (step[i] ?? 0)] === component) bits |= 1 << i;
       }
       joined[node] = bits;
     }
   }
+  const rim = (x: number, y: number): void => {
+    joined[graph.nodeAt(x, y)] = boundedBits(graph, x, y);
+  };
+  for (let x = 0; x < width; x++) {
+    rim(x, 0);
+    if (height > 1) rim(x, height - 1);
+  }
+  for (let y = 1; y < height - 1; y++) {
+    rim(0, y);
+    if (width > 1) rim(width - 1, y);
+  }
   return joined;
+}
+
+/** {@link joinedNeighbours}' bits of a node that may have neighbours off the map. */
+function boundedBits(graph: TerrainGraph, x: number, y: number): number {
+  const dxs = neighbourDxOf(y);
+  const component = graph.componentOf(graph.nodeAt(x, y));
+  let bits = 0;
+  for (let i = 0; i < NEIGHBOURS; i++) {
+    const nx = x + (dxs[i] ?? 0);
+    const ny = y + (HEX_DY[i] ?? 0);
+    if (graph.inBounds(nx, ny) && graph.componentOf(graph.nodeAt(nx, ny)) === component) bits |= 1 << i;
+  }
+  return bits;
 }
