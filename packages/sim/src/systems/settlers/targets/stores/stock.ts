@@ -301,6 +301,8 @@ export function nearestStoreHoldingWithin(
   goodsGate: SpatialGate | undefined,
   avoid?: (cell: NodeId) => boolean,
   underFire: PilesUnderFire = 'pass-over',
+  /** {@link storeLendVerdicts} of this good, owner and `underFire`, for a caller asking for many fetchers. */
+  verdicts?: StoreLends,
 ): Entity | null {
   if (sideLendsNone(bands, world, owner, goodType)) return null;
   const holders = bands.holding(goodType);
@@ -324,24 +326,12 @@ export function nearestStoreHoldingWithin(
   const filed = storesFiledNear(holders, owner, goodsGate);
   // Mostly none: the stock lies outside the gate, and the search ends before its filter is made.
   if (filed === 0) return null;
-  const lends = holdsUnclaimed(world, bands.ctx, supply, goodType, fetcher);
+  const lends = verdicts ?? holdsUnclaimed(world, bands.ctx, supply, goodType, fetcher);
   const count = keepLenders(filed, lends);
   if (count === 0) return null;
   // Past the ring search's own linear threshold its rings answer, with the identical winner.
   if (count > RING_MIN_BUCKETS) {
-    return nearestHolderIn(
-      bands,
-      holders,
-      world,
-      here,
-      rank,
-      goodType,
-      owner,
-      supply,
-      goodsGate,
-      avoid,
-      fetcher,
-    );
+    return holders.nearest(here, rank, lends, goodsGate, avoid, sameSideAs(world, owner))?.entity ?? null;
   }
   sortAscending(narrowedField, count);
   return holders.nearestAmong(narrowedField, count, here, rank, lends, goodsGate, avoid)?.entity ?? null;
@@ -372,48 +362,6 @@ export function storesHoldingRanked(
   const count = keepLenders(filed, lends);
   // The ranking orders by entity id too, so the field needs no sort.
   return holders.rankedAmong(narrowedField, count, here, rank, lends, goodsGate, avoid);
-}
-
-/**
- * The stores of `owner`'s side that lend a unit of `goodType` to a fetcher of that owner now, ascending:
- * every store {@link nearestStoreHoldingWithin} could pick for any such fetcher. The list holds while
- * the stores, the claims in `supply` and the towers stay as they are, so a pass that asks for many
- * fetchers reads each store's stock once, and an empty list answers every one of them.
- */
-export function storesLendingOnSide(
-  bands: TargetBands,
-  world: World,
-  goodType: number,
-  owner: number,
-  supply: SupplyTally,
-): readonly Entity[] {
-  if (sideLendsNone(bands, world, owner, goodType)) return [];
-  const holders = bands.holding(goodType);
-  if (!holders.hasCandidates()) return [];
-  const filed = holders.filedOnSide(owner);
-  const lends = holdsUnclaimed(world, bands.ctx, supply, goodType, owner);
-  const lenders: Entity[] = [];
-  for (let i = 0; i < filed.length; i += FILED_STRIDE) {
-    const store = filed[i] as Entity;
-    if (lends(store) !== null) lenders.push(store);
-  }
-  sortAscending(lenders, lenders.length);
-  return lenders;
-}
-
-/** Whether {@link nearestStoreHoldingWithin} finds a store for a fetcher at `here` under `goodsGate` and
- *  `avoid`, asked of `lenders`, the {@link storesLendingOnSide} of its owner and `goodType`. */
-export function lenderWithin(
-  bands: TargetBands,
-  lenders: readonly Entity[],
-  here: NodeId,
-  goodType: number,
-  goodsGate: SpatialGate | undefined,
-  avoid?: (cell: NodeId) => boolean,
-): boolean {
-  if (lenders.length === 0) return false;
-  const holders = bands.holding(goodType);
-  return holders.nearestAmong(lenders, lenders.length, here, here, ACCEPT_ALL, goodsGate, avoid) !== null;
 }
 
 /** Keep the first `count` stores of {@link narrowedField} that `lends` passes, in order, and return how
@@ -584,6 +532,41 @@ function storehouseKeepsMinimums(world: World, ctx: ContentContext, store: Entit
 /** Whether a fetch passes over a loose pile under an enemy tower ({@link pileUnderEnemyTowers}), as every
  *  settler's own fetch does, or takes it, as a human player's equip order does (owner ruling). */
 export type PilesUnderFire = 'pass-over' | 'take';
+
+/** Whether a store lends a good to a fetcher: a band accept. */
+export type StoreLends = (store: Entity) => typeof QUALIFIES | null;
+
+/**
+ * The lend verdict {@link nearestStoreHoldingWithin} asks of each store for `goodType`, a fetcher of
+ * `owner` and `underFire`, kept per store. A verdict reads the store, the claims in `supply` and the
+ * towers, never the fetcher's place, so a pass sending many fetchers of one owner after one good asks
+ * each store once. It holds only while those stay as they are: make a fresh one after any claim.
+ */
+export function storeLendVerdicts(
+  bands: TargetBands,
+  world: World,
+  goodType: number,
+  owner: number,
+  supply: SupplyTally,
+  underFire: PilesUnderFire = 'pass-over',
+): StoreLends {
+  const lends = holdsUnclaimed(
+    world,
+    bands.ctx,
+    supply,
+    goodType,
+    underFire === 'pass-over' ? owner : undefined,
+  );
+  const known = new Map<Entity, typeof QUALIFIES | null>();
+  return (store) => {
+    let verdict = known.get(store);
+    if (verdict === undefined) {
+      verdict = lends(store);
+      known.set(store, verdict);
+    }
+    return verdict;
+  };
+}
 
 /** A band accept admitting a store that still lends `goodType` beyond the walkers' claims and its owner's
  *  minimum, and that is no loose pile under a tower fighting `fetcher`. The minimum's surplus is the same
