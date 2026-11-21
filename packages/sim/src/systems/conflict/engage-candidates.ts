@@ -131,8 +131,9 @@ function readyUnitsOf(world: World, content: ContentSet): ReadyUnits {
 /**
  * The combatants a combat pass asks `mayEngage` about, in ascending id: the owned units with a stranger
  * within {@link PRESENCE_RADIUS}, the long-reach fighters with one within their reach, the units searching
- * past it wherever they stand, the garrisons not {@link idleAtPost}, and the kept ready set. Every other combatant proves `mayEngage` false. Read after the queued alarms are
- * answered, since an alarm hands its answerers ladder state.
+ * past it wherever they stand, the garrisons not {@link idleAtPost}, and the kept ready set. Every other
+ * combatant proves `mayEngage` false. Read after the queued alarms are answered, since an alarm hands its
+ * answerers ladder state.
  */
 export function engageCandidates(world: World, ctx: SystemContext, index: CombatIndex): EngageCandidates {
   const scratch = candidateScratchOf(world);

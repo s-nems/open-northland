@@ -145,8 +145,8 @@ export interface Breach {
  * the route that treats every such wall as open ground, or a joined segment further along the line when the
  * first one's near-side nodes are all taken. Null when walls are not what blocks the way: the goal is
  * reachable as it is, out of reach for another reason, or barred only by walls `e` may not attack or whose
- * weapon has no house column to dent them with. The cheap refusals come first; past them it costs the standing walls and a few
- * searches.
+ * weapon has no house column to dent them with. The cheap refusals come first; past them it costs the
+ * standing walls and a few searches.
  */
 export function palisadeBarring(
   world: World,

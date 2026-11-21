@@ -55,8 +55,8 @@ export function isMilitaryMode(mode: number): mode is MilitaryMode {
  * it. Original behavior: every human starts in DEFEND, except a weresnake or werewolf fighter, which
  * starts in ATTACK unless its map gives it {@link MISSION_BEHAVIOUR.SPAWNS_DEFENDING}. Which monsters
  * start in ATTACK is content: a person whose tribe's monster rules say `startsInAttack`. Approximation:
- * everyone who is not a fighter starts in IGNORE, the mode under which this build's civilian keeps working beside an enemy, runs only
- * from a blow, and a scout or hunter keeps its own drives.
+ * everyone who is not a fighter starts in IGNORE, the mode under which this build's civilian keeps working
+ * beside an enemy, runs only from a blow, and a scout or hunter keeps its own drives.
  */
 export function defaultStance(
   world: World,
