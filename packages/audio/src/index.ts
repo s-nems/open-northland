@@ -116,6 +116,7 @@ export {
   ANSWER_LAYERS,
   ANSWER_MAX_PAN,
   type AnswerLayer,
+  ARROW_BLOCK_MIN_VOLUME,
   BED_SWAP_HOLD_S,
   BED_SWAP_LEAD,
   directAudio,

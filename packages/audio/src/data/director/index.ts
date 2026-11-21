@@ -38,7 +38,7 @@ export {
   BED_SWAP_LEAD,
   MAX_AMBIENT_BEDS,
 } from './ambient.js';
-export { HOUSE_CRASH_MIN_BUILT } from './events.js';
+export { ARROW_BLOCK_MIN_VOLUME, HOUSE_CRASH_MIN_BUILT } from './events.js';
 export {
   ANSWER_LAYERS,
   ANSWER_MAX_PAN,

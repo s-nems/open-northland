@@ -5,6 +5,7 @@ import type { Entity, SimEvent, WorldSnapshot } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import {
   AMBIENT_MAX_PAN,
+  ARROW_BLOCK_MIN_VOLUME,
   type AudioTerrain,
   authoredVolumeGain,
   buildSoundIndex,
@@ -51,6 +52,11 @@ const bank: SoundBank = {
     },
     { name: 'Weapon Bow Long', logicSoundTypes: [75], sfx: [{ file: 'static/bow01.wav', params: [80] }] },
     { name: 'Weapon Bow Hit', logicSoundTypes: [77], sfx: [{ file: 'static/arrowhit01.wav', params: [80] }] },
+    {
+      name: 'Weapon Bow Hit Wood',
+      logicSoundTypes: [80],
+      sfx: [{ file: 'static/arrowwood01.wav', params: [40] }],
+    },
     {
       name: 'Weapon Bow Hit Dirt',
       logicSoundTypes: [79],
@@ -453,6 +459,21 @@ describe('directAudio combat SFX', () => {
       },
     ]);
     expect(blocked.oneShots.map((s) => s.files)).toEqual([['static/arrowhit01.wav']]);
+  });
+
+  it('sounds a blocked arrow over the volley: layered freely, at least as loud as a sword blow', () => {
+    const shooting = { projectile: entity(9), shooter: entity(12), target: entity(3), munitionType: 1, at };
+    const impact = (ev: SimEvent) => direct([ev]).oneShots[0];
+    const hit = (soundType: number) =>
+      impact({ kind: 'projectileHit', damage: 250, targetMaxHealth: 1000, soundType, ...shooting });
+    const block = (soundType: number) => impact({ kind: 'arrowBlocked', soundType, ...shooting });
+    // Group 80 authors 40: its hit sounds there, its block at the floor and over a sounding block.
+    expect(hit(80)?.exclusive).toBe('wav');
+    expect(block(80)?.exclusive).toBeUndefined();
+    const lift = authoredVolumeGain(ARROW_BLOCK_MIN_VOLUME) / authoredVolumeGain(40);
+    expect(block(80)?.gain).toBeCloseTo((hit(80)?.gain ?? 0) * lift);
+    // Group 77 authors 80, already at the floor.
+    expect(block(77)?.gain).toBeCloseTo(hit(77)?.gain ?? 0);
   });
 
   it('thuds a missed shot by the ground under its landing node, off the landscape grid', () => {

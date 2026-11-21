@@ -7,7 +7,7 @@ import {
   type SimEvent,
   type WorldSnapshot,
 } from '@open-northland/sim';
-import { groupFiles, poolGain, type SoundIndex } from '../bank/bank.js';
+import { authoredVolumeGain, groupFiles, poolGain, type SoundIndex } from '../bank/bank.js';
 import { JINGLE_COMBAT_INTERVAL_S, jingleDuck } from '../bank/bindings.js';
 import { humanVoicesOf } from '../bank/voices.js';
 import { uiCueShot } from '../cues/ui-cues.js';
@@ -40,6 +40,13 @@ import type {
  * torn down silently.
  */
 export const HOUSE_CRASH_MIN_BUILT = ONE / 2;
+
+/**
+ * The least authored volume (0-100) a blocked arrow sounds at, a sword blow's level. The block's group
+ * authors 40, the level of the volley's own thuds, and a block lands among them and the screams, so at
+ * its authored level it is not heard. Approximation, a legibility choice to tune by ear.
+ */
+export const ARROW_BLOCK_MIN_VOLUME = 80;
 
 /**
  * The entity that names a spatial event's emitter, or `undefined` when it names none. Only asked of an
@@ -153,6 +160,8 @@ type Pending =
       readonly kind: 'sfx';
       /** The blow's attacker, whose {@link SoundBindings.wielderSounds} blow replaces `files`. */
       readonly wielder?: number;
+      /** The least pool gain it sounds at, over its group's authored one. */
+      readonly minGain?: number;
     })
   | (PendingBase & {
       readonly kind: 'cue';
@@ -256,9 +265,10 @@ function missSoundType(
 
 /**
  * A weapon's listed impact or thud, named by a `logicSoundType` id like an animation's cue. A blow on a
- * body is exclusive, a blow on a building or a shot into the ground layers freely: the original
- * skips only a body hit while the previous one is still sounding. Approximation: the original
- * sounds a body blow only when it did damage, this every landed one.
+ * body is exclusive, a blow on a building, a blocked arrow or a shot into the ground layers freely: the
+ * original skips only a body hit while the previous one is still sounding. A blocked arrow sounds at
+ * least at {@link ARROW_BLOCK_MIN_VOLUME}. Approximation: the original sounds a body blow only when it
+ * did damage, this every landed one.
  */
 function weaponSoundPending(
   ev: SimEvent,
@@ -274,7 +284,6 @@ function weaponSoundPending(
     onBody = ev.structure !== true;
   } else if (ev.kind === 'arrowBlocked') {
     soundType = ev.soundType;
-    onBody = true;
   } else if (ev.kind === 'projectileMissed') {
     soundType = missSoundType(ev.missSounds, ev.at, terrain, index);
   } else return null;
@@ -289,6 +298,7 @@ function weaponSoundPending(
     entity: undefined,
     layer: 'impact',
     ...(onBody ? { exclusive: 'wav' as const } : {}),
+    ...(ev.kind === 'arrowBlocked' ? { minGain: authoredVolumeGain(ARROW_BLOCK_MIN_VOLUME) } : {}),
     // A blow on a building keeps the weapon's house impact: the own blow is struck on a body.
     ...(wielderBlows && ev.kind === 'combatHit' && onBody ? { wielder: ev.attacker as number } : {}),
   };
@@ -477,9 +487,10 @@ export function eventOneShots(input: DirectorInput): OneShot[] {
     if (p.kind === 'stinger') {
       shots.push(jingleShot(index, files, p.key, p.musicType, tense));
     } else {
+      const minGain = p.kind === 'sfx' ? (p.minGain ?? 0) : 0;
       shots.push({
         files,
-        gain: spatial.gain * poolGain(index, gainFiles ?? files),
+        gain: spatial.gain * Math.max(poolGain(index, gainFiles ?? files), minGain),
         pan: spatial.pan,
         key: p.key,
         lane: p.kind === 'scream' ? SCREAM_LANE : SFX_LANE,
