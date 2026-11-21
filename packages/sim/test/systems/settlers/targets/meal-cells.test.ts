@@ -10,6 +10,7 @@ import { testContent } from '../../../fixtures/content.js';
 import { grassNodeMap } from '../../../fixtures/terrain.js';
 
 const FOOD = 3;
+const WOOD = 1;
 const STORE = 90;
 const OTHER_STORE = 91;
 const footprint = (dx: number) => ({ blocked: [], door: { dx, dy: 0 } });
@@ -66,6 +67,20 @@ describe('meal index maintenance', () => {
     visits = 0;
     expect(search()).toBeNull();
     expect(visits).toBe(0);
+  });
+
+  it('holds a store only while it stocks an edible unit', () => {
+    const { sim, add, nearest } = fixture();
+    const store = add('stock', 10);
+    const amounts = (): Map<number, number> => sim.world.mut(store, Stockpile).amounts;
+    amounts().delete(FOOD);
+    amounts().set(WOOD, 5);
+    expect(nearest()).toBeNull();
+    amounts().set(FOOD, 1);
+    expect(nearest()?.entity).toBe(store);
+    amounts().set(FOOD, 0);
+    expect(nearest()).toBeNull();
+    expect(sim.world.verifyCaches()).toEqual([]);
   });
 
   it.each(['membership', 'values'] as const)(
