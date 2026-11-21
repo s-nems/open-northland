@@ -270,6 +270,7 @@ export const EXPERIENCE: ArticleGroup = {
           list: [
             'Clicca con il tasto destro su un edificio («Lavora qui») per cambiare professione e ottenere subito il luogo di lavoro.',
             "Un colono la cui professione è impiegata dall'edificio la mantiene e prende quel posto, anche un estrattore, un cacciatore o un pescatore.",
+            "Un estrattore, un cacciatore o un pescatore che soddisfa il requisito del mestiere dell'edificio ne diventa invece l'artigiano.",
             "Un colono che non soddisfa il requisito per quella professione prende un posto libero da trasportatore nell'edificio, se ce n'è uno.",
             'Un soldato prende solo un posto della sua professione.',
             "«Rimuovi dal lavoro» e la demolizione dell'edificio non tolgono la professione.",

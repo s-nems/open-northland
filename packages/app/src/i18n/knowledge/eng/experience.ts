@@ -262,6 +262,7 @@ export const EXPERIENCE: ArticleGroup = {
           list: [
             'Right-click a building ("Work here") to change profession and get the workplace at once.',
             'A settler whose profession the building employs keeps it and takes that post, also an Extractor, Hunter or Fisherman.',
+            "An Extractor, Hunter or Fisherman who meets the requirement of the building's craft becomes its craftsman instead.",
             "A settler who doesn't meet the requirement for that profession takes a free Carrier post in the building, if there is one.",
             'A soldier only takes a post in his own profession.',
             '"Remove work place" and demolishing the building don\'t take the profession away.',

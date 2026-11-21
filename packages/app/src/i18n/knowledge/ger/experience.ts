@@ -262,6 +262,7 @@ export const EXPERIENCE: ArticleGroup = {
           list: [
             'Rechtsklick auf ein Gebäude („Hier arbeiten“) wechselt sofort den Beruf und gibt den Arbeitsplatz.',
             'Ein Siedler, dessen Beruf das Gebäude beschäftigt, behält ihn und nimmt diesen Platz, auch ein Abbauer, Jäger oder Fischer.',
+            'Ein Abbauer, Jäger oder Fischer, der die Voraussetzung für das Handwerk des Gebäudes erfüllt, wird stattdessen dessen Handwerker.',
             'Erfüllt der Siedler die Voraussetzung für diesen Beruf nicht, nimmt er im Gebäude einen freien Trägerplatz, falls es einen gibt.',
             'Ein Soldat nimmt nur einen Platz in seinem Beruf.',
             '„Arbeitsplatz aufheben“ und der Abriss des Gebäudes nehmen den Beruf nicht weg.',

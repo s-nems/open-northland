@@ -71,8 +71,10 @@ function isFighterJobType(currentJob: number): boolean {
 
 /**
  * Assignment priority for one settler here: a building that employs its current trade posts it in that
- * trade, gatherers included (owner ruling); otherwise the building default applies. Slots match by
- * canonical trade, so a sandbox-rebased slot seats its raw twin.
+ * trade; otherwise the building default applies. A gatherer tries the building's crafts before its own
+ * post, so the sim's experience gate makes one that earned the craft its craftsman and leaves the rest
+ * gathering there (owner ruling). Slots match by canonical trade, so a sandbox-rebased slot seats its
+ * raw twin.
  */
 export function assignmentPriorityFor(
   currentJob: number | undefined,
@@ -87,5 +89,10 @@ export function assignmentPriorityFor(
   // A fighter gets his own post or nothing: falling through to a tower's or storehouse's hauler slot would
   // leave the fighter band, and `applyTradeChange` disarms a settler that does.
   if (isFighterJobType(currentJob)) return own;
-  return [...own, ...base.filter((jobType) => !own.includes(jobType))];
+  const crafts =
+    workerRoleOf(currentJob) === 'gatherer'
+      ? base.filter((jobType) => workerRoleOf(jobType) === 'craftsman')
+      : [];
+  const lead = [...crafts, ...own];
+  return [...lead, ...base.filter((jobType) => !lead.includes(jobType))];
 }

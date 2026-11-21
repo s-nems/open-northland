@@ -131,15 +131,15 @@ describe('assignmentPriorityFor keeps the settler`s current trade', () => {
     expect(assignmentPriorityFor(REAL_JOB.hunter, MILL_SLOTS)).toEqual([REAL_JOB.miller, REAL_JOB.carrier]);
   });
 
-  it('keeps a collector at a workshop in its own gatherer slot, ahead of the craft and the carrier', () => {
+  it('offers a collector at a workshop the craft first, its own gatherer slot next, the carrier last', () => {
     const POTTERY_SLOTS = [
       { jobType: REAL_JOB.collector, count: 1 },
       { jobType: REAL_JOB.potter, count: 1 },
       { jobType: REAL_JOB.carrier, count: 1 },
     ];
     expect(assignmentPriorityFor(REAL_JOB.collector, POTTERY_SLOTS)).toEqual([
-      REAL_JOB.collector,
       REAL_JOB.potter,
+      REAL_JOB.collector,
       REAL_JOB.carrier,
     ]);
   });
