@@ -640,14 +640,6 @@ export const MILITARY: ArticleGroup = {
                 '{{wall.woodenSpear.segmentSeconds}}',
               ],
               [
-                '[[good:bow_short|Arco corto]]',
-                '{{wall.shortBow.blow}}',
-                '{{wall.shortBow.strongBlow}}',
-                '{{wall.shortBow.segmentHits}}',
-                '{{wall.shortBow.gateHits}}',
-                '{{wall.shortBow.segmentSeconds}}',
-              ],
-              [
                 '[[good:bow_long|Arco lungo]]',
                 '{{wall.longBow.blow}}',
                 '{{wall.longBow.strongBlow}}',
@@ -655,7 +647,7 @@ export const MILITARY: ArticleGroup = {
                 '{{wall.longBow.gateHits}}',
                 '{{wall.longBow.segmentSeconds}}',
               ],
-              ['Pugni, frecce da un edificio', '0', '0', '-', '-', '-'],
+              ['[[good:bow_short|Arco corto]], pugni, frecce da un edificio', '0', '0', '-', '-', '-'],
             ],
             num: [1, 2, 3, 4, 5],
             foot: "Tempo per un soldato. Una catapulta non può ricevere l'Amuleto della forza. Cyra toglie {{wall.heroBow.blow}} punti di salute alla palizzata per tiro, la Cyra dei Franchi {{wall.frankHeroBow.blow}}.",

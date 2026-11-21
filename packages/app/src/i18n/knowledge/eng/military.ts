@@ -625,14 +625,6 @@ export const MILITARY: ArticleGroup = {
                 '{{wall.woodenSpear.segmentSeconds}}',
               ],
               [
-                '[[good:bow_short|Short Bow]]',
-                '{{wall.shortBow.blow}}',
-                '{{wall.shortBow.strongBlow}}',
-                '{{wall.shortBow.segmentHits}}',
-                '{{wall.shortBow.gateHits}}',
-                '{{wall.shortBow.segmentSeconds}}',
-              ],
-              [
                 '[[good:bow_long|Longbow]]',
                 '{{wall.longBow.blow}}',
                 '{{wall.longBow.strongBlow}}',
@@ -640,7 +632,7 @@ export const MILITARY: ArticleGroup = {
                 '{{wall.longBow.gateHits}}',
                 '{{wall.longBow.segmentSeconds}}',
               ],
-              ['Fists, arrows from a building', '0', '0', '-', '-', '-'],
+              ['[[good:bow_short|Short Bow]], fists, arrows from a building', '0', '0', '-', '-', '-'],
             ],
             num: [1, 2, 3, 4, 5],
             foot: "Time for one soldier. A Catapult cannot take an Amulet of Strength. Cyra takes {{wall.heroBow.blow}} stockade health per shot, the Franks' Cyra {{wall.frankHeroBow.blow}}.",

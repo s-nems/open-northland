@@ -598,14 +598,6 @@ export const MILITARY: ArticleGroup = {
                 '{{wall.woodenSpear.segmentSeconds}}',
               ],
               [
-                '[[good:bow_short|短弓]]',
-                '{{wall.shortBow.blow}}',
-                '{{wall.shortBow.strongBlow}}',
-                '{{wall.shortBow.segmentHits}}',
-                '{{wall.shortBow.gateHits}}',
-                '{{wall.shortBow.segmentSeconds}}',
-              ],
-              [
                 '[[good:bow_long|長弓]]',
                 '{{wall.longBow.blow}}',
                 '{{wall.longBow.strongBlow}}',
@@ -613,7 +605,7 @@ export const MILITARY: ArticleGroup = {
                 '{{wall.longBow.gateHits}}',
                 '{{wall.longBow.segmentSeconds}}',
               ],
-              ['拳頭、建築射出的箭', '0', '0', '-', '-', '-'],
+              ['[[good:bow_short|短弓]]、拳頭、建築射出的箭', '0', '0', '-', '-', '-'],
             ],
             num: [1, 2, 3, 4, 5],
             foot: '用時按一名士兵計算。投石機不能使用力量護符。希拉每箭打掉柵欄{{wall.heroBow.blow}}點生命值，法蘭克人的希拉{{wall.frankHeroBow.blow}}點。',

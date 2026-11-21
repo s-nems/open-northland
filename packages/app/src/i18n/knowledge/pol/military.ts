@@ -621,14 +621,6 @@ export const MILITARY: ArticleGroup = {
                 '{{wall.woodenSpear.segmentSeconds}}',
               ],
               [
-                '[[good:bow_short|Krótki Łuk]]',
-                '{{wall.shortBow.blow}}',
-                '{{wall.shortBow.strongBlow}}',
-                '{{wall.shortBow.segmentHits}}',
-                '{{wall.shortBow.gateHits}}',
-                '{{wall.shortBow.segmentSeconds}}',
-              ],
-              [
                 '[[good:bow_long|Długi Łuk]]',
                 '{{wall.longBow.blow}}',
                 '{{wall.longBow.strongBlow}}',
@@ -636,7 +628,7 @@ export const MILITARY: ArticleGroup = {
                 '{{wall.longBow.gateHits}}',
                 '{{wall.longBow.segmentSeconds}}',
               ],
-              ['Pięści, strzały z budynku', '0', '0', '-', '-', '-'],
+              ['[[good:bow_short|Krótki Łuk]], pięści, strzały z budynku', '0', '0', '-', '-', '-'],
             ],
             num: [1, 2, 3, 4, 5],
             foot: 'Czas dla jednego żołnierza. Katapulta nie może mieć Amuletu Siły. Cyra zabiera {{wall.heroBow.blow}} zdrowia palisady na strzał, Cyra Franków {{wall.frankHeroBow.blow}}.',

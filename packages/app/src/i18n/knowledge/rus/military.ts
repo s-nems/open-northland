@@ -629,14 +629,6 @@ export const MILITARY: ArticleGroup = {
                 '{{wall.woodenSpear.segmentSeconds}}',
               ],
               [
-                '[[good:bow_short|Короткий Лук]]',
-                '{{wall.shortBow.blow}}',
-                '{{wall.shortBow.strongBlow}}',
-                '{{wall.shortBow.segmentHits}}',
-                '{{wall.shortBow.gateHits}}',
-                '{{wall.shortBow.segmentSeconds}}',
-              ],
-              [
                 '[[good:bow_long|Длинный Лук]]',
                 '{{wall.longBow.blow}}',
                 '{{wall.longBow.strongBlow}}',
@@ -644,7 +636,7 @@ export const MILITARY: ArticleGroup = {
                 '{{wall.longBow.gateHits}}',
                 '{{wall.longBow.segmentSeconds}}',
               ],
-              ['Кулаки, стрелы из здания', '0', '0', '-', '-', '-'],
+              ['[[good:bow_short|Короткий Лук]], кулаки, стрелы из здания', '0', '0', '-', '-', '-'],
             ],
             num: [1, 2, 3, 4, 5],
             foot: 'Время для одного солдата. Катапульте нельзя дать Амулет Силы. Кира снимает с частокола {{wall.heroBow.blow}} здоровья за выстрел, Кира Франков {{wall.frankHeroBow.blow}}.',

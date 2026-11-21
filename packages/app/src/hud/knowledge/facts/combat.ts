@@ -236,7 +236,6 @@ const WALL_WEAPONS = [
   ['longSword', VIKING, 'long_sword'],
   ['shortSword', VIKING, 'short_sword'],
   ['woodenSpear', VIKING, 'wooden_spear'],
-  ['shortBow', VIKING, 'short_bow'],
   ['longBow', VIKING, 'long_bow'],
 ] as const;
 

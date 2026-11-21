@@ -623,14 +623,6 @@ export const MILITARY: ArticleGroup = {
                 '{{wall.woodenSpear.segmentSeconds}}',
               ],
               [
-                '[[good:bow_short|Kurzbogen]]',
-                '{{wall.shortBow.blow}}',
-                '{{wall.shortBow.strongBlow}}',
-                '{{wall.shortBow.segmentHits}}',
-                '{{wall.shortBow.gateHits}}',
-                '{{wall.shortBow.segmentSeconds}}',
-              ],
-              [
                 '[[good:bow_long|Langbogen]]',
                 '{{wall.longBow.blow}}',
                 '{{wall.longBow.strongBlow}}',
@@ -638,7 +630,7 @@ export const MILITARY: ArticleGroup = {
                 '{{wall.longBow.gateHits}}',
                 '{{wall.longBow.segmentSeconds}}',
               ],
-              ['Fäuste, Pfeile aus Gebäuden', '0', '0', '-', '-', '-'],
+              ['[[good:bow_short|Kurzbogen]], Fäuste, Pfeile aus Gebäuden', '0', '0', '-', '-', '-'],
             ],
             num: [1, 2, 3, 4, 5],
             foot: 'Dauer für einen Soldaten. Ein Katapult kann kein Amulett der Stärke tragen. Cyra nimmt der Palisade {{wall.heroBow.blow}} Gesundheit pro Schuss, die Cyra der Franken {{wall.frankHeroBow.blow}}.',
