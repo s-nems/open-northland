@@ -16,11 +16,12 @@ const TRANSITION_EVENT = 0;
 const TRANSITION_VALENCY_STEP = 3;
 const BUILD_STRIKE_EVENT = 9;
 
-/** A wall-family logic row a player may own, hit and mend. */
+/** A wall-family logic row a player may own, hit and mend, on its data's valency scale. */
 export interface PlayerWallRow {
   readonly logicId: string;
-  readonly maxHitpoints: number;
-  readonly repairPerStrike: number;
+  readonly maxValency: number;
+  /** Valency one builder strike adds. */
+  readonly repairValency: number;
 }
 
 /**
@@ -41,11 +42,11 @@ export function playerWallRow(
   row: Pick<LandscapeTypeRow, 'id' | 'maxValency' | 'playerIdAllowed' | 'transitions'>,
 ): PlayerWallRow | undefined {
   if (row.id === undefined || !WALL_FAMILY.has(row.id) || row.playerIdAllowed !== true) return undefined;
-  const maxHitpoints = row.maxValency ?? 0;
-  const repairPerStrike =
+  const maxValency = row.maxValency ?? 0;
+  const repairValency =
     row.transitions?.find((t) => t[TRANSITION_EVENT] === BUILD_STRIKE_EVENT)?.[TRANSITION_VALENCY_STEP] ?? 0;
-  if (maxHitpoints <= 0 || repairPerStrike <= 0) return undefined;
-  return { logicId: row.id, maxHitpoints, repairPerStrike };
+  if (maxValency <= 0 || repairValency <= 0) return undefined;
+  return { logicId: row.id, maxValency, repairValency };
 }
 
 /** A gate graphic's paired state by edit name: `<name>` closed, `<name>_open` open. */
@@ -72,8 +73,8 @@ export function wallStrengthScale(closedWalk: readonly Readonly<LandscapeBlockAr
   return Math.max(POST_STRENGTH, fullStateBlockAreaCells(closedWalk).length);
 }
 
-/** Project rule: a wall holds this many hitpoints per valency point, so every blow takes its whole house
- *  column off the pool instead of one point per hundred. */
+/** Project rule: a wall holds this many hitpoints per valency point, and every blow takes its whole house
+ *  column off that pool. */
 export const WALL_HITPOINTS_PER_VALENCY = 100;
 
 /** A wall graphic's authored valency `level` as hitpoints, scaled like its pool. */
@@ -86,12 +87,12 @@ export function wallLevelHitpoints(level: number, scale: number): number {
  * slows; both round on the valency scale first, so the strikes to raise or mend a wall stay its valency's.
  */
 export function scaledWallRules(
-  rules: { readonly maxHitpoints: number; readonly repairPerStrike: number },
+  rules: { readonly maxValency: number; readonly repairValency: number },
   scale: number,
 ): { readonly maxHitpoints: number; readonly repairPerStrike: number } {
   return {
-    maxHitpoints: wallLevelHitpoints(rules.maxHitpoints, scale),
-    repairPerStrike: Math.ceil(rules.repairPerStrike * scale) * WALL_HITPOINTS_PER_VALENCY,
+    maxHitpoints: wallLevelHitpoints(rules.maxValency, scale),
+    repairPerStrike: Math.ceil(rules.repairValency * scale) * WALL_HITPOINTS_PER_VALENCY,
   };
 }
 

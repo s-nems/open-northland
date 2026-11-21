@@ -16,9 +16,9 @@ export const PALISADE_HORIZONTAL_GATE_OPEN_GFX_INDEX = 701;
 const WALL_LOGIC_TYPE = 82;
 const CLOSED_GATE_LOGIC_TYPE = 83;
 const OPEN_GATE_LOGIC_TYPE = 84;
-const PALISADE_MAX_HITPOINTS = 100;
-const PALISADE_REPAIR_PER_STRIKE = 3;
-const GATE_REPAIR_PER_STRIKE = 1;
+const PALISADE_MAX_VALENCY = 100;
+const PALISADE_REPAIR_VALENCY = 3;
+const GATE_REPAIR_VALENCY = 1;
 
 /** Logic rows referenced by the fallback graphics below. These keep the sandbox ContentSet's
  * graphics-to-landscape join complete; collision and construction remain object-record rules. */
@@ -189,7 +189,7 @@ export function sandboxPalisadeGfx(): LandscapeGfx[] {
     editName: record.editName,
     editGroups: ['misc_walls'],
     logicType: record.logicType,
-    maxValency: PALISADE_MAX_HITPOINTS,
+    maxValency: PALISADE_MAX_VALENCY,
     isWorkable: true,
     walkBlockAreas: record.walkBlockAreas.map((area) => [...area]),
     buildBlockAreas: record.buildBlockAreas.map((area) => [...area]),
@@ -205,8 +205,9 @@ export function sandboxPalisadeGfx(): LandscapeGfx[] {
 
 /**
  * Shared fallback wall rules. Readable data pins max valency 100 and repairs +3 for walls, +1 for gates, both
- * scaled by `wallStrengthScale` and turned into hitpoints by `scaledWallRules`; one wood per new anchor is the original's behavior. Gate pairing follows the
- * adjacent closed/open decoded records. Construction blocking after completion is an explicit adaptation.
+ * scaled by `wallStrengthScale` and turned into hitpoints by `scaledWallRules`; one wood per new anchor is
+ * the original's behavior. Gate pairing follows the adjacent closed/open decoded records. Construction
+ * blocking after completion is an explicit adaptation.
  */
 export function sandboxPalisadeTypes(): ScriptLandscapeType[] {
   return PALISADE_RECORDS.map((record) => {
@@ -223,8 +224,8 @@ export function sandboxPalisadeTypes(): ScriptLandscapeType[] {
       wall: {
         ...scaledWallRules(
           {
-            maxHitpoints: PALISADE_MAX_HITPOINTS,
-            repairPerStrike: record.gate === undefined ? PALISADE_REPAIR_PER_STRIKE : GATE_REPAIR_PER_STRIKE,
+            maxValency: PALISADE_MAX_VALENCY,
+            repairValency: record.gate === undefined ? PALISADE_REPAIR_VALENCY : GATE_REPAIR_VALENCY,
           },
           scale,
         ),

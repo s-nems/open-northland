@@ -31,12 +31,11 @@ import type { SceneDefinition } from '../types.js';
  *
  * Source basis: readable wall records pin 100 maximum valency and +3 repair progress; a post holds one
  * and a half of each, its step rounded up to +5 (`wallStrengthScale`), in hundreds of hitpoints
- * (`WALL_HITPOINTS_PER_VALENCY`). Original behavior: one wood per
- * placed anchor, interpolated posts along three canonical neighbour directions,
- * and the instant conversion of a straight five-wall span into a gate, which lives in
- * `palisadeGateProbe`. The original reserves a segment before travel; the physical visit before its
- * flag appears is a lifecycle adaptation. Treating valency as hitpoints and unfinished walls as
- * passable are also adaptations. Shared catalog data owns the rules rather than this scene.
+ * (`WALL_HITPOINTS_PER_VALENCY`). Original behavior: one wood per placed anchor, interpolated posts along
+ * three canonical neighbour directions, and the instant conversion of a straight five-wall span into a
+ * gate, which lives in `palisadeGateProbe`. The original reserves a segment before travel; the physical
+ * visit before its flag appears is a lifecycle adaptation. Unfinished walls are passable, also an
+ * adaptation. Shared catalog data owns the rules rather than this scene.
  */
 
 const MAP_W = 34;

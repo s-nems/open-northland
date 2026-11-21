@@ -188,7 +188,7 @@ describe('a weak blow at a wall', () => {
     return { blow, health: sim.world.get(gate, Health) };
   };
 
-  it('under a hundred takes exactly its building column off the wall', () => {
+  it('takes exactly its building column off the wall', () => {
     const weak = firstBlow(WEAK);
     expect(weak.blow?.soundType).toBe(WALL_HIT_SOUND);
     expect(weak.health.hitpoints).toBe(weak.health.max - WEAK);
