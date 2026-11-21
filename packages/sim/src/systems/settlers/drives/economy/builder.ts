@@ -219,7 +219,8 @@ export function planBuilder(
     dropAssignment(plan, claims);
   }
 
-  for (const kind of REPAIR_ORDER) {
+  for (let i = 0; i < REPAIR_ORDER.length; i++) {
+    const kind = REPAIR_ORDER[i] as RepairKind;
     if (repairNearest(plan, spacing, repairs, claims, avoidSite, kind)) return true;
   }
 

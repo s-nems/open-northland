@@ -85,7 +85,9 @@ function nearestShelterWithRoom(
   const walk = rankWalk(rankFromSpot(limit, here));
   let best: ShelterSite | null = null;
   let bestDistance = 0;
-  for (const site of shelters.get(player) ?? NO_SHELTERS) {
+  const sites = shelters.get(player) ?? NO_SHELTERS;
+  for (let i = 0; i < sites.length; i++) {
+    const site = sites[i] as ShelterSite;
     if (site.free <= 0) continue;
     // By straight line a door is resolved only for a candidate that beats the running best: the resolve
     // walks the footprint's approach cells. Under a walk every site with room pays it, since the door is

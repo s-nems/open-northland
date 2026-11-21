@@ -94,7 +94,11 @@ export function haulableOutputGood(
   const stock = accessibleStockAmounts(world, entity);
   if (stock === undefined) return null;
   if (isPassiveStore(world, ctx, entity)) return null; // passive stores aren't hauled from
-  for (const [goodType, amount] of stockpileEntries({ amounts: stock })) {
+  const entries = stockpileEntries({ amounts: stock });
+  for (let i = 0; i < entries.length; i++) {
+    const entry = entries[i] as [number, number];
+    const goodType = entry[0];
+    const amount = entry[1];
     if (amount <= supply.reservedAt(entity, goodType)) continue;
     if (!isWorkplaceOutput(world, ctx, entity, goodType)) continue; // only haul outputs
     if (!deliverable(goodType)) continue; // no reachable sink

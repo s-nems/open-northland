@@ -131,8 +131,11 @@ export class WorkSeatClaims {
     if (recipes === undefined) {
       this.workforce ??= workshopWorkforce(world, ctx);
       const selected = new Set<Recipe>();
-      for (const worker of this.workforce.operatorsAt(workplace)) {
-        for (const recipe of operatorRecipes(world, ctx, workplace, worker)) selected.add(recipe);
+      const operators = this.workforce.operatorsAt(workplace);
+      for (let i = 0; i < operators.length; i++) {
+        const worker = operators[i] as Entity;
+        const workerRecipes = operatorRecipes(world, ctx, workplace, worker);
+        for (let j = 0; j < workerRecipes.length; j++) selected.add(workerRecipes[j] as Recipe);
       }
       recipes = [...selected];
       this.recipesByWorkplace.set(workplace, recipes);
@@ -425,7 +428,9 @@ function holdInsideWorkplace(
     if (entering) {
       // Arrival changes canonical operator order; refresh the seated crew without handing out their
       // already-claimed seats a second time in this planner pass.
-      for (const worker of assignedWorkers(world, workplace)) {
+      const workers = assignedWorkers(world, workplace);
+      for (let i = 0; i < workers.length; i++) {
+        const worker = workers[i] as Entity;
         if (world.tryGet(worker, Resting)?.at === workplace) startCraftAtomic(world, ctx, worker, workplace);
       }
     } else startCraftAtomic(world, ctx, entity, workplace);

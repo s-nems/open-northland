@@ -58,7 +58,9 @@ export function nextAtomicEventTick(
       if (at < due) due = at;
     }
     if (effect.kind === 'slay') {
-      for (const event of clip.events) {
+      for (let j = 0; j < clip.events.length; j++) {
+        const event = clip.events[j];
+        if (event === undefined) continue;
         if (event.type !== ATOMIC_EVENT_TYPE_PUT_GOOD_IN_STOCK) continue;
         const at = replayedEventTick(event.at, clip.length, after);
         if (at < due) due = at;

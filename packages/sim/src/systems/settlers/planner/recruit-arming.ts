@@ -148,7 +148,8 @@ export function armingGoodPreference(
   vetoed: readonly number[],
 ): readonly number[] {
   const all = unvetoedPreference(content, tribe, intent);
-  for (const good of all) {
+  for (let i = 0; i < all.length; i++) {
+    const good = all[i] as number;
     if (vetoed.includes(good)) return all.filter((kept) => !vetoed.includes(kept));
   }
   return all;

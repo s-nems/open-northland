@@ -69,7 +69,9 @@ export function applyClipNeedEvents(
   let company = 0;
   let piety = 0;
   let atHome: boolean | undefined;
-  for (const event of animation.events) {
+  for (let i = 0; i < animation.events.length; i++) {
+    const event = animation.events[i];
+    if (event === undefined) continue;
     if (event.at !== frame) continue;
     const delta = event.value ?? 0;
     if (delta === 0) continue;

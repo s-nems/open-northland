@@ -157,7 +157,9 @@ export function wakeHumanIdler(world: World, e: Entity): void {
 
 /** Wake the workers waiting inside `workplace`, so they re-plan in one pass and re-pair its seats. */
 export function wakeCrewInside(world: World, workplace: Entity): void {
-  for (const e of assignedWorkers(world, workplace)) {
+  const workers = assignedWorkers(world, workplace);
+  for (let i = 0; i < workers.length; i++) {
+    const e = workers[i] as Entity;
     if (world.tryGet(e, Resting)?.at === workplace) world.remove(e, IdleStand);
   }
 }

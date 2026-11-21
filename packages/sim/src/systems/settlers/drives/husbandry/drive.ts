@@ -171,7 +171,8 @@ function adoptStray(plan: PlannerContext, farm: Entity, species: readonly number
   // One herd count per species up front: the rows are a fact about the farm, not about each candidate.
   const room = new Map<number, boolean>();
   let anyRoom = false;
-  for (const good of species) {
+  for (let i = 0; i < species.length; i++) {
+    const good = species[i] as number;
     const roomy = hasRoomForAnother(world, ctx, farm, good);
     room.set(good, roomy);
     anyRoom ||= roomy;
@@ -182,7 +183,9 @@ function adoptStray(plan: PlannerContext, farm: Entity, species: readonly number
   const walk = rankWalk(planRank(plan, door));
   let best: Entity | null = null;
   let bestRange = Number.POSITIVE_INFINITY;
-  for (const animal of freeStockOf(world, owner)) {
+  const freeStock = freeStockOf(world, owner);
+  for (let i = 0; i < freeStock.length; i++) {
+    const animal = freeStock[i] as Entity;
     const good = speciesGoodOf(world, ctx, animal);
     if (good === null || room.get(good) !== true) continue;
     const node = entityNode(world, terrain, animal);
@@ -224,7 +227,9 @@ function takeFromNeighbour(plan: PlannerContext, farm: Entity, good: number): bo
     if (speciesHerdOf(world, ctx, other, good).all <= BREEDING_PAIR) continue;
     // A farm offering nothing inside this settlement is not one of the farms the scan draws from.
     let offered = false;
-    for (const animal of herdOf(world, other)) {
+    const herd = herdOf(world, other);
+    for (let i = 0; i < herd.length; i++) {
+      const animal = herd[i] as Entity;
       if (speciesGoodOf(world, ctx, animal) !== good) continue;
       const node = entityNode(world, terrain, animal);
       if (!settlement.allowsNode(node)) continue;
@@ -253,7 +258,9 @@ function takeFromNeighbour(plan: PlannerContext, farm: Entity, good: number): bo
 function flushFullWare(plan: PlannerContext, farm: Entity, good: number): boolean {
   const { world, ctx, entity: e } = plan;
   const deliverable = deliverableGoodProbe(plan);
-  for (const ware of slayDepositGoods(ctx, world.get(e, Settler), good)) {
+  const depositGoods = slayDepositGoods(ctx, world.get(e, Settler), good);
+  for (let i = 0; i < depositGoods.length; i++) {
+    const ware = depositGoods[i] as number;
     // A ware a carrier already walks to lift is not full for the breeder.
     if (unclaimedStockOf(world, ctx, plan.supply, farm, ware) < stockCapacity(world, ctx, farm, ware))
       continue;
@@ -322,7 +329,9 @@ function slayTarget(plan: PlannerContext, farm: Entity, good: number, door: Node
   let spare = 0;
   let best: Entity | null = null;
   let bestRange = Number.POSITIVE_INFINITY;
-  for (const animal of herdOf(world, farm)) {
+  const herd = herdOf(world, farm);
+  for (let i = 0; i < herd.length; i++) {
+    const animal = herd[i] as Entity;
     if (!isAdultAnimal(world, animal) || speciesGoodOf(world, ctx, animal) !== good) continue;
     const summoner = world.get(animal, FarmAnimal).summoner;
     if (summoner === e) return animal; // already in hand - it keeps priority

@@ -93,7 +93,9 @@ function unsettledWalkersOf(world: World): readonly Entity[] {
  * signal the owning drive reads. Walkers are visited in ascending id.
  */
 export function navigationPlanner(world: World, terrain: TerrainGraph): void {
-  for (const e of unsettledWalkersOf(world)) {
+  const unsettledWalkers = unsettledWalkersOf(world);
+  for (let i = 0; i < unsettledWalkers.length; i++) {
+    const e = unsettledWalkers[i] as Entity;
     const goalNode = world.get(e, MoveGoal).cell;
     if (!isValidNodeId(terrain, goalNode)) {
       // An off-map goal can never be satisfied, so drop it rather than issue dead requests every tick.

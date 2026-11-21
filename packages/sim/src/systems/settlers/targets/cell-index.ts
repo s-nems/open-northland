@@ -371,11 +371,13 @@ export class InteractionCellIndex {
     const walk = rankWalk(rank);
     // Typed by assertion: reassigned in the loop, so flow narrowing must not pin it to null.
     let door = null as NearestByCell<P> | null;
-    for (const set of sets) {
+    for (let i = 0; i < sets.length; i++) {
+      const set = sets[i] as CandidateSet;
       door = nearerOf(door, this.doorNearest(set, here, origin, accept, gate, avoid, walk, door?.distance));
     }
     let best = door;
-    for (const set of sets) {
+    for (let i = 0; i < sets.length; i++) {
+      const set = sets[i] as CandidateSet;
       best = nearerOf(best, this.looseNearest(set, here, origin, accept, gate, avoid, walk, best?.distance));
     }
     return best;

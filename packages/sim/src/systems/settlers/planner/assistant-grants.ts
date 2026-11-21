@@ -440,7 +440,8 @@ export function owedAssistantGrants(world: World, ctx: SystemContext, e: Entity)
   const stock = FetchableStock.of(world, ctx);
   const underway = equipFetchesHeld(world).get(owner);
   const owed: OwedGrant[] = [];
-  for (const spec of wanted) {
+  for (let i = 0; i < wanted.length; i++) {
+    const spec = wanted[i] as GrantSpec;
     const slot = grantSlotFor(ctx.content, spec, eq, toolless, kept, upgrade);
     if (slot === null || !stock.exceeds(owner, spec.goodType, underway?.get(spec.goodType) ?? 0)) continue;
     owed.push({ goodType: spec.goodType, category: spec.category, slot });

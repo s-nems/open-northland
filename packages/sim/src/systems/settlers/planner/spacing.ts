@@ -201,8 +201,11 @@ export class PlannerSpacing {
     let frontier: NodeId[] = [anchor];
     for (let depth = 0; depth < WORKPLACE_YARD_RADIUS_NODES; depth++) {
       const next: NodeId[] = [];
-      for (const cell of frontier) {
-        for (const n of this.terrain.walkableNeighbours(cell)) {
+      for (let i = 0; i < frontier.length; i++) {
+        const cell = frontier[i] as NodeId;
+        const neighbours = this.terrain.walkableNeighbours(cell);
+        for (let j = 0; j < neighbours.length; j++) {
+          const n = neighbours[j] as NodeId;
           if (seen.has(n) || blocked.has(n)) continue;
           seen.add(n);
           yard.add(n);

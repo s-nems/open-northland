@@ -277,7 +277,9 @@ export function roomLeftForPorters(plan: PlannerContext, home: Entity, goodType:
   const slot = bankedSlot(world, ctx, home, goodType);
   if (slot.goodType !== goodType) return 0;
   let room = slot.capacity - (world.get(home, Stockpile).amounts.get(goodType) ?? 0);
-  for (const porter of assignedWorkers(world, home)) {
+  const workers = assignedWorkers(world, home);
+  for (let i = 0; i < workers.length; i++) {
+    const porter = workers[i] as Entity;
     if (porter !== entity) room -= porterLoadOf(world, porter, goodType);
   }
   return room;

@@ -235,7 +235,9 @@ export class CellGrid {
     for (let i = 0; i < tiles.count; i++) {
       const key = tiles.keyAt(i);
       if (rankDistanceOf(key) - slack > bound) return;
-      for (const node of tiles.itemOf(key)) {
+      const tileNodes = tiles.itemOf(key);
+      for (let j = 0; j < tileNodes.length; j++) {
+        const node = tileNodes[j] as GridNode;
         const nx = Math.floor(node.key / GRID_KEY_STRIDE);
         const ny = node.key - nx * GRID_KEY_STRIDE;
         const distance = Math.abs(nx - x) + Math.abs(ny - y);
@@ -302,7 +304,9 @@ export class CellGrid {
       const blockKey = blocks.keyAt(i);
       if (rankDistanceOf(blockKey) - slack > bound) return;
       ranked.reset();
-      for (const tile of blocks.itemOf(blockKey)) {
+      const blockTiles = blocks.itemOf(blockKey);
+      for (let k = 0; k < blockTiles.length; k++) {
+        const tile = blockTiles[k] as number;
         const tx = Math.floor(tile / GRID_KEY_STRIDE);
         const ty = tile - tx * GRID_KEY_STRIDE;
         const minX = tx << TILE_SHIFT;
@@ -318,7 +322,9 @@ export class CellGrid {
       for (let j = 0; j < ranked.count; j++) {
         const rankedKey = ranked.keyAt(j);
         if (rankDistanceOf(rankedKey) - slack > bound) break;
-        for (const node of ranked.itemOf(rankedKey)) {
+        const rankedNodes = ranked.itemOf(rankedKey);
+        for (let k = 0; k < rankedNodes.length; k++) {
+          const node = rankedNodes[k] as GridNode;
           const nx = Math.floor(node.key / GRID_KEY_STRIDE);
           const ny = node.key - nx * GRID_KEY_STRIDE;
           const distance = Math.abs(nx - x) + Math.abs(ny - y);
