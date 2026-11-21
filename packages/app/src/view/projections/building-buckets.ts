@@ -26,12 +26,12 @@ const BUILDINGS_BY_POSITION: SnapshotIndexSpec<TileBuckets<EntitySnapshot>> = {
   remove: (buckets, entity) => {
     buckets.delete(entity.id);
   },
-  swapAll: (buckets, nexts) => {
-    for (const next of nexts) {
-      if (!buckets.has(next.id)) continue; // most touched entities are ones this index never holds
+  // Most touched entities are ones this index never holds.
+  swapAll: (buckets, nexts, current) => {
+    buckets.eachHeld(nexts, current, (next) => {
       const pos = positionOf(next);
       if (pos !== undefined) buckets.move(next.id, next, pos.x / ONE, pos.y / ONE);
-    }
+    });
   },
 };
 

@@ -63,6 +63,27 @@ export class TileBuckets<T> {
     if (held !== undefined) this.rekey(held, item, bucketKey(tileX, tileY));
   }
 
+  /**
+   * Hand `move` each of a delta's new objects these buckets hold: `nexts` lists the new objects and
+   * `current` holds every item by id. Buckets holding fewer items than the run read their own off
+   * `current`, a table read per held item; larger ones look up each of the run. `move` may re-place
+   * the item it is handed.
+   */
+  eachHeld(
+    nexts: readonly (T & { readonly id: number })[],
+    current: readonly (T | undefined)[],
+    move: (next: T) => void,
+  ): void {
+    if (this.records.size < nexts.length) {
+      for (const record of this.records.values()) {
+        const next = current[record.id];
+        if (next !== undefined && next !== record.item) move(next);
+      }
+      return;
+    }
+    for (const next of nexts) if (this.records.has(next.id)) move(next);
+  }
+
   delete(id: number): boolean {
     const held = this.records.get(id);
     if (held === undefined) return false;

@@ -457,4 +457,20 @@ describe('tile buckets', () => {
     expect(out.slice(0, 1)).toEqual(['b']);
     expect(out.length).toBe(4);
   });
+
+  it('hand out the new objects of the items they hold, whether fewer or more than the run', () => {
+    const item = (id: number) => ({ id });
+    const held = [item(2), item(5)];
+    const buckets = new TileBuckets<{ readonly id: number }>();
+    for (const entry of held) buckets.set(entry.id, entry, entry.id, 0);
+    // Entity 5 was replaced, 2 was not; 1, 3 and 4 are touched entities the buckets never held.
+    const replaced = item(5);
+    const current = [undefined, item(1), held[0], item(3), item(4), replaced];
+    for (const run of [[replaced], [item(1), item(3), item(4), replaced]]) {
+      const moved: unknown[] = [];
+      buckets.eachHeld(run, current, (next) => moved.push(next));
+      expect(moved).toEqual([replaced]);
+      expect(moved[0]).toBe(replaced);
+    }
+  });
 });

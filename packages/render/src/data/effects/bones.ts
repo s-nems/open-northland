@@ -57,11 +57,11 @@ const BONE_PILES: SnapshotIndexSpec<TileBuckets<EntitySnapshot>> = {
   remove: (buckets, entity) => {
     buckets.delete(entity.id);
   },
-  swapAll: (buckets, nexts) => {
-    for (const next of nexts) {
+  swapAll: (buckets, nexts, current) => {
+    buckets.eachHeld(nexts, current, (next) => {
       const pile = bonePileOf(next);
       if (pile !== null) buckets.move(next.id, next, pile.hx / 2, pile.hy / 2);
-    }
+    });
   },
 };
 
