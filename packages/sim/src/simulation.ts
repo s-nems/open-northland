@@ -99,7 +99,7 @@ import {
   seatApprenticeViews,
 } from './systems/computer-player/technology/apprentices.js';
 import { BattleFront, holdsGround } from './systems/conflict/battle-alert.js';
-import type { MapContext, SystemContext } from './systems/context.js';
+import type { MapContext, System, SystemContext } from './systems/context.js';
 import type { PlacementProbe } from './systems/footprint/index.js';
 import {
   type ConstructionPlot,
@@ -243,6 +243,15 @@ export class Simulation {
   private currentTick = 0;
   /** The per-system instrumentation hook, or `null` for the direct (zero-overhead) call. */
   private instrument: SystemInstrument | null = null;
+  /** The system an installed instrument is asked to run and how often it did, read by {@link runHooked}:
+   *  one closure for the simulation's lifetime instead of one per system per tick. */
+  private hooked: { system: System; ctx: SystemContext; runs: number } | null = null;
+  private readonly runHooked = (): void => {
+    const hooked = this.hooked;
+    if (hooked === null) return;
+    hooked.runs++;
+    hooked.system(this.world, hooked.ctx);
+  };
   /** The last `snapshot()` result, reusable while the tick and the world's mutation version hold. */
   private snapshotMemo: {
     readonly tick: number;
@@ -373,17 +382,20 @@ export class Simulation {
     if (this.terrain !== undefined) syncRoadLane(this.world, this.terrain);
     const ctx = this.context();
     const instrument = this.instrument;
-    for (const { name, system } of SYSTEM_ORDER) {
-      if (instrument === null) {
-        system(this.world, ctx);
-      } else {
+    if (instrument === null) {
+      for (const { system } of SYSTEM_ORDER) system(this.world, ctx);
+    } else {
+      for (const { name, system } of SYSTEM_ORDER) {
+        const hooked = this.hooked ?? { system, ctx, runs: 0 };
+        this.hooked = hooked;
+        hooked.system = system;
+        hooked.ctx = ctx;
+        hooked.runs = 0;
+        instrument(name, this.runHooked);
         // A skipping or double-running hook would diverge the live session from its own replay.
-        let runs = 0;
-        instrument(name, () => {
-          runs++;
-          system(this.world, ctx);
-        });
-        if (runs !== 1) throw new Error(`instrument ran system '${name}' ${runs} times (must be exactly 1)`);
+        if (hooked.runs !== 1) {
+          throw new Error(`instrument ran system '${name}' ${hooked.runs} times (must be exactly 1)`);
+        }
       }
     }
     if (this.digest !== null) {
