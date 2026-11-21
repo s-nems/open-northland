@@ -90,7 +90,12 @@ export function holdsPost(world: World, ctx: ContentContext, e: Entity, post: En
  *  reach plus {@link TOWER_RANGE_BONUS_NODES}, at least {@link farthestHandBowReach}, and no near dead zone
  *  (the post shoots at whatever stands under its wall). */
 export function garrisonReach(content: ContentSet, held: WeaponReach): WeaponReach {
-  let reach = garrisonReaches.get(held);
+  let bands = garrisonReaches.get(content);
+  if (bands === undefined) {
+    bands = new WeakMap();
+    garrisonReaches.set(content, bands);
+  }
+  let reach = bands.get(held);
   if (reach === undefined) {
     reach = isRangedWeapon(held.weapon)
       ? {
@@ -99,13 +104,14 @@ export function garrisonReach(content: ContentSet, held: WeaponReach): WeaponRea
           maxRange: postedBowReach(content, held.maxRange),
         }
       : { ...held, minRange: 0 };
-    garrisonReaches.set(held, reach);
+    bands.set(held, reach);
   }
   return reach;
 }
 
-/** Each held reach's garrison band, so a posted fighter's pass allocates none. Held reaches are per content. */
-const garrisonReaches = new WeakMap<WeaponReach, WeaponReach>();
+/** Each held reach's garrison band per content, whose farthest hand bow sets the band's floor, so a posted
+ *  fighter's pass allocates none. */
+const garrisonReaches = new WeakMap<ContentSet, WeakMap<WeaponReach, WeaponReach>>();
 
 /** How far `e`, manning a post ({@link mannedPostOf}), shoots in map points from its nearest wall
  *  ({@link postReachDistance}): the {@link garrisonReach} of the bow he holds, the band his combat search and
@@ -160,7 +166,8 @@ export function postReachDistance(
 }
 
 /** How much farther than its {@link garrisonReach} the search from his own node of a man on `post` holding
- *  `held` must look: for a bow, the distance from where he stands, the post's own node, to its farthest wall. */
+ *  `held` must look: for a bow, the distance from where he stands, the post's own node, to its farthest
+ *  wall. */
 export function postSpan(
   world: World,
   ctx: MapContext,
@@ -196,7 +203,8 @@ export function houseSpan(content: ContentSet, house: HouseKey): number {
 /** An anchor row of each parity, the only part of an anchor a footprint's shape depends on. */
 const ANCHOR_ROWS = [0, 1] as const;
 
-/** Each held body's {@link postSpan}: a body is held until its building moves or changes, so the span is too. */
+/** Each held body's {@link postSpan}: a body is held until its building moves or changes, so the span is
+ *  too. */
 const postSpans = new WeakMap<readonly NodeId[], number>();
 
 /** `band` widened by `span`: the ground a posted man's search from his own node covers, within which
