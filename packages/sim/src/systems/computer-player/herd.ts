@@ -32,10 +32,23 @@ export function seatHerdKept(world: World, ctx: SystemContext, player: number): 
     if (good === sheepGood) sheep += 1;
     else if (good === cattleGood) cattle += 1;
   };
-  for (const animal of freeStockOf(world, player)) count(speciesGoodOf(world, ctx, animal));
-  for (const farm of herdedFarms(world)) {
+  const freeStock = freeStockOf(world, player);
+  for (let i = 0; i < freeStock.length; i++) {
+    const animal = freeStock[i];
+    if (animal === undefined) continue;
+    count(speciesGoodOf(world, ctx, animal));
+  }
+  const farms = herdedFarms(world);
+  for (let i = 0; i < farms.length; i++) {
+    const farm = farms[i];
+    if (farm === undefined) continue;
     if (ownerOf(world, farm) !== player) continue;
-    for (const animal of herdOf(world, farm)) count(speciesGoodOf(world, ctx, animal));
+    const herd = herdOf(world, farm);
+    for (let j = 0; j < herd.length; j++) {
+      const animal = herd[j];
+      if (animal === undefined) continue;
+      count(speciesGoodOf(world, ctx, animal));
+    }
   }
   const keepsSheep = sheep >= HERD_PAIR;
   const keepsCattle = cattle >= HERD_PAIR;

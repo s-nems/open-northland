@@ -79,7 +79,8 @@ export function seatDefenceCircles(
   owned: readonly Entity[],
 ): DefenceCircle[] {
   const circles: DefenceCircle[] = [];
-  for (const e of owned) {
+  for (let i = 0; i < owned.length; i++) {
+    const e = owned[i] as Entity;
     const node = anchorNodeOf(world, e);
     if (node === null) continue;
     const circle = defenceCircleOf(ctx, world.get(e, Building), node);
@@ -91,7 +92,10 @@ export function seatDefenceCircles(
 /** The defence the `circles` sum to over node `(hx, hy)`. */
 export function defenceAt(circles: readonly DefenceCircle[], hx: number, hy: number): number {
   let sum = 0;
-  for (const c of circles) if (hexDistanceBetween(c.hx, c.hy, hx, hy) <= c.radius) sum += c.value;
+  for (let i = 0; i < circles.length; i++) {
+    const c = circles[i] as DefenceCircle;
+    if (hexDistanceBetween(c.hx, c.hy, hx, hy) <= c.radius) sum += c.value;
+  }
   return sum;
 }
 

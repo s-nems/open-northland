@@ -199,7 +199,8 @@ function copyAwaitsCrews(
   if (type === undefined || plannedOperators(ctx, type) === 0) return false;
   const index = contentIndex(ctx.content);
   const counted = countedTiers(ctx.content, type, entry.belowTier);
-  for (const e of owned) {
+  for (let i = 0; i < owned.length; i++) {
+    const e = owned[i] as Entity;
     const copy = index.buildings.get(world.get(e, Building).buildingType);
     if (copy === undefined || !counted.has(copy.typeId)) continue;
     if (world.has(e, UnderConstruction)) return true;
@@ -225,7 +226,9 @@ function holdOpen(
       if (type === undefined) return false;
       const counted = countedTiers(ctx.content, type, undefined);
       // A workshop handed to the colony serves a hold as well as one at home.
-      for (const e of everyBuildingOf(world, player)) {
+      const everyBuilding = everyBuildingOf(world, player);
+      for (let i = 0; i < everyBuilding.length; i++) {
+        const e = everyBuilding[i] as Entity;
         if (!counted.has(world.get(e, Building).buildingType)) continue;
         if (!world.has(e, UnderConstruction) || world.has(e, Upgrading)) return false;
       }

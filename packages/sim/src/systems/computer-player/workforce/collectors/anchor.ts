@@ -84,7 +84,8 @@ export function collectorAnchors(
     const type = buildingTypeByContentId(ctx.content, buildingId);
     const chain = type === undefined ? new Set<number>() : tiersAtOrAbove(index, type);
     const nodes: HalfCellNode[] = [];
-    for (const e of owned) {
+    for (let i = 0; i < owned.length; i++) {
+      const e = owned[i] as Entity;
       if (!chain.has(world.get(e, Building).buildingType)) continue;
       const node = anchorNodeOf(world, e);
       if (node !== null) nodes.push(node);

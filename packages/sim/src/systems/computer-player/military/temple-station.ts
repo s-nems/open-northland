@@ -27,7 +27,10 @@ const STATION_REACH = TEMPLE_AURA_RANGE - TEMPLE_STATION_INSET_NODES;
  *  from. A wounded temple still counts, since it blesses again once it is whole. */
 export function seatTempleAnchors(world: World, ctx: SystemContext, player: number): HalfCellNode[] {
   const anchors: HalfCellNode[] = [];
-  for (const e of homeBuildings(world, ctx, player)) {
+  const buildings = homeBuildings(world, ctx, player);
+  for (let i = 0; i < buildings.length; i++) {
+    const e = buildings[i];
+    if (e === undefined) continue;
     if (!isFinishedPrayerSite(world, ctx, e, PRAYER_SITE.temple)) continue;
     const at = anchorNodeOf(world, e);
     if (at !== null) anchors.push(at);

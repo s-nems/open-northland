@@ -186,7 +186,9 @@ export function plannedOperators(ctx: SystemContext, type: BuildingType): number
   const want = rowPlan(ctx, type).plan.operatorTarget;
   const index = contentIndex(ctx.content);
   let operators = 0;
-  for (const slot of type.workers) {
+  for (let i = 0; i < type.workers.length; i++) {
+    const slot = type.workers[i];
+    if (slot === undefined) continue;
     if (isCarrierJob(ctx, slot.jobType) || index.harvestJobs.has(slot.jobType)) continue;
     operators += Math.min(slot.count, want);
   }

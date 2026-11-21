@@ -28,7 +28,8 @@ export function buildReach(
   radius = BUILD_SEARCH_MAX_RADIUS_NODES,
 ): BuildReach {
   const centres: HalfCellNode[] = [];
-  for (const e of owned) {
+  for (let i = 0; i < owned.length; i++) {
+    const e = owned[i] as Entity;
     const node = anchorNodeOf(world, e);
     if (node !== null) centres.push(node);
   }

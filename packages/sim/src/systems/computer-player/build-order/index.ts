@@ -433,7 +433,8 @@ function runBuildOrder(
   /** The command of `line`'s first unmet step that is not passed over, or null while that step holds
    *  the line or the line has none. */
   const lineCommand = (line: BuildLine): PlayerCommand | null => {
-    for (const [step, entry] of line.steps.entries()) {
+    for (let step = 0; step < line.steps.length; step++) {
+      const entry = line.steps[step] as BuildOrderEntry;
       if (isLaneEntry(entry) || statusOf(line.id, step) !== 'unmet') continue;
       if (held(entry)) return null;
       // A ring step raises one site at a time, so its slow far sites never take every free site.

@@ -243,15 +243,19 @@ export class SeatSupply {
   private countPlannedConsumers(): ReadonlyMap<number, number> {
     const index = contentIndex(this.ctx.content);
     const consumers = new Map<number, number>();
-    for (const e of this.owned) {
+    for (let i = 0; i < this.owned.length; i++) {
+      const e = this.owned[i] as Entity;
       if (!isBuilt(this.world, e)) continue;
       const typeId = this.world.get(e, Building).buildingType;
       const inputs = index.mergedRecipeByBuilding.get(typeId)?.inputs;
       const type = index.buildings.get(typeId);
       if (inputs === undefined || type === undefined) continue;
       const operators = plannedOperators(this.ctx, type);
-      for (const input of inputs)
+      for (let j = 0; j < inputs.length; j++) {
+        const input = inputs[j];
+        if (input === undefined) continue;
         consumers.set(input.goodType, (consumers.get(input.goodType) ?? 0) + operators);
+      }
     }
     return consumers;
   }

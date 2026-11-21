@@ -111,7 +111,12 @@ export function believedEnemyTowers(world: World, ctx: SystemContext, seat: numb
 /** The points `seat` last saw posted on each building it remembers. */
 function postedPointsOf(world: World, seat: number): ReadonlyMap<Entity, number> {
   const posted = new Map<Entity, number>();
-  for (const b of rememberedBuildings(world, seat)) posted.set(b.entity, b.postedPoints);
+  const remembered = rememberedBuildings(world, seat);
+  for (let i = 0; i < remembered.length; i++) {
+    const b = remembered[i];
+    if (b === undefined) continue;
+    posted.set(b.entity, b.postedPoints);
+  }
   return posted;
 }
 
@@ -122,13 +127,16 @@ function towersOf(
   posted: ReadonlyMap<Entity, number>,
 ): TowerBelief[] {
   const towers: TowerBelief[] = [];
-  for (const e of seen) {
+  for (let i = 0; i < seen.length; i++) {
+    const e = seen[i] as Entity;
     if (buildingCombatClass(ctx, world.get(e, Building).buildingType) !== 'tower') continue;
     if ((world.tryGet(e, Health)?.hitpoints ?? 0) <= 0) continue;
     const at = anchorNodeOf(world, e);
     if (at !== null) towers.push({ at, postedPoints: posted.get(e) ?? 0 });
   }
-  for (const b of remembered) {
+  for (let i = 0; i < remembered.length; i++) {
+    const b = remembered[i];
+    if (b === undefined) continue;
     if (buildingCombatClass(ctx, b.buildingType) === 'tower')
       towers.push({ at: { hx: b.hx, hy: b.hy }, postedPoints: b.postedPoints });
   }
@@ -172,9 +180,13 @@ function sightingsOf(
     if (at !== null && playerSeesNode(ctx.fog, seat, at.hx, at.hy))
       seen.push({ owner, at, points: unitPoints(world, ctx, e) });
   };
-  for (const owner of owners) {
-    for (const e of ownedFightersOf(world, ctx.content, owner))
+  for (let i = 0; i < owners.length; i++) {
+    const owner = owners[i] as number;
+    const ownedFighters = ownedFightersOf(world, ctx.content, owner);
+    for (let j = 0; j < ownedFighters.length; j++) {
+      const e = ownedFighters[j] as Entity;
       if (isLiveFighter(world, e) && !world.has(e, Garrison)) sight(e, owner);
+    }
   }
   if (owners.length === 0) return seen;
   for (const e of world.query(Militia)) {

@@ -32,9 +32,11 @@ export function openLanes(
   housingEarly: () => boolean,
 ): OpenLane[] {
   const lanes: OpenLane[] = [];
-  for (const line of lines) {
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i] as BuildLine;
     let reached = true;
-    for (const [step, entry] of line.steps.entries()) {
+    for (let step = 0; step < line.steps.length; step++) {
+      const entry = line.steps[step] as BuildOrderEntry;
       if (
         entry.kind === 'housing' ||
         ((entry.kind === 'towerCoverage' || entry.kind === 'storeCoverage') && entry.lane === true)

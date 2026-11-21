@@ -114,7 +114,9 @@ function knownArmy(
 ): ArmyPoints | null {
   let men = 0;
   let points = 0;
-  for (const e of ownedFightersOf(world, ctx.content, owner)) {
+  const ownedFighters = ownedFightersOf(world, ctx.content, owner);
+  for (let i = 0; i < ownedFighters.length; i++) {
+    const e = ownedFighters[i] as Entity;
     if (!isLiveFighter(world, e)) continue;
     const pos = world.tryGet(e, Position);
     if (pos === undefined) continue;
@@ -127,7 +129,12 @@ function knownArmy(
   const peakPoints = believedFighterPoints(world, seat, owner, ctx.tick);
   if (peakPoints === null) return men > 0 ? { men, points } : null;
   let postedPoints = 0;
-  for (const b of believedEnemyBuildings(world, seat)) if (b.owner === owner) postedPoints += b.postedPoints;
+  const enemyBuildings = believedEnemyBuildings(world, seat);
+  for (let i = 0; i < enemyBuildings.length; i++) {
+    const b = enemyBuildings[i];
+    if (b === undefined) continue;
+    if (b.owner === owner) postedPoints += b.postedPoints;
+  }
   // The peak counts each posted man once already.
   return {
     men: Math.max(men, believedFighterStrength(world, seat, owner, ctx.tick) ?? 0),

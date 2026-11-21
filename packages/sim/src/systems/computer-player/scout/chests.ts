@@ -150,7 +150,9 @@ export function druidChestOrder(world: World, ctx: SystemContext, player: number
   if (!closedChestStands(world, 'magical')) return null;
   const druids: { entity: Entity; at: HalfCellNode }[] = [];
   // The chests lie in the home base's reach, so a druid of a colony over the water is no candidate.
-  for (const e of homeSettlers(world, ctx, player)) {
+  const settlers = homeSettlers(world, ctx, player);
+  for (let i = 0; i < settlers.length; i++) {
+    const e = settlers[i] as Entity;
     if (!isDruidJob(ctx.content, world.get(e, Settler).jobType) || !isAdultSettler(world, e)) continue;
     if (chestErrandOf(world, e) !== null) return null;
     if (druidBusy(world, ctx, e)) continue;
@@ -160,7 +162,9 @@ export function druidChestOrder(world: World, ctx: SystemContext, player: number
   if (druids.length === 0) return null;
   const candidates = reachableChests(world, ctx, player, 'magical', undefined);
   let best: { druid: Entity; chest: Entity; distance: number } | null = null;
-  for (const druid of druids) {
+  for (let i = 0; i < druids.length; i++) {
+    const druid = druids[i];
+    if (druid === undefined) continue;
     const chest = nearestTo(druid.at, candidates);
     if (chest === null) continue;
     const distance = hexDistanceBetween(druid.at.hx, druid.at.hy, chest.node.hx, chest.node.hy);

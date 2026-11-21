@@ -269,7 +269,9 @@ export function armyPointsOf(
 ): ArmyPoints {
   let men = 0;
   let points = 0;
-  for (const e of ownedFightersOf(world, ctx.content, player)) {
+  const ownedFighters = ownedFightersOf(world, ctx.content, player);
+  for (let i = 0; i < ownedFighters.length; i++) {
+    const e = ownedFighters[i] as Entity;
     if (!hasHitpoints(world, e) || !counts(e)) continue;
     men++;
     const value = unitPoints(world, ctx, e);

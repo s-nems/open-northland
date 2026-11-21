@@ -179,7 +179,8 @@ export function hottestTraffic(
   if (cold.length > 0) {
     // By id: the index's order differs between a restored world and one that ran on, the teardown's must not.
     cold.sort((a, b) => a - b);
-    for (const e of cold) {
+    for (let i = 0; i < cold.length; i++) {
+      const e = cold[i] as Entity;
       buckets.delete(world.get(e, RoadTraffic).bucket);
       world.destroy(e);
     }

@@ -241,7 +241,8 @@ export function frontLine(
   const index = contentIndex(ctx.content);
   let farthest = 0;
   let widest = 0;
-  for (const e of owned) {
+  for (let i = 0; i < owned.length; i++) {
+    const e = owned[i] as Entity;
     const type = index.buildings.get(world.get(e, Building).buildingType);
     if (type !== undefined && TOWER_CONTENT_IDS.includes(type.id)) continue;
     const node = anchorNodeOf(world, e);
@@ -249,7 +250,11 @@ export function frontLine(
     if (depthFrom === undefined) farthest = Math.max(farthest, ahead(node.hx, node.hy));
     widest = Math.max(widest, Math.abs(across(node.hx, node.hy)));
   }
-  for (const node of depthFrom ?? []) farthest = Math.max(farthest, ahead(node.hx, node.hy));
+  const depthNodes = depthFrom ?? [];
+  for (let j = 0; j < depthNodes.length; j++) {
+    const node = depthNodes[j] as HalfCellNode;
+    farthest = Math.max(farthest, ahead(node.hx, node.hy));
+  }
   const rivalStepPx = RIVAL_LINE_STEP_NODES * NODE_STEP_PX;
   const wantedPx =
     depthFrom === undefined

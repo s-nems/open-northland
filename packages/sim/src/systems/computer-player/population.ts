@@ -46,7 +46,9 @@ function runPopulation(world: World, ctx: SystemContext, player: number): readon
 
   const index = contentIndex(ctx.content);
   let familySlotsTotal = 0;
-  for (const e of homeBuildings(world, ctx, player)) {
+  const buildings = homeBuildings(world, ctx, player);
+  for (let i = 0; i < buildings.length; i++) {
+    const e = buildings[i] as Entity;
     if (!isBuilt(world, e)) continue;
     const type = index.buildings.get(world.get(e, Building).buildingType);
     if (type?.kind === 'home') familySlotsTotal += homeFamilyCapacity(world, ctx, e, type);
@@ -92,7 +94,9 @@ function idleMenHoldBirths(
   const builderJob = builderJobOf(ctx);
   if (builderJob === null) return false;
   let idle = 0;
-  for (const e of homeSettlers(world, ctx, player)) {
+  const settlers = homeSettlers(world, ctx, player);
+  for (let i = 0; i < settlers.length; i++) {
+    const e = settlers[i] as Entity;
     if (world.get(e, Settler).jobType !== builderJob || !isAllocatableMan(world, ctx, e)) continue;
     if (world.has(e, JobAssignment) || world.has(e, AssistantRecruit)) continue;
     // A man on a road or wall run, or sent out on an errand, has work, as the workforce counts him.

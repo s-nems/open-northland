@@ -351,7 +351,9 @@ export function genericCollectorJob(ctx: SystemContext): number | null {
   let bestCount = -1;
   for (const job of index.harvestJobs) {
     let count = 0;
-    for (const good of ctx.content.goods) {
+    for (let i = 0; i < ctx.content.goods.length; i++) {
+      const good = ctx.content.goods[i];
+      if (good === undefined) continue;
       if (jobCanHarvestGood(ctx, job, good.typeId)) count++;
     }
     if (count > bestCount || (count === bestCount && best !== null && job < best)) {
@@ -489,7 +491,9 @@ function shortageGatherers(
  *  `classifyWorkforce` seats on the good before its target caps them. */
 function flagHoldersByGood(world: World, ctx: SystemContext, player: number): Map<number, number> {
   const holders = new Map<number, number>();
-  for (const e of homeSettlers(world, ctx, player)) {
+  const settlers = homeSettlers(world, ctx, player);
+  for (let i = 0; i < settlers.length; i++) {
+    const e = settlers[i] as Entity;
     if (world.has(e, JobAssignment)) continue;
     const job = world.get(e, Settler).jobType;
     if (job === null || liveWorkFlag(world, e) === undefined) continue;

@@ -38,7 +38,11 @@ export const MEN_PER_OPEN_SITE = 3;
  *  brings and keep the clock's pace alone. */
 export function crewSiteCap(world: World, ctx: SystemContext, player: number): number {
   let men = 0;
-  for (const e of homeSettlers(world, ctx, player)) if (isAllocatableMan(world, ctx, e)) men++;
+  const settlers = homeSettlers(world, ctx, player);
+  for (let i = 0; i < settlers.length; i++) {
+    const e = settlers[i] as Entity;
+    if (isAllocatableMan(world, ctx, e)) men++;
+  }
   return men === 0 ? Number.POSITIVE_INFINITY : Math.max(1, Math.floor(men / MEN_PER_OPEN_SITE));
 }
 

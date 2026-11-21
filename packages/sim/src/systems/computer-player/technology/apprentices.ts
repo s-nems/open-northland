@@ -97,13 +97,20 @@ function missingDiscoveries(
       }
     }
   };
-  for (const line of order.lines) {
+  for (let i = 0; i < order.lines.length; i++) {
+    const line = order.lines[i];
+    if (line === undefined) continue;
     const lineStatus = statuses.get(line.id) ?? [];
     let ahead = 0;
-    for (const [step, entry] of line.steps.entries()) {
+    for (let step = 0; step < line.steps.length; step++) {
+      const entry = line.steps[step] as BuildOrderEntry;
       if (isLaneEntry(entry) || lineStatus[step] !== 'unmet') continue;
       opens = stepContentId(entry);
-      for (const gate of stepGates(ctx, table, entry)) want(gate);
+      const gates = stepGates(ctx, table, entry);
+      for (let j = 0; j < gates.length; j++) {
+        const gate = gates[j] as DiscoveryGate | undefined;
+        want(gate);
+      }
       if (++ahead >= APPRENTICE_LOOKAHEAD_STEPS) break;
     }
   }
@@ -201,13 +208,16 @@ function pickApprentices(
 ): ReadonlyMap<DiscoveryGate, Candidate> {
   const best = new Map<DiscoveryGate, Candidate>();
   const tracks = ctx.content.jobExperience;
-  for (const e of homeSettlers(world, ctx, player)) {
+  const settlers = homeSettlers(world, ctx, player);
+  for (let i = 0; i < settlers.length; i++) {
+    const e = settlers[i] as Entity;
     if (!isAllocatableMan(world, ctx, e)) continue;
     const job = world.get(e, Settler).jobType;
     if (job === null) continue;
     let work: CurrentWork | undefined;
     const { experience } = world.get(e, SettlerProgress);
-    for (const { gate } of missing) {
+    for (let j = 0; j < missing.length; j++) {
+      const { gate } = missing[j] as MissingDiscovery;
       if (!gate.enablingJobs.includes(job)) continue;
       work ??= currentWork(world, ctx, e);
       const now = work;
@@ -215,7 +225,9 @@ function pickApprentices(
       // off it (his farm burned, his flag gone) would idle with nothing to put him back.
       if (!gate.needs.some((row) => row.tracks.some((t) => t.job === job && credits(t, now)))) continue;
       let score = 0;
-      for (const row of gate.needs) {
+      for (let k = 0; k < gate.needs.length; k++) {
+        const row = gate.needs[k];
+        if (row === undefined) continue;
         score += Math.min(
           row.amount,
           requirementRepeats(

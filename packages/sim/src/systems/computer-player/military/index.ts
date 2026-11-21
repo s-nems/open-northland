@@ -117,7 +117,8 @@ function runMilitary(world: World, ctx: SystemContext, player: number): readonly
   const waiting = armourWaiters(world, ctx, player);
   const fit: Entity[] = [];
   const unfit: Entity[] = [];
-  for (const e of available) {
+  for (let i = 0; i < available.length; i++) {
+    const e = available[i] as Entity;
     if (siege.drafted.has(e)) continue;
     (isFitSoldier(world, ctx, e, waiting) ? fit : unfit).push(e);
   }

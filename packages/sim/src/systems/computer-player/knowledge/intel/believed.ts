@@ -34,7 +34,8 @@ export function believedBuildings(
   const fog = ctx.fog;
   if (!fogHides(fog)) return { seen: live, remembered: NOTHING_REMEMBERED };
   const seen: Entity[] = [];
-  for (const e of live) {
+  for (let i = 0; i < live.length; i++) {
+    const e = live[i] as Entity;
     const node = anchorNodeOf(world, e);
     if (node !== null && playerSeesNode(fog, seat, node.hx, node.hy)) seen.push(e);
   }

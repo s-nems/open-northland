@@ -96,9 +96,14 @@ export function keyedStatuses(
   return (key) => {
     if (byKey === undefined) {
       byKey = new Map();
-      for (const line of order.lines) {
-        for (const [step, status] of (statuses.get(line.id) ?? []).entries())
+      for (let i = 0; i < order.lines.length; i++) {
+        const line = order.lines[i];
+        if (line === undefined) continue;
+        const stepStatuses = statuses.get(line.id) ?? [];
+        for (let step = 0; step < stepStatuses.length; step++) {
+          const status = stepStatuses[step] as EntryStatus;
           byKey.set(stepKey(line.id, step), status);
+        }
       }
     }
     return byKey.get(key);

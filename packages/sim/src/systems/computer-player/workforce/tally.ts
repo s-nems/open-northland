@@ -21,13 +21,20 @@ export function buildStaffingTally(
   const count = (workplace: Entity): void => {
     if (counted.has(workplace)) return;
     counted.add(workplace);
-    for (const e of assignedWorkers(world, workplace)) {
+    const workers = assignedWorkers(world, workplace);
+    for (let i = 0; i < workers.length; i++) {
+      const e = workers[i] as Entity;
       const jobType = world.tryGet(e, Settler)?.jobType ?? null;
       if (jobType !== null) incrementStaffing(tally, workplace, jobType);
     }
   };
-  for (const building of owned) count(building);
-  for (const e of homeSettlers(world, ctx, player)) {
+  for (let i = 0; i < owned.length; i++) {
+    const building = owned[i] as Entity;
+    count(building);
+  }
+  const settlers = homeSettlers(world, ctx, player);
+  for (let i = 0; i < settlers.length; i++) {
+    const e = settlers[i] as Entity;
     const workplace = world.tryGet(e, JobAssignment)?.workplace;
     if (workplace !== undefined) count(workplace);
   }

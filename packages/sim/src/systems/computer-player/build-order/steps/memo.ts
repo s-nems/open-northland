@@ -49,7 +49,8 @@ export function ownedTally(
   const byType = new Map<number, number>();
   let homes = 0;
   const upgrading: (readonly [number, number])[] = [];
-  for (const e of owned) {
+  for (let i = 0; i < owned.length; i++) {
+    const e = owned[i] as Entity;
     const type = world.get(e, Building).buildingType;
     byType.set(type, (byType.get(type) ?? 0) + 1);
     const ownedType = index.buildings.get(type);

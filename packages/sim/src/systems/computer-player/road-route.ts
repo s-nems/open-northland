@@ -125,7 +125,9 @@ function walkBack(
     const y = terrain.yOf(node);
     let best: NodeId | null = null;
     let bestOff = Number.POSITIVE_INFINITY;
-    for (const offset of HEX_NEIGHBOUR_OFFSETS) {
+    for (let i = 0; i < HEX_NEIGHBOUR_OFFSETS.length; i++) {
+      const offset = HEX_NEIGHBOUR_OFFSETS[i];
+      if (offset === undefined) continue;
       const px = x + footprintCellDx(y, offset);
       const py = y + offset.dy;
       if (!terrain.inBounds(px, py)) continue;

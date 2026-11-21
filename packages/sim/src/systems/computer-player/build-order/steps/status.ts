@@ -113,7 +113,8 @@ export function entryStatus(
         have = type.kind === 'home' ? tally.homes : countOfTypes(tally, counted);
         if (inFlightUpgrades && type.kind !== 'home') have += becomingCounted(tally, counted);
       } else {
-        for (const e of owned) {
+        for (let i = 0; i < owned.length; i++) {
+          const e = owned[i] as Entity;
           const ownedType = index.buildings.get(world.get(e, Building).buildingType);
           if (ownedType === undefined) continue;
           const becoming = inFlightUpgrades ? world.tryGet(e, Upgrading)?.target : undefined;
@@ -141,7 +142,9 @@ export function entryStatus(
         unservedAnchor(world, index, owned, counted, entry.unlessWithin) === null
       )
         return 'skip';
-      for (const goodId of entry.needsResources ?? []) {
+      const needs = entry.needsResources ?? [];
+      for (let j = 0; j < needs.length; j++) {
+        const goodId = needs[j] as string;
         const needed = goodTypeByContentId(ctx.content, goodId);
         if (needed === undefined || !liveResourceOnMap(world, ctx, player, needed.typeId, memo.live))
           return 'skip';
@@ -161,7 +164,8 @@ export function entryStatus(
         if (inFlightUpgrades) have += becomingCounted(tally, done);
       } else {
         const roleOf = memoRoles(world, ctx, player, memo);
-        for (const e of owned) {
+        for (let i = 0; i < owned.length; i++) {
+          const e = owned[i] as Entity;
           if (roleOf(e) !== entry.role) continue;
           const becoming = inFlightUpgrades ? world.tryGet(e, Upgrading)?.target : undefined;
           if (done.has(world.get(e, Building).buildingType) || (becoming !== undefined && done.has(becoming)))
@@ -243,15 +247,20 @@ export function lineStatuses(
   memo: DecisionMemo = decisionMemo(),
 ): LineStatuses {
   const statuses = new Map<BuildLineId, readonly EntryStatus[]>();
-  for (const line of order.lines) {
+  for (let i = 0; i < order.lines.length; i++) {
+    const line = order.lines[i];
+    if (line === undefined) continue;
     statuses.set(
       line.id,
       line.steps.map((entry) => entryStatus(world, ctx, player, owned, entry, memo)),
     );
   }
   const heldCollectors = new Set<BuildOrderEntry>();
-  for (const line of order.lines) {
-    for (const [step, entry] of line.steps.entries()) {
+  for (let i = 0; i < order.lines.length; i++) {
+    const line = order.lines[i];
+    if (line === undefined) continue;
+    for (let step = 0; step < line.steps.length; step++) {
+      const entry = line.steps[step] as BuildOrderEntry;
       if (entry.kind !== 'collector' || entry.holdUntil === undefined) continue;
       if (statuses.get(line.id)?.[step] !== 'unmet') continue;
       if (stepHeld(world, ctx, player, owned, order, statuses, entry, memo)) heldCollectors.add(entry);
@@ -288,7 +297,8 @@ export function upgradeCandidate(
   target: BuildingType,
   accept?: (e: Entity) => boolean,
 ): Entity | null {
-  for (const e of owned) {
+  for (let i = 0; i < owned.length; i++) {
+    const e = owned[i] as Entity;
     if (accept !== undefined && !accept(e)) continue;
     const building = world.get(e, Building);
     if (building.built < ONE || world.has(e, UnderConstruction)) continue;
@@ -352,9 +362,13 @@ export function collectorGoodsWanted(
   tick: number,
 ): ReadonlyMap<string, number> {
   const wanted = new Map<string, number>();
-  for (const line of linesByPriority(order)) {
+  const lines = linesByPriority(order);
+  for (let j = 0; j < lines.length; j++) {
+    const line = lines[j];
+    if (line === undefined) continue;
     const lineStatus = statuses.get(line.id) ?? [];
-    for (const [i, entry] of line.steps.entries()) {
+    for (let i = 0; i < line.steps.length; i++) {
+      const entry = line.steps[i] as BuildOrderEntry;
       if (isLaneEntry(entry)) continue;
       const status = lineStatus[i];
       if (entry.kind === 'collector' && status !== 'skip') {

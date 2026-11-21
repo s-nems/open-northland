@@ -191,7 +191,10 @@ interface LatticeTarget {
 
 /** Whether any of `points` lies within `radius` hex nodes of `(tx, ty)`. */
 function anyWithin(points: readonly HalfCellNode[], tx: number, ty: number, radius: number): boolean {
-  for (const p of points) if (hexDistanceBetween(p.hx, p.hy, tx, ty) <= radius) return true;
+  for (let i = 0; i < points.length; i++) {
+    const p = points[i] as HalfCellNode;
+    if (hexDistanceBetween(p.hx, p.hy, tx, ty) <= radius) return true;
+  }
   return false;
 }
 
@@ -245,7 +248,10 @@ export function signpostTargetAround(
   const door = interactionNode(world, ctx, base);
   const posts = signpostNetwork(world).get(player) ?? [];
   const nearCorridor = (tx: number, ty: number): boolean => {
-    for (const samples of corridors) if (anyWithin(samples, tx, ty, CORRIDOR_HALF_WIDTH_NODES)) return true;
+    for (let i = 0; i < corridors.length; i++) {
+      const samples = corridors[i] as readonly HalfCellNode[];
+      if (anyWithin(samples, tx, ty, CORRIDOR_HALF_WIDTH_NODES)) return true;
+    }
     return false;
   };
   // The sealed-pocket veto: without it a provably sealed spot wins the search and the module re-aims at

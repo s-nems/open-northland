@@ -58,8 +58,10 @@ export function atUnlockPending(
   owned: readonly Entity[],
 ): boolean {
   let ownedTypes: Set<number> | undefined;
-  for (const line of order.lines) {
-    for (const entry of line.steps) {
+  for (let i = 0; i < order.lines.length; i++) {
+    const line = order.lines[i] as BuildLine;
+    for (let j = 0; j < line.steps.length; j++) {
+      const entry = line.steps[j] as BuildOrderEntry;
       if (!atUnlockStep(entry)) continue;
       const type = buildingTypeByContentId(ctx.content, entry.building);
       if (type === undefined) continue;
@@ -130,7 +132,8 @@ export function turnOrder(
   const heads = lines.map((line) => {
     let next: BuildOrderEntry | undefined;
     let rising = false;
-    for (const [step, entry] of line.steps.entries()) {
+    for (let step = 0; step < line.steps.length; step++) {
+      const entry = line.steps[step] as BuildOrderEntry;
       if (isLaneEntry(entry)) continue;
       const status = statusOf(line.id, step);
       if (

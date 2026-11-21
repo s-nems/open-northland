@@ -356,7 +356,10 @@ export function housingGate(
   const food = storedFoodUnits(ctx.content, homeStockOf(world, ctx, player));
   const settlers = homeSettlers(world, ctx, player);
   let women = 0;
-  for (const e of settlers) if (world.has(e, Female) && isAdultSettler(world, e)) women++;
+  for (let i = 0; i < settlers.length; i++) {
+    const e = settlers[i] as Entity;
+    if (world.has(e, Female) && isAdultSettler(world, e)) women++;
+  }
   if (food < women * HOUSING_FOOD_UNITS_PER_WOMAN && !foodMadeCarriesWomen(world, ctx, player, owned))
     return 'closed';
   if (seatFishes(world, ctx, player) || food >= settlers.length * FOOD_RICH_UNITS_PER_SETTLER) return 'early';

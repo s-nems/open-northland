@@ -134,7 +134,8 @@ export function sitesShortfalls(
   owned: readonly Entity[],
 ): Map<number, number> {
   const shortfalls = new Map<number, number>();
-  for (const e of owned) {
+  for (let i = 0; i < owned.length; i++) {
+    const e = owned[i] as Entity;
     if (!world.has(e, UnderConstruction)) continue;
     for (const [good, lacking] of siteShortfall(world, ctx, e))
       shortfalls.set(good, (shortfalls.get(good) ?? 0) + lacking);
@@ -146,7 +147,9 @@ export function sitesShortfalls(
 function siteShortfall(world: World, ctx: SystemContext, site: Entity): Map<number, number> {
   const lacking = new Map<number, number>();
   const held = world.tryGet(site, Stockpile)?.amounts;
-  for (const line of constructionBillOf(world, ctx, site)) {
+  const constructionBill = constructionBillOf(world, ctx, site);
+  for (let i = 0; i < constructionBill.length; i++) {
+    const line = constructionBill[i] as GoodsLine;
     const short = Math.max(0, line.amount - (held?.get(line.goodType) ?? 0));
     if (short > 0) lacking.set(line.goodType, (lacking.get(line.goodType) ?? 0) + short);
   }

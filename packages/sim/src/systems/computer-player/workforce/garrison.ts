@@ -490,12 +490,15 @@ function bestWeaponMarks(
   const veto = new Set<number>();
   const kept = new Set<number>();
   for (const tribe of weaponTribes(ctx.content)) {
-    for (const intent of GARRISON_WEAPON_INTENTS) {
+    for (let i = 0; i < GARRISON_WEAPON_INTENTS.length; i++) {
+      const intent = GARRISON_WEAPON_INTENTS[i];
+      if (intent === undefined) continue;
       const [strongest, ...rest] = armingGoodPreference(ctx.content, tribe, intent, []);
       if (strongest === undefined) continue;
       const units = stock.units(strongest);
       const covers = units >= (waiting.get(intent) ?? 0) + WEAPON_VETO_STOCK_MARGIN;
-      for (const good of rest) {
+      for (let j = 0; j < rest.length; j++) {
+        const good = rest[j] as number;
         if (!weaker.has(good)) continue;
         if (covers) veto.add(good);
         if (units >= WEAPON_VETO_LIFT_STOCK) kept.add(good);
@@ -596,7 +599,9 @@ function emptyTowers(world: World, ctx: SystemContext, player: number): number {
   );
   if (towers.length === 0) return 0;
   const held = new Set<Entity>();
-  for (const e of homeSettlers(world, ctx, player)) {
+  const settlers = homeSettlers(world, ctx, player);
+  for (let i = 0; i < settlers.length; i++) {
+    const e = settlers[i] as Entity;
     const jobType = world.get(e, Settler).jobType;
     if (jobType === null) continue;
     const post = towerPostFor(world, ctx, e, jobType);
@@ -654,7 +659,9 @@ function fieldedByIntent(
   booked: ReadonlyMap<AssistantRecruitIntent, number>,
 ): Map<AssistantRecruitIntent, number> {
   const field: Entity[] = [];
-  for (const e of homeSettlers(world, ctx, player)) {
+  const settlers = homeSettlers(world, ctx, player);
+  for (let j = 0; j < settlers.length; j++) {
+    const e = settlers[j] as Entity;
     const jobType = world.get(e, Settler).jobType;
     if (jobType === null || !isFighterJob(ctx.content, jobType)) continue;
     if (towerPostFor(world, ctx, e, jobType) !== null) continue;
@@ -662,8 +669,13 @@ function fieldedByIntent(
     field.push(e);
   }
   const fielded = new Map<AssistantRecruitIntent, number>();
-  for (const intent of GARRISON_WEAPON_INTENTS) fielded.set(intent, booked.get(intent) ?? 0);
-  for (const e of field) {
+  for (let j = 0; j < GARRISON_WEAPON_INTENTS.length; j++) {
+    const intent = GARRISON_WEAPON_INTENTS[j];
+    if (intent === undefined) continue;
+    fielded.set(intent, booked.get(intent) ?? 0);
+  }
+  for (let j = 0; j < field.length; j++) {
+    const e = field[j] as Entity;
     const weaponClass = fighterWeaponClass(world, ctx, e);
     const intent = GARRISON_WEAPON_INTENTS.find((i) => INTENT_WEAPON_CLASS[i] === weaponClass);
     if (intent !== undefined) fielded.set(intent, (fielded.get(intent) ?? 0) + 1);
@@ -760,7 +772,9 @@ function isDraftable(world: World, e: Entity): boolean {
  *  as husbands. */
 function bachelorSurplus(world: World, ctx: SystemContext, player: number): number {
   let surplus = 0;
-  for (const e of homeSettlers(world, ctx, player)) {
+  const settlers = homeSettlers(world, ctx, player);
+  for (let i = 0; i < settlers.length; i++) {
+    const e = settlers[i] as Entity;
     if (!mayMarry(world, ctx.content, e)) continue;
     surplus += world.has(e, Female) ? -1 : 1;
   }

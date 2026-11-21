@@ -202,7 +202,9 @@ function huntOpensTrades(world: World, ctx: SystemContext, player: number, tally
     const hunted = gate.needs.some((row) => row.tracks.some((t) => t.work.kind === 'hunt'));
     if (!hunted || !typeAllowed(world, ctx, player, tribe, 'job', gate.typeId)) continue;
     if (!jobEnabled(world, ctx, player, tribe, gate.typeId)) return true;
-    for (const building of homeBuildings(world, ctx, player)) {
+    const buildings = homeBuildings(world, ctx, player);
+    for (let i = 0; i < buildings.length; i++) {
+      const building = buildings[i] as Entity;
       const type = index.buildings.get(world.get(building, Building).buildingType);
       const slot = type?.workers.some((w) => w.jobType === gate.typeId && w.count > 0) ?? false;
       if (slot && (tally.get(building)?.get(gate.typeId) ?? 0) === 0) return true;

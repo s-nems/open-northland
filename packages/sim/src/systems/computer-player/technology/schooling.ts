@@ -124,7 +124,9 @@ export class Schooling {
     if (tribe === undefined || table === null) return [];
     const commands: PlayerCommand[] = [];
     let standing: readonly Entity[] | undefined;
-    for (const e of this.people()) {
+    const people = this.people();
+    for (let i = 0; i < people.length; i++) {
+      const e = people[i] as Entity;
       const workplace = world.tryGet(e, JobAssignment)?.workplace;
       if (workplace === undefined || world.has(e, TrainingOrder) || world.has(e, Carrying)) continue;
       const good = this.lessonFor(e, workplace, tribe, table.goods);
@@ -195,7 +197,9 @@ export class Schooling {
   /** The seat's men in a job lesson now, by the job they learn. */
   private livePupils(): Map<number, number> {
     const pupils = new Map<number, number>();
-    for (const e of this.people()) {
+    const people = this.people();
+    for (let i = 0; i < people.length; i++) {
+      const e = people[i] as Entity;
       const lesson = this.world.tryGet(e, TrainingOrder)?.lesson;
       if (lesson?.kind === 'job') pupils.set(lesson.typeId, (pupils.get(lesson.typeId) ?? 0) + 1);
     }

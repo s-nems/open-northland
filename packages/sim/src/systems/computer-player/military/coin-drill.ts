@@ -41,7 +41,9 @@ export const COIN_DRILL_REACH_NODES = 30;
  *  with the seat's settlers, as the census's does. */
 function seatDrillerCount(world: World, ctx: SystemContext, player: number): number {
   let count = 0;
-  for (const e of homeSettlers(world, ctx, player)) {
+  const settlers = homeSettlers(world, ctx, player);
+  for (let i = 0; i < settlers.length; i++) {
+    const e = settlers[i] as Entity;
     const settler = world.get(e, Settler);
     if (isSoldierJob(ctx.content, settler.jobType) && soldierMayCoinDrill(world, ctx, e, settler)) count++;
   }
@@ -75,7 +77,8 @@ export function coinPriorityOrders(
   if (coin === undefined) return [];
   const wanted = coinDrillPorters(world, ctx, player) > 0;
   const commands: PlayerCommand[] = [];
-  for (const barracks of owned) {
+  for (let i = 0; i < owned.length; i++) {
+    const barracks = owned[i] as Entity;
     if (!isBarracks(world, ctx, barracks)) continue;
     if (!keepsStorePriority(ctx.content, world.get(barracks, Building).buildingType)) continue;
     if (stockCapacity(world, ctx, barracks, coin) <= 0) continue;
@@ -101,7 +104,8 @@ export function coinDrillOrders(
 ): PlayerCommand[] {
   const commands: PlayerCommand[] = [];
   const sent = new Set<Entity>();
-  for (const barracks of owned) {
+  for (let i = 0; i < owned.length; i++) {
+    const barracks = owned[i] as Entity;
     if (!isBarracks(world, ctx, barracks)) continue;
     // The barracks itself holds no drill order, so every coin no man speaks for counts. A man past the free
     // seats would only wait at the door, so the seats cap the sends too.
@@ -112,7 +116,8 @@ export function coinDrillOrders(
     if (sends <= 0) continue;
     const door = interactionCell(world, ctx, terrain, barracks);
     const near: { e: Entity; distance: number }[] = [];
-    for (const e of idle) {
+    for (let j = 0; j < idle.length; j++) {
+      const e = idle[j] as Entity;
       if (sent.has(e) || spokenFor(world, e)) continue;
       const distance = hexNodeDistance(terrain, entityNode(world, terrain, e), door);
       if (distance > COIN_DRILL_REACH_NODES || !mayCoinDrillAt(world, ctx, e, barracks)) continue;

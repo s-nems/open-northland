@@ -154,7 +154,9 @@ function observeForces(
   const byZone = new Map<number, number>();
   const byLand = new Map<number, number>();
   const terrain = ctx.terrain;
-  for (const e of ownedFightersOf(world, ctx.content, other)) {
+  const ownedFighters = ownedFightersOf(world, ctx.content, other);
+  for (let i = 0; i < ownedFighters.length; i++) {
+    const e = ownedFighters[i] as Entity;
     if (!isLiveFighter(world, e)) continue;
     const pos = world.tryGet(e, Position);
     if (pos === undefined) continue;

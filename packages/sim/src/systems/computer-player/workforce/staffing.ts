@@ -87,8 +87,11 @@ export function seatBuilderCount(
 ): number {
   if (builderJob === null) return 0;
   let builders = 0;
-  for (const e of homeSettlers(world, ctx, player))
+  const settlers = homeSettlers(world, ctx, player);
+  for (let i = 0; i < settlers.length; i++) {
+    const e = settlers[i] as Entity;
     if (world.get(e, Settler).jobType === builderJob) builders++;
+  }
   return builders;
 }
 
@@ -139,7 +142,8 @@ export function staffBuildings(
     tier === 'food'
       ? ofKind('workplace')
       : [...ofKind('workplace'), ...ofKind('training'), ...ofKind('storage')];
-  for (const building of ordered) {
+  for (let j = 0; j < ordered.length; j++) {
+    const building = ordered[j] as Entity;
     if (!isBuilt(world, building)) continue;
     const type = index.buildings.get(world.get(building, Building).buildingType);
     if (type === undefined || (tier === 'food' && !firstHandFed(ctx, type))) continue;
@@ -156,7 +160,9 @@ export function staffBuildings(
           staffing = buildingStaffing(world, ctx, seat, building, type, held) ?? staffing;
       }
       const wants = tierWants(staffing, tier);
-      for (const slot of type.workers) {
+      for (let k = 0; k < type.workers.length; k++) {
+        const slot = type.workers[k];
+        if (slot === undefined) continue;
         const carrier = isCarrierJob(ctx, slot.jobType);
         if (!carrier && index.harvestJobs.has(slot.jobType)) continue;
         if (carrier !== helpers) continue;
@@ -351,7 +357,9 @@ function releaseSurplus(
   // A workplace employs a trade or two, so its staff rows are a list scanned by job.
   const workplaces: Entity[] = [];
   const staffByWorkplace = new Map<Entity, StaffRow[]>();
-  for (const e of homeSettlers(world, ctx, seat.player)) {
+  const settlers = homeSettlers(world, ctx, seat.player);
+  for (let i = 0; i < settlers.length; i++) {
+    const e = settlers[i] as Entity;
     const workplace = world.tryGet(e, JobAssignment)?.workplace;
     const job = world.get(e, Settler).jobType;
     if (workplace === undefined || job === null || !role(job)) continue;
@@ -367,16 +375,21 @@ function releaseSurplus(
     else rows.push({ job, staff: [e] });
   }
   const commands: PlayerCommand[] = [];
-  for (const workplace of workplaces) {
+  for (let i = 0; i < workplaces.length; i++) {
+    const workplace = workplaces[i] as Entity;
     if (!isBuilt(world, workplace)) continue;
     const type = index.buildings.get(world.get(workplace, Building).buildingType);
     if (type === undefined) continue;
     const plan = buildingStaffing(world, ctx, seat, workplace, type, heldAt(ctx, tally, workplace));
     if (plan === null) continue;
-    for (const { job, staff } of staffByWorkplace.get(workplace) ?? []) {
+    const byJob = staffByWorkplace.get(workplace) ?? [];
+    for (let j = 0; j < byJob.length; j++) {
+      const { job, staff } = byJob[j] as StaffRow;
       const kept = keep(plan, type);
       if (staff.length <= kept) continue;
-      for (const e of byExperience(staff, experienceRank(world, ctx, job)).slice(kept)) {
+      const surplus = byExperience(staff, experienceRank(world, ctx, job)).slice(kept);
+      for (let k = 0; k < surplus.length; k++) {
+        const e = surplus[k] as Entity;
         if (world.has(e, CurrentAtomic) || world.has(e, Carrying)) continue;
         if (seat.apprentices?.has(e) ?? false) continue; // earning a discovery at this post
         commands.push({ kind: 'setJob', entity: e, jobType: builderJob });

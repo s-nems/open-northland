@@ -78,7 +78,8 @@ function storeCentres(
   const index = contentIndex(ctx.content);
   const base = seatBaseOf(world, ctx, player);
   const centres: HalfCellNode[] = [];
-  for (const e of owned) {
+  for (let i = 0; i < owned.length; i++) {
+    const e = owned[i] as Entity;
     if (e !== base && index.buildings.get(world.get(e, Building).buildingType)?.kind !== 'storage') continue;
     const node = anchorNodeOf(world, e);
     if (node !== null) centres.push(node);
@@ -109,12 +110,15 @@ export function firstUncovered<T>(
     if (centres.some((c) => withinNodeRadius(c.hx, c.hy, node.hx, node.hy, coverage.radius))) return null;
     return found(node);
   };
-  for (const e of owned) {
+  for (let i = 0; i < owned.length; i++) {
+    const e = owned[i] as Entity;
     if (index.buildings.get(world.get(e, Building).buildingType)?.kind !== 'workplace') continue;
     const hit = offer(e);
     if (hit !== null) return hit;
   }
-  for (const e of homeSettlers(world, ctx, player)) {
+  const settlers = homeSettlers(world, ctx, player);
+  for (let i = 0; i < settlers.length; i++) {
+    const e = settlers[i] as Entity;
     const flag = liveWorkFlag(world, e);
     if (flag === undefined) continue;
     const hit = offer(flag.flag);

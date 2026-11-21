@@ -177,7 +177,8 @@ export function stockSeats(
   while (left > 0) {
     let best = -1;
     let bestLack = 0;
-    for (const [i, want] of wants.entries()) {
+    for (let i = 0; i < wants.length; i++) {
+      const want = wants[i] as LiveWant;
       const lack = want.lack - (places[i] ?? 0) * OPERATOR_SHARE_UNITS;
       if (lack > bestLack) {
         best = i;
@@ -191,7 +192,8 @@ export function stockSeats(
   const seats: (CraftSeat | undefined)[] = current.map(() => undefined);
   // First every operator already on a want with a place left keeps it, then the rest fill the places in
   // priority order, and whoever is left over works the overflow.
-  for (const [op, selected] of current.entries()) {
+  for (let op = 0; op < current.length; op++) {
+    const selected = current[op] as readonly number[];
     const i = wants.findIndex((want, w) => (places[w] ?? 0) > 0 && sameGoods(want.goods, selected));
     if (i < 0) continue;
     places[i] = (places[i] ?? 0) - 1;

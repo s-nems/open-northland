@@ -162,7 +162,8 @@ function barracksPriorityGoods(ctx: SystemContext, tribe: number): number[] {
   for (const [goodType, weapon] of weapons ?? []) if (weapon.jobType !== undefined) goods.push(goodType);
   goods.push(...armorGoodsByProtection(ctx.content));
   for (const ids of [BARRACKS_POTION_GOOD_IDS, BARRACKS_MEAD_GOOD_IDS, BARRACKS_AMULET_GOOD_IDS]) {
-    for (const id of ids) {
+    for (let i = 0; i < ids.length; i++) {
+      const id = ids[i] as string;
       const good = goodTypeByContentId(ctx.content, id);
       if (good !== undefined) goods.push(good.typeId);
     }
@@ -185,12 +186,15 @@ export function barracksPriorityOrders(
   owned: readonly Entity[],
 ): PlayerCommand[] {
   const commands: PlayerCommand[] = [];
-  for (const barracks of owned) {
+  for (let i = 0; i < owned.length; i++) {
+    const barracks = owned[i] as Entity;
     if (!isBarracks(world, ctx, barracks)) continue;
     const { buildingType, tribe } = world.get(barracks, Building);
     if (!keepsStorePriority(ctx.content, buildingType)) continue;
     const marked = storePriorityGoods(world, barracks);
-    for (const goodType of barracksPriorityGoods(ctx, tribe)) {
+    const priorityGoods = barracksPriorityGoods(ctx, tribe);
+    for (let j = 0; j < priorityGoods.length; j++) {
+      const goodType = priorityGoods[j] as number;
       if (marked.includes(goodType) || stockCapacity(world, ctx, barracks, goodType) <= 0) continue;
       commands.push({ kind: 'setStorePriority', building: barracks, goodType, priority: true });
     }

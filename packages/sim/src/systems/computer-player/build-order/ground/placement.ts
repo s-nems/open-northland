@@ -101,7 +101,9 @@ function homeFarSide(
   return {
     centre: towardNode(anchor, away, HOME_FAR_SIDE_PUSH_NODES),
     nearFarm: (x, y) => {
-      for (const f of farms) {
+      for (let i = 0; i < farms.length; i++) {
+        const f = farms[i];
+        if (f === undefined) continue;
         const distance = Math.abs(f.node.hx - x) + Math.abs(f.node.hy - y);
         if (distance <= f.radius + HOME_FARM_MARGIN_NODES) return true;
       }

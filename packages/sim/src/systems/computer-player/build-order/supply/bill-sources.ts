@@ -67,7 +67,8 @@ export function goodsMadeBy(world: World, ctx: SystemContext, owned: readonly En
   const index = contentIndex(ctx.content);
   const made = new Set<number>();
   const seen = new Set<number>();
-  for (const e of owned) {
+  for (let i = 0; i < owned.length; i++) {
+    const e = owned[i] as Entity;
     const typeId = world.get(e, Building).buildingType;
     const site = world.has(e, UnderConstruction);
     if (!site && seen.has(typeId)) continue;
@@ -75,9 +76,19 @@ export function goodsMadeBy(world: World, ctx: SystemContext, owned: readonly En
     if (type === undefined) continue;
     const lacking = site ? ownProductsLacking(world, ctx, e) : undefined;
     if (!site) seen.add(typeId);
-    for (const recipe of type.recipes)
-      for (const output of recipe.outputs) if (!lacking?.has(output.goodType)) made.add(output.goodType);
-    for (const good of type.produces) if (!lacking?.has(good)) made.add(good);
+    for (let j = 0; j < type.recipes.length; j++) {
+      const recipe = type.recipes[j];
+      if (recipe === undefined) continue;
+      for (let k = 0; k < recipe.outputs.length; k++) {
+        const output = recipe.outputs[k];
+        if (output === undefined) continue;
+        if (!lacking?.has(output.goodType)) made.add(output.goodType);
+      }
+    }
+    for (let j = 0; j < type.produces.length; j++) {
+      const good = type.produces[j] as number;
+      if (!lacking?.has(good)) made.add(good);
+    }
   }
   return made;
 }

@@ -789,7 +789,9 @@ export function tuneCraftCounters(
   const crews = new Map<CraftPlan, Map<number, RestrictedCrew>>();
   // Read once a role type's crew turns up: a role joinery off home is a colony's.
   let homeSet: ReadonlySet<Entity> | undefined;
-  for (const e of everySettlerOf(world, player)) {
+  const everySettler = everySettlerOf(world, player);
+  for (let i = 0; i < everySettler.length; i++) {
+    const e = everySettler[i] as Entity;
     const assignment = world.tryGet(e, JobAssignment);
     if (assignment === undefined) continue;
     const job = world.get(e, Settler).jobType;
@@ -885,9 +887,9 @@ export function tuneCraftCounters(
   };
   const reads = stockReads(world, ctx, player, supply, earned);
   const reserve = fleetReserve(world, ctx, player, roleOf, landingShips, tradeShips);
-  for (const { type, plan, crew, workplaces } of [...crews.values()].flatMap((byType) => [
-    ...byType.values(),
-  ])) {
+  const restricted = [...crews.values()].flatMap((byType) => [...byType.values()]);
+  for (let j = 0; j < restricted.length; j++) {
+    const { type, plan, crew, workplaces } = restricted[j] as RestrictedCrew;
     const products = enabledProducts(world, ctx, player, tribe, type);
     const recipeProducts = recipeProductsOf(ctx, type);
     const choice: SeatChoice = {
@@ -984,13 +986,18 @@ export function tuneCraftCounters(
     const sinking = free.length > 0 && free.every((seat) => sameGoods(current[seat] ?? [], sinkGoods));
     // A sink none of whose goods has its inputs takes nobody.
     const sink = sinkGoods.some((good) => fed(good, sinking)) ? sinkGoods : [];
-    if (sink.length > 0 && sinkHolds(supply, products, sinking)) for (const seat of free) listed[seat] = sink;
+    if (sink.length > 0 && sinkHolds(supply, products, sinking))
+      for (let i = 0; i < free.length; i++) {
+        const seat = free[i] as number;
+        listed[seat] = sink;
+      }
     else {
       const firm = goodsOf(ctx, products, seatPlan?.firm ?? []);
       shortFirst(supply, gamePhase(ctx.tick), products, free, listed, current, fed, firm);
     }
     if (reserve.size > 0) {
-      for (const seat of free) {
+      for (let i = 0; i < free.length; i++) {
+        const seat = free[i] as number;
         const kept = listed[seat]?.filter((good) => !heldBack(ctx, supply, reserve, type, good)) ?? null;
         listed[seat] = kept === null || kept.length === 0 ? null : kept;
       }
