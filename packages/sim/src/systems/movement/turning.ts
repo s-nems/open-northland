@@ -1,4 +1,4 @@
-import { WALK_DIRECTION, type WalkDirection, WalkFacing } from '../../components/index.js';
+import { PathFollow, WALK_DIRECTION, type WalkDirection, WalkFacing } from '../../components/index.js';
 import { type Fixed, fx } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
 import { HEX_HEADING, type HexHeading } from '../../nav/halfcell.js';
@@ -88,12 +88,27 @@ export function headingToward(from: Point, to: Point): WalkDirection | undefined
           : NW;
 }
 
+/** Give `e` its turn heading; from here read views draw it by that, so its walk stops naming a stop. */
+function firstFacing(
+  world: World,
+  e: Entity,
+  direction: WalkDirection,
+  target: WalkDirection,
+): WalkFacingView {
+  if (world.tryGet(e, PathFollow)?.towardX !== undefined) {
+    const follow = world.mut(e, PathFollow);
+    follow.towardX = undefined;
+    follow.towardY = undefined;
+  }
+  return world.add(e, WalkFacing, { direction, target });
+}
+
 /** Aim `e`'s turn from `from` toward `to`; returns its {@link WalkFacing} after the aim. */
 export function beginWalkTurn(world: World, e: Entity, from: Point, to: Point): WalkFacingView | undefined {
   const facing = world.tryGet(e, WalkFacing);
   const target = headingToward(from, to);
   if (target === undefined) return facing;
-  if (facing === undefined) return world.add(e, WalkFacing, { direction: INITIAL_WALK_DIRECTION, target });
+  if (facing === undefined) return firstFacing(world, e, INITIAL_WALK_DIRECTION, target);
   if (facing.target !== target) world.mutUnseen(e, WalkFacing).target = target;
   return facing;
 }
@@ -106,7 +121,7 @@ export function faceToward(world: World, e: Entity, from: Point, to: Point): voi
   const heading = headingToward(from, to);
   if (heading === undefined) return;
   const facing = world.tryGet(e, WalkFacing);
-  if (facing === undefined) world.add(e, WalkFacing, { direction: heading, target: heading });
+  if (facing === undefined) firstFacing(world, e, heading, heading);
   else if (facing.direction !== heading || facing.target !== heading) {
     const turned = world.mut(e, WalkFacing);
     turned.direction = heading;

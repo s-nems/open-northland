@@ -111,10 +111,12 @@ export interface Waypoint {
  * human step across route changes so equipment and food are charged once per node departure.
  * `bootsDegree` is the worn boots' degree of use as this walk's steps wore them, ahead of
  * `Equipment.boots` until the walk ends, so a step leaves the equipment record unwritten.
+ * `towardX`/`towardY` copy the position of the stop it walks toward while it has no {@link WalkFacing},
+ * for a read view to face it by; a walker with a turn heading leaves them undefined.
  */
 export const PathFollow = defineComponent<PathFollowState>('PathFollow', 'movement', {
-  // The step counters change every step; read views name only the waypoint and the boots wear.
-  simOnlyFields: ['legStartedAt', 'legElapsed', 'legCost', 'legPace', 'departureCharged'],
+  // The step counters change every step; read views carry only the boots wear and the stop to face.
+  simOnlyFields: ['index', 'legStartedAt', 'legElapsed', 'legCost', 'legPace', 'departureCharged'],
 });
 
 export interface PathFollowState {
@@ -125,6 +127,8 @@ export interface PathFollowState {
   legPace?: Fixed | undefined;
   departureCharged?: true | undefined;
   bootsDegree?: Fixed | undefined;
+  towardX?: Fixed | undefined;
+  towardY?: Fixed | undefined;
 }
 
 /** Every {@link PathFollowState} key required, an optional one present as undefined, so a key added to the
@@ -143,6 +147,8 @@ export function pathFollowRecord(follow: Readonly<PathFollowState>): PathFollowS
     legPace: follow.legPace,
     departureCharged: follow.departureCharged,
     bootsDegree: follow.bootsDegree,
+    towardX: follow.towardX,
+    towardY: follow.towardY,
   };
   return record;
 }
@@ -157,9 +163,12 @@ export function pathLegTicks(
 
 /**
  * The stops of the route a {@link PathFollow} walks, present exactly while it is. Written only when a
- * route is delivered, so a step along it does not re-fold the stops into the sync digest.
+ * route is delivered, so a step along it does not re-fold the stops into the sync digest. It stays with
+ * the sim: a read view gets the one stop it draws by from {@link PathFollow}.
  */
-export const PathRoute = defineComponent<{ waypoints: readonly Waypoint[] }>('PathRoute', 'movement');
+export const PathRoute = defineComponent<{ waypoints: readonly Waypoint[] }>('PathRoute', 'movement', {
+  simOnly: true,
+});
 
 /**
  * A navigation goal: the destination cell an entity wants to reach, kept separate from the transient

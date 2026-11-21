@@ -11,6 +11,7 @@ import {
   MoveStepPeriod,
   PathFollow,
   Position,
+  WalkFacing,
 } from '../../../../src/components/index.js';
 import type { Entity } from '../../../../src/ecs/world.js';
 import { exportSaveGame, fx, ONE, restoreSimulation, Simulation } from '../../../../src/index.js';
@@ -171,6 +172,25 @@ describe('movementSystem - per-entity movement timing', () => {
     sim.step();
     expect(sim.world.get(e, PathFollow).index).toBe(2);
     expect(ticksToArrive(sim, e)).toBe(8);
+  });
+
+  it('shows read views the stop a mover without a turn heading walks toward, and no route', () => {
+    const STEP_TICKS = 8;
+    const stops = [
+      { x: 0, y: 0 },
+      { x: 0.5, y: 0 },
+      { x: 1, y: 0 },
+    ];
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(4, 1) });
+    const animal = followerAt(sim, 0, 0, stops);
+    sim.world.remove(animal, WalkFacing);
+    sim.world.add(animal, MoveStepPeriod, { ticks: STEP_TICKS });
+    const human = followerAt(sim, 0, 0, stops);
+    sim.run(STEP_TICKS);
+    const viewOf = (e: Entity) => sim.snapshot().entities.find((entity) => entity.id === e)?.components;
+    expect(viewOf(animal)?.PathFollow).toEqual({ towardX: fx.fromInt(1), towardY: fx.fromInt(0) });
+    expect(viewOf(human)?.PathFollow).toEqual({});
+    expect(viewOf(animal)?.PathRoute).toBeUndefined();
   });
 
   it('a one-tick step period is not capped by the human collision pace', () => {

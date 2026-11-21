@@ -708,6 +708,8 @@ export function drainPathRequests(
     world.add(e, PathRoute, { waypoints });
     routeBoundsOf(terrain, waypoints);
     endGrindHold(world, e);
+    const firstTarget = waypoints[index];
+    const turns = world.has(e, WalkFacing);
     world.add(
       e,
       PathFollow,
@@ -718,10 +720,11 @@ export function drainPathRequests(
         legPace: oldPace,
         departureCharged: previous?.departureCharged,
         bootsDegree: previous?.bootsDegree,
+        towardX: turns ? undefined : firstTarget?.x,
+        towardY: turns ? undefined : firstTarget?.y,
       }),
     );
-    const firstTarget = waypoints[index];
-    if (position !== undefined && firstTarget !== undefined && world.has(e, WalkFacing)) {
+    if (position !== undefined && firstTarget !== undefined && turns) {
       beginWalkTurn(world, e, position, firstTarget);
     }
     settleRoute(world, e, req.goal);

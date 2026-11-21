@@ -151,9 +151,16 @@ export const movementSystem: System = (world, ctx) => {
         world.remove(e, AnimalRunning);
         break;
       }
-      // The waypoint index is the one field here a read view carries, so this write is logged for them.
-      const next = world.mut(e, PathFollow);
-      write.follow = next;
+      // Read views carry the stop a walker without a turn heading faces, so only its advance is logged
+      // for them.
+      let next: FollowState;
+      if (facing === undefined && !world.has(e, WalkFacing)) {
+        const faced = stops[pf.index + 1];
+        next = world.mut(e, PathFollow);
+        write.follow = next;
+        next.towardX = faced?.x;
+        next.towardY = faced?.y;
+      } else next = writableFollow(world, e, write);
       next.index += 1;
       next.legElapsed = 0;
       next.legStartedAt = undefined;

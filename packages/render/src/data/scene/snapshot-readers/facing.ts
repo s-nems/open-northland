@@ -24,13 +24,6 @@ export function facingFromScreenHeading(dx: number, dy: number): number {
   return HEADING_OCTANT_TO_BLOCK[((octant % 8) + 8) % 8] ?? DEFAULT_HEADING_BLOCK;
 }
 
-/** One `PathRoute` waypoint as plain snapshot data (Fixed = scaled int), redeclared so `render` does
- *  not import the sim component shape for a 2-field read. */
-interface WaypointValue {
-  x: number;
-  y: number;
-}
-
 /**
  * The facing block whose sprite looks from one tile toward another. Both coordinates are float tile
  * coordinates (the snapshot's Fixed position already divided by ONE); `undefined` when the two project
@@ -49,8 +42,8 @@ export function facingTowardTile(
 }
 
 /**
- * A human's persisted turn heading, including its last idle heading. Other movers derive facing from
- * their projected path; without either source the sprite binding supplies its default.
+ * A human's persisted turn heading, including its last idle heading. Other movers face the stop their
+ * `PathFollow` names (Fixed = scaled int); without either source the sprite binding supplies its default.
  */
 export function readFacing(components: Readonly<Record<string, unknown>>): number | undefined {
   const facing = components.WalkFacing as { direction?: unknown } | undefined;
@@ -58,12 +51,8 @@ export function readFacing(components: Readonly<Record<string, unknown>>): numbe
     const block = GFX_DIR_TO_FACING[facing.direction];
     if (block !== undefined) return block;
   }
-  const pf = components.PathFollow as { index?: unknown } | undefined;
-  const route = components.PathRoute as { waypoints?: unknown } | undefined;
+  const pf = components.PathFollow as { towardX?: unknown; towardY?: unknown } | undefined;
   const pos = readPosition(components);
-  if (pf === undefined || pos === null || !Array.isArray(route?.waypoints)) return undefined;
-  const idx = typeof pf.index === 'number' ? pf.index : 0;
-  const wp = route.waypoints[idx] as WaypointValue | undefined;
-  if (wp === undefined || typeof wp.x !== 'number' || typeof wp.y !== 'number') return undefined;
-  return facingTowardTile({ x: pos.x / ONE, y: pos.y / ONE }, { x: wp.x / ONE, y: wp.y / ONE });
+  if (pos === null || typeof pf?.towardX !== 'number' || typeof pf.towardY !== 'number') return undefined;
+  return facingTowardTile({ x: pos.x / ONE, y: pos.y / ONE }, { x: pf.towardX / ONE, y: pf.towardY / ONE });
 }
