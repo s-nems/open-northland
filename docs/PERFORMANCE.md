@@ -254,8 +254,10 @@ Failures retain completed results before closing the browser.
 | `ON_BENCH_CDP` | DevTools endpoint, e.g. `http://127.0.0.1:9333`, of a running Chromium to drive instead of launching Playwright's |
 
 A browser reached over CDP keeps the flags and window position it started with, so start it windowed
-with a fresh profile, `--mute-audio` and `--autoplay-policy=no-user-gesture-required`, plus the ANGLE
-backend to measure (`--use-gl=angle --use-angle=d3d11` for Windows Chrome driven from WSL). Its load is
+with a fresh profile, `--mute-audio`, `--autoplay-policy=no-user-gesture-required` and
+`--enable-automation`, plus the ANGLE backend to measure (`--use-gl=angle --use-angle=d3d11` for Windows
+Chrome driven from WSL). `--enable-automation` sets `navigator.webdriver` as a Playwright launch does;
+without it the menu fetches the live news feed and its console error voids the run. Its load is
 outside the load gate's host, which then reads only the dev server and the script; the report says so
 and names the browser version and endpoint beside the adapter. Over CDP, `ON_BENCH_VIEWPORT` is emulated
 on the page rather than applied to the window, so the page renders at `WxH` whatever the window's frame
