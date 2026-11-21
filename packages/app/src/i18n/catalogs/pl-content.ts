@@ -202,6 +202,11 @@ export const plContent = {
       summary:
         '60 wojowników w zbrojach płytowych z amuletem precyzji, po dziesięciu z każdą bronią, przeciw 78 bez amuletu, po trzynastu z każdą bronią. Na wschodzie mała walka: pięciu przeciw siedmiu.',
     },
+    'monster-trials': {
+      title: 'Próba potworów',
+      summary:
+        'Wężołaki w zachodniej kolumnie, wilkołaki w środkowej, jedna arena na broń z północy na południe: drewniana włócznia, żelazna włócznia, krótki miecz, długi miecz, krótki łuk, długi łuk. Naprzeciw każdego stoi trzech twoich ludzi w skórzanej zbroi. Na wschodzie smok stoi przed dwoma ludźmi z każdą bronią. Każdą walkę zaczynasz sam rozkazem dla niebieskich; wężołaki i wilkołaki rzucają się na każdego, kogo zobaczą, smok trzyma pozycję. Odśwież stronę, by zacząć od nowa.',
+    },
     'bow-trials': {
       title: 'Próba łuków',
       summary:

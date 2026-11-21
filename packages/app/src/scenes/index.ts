@@ -27,6 +27,7 @@ import { defenceWallScene } from './army/defence-wall.js';
 import { focusFireScene } from './army/focus-fire.js';
 import { hitAlarmScene } from './army/hit-alarm.js';
 import { meleeFrontScene } from './army/melee-front.js';
+import { monsterTrialsScene } from './army/monster-trials.js';
 import { openGateAttackScene } from './army/open-gate-attack.js';
 import { precisionBattleScene } from './army/precision-battle.js';
 import { scoutVillageScene } from './army/scout-village.js';
@@ -188,6 +189,7 @@ export const SCENES: readonly SceneDefinition[] = [
   battleScene,
   precisionBattleScene,
   bowTrialsScene,
+  monsterTrialsScene,
   bowFlightScene,
   overheadIconsScene,
   weaponFacingsScene,

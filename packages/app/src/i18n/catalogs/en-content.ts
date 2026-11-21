@@ -204,6 +204,11 @@ export const enContent = {
       summary:
         '60 plate-armoured warriors with the Amulet of Precision, ten of each weapon, against 78 without it, thirteen of each weapon. A small fight of five against seven stands to the east.',
     },
+    'monster-trials': {
+      title: 'Monster trials',
+      summary:
+        'Weresnakes in the west column, werewolves in the middle one, one arena per weapon from north to south: wooden spear, iron spear, short sword, long sword, short bow, long bow. Each faces three of your men in leather armour. In the east a dragon faces two men of every weapon. You start each fight yourself with an order to blue; the weresnakes and werewolves charge whoever comes in sight, the dragon holds its ground. Reload the page to start over.',
+    },
     'bow-trials': {
       title: 'Bow trials',
       summary:

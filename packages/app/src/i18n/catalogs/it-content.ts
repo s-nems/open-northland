@@ -204,6 +204,11 @@ export const itContent = {
       summary:
         '60 guerrieri in armatura a piastre con l’amuleto della precisione, dieci per arma, contro 78 senza amuleto, tredici per arma. A est un piccolo scontro: cinque contro sette.',
     },
+    'monster-trials': {
+      title: 'Prova dei mostri',
+      summary:
+        "Serpenti mannari nella colonna ovest, lupi mannari in quella centrale, un'arena per arma da nord a sud: lancia di legno, lancia di ferro, spada corta, spada lunga, arco corto, arco lungo. Ognuno ha di fronte tre tuoi uomini in armatura di cuoio. A est un drago affronta due uomini per ogni arma. Ogni combattimento lo inizi tu con un ordine ai blu; serpenti e lupi mannari si lanciano su chiunque vedano, il drago resta fermo. Ricarica la pagina per ricominciare.",
+    },
     'bow-trials': {
       title: 'Prova degli archi',
       summary:

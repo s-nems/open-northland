@@ -203,6 +203,11 @@ export const deContent = {
       summary:
         '60 Krieger in Plattenrüstung mit Trefferamulett, zehn je Waffe, gegen 78 ohne Amulett, dreizehn je Waffe. Im Osten ein kleiner Kampf: fünf gegen sieben.',
     },
+    'monster-trials': {
+      title: 'Monsterprobe',
+      summary:
+        'Schlangenmenschen in der westlichen Spalte, Werwölfe in der mittleren, eine Arena je Waffe von Norden nach Süden: Holzspeer, Eisenspeer, Kurzschwert, Langschwert, Kurzbogen, Langbogen. Jedem stehen drei deiner Männer in Lederrüstung gegenüber. Im Osten steht ein Drache vor zwei Männern jeder Waffe. Jeden Kampf beginnst du selbst mit einem Befehl an Blau; Schlangenmenschen und Werwölfe stürmen auf jeden los, den sie sehen, der Drache bleibt stehen. Lade die Seite neu, um von vorn zu beginnen.',
+    },
     'bow-trials': {
       title: 'Bogenprobe',
       summary:
