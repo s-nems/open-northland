@@ -39,6 +39,23 @@ class AtomicSchedule {
   private current = NO_ATOMIC;
   private currentSeq = -1;
 
+  private readonly collect = (e: Entity): void => {
+    const seq = this.world.insertionSeqOf(e, CurrentAtomic);
+    if (seq === undefined) return;
+    if (this.count === this.entities.length) this.grow();
+    this.entities[this.count] = e;
+    this.seqs[this.count] = seq;
+    this.count += 1;
+  };
+  private readonly admit = (e: Entity): void => {
+    const seq = this.world.insertionSeqOf(e, CurrentAtomic);
+    if (seq === undefined || seq === this.currentSeq) return;
+    if (seq > this.currentSeq) this.admitLate(e, seq);
+    else this.file(e, this.tick + 1);
+  };
+  private readonly bySeq = (a: number, b: number): number =>
+    (this.seqs[a] as number) - (this.seqs[b] as number);
+
   constructor(
     private readonly world: World,
     private readonly feed: ChangeFeed,
@@ -59,7 +76,7 @@ class AtomicSchedule {
     this.lateAt = 0;
     this.current = NO_ATOMIC;
     this.currentSeq = -1;
-    const lost = this.feed.drain((e) => this.collect(e));
+    const lost = this.feed.drain(this.collect);
     if (lost || this.through !== tick - 1) {
       this.due.clear();
       this.count = 0;
@@ -72,9 +89,9 @@ class AtomicSchedule {
       }
     }
     this.through = tick;
-    const { order, seqs, count } = this;
+    const { order, count } = this;
     for (let i = 0; i < count; i++) order[i] = i;
-    order.subarray(0, count).sort((a, b) => (seqs[a] as number) - (seqs[b] as number));
+    order.subarray(0, count).sort(this.bySeq);
   }
 
   /** The next atomic to advance, or {@link NO_ATOMIC} when the pass is over. */
@@ -124,18 +141,11 @@ class AtomicSchedule {
   /** Take in what the visit just made changed: an atomic ahead of the walk joins this pass, one behind it
    *  waits for the next tick, and the visited one is filed by {@link settle}. */
   private admitChanges(): void {
-    const world = this.world;
-    const lost = this.feed.drain((e) => {
-      const seq = world.insertionSeqOf(e, CurrentAtomic);
-      if (seq === undefined || seq === this.currentSeq) return;
-      if (seq > this.currentSeq) this.admitLate(e, seq);
-      else this.file(e, this.tick + 1);
-    });
-    if (!lost) return;
+    if (!this.feed.drain(this.admit)) return;
     // The changes are unknown: walk the rest of the store now and the whole of it next tick.
     this.through = undefined;
-    for (const e of world.query(CurrentAtomic)) {
-      const seq = world.insertionSeqOf(e, CurrentAtomic);
+    for (const e of this.world.query(CurrentAtomic)) {
+      const seq = this.world.insertionSeqOf(e, CurrentAtomic);
       if (seq !== undefined && seq > this.currentSeq) this.admitLate(e, seq);
     }
   }
@@ -146,15 +156,6 @@ class AtomicSchedule {
     while (i > this.lateAt && (seqs[i - 1] as number) > seq) i--;
     seqs.splice(i, 0, seq);
     this.lateEntities.splice(i, 0, e);
-  }
-
-  private collect(e: Entity): void {
-    const seq = this.world.insertionSeqOf(e, CurrentAtomic);
-    if (seq === undefined) return;
-    if (this.count === this.entities.length) this.grow();
-    this.entities[this.count] = e;
-    this.seqs[this.count] = seq;
-    this.count += 1;
   }
 
   private grow(): void {
