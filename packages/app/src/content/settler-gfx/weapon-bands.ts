@@ -21,6 +21,9 @@ const spear = (bands: readonly number[]): WeaponLayout => ({ bands, rampByJob: S
 const WEAPON_BY_BODY: Readonly<Record<string, WeaponLayout>> = {
   // Frankish and Byzantine spearman: shaft and head.
   cr_hum_body_52: spear([WEAPON_BAND]),
+  // Frankish soldier body, for a pack that draws the spearmen on it: its spear clips draw shaft and head in
+  // the weapon band and nothing else there.
+  cr_hum_body_32: spear([WEAPON_BAND]),
   cr_hum_body_42: spear([SARACEN_SHAFT_BAND, WEAPON_BAND]),
   // Egyptian spearman: the shaft; the tip is grey already.
   cr_hum_body_78: spear([WEAPON_BAND]),
