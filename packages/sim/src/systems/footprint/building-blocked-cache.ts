@@ -280,6 +280,12 @@ class BuildingCellsIndex implements BuildingCells {
     return true;
   }
 
+  /** The walk body held for building `e`, carved at its current footprint and anchor: null when its
+   *  footprint blocks nothing, undefined when it is no placed building. */
+  walkOf(e: Entity): WalkBody | null | undefined {
+    return this.placed.get(e)?.walk;
+  }
+
   catchUp(world: World): void {
     const membership = world.componentGeneration(Building);
     const values = world.componentValueGeneration(Building);
@@ -480,6 +486,17 @@ export function buildingDoorwayNodes(
   terrain: TerrainGraph,
 ): ReadonlySet<NodeId> {
   return buildingCells(world, ctx.content, terrain).doorways;
+}
+
+/** {@link walkBodyOf} of building `e` at its current footprint and anchor as the building index holds
+ *  it, shared and read-only; null when its footprint blocks nothing or it is no placed building. */
+export function placedWalkBody(
+  world: World,
+  content: ContentSet,
+  terrain: TerrainGraph,
+  e: Entity,
+): WalkBody | null {
+  return buildingCells(world, content, terrain).walkOf(e) ?? null;
 }
 
 /** {@link buildingBlockedCells} with its per-node counts, for the dynamic overlay. */

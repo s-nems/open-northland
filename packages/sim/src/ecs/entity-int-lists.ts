@@ -30,15 +30,15 @@ export class EntityIntLists<V extends number = number> {
     return this.starts.has(e);
   }
 
-  /** Hold `values` as `e`'s list, replacing the one it held. */
-  set(e: Entity, values: ArrayLike<V>): void {
+  /** Hold the first `length` of `values` as `e`'s list, replacing the one it held. */
+  set(e: Entity, values: ArrayLike<V>, length = values.length): void {
     this.delete(e);
-    const need = values.length + HEADER_WORDS;
+    const need = length + HEADER_WORDS;
     if (this.end + need > this.words.length) this.makeRoom(need);
     const { words } = this;
     const start = this.end;
-    words[start] = values.length;
-    for (let i = 0; i < values.length; i++) words[start + HEADER_WORDS + i] = values[i] as number;
+    words[start] = length;
+    for (let i = 0; i < length; i++) words[start + HEADER_WORDS + i] = values[i] as number;
     this.end += need;
     this.liveWords += need;
     this.starts.set(e, start);
@@ -77,6 +77,12 @@ export class EntityIntLists<V extends number = number> {
   private makeRoom(need: number): void {
     const required = this.liveWords + need;
     const old = this.words;
+    if (this.liveWords === this.end) {
+      // No dead words: the lists already lie packed, so growing copies the buffer and keeps every start.
+      this.words = new Int32Array(Math.max(INITIAL_WORDS, Math.ceil(required * GROWTH)));
+      this.words.set(old.subarray(0, this.end));
+      return;
+    }
     const words =
       required * (1 + SLACK_SHARE) <= old.length
         ? old

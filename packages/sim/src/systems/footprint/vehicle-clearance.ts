@@ -1,15 +1,15 @@
-import type { ContentSet } from '@open-northland/data';
+import { type ContentSet, type FootprintCell, footprintCellDx } from '@open-northland/data';
 import { Building, Palisade, PalisadeBlocking, Position, ResourceFootprint } from '../../components/index.js';
 import { landscapeEditState } from '../../components/landscape.js';
 import type { ChangeFeed } from '../../ecs/change-feed.js';
 import { EntityIntLists } from '../../ecs/entity-int-lists.js';
 import type { Component, Entity, World } from '../../ecs/world.js';
 import { ClearanceField, type ClearanceProbe } from '../../nav/clearance.js';
-import { hexDistanceBetween, nodeOfPosition } from '../../nav/halfcell.js';
+import { hexDistanceBetween, nodeHxOfPosition, nodeHyOfPosition } from '../../nav/halfcell.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { ContentContext } from '../context.js';
 import { type LandscapeBlocks, landscapeBlocks } from '../landscape/view.js';
-import { buildingBlockedCells, walkBodyOf } from './building-blocked-cache.js';
+import { buildingBlockedCells, placedWalkBody, walkBodyOf } from './building-blocked-cache.js';
 import { houseFootprintOf, translatedCells } from './geometry.js';
 import { resourceBlockedCells } from './resource-blocked-cache.js';
 import { tryFootprintCellsOf } from './resource-footprint-cells.js';
@@ -44,6 +44,9 @@ interface ClearanceMemo {
 
 /** A blocker's held cells, copied out of {@link ClearanceMemo.records}. */
 const heldCells: NodeId[] = [];
+/** A blocker's current cells, the first {@link blockerCellsInto} count of them: a scratch that keeps its
+ *  room, since one rebuild fills it for every standing resource. */
+const currentCells: NodeId[] = [];
 
 const memoByWorld = new WeakMap<World, ClearanceMemo>();
 const resourceFeeds = new WeakMap<World, ChangeFeed>();
@@ -69,30 +72,79 @@ function probeOf(world: World, ctx: ContentContext, terrain: TerrainGraph): Clea
   return (node) => (terrain.isWalkable(node) || terrain.isWater(node)) && !blocked.has(node);
 }
 
-/** Every cell whose walk-block membership `e` can decide: a building's body and door passage,
- * a wall's open and closed footprints, or a resource's walk cells. */
-function blockerCellsOf(world: World, content: ContentSet, terrain: TerrainGraph, e: Entity): NodeId[] {
+/** Every cell whose walk-block membership `e` can decide, written to the front of `out`, returning how
+ * many: a building's body and door passage, a wall's open and closed footprints, or a resource's walk
+ * cells. Indexed loops, since one rebuild runs this cold for every standing resource. */
+function blockerCellsInto(
+  world: World,
+  content: ContentSet,
+  terrain: TerrainGraph,
+  e: Entity,
+  out: NodeId[],
+): number {
   const p = world.tryGet(e, Position);
-  if (p === undefined) return [];
-  const { hx, hy } = nodeOfPosition(p.x, p.y);
+  if (p === undefined) return 0;
+  const hx = nodeHxOfPosition(p.x, p.y);
+  const hy = nodeHyOfPosition(p.x, p.y);
+  let count = 0;
   const building = world.tryGet(e, Building);
   if (building !== undefined) {
     const footprint = houseFootprintOf(content, building);
-    if (footprint === undefined) return [];
-    const { body, passage } = walkBodyOf(terrain, footprint, hx, hy);
-    for (const cell of passage) body.add(cell);
-    return [...body];
+    if (footprint === undefined) return 0;
+    // The building index holds the carved body, except for a footprint that blocks nothing.
+    const { body, passage } =
+      placedWalkBody(world, content, terrain, e) ?? walkBodyOf(terrain, footprint, hx, hy);
+    // `walkBodyOf` carves the passage out of the body, so the two are disjoint.
+    for (const cell of body) out[count++] = cell;
+    for (let i = 0; i < passage.length; i++) out[count++] = passage[i] as NodeId;
+    return count;
   }
   const wall = world.tryGet(e, Palisade);
   if (wall !== undefined) {
-    const body = [
+    const body = new Set([
       ...translatedCells(terrain, wall.placementWalk, hx, hy),
       ...translatedCells(terrain, wall.walk, hx, hy),
-    ];
-    return [...new Set(body)];
+    ]);
+    for (const cell of body) out[count++] = cell;
+    return count;
   }
-  const resource = tryFootprintCellsOf(world, e);
-  return resource === undefined ? [] : translatedCells(terrain, resource.walk, hx, hy);
+  const walk = tryFootprintCellsOf(world, e)?.walk;
+  if (walk === undefined) return 0;
+  const offsets = walkOffsetsOf(walk);
+  const dxSlot = (hy & 1) === 0 ? EVEN_DX_SLOT : ODD_DX_SLOT;
+  for (let i = 0; i < offsets.length; i += OFFSET_STRIDE) {
+    const x = hx + (offsets[i + dxSlot] ?? 0);
+    const y = hy + (offsets[i + DY_SLOT] ?? 0);
+    if (terrain.inBounds(x, y)) out[count++] = terrain.nodeAt(x, y);
+  }
+  return count;
+}
+
+/** A walk-cell list's offsets packed per cell as `[dx from an even anchor row, dx from an odd one, dy]`,
+ *  so a rebuild over every standing resource reads plain numbers instead of the content's cell objects. */
+const EVEN_DX_SLOT = 0;
+const ODD_DX_SLOT = 1;
+const DY_SLOT = 2;
+const OFFSET_STRIDE = 3;
+/** Any even and any odd anchor row: only the parity matters. */
+const EVEN_ANCHOR_ROW = 0;
+const ODD_ANCHOR_ROW = 1;
+/** Keyed by the shared, read-only cell list a footprint resolves to. */
+const walkOffsets = new WeakMap<readonly Readonly<FootprintCell>[], Int32Array>();
+
+function walkOffsetsOf(walk: readonly Readonly<FootprintCell>[]): Int32Array {
+  let offsets = walkOffsets.get(walk);
+  if (offsets === undefined) {
+    offsets = new Int32Array(walk.length * OFFSET_STRIDE);
+    for (let i = 0; i < walk.length; i++) {
+      const cell = walk[i] as Readonly<FootprintCell>;
+      offsets[i * OFFSET_STRIDE + EVEN_DX_SLOT] = footprintCellDx(EVEN_ANCHOR_ROW, cell);
+      offsets[i * OFFSET_STRIDE + ODD_DX_SLOT] = footprintCellDx(ODD_ANCHOR_ROW, cell);
+      offsets[i * OFFSET_STRIDE + DY_SLOT] = cell.dy;
+    }
+    walkOffsets.set(walk, offsets);
+  }
+  return offsets;
 }
 
 /** Replay one journal entry into `changed`: the cells the entity held and the cells it holds now. */
@@ -104,9 +156,9 @@ function resyncEntity(world: World, memo: ClearanceMemo, e: Entity, changed: Set
   if (building === undefined) memo.buildingTypes.delete(e);
   else memo.buildingTypes.set(e, building.buildingType);
   if (!SOURCES.some((source) => world.has(e, source))) return;
-  const cells = blockerCellsOf(world, memo.content, memo.terrain, e);
-  memo.records.set(e, cells);
-  for (const node of cells) changed.add(node);
+  const count = blockerCellsInto(world, memo.content, memo.terrain, e, currentCells);
+  memo.records.set(e, currentCells, count);
+  for (let i = 0; i < count; i++) changed.add(currentCells[i] as NodeId);
 }
 
 function rebuild(world: World, ctx: ContentContext, terrain: TerrainGraph): ClearanceMemo {
@@ -132,11 +184,28 @@ function rebuild(world: World, ctx: ContentContext, terrain: TerrainGraph): Clea
     landscapeCells: new Set(landscapes.walk),
     records: new EntityIntLists(),
   };
-  const ignored = new Set<NodeId>(); // the field was just built over the live overlay
-  for (const source of SOURCES) {
-    for (const e of world.query(source, Position)) resyncEntity(world, memo, e, ignored);
-  }
+  recordBlockers(world, memo);
   return memo;
+}
+
+/** Hold every standing blocker's cells and building type, as {@link resyncEntity} would, but for a field
+ *  just built over the live overlay: no held cells to drop and no region to re-derive. */
+function recordBlockers(world: World, memo: ClearanceMemo): void {
+  for (let k = 0; k < SOURCES.length; k++) {
+    for (const e of world.query(SOURCES[k] as Component<unknown>, Position)) {
+      if (inEarlierSource(world, e, k)) continue; // a wall sits in two of the sources
+      const building = world.tryGet(e, Building);
+      if (building !== undefined) memo.buildingTypes.set(e, building.buildingType);
+      const count = blockerCellsInto(world, memo.content, memo.terrain, e, currentCells);
+      memo.records.set(e, currentCells, count);
+    }
+  }
+}
+
+/** Whether `e` carries one of the sources before the `k`-th, so an earlier pass recorded it. */
+function inEarlierSource(world: World, e: Entity, k: number): boolean {
+  for (let j = 0; j < k; j++) if (world.has(e, SOURCES[j] as Component<unknown>)) return true;
+  return false;
 }
 
 /** Replay the landscape layer's retained cell changes. Sparse reads can outlive the chain; comparing
