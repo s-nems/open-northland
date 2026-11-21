@@ -4,6 +4,8 @@ import { type Paper, type PaperKind, PLACING_PAPER_KINDS } from '@open-northland
  *  construction window is open. */
 export interface PapersSeam {
   read(): readonly Paper[];
+  /** Whether the game bans papers. */
+  banned(): boolean;
 }
 
 /** The kinds the papers page lists: a plan the seat spends on a placement. The other four kinds

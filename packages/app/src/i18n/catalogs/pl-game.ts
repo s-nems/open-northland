@@ -566,6 +566,7 @@ export const plGame = {
       },
       papersEmptyTitle: 'Brak papierów',
       papersEmptyText: 'Papiery znajdziesz w skrzyniach na mapie.',
+      papersBannedText: 'W tej grze papiery są wyłączone.',
       viewLabel: 'Widok',
       nationLabel: 'Budynki plemienia',
       nationHint: 'Budynki plemienia: {tribe}',

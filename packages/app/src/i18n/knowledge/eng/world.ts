@@ -748,6 +748,9 @@ export const WORLD: ArticleGroup = {
             foot: 'Such a chest also gives a settler in that profession and unlocks the profession.',
           },
         },
+        {
+          p: 'The "Papers" advanced setting, chosen before a game starts, can turn them off. Then nobody gets papers from chests or the map; a workshop chest gives its settler and discoveries without the paper. A player keeps only the [[building:headquarters|Headquarters]] paper a map starts them with.',
+        },
       ],
       see: ['article:construction', 'article:trades', 'article:draughts'],
     },

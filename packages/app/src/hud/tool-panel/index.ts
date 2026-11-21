@@ -643,6 +643,7 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
           goodIdOf: (goodType) => goodIdByType.get(goodType),
           goodLabel: (goodType) => opts.goodLabel(goodType) ?? `#${goodType}`,
           papers: () => opts.papers.read(),
+          papersBanned: () => opts.papers.banned(),
           paperLabel: nameOfPaper,
           buildingLabel: (typeId) => labelByType.get(typeId) ?? `#${typeId}`,
           homeTribe: opts.tribe,

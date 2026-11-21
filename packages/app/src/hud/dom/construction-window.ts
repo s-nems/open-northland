@@ -65,6 +65,8 @@ export interface ConstructionWindowDeps {
   readonly goodLabel: (goodType: number) => string;
   /** The seat's papers in slot order; the papers page lists the plans among them, once a tick. */
   readonly papers: () => readonly Paper[];
+  /** Whether the game bans papers, which the empty papers page says instead of where they come from. */
+  readonly papersBanned: () => boolean;
   readonly paperLabel: (paper: Paper) => string;
   /** The house a plan names, for its card's "?" label. */
   readonly buildingLabel: (typeId: number) => string;
@@ -419,7 +421,8 @@ export function createConstructionWindow(deps: ConstructionWindowDeps): Construc
     state = { ...state, scrollTop: parchment.scrollTop };
   });
 
-  // The papers page: the plans under their own note, or the empty note saying where papers come from.
+  // The papers page: the plans under their own note, or the empty note saying where papers come from
+  // or that the game bans them.
   const plans = document.createElement('div');
   plans.className = 'on-parchment on-catalog';
   const plansNote = note(copy.plans);
@@ -430,7 +433,6 @@ export function createConstructionWindow(deps: ConstructionWindowDeps): Construc
   plansEmpty.innerHTML = `<strong></strong><span></span>`;
   const [plansEmptyTitle, plansEmptyText] = plansEmpty.children;
   if (plansEmptyTitle !== undefined) plansEmptyTitle.textContent = copy.papersEmptyTitle;
-  if (plansEmptyText !== undefined) plansEmptyText.textContent = copy.papersEmptyText;
   plans.append(plansNote.note, plansGrid, plansEmpty);
   window.body.append(quick, tabs, parchment, plans);
   window.onDismiss(() => {
@@ -594,6 +596,10 @@ export function createConstructionWindow(deps: ConstructionWindowDeps): Construc
     return records.length === 0 ? undefined : { card, house: card.house, records };
   };
   const layoutPapers = (): void => {
+    const emptyText = deps.papersBanned() ? copy.papersBannedText : copy.papersEmptyText;
+    if (plansEmptyText !== undefined && plansEmptyText.textContent !== emptyText) {
+      plansEmptyText.textContent = emptyText;
+    }
     const listed = paperCards(deps.papers());
     const tribe = shown();
     const choice = choosing === null ? undefined : houseChoiceOf(choosing, listed, tribe);

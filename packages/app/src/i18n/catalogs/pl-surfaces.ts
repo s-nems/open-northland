@@ -183,6 +183,13 @@ export const plSurfaces = {
         detail: 'Mnoży zapas żelaza i złota w złożach na mapie.',
         factor: '×{factor}',
       },
+      papers: {
+        label: 'Papiery',
+        detail:
+          'Papiery ze skrzyń i z mapy stawiają budynek od razu. Wyłączone: nikt ich nie dostaje, oprócz papieru na Kwaterę główną, z którym mapa zaczyna grę.',
+        on: 'Włączone',
+        off: 'Wyłączone',
+      },
       advanced: {
         label: 'Zaawansowane',
         title: 'Ustawienia zaawansowane',

@@ -88,7 +88,7 @@ export function depositYieldOf(
 }
 
 /** The `?fog=`, `?progression=`, `?needs=`, `?weathermode=`, `?daynight=`, `?alliedvision=`, `?peace=`,
- *  `?storage=`, `?basicyield=` and `?oreyield=` flags as the session's rule overrides. */
+ *  `?storage=`, `?basicyield=`, `?oreyield=` and `?papers=` flags as the session's rule overrides. */
 export function sessionRuleOverrides(params: URLSearchParams): SessionRules {
   return {
     fog: fogModeParam(params),
@@ -101,6 +101,7 @@ export function sessionRuleOverrides(params: URLSearchParams): SessionRules {
     storageCapacity: storageCapacityParam(params),
     basicYield: resourceYieldParam(params, 'basicYield'),
     oreYield: resourceYieldParam(params, 'oreYield'),
+    papers: onOffParam(params, 'papers'),
   };
 }
 
@@ -110,11 +111,12 @@ export type SimSessionRules = Omit<SessionRules, 'weather' | 'dayNight'>;
 /**
  * Apply the overrides to a freshly built sim. The queue is FIFO and these land after the world's own
  * rules, so a flag wins in either direction; an absent flag enqueues nothing, keeping the command
- * stream byte-identical. The peace needs the seats it binds, so the map world opens it.
+ * stream byte-identical. The peace needs the seats it binds and a paper ban the starting papers it
+ * keeps the headquarters paper of, so the map world sets both.
  */
 export function applySessionRuleOverrides(
   sim: WorldSetup,
-  overrides: Omit<SimSessionRules, 'peace' | 'basicYield' | 'oreYield'>,
+  overrides: Omit<SimSessionRules, 'peace' | 'basicYield' | 'oreYield' | 'papers'>,
 ): void {
   if (overrides.fog !== null) sim.enqueueSetup({ kind: 'setFogMode', mode: overrides.fog });
   if (overrides.progression !== null) {

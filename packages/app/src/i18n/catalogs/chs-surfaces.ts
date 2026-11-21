@@ -180,6 +180,13 @@ export const chsSurfaces = {
         detail: '成倍提高地图上矿藏中的铁和金储量。',
         factor: '×{factor}',
       },
+      papers: {
+        label: '文书',
+        detail:
+          '箱子和地图给的文书能立即建起一座建筑。关闭后谁都得不到文书，地图开局给玩家的大本营文书除外。',
+        on: '开启',
+        off: '关闭',
+      },
       advanced: {
         label: '高级',
         title: '高级设置',

@@ -671,6 +671,9 @@ export const WORLD: ArticleGroup = {
             foot: '這種箱子也給一名該職業的居民，並解鎖該職業。',
           },
         },
+        {
+          p: '開局前的進階設定「文書」可以關閉文書。關閉後誰都不會從箱子或地圖得到文書；帶工坊的箱子照樣給出居民和發現，只是沒有文書。玩家只保留地圖開局給的[[building:headquarters|大本營]]文書。',
+        },
       ],
       see: ['article:construction', 'article:trades', 'article:draughts'],
     },

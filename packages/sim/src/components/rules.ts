@@ -196,6 +196,24 @@ export function setStorageCapacityFactor(world: World, factor: number): void {
   });
 }
 
+const paperRules = defineWorldSingleton<{ enabled: boolean }>('PaperRules', 'players', () => ({
+  enabled: true,
+}));
+
+/** Whether players get papers: off, no chest, map or command hands one out. On by default, as the
+ *  original plays. */
+export const PaperRules = paperRules.component;
+
+export function papersEnabled(world: World): boolean {
+  return paperRules.read(world).enabled;
+}
+
+export function setPapersEnabled(world: World, enabled: boolean): void {
+  paperRules.write(world, (rules) => {
+    rules.enabled = enabled;
+  });
+}
+
 const missionRules = defineWorldSingleton<{ enabled: boolean }>('MissionRules', 'players', () => ({
   enabled: false,
 }));

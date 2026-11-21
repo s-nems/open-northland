@@ -180,6 +180,7 @@ export function writeSessionRuleParams(params: URLSearchParams, rules: SessionRu
   if (rules.alliedVision !== null) params.set('alliedvision', rules.alliedVision ? 'on' : 'off');
   if (rules.peace !== null) params.set('peace', String(rules.peace));
   if (rules.storageCapacity !== null) params.set('storage', String(rules.storageCapacity));
+  if (rules.papers !== null) params.set('papers', rules.papers ? 'on' : 'off');
   for (const rule of ['basicYield', 'oreYield'] as const) {
     const factor = rules[rule];
     if (factor !== null) params.set(RESOURCE_YIELD_PARAMS[rule], String(factor));

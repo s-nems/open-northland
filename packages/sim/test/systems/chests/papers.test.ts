@@ -120,6 +120,50 @@ describe('the papers list', () => {
     expect(sim.papers(MAX_PLAYERS)).toEqual([]);
     expect([...sim.world.query(Papers)]).toHaveLength(1);
   });
+
+  it('a paper ban takes every held paper and drops later grants until it is lifted', () => {
+    const sim = fresh();
+    sim.enqueueSetup({ kind: 'grantPaper', player: P0, paper: sawmillPaper });
+    sim.enqueueSetup({ kind: 'grantPaper', player: 1, paper: anyHouse });
+    sim.enqueueSetup({ kind: 'setPapersEnabled', enabled: false });
+    sim.enqueueSetup({ kind: 'grantPaper', player: P0, paper: anyHouse });
+    sim.step();
+    expect([...sim.world.query(Papers)]).toEqual([]);
+    expect(addPaper(sim.world, P0, anyHouse)).toBe(false);
+
+    sim.enqueueSetup({ kind: 'setPapersEnabled', enabled: true });
+    sim.enqueueSetup({ kind: 'grantPaper', player: P0, paper: sawmillPaper });
+    sim.step();
+    expect(sim.papers(P0)).toEqual([sawmillPaper]);
+  });
+
+  it('a paper ban keeps a held headquarters paper, so a colony seat can still found its base', () => {
+    const sim = fresh();
+    const hqPaper: Paper = { kind: 'placeHouse', param: HQ };
+    sim.enqueueSetup({ kind: 'grantPaper', player: P0, paper: anyHouse });
+    sim.enqueueSetup({ kind: 'grantPaper', player: P0, paper: hqPaper });
+    sim.enqueueSetup({ kind: 'grantPaper', player: P0, paper: sawmillPaper });
+    sim.enqueueSetup({ kind: 'setPapersEnabled', enabled: false });
+    // A headquarters paper found later is banned like any other.
+    sim.enqueueSetup({ kind: 'grantPaper', player: P0, paper: hqPaper });
+    sim.step();
+    expect(sim.papers(P0)).toEqual([hqPaper]);
+
+    sim.enqueue(
+      playerCommand(P0, {
+        kind: 'placeBuilding',
+        buildingType: HQ,
+        x: 8,
+        y: 8,
+        tribe: VIKING,
+        underConstruction: true,
+        paper: hqPaper,
+      }),
+    );
+    sim.step();
+    expect(buildings(sim)).toHaveLength(1);
+    expect(sim.papers(P0)).toEqual([]);
+  });
 });
 
 describe('placing with a paper', () => {

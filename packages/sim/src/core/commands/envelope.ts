@@ -154,6 +154,7 @@ export const COMMAND_ISSUER: {
   placeSignpost: 'seat',
   setAlliedVision: 'trusted',
   setStorageCapacity: 'trusted',
+  setPapersEnabled: 'trusted',
   setBioGroundWaived: 'trusted',
   setAssistantCounter: 'seat',
   setAssistantGrant: 'seat',

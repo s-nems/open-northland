@@ -71,9 +71,10 @@ export interface LobbyOptions {
   basicYield: ResourceYieldFactor | null;
   /** Null keeps the authored stock of the map's iron and gold. */
   oreYield: ResourceYieldFactor | null;
+  papers: boolean;
 }
 
-/** Progression and needs default on, so only an explicit `off` in the URL clears the box. Allied vision
+/** Progression, needs and papers default on, so only an explicit `off` in the URL clears the box. Allied vision
  *  is not carried between menu visits: the caller picks it for the kind of game. Every lobby starts
  *  without a peace. */
 export function initialLobbyOptions(params: URLSearchParams, alliedVision: boolean): LobbyOptions {
@@ -89,6 +90,7 @@ export function initialLobbyOptions(params: URLSearchParams, alliedVision: boole
     storageCapacity: storageCapacityParam(params),
     basicYield: resourceYieldParam(params, 'basicYield'),
     oreYield: resourceYieldParam(params, 'oreYield'),
+    papers: onOffParam(params, 'papers') !== false,
   };
 }
 
@@ -105,6 +107,7 @@ export function lobbyRules(options: LobbyOptions): SessionRules {
     storageCapacity: options.storageCapacity,
     basicYield: options.basicYield,
     oreYield: options.oreYield,
+    papers: options.papers,
   };
 }
 

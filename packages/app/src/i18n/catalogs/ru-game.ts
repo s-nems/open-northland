@@ -616,6 +616,7 @@ export const ruGame = {
       },
       papersEmptyTitle: 'Нет бумаг',
       papersEmptyText: 'Бумаги можно найти в сундуках на карте.',
+      papersBannedText: 'В этой игре бумаги отключены.',
       viewLabel: 'Вид',
       nationLabel: 'Постройки: племя',
       nationHint: 'Постройки племени: {tribe}',

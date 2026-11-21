@@ -200,6 +200,13 @@ export const itSurfaces = {
         detail: "Moltiplica il ferro e l'oro nei giacimenti della mappa.",
         factor: '×{factor}',
       },
+      papers: {
+        label: 'Documenti',
+        detail:
+          'I documenti delle casse e della mappa erigono subito un edificio. Disattivati, nessuno ne riceve, tranne il documento per il Quartier generale con cui la mappa fa iniziare un giocatore.',
+        on: 'Attivi',
+        off: 'Disattivati',
+      },
       advanced: {
         label: 'Avanzate',
         title: 'Impostazioni avanzate',

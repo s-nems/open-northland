@@ -102,6 +102,8 @@ export interface SessionRules {
   readonly basicYield: ResourceYieldFactor | null;
   /** The same for the map-placed iron and gold. */
   readonly oreYield: ResourceYieldFactor | null;
+  /** Sets `PaperRules.enabled`; null keeps papers, as every world allows them. */
+  readonly papers: boolean | null;
 }
 
 /** Rules that override nothing: the world plays every rule it set for itself. */
@@ -116,6 +118,7 @@ export const NO_RULE_OVERRIDES: SessionRules = Object.freeze({
   storageCapacity: null,
   basicYield: null,
   oreYield: null,
+  papers: null,
 });
 
 /**
@@ -298,6 +301,7 @@ function parseRules(value: unknown): SessionRules {
     storageCapacity: parseStorageCapacity(raw.storageCapacity),
     basicYield: parseResourceYield(raw.basicYield, 'basicYield'),
     oreYield: parseResourceYield(raw.oreYield, 'oreYield'),
+    papers: nullableBoolean(raw.papers, 'rules.papers'),
   };
 }
 

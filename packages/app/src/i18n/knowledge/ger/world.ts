@@ -763,6 +763,9 @@ export const WORLD: ArticleGroup = {
             foot: 'So eine Kiste gibt auch einen Siedler in diesem Beruf und schaltet den Beruf frei.',
           },
         },
+        {
+          p: 'Die erweiterte Einstellung „Briefe“, vor Spielbeginn gewählt, kann sie abschalten. Dann bekommt niemand Briefe aus Kisten oder von der Karte; eine Kiste mit Werkstatt gibt ihren Siedler und die Entdeckungen ohne den Brief. Ein Spieler behält nur den Brief für das [[building:headquarters|Hauptquartier]], mit dem ihn die Karte beginnen lässt.',
+        },
       ],
       see: ['article:construction', 'article:trades', 'article:draughts'],
     },

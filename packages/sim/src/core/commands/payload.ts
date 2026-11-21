@@ -385,6 +385,7 @@ const COMMAND_PAYLOAD: { readonly [K in Command['kind']]: PayloadSpec<Extract<Co
   placeSignpost: { required: { entity: 'integer', ...NODE }, optional: QUEUED },
   setAlliedVision: { required: { enabled: 'boolean' } },
   setStorageCapacity: { required: { factor: 'integer' } },
+  setPapersEnabled: { required: { enabled: 'boolean' } },
   setAssistantCounter: {
     required: {
       player: 'integer',

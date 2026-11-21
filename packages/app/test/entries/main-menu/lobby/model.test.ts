@@ -115,7 +115,7 @@ describe('lobbySlotRows', () => {
 });
 
 describe('initialLobbyOptions', () => {
-  it('defaults to classic fog, progression on, needs on and variable weather, honouring explicit URL params', () => {
+  it('defaults to classic fog, progression, needs and papers on and variable weather, honouring explicit URL params', () => {
     expect(initialLobbyOptions(new URLSearchParams(''), true)).toEqual({
       fog: 'classic',
       professionProgression: true,
@@ -127,10 +127,13 @@ describe('initialLobbyOptions', () => {
       storageCapacity: null,
       basicYield: null,
       oreYield: null,
+      papers: true,
     });
     expect(
       initialLobbyOptions(
-        new URLSearchParams('fog=recon-fow&progression=off&needs=off&weathermode=winter&daynight=on'),
+        new URLSearchParams(
+          'fog=recon-fow&progression=off&needs=off&weathermode=winter&daynight=on&papers=off',
+        ),
         true,
       ),
     ).toEqual({
@@ -144,6 +147,7 @@ describe('initialLobbyOptions', () => {
       storageCapacity: null,
       basicYield: null,
       oreYield: null,
+      papers: false,
     });
     expect(initialLobbyOptions(new URLSearchParams('weathermode=bogus'), true).weather).toBe('map');
     // The revealed map is a debug-menu pick, never a lobby one.
@@ -187,6 +191,7 @@ const OPTIONS = {
   storageCapacity: null,
   basicYield: null,
   oreYield: null,
+  papers: true,
 } as const;
 
 /** The offered seats the launched session declares as AI, which is what `?computer=` carries. */
@@ -384,6 +389,7 @@ describe('lobbyStartEntry', () => {
           storageCapacity: null,
           basicYield: null,
           oreYield: null,
+          papers: false,
         },
         SEED,
       ),
@@ -410,6 +416,7 @@ describe('lobbyStartEntry', () => {
     expect(params.get('weathermode')).toBe('map');
     expect(params.get('daynight')).toBe('map');
     expect(params.get('peace')).toBe('45');
+    expect(params.get('papers')).toBe('off');
   });
 
   it('writes the needs and weather defaults explicitly, so a carried choice cannot leak into the next map', () => {

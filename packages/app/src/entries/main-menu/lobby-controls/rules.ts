@@ -38,6 +38,8 @@ export interface GameRules {
   readonly basicYield: ResourceYieldFactor | null;
   /** Null keeps the authored stock of the map's iron and gold. */
   readonly oreYield: ResourceYieldFactor | null;
+  /** Null keeps papers, as every world allows them. */
+  readonly papers: boolean | null;
 }
 interface RuleText {
   readonly label: string;
@@ -74,6 +76,7 @@ export interface GameRuleControlOptions {
   readonly storage: FactorRuleText;
   readonly basicYield: FactorRuleText;
   readonly oreYield: FactorRuleText;
+  readonly papers: BooleanRuleText;
   /** The ore richness the window's reset restores, read at each change; absent restores the authored
    *  stock. */
   readonly standardOreYield?: () => ResourceYieldFactor | null;
@@ -125,6 +128,7 @@ const OPTION_ROW_CLASS = 'main-menu__lobby-option-row';
 const STANDARD_ADVANCED = {
   progression: true,
   needs: true,
+  papers: true,
   storageCapacity: null,
   basicYield: null,
   weather: DEFAULT_WEATHER_MODE,
@@ -350,6 +354,13 @@ export function gameRuleControls(options: GameRuleControlOptions) {
     'advanced',
   );
   const needs = booleanRule(options.needs, true, (value) => options.onChange({ needs: value }), 'advanced');
+  // No world sets a paper rule of its own, so the window offers no "map's own" choice.
+  const papers = booleanRule(
+    options.papers,
+    false,
+    (value) => options.onChange({ papers: value }),
+    'advanced',
+  );
   /** A multiplier rule: one segment per factor, the first for null, the content's own amounts. */
   function factorRule<F extends number>(
     text: FactorRuleText,
@@ -423,6 +434,7 @@ export function gameRuleControls(options: GameRuleControlOptions) {
         choice: options.progression.off,
       },
       needs: { changed: rules.needs === false, label: options.needs.label, choice: options.needs.off },
+      papers: { changed: rules.papers === false, label: options.papers.label, choice: options.papers.off },
       storage: {
         changed: rules.storageCapacity !== null,
         label: options.storage.label,
@@ -462,6 +474,7 @@ export function gameRuleControls(options: GameRuleControlOptions) {
           ...progression.elements,
           ...needs.elements,
           ...storage.elements,
+          ...papers.elements,
         ],
       },
       { title: options.advanced.resourcesGroup, rows: [...basicYield.elements, ...oreYield.elements] },
@@ -478,6 +491,7 @@ export function gameRuleControls(options: GameRuleControlOptions) {
         ...(inWindow && alliedVision.state.claim(false) ? { alliedVision: false } : {}),
         ...(restores(progression) ? { progression: standard.progression } : {}),
         ...(restores(needs) ? { needs: standard.needs } : {}),
+        ...(papers.state.claim(standard.papers) ? { papers: standard.papers } : {}),
         ...(storage.state.claim(factorChoiceId(standard.storageCapacity))
           ? { storageCapacity: standard.storageCapacity }
           : {}),
@@ -508,6 +522,7 @@ export function gameRuleControls(options: GameRuleControlOptions) {
       const read = advancedRead(rules, settings);
       progression.update(rules.progression, disabled, read.progression.changed);
       needs.update(rules.needs, disabled, read.needs.changed);
+      papers.update(rules.papers !== false, disabled, read.papers.changed);
       storage.update(factorChoiceId(rules.storageCapacity), disabled, read.storage.changed);
       basicYield.update(factorChoiceId(rules.basicYield), disabled, read.basicYield.changed);
       oreYield.update(factorChoiceId(rules.oreYield), disabled, read.oreYield.changed);
@@ -519,6 +534,7 @@ export function gameRuleControls(options: GameRuleControlOptions) {
         read.progression,
         read.needs,
         read.storage,
+        read.papers,
         read.basicYield,
         read.oreYield,
         read.weather,

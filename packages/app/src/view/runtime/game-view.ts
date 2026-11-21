@@ -62,6 +62,7 @@ import { installPetNames, type PetNames, petNamesOf } from '../../game/character
 import { type MissionBriefSource, missionReader } from '../../game/map/mission-brief.js';
 import type { ObserverSeatEntry } from '../../game/match/observer-seats.js';
 import { HUMAN_PLAYER, PRIMARY_TRIBE } from '../../game/rules.js';
+import { papersRuleEnabled } from '../../game/snapshot/index.js';
 import { technologyName, vehicleLabel } from '../../game/technology.js';
 import {
   fixedViewerSeat,
@@ -745,6 +746,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
           const seat = viewer.seat();
           return seat === null ? NO_PAPERS : answers.papers(seat);
         },
+        banned: () => !papersRuleEnabled(host.snapshot()),
       },
       residents: {
         rows: () => residentsFor(host.snapshot()),

@@ -621,6 +621,7 @@ export const deGame = {
       },
       papersEmptyTitle: 'Keine Briefe',
       papersEmptyText: 'Briefe findest du in Kisten auf der Karte.',
+      papersBannedText: 'In diesem Spiel sind Briefe deaktiviert.',
       viewLabel: 'Ansicht',
       nationLabel: 'Gebäude: Stamm',
       nationHint: 'Gebäude des Stammes: {tribe}',

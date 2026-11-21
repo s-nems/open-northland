@@ -5,7 +5,7 @@ import { lobbyOptionsCard } from '../../../../src/entries/main-menu/lobby/option
 import { formatMessage, messages } from '../../../../src/i18n/index.js';
 
 describe('lobbyOptionsCard', () => {
-  it("takes the advanced window's weather, day and night and storage choices into the lobby options", () => {
+  it("takes the advanced window's weather, day and night, storage and paper choices into the lobby options", () => {
     const options = initialLobbyOptions(new URLSearchParams(), false);
     const card = lobbyOptionsCard(options, false).element;
     document.body.append(card);
@@ -18,7 +18,7 @@ describe('lobbyOptionsCard', () => {
       delete proto.hidePopover;
       card.remove();
     });
-    const { weatherLabel, weatherModes, dayNightLabel, dayNightModes, advanced, storage } =
+    const { weatherLabel, weatherModes, dayNightLabel, dayNightModes, advanced, storage, papers } =
       messages().mainMenu.lobby;
     const entry = card.querySelector<HTMLButtonElement>('.main-menu__advanced-entry');
     expect(entry?.textContent).toContain(advanced.standard);
@@ -35,18 +35,25 @@ describe('lobbyOptionsCard', () => {
     [...document.querySelectorAll<HTMLButtonElement>('.main-menu__advanced button')]
       .find((button) => button.textContent === tripled)
       ?.click();
+    document.querySelector<HTMLButtonElement>(`button[role="switch"][aria-label="${papers.label}"]`)?.click();
     expect(options.dayNight).toBe('on');
     expect(options.weather).toBe('off');
     expect(options.storageCapacity).toBe(3);
-    expect(card.querySelector('.main-menu__advanced-summary')?.textContent).toContain(
-      `${storage.label}: ${tripled}`,
-    );
+    expect(options.papers).toBe(false);
+    const summary = card.querySelector('.main-menu__advanced-summary')?.textContent;
+    expect(summary).toContain(`${storage.label}: ${tripled}`);
+    expect(summary).toContain(`${papers.label}: ${papers.off}`);
 
     // Restore defaults puts every advanced rule back in one go.
     [...document.querySelectorAll<HTMLButtonElement>('.main-menu__advanced button')]
       .find((button) => button.textContent === advanced.reset)
       ?.click();
-    expect([options.dayNight, options.weather, options.storageCapacity]).toEqual(['map', 'map', null]);
+    expect([options.dayNight, options.weather, options.storageCapacity, options.papers]).toEqual([
+      'map',
+      'map',
+      null,
+      true,
+    ]);
     expect(entry?.textContent).toContain(advanced.standard);
     document.querySelector<HTMLButtonElement>('.main-menu__advanced-done')?.click();
     expect(document.querySelector('.main-menu__advanced')).toBeNull();

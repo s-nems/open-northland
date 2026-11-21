@@ -182,6 +182,7 @@ function parseSessionRules(value: unknown, at: string): SessionRules {
         : parseStorageCapacity(raw.storageCapacity, `${at}.storageCapacity`),
     basicYield: raw.basicYield === null ? null : parseResourceYield(raw.basicYield, `${at}.basicYield`),
     oreYield: raw.oreYield === null ? null : parseResourceYield(raw.oreYield, `${at}.oreYield`),
+    papers: raw.papers === null ? null : asBoolean(raw.papers, `${at}.papers`),
   };
 }
 

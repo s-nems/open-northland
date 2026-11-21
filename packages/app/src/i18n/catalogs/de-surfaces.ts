@@ -211,6 +211,13 @@ export const deSurfaces = {
         detail: 'Vervielfacht Eisen und Gold in den Vorkommen der Karte.',
         factor: '×{factor}',
       },
+      papers: {
+        label: 'Briefe',
+        detail:
+          'Briefe aus Kisten und von der Karte stellen ein Gebäude sofort auf. Deaktiviert bekommt niemand einen, außer dem Brief für das Hauptquartier, mit dem die Karte einen Spieler beginnen lässt.',
+        on: 'Aktiviert',
+        off: 'Deaktiviert',
+      },
       advanced: {
         label: 'Erweitert',
         title: 'Erweiterte Einstellungen',

@@ -14,6 +14,8 @@ import { countedLabel, goodLabel } from './counted-label.js';
 
 export interface ChestContentsNaming extends ChestScriptNaming {
   readonly buildingLabel: (typeId: number) => string | undefined;
+  /** Whether the game bans papers, so a chest hands out none. */
+  readonly papersBanned: () => boolean;
 }
 
 /** What a closed chest hands out when opened, as one line: its chest type's reward, then what the map
@@ -46,8 +48,12 @@ function rewardLabel(naming: ChestContentsNaming, kind: ChestKind, contents: num
     case 'goods':
       return countedLabel(goodLabel(content, reward.goodType), reward.amount);
     case 'paper':
+      return naming.papersBanned() ? null : paperLabel(reward.paper, paperNaming);
     case 'workshop':
-      return paperLabel(reward.paper, paperNaming);
+      // Banned, the workshop paper's settler still stands up.
+      return naming.papersBanned()
+        ? jobDisplayName(content, reward.jobType)
+        : paperLabel(reward.paper, paperNaming);
     case 'settlers':
       return countedLabel(jobDisplayName(content, reward.jobType), reward.count);
     case 'animals': {

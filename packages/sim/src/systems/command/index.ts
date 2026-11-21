@@ -24,6 +24,7 @@ import {
 import { assertNever } from '../../core/brand.js';
 import { type Command, MAX_UNIT_MEMBER_ACTIONS, MAX_UNIT_ORDER_MEMBERS } from '../../core/commands/index.js';
 import type { World } from '../../ecs/world.js';
+import { setPaperRule } from '../chests/index.js';
 import type { System, SystemContext } from '../context.js';
 import { forceFinishConstruction } from '../economy/construction.js';
 import { carriesFoodAmulet } from '../equipment/effects.js';
@@ -625,6 +626,9 @@ function applyCommand(
       return;
     case 'setStorageCapacity':
       setStorageCapacityFactor(world, command.factor);
+      return;
+    case 'setPapersEnabled':
+      setPaperRule(world, ctx, command.enabled);
       return;
     case 'setBioGroundWaived':
       setBioGroundWaived(world, command.waived);

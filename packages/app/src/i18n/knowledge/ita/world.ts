@@ -774,6 +774,9 @@ export const WORLD: ArticleGroup = {
             foot: 'Una cassa così dà anche un colono con quella professione e sblocca la professione.',
           },
         },
+        {
+          p: "L'impostazione avanzata «Documenti», scelta prima dell'inizio della partita, può disattivarli. Allora nessuno riceve documenti dalle casse o dalla mappa; una cassa con una bottega dà il suo colono e le scoperte senza il documento. Un giocatore conserva solo il documento per il [[building:headquarters|Quartier generale]] con cui la mappa lo fa iniziare.",
+        },
       ],
       see: ['article:construction', 'article:trades', 'article:draughts'],
     },

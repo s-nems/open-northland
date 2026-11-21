@@ -232,6 +232,9 @@ function applySessionRules(sim: Simulation, options: MapWorldOptions): void {
     options.assistantSeats.filter((seat) => !computerDisabled.has(seat)),
   );
   grantStartingPapers(sim, options.specialItems ?? []);
+  // After the starting papers, so a ban keeps a colony seat's headquarters paper. Every world starts with
+  // papers on, so only a ban is enqueued.
+  if (options.papers === false) sim.enqueueSetup({ kind: 'setPapersEnabled', enabled: false });
   openPeace(sim, options);
   const unplayed = [...(options.absentSeats ?? []), ...(options.idleSeats ?? [])];
   if (unplayed.length > 0) sim.enqueueSetup({ kind: 'setUnplayedSeats', players: unplayed });

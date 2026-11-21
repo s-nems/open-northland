@@ -80,6 +80,7 @@ export async function validateNetworkSave(save: SaveGame, handle: VerifiedMapDoc
     storageCapacity: savedStorageCapacity(sim),
     basicYield: savedResourceYield(save, 'basicYield'),
     oreYield: savedResourceYield(save, 'oreYield'),
+    papers: components.papersEnabled(sim.world),
   };
 }
 

@@ -180,6 +180,13 @@ export const chtSurfaces = {
         detail: '成倍提高地圖上礦藏中的鐵和金儲量。',
         factor: '×{factor}',
       },
+      papers: {
+        label: '文書',
+        detail:
+          '箱子和地圖給的文書能立即建起一座建築。停用後誰都得不到文書，地圖開局給玩家的大本營文書除外。',
+        on: '啟用',
+        off: '停用',
+      },
       advanced: {
         label: '進階',
         title: '進階設定',

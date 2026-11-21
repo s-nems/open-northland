@@ -3,6 +3,7 @@ import {
   holdsHaulFlagPost,
   isSettler,
   isVehicle,
+  papersRuleEnabled,
   type SnapshotEntity,
   settlerJobType,
 } from '../../game/snapshot/index.js';
@@ -473,6 +474,7 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
       buildingLabels ??= buildingLabelsFromContent(opts.content, opts.lang);
       return buildingLabels.get(typeId);
     },
+    papersBanned: () => !papersRuleEnabled(opts.snapshot()),
   };
   const chestContents = (chest: SnapshotEntity): string | null => chestContentsLabel(chestNaming, chest);
 

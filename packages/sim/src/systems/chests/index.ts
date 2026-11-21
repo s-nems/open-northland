@@ -27,6 +27,7 @@ import { resolveChestReward } from './contents.js';
 import { chestFootprint, chestRecord, openedChestRecord } from './footprint.js';
 
 export { CHEST_CONTENTS, type ChestReward, resolveChestReward } from './contents.js';
+export { setPaperRule } from './paper-ban.js';
 
 /** The open-chest action id (`logicdefines.inc` `MAP_MOVEABLES_ATOMIC_ACTION_TYPE_OPEN_CHEST 91`), the clip
  *  the original starts when its human reaches the chest. */

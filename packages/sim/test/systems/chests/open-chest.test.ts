@@ -412,6 +412,26 @@ describe('the openChest order', () => {
     expect(restored.unlockStatus('good', LONG_SWORD, VIKING, P0).enabled).toBe(true);
   });
 
+  it('under a paper ban a workshop reward still stands up its trade, without the paper', () => {
+    const sim = workshopSim();
+    sim.enqueueSetup({ kind: 'setPapersEnabled', enabled: false });
+    const chest = createChest(sim.world, sim.content, {
+      kind: 'wooden',
+      contents: SMITHY_REWARD,
+      x: 10,
+      y: 10,
+    });
+    const opener = spawn(sim, WOODCUTTER, 6, 6);
+    sim.enqueue(playerCommand(P0, { kind: 'openChest', entity: opener, chest }));
+    const events = stepUntilOpened(sim, chest);
+
+    expect(sim.world.has(chest, OpenedChest)).toBe(true);
+    expect(sim.papers(P0)).toEqual([]);
+    expect(events.some((e) => e.kind === 'paperFound')).toBe(false);
+    expect(technologyDiscovered(sim.world, P0, VIKING, 'job', SMITH)).toBe(true);
+    expect([...sim.world.query(Settler)].some((e) => sim.world.get(e, Settler).jobType === SMITH)).toBe(true);
+  });
+
   it('a magical chest refuses a plain trade, and a child refuses any chest', () => {
     const sim = fresh();
     const magical = createChest(sim.world, sim.content, {

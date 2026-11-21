@@ -36,6 +36,7 @@ export function roomSettings(deps: NetworkRoomDeps) {
     weather: { label: lobby.weatherLabel, modes: lobby.weatherModes },
     dayNight: { label: lobby.dayNightLabel, modes: lobby.dayNightModes },
     storage: lobby.storage,
+    papers: lobby.papers,
     standardOreYield: () => (world === null ? null : sessionOreYield(world)),
     basicYield: lobby.basicYield,
     oreYield: lobby.oreYield,

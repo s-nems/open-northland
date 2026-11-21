@@ -554,6 +554,7 @@ export const chtGame = {
       },
       papersEmptyTitle: '沒有文書',
       papersEmptyText: '文書可在地圖上的箱子中找到。',
+      papersBannedText: '本局遊戲已停用文書。',
       viewLabel: '檢視',
       nationLabel: '建築所屬民族',
       nationHint: '民族建築：{tribe}',

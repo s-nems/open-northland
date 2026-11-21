@@ -589,6 +589,7 @@ export const itGame = {
       },
       papersEmptyTitle: 'Nessun documento',
       papersEmptyText: 'I documenti si trovano nelle casse sulla mappa.',
+      papersBannedText: 'In questa partita i documenti sono disattivati.',
       viewLabel: 'Vista',
       nationLabel: 'Tribù degli edifici',
       nationHint: 'Edifici della tribù: {tribe}',

@@ -56,6 +56,7 @@ export function lobbyOptionsCard(
     weather: { label: lobby.weatherLabel, modes: lobby.weatherModes },
     dayNight: { label: lobby.dayNightLabel, modes: lobby.dayNightModes },
     storage: lobby.storage,
+    papers: lobby.papers,
     basicYield: lobby.basicYield,
     oreYield: lobby.oreYield,
     ...(extras.standardOreYield === undefined ? {} : { standardOreYield: extras.standardOreYield }),
@@ -80,6 +81,7 @@ export function lobbyOptionsCard(
       if (change.storageCapacity !== undefined) options.storageCapacity = change.storageCapacity;
       if (change.basicYield !== undefined) options.basicYield = change.basicYield;
       if (change.oreYield !== undefined) options.oreYield = change.oreYield;
+      if (change.papers != null) options.papers = change.papers;
       paint();
       extras.onChange?.();
     },

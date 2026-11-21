@@ -32,7 +32,7 @@ describe('persisted session metadata', () => {
       { ...descriptor, initialSave: { tick: 10, fingerprint: 'a'.repeat(64) } },
       roster,
     );
-    expect(metadata).toEqual({ version: 11, descriptor, roster });
+    expect(metadata).toEqual({ version: 12, descriptor, roster });
     const parsed = parseSavedSessionMetadata({
       ...metadata,
       token: 'secret',

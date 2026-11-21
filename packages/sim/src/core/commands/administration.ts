@@ -51,6 +51,12 @@ export type RulesCommand =
       readonly factor: number;
     }
   | {
+      /** Allow or ban papers for every player (`PaperRules`); a ban also takes the papers already held
+       *  but a headquarters paper. Default on. */
+      readonly kind: 'setPapersEnabled';
+      readonly enabled: boolean;
+    }
+  | {
       /** Let wells and hives stand off plantable ground (`BioGroundRules`). Default off. */
       readonly kind: 'setBioGroundWaived';
       readonly waived: boolean;
@@ -142,8 +148,8 @@ export type DebugCommand =
   /** Set a living building or unit to 1..100 percent of its health pool, retaining at least one HP.
    *  An unfinished building uses its built pool; an upgrade keeps the standing building's pool. */
   | { readonly kind: 'debugSetHealth'; readonly target: Entity; readonly percent: number }
-  /** Hand `player` one `paper` outright, as a chest would; dropped for a slot outside `[0, MAX_PLAYERS)`
-   *  or when the player's slots are full. */
+  /** Hand `player` one `paper` outright, as a chest would; dropped for a slot outside `[0, MAX_PLAYERS)`,
+   *  when the player's slots are full or while papers are banned. */
   | { readonly kind: 'grantPaper'; readonly player: number; readonly paper: Paper }
   /** Set `target`'s needs to whole-percent levels (`0` fully sated, `100` maxed, where the NeedsSystem's
    *  starvation and rest drives kick in); an omitted need is left untouched. */

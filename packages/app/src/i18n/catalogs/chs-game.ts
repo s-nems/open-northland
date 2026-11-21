@@ -554,6 +554,7 @@ export const chsGame = {
       },
       papersEmptyTitle: '没有文书',
       papersEmptyText: '文书可在地图上的箱子里找到。',
+      papersBannedText: '本局游戏已关闭文书。',
       viewLabel: '视图',
       nationLabel: '建筑所属民族',
       nationHint: '民族建筑：{tribe}',

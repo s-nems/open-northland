@@ -733,6 +733,9 @@ export const WORLD: ArticleGroup = {
             foot: 'Taka skrzynia daje też osadnika w tym zawodzie i odblokowuje ten zawód.',
           },
         },
+        {
+          p: 'Zaawansowane ustawienie "Papiery", wybierane przed startem gry, może je wyłączyć. Wtedy nikt nie dostaje papierów ze skrzyń ani z mapy; skrzynia z warsztatem daje osadnika i odkrycia, bez papieru. Gracz zachowuje tylko papier na [[building:headquarters|Kwaterę główną]], z którym zaczyna mapę.',
+        },
       ],
       see: ['article:construction', 'article:trades', 'article:draughts'],
     },

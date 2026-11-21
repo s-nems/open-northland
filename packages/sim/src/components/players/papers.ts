@@ -1,4 +1,5 @@
 import { defineComponent, type Entity, type World } from '../../ecs/world.js';
+import { papersEnabled } from '../rules.js';
 import { isValidPlayer } from './ownership.js';
 
 /**
@@ -67,10 +68,10 @@ function samePaper(a: Paper, b: Paper): boolean {
   return a.kind === b.kind && a.param === b.param;
 }
 
-/** Add `paper` to `player`'s first free slot. False for a slot outside `[0, MAX_PLAYERS)` or when all
- *  {@link PAPER_SLOTS} are taken. */
+/** Add `paper` to `player`'s first free slot. False for a slot outside `[0, MAX_PLAYERS)`, when all
+ *  {@link PAPER_SLOTS} are taken or while the world's `PaperRules` hold papers off. */
 export function addPaper(world: World, player: number, paper: Paper): boolean {
-  if (!isValidPlayer(player)) return false;
+  if (!isValidPlayer(player) || !papersEnabled(world)) return false;
   const carrier = papersEntity(world, player);
   if (carrier === null) {
     const e = world.create();
@@ -97,4 +98,14 @@ export function takePaper(world: World, player: number, paper: Paper): boolean {
   while (live.length > 0 && live[live.length - 1] === null) live.pop();
   if (live.length === 0) world.destroy(carrier);
   return true;
+}
+
+/** Spend every held paper `keep` refuses, as {@link takePaper} would. */
+export function dropPapersExcept(world: World, keep: (paper: Paper) => boolean): void {
+  for (const carrier of [...world.query(Papers)]) {
+    const { player, slots } = world.get(carrier, Papers);
+    for (const paper of slots.filter((slot): slot is Paper => slot !== null && !keep(slot))) {
+      takePaper(world, player, paper);
+    }
+  }
 }

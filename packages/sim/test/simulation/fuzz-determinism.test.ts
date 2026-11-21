@@ -541,7 +541,7 @@ function nextCommand(rng: Rng): Command {
   const y = rng.int(NODE_H);
   // Every roll is an explicit case, so a modulus that drifts past the case list throws below instead
   // of silently dropping a command kind from the stream.
-  const roll = rng.int(85);
+  const roll = rng.int(86);
   switch (roll) {
     case 31:
       // An AI-seat flip: valid players (the AiControl carrier created/updated/destroyed - the
@@ -1253,6 +1253,10 @@ function nextCommand(rng: Rng): Command {
       // The storage factor: every store's slot ceiling reads the StorageRules singleton mid-stream; 0 and
       // past the cap are the skip path.
       return { kind: 'setStorageCapacity', factor: rng.int(MAX_STORAGE_CAPACITY_FACTOR + 2) };
+    case 85:
+      // The paper ban: a ban takes every held paper but a headquarters one mid-stream and makes later
+      // grants and chest papers drop; a lift lets them land again.
+      return { kind: 'setPapersEnabled', enabled: rng.int(2) === 0 };
     default:
       throw new Error(`fuzz roll ${roll} has no case: widen the switch or the modulus above`);
   }

@@ -587,6 +587,7 @@ export const enGame = {
       },
       papersEmptyTitle: 'No papers',
       papersEmptyText: 'Papers are found in the chests on the map.',
+      papersBannedText: 'Papers are off in this game.',
       viewLabel: 'View',
       nationLabel: 'Building tribe',
       nationHint: 'Buildings of the tribe: {tribe}',

@@ -107,6 +107,14 @@ export function peaceHoldsUntilTickOf(snapshot: WorldSnapshot): number | null {
   return rules?.holds === true && typeof rules.untilTick === 'number' ? rules.untilTick : null;
 }
 
+/** Whether players get papers: the sim's `PaperRules`, on while absent. */
+export function papersRuleEnabled(snapshot: WorldSnapshot): boolean {
+  const rules = entitiesWith(snapshot, 'PaperRules')[0]?.components.PaperRules as
+    | { enabled?: unknown }
+    | undefined;
+  return rules?.enabled !== false;
+}
+
 /** What the storage buildings' slots are multiplied by: the sim's `StorageRules` factor, 1 while absent. */
 export function storageCapacityFactorOf(snapshot: WorldSnapshot): number {
   const rules = entitiesWith(snapshot, 'StorageRules')[0]?.components.StorageRules as

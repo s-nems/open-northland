@@ -12,6 +12,7 @@ import {
   type MenuBuildingEntry,
   OPEN_AVAILABILITY,
 } from '../../../src/hud/tool-panel/building-menu.js';
+import { messages } from '../../../src/i18n/index.js';
 
 const VIKING = 1;
 const FARM = 12;
@@ -33,6 +34,7 @@ function windowDeps(plane: HTMLElement, entries: readonly MenuBuildingEntry[]): 
     goodIdOf: () => undefined,
     goodLabel: (goodType) => `#${goodType}`,
     papers: () => [],
+    papersBanned: () => false,
     paperLabel: () => '',
     buildingLabel: (typeId) => `#${typeId}`,
     homeTribe: VIKING,
@@ -143,6 +145,21 @@ it("lists a paper's house in each of its looks and spends the plan on the one pi
     plane.querySelector<HTMLButtonElement>('.on-tab--back')?.click();
     cards()[1]?.click();
     expect(picked.at(-1)).toEqual([farmPaper, VIKING, undefined]);
+  } finally {
+    window.dispose();
+  }
+});
+
+it('says on the empty papers page that the game bans papers', () => {
+  const plane = document.createElement('div');
+  document.body.append(plane);
+  const window = createConstructionWindow({ ...windowDeps(plane, []), papersBanned: () => true });
+  try {
+    window.toggle();
+    plane.querySelector<HTMLButtonElement>('.on-button--accent')?.click();
+    const notes = [...plane.querySelectorAll('.on-catalog__empty span')].map((span) => span.textContent);
+    expect(notes).toContain(messages().hud.construction.papersBannedText);
+    expect(notes).not.toContain(messages().hud.construction.papersEmptyText);
   } finally {
     window.dispose();
   }

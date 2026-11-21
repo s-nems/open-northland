@@ -97,6 +97,7 @@ function harness(verify = vi.fn(async () => SAVE)) {
     progression: true,
     needs: true,
     alliedVision: false,
+    papers: true,
   }));
   let delivered: RoomMapTransferOptions['onVerified'] = () => undefined;
   const transfer = {
@@ -297,6 +298,7 @@ describe('room assets coordinator', () => {
         progression: true,
         needs: true,
         alliedVision: false,
+        papers: true,
       };
     });
     h.assets.observe(room());

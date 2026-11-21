@@ -21,6 +21,10 @@ const CONTENT = sandboxContent();
 const FOOD_CHEST = 20;
 /** The chest type a placement without a level authors, which the table does not name. */
 const SCRIPTED_CHEST = 0;
+/** The chest types handing out a place-any paper and the smithy workshop with its smith. */
+const ANY_HOUSE_CHEST = 50;
+const SMITHY_CHEST = 70;
+const SMITH = CONTENT.jobs.find((job) => job.id === 'smith')?.typeId ?? -1;
 const CHEST_NODE: HalfCellNode = { hx: 40, hy: 20 };
 const FAR_NODE: HalfCellNode = { hx: 80, hy: 60 };
 const TRIGGER_RANGE = 1;
@@ -49,12 +53,13 @@ function mission(
   };
 }
 
-function naming(missions: readonly MissionDefinition[] | undefined) {
+function naming(missions: readonly MissionDefinition[] | undefined, papersBanned = false) {
   const script: MissionScript | undefined = missions === undefined ? undefined : { missions };
   return {
     content: CONTENT,
     uiString: (_table: string, _id: number, fallback: string) => fallback,
     buildingLabel: () => undefined,
+    papersBanned: () => papersBanned,
     missions: script,
     seatName: () => undefined,
   };
@@ -70,6 +75,14 @@ describe('the chest contents label', () => {
     expect(chestContentsLabel(naming(undefined), chest('wooden', FOOD_CHEST))).toBe(`${name} ×30`);
     expect(chestContentsLabel(naming(undefined), chest('magical', FOOD_CHEST))).toBe(`${name} ×48`);
     expect(chestContentsLabel(naming(undefined), chest('wooden', SCRIPTED_CHEST))).toBeNull();
+  });
+
+  it('names no paper while the game bans papers, only a workshop chest’s settler', () => {
+    expect(chestContentsLabel(naming(undefined), chest('magical', ANY_HOUSE_CHEST))).not.toBeNull();
+    expect(chestContentsLabel(naming(undefined, true), chest('magical', ANY_HOUSE_CHEST))).toBeNull();
+    expect(chestContentsLabel(naming(undefined, true), chest('wooden', SMITHY_CHEST))).toBe(
+      jobDisplayName(CONTENT, SMITH),
+    );
   });
 
   it('tells what the map script fires once the chest in reach of its goal opens', () => {

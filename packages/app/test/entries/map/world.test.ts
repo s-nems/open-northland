@@ -24,6 +24,16 @@ const NO_SESSION_FLAGS = {
  *  join lanes below plus the harvestable lanes, and this map places no objects. */
 const AUTHORED_IR = AUTHORED_ROWS as ContentIr;
 
+/** The sandbox catalog's headquarters and another house a starting paper names. */
+const HEADQUARTERS = 1;
+const OTHER_HOUSE = 41;
+/** `[specialItems]` rows: a place-any and a headquarters paper for seat 0, a house paper for seat 1. */
+const STARTING_PAPERS = [
+  { player: 0, kind: 2, param: 0 },
+  { player: 1, kind: 3, param: OTHER_HOUSE },
+  { player: 0, kind: 3, param: HEADQUARTERS },
+];
+
 describe('buildMapWorld', () => {
   it.each([null, FOG_MODE.OFF, FOG_MODE.RECON_FOG_OF_WAR])(
     'starts enabled scripts under classic fog unless overridden (%s)',
@@ -273,18 +283,26 @@ describe('buildMapWorld', () => {
       ...NO_SESSION_FLAGS,
       map: authoredMapFile(AUTHORED_ENTITIES),
       ir: AUTHORED_IR,
-      specialItems: [
-        { player: 0, kind: 2, param: 0 },
-        { player: 1, kind: 3, param: 41 },
-        { player: 0, kind: 3, param: 1 },
-      ],
+      specialItems: STARTING_PAPERS,
     });
     expect(sim.papers(0)).toEqual([
       { kind: 'placeAny', param: 0 },
-      { kind: 'placeHouse', param: 1 },
+      { kind: 'placeHouse', param: HEADQUARTERS },
     ]);
-    expect(sim.papers(1)).toEqual([{ kind: 'placeHouse', param: 41 }]);
+    expect(sim.papers(1)).toEqual([{ kind: 'placeHouse', param: OTHER_HOUSE }]);
     expect(sim.papers(2)).toEqual([]);
+  });
+
+  it('bans papers after handing out the starting ones, so a seat keeps only its headquarters paper', () => {
+    const { sim } = buildMapWorld({
+      ...NO_SESSION_FLAGS,
+      map: authoredMapFile(AUTHORED_ENTITIES),
+      ir: AUTHORED_IR,
+      specialItems: STARTING_PAPERS,
+      papers: false,
+    });
+    expect(sim.papers(0)).toEqual([{ kind: 'placeHouse', param: HEADQUARTERS }]);
+    expect(sim.papers(1)).toEqual([]);
   });
 });
 

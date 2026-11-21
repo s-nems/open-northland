@@ -184,6 +184,13 @@ export const enSurfaces = {
         detail: 'Multiplies the iron and gold in the deposits on the map.',
         factor: '×{factor}',
       },
+      papers: {
+        label: 'Papers',
+        detail:
+          'Papers from chests and the map place a building at once. Off, nobody gets one, except the Headquarters paper a map starts a player with.',
+        on: 'Enabled',
+        off: 'Disabled',
+      },
       advanced: {
         label: 'Advanced',
         title: 'Advanced settings',

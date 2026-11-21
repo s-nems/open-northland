@@ -37,6 +37,7 @@ Common options:
 | `peace=30\|45\|60\|75\|90\|120\|180` | Minutes of peace from the match start among the human, idle and lobby computer seats; default none |
 | `storage=2\|3\|5` | Multiply the headquarters' and storehouses' slots; default the content's sizes |
 | `basicyield=2\|3\|5`, `oreyield=2\|3\|5` | Multiply the stock of the map-placed wood, mushrooms, clay and stone, or iron and gold; default the authored stock |
+| `papers=on\|off` | `off` bans papers for every player but a starting headquarters paper; default on |
 | `weather=rain\|snow\|sand\|clear[:percent]` | View-only weather; default intensity 30; leaves simulation weather unchanged |
 | `weather=ambient[:percent]` | Hold the game's weather; 100 is light, 300 is a storm |
 | `tint=<palette index>` | Hold a view-only map tint |

@@ -1,6 +1,6 @@
 # Network protocol
 
-The wire contract between a game client and the relay server, version `PROTOCOL_VERSION = 73` in
+The wire contract between a game client and the relay server, version `PROTOCOL_VERSION = 74` in
 `packages/net-protocol`. A change one side of the current version could not honour (a message shape, or
 the value set of a validated field such as the fog mode ids) bumps the version; the relay refuses a
 `hello` that names another.
@@ -96,6 +96,8 @@ match start among every human, idle and lobby computer seat. The rules' `storage
 the content's sizes) multiplies the slots of every storage building, the headquarters and the storehouses. The
 rules' `basicYield` and `oreYield` (2, 3 or 5, or null for the authored stock) multiply what the map's wood,
 mushroom, clay and stone nodes, and its iron and gold deposits, start with when each client builds the world.
+The rules' `papers` false bans papers for every player: a seat keeps only a headquarters paper the map starts
+it with, and no chest, map or command hands one out; true and null keep them.
 `seats` lists the world's seats in ascending order:
 
 | Field | Meaning |
