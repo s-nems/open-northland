@@ -62,7 +62,10 @@ function* stockEventGoods(
   settler: SettlerIdentity,
   atomicId: number,
 ): IterableIterator<number> {
-  for (const event of clipOf(ctx, settler, atomicId)?.events ?? []) {
+  const events = clipOf(ctx, settler, atomicId)?.events ?? [];
+  for (let i = 0; i < events.length; i++) {
+    const event = events[i];
+    if (event === undefined) continue;
     if (event.type === ATOMIC_EVENT_TYPE_PUT_GOOD_IN_STOCK && event.value !== undefined) yield event.value;
   }
 }

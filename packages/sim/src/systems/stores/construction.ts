@@ -102,7 +102,9 @@ export function neededConstructionGoods(
 ): ReadonlyArray<{ goodType: number; amount: number }> {
   const stock = world.tryGet(site, Stockpile)?.amounts;
   const shortfalls: Array<{ goodType: number; amount: number; covered: number; need: number }> = [];
-  for (const line of constructionBillOf(world, ctx, site)) {
+  const constructionBill = constructionBillOf(world, ctx, site);
+  for (let i = 0; i < constructionBill.length; i++) {
+    const line = constructionBill[i] as GoodsLine;
     const held = Math.max(stock?.get(line.goodType) ?? 0, 0);
     const covered = Math.min(held + supply.inboundOf(site, line.goodType), line.amount);
     if (covered >= line.amount) continue;

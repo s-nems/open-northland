@@ -107,7 +107,10 @@ export function speciesHerdOf(
  */
 export function herdRoom(world: World, ctx: SystemContext, farm: Entity, speciesGood: number): number {
   let held = herdOf(world, farm).length;
-  for (const cycle of world.tryGet(farm, Production)?.cycles ?? []) {
+  const cycles = world.tryGet(farm, Production)?.cycles ?? [];
+  for (let i = 0; i < cycles.length; i++) {
+    const cycle = cycles[i];
+    if (cycle === undefined) continue;
     if (livestockTribeOfGood(ctx.content, cycle.goodType) !== null) held += 1; // a calf on its way
   }
   return stockCapacity(world, ctx, farm, speciesGood) - held;
@@ -132,7 +135,9 @@ export function attachToFarm(world: World, animal: Entity, farm: Entity): void {
 export function recountHerdRows(world: World, ctx: SystemContext, farm: Entity): void {
   if (!world.has(farm, Stockpile)) return;
   const counts = new Map<number, number>();
-  for (const e of herdOf(world, farm)) {
+  const herd = herdOf(world, farm);
+  for (let i = 0; i < herd.length; i++) {
+    const e = herd[i] as Entity;
     const good = speciesGoodOf(world, ctx, e);
     if (good !== null) counts.set(good, (counts.get(good) ?? 0) + 1);
   }
@@ -198,7 +203,9 @@ function birthParentOf(world: World, ctx: SystemContext, farm: Entity, speciesGo
     return hexDistanceBetween(from.x, from.y, at.x, at.y) <= BIRTH_PARENT_RANGE;
   };
   const adults: Entity[] = [];
-  for (const e of herdOf(world, farm)) {
+  const herd = herdOf(world, farm);
+  for (let i = 0; i < herd.length; i++) {
+    const e = herd[i] as Entity;
     if (!isAdultAnimal(world, e) || speciesGoodOf(world, ctx, e) !== speciesGood) continue;
     if (!world.has(e, Health) || !inRange(e)) continue;
     adults.push(e);

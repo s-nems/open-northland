@@ -133,7 +133,9 @@ function planSites(world: World, terrain: TerrainGraph, owner: number | undefine
     const hy = terrain.yOf(entry.node);
     let n = slot * AROUND;
     if (pending[slot] === 1) around[n++] = slot;
-    for (const c of HEX_NEIGHBOUR_OFFSETS) {
+    for (let i = 0; i < HEX_NEIGHBOUR_OFFSETS.length; i++) {
+      const c = HEX_NEIGHBOUR_OFFSETS[i];
+      if (c === undefined) continue;
       const nx = hx + footprintCellDx(hy, c);
       const ny = hy + c.dy;
       if (!terrain.inBounds(nx, ny)) continue;

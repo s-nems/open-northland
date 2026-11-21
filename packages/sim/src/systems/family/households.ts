@@ -110,7 +110,8 @@ export function familiesOf(world: World, house: Entity): Entity[][] {
   const groups = new Map<Entity, Entity[]>(); // keyed by the family head - the couple's lower adult id
   const headByChild = new Map<Entity, Entity>();
   const minors: Entity[] = [];
-  for (const e of residents) {
+  for (let i = 0; i < residents.length; i++) {
+    const e = residents[i] as Entity;
     if (isMinor(world, e)) {
       minors.push(e);
       continue;
@@ -127,7 +128,8 @@ export function familiesOf(world: World, house: Entity): Entity[][] {
     const child = marriage?.child;
     if (child != null && residentSet.has(child)) headByChild.set(child, head);
   }
-  for (const minor of minors) {
+  for (let i = 0; i < minors.length; i++) {
+    const minor = minors[i] as Entity;
     const head = headByChild.get(minor);
     const parents = head !== undefined ? groups.get(head) : undefined;
     if (parents !== undefined) parents.push(minor);

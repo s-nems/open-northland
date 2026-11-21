@@ -162,7 +162,10 @@ export function schoolMethodJob(
 ): number | undefined {
   const tribe = contentIndex(content).tribes.get(tribeId);
   let chosen: number | undefined;
-  for (const edge of tribe?.jobEnables ?? []) {
+  const enables = tribe?.jobEnables ?? [];
+  for (let i = 0; i < enables.length; i++) {
+    const edge = enables[i];
+    if (edge === undefined) continue;
     if (edge.kind !== 'good' || edge.targetId !== good || isFighterJob(content, edge.jobType)) continue;
     if (edge.jobType === current) return current;
     if (chosen === undefined || edge.jobType < chosen) chosen = edge.jobType;

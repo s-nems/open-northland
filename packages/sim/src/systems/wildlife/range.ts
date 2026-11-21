@@ -159,7 +159,9 @@ export function moveWorkCenterPoint(
   if (hexNodeDistance(terrain, here, habitat.workCenter) < WORK_CENTER_REACH) {
     const steps: NodeId[] = [];
     const from = { hx: terrain.xOf(habitat.workCenter), hy: terrain.yOf(habitat.workCenter) };
-    for (const direction of HEX_DIRECTIONS) {
+    for (let i = 0; i < HEX_DIRECTIONS.length; i++) {
+      const direction = HEX_DIRECTIONS[i];
+      if (direction === undefined) continue;
       const p = stepHex(from, direction);
       if (!terrain.inBounds(p.hx, p.hy)) continue;
       const node = terrain.nodeAt(p.hx, p.hy);

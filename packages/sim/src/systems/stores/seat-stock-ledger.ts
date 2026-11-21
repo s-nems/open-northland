@@ -219,16 +219,25 @@ class SeatStockLedger {
     if (this.staleBuckets.size === 0) return;
     const around = new Set<number>();
     for (const bucket of this.staleBuckets) {
-      for (const offset of NEIGHBOUR_BUCKET_OFFSETS) around.add(bucket + offset);
+      for (let i = 0; i < NEIGHBOUR_BUCKET_OFFSETS.length; i++) {
+        const offset = NEIGHBOUR_BUCKET_OFFSETS[i] as number;
+        around.add(bucket + offset);
+      }
     }
     this.staleBuckets.clear();
     for (const bucket of around) {
       for (const heap of this.heapBuckets.get(bucket)?.values() ?? []) {
         const seats = this.seatsReaching(heap.node);
         if (sameSeats(seats, heap.seats)) continue;
-        for (const seat of heap.seats) this.fold(this.heapTotals, seat, heap.units, -1);
+        for (let i = 0; i < heap.seats.length; i++) {
+          const seat = heap.seats[i] as number;
+          this.fold(this.heapTotals, seat, heap.units, -1);
+        }
         heap.seats = sizedCopy(seats);
-        for (const seat of seats) this.fold(this.heapTotals, seat, heap.units, 1);
+        for (let i = 0; i < seats.length; i++) {
+          const seat = seats[i] as number;
+          this.fold(this.heapTotals, seat, heap.units, 1);
+        }
       }
     }
   }

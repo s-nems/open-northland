@@ -17,14 +17,21 @@ export function tendedSpeciesOf(world: World, ctx: SystemContext, farm: Entity):
   const tended = new Set<number>();
   const recipes = recipesByProductOf(world, ctx, farm);
   if (recipes === undefined) return tended;
-  for (const cycle of world.tryGet(farm, Production)?.cycles ?? []) {
+  const cycles = world.tryGet(farm, Production)?.cycles ?? [];
+  for (let k = 0; k < cycles.length; k++) {
+    const cycle = cycles[k];
+    if (cycle === undefined) continue;
     if (livestockTribeOfGood(ctx.content, cycle.goodType) !== null) tended.add(cycle.goodType);
   }
   const goods = contentIndex(ctx.content).goods;
-  for (const worker of assignedWorkers(world, farm)) {
+  const workers = assignedWorkers(world, farm);
+  for (let i = 0; i < workers.length; i++) {
+    const worker = workers[i] as Entity;
     const job = world.tryGet(worker, Settler)?.jobType ?? null;
     if (job === null) continue;
-    for (const good of craftablePool(world, ctx, worker, recipes)) {
+    const pool = craftablePool(world, ctx, worker, recipes);
+    for (let j = 0; j < pool.length; j++) {
+      const good = pool[j] as number;
       if (livestockTribeOfGood(ctx.content, good) === null) continue;
       const produce = goods.get(good)?.atomics.produce;
       if (produce != null && jobAllowsAtomic(ctx.content, job, produce)) tended.add(good);

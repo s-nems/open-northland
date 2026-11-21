@@ -83,9 +83,18 @@ function retakeAnswer(
   answer.unlocks = unlocks;
   const cycles = world.tryGet(building, Production)?.cycles;
   answer.batches.length = 0;
-  for (const cycle of cycles ?? NO_CYCLES) answer.batches.push(cycle.goodType);
+  const batchCycles = cycles ?? NO_CYCLES;
+  for (let i = 0; i < batchCycles.length; i++) {
+    const cycle = batchCycles[i];
+    if (cycle === undefined) continue;
+    answer.batches.push(cycle.goodType);
+  }
   answer.crew.length = 0;
-  for (const worker of assignedWorkers(world, building)) answer.crew.push(crewTribe(world, worker));
+  const workers = assignedWorkers(world, building);
+  for (let i = 0; i < workers.length; i++) {
+    const worker = workers[i] as Entity;
+    answer.crew.push(crewTribe(world, worker));
+  }
   if (held === undefined) memo.answers.set(building, answer);
   return open;
 }
@@ -106,7 +115,8 @@ function tribesTabled(world: World, ctx: SystemContext, building: Entity): boole
   if (workers.length === 0) {
     return tribes.get(world.get(building, Building).tribe)?.technology !== undefined;
   }
-  for (const worker of workers) {
+  for (let i = 0; i < workers.length; i++) {
+    const worker = workers[i] as Entity;
     const tribe = crewTribe(world, worker);
     if (tribe !== undefined && tribes.get(tribe)?.technology === undefined) return false;
   }

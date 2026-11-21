@@ -57,7 +57,8 @@ export const livestockCaptureSystem: System = (world, ctx) => {
   if (world.query(Livestock, Position).next().done === true) return;
   const scouts = claimingScouts(world, ctx.content);
   const found: Entity[] = [];
-  for (const scout of scouts) {
+  for (let i = 0; i < scouts.length; i++) {
+    const scout = scouts[i] as Entity;
     const at = entityNode(world, terrain, scout);
     if (!steppedOnto(world, scout, at)) continue;
     const player = world.get(scout, Owner).player;

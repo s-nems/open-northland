@@ -117,7 +117,9 @@ export const livestockAssignmentSystem: System = (world, ctx) => {
     }
     return tended;
   };
-  for (const e of world.canonicalQuery(Livestock, Owner, Settler, Position)) {
+  const animals = world.canonicalQuery(Livestock, Owner, Settler, Position);
+  for (let j = 0; j < animals.length; j++) {
+    const e = animals[j] as Entity;
     // A cart's recruit is walking to its cart: herding resumes on release.
     if (world.has(e, DraughtAnimal)) continue;
     const held = world.tryGet(e, FarmAnimal);
@@ -150,7 +152,8 @@ export const livestockAssignmentSystem: System = (world, ctx) => {
     strays.push(e);
   }
   const yardsByPlayer = new Map<number, StrayYards>();
-  for (const e of strays) {
+  for (let j = 0; j < strays.length; j++) {
+    const e = strays[j] as Entity;
     const player = world.get(e, Owner).player;
     let yards = yardsByPlayer.get(player);
     if (yards === undefined) {

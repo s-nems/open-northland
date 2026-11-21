@@ -73,7 +73,10 @@ export const signpostOrderSystem: System = (world, ctx) => {
   if (terrain === undefined) return; // mapless: no orders were issuable
   // Canonical order: two scouts arriving the same tick at mutually-exclusive spots race, and the lower
   // entity id must win rather than whichever the store iterated first.
-  for (const e of world.canonicalQuery(Settler, ErectSignpostOrder)) {
+  const settlers = world.canonicalQuery(Settler, ErectSignpostOrder);
+  for (let i = 0; i < settlers.length; i++) {
+    const e = settlers[i];
+    if (e === undefined) continue;
     const settler = world.get(e, Settler);
     const owner = world.tryGet(e, Owner);
     if (!isScoutJob(ctx.content, settler.jobType) || owner === undefined) {

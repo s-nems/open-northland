@@ -142,7 +142,9 @@ export class ExternalFoodIndex {
   private foodsWithRoomAt(home: Entity): readonly number[] {
     const roomy = this.roomy;
     roomy.length = 0;
-    for (const goodType of familyFoods(this.ctx.content)) {
+    const foods = familyFoods(this.ctx.content);
+    for (let i = 0; i < foods.length; i++) {
+      const goodType = foods[i] as number;
       if (hasRoom(this.world, this.ctx, home, goodType)) roomy.push(goodType);
     }
     return roomy;

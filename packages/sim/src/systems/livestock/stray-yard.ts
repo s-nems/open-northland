@@ -47,7 +47,9 @@ export function strayYardOf(
 ): StrayYards {
   const types = contentIndex(ctx.content).buildings;
   const lands = new Map<number, LandDoors>();
-  for (const e of ownedBuildings(world, player)) {
+  const buildings = ownedBuildings(world, player);
+  for (let i = 0; i < buildings.length; i++) {
+    const e = buildings[i] as Entity;
     const building = world.get(e, Building);
     if (building.built < ONE) continue;
     const type = types.get(building.buildingType);

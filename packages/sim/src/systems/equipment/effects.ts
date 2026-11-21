@@ -137,7 +137,10 @@ export function carriedCombatEffects(world: World, content: ContentSet, e: Entit
  *  `max` times the sips left, rounded up as a part-used potion still gives a whole sip. */
 export function healingReserveOf(world: World, content: ContentSet, e: Entity, max: number): number {
   let reserve = 0;
-  for (const slot of world.tryGet(e, Equipment)?.misc ?? []) {
+  const misc = world.tryGet(e, Equipment)?.misc ?? [];
+  for (let i = 0; i < misc.length; i++) {
+    const slot = misc[i];
+    if (slot === undefined) continue;
     const equip = liveEquipOf(content, slot);
     const sip = equip?.restorePct?.healthMax;
     if (slot == null || equip?.uses === undefined || sip === undefined) continue;

@@ -21,7 +21,10 @@ const PERCENT = 100;
 export const hullFireSystem: System = (world, ctx) => {
   if (ctx.tick % TICKS_PER_SECOND !== 0) return;
   const vehicles = contentIndex(ctx.content).vehicles;
-  for (const e of world.canonicalQuery(Vehicle, Health, Position)) {
+  const hulls = world.canonicalQuery(Vehicle, Health, Position);
+  for (let i = 0; i < hulls.length; i++) {
+    const e = hulls[i];
+    if (e === undefined) continue;
     const type = vehicles.get(world.get(e, Vehicle).vehicleType);
     if (type === undefined || !isShipVehicle(type)) continue;
     const health = world.get(e, Health);
