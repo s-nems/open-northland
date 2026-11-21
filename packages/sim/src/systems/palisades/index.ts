@@ -130,7 +130,7 @@ export function createPalisade(
     readonly tribe: number;
     readonly owner?: number;
     readonly underConstruction: boolean;
-    readonly valency?: number;
+    readonly hitpoints?: number;
     readonly placementWalk?: readonly FootprintCell[];
     readonly landscapeId?: number;
   },
@@ -139,7 +139,7 @@ export function createPalisade(
   if (wall === undefined || wall.maxHitpoints <= 0 || wall.repairPerStrike <= 0) return null;
   const hitpoints = spec.underConstruction
     ? 1
-    : Math.min(wall.maxHitpoints, Math.max(1, spec.valency ?? wall.maxHitpoints));
+    : Math.min(wall.maxHitpoints, Math.max(1, spec.hitpoints ?? wall.maxHitpoints));
   const e = world.create();
   world.add(e, Position, positionOfNode(spec.x, spec.y));
   world.add(e, Palisade, {
@@ -654,7 +654,7 @@ export function placePalisade(
     tribe: command.tribe,
     ...(command.owner !== undefined ? { owner: command.owner } : {}),
     underConstruction: command.underConstruction === true,
-    ...(command.valency !== undefined ? { valency: command.valency } : {}),
+    ...(command.hitpoints !== undefined ? { hitpoints: command.hitpoints } : {}),
     ...(command.landscapeId !== undefined ? { landscapeId: command.landscapeId } : {}),
     placementWalk: type.wall?.gate === undefined ? walk : placementWalkOf(terrain, type),
   });

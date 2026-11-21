@@ -12,7 +12,7 @@ export interface MapPalisadeSpawn {
   readonly placement: number;
   readonly owner: number | undefined;
   /** The authored level as hitpoints ({@link wallLevelHitpoints}). */
-  readonly valency: number | undefined;
+  readonly hitpoints: number | undefined;
 }
 
 /** Map object-name → exact source wall/gate graphics record. */
@@ -41,7 +41,7 @@ export function mapPalisadeSpawns(objects: TerrainObjects, ir: ContentIr): MapPa
         hy,
         placement,
         owner: objects.owners?.[placement] ?? undefined,
-        valency: level === undefined ? undefined : wallLevelHitpoints(level, scales.get(gfxIndex) ?? 1),
+        hitpoints: level === undefined ? undefined : wallLevelHitpoints(level, scales.get(gfxIndex) ?? 1),
       });
     }
   });
@@ -72,7 +72,7 @@ export function spawnMapPalisades(
       y: spawn.hy,
       tribe: tribeForOwner(spawn.owner),
       ...(spawn.owner !== undefined ? { owner: spawn.owner } : {}),
-      ...(spawn.valency !== undefined ? { valency: spawn.valency } : {}),
+      ...(spawn.hitpoints !== undefined ? { hitpoints: spawn.hitpoints } : {}),
       landscapeId: spawn.placement,
       underConstruction: false,
       force: true,

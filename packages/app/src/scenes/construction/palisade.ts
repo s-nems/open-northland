@@ -55,7 +55,7 @@ export const PALISADE_WORK_SITES = {
   unclaimed: { hx: 44, hy: 12 },
 } as const;
 /** Authored at 100 of 150 valency points: ten repair swings. */
-const DAMAGED_YARD_WALL = { hx: 8, hy: 40, valency: 100 * WALL_HITPOINTS_PER_VALENCY } as const;
+const DAMAGED_YARD_WALL = { hx: 8, hy: 40, hitpoints: 100 * WALL_HITPOINTS_PER_VALENCY } as const;
 const COMMAND_CHAIN = [
   { hx: 30, hy: 36 },
   { hx: 31, hy: 36 },
@@ -191,7 +191,7 @@ function build(sim: Simulation): void {
     y: DAMAGED_YARD_WALL.hy,
     tribe: PRIMARY_TRIBE,
     owner: HUMAN_PLAYER,
-    valency: DAMAGED_YARD_WALL.valency,
+    hitpoints: DAMAGED_YARD_WALL.hitpoints,
   });
   sim.enqueueSetup({
     kind: 'placePalisade',

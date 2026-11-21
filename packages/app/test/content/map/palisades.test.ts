@@ -31,9 +31,9 @@ describe('map palisade promotion', () => {
     };
 
     expect(mapPalisadeSpawns(objects, IR)).toEqual([
-      { gfxIndex: 691, hx: 2, hy: 4, placement: 0, owner: 0, valency: 15_000 },
-      { gfxIndex: 691, hx: 3, hy: 4, placement: 1, owner: 12, valency: 6000 },
-      { gfxIndex: 691, hx: 4, hy: 4, placement: 2, owner: undefined, valency: 9000 },
+      { gfxIndex: 691, hx: 2, hy: 4, placement: 0, owner: 0, hitpoints: 15_000 },
+      { gfxIndex: 691, hx: 3, hy: 4, placement: 1, owner: 12, hitpoints: 6000 },
+      { gfxIndex: 691, hx: 4, hy: 4, placement: 2, owner: undefined, hitpoints: 9000 },
     ]);
   });
 
@@ -83,8 +83,8 @@ describe('map palisade promotion', () => {
 
     // An open gate blocks two cells but scales by its closed pair's five.
     expect(mapPalisadeSpawns(objects, gateIr)).toEqual([
-      { gfxIndex: 697, hx: 2, hy: 4, placement: 0, owner: 0, valency: 35_000 },
-      { gfxIndex: 701, hx: 6, hy: 4, placement: 1, owner: 0, valency: 35_000 },
+      { gfxIndex: 697, hx: 2, hy: 4, placement: 0, owner: 0, hitpoints: 35_000 },
+      { gfxIndex: 701, hx: 6, hy: 4, placement: 1, owner: 0, hitpoints: 35_000 },
     ]);
   });
 
@@ -112,7 +112,7 @@ describe('map palisade promotion', () => {
         y: 4,
         tribe: 1,
         owner: 0,
-        valency: 15_000,
+        hitpoints: 15_000,
         landscapeId: 0,
         underConstruction: false,
         force: true,
@@ -124,7 +124,7 @@ describe('map palisade promotion', () => {
         y: 4,
         tribe: 7,
         owner: 12,
-        valency: 6000,
+        hitpoints: 6000,
         landscapeId: 1,
         underConstruction: false,
         force: true,

@@ -415,7 +415,7 @@ describe('CommandSystem - command authority', () => {
       const place = { kind: 'placePalisade', gfxIndex: WALL_ROW, x: 6, y: 6, tribe: VIKING } as const;
       const cheats = [
         { ...place, force: true },
-        { ...place, valency: 40 },
+        { ...place, hitpoints: 40 },
         { ...place, landscapeId: 0 },
         { ...place, underConstruction: false },
         { ...place, waivedGround: [{ x: 6, y: 6, obstacle: 1, walls: 1 }] },

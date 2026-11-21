@@ -48,7 +48,7 @@ export interface PlacePalisadeCommand {
   /** Trusted map setup may place an already-standing neutral or owned wall. */
   readonly underConstruction?: boolean;
   /** Trusted authored-map durability in hitpoints; ignored for a construction site. */
-  readonly valency?: number;
+  readonly hitpoints?: number;
   /** Trusted: the authored map placement this wall stands for, so a script removing it razes the wall. */
   readonly landscapeId?: number;
   readonly force?: boolean;

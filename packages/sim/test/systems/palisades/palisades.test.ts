@@ -354,9 +354,9 @@ describe('palisades', () => {
       y: 4,
       tribe: 0,
       owner: 0,
-      valency: 60,
+      hitpoints: 60,
     });
-    sim.enqueueSetup({ kind: 'placePalisade', gfxIndex: WALL.typeId, x: 12, y: 12, tribe: 0, valency: 60 });
+    sim.enqueueSetup({ kind: 'placePalisade', gfxIndex: WALL.typeId, x: 12, y: 12, tribe: 0, hitpoints: 60 });
     sim.step();
     const [owned, unowned] = [...sim.world.query(Palisade, Position)].sort((a, b) => a - b);
     if (owned === undefined || unowned === undefined) throw new Error('expected two walls');
@@ -465,7 +465,7 @@ describe('palisades', () => {
       y: 8,
       tribe: 0,
       owner: 2,
-      valency: 40,
+      hitpoints: 40,
     });
     sim.step();
     const gate = onlyPalisade(sim);

@@ -1052,7 +1052,7 @@ function nextCommand(rng: Rng): Command {
         ...(rng.int(2) === 0 ? { underConstruction: true } : {}),
         ...(rng.int(2) === 0 ? { owner: pick(rng, OWNERS) } : {}),
         ...(rng.int(4) === 0 ? { force: true } : {}),
-        ...(rng.int(4) === 0 ? { valency: rng.int(120) } : {}),
+        ...(rng.int(4) === 0 ? { hitpoints: rng.int(120) } : {}),
       };
     case 54:
       // A wall tear-down: the preamble run, stream walls and sites, and non-wall or dead ids.

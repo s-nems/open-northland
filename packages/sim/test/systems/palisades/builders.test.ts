@@ -280,7 +280,7 @@ describe('palisade builders', () => {
       y: ROW,
       tribe: VIKING,
       owner: HUMAN,
-      valency: 70,
+      hitpoints: 70,
     });
     builderAt(sim, 8);
     sim.step();
@@ -313,7 +313,7 @@ describe('palisade builders', () => {
         y: ROW,
         tribe: VIKING,
         owner: HUMAN,
-        valency: 50,
+        hitpoints: 50,
       });
     place(WALL.typeId, 20);
     place(CLOSED_GATE.typeId, 50);
@@ -350,7 +350,7 @@ describe('palisade builders', () => {
         ...extra,
       });
     place(12, { underConstruction: true });
-    place(24, { valency: 70 });
+    place(24, { hitpoints: 70 });
     builderAt(sim, 8);
     sim.step();
     const [segment, damaged] = [...sim.world.query(Palisade)].sort((a, b) => a - b);
@@ -381,7 +381,7 @@ describe('palisade builders', () => {
       y: ROW,
       tribe: VIKING,
       owner: HUMAN,
-      valency: 10,
+      hitpoints: 10,
     });
     const builders = [16, 18, 20, 28, 30, 32, 34].map((hx) => builderAt(sim, hx));
     sim.step();
@@ -412,7 +412,7 @@ describe('palisade builders', () => {
       y: ROW,
       tribe: VIKING,
       owner: HUMAN,
-      valency: 90,
+      hitpoints: 90,
     });
     builderAt(sim, 16);
     sim.step();
@@ -482,7 +482,7 @@ describe('wall claims', () => {
 
   it('refuse a pin to a damaged wall whose one-mender crew is full, a pinned mender included', () => {
     const sim = wallSim();
-    const wall = wallSite(sim, 24, { valency: 50 });
+    const wall = wallSite(sim, 24, { hitpoints: 50 });
     const first = builderAt(sim, 20);
     const second = builderAt(sim, 28);
     sim.enqueueSetup({ kind: 'assignBuilder', entity: first, site: wall });

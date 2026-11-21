@@ -173,7 +173,7 @@ function hasAuthoredOptions(
   if (command.kind === 'placePalisade')
     return (
       command.underConstruction === false ||
-      command.valency !== undefined ||
+      command.hitpoints !== undefined ||
       command.landscapeId !== undefined ||
       command.force !== undefined ||
       (command.waivedGround !== undefined && !mapAi)

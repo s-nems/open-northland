@@ -361,7 +361,7 @@ const COMMAND_PAYLOAD: { readonly [K in Command['kind']]: PayloadSpec<Extract<Co
     optional: {
       owner: 'integer',
       underConstruction: 'boolean',
-      valency: 'integer',
+      hitpoints: 'integer',
       landscapeId: 'integer',
       force: 'boolean',
       overUpgradeGround: 'boolean',
