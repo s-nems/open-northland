@@ -1,6 +1,6 @@
 import { Graphics, Texture } from 'pixi.js';
 import { BloodSurfaceSprite } from '../blood/surface-sprite.js';
-import { SELECTION_GHOST_OUTLINE, SELECTION_OUTLINE } from '../world-batch/shader.js';
+import { SELECTION_COVER, SELECTION_GHOST_OUTLINE, SELECTION_OUTLINE } from '../world-batch/shader.js';
 
 /** One world-batch value: negative draws a tinted silhouette; non-negative packs a colour lift (see
  *  `SELECTION_TONE_BAND`). */
@@ -94,6 +94,41 @@ export class GhostOutlineSprite extends OutlineSprite {
   constructor() {
     super();
     this.selectionEffect = SELECTION_GHOST_OUTLINE;
+  }
+}
+
+/**
+ * An occluder's copy in the occlusion ghosts' depth clip (`SELECTION_COVER`), drawn only inside
+ * {@link clip}: the part of the quad on which a ghost tests the depth it writes.
+ */
+export class CoverSprite extends SelectionSprite {
+  /** The drawn part as minX, minY, maxX, maxY in the units of the sprite's own bounds; the whole quad
+   *  until {@link setClip} narrows it. */
+  readonly clip = new Float32Array([
+    Number.NEGATIVE_INFINITY,
+    Number.NEGATIVE_INFINITY,
+    Number.POSITIVE_INFINITY,
+    Number.POSITIVE_INFINITY,
+  ]);
+
+  constructor() {
+    super();
+    this.selectionEffect = SELECTION_COVER;
+  }
+
+  /** Compared as stored, so a clip that held still repacks nothing. */
+  setClip(minX: number, minY: number, maxX: number, maxY: number): void {
+    const clip = this.clip;
+    const x0 = Math.fround(minX);
+    const y0 = Math.fround(minY);
+    const x1 = Math.fround(maxX);
+    const y1 = Math.fround(maxY);
+    if (clip[0] === x0 && clip[1] === y0 && clip[2] === x1 && clip[3] === y1) return;
+    clip[0] = x0;
+    clip[1] = y0;
+    clip[2] = x1;
+    clip[3] = y1;
+    this.onViewUpdate();
   }
 }
 

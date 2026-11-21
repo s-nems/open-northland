@@ -35,7 +35,7 @@ import {
   setWorldShadowStyle,
   WORLD_MAGNIFY_MODES,
 } from '../../../src/gpu/pixel-art/registry.js';
-import { OutlineSprite, SelectionSprite } from '../../../src/gpu/selection/sprite-effect.js';
+import { CoverSprite, OutlineSprite, SelectionSprite } from '../../../src/gpu/selection/sprite-effect.js';
 import { glProgramFor } from '../../../src/gpu/shaders/program-source.js';
 import {
   bindWorldBatchPagesAndLut,
@@ -355,6 +355,41 @@ describe('world batcher repack in place', () => {
     setWorldShadowStyle(null);
     batcher.destroy();
     sprite.destroy();
+  });
+
+  it('packs a cover cut to its clip with the uv the whole quad has there, and never moves it in place', () => {
+    const source = new TextureSource({ width: 8, height: 8 });
+    const cover = new CoverSprite();
+    cover.texture = new Texture({ source, frame: new Rectangle(2, 4, 2, 4) });
+    const { batcher, floats, element, repackedWhole } = packed(cover);
+    const UV_AT = WORLD_ATTRIBUTE_OFFSETS.aUV / 4;
+    const vertices = () =>
+      [0, 1, 2, 3].map((v) =>
+        Array.from(floats.slice(v * WORLD_VERTEX_SIZE, v * WORLD_VERTEX_SIZE + UV_AT + 2)),
+      );
+    // Whole until a clip narrows it: the frame's own corners.
+    expect(vertices()).toEqual([
+      [0, 0, 2 / 8, 4 / 8],
+      [2, 0, 4 / 8, 4 / 8],
+      [2, 4, 4 / 8, 8 / 8],
+      [0, 4, 2 / 8, 8 / 8],
+    ]);
+    cover.setClip(1, 1, 5, 3);
+    element.transform.tx = 10;
+    expect(repackedWhole()).toBe(true);
+    expect(vertices()).toEqual([
+      [11, 1, 3 / 8, 5 / 8],
+      [12, 1, 4 / 8, 5 / 8],
+      [12, 3, 4 / 8, 7 / 8],
+      [11, 3, 3 / 8, 7 / 8],
+    ]);
+    // A move alone would write the whole quad's corners under the cut uvs.
+    element.transform.tx = 20;
+    expect(repackedWhole()).toBe(true);
+    expect(vertices()[0]).toEqual([21, 1, 3 / 8, 5 / 8]);
+    batcher.destroy();
+    cover.destroy();
+    source.destroy();
   });
 
   it('packs a blood surface whole every time: its stains change without a view update', () => {

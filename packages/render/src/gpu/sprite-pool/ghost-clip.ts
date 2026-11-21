@@ -29,6 +29,9 @@ export class GhostClip {
   readonly marks = new Container({ isRenderGroup: true });
   /** Whether a ghost shows this frame; an idle clip leaves the depth buffer alone. */
   active = false;
+  /** Whether this render draws the ghosts at all; an inset that leaves them out skips the gates too,
+   *  since its covers and marks never draw. */
+  shown = true;
 
   constructor(overlay: Container) {
     overlay.addChild(
@@ -41,7 +44,7 @@ export class GhostClip {
   }
 
   private beginCovers(renderer: Renderer): void {
-    if (!this.active || !(renderer instanceof WebGLRenderer)) return;
+    if (!this.active || !this.shown || !(renderer instanceof WebGLRenderer)) return;
     renderer.renderTarget.ensureDepthStencil();
     const gl = renderer.gl;
     gl.enable(gl.DEPTH_TEST);
@@ -53,7 +56,7 @@ export class GhostClip {
   }
 
   private beginMarks(renderer: Renderer): void {
-    if (!this.active || !(renderer instanceof WebGLRenderer)) return;
+    if (!this.active || !this.shown || !(renderer instanceof WebGLRenderer)) return;
     const gl = renderer.gl;
     renderer.colorMask.setMask(ALL_CHANNELS);
     gl.depthMask(false);
@@ -61,7 +64,7 @@ export class GhostClip {
   }
 
   private end(renderer: Renderer): void {
-    if (!this.active || !(renderer instanceof WebGLRenderer)) return;
+    if (!this.active || !this.shown || !(renderer instanceof WebGLRenderer)) return;
     const gl = renderer.gl;
     gl.disable(gl.DEPTH_TEST);
     gl.depthMask(false);
