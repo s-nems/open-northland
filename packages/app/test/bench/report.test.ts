@@ -48,6 +48,7 @@ const META: Parameters<typeof summarize>[2] = {
   cpuMsPerTick: 9,
   allocKbPerTick: 64,
   retainedHeapMbAtStart: null,
+  retainedBuffersMbAtStart: null,
   windows: [],
   environment: ENVIRONMENT,
   trust: { trustworthy: true, warnings: [] },
@@ -74,6 +75,7 @@ function windowFixture(index: number, medianMs: number, overrides: Partial<Bench
     rssMb: 200 + index,
     heapUsedMb: 120 + index,
     retainedHeapMb: null,
+    retainedBuffersMb: null,
     gc: { count: 3, ms: 2.5, maxMs: 1.25 },
     cpuMsPerTick: medianMs,
     allocKbPerTick: 64,
@@ -251,6 +253,21 @@ describe('formatReport', () => {
         ?.trimEnd()
         .endsWith('ai'),
     ).toBe(true);
+  });
+
+  it('sums the retained heap and array buffers into a retained total', () => {
+    const report = {
+      ...summarize(new Map([['ai', [1]]]), [1], {
+        ...META,
+        retainedHeapMbAtStart: 180,
+        retainedBuffersMbAtStart: 100.5,
+      }),
+      windows: [windowFixture(0, 1, { retainedHeapMb: 190, retainedBuffersMb: 110 })],
+    };
+    expect(formatReport(report)).toContain(
+      'retained heap after a full gc: start 180.0 MB, end 190.0 MB; array buffers start 100.5 MB, ' +
+        'end 110.0 MB; total start 280.5 MB, end 300.0 MB',
+    );
   });
 });
 

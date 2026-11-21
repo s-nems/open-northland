@@ -28,6 +28,7 @@ function report(startedAt: string, overrides: Partial<BenchReport> = {}): BenchR
     cpuMsPerTick: 5.5,
     allocKbPerTick: 80,
     retainedHeapMbAtStart: null,
+    retainedBuffersMbAtStart: null,
     systems: [{ name: 'computer', meanMs: 4, medianMs: 4, p95Ms: 8, maxMs: 16, sharePct: 100 }],
     slowestTicks: [],
     stutterSources: [],

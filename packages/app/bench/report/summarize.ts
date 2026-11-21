@@ -150,6 +150,7 @@ export function summarize(
     readonly cpuMsPerTick: number;
     readonly allocKbPerTick: number | null;
     readonly retainedHeapMbAtStart: number | null;
+    readonly retainedBuffersMbAtStart: number | null;
     readonly windows: readonly BenchWindow[];
     readonly environment: BenchEnvironment;
     readonly trust: BenchTrust;
@@ -165,6 +166,7 @@ export function summarize(
     cpuMsPerTick: meta.cpuMsPerTick,
     allocKbPerTick: meta.allocKbPerTick,
     retainedHeapMbAtStart: meta.retainedHeapMbAtStart,
+    retainedBuffersMbAtStart: meta.retainedBuffersMbAtStart,
     systems,
     slowestTicks: slowestTicks(perSystem, tickSamples, meta.firstTick),
     stutterSources: stutterSources(perSystem, tickSamples),

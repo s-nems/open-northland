@@ -27,7 +27,7 @@ import { publishReport, reportFrom } from './run.js';
  * `ON_BENCH_MIRROR_BATCH` (ticks per delta, default 1), `ON_BENCH_MIRROR_DIGEST` (carry the truth digest),
  * `ON_BENCH_MIRROR_SPLIT` (time each frame index reader), `ON_BENCH_MIRROR_PARITY` (random batches,
  * indexes checked per delta) and `ON_BENCH_MIRROR_BREAKDOWN` (what the deltas are made of),
- * `ON_BENCH_HEAP=retained` (a full gc at each window end, reporting the heap that survives it),
+ * `ON_BENCH_HEAP=retained` (a full gc at each window end, reporting the heap and array buffers that survive it),
  * `ON_BENCH_CHECKPOINT`, `ON_BENCH_SKIP` and `ON_BENCH_CHECKPOINTS` (see `map-world.ts`), the
  * `ON_BENCH_MARCH_*` group attack-move (see `march-order.ts`),
  * `ON_BENCH_JSON=<path>` (write the machine-readable report).
@@ -56,7 +56,9 @@ function progressLine(window: BenchWindow, total: number): string {
     `alloc ${window.allocKbPerTick?.toFixed(1) ?? 'n/a'} KB  gc ${window.gc.ms.toFixed(0)} ms  ` +
     `settlers ${window.population.settlers}  fighters ${window.population.fighters}  ` +
     `buildings ${window.population.buildings}  rss ${window.rssMb} MB` +
-    (window.retainedHeapMb === null ? '' : `  retained heap ${window.retainedHeapMb.toFixed(1)} MB`)
+    (window.retainedHeapMb === null || window.retainedBuffersMb === null
+      ? ''
+      : `  retained heap ${window.retainedHeapMb.toFixed(1)} MB + buffers ${window.retainedBuffersMb.toFixed(1)} MB`)
   );
 }
 

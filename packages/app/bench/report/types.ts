@@ -2,7 +2,7 @@
 
 /** The report layout the reader accepts; a layout change bumps it, and a report of any other version is
  *  refused rather than read. */
-export const BENCH_REPORT_VERSION = 9;
+export const BENCH_REPORT_VERSION = 10;
 
 /** One system's cost across a measured segment. `sharePct` is its share of the summed per-system
  *  time - the scale-invariant number a regression check can compare across machines. */
@@ -99,6 +99,9 @@ export interface BenchWindow {
   /** V8 heap in use after a forced full collection at the segment's end (`ON_BENCH_HEAP=retained`): what
    *  the world keeps alive, without garbage or the sample buffers, which live outside the heap. */
   readonly retainedHeapMb: number | null;
+  /** Array-buffer backing stores (typed arrays, Buffers) outside the V8 heap after the same collection,
+   *  less the harness's per-tick sample buffers: the world's typed-array state. */
+  readonly retainedBuffersMb: number | null;
   readonly gc: GcStat;
   /** Main-thread CPU time (user + system) per tick, read at the segment's bounds. Unlike the wall
    *  tick it does not count time the thread waited for a core, so it moves less with machine load.
@@ -149,8 +152,10 @@ export interface BenchReport {
   /** Whole-run {@link BenchWindow.cpuMsPerTick} and {@link BenchWindow.allocKbPerTick}. */
   readonly cpuMsPerTick: number;
   readonly allocKbPerTick: number | null;
-  /** {@link BenchWindow.retainedHeapMb} before the first window; null unless measured. */
+  /** {@link BenchWindow.retainedHeapMb} and {@link BenchWindow.retainedBuffersMb} before the first
+   *  window; null unless measured. */
   readonly retainedHeapMbAtStart: number | null;
+  readonly retainedBuffersMbAtStart: number | null;
   /** Whole-run per-system rows, heaviest median first. */
   readonly systems: readonly SystemStat[];
   /** The run's slowest ticks, slowest first. */

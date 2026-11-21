@@ -5,7 +5,7 @@
  */
 import { compareReports } from './compare.js';
 import { type Column, table } from './table.js';
-import type { BenchReport } from './types.js';
+import type { BenchReport, BenchWindow } from './types.js';
 
 /** One repeat: checkout A's and checkout B's report of the same run. */
 export interface PairRepeat {
@@ -13,11 +13,19 @@ export interface PairRepeat {
   readonly b: BenchReport;
 }
 
+/** The heap and the array buffers the world keeps after the last window's full collection. */
+function retainedTotalMb(window: BenchWindow | undefined): number | null {
+  const heap = window?.retainedHeapMb ?? null;
+  const buffers = window?.retainedBuffersMb ?? null;
+  return heap === null || buffers === null ? null : heap + buffers;
+}
+
 const PAIR_METRICS: readonly (readonly [string, (report: BenchReport) => number | null])[] = [
   ['tick mean', (r) => r.tickMs.meanMs],
   ['cpu ms/tick', (r) => r.cpuMsPerTick],
   ['alloc KB/tick', (r) => r.allocKbPerTick],
   ['retained heap MB', (r) => r.windows.at(-1)?.retainedHeapMb ?? null],
+  ['retained total MB', (r) => retainedTotalMb(r.windows.at(-1))],
 ];
 
 export interface PairMetric {

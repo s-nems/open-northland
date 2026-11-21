@@ -29,7 +29,7 @@ export interface MeasureOptions {
   /** Called after every warm-up and measured step, outside the timed interval. */
   readonly afterTick?: () => void;
   /** Force a full collection before the first window and at each window end, outside the timed
-   *  interval and the work counters, and report the heap that survives it. */
+   *  interval and the work counters, and report the heap and array buffers that survive it. */
   readonly retainedHeap?: boolean;
 }
 
@@ -47,8 +47,10 @@ export interface Measurement {
   /** The worst load sampled across the run, so a box that got busy midway is not averaged away. */
   readonly loadPerCpu: number | null;
   readonly peakRssMb: number;
-  /** Retained heap before the first window; null unless {@link MeasureOptions.retainedHeap}. */
+  /** Retained heap and array buffers before the first window; null unless
+   *  {@link MeasureOptions.retainedHeap}. */
   readonly retainedHeapMbAtStart: number | null;
+  readonly retainedBuffersMbAtStart: number | null;
   /** Whole-run {@link BenchWindow.cpuMsPerTick} and {@link BenchWindow.allocKbPerTick}. */
   readonly cpuMsPerTick: number;
   readonly allocKbPerTick: number | null;
@@ -90,12 +92,21 @@ function exposedGc(): () => void {
   return () => gc();
 }
 
-/** The heap that survives a full collection: what the world and the harness keep alive. */
-function retainedHeapMb(gc: () => void): number {
+function tenthsOfMb(bytes: number): number {
+  return Math.round((bytes / BYTES_PER_MB) * RETAINED_MB_PER_UNIT) / RETAINED_MB_PER_UNIT;
+}
+
+interface RetainedMemory {
+  readonly heapMb: number;
+  readonly buffersMb: number;
+}
+
+/** What survives a full collection: the V8 heap, and the array buffers outside it less the harness's
+ *  own `sampleBytes`, so both are the world's. */
+function retainedMemory(gc: () => void, sampleBytes: number): RetainedMemory {
   gc();
-  return (
-    Math.round((process.memoryUsage().heapUsed / BYTES_PER_MB) * RETAINED_MB_PER_UNIT) / RETAINED_MB_PER_UNIT
-  );
+  const memory = process.memoryUsage();
+  return { heapMb: tenthsOfMb(memory.heapUsed), buffersMb: tenthsOfMb(memory.arrayBuffers - sampleBytes) };
 }
 
 /**
@@ -240,8 +251,15 @@ export async function measureWindows(sim: Simulation, options: MeasureOptions): 
   }
   const settlersAtStart = count(sim, Settler);
 
+  const tickSamples = new Float64Array(options.measuredTicks);
+  const tickStartsMs = new Float64Array(options.measuredTicks);
+  const sampleBytes = (): number => {
+    let bytes = tickSamples.byteLength + tickStartsMs.byteLength;
+    for (const series of perSystem.values()) bytes += series.samples.byteLength;
+    return bytes;
+  };
   const gcNow = options.retainedHeap === true ? exposedGc() : null;
-  const retainedHeapMbAtStart = gcNow === null ? null : retainedHeapMb(gcNow);
+  const atStart = gcNow === null ? null : retainedMemory(gcNow, sampleBytes());
   const beforeMs = calibrationMs();
   let load = loadPerCpu();
   let peakRssMb = rssMb();
@@ -249,8 +267,6 @@ export async function measureWindows(sim: Simulation, options: MeasureOptions): 
   const gc = new GcLog();
   sampling = true;
   const firstTick = sim.tick + 1;
-  const tickSamples = new Float64Array(options.measuredTicks);
-  const tickStartsMs = new Float64Array(options.measuredTicks);
   const windows: BenchWindow[] = [];
   let cpuUs = 0;
   let allocatedBytes: number | null = 0;
@@ -273,7 +289,7 @@ export async function measureWindows(sim: Simulation, options: MeasureOptions): 
         : allocatedBytes + workEnd.allocatedBytes - workStart.allocatedBytes;
     const work = perTick(workStart, workEnd, bound.to - bound.from);
     const heap = heapUsedMb();
-    const retained = gcNow === null ? null : retainedHeapMb(gcNow);
+    const retained = gcNow === null ? null : retainedMemory(gcNow, sampleBytes());
     const rss = rssMb();
     peakRssMb = Math.max(peakRssMb, rss);
     load = worstLoad(load, loadPerCpu());
@@ -290,7 +306,8 @@ export async function measureWindows(sim: Simulation, options: MeasureOptions): 
       },
       rssMb: rss,
       heapUsedMb: heap,
-      retainedHeapMb: retained,
+      retainedHeapMb: retained?.heapMb ?? null,
+      retainedBuffersMb: retained?.buffersMb ?? null,
       gc: await gc.window(windowStartMs, windowEndMs),
       cpuMsPerTick: work.cpuMs,
       allocKbPerTick: work.allocKb,
@@ -316,7 +333,8 @@ export async function measureWindows(sim: Simulation, options: MeasureOptions): 
     buildings: count(sim, Building),
     loadPerCpu: worstLoad(load, loadPerCpu()),
     peakRssMb,
-    retainedHeapMbAtStart,
+    retainedHeapMbAtStart: atStart?.heapMb ?? null,
+    retainedBuffersMbAtStart: atStart?.buffersMb ?? null,
     cpuMsPerTick: run.cpuMs,
     allocKbPerTick: run.allocKb,
     calibration: { beforeMs, afterMs: calibrationMs() },

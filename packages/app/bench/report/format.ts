@@ -38,6 +38,7 @@ const WINDOW_COLUMNS: readonly Column[] = [
   { header: 'gc max', width: 9 },
   { header: 'heap MB', width: 9 },
   { header: 'kept MB', width: 9 },
+  { header: 'kept buf', width: 10 },
   { header: 'rss MB', width: 9 },
   // Left-aligned after a right-aligned column, so the gutter has to live in the cells themselves.
   { header: '  heaviest', width: -12 },
@@ -144,6 +145,18 @@ function slowestTicksSection(report: BenchReport): readonly string[] {
   ];
 }
 
+function retainedLine(report: BenchReport, last: BenchWindow): readonly string[] {
+  const { retainedHeapMbAtStart: heapStart, retainedBuffersMbAtStart: buffersStart } = report;
+  const { retainedHeapMb: heapEnd, retainedBuffersMb: buffersEnd } = last;
+  if (heapStart === null || buffersStart === null || heapEnd === null || buffersEnd === null) return [];
+  const span = (start: number, end: number): string =>
+    `start ${start.toFixed(1)} MB, end ${end.toFixed(1)} MB`;
+  return [
+    `retained heap after a full gc: ${span(heapStart, heapEnd)}; array buffers ${span(buffersStart, buffersEnd)}; ` +
+      `total ${span(heapStart + buffersStart, heapEnd + buffersEnd)}`,
+  ];
+}
+
 /** GC summed over every window, so a single-window run (the profile's) still shows it. */
 function gcLine(report: BenchReport): readonly string[] {
   const { windows } = report;
@@ -155,11 +168,7 @@ function gcLine(report: BenchReport): readonly string[] {
   return [
     `gc: ${count} collection(s), ${total.toFixed(1)} ms paused, longest ${longest.toFixed(1)} ms   ` +
       `heap at end ${last.heapUsedMb} MB`,
-    ...(report.retainedHeapMbAtStart === null || last.retainedHeapMb === null
-      ? []
-      : [
-          `retained heap after a full gc: start ${report.retainedHeapMbAtStart.toFixed(1)} MB, end ${last.retainedHeapMb.toFixed(1)} MB`,
-        ]),
+    ...retainedLine(report, last),
   ];
 }
 
@@ -187,6 +196,7 @@ function windowSection(windows: readonly BenchWindow[]): readonly string[] {
         w.gc.maxMs.toFixed(1),
         `${w.heapUsedMb}`,
         w.retainedHeapMb === null ? '-' : w.retainedHeapMb.toFixed(1),
+        w.retainedBuffersMb === null ? '-' : w.retainedBuffersMb.toFixed(1),
         `${w.rssMb}`,
         `  ${w.systems.at(0)?.name ?? '-'}`,
       ]),

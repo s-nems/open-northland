@@ -28,6 +28,7 @@ export function reportFrom(options: RunOptions): BenchReport {
     cpuMsPerTick: measurement.cpuMsPerTick,
     allocKbPerTick: measurement.allocKbPerTick,
     retainedHeapMbAtStart: measurement.retainedHeapMbAtStart,
+    retainedBuffersMbAtStart: measurement.retainedBuffersMbAtStart,
     windows: measurement.windows,
     environment: captureEnvironment({
       knobs: options.knobs,

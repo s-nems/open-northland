@@ -23,6 +23,7 @@ export function window(index: number, medianMs: number): BenchWindow {
     rssMb: 200,
     heapUsedMb: 120,
     retainedHeapMb: null,
+    retainedBuffersMb: null,
     gc: { count: 4, ms: 3, maxMs: 1 },
     cpuMsPerTick: medianMs,
     allocKbPerTick: 80,
@@ -47,6 +48,7 @@ export function report(overrides: Partial<BenchReport> = {}): BenchReport {
     cpuMsPerTick: 5.5,
     allocKbPerTick: 80,
     retainedHeapMbAtStart: null,
+    retainedBuffersMbAtStart: null,
     systems: [
       { name: 'ai', meanMs: 4, medianMs: 4, p95Ms: 8, maxMs: 16, sharePct: 80 },
       { name: 'movement', meanMs: 1, medianMs: 1, p95Ms: 2, maxMs: 4, sharePct: 20 },

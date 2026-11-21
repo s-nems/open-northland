@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { formatPairs, summarizePairs } from '../../bench/report/index.js';
-import { report } from '../support/bench-report.js';
+import { report, window } from '../support/bench-report.js';
 
 describe('summarizePairs', () => {
   it('takes each repeat as B over A and the median and spread over the repeats', () => {
@@ -36,6 +36,17 @@ describe('summarizePairs', () => {
     ]).metrics.find((m) => m.name === 'alloc KB/tick');
     expect(alloc?.ratios).toEqual([null, 0.5]);
     expect(alloc?.median).toBe(0.5);
+  });
+
+  it('compares the retained heap plus array buffers as one total', () => {
+    const retained = (heap: number, buffers: number | null) =>
+      report({ windows: [{ ...window(0, 5), retainedHeapMb: heap, retainedBuffersMb: buffers }] });
+    const total = summarizePairs([
+      { a: retained(100, 100), b: retained(120, 60) },
+      { a: retained(100, null), b: retained(100, 100) },
+    ]).metrics.find((m) => m.name === 'retained total MB');
+    expect(total?.a).toEqual([200, null]);
+    expect(total?.ratios).toEqual([0.9, null]);
   });
 
   it('flags a state that differs between the sides, and between repeats of one side', () => {
