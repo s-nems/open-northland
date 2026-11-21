@@ -293,7 +293,9 @@ is void as `prescaling`, and the table lists the twins, their memory and the pag
 
 Scenarios cover enhancements off/on, each magnifier at zoom 0.5/0.7/1/2, pause/×3, a selected settler
 and portrait, groups of 10 and at least 50 settlers, rain, snow, sand, a thunderstorm, a blizzard and
-clear weather, and zoom 0.35.
+clear weather, and zoom 0.35. Rain, sand, the blizzard and clear weather also run at zoom 0.5, where a
+field draws more particles: `weather-<kind>-x3-z0.5` against `weather-clear-x3-z0.5`. `see-through-x3`
+turns the see-through view on with its key (`revealToggle`, Tab) and reads against `on-x3`.
 `ON_BENCH_GPU_SCENARIOS=panel-x3,on-x3` selects specific scenarios.
 
 Framing scenarios:
@@ -310,7 +312,8 @@ says so under the table.
 
 Toggle scenarios run at ×3 with every graphics setting on but one: `no-<setting>-x3` against `on-x3`,
 and `-z0.5` twins at zoom 0.5, for soft shadows, enhanced water, environment motion, grounded buildings,
-building damage, post-processing (`postFxEnabled`) and sprite smoothing. Blood and bone fading show only
+building damage, post-processing (`postFxEnabled`), sprite smoothing and the occlusion marks
+(`occlusionFill`, `occlusionOutline`). Blood and bone fading show only
 where fighting is, so `battle-no-blood-x3` and `battle-no-bonesFade-x3` read against `battle-x3`, framed
 on the densest cluster of fighters holding a target (bone piles when nobody fights). `scale1.5-x3` and
 `scale2-x3` set the render scale. At ×3 a setting that costs under a millisecond sits inside the
@@ -319,7 +322,8 @@ and the milliseconds only of costs as large as render scale; a setting's GPU mil
 [per-setting loop](#per-setting-gpu-cost).
 
 `report.md` has the summary; `report.json` has every repeat. The summary uses the lowest per-repeat
-median and includes WebGL calls, selection/inset counts and adapter. Load, visibility and camera
+median and includes WebGL calls, selection/inset counts, adapter, and the settlers ghosted behind an
+occluder with the occluders the see-through view faded, read from the last frame. Load, visibility and camera
 checks apply here too. Missing supported GPU readings or incomplete selections fail the scenario.
 Read milliseconds only from an idle machine; WebGL call counts remain useful under load.
 
@@ -354,15 +358,18 @@ GPU and tool they were read with.
 
 | Session | Views | Rows (each on against off) |
 | --- | --- | --- |
-| `day` | densest town at zoom 1 and 0.5, the coast nearest it at zoom 1 | town: `xbr` against art filter off, and at zoom 1 `xbrz`, `superxbr`, `mmpx` against off; `softShadows`, `enhancedWater`, `environmentMotion`, `groundedBuildings`, `buildingDamage`, `postFx` (the vignette quad). Coast: `environmentMotion` (the shore waves), `enhancedWater` |
+| `day` | densest town at zoom 1 and 0.5, the coast nearest it at zoom 1 | town: `xbr` against art filter off, and at zoom 1 `xbrz`, `superxbr`, `mmpx` against off; `softShadows`, `enhancedWater`, `environmentMotion`, `groundedBuildings`, `buildingDamage`, `postFx` (the vignette quad), `occlusionFill`, `occlusionOutline` (each with the other mark on), `seeThrough` (the see-through view, switched with its key). Coast: `environmentMotion` (the shore waves), `enhancedWater` |
 | `night` (`?tint=58`, the cycle's night step) | town at zoom 1 and 0.5 | `dayNight`: the lit night against the flat night grade |
-| `rain`, `snow`, `sand`, `storm` (a thunderstorm), `blizzard` | town at zoom 1 | `weather` |
-| `smoothing-off`, `scale1.5` | town at zoom 1 and 0.5, at zoom 1 | `control` only. Sprite smoothing and render scale apply as a map starts, so these are separate loads read against the `day` session's control rows, not interleaved |
+| `rain`, `snow`, `sand`, `storm` (a thunderstorm), `blizzard` | town at zoom 1, and at zoom 0.5 only when named | `weather` |
+| `smoothing-off`, `scale1.5`, `native-backing` | town at zoom 1 and 0.5, at zoom 1, at zoom 1 | `control` only. Sprite smoothing, render scale and backing density apply as a map starts, so these are separate loads read against the `day` session's control rows, not interleaved. Every other session's `auto` density upscales the world through the offscreen pass from a device scale of 1.5; `native-backing` draws every device pixel, so it pairs with `day` under `ON_BENCH_DEVICE_SCALE=2` and equals it at device scale 1 |
+
+The zoom 0.5 weather views stay out of the default run to keep it short; name their rows to run them,
+for example `ON_BENCH_SETTINGS_ROWS=rain-town-z0.5-control,rain-town-z0.5-weather`.
 
 Row ids are `<session>-<view>-z<zoom>-<row>`. `report.md` lists each row's median on and off
 milliseconds, cost and range, and the page's own script time per redraw in the on state (`on submit
 ms`); `report.json` adds every cycle; each view leaves a screenshot and the report counts the shore
-waves in the coast view. Where the submit time nears the frame time, the loop waits on the CPU, not
+waves in the coast view and the settlers each view ghosts behind an occluder. Where the submit time nears the frame time, the loop waits on the CPU, not
 the GPU, and a setting's GPU cost hides under it: compare a scaled session's control to see how much
 GPU time the frame has. The loop measures drawing alone, not baking, uploads or the frame's CPU work;
 the paused weather draws a still field. Blood and bone fading are CPU costs, read from

@@ -13,16 +13,51 @@ const ORIGIN = 'http://127.0.0.1:5174';
 test('a row filter keeps the named rows and only the sessions and views they need', () => {
   const env = { ON_BENCH_SETTINGS_ROWS: 'night-town-z0.5-dayNight,day-town-z1-softShadows' };
   const options = parseSettingsBenchArgs(['late.checkpoint', ORIGIN], env);
-  const kept = options.sessions.flatMap((session) =>
-    session.views.flatMap((view) => view.rows.map((entry) => rowId(session, view, entry))),
-  );
-  assert.deepEqual(kept, ['day-town-z1-softShadows', 'night-town-z0.5-dayNight']);
+  assert.deepEqual(rowIds(options.sessions), ['day-town-z1-softShadows', 'night-town-z0.5-dayNight']);
   assert.equal(options.cycles, 10);
   assert.throws(
     () => parseSettingsBenchArgs(['late.checkpoint', ORIGIN], { ON_BENCH_SETTINGS_ROWS: 'nope' }),
     /Unknown ON_BENCH_SETTINGS_ROWS nope/,
   );
   assert.throws(() => parseSettingsBenchArgs(['late.checkpoint', ORIGIN, 'out', '0']), /cycles/);
+});
+
+const rowIds = (sessions) =>
+  sessions.flatMap((session) =>
+    session.views.flatMap((view) => view.rows.map((entry) => rowId(session, view, entry))),
+  );
+
+test('the zoomed-out weather views run only when a row names them', () => {
+  const defaults = rowIds(parseSettingsBenchArgs(['late.checkpoint', ORIGIN]).sessions);
+  for (const weather of ['rain', 'snow', 'sand', 'storm', 'blizzard']) {
+    assert.ok(defaults.includes(`${weather}-town-z1-weather`), weather);
+    assert.ok(!defaults.includes(`${weather}-town-z0.5-weather`), weather);
+  }
+  const env = { ON_BENCH_SETTINGS_ROWS: 'rain-town-z0.5-control,rain-town-z0.5-weather' };
+  assert.deepEqual(rowIds(parseSettingsBenchArgs(['late.checkpoint', ORIGIN], env).sessions), [
+    'rain-town-z0.5-control',
+    'rain-town-z0.5-weather',
+  ]);
+});
+
+test('both daylight town views toggle the occlusion marks and the see-through view', () => {
+  const day = settingsSessions().find((session) => session.id === 'day');
+  for (const view of day.views.filter((candidate) => candidate.id === 'town')) {
+    const byToggle = new Map(view.rows.map((entry) => [entry.toggle, entry]));
+    assert.deepEqual(byToggle.get('occlusionFill').off, { occlusionFill: false });
+    assert.deepEqual(byToggle.get('occlusionOutline').off, { occlusionOutline: false });
+    assert.equal(byToggle.get('seeThrough').kind, 'seeThrough');
+  }
+  const settings = sessionSettings(day);
+  assert.equal(settings.occlusionFill, true);
+  assert.equal(settings.occlusionOutline, true);
+  assert.equal(settings.backingDensity, 'auto');
+});
+
+test('the native-backing session draws every device pixel', () => {
+  const native = settingsSessions().find((session) => session.id === 'native-backing');
+  assert.equal(sessionSettings(native).backingDensity, 'native');
+  assert.deepEqual(rowIds([native]), ['native-backing-town-z1-control']);
 });
 
 test('every view has a control row and row ids are unique', () => {

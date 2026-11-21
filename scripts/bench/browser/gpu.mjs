@@ -5,9 +5,11 @@ import {
   boxAround,
   drag,
   drawnPeople,
+  occlusionCounts,
   openTradeWindow,
   SETTLE_MS,
   selectOneSettler,
+  setSeeThrough,
   watchFrameInputs,
   worldArea,
 } from '../../browser/input.mjs';
@@ -86,6 +88,7 @@ const metadata = {
     'The figure per scenario is the lowest per-repeat median; GL counts are per rendered frame over every repeat.',
     'Repeats of a scenario run back to back from one restore, so a running scenario measures later ticks each repeat.',
     'One selected settler always opens the settler panel, so the single-selection case is panel-*.',
+    'Ghosted units and faded occluders are read once, from the last frame of the last repeat.',
     ...[loadGateNote()].filter((note) => note !== null),
   ],
   scenarios: [],
@@ -313,6 +316,7 @@ try {
       camera = trade.camera;
       metadata.trade = trade;
     } else if (scenario.selection > 0) await select(page, scenario.selection, dense);
+    if (scenario.seeThrough) await setSeeThrough(page, true);
     const pointer = scenario.pointer === 'world' ? POINTER_WORLD : POINTER_REST;
     await page.mouse.move(pointer.x, pointer.y);
     await guardCamera(page, camera);
@@ -335,6 +339,7 @@ try {
       if (prescale !== null && !prescale.settled) run.invalid.push('prescaling');
       runs.push(run);
     }
+    const occlusion = await occlusionCounts(page);
     await page.screenshot({ path: resolve(output, `${scenario.id}.png`) });
     const summary = summarizeRepeats(runs);
     const result = {
@@ -342,6 +347,7 @@ try {
       settings,
       selected: Math.max(...runs.map((run) => run.selected)),
       insets: Math.max(...runs.map((run) => run.insets)),
+      occlusion,
       prescale,
       summary,
       runs,

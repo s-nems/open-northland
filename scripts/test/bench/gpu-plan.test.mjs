@@ -67,8 +67,33 @@ test('the matrix covers every magnifier at zoom 0.5, 0.7, 1 and 2, and ids are u
     for (const zoom of [0.5, 0.7, 1, 2])
       assert.ok(scenarios.some((entry) => entry.magnifier === magnifier && entry.zoom === zoom));
   assert.deepEqual(
-    scenarios.filter((entry) => entry.weather !== null).map((entry) => entry.weather),
+    scenarios.filter((entry) => entry.weather !== null && entry.zoom === 1).map((entry) => entry.weather),
     ['rain', 'snow', 'sand', 'rain:100', 'snow:100', 'clear'],
+  );
+});
+
+test('rain, sand, a blizzard and clear weather also run zoomed out, each against the clear sky', () => {
+  const zoomedOut = gpuScenarios().filter((entry) => entry.weather !== null && entry.zoom === 0.5);
+  assert.deepEqual(
+    zoomedOut.map((entry) => [entry.id, entry.weather]),
+    [
+      ['weather-rain-x3-z0.5', 'rain'],
+      ['weather-sand-x3-z0.5', 'sand'],
+      ['weather-blizzard-x3-z0.5', 'snow:100'],
+      ['weather-clear-x3-z0.5', 'clear'],
+    ],
+  );
+  for (const entry of zoomedOut) assert.equal(entry.speed, 3);
+});
+
+test('the see-through scenario turns the view on with every setting as on-x3 has it', () => {
+  const byId = new Map(gpuScenarios().map((entry) => [entry.id, entry]));
+  const seeThrough = byId.get('see-through-x3');
+  assert.equal(seeThrough.seeThrough, true);
+  assert.deepEqual(scenarioSettings(seeThrough), scenarioSettings(byId.get('on-x3')));
+  assert.deepEqual(
+    [...byId.values()].filter((entry) => entry.seeThrough).map((entry) => entry.id),
+    ['see-through-x3'],
   );
 });
 
@@ -168,12 +193,15 @@ test('a repeat without GPU readings leaves the figure empty', () => {
 
 test('the table prints one row per scenario with its void reasons', () => {
   const summary = summarizeRepeats([repeat([5], 100, 10, ['load', 'hidden'])]);
-  const table = markdownTable([{ id: 'panel-x3', zoom: 1, speed: 3, selected: 1, insets: 1, summary }]);
+  const occlusion = { ghosted: 4, faded: 0 };
+  const table = markdownTable([
+    { id: 'panel-x3', zoom: 1, speed: 3, selected: 1, insets: 1, occlusion, summary },
+  ]);
   const lines = table.split('\n');
   assert.equal(lines.length, 3);
   assert.equal(
     lines[2],
-    '| panel-x3 | 1 | x3 | 1 | 1 | - | 5.00 | 5.00 | 100 | 200 | 1 | 0 (0) | 0.5 (64) | load, hidden |',
+    '| panel-x3 | 1 | x3 | 1 | 1 | 4 (0) | - | 5.00 | 5.00 | 100 | 200 | 1 | 0 (0) | 0.5 (64) | load, hidden |',
   );
 });
 

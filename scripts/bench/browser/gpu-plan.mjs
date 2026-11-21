@@ -31,6 +31,8 @@ export const TOGGLED_SETTINGS = [
   'bonesFade',
   'postFxEnabled',
   'spriteSmoothing',
+  'occlusionFill',
+  'occlusionOutline',
 ];
 /** Blood and bone piles show only where fighting is, so their toggles frame the densest battle. */
 const BATTLE_SETTINGS = ['blood', 'bonesFade'];
@@ -50,16 +52,27 @@ const WIDE_ZOOM = 0.35;
 /** A `?weather=<kind>:<percent>` amount past every kind's full storm: a thunderstorm with lightning, a
  *  blizzard. A bare kind shows the default heavy shower, which is a full storm for sand already. */
 export const FULL_STORM_PERCENT = 100;
-const TOGGLE_ZOOMS = [DENSE_ZOOM, 0.5];
+const ZOOMED_OUT = 0.5;
+const TOGGLE_ZOOMS = [DENSE_ZOOM, ZOOMED_OUT];
+/** The weather kinds also measured at {@link ZOOMED_OUT}, where a field draws more particles, with the
+ *  clear sky they read against. */
+const ZOOMED_OUT_WEATHER = {
+  rain: 'rain',
+  sand: 'sand',
+  blizzard: `snow:${FULL_STORM_PERCENT}`,
+  clear: 'clear',
+};
 /** The magnifier comparison's zooms: 0.5 and 0.7 minify, 1 draws a texel per pixel and 2 magnifies.
  *  xBR minifies its pages there, a prescaled scaler its twins at four times the texels. */
-const MAGNIFY_ZOOMS = [0.5, 0.7, DENSE_ZOOM, MAGNIFIED_ZOOM];
+const MAGNIFY_ZOOMS = [ZOOMED_OUT, 0.7, DENSE_ZOOM, MAGNIFIED_ZOOM];
 /** A single selected settler opens the settler panel and its portrait inset. */
 const PANEL_SELECTION = 1;
 const FEW_SELECTED = 10;
 /** The many-selection box is drawn at this zoom, where enough settlers fit on screen. */
 export const MANY_SELECTED = 50;
-export const MANY_SELECTION_ZOOM = 0.5;
+export const MANY_SELECTION_ZOOM = ZOOMED_OUT;
+
+const zoomSuffix = (zoom) => (zoom === DENSE_ZOOM ? '' : `-z${zoom}`);
 
 function scenario(id, overrides = {}) {
   return {
@@ -74,6 +87,7 @@ function scenario(id, overrides = {}) {
     patch: {},
     pointer: 'bar',
     hidden: [],
+    seeThrough: false,
     ...overrides,
   };
 }
@@ -82,9 +96,10 @@ function scenario(id, overrides = {}) {
  * Every scenario frames the densest building cluster, a `battle` view the densest fighting, a `coast`
  * view the shore waves nearest it and a `trade` view a trader whose window shows. The pointer rests on
  * the bottom bar, or over the middle of the world for `pointer: 'world'`; `hidden` names world layers a
- * scenario hides. Pairs to read together: `off-*` against `magnify-*-z1` and `on-x3`; `panel-*` against
- * `magnify-xbr-z1` and `on-x3`; `select*` against `magnify-xbr-z1`; every `weather-*-x3` against
- * `weather-clear-x3`; then the framing scenarios ({@link framingScenarios}).
+ * scenario hides; `seeThrough` turns the see-through view on with its key. Pairs to read together:
+ * `off-*` against `magnify-*-z1` and `on-x3`; `panel-*` against `magnify-xbr-z1` and `on-x3`; `select*`
+ * against `magnify-xbr-z1`; every `weather-*-x3` against `weather-clear-x3` at the same zoom suffix;
+ * `see-through-x3` against `on-x3`; then the framing scenarios ({@link framingScenarios}).
  */
 export function gpuScenarios() {
   return [
@@ -105,6 +120,10 @@ export function gpuScenarios() {
     scenario('weather-storm-x3', { weather: `rain:${FULL_STORM_PERCENT}`, speed: FAST }),
     scenario('weather-blizzard-x3', { weather: `snow:${FULL_STORM_PERCENT}`, speed: FAST }),
     scenario('weather-clear-x3', { weather: 'clear', speed: FAST }),
+    ...Object.entries(ZOOMED_OUT_WEATHER).map(([kind, weather]) =>
+      scenario(`weather-${kind}-x3${zoomSuffix(ZOOMED_OUT)}`, { weather, speed: FAST, zoom: ZOOMED_OUT }),
+    ),
+    scenario('see-through-x3', { speed: FAST, seeThrough: true }),
     scenario('wide-paused', { zoom: WIDE_ZOOM }),
     scenario('wide-x3', { zoom: WIDE_ZOOM, speed: FAST }),
     ...toggleScenarios(),
@@ -134,8 +153,6 @@ function framingScenarios() {
     scenario('trade-x3', { view: 'trade', selection: PANEL_SELECTION, speed: FAST }),
   ];
 }
-
-const zoomSuffix = (zoom) => (zoom === DENSE_ZOOM ? '' : `-z${zoom}`);
 
 /**
  * Everything on against each toggled setting off alone, at x3 and zoom 1 and 0.5: read `no-<setting>-x3`
@@ -263,16 +280,21 @@ function prescaledCell(prescale) {
   return `${prescale.pages} (${fixed(prescale.bytes / BYTES_PER_MB, 0)}${held})`;
 }
 
+/** A scenario's occlusion ghosts as `units (faded occluders)`; `-` where none was read. */
+function occlusionCell(occlusion) {
+  return occlusion === null || occlusion === undefined ? '-' : `${occlusion.ghosted} (${occlusion.faded})`;
+}
+
 /** The markdown table `report.md` holds, one row per measured scenario. */
 export function markdownTable(results) {
   const rows = [
-    '| scenario | zoom | speed | selected | insets | prescaled pages (MB) | GPU ms (min p50) | p50 per repeat | draws | texture binds | programs | uploads (KB) | texture uploads (KB) | void because |',
-    '| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |',
+    '| scenario | zoom | speed | selected | insets | ghosted (faded) | prescaled pages (MB) | GPU ms (min p50) | p50 per repeat | draws | texture binds | programs | uploads (KB) | texture uploads (KB) | void because |',
+    '| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |',
   ];
   for (const result of results) {
     const { gl, gpuMs } = result.summary;
     rows.push(
-      `| ${result.id} | ${result.zoom} | ${result.speed === PAUSED ? 'paused' : `x${result.speed}`} | ${result.selected} | ${result.insets} | ${prescaledCell(result.prescale)} | ${fixed(gpuMs.minP50, 2)} | ${gpuMs.p50s.map((p50) => fixed(p50, 2)).join(' / ')} | ${fixed(gl.drawsPerFrame, 0)} | ${fixed(gl.textureBindsPerFrame, 0)} | ${fixed(gl.programsPerFrame, 0)} | ${fixed(gl.uploadsPerFrame, 0)} (${fixed(gl.uploadKbPerFrame, 0)}) | ${fixed(gl.textureUploadsPerFrame, 1)} (${fixed(gl.textureUploadKbPerFrame, 0)}) | ${result.summary.invalid.join(', ') || '-'} |`,
+      `| ${result.id} | ${result.zoom} | ${result.speed === PAUSED ? 'paused' : `x${result.speed}`} | ${result.selected} | ${result.insets} | ${occlusionCell(result.occlusion)} | ${prescaledCell(result.prescale)} | ${fixed(gpuMs.minP50, 2)} | ${gpuMs.p50s.map((p50) => fixed(p50, 2)).join(' / ')} | ${fixed(gl.drawsPerFrame, 0)} | ${fixed(gl.textureBindsPerFrame, 0)} | ${fixed(gl.programsPerFrame, 0)} | ${fixed(gl.uploadsPerFrame, 0)} (${fixed(gl.uploadKbPerFrame, 0)}) | ${fixed(gl.textureUploadsPerFrame, 1)} (${fixed(gl.textureUploadKbPerFrame, 0)}) | ${result.summary.invalid.join(', ') || '-'} |`,
     );
   }
   return rows.join('\n');

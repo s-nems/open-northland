@@ -1,9 +1,11 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
+import { occlusionCounts, setSeeThrough } from '../../browser/input.mjs';
 import {
   benchBrowserInfo,
   cameraAt,
   checkpointSession,
+  DEVICE_SCALE,
   densestBuildings,
   nearestCoast,
   openBenchBrowser,
@@ -51,7 +53,9 @@ const metadata = {
   checkpoint: resolve(options.checkpoint),
   header,
   viewport: VIEWPORT,
+  deviceScale: DEVICE_SCALE,
   cycles: options.cycles,
+  views: [],
   rows: [],
   errors: [],
 };
@@ -63,13 +67,14 @@ const writeReport = async () => {
     '',
     `Adapter: ${metadata.adapter ?? 'unknown'}.`,
     `Browser: ${metadata.browser?.version ?? 'not started'}${metadata.browser?.cdp ? ` over CDP at ${metadata.browser.cdp}` : ''}.`,
-    `${VIEWPORT.width}x${VIEWPORT.height}, ${options.cycles} cycles of ${TIMED_FRAMES} redraws per state. Cost is on minus off per cycle; on and off are the medians of each state.`,
+    `${VIEWPORT.width}x${VIEWPORT.height} at device scale ${DEVICE_SCALE}, ${options.cycles} cycles of ${TIMED_FRAMES} redraws per state. Cost is on minus off per cycle; on and off are the medians of each state.`,
     '',
     markdownTable(metadata.rows),
     '',
     ...(metadata.coast === undefined
       ? []
       : [`The coast view holds ${metadata.coast.inView} of the map's ${metadata.coast.waves} shore waves.`]),
+    `Ghosted units per view: ${metadata.views.map((view) => `${view.id} ${view.ghosted}`).join(', ') || 'none'}.`,
   ];
   await writeFile(resolve(options.output, 'report.md'), head.join('\n'));
 };
@@ -167,6 +172,7 @@ async function settlePrescale(page) {
 }
 
 async function timeState(page, entry, on) {
+  if (entry.kind === 'seeThrough') await setSeeThrough(page, on);
   await page.evaluate(
     async ({ kind, value, settle }) => {
       const bench = window.__settingsBench;
@@ -197,6 +203,7 @@ async function measureRow(page, entry) {
     const [on, off] = onFirst ? [first, second] : [second, first];
     cycles.push({ on: on.ms, off: off.ms, onSubmit: on.submitMs, offSubmit: off.submitMs });
   }
+  if (entry.kind === 'seeThrough') await setSeeThrough(page, false);
   await page.evaluate(() => {
     window.__settingsBench.reset();
     return window.__settingsBench.frames(1);
@@ -253,8 +260,9 @@ try {
       await page.waitForTimeout(WARM_RUN_MS);
       await page.evaluate(() => window.__opennorthland.setPaused(true));
       await page.waitForTimeout(PAUSE_SETTLE_MS);
-      const shot = `${session.id}-${view.id}-z${view.zoom}.png`;
-      await page.screenshot({ path: resolve(options.output, shot) });
+      const viewId = `${session.id}-${view.id}-z${view.zoom}`;
+      metadata.views.push({ id: viewId, ...(await occlusionCounts(page)) });
+      await page.screenshot({ path: resolve(options.output, `${viewId}.png`) });
       for (const entry of view.rows) {
         const id = rowId(session, view, entry);
         progress(`measuring ${id}`);

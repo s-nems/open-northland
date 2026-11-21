@@ -2,7 +2,7 @@ import { VIEWPORT } from './session.mjs';
 
 /**
  * The browser benchmarks' player input: clicks and box drags with a held button, and the settler and
- * building picks they aim at. Shared by `bench:gpu` and `bench:hud`.
+ * building picks they aim at. Shared by `bench:gpu`, `bench:gpu-settings` and `bench:hud`.
  */
 
 /** A click holds the button this long, as a player's does; a bare click can miss DOM swapped under it. */
@@ -17,6 +17,9 @@ const BUILDING_BODY_LIFT = 40;
 /** The HUD bars' reach from each window edge at UI scale 1, by observation at 1440x900; the bars hold
  *  to the edges at any window size, and the world area is the window inside them. */
 const HUD_INSET = { left: 225, top: 145, right: 225, bottom: 185 };
+/** The default `revealToggle` binding (`hud/keybindings.ts`), which switches the see-through view. */
+const SEE_THROUGH_KEY = 'Tab';
+const SEE_THROUGH_TIMEOUT_MS = 5000;
 /** Settlers or buildings tried for a single selection before giving up. */
 const SINGLE_PICK_TRIES = 30;
 /** Box half-size increment, in screen pixels. */
@@ -250,4 +253,24 @@ export async function openTradeWindow(page, route, area) {
     if (state.open) return state;
   }
   return null;
+}
+
+/** Switch the see-through view to `on` with its key; the map objects' fade shows the state a frame drew. */
+export async function setSeeThrough(page, on) {
+  // The map-object layer's fade is a private renderer field, read for this measurement only.
+  const shows = (want) => (window.__opennorthland.renderer.mapObjects.decorFade !== undefined) === want;
+  if (await page.evaluate(shows, on)) return;
+  await page.keyboard.press(SEE_THROUGH_KEY);
+  await page.waitForFunction(shows, on, { timeout: SEE_THROUGH_TIMEOUT_MS }).catch(() => {
+    throw new Error(`The see-through key did not turn the view ${on ? 'on' : 'off'}`);
+  });
+}
+
+/** The settlers the last frame ghosted behind an occluder, and the occluders the see-through view faded. */
+export function occlusionCounts(page) {
+  return page.evaluate(() => {
+    // The sprite pool and its ghost sets are private renderer fields, read for this measurement only.
+    const ghosts = window.__opennorthland.renderer.pool.occlusionGhosts;
+    return { ghosted: ghosts.ghostedUnits.size, faded: ghosts.fadedPes.size + ghosts.fadedStatic.size };
+  });
 }

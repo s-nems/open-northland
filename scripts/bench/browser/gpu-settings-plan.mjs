@@ -27,7 +27,7 @@ const PRESCALED_FILTERS = ['xbrz', 'superxbr', 'mmpx'];
 /**
  * How a row switches its state in the page: `enhancements` patches the renderer's graphics
  * enhancements over the session's own, `weather` shows or hides the weather, `vignette` the post-effect
- * quad, `none` nothing.
+ * quad, `seeThrough` presses the see-through view's key, `none` nothing.
  */
 const row = (toggle, kind, on, off, prescaled = false) => ({ toggle, kind, on, off, prescaled });
 
@@ -60,15 +60,28 @@ function townRows(zoom) {
     enhancement('groundedBuildings'),
     enhancement('buildingDamage'),
     row('postFx', 'vignette', true, false),
+    enhancement('occlusionFill'),
+    enhancement('occlusionOutline'),
+    row('seeThrough', 'seeThrough', true, false),
   ];
 }
+
+const controlView = (zoom) => ({ id: 'town', zoom, rows: [row('control', 'none', null, null)] });
+
+const weatherView = (zoom, optional = false) => ({
+  id: 'town',
+  zoom,
+  rows: [row('control', 'none', null, null), row('weather', 'weather', true, false)],
+  optional,
+});
 
 /**
  * One page load each: its URL parameters, settings patch and the views it frames. `town` frames the
  * densest buildings, `coast` the shore waves nearest them. Rows read on against off with every other
  * setting on; `control` sets nothing and gives the view's frame time and the loop's noise. Settings a
- * map reads only as it starts (render scale, sprite smoothing) get a session of their own, read by its
- * control rows against the `day` session's.
+ * map reads only as it starts (render scale, sprite smoothing, backing density) get a session of their
+ * own, read by its control rows against the `day` session's. An `optional` view runs only when
+ * `ON_BENCH_SETTINGS_ROWS` names one of its rows.
  */
 export function settingsSessions() {
   return [
@@ -100,33 +113,32 @@ export function settingsSessions() {
         rows: [row('control', 'none', null, null), enhancement('dayNight')],
       })),
     },
+    // A zoomed-out field draws more particles; those views are optional to keep the default run short.
     ...Object.entries(WEATHER_SESSIONS).map(([id, weather]) => ({
       id,
       params: { weather },
       settings: {},
-      views: [
-        {
-          id: 'town',
-          zoom: DENSE_ZOOM,
-          rows: [row('control', 'none', null, null), row('weather', 'weather', true, false)],
-        },
-      ],
+      views: [weatherView(DENSE_ZOOM), weatherView(WIDE_ZOOM, true)],
     })),
     {
       id: 'smoothing-off',
       params: {},
       settings: { spriteSmoothing: false },
-      views: [DENSE_ZOOM, WIDE_ZOOM].map((zoom) => ({
-        id: 'town',
-        zoom,
-        rows: [row('control', 'none', null, null)],
-      })),
+      views: [controlView(DENSE_ZOOM), controlView(WIDE_ZOOM)],
     },
     {
       id: `scale${SCALED_RENDER}`,
       params: {},
       settings: { renderScale: SCALED_RENDER },
-      views: [{ id: 'town', zoom: DENSE_ZOOM, rows: [row('control', 'none', null, null)] }],
+      views: [controlView(DENSE_ZOOM)],
+    },
+    // The other sessions' `auto` density upscales the world from a device scale of 1.5; this one draws
+    // every device pixel. At device scale 1 both draw natively.
+    {
+      id: 'native-backing',
+      params: {},
+      settings: { backingDensity: 'native' },
+      views: [controlView(DENSE_ZOOM)],
     },
   ];
 }
@@ -134,8 +146,8 @@ export function settingsSessions() {
 /** A row's report id: `<session>-<view>-z<zoom>-<toggle>`. */
 export const rowId = (session, view, entry) => `${session.id}-${view.id}-z${view.zoom}-${entry.toggle}`;
 
-/** Every graphics setting on, full detail at every zoom, xBR the art filter, render scale 1, the FPS
- *  counter's timer queries off. */
+/** Every graphics setting on, full detail at every zoom, xBR the art filter, render scale 1, the
+ *  backing density `auto`, the FPS counter's timer queries off. */
 export function sessionSettings(session) {
   return {
     enhancedSampling: true,
@@ -152,7 +164,10 @@ export function sessionSettings(session) {
     blood: true,
     bonesFade: true,
     distantDetail: true,
+    occlusionFill: true,
+    occlusionOutline: true,
     renderScale: 1,
+    backingDensity: 'auto',
     ...session.settings,
     fpsCounter: false,
     soundEnabled: false,
@@ -166,7 +181,8 @@ function positiveInteger(text, name) {
   return value;
 }
 
-/** `argv` without node and script; `ON_BENCH_SETTINGS_ROWS` keeps the named rows and the sessions they need. */
+/** `argv` without node and script; `ON_BENCH_SETTINGS_ROWS` keeps the named rows and the sessions they
+ *  need, and without it every row but the optional views' runs. */
 export function parseSettingsBenchArgs(argv, env = {}) {
   const [checkpoint, origin, output = DEFAULT_OUTPUT, cyclesText] = argv;
   if (!checkpoint || !origin || argv.length > 4) throw new Error(USAGE);
@@ -180,7 +196,8 @@ export function parseSettingsBenchArgs(argv, env = {}) {
   );
   const unknown = names?.filter((name) => !all.includes(name)) ?? [];
   if (unknown.length > 0) throw new Error(`Unknown ON_BENCH_SETTINGS_ROWS ${unknown}; rows: ${all}`);
-  const kept = (session, view, entry) => names === undefined || names.includes(rowId(session, view, entry));
+  const kept = (session, view, entry) =>
+    names === undefined ? view.optional !== true : names.includes(rowId(session, view, entry));
   return {
     checkpoint,
     origin: url,
