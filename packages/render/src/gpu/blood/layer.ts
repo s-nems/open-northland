@@ -153,7 +153,11 @@ export class BloodLayer {
     }
     this.history.ingest(events, tick, snapshot, this.launches);
     for (const event of events)
-      if (event.kind === 'projectileHit' || event.kind === 'projectileMissed')
+      if (
+        event.kind === 'projectileHit' ||
+        event.kind === 'projectileMissed' ||
+        event.kind === 'arrowBlocked'
+      )
         this.launches.delete(event.projectile);
   }
 

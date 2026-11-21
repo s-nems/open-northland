@@ -414,7 +414,7 @@ describe('directAudio combat SFX', () => {
     expect(frame.oneShots).toHaveLength(0);
   });
 
-  it('leaves the bow release to the clip cue, thuds the arrow on hit and in the dirt on a miss', () => {
+  it('leaves the bow release to the clip cue, thuds the arrow on hit and sounds a blocked one', () => {
     const loose = direct([
       {
         kind: 'projectileLaunched',
@@ -440,6 +440,19 @@ describe('directAudio combat SFX', () => {
       },
     ]);
     expect(hit.oneShots.map((s) => s.files)).toEqual([['static/arrowhit01.wav'], ['static/hit m 01.wav']]);
+    // A blocked arrow sounds its block's group and no scream.
+    const blocked = direct([
+      {
+        kind: 'arrowBlocked',
+        projectile: entity(9),
+        shooter: entity(12),
+        target: entity(3),
+        munitionType: 1,
+        soundType: 77,
+        at,
+      },
+    ]);
+    expect(blocked.oneShots.map((s) => s.files)).toEqual([['static/arrowhit01.wav']]);
   });
 
   it('thuds a missed shot by the ground under its landing node, off the landscape grid', () => {

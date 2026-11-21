@@ -371,6 +371,21 @@ export type SimEvent =
     }
   | {
       /**
+       * The weapon `target` fights with blocked an arrow at `at`: no damage, nothing for the shooter, and
+       * no `projectileHit` or `projectileMissed` for it. `soundType` is the block's logic sound type, the
+       * weapon's `soundtype_ArrowBlock`; `shooterPlayer` as on `projectileHit`.
+       */
+      readonly kind: 'arrowBlocked';
+      readonly projectile: Entity;
+      readonly shooter: Entity;
+      readonly shooterPlayer?: number;
+      readonly target: Entity;
+      readonly munitionType: number;
+      readonly soundType: number;
+      readonly at: HalfCellNode;
+    }
+  | {
+      /**
        * A shot reached its frozen aim point `at` without striking anything and is destroyed the same
        * tick. `missSounds` is the weapon's `soundtype_NoHit` table, the thud's `logicSoundType` per
        * ground logic type (1 water, 2 land, ...); the consumer picks the ground's entry, since the sim

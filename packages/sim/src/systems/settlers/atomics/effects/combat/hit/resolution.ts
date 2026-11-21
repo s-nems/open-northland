@@ -1,3 +1,4 @@
+import type { WeaponArrowBlock } from '@open-northland/data';
 import {
   Age,
   ANIMAL_FLAG,
@@ -28,7 +29,7 @@ import { isStructureTarget } from '../../../../../conflict/targeting.js';
 import { attackClipTiming } from '../../../../../conflict/weapons.js';
 import type { SystemContext } from '../../../../../context.js';
 import { markStructureDamaged } from '../../../../../economy/repair.js';
-import { woundBearer } from '../../../../../equipment/index.js';
+import { type DealtBlow, woundBearer } from '../../../../../equipment/index.js';
 import { ownersAtPeace } from '../../../../../match/peace.js';
 import {
   type BlowShare,
@@ -40,6 +41,7 @@ import {
 import { hexNodeDistance } from '../../../../../spatial/metric.js';
 import { entityNode } from '../../../../../spatial/nodes.js';
 import { atomicClipSounds, type SoundingAtomic } from '../../../sound-cue.js';
+import { rolledArrowBlock } from './arrow-block.js';
 import { spawnCarcasses } from './carcass.js';
 import { landedDamage } from './damage.js';
 import { launchProjectile } from './projectile-launch.js';
@@ -132,10 +134,19 @@ export interface HitDamage {
   readonly targetIdentity?: SettlerIdentity;
 }
 
+/** An arrow the victim's weapon blocked: it landed as a blow of no damage. */
+export interface BlockedArrow {
+  readonly blocked: WeaponArrowBlock;
+}
+
+const NO_DAMAGE: DealtBlow = { damage: 0, critical: false };
+
 /**
  * Land one combat blow, shared by a melee swing at its ATTACK frame and a ranged projectile on contact so
  * the two cannot drift. {@link landedDamage} turns `blow.damage` into the hitpoints taken, on contact;
- * returns its wound, or null when computed damage is non-positive.
+ * returns its wound, the {@link BlockedArrow} when the victim's weapon blocked a shot, or null when computed
+ * damage is non-positive. Every shot but a vehicle's stone is an arrow, which the victim may block
+ * ({@link rolledArrowBlock}): it then lands as a blow that does no damage.
  * Original behavior: only a living human striker's amulets count, so a defence-mode building's shot
  * carries none. Reaching 0 hitpoints is dead; `cleanupSystem` reaps the corpse at the end of the tick. A dead
  * attacker is tolerated, since a dead archer's arrow still lands. A `collateral` blow, a siege burst on a side
@@ -149,7 +160,7 @@ export function resolveCombatHit(
   blow: LandingBlow,
   pendingReactions: PendingHitReaction[],
   source: 'melee' | 'projectile' | 'collateral',
-): HitDamage | null {
+): HitDamage | BlockedArrow | null {
   // Children are immune until growth removes Age, including collateral projectile hits.
   // Original behavior reported by the owner; not independently verified in the running original.
   if (world.has(target, Age)) return null;
@@ -165,16 +176,12 @@ export function resolveCombatHit(
   // A melee blow draws on its striker's fight experience as it lands; a shot draws on none.
   const experience = source === 'melee' ? world.tryGet(attacker, SettlerProgress)?.experience : undefined;
   const fightUnits = experience === undefined ? 0 : fightUnitsWith(experience, weaponMainType);
-  const landed = landedDamage(
-    world,
-    ctx,
-    attacker,
-    target,
-    blow.damage,
-    from,
-    blow.vehicleShot !== true,
-    fightUnits,
-  );
+  const arrow = source !== 'melee' && blow.vehicleShot !== true;
+  const blocked = arrow ? rolledArrowBlock(world, ctx, target, from) : undefined;
+  const landed =
+    blocked !== undefined
+      ? NO_DAMAGE
+      : landedDamage(world, ctx, attacker, target, blow.damage, from, blow.vehicleShot !== true, fightUnits);
   const damage = landed.damage;
   // A blow counts as damaging by its damage value, so an overkill still earns fight experience. Original
   // behavior: a blow that does no damage is silent, earns nothing and is no attack on the victim's side.
@@ -253,6 +260,7 @@ export function resolveCombatHit(
     }
     collectHitReaction(world, ctx, target, pendingReactions);
   }
+  if (blocked !== undefined) return { blocked };
   return dealtDamage ? wound : null;
 }
 

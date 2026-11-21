@@ -66,17 +66,20 @@ export function landedDamage(
   return { damage: damageTakenBy(world, ctx, target, dealt.damage), critical: dealt.critical };
 }
 
+/** The {@link HIT_DIRECTION_PCT} bins by name. */
+export const HIT_DIRECTION_BIN = { FRONT: 0, FRONT_SIDE: 1, BACK_SIDE: 2, BEHIND: 3 } as const;
+
 /**
- * The {@link HIT_DIRECTION_PCT} a blow from `from` lands on `victim` with. Original behavior: a person
- * that has never turned faces {@link INITIAL_WALK_DIRECTION}.
+ * The {@link HIT_DIRECTION_BIN} a blow from `from` comes at `victim` from, the front when either place is
+ * unknown. Original behavior: a person that has never turned faces {@link INITIAL_WALK_DIRECTION}.
  */
-function hitDirectionPct(
+export function hitDirectionBinOf(
   world: World,
   victim: Entity,
   from: { readonly x: Fixed; readonly y: Fixed } | undefined,
 ): number {
   const at = world.tryGet(victim, Position);
-  if (at === undefined || from === undefined) return PERCENT;
+  if (at === undefined || from === undefined) return HIT_DIRECTION_BIN.FRONT;
   const facing = world.tryGet(victim, WalkFacing)?.direction ?? INITIAL_WALK_DIRECTION;
   const toward = hexHeadingBetween(
     nodeHxOfPosition(at.x, at.y),
@@ -84,7 +87,15 @@ function hitDirectionPct(
     nodeHxOfPosition(from.x, from.y),
     nodeHyOfPosition(from.x, from.y),
   );
-  return HIT_DIRECTION_PCT[hitDirectionBin(Math.abs(toward - hexHeadingOfWalk(facing)))] ?? PERCENT;
+  return hitDirectionBin(Math.abs(toward - hexHeadingOfWalk(facing)));
+}
+
+function hitDirectionPct(
+  world: World,
+  victim: Entity,
+  from: { readonly x: Fixed; readonly y: Fixed } | undefined,
+): number {
+  return HIT_DIRECTION_PCT[hitDirectionBinOf(world, victim, from)] ?? PERCENT;
 }
 
 /** The {@link HIT_DIRECTION_PCT} bin of a blow whose heading lies `apart` hex headings from the victim's. */

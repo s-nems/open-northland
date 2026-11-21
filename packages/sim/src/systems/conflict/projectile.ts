@@ -94,6 +94,7 @@ function land(
   const at = eventAt(proj.aimX, proj.aimY);
   let struckAny = false;
   let struckLiving = false;
+  let blockedAny = false;
   for (const victim of struckVictims(world, ctx, proj)) {
     if (peaceSpares(world, proj, victim)) continue;
     const hitSoundType = hitSoundVsMaterial(proj, targetMaterial(world, ctx, victim));
@@ -103,6 +104,21 @@ function land(
     // Original behavior: a shot that does its victim no damage thuds like one that strikes nothing.
     const wound = strike(world, ctx, proj, victim, source, pendingReactions);
     if (wound === null) continue;
+    // A blocked arrow wounds no one and trains its shooter nothing; it sounds the block, not a hit.
+    if ('blocked' in wound) {
+      blockedAny = true;
+      ctx.events.emit({
+        kind: 'arrowBlocked',
+        projectile: p,
+        shooter: proj.source,
+        ...(proj.player !== null ? { shooterPlayer: proj.player } : {}),
+        target: victim,
+        munitionType: proj.munitionType,
+        soundType: wound.blocked.soundType,
+        at,
+      });
+      continue;
+    }
     struckAny = true;
     if (!isStructureTarget(world, victim)) struckLiving = true;
     // Ranged: the projectile announces its own `projectileHit`, not a melee `combatHit`.
@@ -128,7 +144,7 @@ function land(
     const share = proj.blowShare ?? WHOLE_CLIP;
     grantFightExperience(world, ctx, proj.source, weapon, 'shot', proj.blowTicks, struck, share);
   }
-  if (!struckAny) {
+  if (!struckAny && !blockedAny) {
     ctx.events.emit({
       kind: 'projectileMissed',
       projectile: p,
@@ -152,7 +168,8 @@ function land(
 }
 
 /**
- * Land shot `proj`'s blow on `victim`; null when computed damage is non-positive. The victim's armor picks the damage column,
+ * Land shot `proj`'s blow on `victim`; null when computed damage is non-positive, the block when the
+ * victim's weapon blocked the arrow. The victim's armor picks the damage column,
  * as a melee swing's does. Original behavior: the blow comes from where the shot was loosed, which a
  * person's hit direction reads, and a siege shot (the only kind with an `impact`) is a vehicle's, which the
  * commander's amulets do not raise. A side not at war with the shooter, which only a `hitSelf` weapon reaches,

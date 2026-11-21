@@ -268,13 +268,19 @@ function weaponSoundPending(
   wielderBlows: boolean,
 ): Extract<Pending, { kind: 'sfx' }> | null {
   let soundType: number | undefined;
-  if (ev.kind === 'combatHit' || ev.kind === 'projectileHit') soundType = ev.soundType;
-  else if (ev.kind === 'projectileMissed') soundType = missSoundType(ev.missSounds, ev.at, terrain, index);
-  else return null;
+  let onBody = false;
+  if (ev.kind === 'combatHit' || ev.kind === 'projectileHit') {
+    soundType = ev.soundType;
+    onBody = ev.structure !== true;
+  } else if (ev.kind === 'arrowBlocked') {
+    soundType = ev.soundType;
+    onBody = true;
+  } else if (ev.kind === 'projectileMissed') {
+    soundType = missSoundType(ev.missSounds, ev.at, terrain, index);
+  } else return null;
   if (soundType === undefined) return null;
   const files = index.groupsByLogicSoundType.get(soundType);
   if (files === undefined || files.length === 0) return null;
-  const onBody = ev.kind !== 'projectileMissed' && ev.structure !== true;
   return {
     kind: 'sfx',
     files,

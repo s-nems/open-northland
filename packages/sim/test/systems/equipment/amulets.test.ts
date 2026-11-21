@@ -302,7 +302,7 @@ describe('combat amulets', () => {
     for (let i = 0; i < 200; i++) {
       s.world.add(target, Health, { hitpoints: HP, max: HP });
       const wound = resolveCombatHit(s.world, ctxOf(s), attacker, target, { damage: BLOW }, [], 'collateral');
-      if (wound?.critical === true) critical++;
+      if (wound !== null && 'critical' in wound && wound.critical === true) critical++;
     }
     expect(critical).toBeGreaterThan(20);
   });

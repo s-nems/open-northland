@@ -116,6 +116,7 @@ const MOMENTARY_EVENTS: ReadonlySet<SimEvent['kind']> = new Set([
   'combatSwing',
   'projectileLaunched',
   'projectileMissed',
+  'arrowBlocked',
   'groundBurst',
   'draughtDrunk',
 ]);
