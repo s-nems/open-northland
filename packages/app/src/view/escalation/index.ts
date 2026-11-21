@@ -51,7 +51,9 @@ export function mountSiegePresentation(deps: SiegePresentationDeps): SiegePresen
   let showing: NoticeShowing<MapNotice> | null = null;
   return {
     onEvents(events) {
-      for (const notice of siegeNoticesOf(events)) queue.push(notice);
+      // A notice the map has no words for takes no turn on screen.
+      for (const notice of siegeNoticesOf(events))
+        if (noticeText(notice, deps.mapText) !== null) queue.push(notice);
       if (events.some((event) => event.kind === 'mapEscalationAttackLaunched')) deps.playAttackMusic();
     },
     frame() {

@@ -176,6 +176,7 @@ export function createRoomCard(options: CreateCardOptions) {
           ? []
           : mapModeToggles(item, chosenMode, (next) => {
               chosenMode = next;
+              mapPick.meta.textContent = metaLine(next ?? item);
             })),
       );
       mapPick.name.textContent = item?.title ?? copy.noMaps;

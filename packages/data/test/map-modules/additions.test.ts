@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { MAP_ADDITIONS_VERSION, MapAdditionsFile } from '../../src/index.js';
+import { MAP_ADDITIONS_VERSION, MAP_PLAYER_SLOTS, MapAdditionsFile } from '../../src/index.js';
 import { MODULES } from './fixture.js';
 
 const MODE_NAME_STRING = 9100;
@@ -31,5 +31,14 @@ describe('MapAdditionsFile', () => {
       { ...FILE, modules: { ...FILE.modules, extra: { version: 1 } } },
     ])
       expect(MapAdditionsFile.safeParse(bad).success).toBe(false);
+  });
+
+  it('gives an object only to a player slot a map has', () => {
+    const post = (owner: number) => ({
+      ...FILE,
+      objects: [{ hx: 0, hy: 0, from: null, to: { type: 'wall_01', level: 100, owner } }],
+    });
+    expect(MapAdditionsFile.safeParse(post(MAP_PLAYER_SLOTS - 1)).success).toBe(true);
+    expect(MapAdditionsFile.safeParse(post(MAP_PLAYER_SLOTS)).success).toBe(false);
   });
 });

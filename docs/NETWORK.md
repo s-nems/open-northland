@@ -577,8 +577,11 @@ The relay answers one member's map request, and separately its initial-save requ
 `TRANSFER_REQUEST_COOLDOWN_MS`, to bound small-request/large-response amplification; a client retries a
 map request refused with `retryTooSoon` once after it.
 
-A map's bytes are the clients' contract: gzip of the JSON envelope `{ version: 2, mapId, map, script }`,
-so `MAX_BLOB_BYTES` bounds the compressed map. A receiver refuses anything but a gzip stream and stops
+A map's bytes are the clients' contract: gzip of the JSON envelope
+`{ version: 3, mapId, map, script, strings, briefing, meta }`, so `MAX_BLOB_BYTES` bounds the compressed
+map. The fingerprint covers `map` and `script`; `strings`, `briefing` and `meta` are the map's words,
+checked against their schemas and `null` when the map has none, so a member who already holds the map
+under the same fingerprint keeps the words of their own copy. A receiver refuses anything but a gzip stream and stops
 inflating past `MAX_MAP_DOCUMENT_BYTES` plus the envelope's keys. A client keeps the custom maps it
 verified in browser storage, up to `MAX_CACHED_MAPS` maps and `MAX_CACHED_MAP_BYTES` of encoded transfer
 text (a delivered map is stored as the text it arrived in), and validates a copy again against its

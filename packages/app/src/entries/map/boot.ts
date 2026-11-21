@@ -252,9 +252,9 @@ export async function assembleMapWorld<H extends HostedMapWorld>(
     // A roster-less map keeps the defaults: seat 0, and colour = slot id.
     const [script, meta, briefing, strings] = await Promise.all([
       verified !== undefined ? verified.script : mapId !== null ? loadMapScript(mapId, files) : null,
-      verified?.meta ?? (mapId !== null ? loadMapMeta(mapId, files) : null),
-      verified?.briefing ?? (mapId !== null ? loadMapBriefing(mapId, files) : null),
-      verified?.strings ?? (mapId !== null ? loadMapStrings(mapId, files) : null),
+      verified !== undefined ? verified.meta : mapId !== null ? loadMapMeta(mapId, files) : null,
+      verified !== undefined ? verified.briefing : mapId !== null ? loadMapBriefing(mapId, files) : null,
+      verified !== undefined ? verified.strings : mapId !== null ? loadMapStrings(mapId, files) : null,
     ]);
     if (plan.multiplayer) assertMultiplayerMap(script);
     const session = plan.sessionFor(script === null ? [] : mapLobbySlots(script));

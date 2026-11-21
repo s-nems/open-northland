@@ -51,3 +51,28 @@ it('continues the chosen save file, and creates nothing without a save', async (
   expect(create.mock.calls[0]?.[0]).toMatchObject({ kind: 'save', bytes });
   card.dispose();
 });
+
+it('creates the room on the switched-on mode, and on the plain map again after another map is chosen', async () => {
+  const create = vi.fn(async (_choice: CreateChoice) => undefined);
+  const card = createRoomCard({ create, pickMap: vi.fn(), pickSave: vi.fn() });
+  document.body.append(card.element);
+  const entry = { fingerprint: TINY_FINGERPRINT, picture: false, minimap: false };
+  const mode = mapItem(
+    { ...entry, id: 'fortress_ragnarok', mode: { of: 'fortress', name: { eng: 'Ragnarök' } } },
+    'eng',
+  );
+  const submit = async (): Promise<CreateChoice | undefined> => {
+    create.mockClear();
+    card.element.requestSubmit();
+    await vi.waitFor(() => expect(create).toHaveBeenCalledOnce());
+    return create.mock.calls[0]?.[0];
+  };
+  card.setMap({ ...mapItem({ ...entry, id: 'fortress' }), modes: [mode] });
+  expect(await submit()).toMatchObject({ kind: 'map', mapId: 'fortress' });
+  card.element.querySelector<HTMLButtonElement>('button[role="switch"]')?.click();
+  expect(await submit()).toMatchObject({ kind: 'map', mapId: 'fortress_ragnarok' });
+  card.setMap(mapItem({ ...entry, id: 'forest' }));
+  expect(card.element.querySelector('button[role="switch"]')).toBeNull();
+  expect(await submit()).toMatchObject({ kind: 'map', mapId: 'forest' });
+  card.dispose();
+});

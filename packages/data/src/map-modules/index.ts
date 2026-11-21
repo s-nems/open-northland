@@ -2,7 +2,6 @@ export {
   MAP_ADDITIONS_FILE,
   MAP_ADDITIONS_VERSION,
   MapAdditionsFile,
-  type MapAdditionsMode,
   MapObject,
   MapObjectEdit,
   MapRoomDefaults,
@@ -12,10 +11,10 @@ export {
   type MapCells,
   type MapModulesContentNames,
   type MapModulesKnown,
+  mapHoldsNode,
   mapModulesStringIds,
 } from './fit.js';
 export {
-  MAP_SIEGE_MAX_SHIPS,
   MapDeathDrops,
   MapDemobilizedStart,
   MapGearSchedule,

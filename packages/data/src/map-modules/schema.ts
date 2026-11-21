@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { MAP_PLAYER_SLOTS } from '../schema/maps/terrain/layers.js';
 
 // The bounds below are ours: they cap what one beat of a map from anywhere may ask of the simulation.
 // They do not cap how many men a long match gathers; attackers that outlive their attack stay.
@@ -10,7 +11,7 @@ const MAX_GUARD_MEN = 2000;
 /** The most workers or tower men of one kind a module keeps up. */
 const MAX_CREW = 50;
 /** The player seats a map has. */
-const MAX_SEATS = 16;
+const MAX_SEATS = MAP_PLAYER_SLOTS;
 /** The largest half-cell coordinate a map point may name; the fit check holds it to the map's own size. */
 const MAX_MAP_POINT = 4096;
 const MAX_HITPOINTS = 1_000_000;

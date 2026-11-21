@@ -431,7 +431,10 @@ describe.runIf(shipped())('a Ragnarök attack', () => {
     const goods = new Map(sim.content.goods.map((good) => [good.id, good]));
     const typeOf = (slug: string): number => goods.get(slug)?.typeId ?? -1;
     const heavyArmor = (gear.steps[1]?.grants[0]?.goods ?? []).map(typeOf);
-    const amulets = (gear.steps[2]?.grants[0]?.goods ?? []).map(typeOf);
+    const amuletGrant = gear.steps
+      .flatMap((step) => step.grants)
+      .find((grant) => grant.goods.includes('amulet_defense'));
+    const amulets = (amuletGrant?.goods ?? []).map(typeOf);
     const healDraught = typeOf('potion_heal_big');
     // The goods carry the effects the combat reads: armor tiers, the amulets' effects and a heal.
     for (const step of gear.steps)
@@ -488,18 +491,19 @@ describe.runIf(shipped())('a Ragnarök attack', () => {
           w.tribeType === sim.world.get(e, components.Settler).tribe && w.goodType === eq.weapon?.goodType,
       );
       expect(sim.world.get(e, components.Settler).jobType).toBe(worn?.jobType);
-      expect(misc(e).some((good) => amulets.includes(good))).toBe(true);
     }
-    expect(garrison.some((e) => misc(e).filter((good) => amulets.includes(good)).length === 2)).toBe(true);
-    // The healing draught is a draw, so some soldiers carry one and some do not.
-    const drawn = garrison.filter((e) => misc(e).includes(healDraught)).length;
-    expect(drawn).toBeGreaterThan(0);
-    expect(drawn).toBeLessThan(garrison.length);
+    // Amulets and healing draughts are draws, so some soldiers carry one and some do not.
+    for (const drawnGoods of [amulets, [healDraught]]) {
+      const drawn = garrison.filter((e) => misc(e).some((good) => drawnGoods.includes(good))).length;
+      expect(drawn).toBeGreaterThan(0);
+      expect(drawn).toBeLessThan(garrison.length);
+    }
 
     const [lost] = catapults;
     if (lost === undefined) throw new Error('no catapult');
     const spot = sim.world.get(lost, components.Vehicle).guard;
     sim.world.mut(lost, components.Health).hitpoints = 0;
+    const lostSeconds = Math.ceil(sim.tick / TICKS_PER_SECOND);
     sim.run((EARLY_LAUNCH_SECONDS + 1) * TICKS_PER_SECOND - sim.tick);
     const humanRaider = siege.attacks.targets.find((target) => target.seat === HUMAN_SEAT)?.raider;
     const band = humanRaider === undefined ? [] : owned(sim, humanRaider);
@@ -509,7 +513,9 @@ describe.runIf(shipped())('a Ragnarök attack', () => {
     expect(fortressCatapults()).toHaveLength(catapults.length - 1);
 
     // Seen lost within a second; the first refill beat a full wait after that raises it.
-    const firstBeat = siege.guard.refill.everySeconds * TICKS_PER_SECOND;
+    const beatSeconds = siege.guard.refill.everySeconds;
+    const dueSeconds = lostSeconds + 1 + CATAPULT_RESPAWN_SECONDS;
+    const firstBeat = Math.ceil(dueSeconds / beatSeconds) * beatSeconds * TICKS_PER_SECOND;
     sim.run(firstBeat + TICKS_PER_SECOND - sim.tick);
     const back = fortressCatapults().filter((e) => !catapults.includes(e));
     expect(back).toHaveLength(1);

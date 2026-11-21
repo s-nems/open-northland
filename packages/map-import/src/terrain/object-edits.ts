@@ -1,8 +1,6 @@
-import type { MapObject, MapObjectEdit } from '@open-northland/data';
+import { type MapObject, type MapObjectEdit, mapHoldsNode } from '@open-northland/data';
 import type { MapDatTerrainFile } from './index.js';
 
-/** The half-cell lattice is `2W x 2H` over a `W x H` cell map. */
-const HALF_CELLS_PER_CELL = 2;
 /** A placement is three numbers: its half-cell node and its index into the type list. */
 const PLACEMENT_FIELDS = 3;
 
@@ -32,7 +30,7 @@ export function applyMapObjectEdits(
   }
   for (const { hx, hy, from, to } of edits) {
     const node = `${hx},${hy}`;
-    if (hx >= width * HALF_CELLS_PER_CELL || hy >= height * HALF_CELLS_PER_CELL)
+    if (!mapHoldsNode({ width, height }, hx, hy))
       fail(`half-cell (${node}) lies outside the ${width}x${height} map`);
     if (to !== null && !types.includes(to.type)) fail(`the map places no "${to.type}"`);
     const held = at.get(node) ?? null;

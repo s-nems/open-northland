@@ -67,7 +67,7 @@ them. The exact fields and bounds are in `packages/data/src/map-modules/schema.t
 
 | Module | What it does |
 | --- | --- |
-| `siege` | A stronghold seat keeps a growing guard at its keep and sends attacks against every occupied target seat: `attacks.launches` at fixed times, then `attacks.repeat`; each target names the raider seat that attacks it, the point its men march on and its sea landings. Optional parts: `landings` (ships), `catapults` (lost ones return), `builders`, `porters`, `towerGarrison` |
+| `siege` | A stronghold seat keeps a growing guard at its keep and sends attacks against every occupied target seat, both of the soldier trades in `jobMix` (another trade sends nobody): `attacks.launches` at fixed times, then `attacks.repeat`; each target names the raider seat that attacks it, the point its men march on and its sea landings. Optional parts: `landings` (ships), `catapults` (lost ones return), `builders`, `porters`, `towerGarrison` |
 | `gearSchedule` | At each step every soldier of the listed seats gets the step's goods and weapon upgrades, as does every soldier those seats create later |
 | `heroes` | Defenders placed once at match start, with hitpoints, equipment, a name from the string table and an optional drawn size |
 | `deathDrops` | Fallen characters of the listed seats drop nothing |
@@ -85,7 +85,8 @@ pulse), since a map can come from anywhere. They do not cap how many men a long 
   players start a match only on the same script and the same modules.
 - A save records the fingerprint of the modules it was made under and loads only under the same ones.
 - A map a player lacks reaches them from the room with its documents: terrain, script, string table,
-  briefing pages and meta. A locally imported map is also kept by the relay for members who join
+  briefing pages and meta. The fingerprint covers terrain and script; a player who already holds the
+  map under the same fingerprint reads the words of their own copy. A locally imported map is also kept by the relay for members who join
   later; a map of the base game is never sent.
 
 ## Changing a rule

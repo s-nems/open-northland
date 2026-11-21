@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { MAP_PLAYER_SLOTS } from '../schema/maps/terrain/layers.js';
 import { MapModules } from './schema.js';
 
 /** The file a map folder may hold beside the original's own: what this engine adds to the map. Its
@@ -18,8 +19,6 @@ const MAX_OBJECT_EDITS = 1000;
 const MAX_MAP_POINT = 4096;
 /** The largest growth level or wall strength a `map.dat` stores for an object. */
 const MAX_OBJECT_LEVEL = 255;
-/** The player slots a `map.dat` can give an object to. */
-const MAX_OBJECT_OWNER = 19;
 const MAX_OBJECT_NAME = 64;
 
 /** One landscape object of the map: its `[GfxLandscape]` EditName, its level and the player slot that
@@ -27,7 +26,12 @@ const MAX_OBJECT_NAME = 64;
 export const MapObject = z.strictObject({
   type: z.string().min(1).max(MAX_OBJECT_NAME),
   level: z.number().int().min(0).max(MAX_OBJECT_LEVEL),
-  owner: z.number().int().min(0).max(MAX_OBJECT_OWNER).nullable(),
+  owner: z
+    .number()
+    .int()
+    .min(0)
+    .max(MAP_PLAYER_SLOTS - 1)
+    .nullable(),
 });
 export type MapObject = z.infer<typeof MapObject>;
 

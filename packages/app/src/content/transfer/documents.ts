@@ -16,8 +16,9 @@ export interface VerifiedMapDocuments {
   readonly mapId: string;
   readonly fingerprint: string;
 }
-/** The map's words, which travel with it so every player reads them: its string table, briefing pages
- *  and meta. They change no rule, so the fingerprint leaves them out; an absent one is null. */
+/** The map's words: its string table, briefing pages and meta; an absent one is null. They travel with
+ *  the map and change no rule, so the fingerprint leaves them out: a player who already holds the map
+ *  under the same fingerprint reads the words of their own copy. */
 export interface MapTextDocuments {
   readonly strings: unknown;
   readonly briefing: unknown;

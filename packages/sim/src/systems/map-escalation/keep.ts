@@ -6,6 +6,7 @@ import { type HalfCellNode, hexDistanceBetween, nodeOfPosition } from '../../nav
 import { isBuilt, ownedBuildings, ownedSettlers } from '../ai-shared/seat-roster.js';
 import type { SystemContext } from '../context.js';
 import { removeSettlerSilently } from '../lifecycle/death.js';
+import { isFighterJob } from '../readviews/index.js';
 import { spawnSettler } from '../spawn/index.js';
 import { apportion } from './schedule.js';
 
@@ -14,13 +15,14 @@ export function siegeTribe(ctx: SystemContext, siege: MapSiege): number | undefi
   return contentIndex(ctx.content).tribeTypeBySlug.get(siege.tribe);
 }
 
-/** `count` men of the siege's mix as job types, split by {@link apportion}; a trade the content lacks
- *  sends nobody. */
+/** `count` men of the siege's mix as job types, split by {@link apportion}. A trade the content lacks
+ *  sends nobody, and neither does one that is no fighter's: the guard cap counts fighters, so only they
+ *  are held to it. */
 export function siegeJobs(ctx: SystemContext, siege: MapSiege, count: number): number[] {
   const bySlug = contentIndex(ctx.content).jobTypeBySlug;
   return apportion(siege.jobMix, count).flatMap((slug) => {
     const jobType = bySlug.get(slug);
-    return jobType === undefined ? [] : [jobType];
+    return jobType === undefined || !isFighterJob(ctx.content, jobType) ? [] : [jobType];
   });
 }
 

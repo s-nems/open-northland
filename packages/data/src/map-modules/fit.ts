@@ -27,7 +27,8 @@ export interface MapModulesKnown {
 
 type ContentKind = keyof MapModulesContentNames;
 
-export const onMap = (size: MapCells, hx: number, hy: number): boolean =>
+/** Whether the half-cell node lies on a map of `size`. */
+export const mapHoldsNode = (size: MapCells, hx: number, hy: number): boolean =>
   hx >= 0 && hy >= 0 && hx < size.width * HALF_CELLS_PER_CELL && hy < size.height * HALF_CELLS_PER_CELL;
 
 /**
@@ -37,7 +38,8 @@ export const onMap = (size: MapCells, hx: number, hy: number): boolean =>
  */
 export function assertMapModulesFitMap(modules: MapModules, size: MapCells, known: MapModulesKnown): void {
   for (const [name, x, y] of pointsOf(modules)) {
-    if (!onMap(size, x, y)) throw new Error(`map modules: the ${name} at (${x}, ${y}) lies off the map`);
+    if (!mapHoldsNode(size, x, y))
+      throw new Error(`map modules: the ${name} at (${x}, ${y}) lies off the map`);
   }
   const { seats, names } = known;
   if (seats !== null) {
