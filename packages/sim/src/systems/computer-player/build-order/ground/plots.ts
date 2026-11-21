@@ -69,6 +69,7 @@ export function seatSpotAcceptor(
     return true;
   };
   return {
+    refused: acceptor.refused,
     grassBeside: acceptor.grassBeside,
     around(underFire, centre, fan, spareGrass) {
       const accept = acceptor.around(underFire, centre, fan, spareGrass);

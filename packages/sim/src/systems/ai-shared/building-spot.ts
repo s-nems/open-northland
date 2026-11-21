@@ -49,6 +49,9 @@ export interface SpotAcceptor {
     fan: number,
     spareGrass?: boolean,
   ): (x: number, y: number) => boolean;
+  /** Whether an earlier test of this acceptor already found that the building can never be placed on the
+   *  in-bounds node `(x, y)`: one read, for a search to drop the node before its own dearer bounds. */
+  refused(x: number, y: number): boolean;
   /** Whether a sowable node no building stands on or reserves lies within {@link GRASS_BESIDE_NODES} of
    *  `(x, y)` on its walk component, where the workers can reach it. */
   grassBeside(x: number, y: number): boolean;
@@ -57,7 +60,8 @@ export interface SpotAcceptor {
 /** Bits of a node's remembered answers within one {@link SpotAcceptor}. */
 const UNJUDGED = 0;
 const PLACE_JUDGED = 1;
-/** The building may be placed there: the seat's probe passes and it covers no kept deposit and no road. */
+/** The building may be placed there: buildable ground free of another anchor, the seat's probe passes and
+ *  it covers no kept deposit and no road. */
 const PLACEABLE = 2;
 const GRASS_JUDGED = 4;
 const ON_GRASS = 8;
@@ -134,7 +138,9 @@ export function spotAcceptor(
   // A failed search walks its fan once per ground rule, land bound and centre; the acceptor lives within
   // one decision, so each node's placement and grass answers are judged once.
   const { cells, acceptor: stamp } = nextVerdicts(terrain);
+  const refusedCell = stamp * (1 << VERDICT_BITS) + PLACE_JUDGED;
   return {
+    refused: (x, y) => cells[y * terrain.width + x] === refusedCell,
     grassBeside(x, y) {
       if (!terrain.inBounds(x, y)) return false;
       zones ??= placementBlockerGrid(world, ctx.content, terrain).buildingZone;
@@ -156,20 +162,21 @@ export function spotAcceptor(
       const fire = underFire.around(centre.hx, centre.hy, fan, span);
       return (x, y) => {
         if (!terrain.inBounds(x, y)) return false;
-        const node = terrain.nodeAt(x, y);
-        if (!terrain.isBuildable(node) || occupied.has(node) || fire.reaches(x, y, span)) return false;
         const slot = y * terrain.width + x;
         const held = cells[slot] ?? 0;
         let verdict = held >>> VERDICT_BITS === stamp ? held & VERDICT_MASK : UNJUDGED;
         if ((verdict & PLACE_JUDGED) === 0) {
+          const node = terrain.nodeAt(x, y);
           const placeable =
+            terrain.isBuildable(node) &&
+            !occupied.has(node) &&
             probe.canPlace(x, y) &&
             !coversLiveDeposit(world, deposits, depositKept, zone, x, y) &&
             !coversRoad(terrain, roadSites, body, x, y);
           verdict |= placeable ? PLACE_JUDGED | PLACEABLE : PLACE_JUDGED;
           cells[slot] = stamp * (1 << VERDICT_BITS) + verdict;
         }
-        if ((verdict & PLACEABLE) === 0) return false;
+        if ((verdict & PLACEABLE) === 0 || fire.reaches(x, y, span)) return false;
         if (!spareGrass) return true;
         if ((verdict & GRASS_JUDGED) === 0) {
           verdict |= coversGrass(terrain, zone, x, y) ? GRASS_JUDGED | ON_GRASS : GRASS_JUDGED;

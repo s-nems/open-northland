@@ -3,7 +3,7 @@ import { Building } from '../../../../components/index.js';
 import type { PlayerCommand } from '../../../../core/commands/index.js';
 import { contentIndex } from '../../../../core/content-index.js';
 import type { Entity, World } from '../../../../ecs/world.js';
-import { type HalfCellNode, nodeManhattan } from '../../../../nav/halfcell.js';
+import type { HalfCellNode } from '../../../../nav/halfcell.js';
 import { NO_COMPONENT, type TerrainGraph } from '../../../../nav/terrain/index.js';
 import type { SpotAcceptor } from '../../../ai-shared/building-spot.js';
 import { buildingTypeByContentId } from '../../../ai-shared/content-lookup.js';
@@ -100,8 +100,13 @@ function homeFarSide(
   const away = { hx: 2 * anchor.hx - farm.hx, hy: 2 * anchor.hy - farm.hy };
   return {
     centre: towardNode(anchor, away, HOME_FAR_SIDE_PUSH_NODES),
-    nearFarm: (x, y) =>
-      farms.some((f) => nodeManhattan(f.node, { hx: x, hy: y }) <= f.radius + HOME_FARM_MARGIN_NODES),
+    nearFarm: (x, y) => {
+      for (const f of farms) {
+        const distance = Math.abs(f.node.hx - x) + Math.abs(f.node.hy - y);
+        if (distance <= f.radius + HOME_FARM_MARGIN_NODES) return true;
+      }
+      return false;
+    },
   };
 }
 
@@ -431,8 +436,10 @@ function spotAround(
     (x, y) => {
       // The reach first: an affinity-pulled centre puts much of every ring outside it, and a stalled
       // entry re-walks the whole fan on every retry.
-      if (!inReach(x, y)) return false;
       if (!terrain.inBounds(x, y)) return false; // the bound and the ground test resolve nodes
+      // A node an earlier walk of this search found unplaceable goes before the reach and the bounds.
+      if (acceptor.refused(x, y)) return false;
+      if (!inReach(x, y)) return false;
       if (within !== null && !within(x, y)) return false;
       if (land !== null && !land(x, y)) return false;
       if (ground === 'on' && !footprintOnGrass(ctx, terrain, type, tribe, x, y)) return false;
