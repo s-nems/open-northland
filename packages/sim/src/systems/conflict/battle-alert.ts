@@ -235,7 +235,9 @@ class CoarseGrid {
       const column = this.byCx.get(coarseOf(hx) + dx);
       if (column === undefined) continue;
       for (let dy = -1; dy <= 1; dy++) {
-        for (const m of column.get(coarseOf(hy) + dy) ?? []) {
+        const members = column.get(coarseOf(hy) + dy) ?? [];
+        for (let i = 0; i < members.length; i++) {
+          const m = members[i] as Member;
           if (hexDistanceBetween(hx, hy, m.hx, m.hy) <= radius && accept(m.e)) return true;
         }
       }

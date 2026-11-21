@@ -36,7 +36,9 @@ export function combatPossible(world: World, ctx: SystemContext): boolean {
   let hasClaimedAnimal = false;
   let hasHunter = false;
   let hasPrey = false;
-  for (const e of combatants) {
+  for (let i = 0; i < combatants.length; i++) {
+    const e = combatants[i];
+    if (e === undefined) continue;
     const s = world.get(e, Settler);
     const owner = world.tryGet(e, Owner);
     if (owner !== undefined) owners.add(owner.player);
@@ -82,7 +84,8 @@ export function combatPossible(world: World, ctx: SystemContext): boolean {
 /** Whether a combatant holds {@link LINGERING_STATE}, asked of the holders: a fight's few rather than every
  *  combatant. */
 function lingeringStateHeld(world: World): boolean {
-  for (const store of LINGERING_STATE) {
+  for (let i = 0; i < LINGERING_STATE.length; i++) {
+    const store = LINGERING_STATE[i] as Component<unknown>;
     for (const e of world.query(store)) if (isCombatant(world, e)) return true;
   }
   return false;

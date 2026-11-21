@@ -129,7 +129,8 @@ function buildNetwork(world: World): Map<number, readonly SignpostSite[]> {
       return root;
     };
     posts.forEach((a, i) => {
-      for (const linked of a.links) {
+      for (let k = 0; k < a.links.length; k++) {
+        const linked = a.links[k] as Entity;
         const j = indexOf.get(linked);
         if (j !== undefined) parent[find(j)] = find(i);
       }
@@ -869,7 +870,8 @@ function deriveNetworkLimit(
   // opens its whole group. Kept ascending as found.
   const here = componentAt(terrain, hx, hy);
   const groups: number[] = [];
-  for (const s of posts) {
+  for (let i = 0; i < posts.length; i++) {
+    const s = posts[i] as SignpostSite;
     if (groups.includes(s.group)) continue;
     if (hexDistanceBetween(hx, hy, s.hx, s.hy) >= range) continue;
     if (here !== null && componentAt(terrain, s.hx, s.hy) !== here) continue;

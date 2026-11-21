@@ -41,7 +41,9 @@ export const animalFrightSystem: System = (world, ctx) => {
   if (terrain === undefined) return; // mapless fixture world - nowhere to run
   let blocked: BlockOverlay | undefined;
   const fleeing: Entity[] = [];
-  for (const e of world.canonicalQuery(Frightened, Settler, Position)) {
+  const frighteneds = world.canonicalQuery(Frightened, Settler, Position);
+  for (let i = 0; i < frighteneds.length; i++) {
+    const e = frighteneds[i] as Entity;
     // Indoors (a farm's feed batch owns it) an animal runs nowhere: routing it would walk the body out.
     if (world.has(e, Resting)) continue;
     const f = world.get(e, Frightened);

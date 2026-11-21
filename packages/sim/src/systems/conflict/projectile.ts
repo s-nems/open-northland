@@ -95,7 +95,9 @@ function land(
   let struckAny = false;
   let struckLiving = false;
   let blockedAny = false;
-  for (const victim of struckVictims(world, ctx, proj)) {
+  const victims = struckVictims(world, ctx, proj);
+  for (let i = 0; i < victims.length; i++) {
+    const victim = victims[i] as Entity;
     if (peaceSpares(world, proj, victim)) continue;
     const hitSoundType = hitSoundVsMaterial(proj, targetMaterial(world, ctx, victim));
     const source = atWar(world, proj.player ?? undefined, ownerOf(world, victim))
@@ -334,8 +336,13 @@ function wallsCovering(
   nodes: readonly NodeId[],
 ): Entity[] {
   const covering = new Set<Entity>();
-  for (const node of nodes) {
-    for (const wall of wallsCoveringNode(world, ctx, terrain, node)) covering.add(wall);
+  for (let i = 0; i < nodes.length; i++) {
+    const node = nodes[i] as NodeId;
+    const coveringNode = wallsCoveringNode(world, ctx, terrain, node);
+    for (let j = 0; j < coveringNode.length; j++) {
+      const wall = coveringNode[j] as Entity;
+      covering.add(wall);
+    }
   }
   const walls: Entity[] = [];
   for (const wall of covering) {

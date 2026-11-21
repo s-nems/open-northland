@@ -61,7 +61,10 @@ export function fireFromDecks(
   vehicles: readonly Entity[],
 ): void {
   const volley = new DeckVolley(world, ctx, terrain, index);
-  for (const ship of vehicles) volley.fireFrom(ship);
+  for (let i = 0; i < vehicles.length; i++) {
+    const ship = vehicles[i] as Entity;
+    volley.fireFrom(ship);
+  }
 }
 
 /** One tick's deck fire, re-aimed per ship so a seat walk allocates nothing. */
@@ -110,7 +113,9 @@ class DeckVolley {
   ): void {
     const cues = attackClipSoundCues(this.ctx.content, settler);
     let aimed: boolean | undefined;
-    for (const cue of cues) {
+    for (let i = 0; i < cues.length; i++) {
+      const cue = cues[i];
+      if (cue === undefined) continue;
       const lead = shotAt - cue.tick;
       if ((((phase + lead) % interval) + interval) % interval !== 0) continue;
       aimed ??= this.targets(archer, bow).length > 0;

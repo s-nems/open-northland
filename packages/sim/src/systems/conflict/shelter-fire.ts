@@ -68,7 +68,8 @@ export function fireFromShelters(
   if (occupancy.size === 0) return;
   // Ascending id, because every shot draws from the seeded stream.
   const buildings = [...occupancy.keys()].sort((a, b) => a - b);
-  for (const building of buildings) {
+  for (let i = 0; i < buildings.length; i++) {
+    const building = buildings[i] as Entity;
     const shots = shotsDue(ctx.tick, occupancy.get(building) ?? 0);
     if (shots > 0) fireFrom(world, ctx, terrain, index, building, shots);
   }
@@ -223,7 +224,8 @@ function nearestByReach(
   reach: (t: Entity) => number,
 ): { entity: Entity; distance: number }[] {
   const nearest: { entity: Entity; distance: number }[] = [];
-  for (const entity of band) {
+  for (let i = 0; i < band.length; i++) {
+    const entity = band[i] as Entity;
     const distance = reach(entity);
     let at = nearest.length;
     while (at > 0) {

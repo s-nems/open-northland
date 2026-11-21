@@ -793,7 +793,8 @@ function walkedFace(
   const hy = terrain.yOf(here);
   const nodes = terrain.nodeCount;
   faceKeys.length = 0;
-  for (const cell of faces) {
+  for (let j = 0; j < faces.length; j++) {
+    const cell = faces[j] as NodeId;
     if (free(cell))
       faceKeys.push(hexDistanceBetween(hx, hy, terrain.xOf(cell), terrain.yOf(cell)) * nodes + cell);
   }
