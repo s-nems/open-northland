@@ -19,6 +19,7 @@ import {
   Resting,
   Settler,
   Stance,
+  StandIn,
   Stranded,
   UnreachableTargets,
   Weapon,
@@ -37,8 +38,9 @@ import {
   stanceMode,
 } from '../readviews/index.js';
 import { atomicHoldsSettler } from '../settlers/atomics/busy.js';
+import { hexNodeDistance } from '../spatial/metric.js';
 import { entityNode } from '../spatial/nodes.js';
-import { guardPost } from './chase.js';
+import { ATTACK_RETURN_SLACK_NODES, guardPost } from './chase.js';
 import type { CombatIndex } from './combat-index.js';
 import { asleepOnDuty } from './engage-combatant.js';
 import { DEFEND_RADIUS_NODES } from './engagement.js';
@@ -52,7 +54,8 @@ import { attackerWeapon, type WeaponReach } from './weapons.js';
  * finds nothing. Asked in the pass's own order, so it reads each unit as the ladder would. `nearStranger`
  * false says the index's `unitsNearStrangers` did not list `e` within {@link PRESENCE_RADIUS}, nor within its
  * {@link reachPastPresence}, and it does not {@link searchesPastPresence}, so an owned unit in a player slot
- * fails every presence test without asking it.
+ * fails every presence test without asking it. A presence test the coarse cells pass is asked again of the
+ * members themselves ({@link searchMayFind}).
  */
 export function mayEngage(
   world: World,
@@ -106,18 +109,49 @@ export function mayEngage(
   const y = terrain.yOf(here);
   // A manned post searches its weapon's reach raised by the tower, and neither flees nor walks back.
   const post = garrisoned ? index.mannedPost(world, ctx, e) : null;
-  if (post !== null)
-    return index.othersWithin(owner.player, x, y, postedSearchReach(world, ctx, terrain, e, post));
+  if (post !== null) {
+    const reach = postedSearchReach(world, ctx, terrain, e, post);
+    return index.othersWithin(owner.player, x, y, reach) && index.bandHoldsMember(owner.player, x, y, reach);
+  }
   // With nothing to fight, a guard walks back to its anchor and drops its route state.
-  if (guardsAnchor(ctx.content, mode, settler.jobType) && awayFromAnchor(world, ctx, terrain, e, here))
-    return true;
+  const guard = guardsAnchor(ctx.content, mode, settler.jobType);
+  if (guard && awayFromAnchor(world, ctx, terrain, e, here)) return true;
   // Every owned search stays inside this, bar a fighter's weapon reach where that is longer: a fighter
   // takes up whatever enters its reach.
   const radius = isFighterJob(ctx.content, settler.jobType)
     ? Math.max(PRESENCE_RADIUS, reachOf(world, ctx, e))
     : PRESENCE_RADIUS;
   if (radius > PRESENCE_RADIUS && index.clearOfStrangers(e, radius)) return false;
-  return index.othersWithin(owner.player, x, y, radius);
+  if (!index.othersWithin(owner.player, x, y, radius)) return false;
+  return searchMayFind(world, ctx, terrain, index, e, owner.player, here, guard);
+}
+
+/**
+ * Whether the ladder could do anything for owned `e`, standing on `here` with a stranger in the coarse
+ * cells around it: its search lists a member ({@link CombatIndex.bandHoldsMember}), or its break-off walks
+ * a fighter back to an anchor it strayed from. A guard home beside a covered anchor searches the ground
+ * around that anchor, so its band reaches that much farther from `here`.
+ */
+function searchMayFind(
+  world: World,
+  ctx: SystemContext,
+  terrain: TerrainGraph,
+  index: CombatIndex,
+  e: Entity,
+  player: number,
+  here: NodeId,
+  guard: boolean,
+): boolean {
+  // A guard's break-off drops the stand-in routing left it on.
+  if (guard && world.has(e, StandIn)) return true;
+  let radius = Math.max(PRESENCE_RADIUS, reachOf(world, ctx, e));
+  const anchor = world.tryGet(e, Stance)?.anchorCell ?? null;
+  if (anchor !== null && anchor !== here) {
+    const off = hexNodeDistance(terrain, anchor, here);
+    if (guard) radius += off;
+    else if (off > ATTACK_RETURN_SLACK_NODES) return true;
+  }
+  return index.bandHoldsMember(player, terrain.xOf(here), terrain.yOf(here), radius);
 }
 
 /** The stores whose membership, or whose values for {@link READY_VALUES}, can change {@link readinessOf},
@@ -190,8 +224,9 @@ export function readinessOf(
 }
 
 /**
- * Whether `posted` garrison `e` ({@link readinessOf}) stands idle on its post: it holds it and no stranger
- * is within its reach raised by the tower, the presence test {@link mayEngage} would fail it on.
+ * Whether `posted` garrison `e` ({@link readinessOf}) stands idle on its post: it holds it and its search
+ * over its reach raised by the tower can list no one, the presence test {@link mayEngage} would fail it
+ * on.
  */
 export function idleAtPost(
   world: World,
@@ -207,7 +242,9 @@ export function idleAtPost(
   const owner = world.tryGet(e, Owner);
   if (owner === undefined) return false;
   const here = entityNode(world, terrain, e);
-  return !index.othersWithin(owner.player, terrain.xOf(here), terrain.yOf(here), reach);
+  const x = terrain.xOf(here);
+  const y = terrain.yOf(here);
+  return !index.othersWithin(owner.player, x, y, reach) || !index.bandHoldsMember(owner.player, x, y, reach);
 }
 
 /** The radius (map points) {@link mayEngage}'s presence test asks for an owned unit that
