@@ -25,10 +25,14 @@ import { fx, ONE } from '../../../src/core/fixed.js';
 import type { Entity } from '../../../src/ecs/world.js';
 import {
   cellAnchorNode,
+  exportSaveGame,
   fogViewOfMask,
+  parseSaveGame,
+  restoreSimulation,
   SHARED_SIGHT_VIEWER,
   Simulation,
   scanChangedBytes,
+  serializeSaveGame,
 } from '../../../src/index.js';
 import { SharedSightMask } from '../../../src/simulation/shared-sight.js';
 import { SHELTER_SHOT_PERIOD_TICKS } from '../../../src/systems/conflict/shelter-fire.js';
@@ -114,6 +118,12 @@ function unit(
   sim.world.add(e, Owner, { player: owner });
   sim.world.add(e, Stance, { mode: opts.mode ?? MILITARY_MODE.IGNORE, anchorCell: null });
   return e;
+}
+
+/** The viewers of the contact table in the order they entered it, the order a save writes. */
+function contactViewerOrder(sim: Simulation): number[] {
+  const holder = sim.world.lowestEntityWith(PlayerContacts);
+  return holder === null ? [] : [...sim.world.get(holder, PlayerContacts).met.keys()];
 }
 
 /** Teleport a unit to cell (x,y) - the between-rebuild move the regression tests need. */
@@ -934,6 +944,42 @@ describe('first contact - the vision-driven discovery of other players', () => {
     expect(sim.fog?.generation).toBe(generation);
     expect(sim.hasMetPlayer(P0, P1)).toBe(true);
     expect(sim.world.verifyCaches()).toEqual([]);
+  });
+
+  it('two viewers met in one rebuild enter the contact table in one order, restored or not', () => {
+    const P2 = 2;
+    /** A second stranger pair as far east of the first as the map allows without either seeing the other. */
+    const EAST = 80;
+    const sim = simOn(FOG_MODE.CLASSIC, 160, 8);
+    // Created before the first pair's civilian, moved after it: store and change order disagree.
+    const eastCiv = unit(sim, EAST + 5, 2, P1);
+    const civ = unit(sim, 5, 2, P1);
+    const scout = unit(sim, 50, 2, P0, { jobType: SCOUT_JOB });
+    const eastScout = unit(sim, EAST + 50, 2, P2, { jobType: SCOUT_JOB });
+    sim.run(1);
+    teleport(sim, civ, 30, 2);
+    teleport(sim, eastCiv, EAST + 30, 2);
+    sim.run(VISION_CADENCE_TICKS);
+    teleport(sim, scout, 5, 2);
+    teleport(sim, eastScout, EAST + 5, 2);
+    sim.run(VISION_CADENCE_TICKS);
+    teleport(sim, scout, 50, 2);
+    teleport(sim, eastScout, EAST + 50, 2);
+    sim.run(2 * VISION_CADENCE_TICKS);
+    expect(sim.hasMetPlayer(P0, P1) || sim.hasMetPlayer(P2, P1)).toBe(false);
+    teleport(sim, civ, 5, 2);
+    teleport(sim, eastCiv, EAST + 5, 2);
+    // The restored run's first rebuild walks every entity; the running one asks the changed ones.
+    const restored = restoreSimulation(parseSaveGame(JSON.parse(serializeSaveGame(exportSaveGame(sim)))), {
+      content: testContent(),
+      map: grassMap(160, 8),
+    });
+    const generation = sim.fog?.generation;
+    sim.run(VISION_CADENCE_TICKS);
+    restored.run(VISION_CADENCE_TICKS);
+    expect(sim.fog?.generation).toBe(generation);
+    expect(sim.hasMetPlayer(P0, P1) && sim.hasMetPlayer(P2, P1)).toBe(true);
+    expect(contactViewerOrder(restored)).toEqual(contactViewerOrder(sim));
   });
 
   it('the cache verifier reports an unmet unit on explored ground that no feed reported', () => {

@@ -116,6 +116,8 @@ interface ContactPass {
   readonly cellsWide: number;
   readonly cellsHigh: number;
   unmetOwners: number;
+  /** The pass's new contacts as `viewer * MAX_PLAYERS + owner`, recorded once it ends. */
+  readonly made: number[];
 }
 
 /**
@@ -197,6 +199,7 @@ export const visionSystem: System = (world, ctx) => {
     cellsWide: fog.cellsWide,
     cellsHigh: fog.cellsHigh,
     unmetOwners: 0,
+    made: [],
   };
   for (let owner = 0; owner < MAX_PLAYERS; owner++) {
     if (!everyViewerMet(viewers, owner)) contacts.unmetOwners |= 1 << owner;
@@ -214,6 +217,12 @@ export const visionSystem: System = (world, ctx) => {
     for (const kind of MET_KINDS) {
       for (const e of world.query(kind, Owner, Position)) meetOwnerOf(world, contacts, e);
     }
+  }
+  // In ascending (viewer, owner) order, so the contact table's viewers enter it in one order whichever
+  // walk found them, and a restored run saves the same bytes as one that never stopped.
+  contacts.made.sort((a, b) => a - b);
+  for (const contact of contacts.made) {
+    recordContact(world, Math.floor(contact / MAX_PLAYERS), contact % MAX_PLAYERS);
   }
 
   fog.activeMode = mode;
@@ -363,7 +372,8 @@ function everyViewerMet(viewers: readonly ViewerBits[], owner: number): boolean 
   return viewers.every((v) => v.viewer === owner || (v.bits & ownerBit) !== 0);
 }
 
-/** Record every viewer that has explored the cell under `e` as having met its owner. */
+/** Mark every viewer that has explored the cell under `e` as having met its owner, a contact the pass
+ *  records as it ends. */
 function meetOwnerOf(world: World, contacts: ContactPass, e: Entity): void {
   const owner = world.get(e, Owner).player;
   if (!isValidPlayer(owner)) return; // never meetable - skip before any per-entity work
@@ -378,7 +388,7 @@ function meetOwnerOf(world: World, contacts: ContactPass, e: Entity): void {
     if (v.viewer === owner || (v.bits & ownerBit) !== 0) continue;
     // Any byte but UNEXPLORED is at least explored, a revealed one included.
     if (v.mask !== undefined && v.mask[index] !== FOG_STATE.UNEXPLORED) {
-      recordContact(world, v.viewer, owner);
+      contacts.made.push(v.viewer * MAX_PLAYERS + owner);
       v.bits |= ownerBit;
     }
   }
