@@ -22,6 +22,10 @@ const ANIMAL_COLUMN = '8';
 const MONSTER_COLUMN = '9';
 const NATION_TRIBES: readonly number[] = [1, 2, 3, 4, 7];
 const FRANK = 2;
+/** The nations whose short sword carries a shield and so deals this percent in every column. */
+const SHIELD_NATIONS: readonly number[] = [1, 2, 3, 7];
+const SHIELD_DAMAGE_PCT = 90;
+const PERCENT = 100;
 /** What each weapon did to a weresnake or werewolf in the original, which wore leather there. */
 const ORIGINAL_MONSTER_DAMAGE: Readonly<Record<string, number>> = {
   fist: 229,
@@ -113,12 +117,19 @@ describe.runIf(hasRealIr())('the dragon tribe and the retired trades in our data
     expect(content.weapons.filter((w) => RETIRED_WEAPON_TYPES.includes(w.typeId))).toEqual([]);
     const ir = rawIrUnderTest() as { jobGraphics: { job: number }[] };
     expect(ir.jobGraphics.filter((row) => RETIRED_JOBS.includes(row.job))).toEqual([]);
-    // The Frankish hero bow keeps its own weak row; it and every monster and animal row repeat column 8.
+    // The Frankish hero bow keeps its own weak row; it and every monster and animal row repeat column 8. A
+    // shield nation's short sword deals its share of the original.
+    const original = (w: (typeof content.weapons)[number]): number | undefined => {
+      const value = ORIGINAL_MONSTER_DAMAGE[w.id];
+      const shielded =
+        w.id === 'short_sword' && w.tribeType !== undefined && SHIELD_NATIONS.includes(w.tribeType);
+      return value === undefined || !shielded ? value : Math.floor((value * SHIELD_DAMAGE_PCT) / PERCENT);
+    };
     const expected = (w: (typeof content.weapons)[number]) =>
       w.tribeType !== undefined &&
       NATION_TRIBES.includes(w.tribeType) &&
       !(w.tribeType === FRANK && w.id === 'hero_bow')
-        ? ORIGINAL_MONSTER_DAMAGE[w.id]
+        ? original(w)
         : w.damage[ANIMAL_COLUMN];
     const wrong = content.weapons.filter(
       (w) => expected(w) === undefined || w.damage[MONSTER_COLUMN] !== expected(w),
