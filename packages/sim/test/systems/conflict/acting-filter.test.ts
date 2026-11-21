@@ -326,11 +326,12 @@ describe('combat pass - who may engage', () => {
     expect(target).toBe(enemy);
   });
 
-  it('refuses a unit whose coarse cells hold an enemy standing past the box of its search', () => {
+  it('refuses a unit with only grazing game inside the box of its search and an enemy past it', () => {
     const sim = new Simulation({ seed: 7, content: testContent(), map: grassMap(64, 64) });
     setDiplomacyStance(sim.world, P0, P1, 'enemy');
     setDiplomacyStance(sim.world, P1, P0, 'enemy');
     const fighter = combatantAtNode(sim, 20, 20, P0, MILITARY_MODE.ATTACK);
+    fighterAtNode(sim, 24, 20, DEER, null);
     const enemy = combatantAtNode(sim, 20 + PRESENCE_RADIUS + 1, 20, P1, MILITARY_MODE.IGNORE);
     const terrain = terrainOf(sim);
     const ctx = ctxOf(sim);

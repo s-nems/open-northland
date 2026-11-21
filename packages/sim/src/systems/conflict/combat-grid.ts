@@ -505,6 +505,11 @@ export class CombatGrid {
     return this.units[e] !== undefined;
   }
 
+  /** Whether the unit layer holds `e` as passive wildlife, which no gated seeker's filter admits. */
+  holdsPassiveWildlife(e: Entity): boolean {
+    return this.units[e]?.wild === 'passive';
+  }
+
   /** Whether held unit `e` may stand on another node than the layer holds it at: a Position or route write
    *  since the layer's last sync, such as a route dropped mid column step, moves its node unseen. */
   unitMayHaveMoved(e: Entity): boolean {

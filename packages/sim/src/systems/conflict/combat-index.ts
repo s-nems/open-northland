@@ -401,11 +401,11 @@ export class CombatIndex {
   }
 
   /**
-   * Whether a band scan for `seeker` from node (hx, hy) out to `radius` could list anyone: a member with no
-   * player bit, or of a player `seeker` fights either way, held at a node inside the box around the band.
-   * A map-point or Manhattan distance is never under either axis span, so `false` proves every such
-   * search empty; `true` only means "run the real search". Asked after {@link othersWithin}, which
-   * answers by whole coarse cells.
+   * Whether a band scan for `seeker` from node (hx, hy) out to `radius` could list anyone its filter may
+   * admit: a member of a player `seeker` fights either way, or one with no player bit other than passive
+   * wildlife, held at a node inside the box around the band. A map-point or Manhattan distance is never
+   * under either axis span, so `false` proves every gated search of the band comes back empty; `true` only
+   * means "run the real search". Asked after {@link othersWithin}, which answers by whole coarse cells.
    */
   bandHoldsMember(seeker: number, hx: number, hy: number, radius: number): boolean {
     const hostile = hostileMaskOf(this.hostileMasks, seeker);
@@ -414,11 +414,38 @@ export class CombatIndex {
       for (let cy = cy0; cy <= cy1; cy++) {
         const cell = this.grid.cellAt(cx, cy);
         if (cell === undefined) continue;
-        if (unitsHoldBandCandidate(cell, hostile) && holdsInBox(cell.units, hostile, hx, hy, radius))
+        if (
+          ((cell.unitOwnerMask & hostile) !== 0 || cell.unitUndiscounted > 0) &&
+          this.holdsInBox(cell.units, hostile, hx, hy, radius, true)
+        )
           return true;
-        if (bodiesHoldBandCandidate(cell, hostile) && holdsInBox(cell.bodies, hostile, hx, hy, radius))
+        if (
+          bodiesHoldBandCandidate(cell, hostile) &&
+          this.holdsInBox(cell.bodies, hostile, hx, hy, radius, false)
+        )
           return true;
       }
+    }
+    return false;
+  }
+
+  /** Whether `list` holds a member `hostile` does not skip, and among `units` no passive wildlife, at a
+   *  node within `radius` of (hx, hy) on both axes. */
+  private holdsInBox(
+    list: MemberList,
+    hostile: number,
+    hx: number,
+    hy: number,
+    radius: number,
+    units: boolean,
+  ): boolean {
+    const { members, x, y, bit } = list;
+    for (let i = 0; i < list.count; i++) {
+      const memberBit = bit[i] ?? 0;
+      if (memberBit !== 0 && (memberBit & hostile) === 0) continue;
+      if (Math.abs((x[i] ?? 0) - hx) > radius || Math.abs((y[i] ?? 0) - hy) > radius) continue;
+      if (units && memberBit === 0 && this.grid.holdsPassiveWildlife(members[i] ?? (0 as Entity))) continue;
+      return true;
     }
     return false;
   }
@@ -702,18 +729,6 @@ function bodiesHoldBandCandidate(cell: CoarseCell, hostile: number): boolean {
  *  as undiscounted or passive. */
 function unitsHoldBandCandidate(cell: CoarseCell, hostile: number): boolean {
   return (cell.unitOwnerMask & hostile) !== 0 || cell.unitUndiscounted > 0 || cell.unitPassive > 0;
-}
-
-/** Whether `list` holds a member `hostile` does not skip at a node within `radius` of (hx, hy) on both
- *  axes. */
-function holdsInBox(list: MemberList, hostile: number, hx: number, hy: number, radius: number): boolean {
-  const { x, y, bit } = list;
-  for (let i = 0; i < list.count; i++) {
-    const memberBit = bit[i] ?? 0;
-    if (memberBit !== 0 && (memberBit & hostile) === 0) continue;
-    if (Math.abs((x[i] ?? 0) - hx) <= radius && Math.abs((y[i] ?? 0) - hy) <= radius) return true;
-  }
-  return false;
 }
 
 /** Append to `scan` from `count` every member of `list` from entry `first` on within `minDist..maxDist` of
