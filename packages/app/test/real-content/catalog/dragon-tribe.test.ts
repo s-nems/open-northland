@@ -18,8 +18,29 @@ const { Health, Settler, Stance } = components;
 /** The trades and weapon types our data pack retires: the sabre and axe soldiers and the axe hero. */
 const RETIRED_JOBS: readonly number[] = [36, 37, 38, 39, 46];
 const RETIRED_WEAPON_TYPES: readonly number[] = [10, 11, 15];
-const BARE_COLUMN = '0';
+const ANIMAL_COLUMN = '8';
 const MONSTER_COLUMN = '9';
+const NATION_TRIBES: readonly number[] = [1, 2, 3, 4, 7];
+const FRANK = 2;
+/** What each weapon did to a weresnake or werewolf in the original, which wore leather there. */
+const ORIGINAL_MONSTER_DAMAGE: Readonly<Record<string, number>> = {
+  fist: 229,
+  woman_fist: 229,
+  hero_fist: 229,
+  wooden_spear: 1400,
+  iron_spear: 2121,
+  short_sword: 850,
+  long_sword: 2900,
+  short_bow: 150,
+  long_bow: 400,
+  hunter_bow: 500,
+  house_bow: 85,
+  catapult: 5486,
+  hero_spear: 1886,
+  hero_sword: 2229,
+  hero_saber: 1857,
+  hero_bow: 857,
+};
 const SPEAR_MAIN_TYPE = 2;
 /** The dragon's natural weapon: the Byzantine wooden spear values the pack carried before the pool. */
 const DRAGON_WEAPON = {
@@ -85,15 +106,22 @@ describe.runIf(hasRealIr())('the dragon tribe and the retired trades in our data
     });
   });
 
-  it('drops the retired trades and weapons, and gives every weapon row a monster column', async () => {
+  it('drops the retired trades and weapons, and gives every weapon row its monster column', async () => {
     const { merge } = await loadContentUnderTest();
     const { content } = merge;
     expect(content.jobs.filter((job) => RETIRED_JOBS.includes(job.typeId))).toEqual([]);
     expect(content.weapons.filter((w) => RETIRED_WEAPON_TYPES.includes(w.typeId))).toEqual([]);
     const ir = rawIrUnderTest() as { jobGraphics: { job: number }[] };
     expect(ir.jobGraphics.filter((row) => RETIRED_JOBS.includes(row.job))).toEqual([]);
-    const missing = content.weapons.filter((w) => w.damage[MONSTER_COLUMN] !== w.damage[BARE_COLUMN]);
-    expect(missing.map((w) => `${w.tribeType}:${w.id}`)).toEqual([]);
+    // The Frankish hero bow keeps its own weak row; it and every monster and animal row repeat column 8.
+    const expected = (w: (typeof content.weapons)[number]) =>
+      NATION_TRIBES.includes(w.tribeType) && !(w.tribeType === FRANK && w.id === 'hero_bow')
+        ? ORIGINAL_MONSTER_DAMAGE[w.id]
+        : w.damage[ANIMAL_COLUMN];
+    const wrong = content.weapons.filter(
+      (w) => expected(w) === undefined || w.damage[MONSTER_COLUMN] !== expected(w),
+    );
+    expect(wrong.map((w) => `${w.tribeType}:${w.id}`)).toEqual([]);
   });
 
   it.runIf(existsSync(realMapPath(TRIBUTE_MAP)))(
