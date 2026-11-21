@@ -8,7 +8,14 @@ import {
   type WorldSnapshot,
 } from '@open-northland/sim';
 import { entitiesUnder, idsGroupedBy } from '../../../game/snapshot/id-index.js';
-import { num, positionOf, type SnapshotEntity, staffOf, workAreaOf } from '../../../game/snapshot/index.js';
+import {
+  num,
+  positionOf,
+  type SnapshotEntity,
+  staffOf,
+  workAreaOf,
+  workedTicks,
+} from '../../../game/snapshot/index.js';
 import { goodName } from '../../../i18n/index.js';
 import { pctRatio } from './bars.js';
 import { liveAmounts } from './building-materials.js';
@@ -172,7 +179,7 @@ export function productionModel(
       ...(fieldGood.id !== undefined ? { goodId: fieldGood.id } : {}),
     };
   }
-  const bestPct = cycleFrontRunners(ent);
+  const bestPct = cycleFrontRunners(ent, snapshot.tick);
   const herdRows = livestockHerdRows(ctx, def, ent, bestPct);
   if (herdRows.length > 0) return { kind: 'recipe', rows: herdRows };
   // A self-filling house (the well, the hive) runs no craft cycle, so a production bar would never move.
@@ -204,14 +211,14 @@ export function productionModel(
   return { kind: 'recipe', rows };
 }
 
-function cycleFrontRunners(ent: SnapshotEntity): Map<number, number> {
+function cycleFrontRunners(ent: SnapshotEntity, tick: number): Map<number, number> {
   const production = ent.components.Production as { cycles?: unknown } | undefined;
   const bestPct = new Map<number, number>();
   for (const c of Array.isArray(production?.cycles) ? production.cycles : []) {
-    const cycle = c as { elapsed?: unknown; duration?: unknown; goodType?: unknown } | null;
+    const cycle = c as { duration?: unknown; goodType?: unknown } | null;
     const good = num(cycle?.goodType);
     if (good === undefined) continue;
-    const pct = pctRatio(num(cycle?.elapsed), num(cycle?.duration));
+    const pct = pctRatio(workedTicks(cycle, tick), num(cycle?.duration));
     if (pct > (bestPct.get(good) ?? -1)) bestPct.set(good, pct);
   }
   return bestPct;

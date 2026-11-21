@@ -31,6 +31,7 @@ import {
   UnderConstruction,
   Upgrading,
   Wedding,
+  workClockTicks,
 } from '../../../src/components/index.js';
 import type { Entity } from '../../../src/ecs/world.js';
 import { fx, ONE, playerCommand, type SimEvent, Simulation } from '../../../src/index.js';
@@ -428,13 +429,15 @@ describe('e2e: marriage → household → child (full step schedule)', () => {
     }
     runUntil(sim, () => sim.world.has(home(), MakingLove), 4000, 'hearts');
     sim.run(30);
-    const { elapsed, duration } = sim.world.get(home(), MakingLove);
+    const { duration } = sim.world.get(home(), MakingLove);
+    const sessionTicks = (): number => workClockTicks(sim.world.get(home(), MakingLove), sim.tick);
+    const elapsed = sessionTicks();
     // Leave no food to restart the session: the original cost has already been paid.
     for (const e of sim.world.query(Stockpile)) sim.world.mut(e, Stockpile).amounts.clear();
     sim.enqueueSetup({ kind: 'upgradeBuilding', building: home() });
     sim.step();
     expect(sim.world.has(home(), Upgrading)).toBe(true);
-    expect(sim.world.get(home(), MakingLove).elapsed).toBe(elapsed + 1);
+    expect(sessionTicks()).toBe(elapsed + 1);
     expect(sim.world.get(woman(), ChildOrder).blocked).toBeUndefined();
     for (const e of [woman(), man()]) expect(sim.world.get(e, Resting).at).toBe(home());
     if (source === 'assistant') expect(sim.world.has(woman(), AssistantChildOrder)).toBe(true);

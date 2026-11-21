@@ -15,8 +15,10 @@ import {
   Residence,
   removeCurrentAtomic,
   Settler,
+  startWorkClock,
   Upgrading,
   Wedding,
+  workClockTicks,
 } from '../../../components/index.js';
 import { TICKS_PER_SECOND } from '../../../core/loop.js';
 import type { Entity, World } from '../../../ecs/world.js';
@@ -104,6 +106,8 @@ export type ChildOrderPass = {
   readonly dutyClaimed: DutyClaims;
   readonly externalFood: ExternalFoodIndex;
   readonly supply: SupplyTally;
+  /** The homes whose {@link MakingLove} session an order advanced this pass. */
+  readonly sessionsDriven: Entity[];
 };
 
 /** Drive one standing {@link ChildOrder} a tick through its stages: stock the larder, wait inside, hearts,
@@ -142,8 +146,9 @@ export function driveOrder(
   if (love !== undefined && love.wife === woman) {
     claimDuty(world, woman, pass);
     claimDuty(world, husband, pass);
-    world.mut(home, MakingLove).elapsed += 1;
-    if (love.elapsed >= love.duration) {
+    if (love.startedAt === undefined) startWorkClock(world.mut(home, MakingLove), ctx.tick);
+    pass.sessionsDriven.push(home);
+    if (workClockTicks(love, ctx.tick) >= love.duration) {
       birth(world, ctx, woman, husband, home, order.child);
     }
     return;
@@ -172,6 +177,7 @@ export function driveOrder(
   world.add(home, MakingLove, {
     wife: woman,
     elapsed: 0,
+    startedAt: undefined,
     duration: makeLoveDuration(ctx, world.get(woman, Settler).tribe),
   });
   wearLodging(world, ctx, home, woman, 'child');

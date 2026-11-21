@@ -9,7 +9,8 @@ import {
   productionSystem,
 } from '../../../../../src/systems/index.js';
 import { testContent } from '../../../../fixtures/content.js';
-import { CYCLE_TICKS, ctxOf, PLANK, sawmill, WOOD, WOOD_TRACK } from './support.js';
+import { nextTickCtxOf } from '../../../../fixtures/context.js';
+import { CYCLE_TICKS, PLANK, sawmill, WOOD, WOOD_TRACK } from './support.js';
 
 const CARPENTER_GENERAL_TRACK = 3; // fixture jobExperience typeId for "carpenter general" (factor 100)
 const CARPENTER_PLANK_TRACK = 4; // the good-specific "carpenter plank" track (factor 7)
@@ -21,7 +22,7 @@ describe('productionSystem grants the operator profession XP per completed batch
     const sim = new Simulation({ seed: 1, content: testContent() });
     const { mill, worker } = sawmill(sim, [[WOOD, 1]]);
     if (worker === null) throw new Error('staffed sawmill should have a worker');
-    for (let t = 0; t <= CYCLE_TICKS; t++) productionSystem(sim.world, ctxOf(sim));
+    for (let t = 0; t <= CYCLE_TICKS; t++) productionSystem(sim.world, nextTickCtxOf(sim));
     expect(sim.world.get(mill, Stockpile).amounts.get(PLANK)).toBe(1); // the batch really finished
     const xp = sim.world.get(worker, SettlerProgress).experience;
     expect(xp.get(CARPENTER_GENERAL_TRACK)).toBe(100); // one batch = one experienceFactor grant
@@ -34,7 +35,7 @@ describe('productionSystem grants the operator profession XP per completed batch
     const sim = new Simulation({ seed: 1, content: testContent() });
     const { worker } = sawmill(sim, [[WOOD, 2]]);
     if (worker === null) throw new Error('staffed sawmill should have a worker');
-    for (let t = 0; t < CYCLE_TICKS * 2 + 2; t++) productionSystem(sim.world, ctxOf(sim));
+    for (let t = 0; t < CYCLE_TICKS * 2 + 2; t++) productionSystem(sim.world, nextTickCtxOf(sim));
     expect(sim.world.get(worker, SettlerProgress).experience.get(CARPENTER_GENERAL_TRACK)).toBe(200);
   });
 });
@@ -53,7 +54,7 @@ describe('productionSystem accrues the experience bonus in tenths of a unit', ()
     const { mill, worker } = sawmill(sim, [[WOOD, 1]]);
     if (worker === null) throw new Error('staffed sawmill should have a worker');
     seedPoints(sim, worker, 5);
-    for (let t = 0; t <= CYCLE_TICKS; t++) productionSystem(sim.world, ctxOf(sim));
+    for (let t = 0; t <= CYCLE_TICKS; t++) productionSystem(sim.world, nextTickCtxOf(sim));
     // The cycle's own grant lands first, so the credit is the curve at 5 points (51%): 7 tenths.
     expect(sim.world.get(mill, Stockpile).amounts.get(PLANK)).toBe(1); // no whole bonus unit yet
     expect(sim.world.get(mill, ProductionBonus).remainders.get(PLANK)).toBe(
@@ -69,7 +70,7 @@ describe('productionSystem accrues the experience bonus in tenths of a unit', ()
     const xp = sim.world.mut(worker, SettlerProgress).experience;
     xp.set(CARPENTER_GENERAL_TRACK, 69 * CARPENTER_XP_PER_BATCH);
     seedPoints(sim, worker, 9);
-    for (let t = 0; t <= CYCLE_TICKS; t++) productionSystem(sim.world, ctxOf(sim));
+    for (let t = 0; t <= CYCLE_TICKS; t++) productionSystem(sim.world, nextTickCtxOf(sim));
     // The completed plank raises its own specialization to 9 points (66%, 9 tenths). General trade XP
     // from other products must not lend its 90%-plus bonus to this one.
     expect(sim.world.get(mill, ProductionBonus).remainders.get(PLANK)).toBe(
@@ -83,7 +84,7 @@ describe('productionSystem accrues the experience bonus in tenths of a unit', ()
     const { mill, worker } = sawmill(sim, [[WOOD, 1]]);
     if (worker === null) throw new Error('staffed sawmill should have a worker');
     seedPoints(sim, worker, MASTERY);
-    for (let t = 0; t <= CYCLE_TICKS; t++) productionSystem(sim.world, ctxOf(sim));
+    for (let t = 0; t <= CYCLE_TICKS; t++) productionSystem(sim.world, nextTickCtxOf(sim));
     expect(sim.world.get(mill, Stockpile).amounts.get(PLANK)).toBe(2); // 1 base + 1 whole bonus
     expect(sim.world.get(mill, ProductionBonus).remainders.get(PLANK)).toBe(5);
   });
@@ -98,7 +99,7 @@ describe('productionSystem accrues the experience bonus in tenths of a unit', ()
     ]);
     if (worker === null) throw new Error('staffed sawmill should have a worker');
     seedPoints(sim, worker, MASTERY);
-    for (let t = 0; t <= CYCLE_TICKS; t++) productionSystem(sim.world, ctxOf(sim));
+    for (let t = 0; t <= CYCLE_TICKS; t++) productionSystem(sim.world, nextTickCtxOf(sim));
     expect(sim.world.get(mill, Stockpile).amounts.get(PLANK)).toBe(21);
     expect(sim.world.get(mill, ProductionBonus).remainders.get(PLANK)).toBe(5);
   });

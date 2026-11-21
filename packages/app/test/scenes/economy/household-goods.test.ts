@@ -41,7 +41,11 @@ describe('household goods wedding', () => {
     expect(batch).toBeDefined();
     expect(sim.world.tryGet(druid, CurrentAtomic)?.effect.kind).toBe('produce');
     expect(sim.world.get(druid, Resting).at).toBe(hut);
-    const elapsed = batch?.elapsed ?? 0;
+    const batchTicks = (): number | undefined => {
+      const running = sim.world.tryGet(hut, Production)?.cycles[0];
+      return running === undefined ? undefined : components.workClockTicks(running, sim.tick);
+    };
+    const elapsed = batchTicks() ?? 0;
     expect(sim.world.get(hut, Stockpile).amounts.get(oil) ?? 0).toBe(0);
 
     sim.enqueueSetup({ kind: 'marry', entity: woman });
@@ -49,7 +53,7 @@ describe('household goods wedding', () => {
     expect(sim.world.get(druid, Wedding).partner).toBe(woman);
     expect(sim.world.tryGet(druid, CurrentAtomic)?.effect.kind).toBe('produce');
     expect(sim.world.get(druid, Resting).at).toBe(hut);
-    expect(sim.world.get(hut, Production).cycles[0]?.elapsed).toBe(elapsed + 1);
+    expect(batchTicks()).toBe(elapsed + 1);
 
     let sawKiss = false;
     for (let i = 0; i < 600; i++) {

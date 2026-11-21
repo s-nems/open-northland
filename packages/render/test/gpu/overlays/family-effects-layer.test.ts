@@ -49,17 +49,20 @@ const badge = { id: 1, x: 3 * ONE, y: 5 * ONE, dx: 120, dy: 60, rows: [], hearts
 const elevation = { maxLift: 7, liftAt: () => 7, liftAtNode: () => 7 };
 const viewport = { minX: -10000, minY: -10000, maxX: 10000, maxY: 10000 };
 const drawn = drawnGeometry({ anchorOf: () => base });
-const house = (elapsed?: number) =>
+/** A home whose session, running as the sim ships it, has `elapsed` ticks behind it at `tick`. */
+const house = (elapsed: number | undefined, tick: number) =>
   entity(1, 3, 5, {
     Building: { typeId: 1 },
-    ...(elapsed === undefined ? {} : { MakingLove: { wife: 2, elapsed, duration: 200 } }),
+    ...(elapsed === undefined
+      ? {}
+      : { MakingLove: { wife: 2, elapsed: 0, startedAt: tick - elapsed, duration: 200 } }),
   });
 function setup() {
   const root = new Container();
   const layer = new FamilyEffectsLayer(root, new TextureCache(), sheet);
   const draw = (elapsed?: number, tick = 100, visible = true, view = viewport) =>
     layer.draw({
-      snapshot: snapshotOf([house(elapsed)], tick),
+      snapshot: snapshotOf([house(elapsed, tick)], tick),
       renderTime: tick,
       elevation,
       viewport: view,
@@ -96,7 +99,7 @@ describe('family effects', () => {
     expect(stork?.x).toBe(base.x + 65);
     layer.ingest([{ kind: 'settlerBorn', entity: 3 as Entity }], 176);
     layer.draw({
-      snapshot: snapshotOf([house(), entity(3, 0, 0, { Residence: { home: 1 } })], 176),
+      snapshot: snapshotOf([house(undefined, 176), entity(3, 0, 0, { Residence: { home: 1 } })], 176),
       renderTime: 176,
       elevation,
       viewport,
@@ -115,7 +118,7 @@ describe('family effects', () => {
     const { root, layer } = setup();
     layer.ingest([{ kind: 'settlerBorn', entity: 3 as Entity }], 200);
     layer.draw({
-      snapshot: snapshotOf([house(), entity(3, 0, 0, { Residence: { home: 1 } })], 200),
+      snapshot: snapshotOf([house(undefined, 200), entity(3, 0, 0, { Residence: { home: 1 } })], 200),
       renderTime: 200,
       elevation,
       viewport,
@@ -151,7 +154,7 @@ describe('family effects', () => {
     draw(150);
     expect(root.children).toHaveLength(2);
     const fogFrame = {
-      snapshot: snapshotOf([house(151)], 101),
+      snapshot: snapshotOf([house(151, 101)], 101),
       renderTime: 101,
       elevation,
       viewport,
@@ -165,7 +168,7 @@ describe('family effects', () => {
     layer.draw({
       ...fogFrame,
       renderTime: 150,
-      snapshot: snapshotOf([house(), entity(3, 0, 0, { Residence: { home: 1 } })], 150),
+      snapshot: snapshotOf([house(undefined, 150), entity(3, 0, 0, { Residence: { home: 1 } })], 150),
     });
     expect(root.children).toHaveLength(0);
   });
@@ -175,7 +178,7 @@ describe('family effects', () => {
     const layer = new FamilyEffectsLayer(root, new TextureCache(), undefined);
     layer.ingest([{ kind: 'settlerBorn', entity: 3 as Entity }], 100);
     layer.draw({
-      snapshot: snapshotOf([house(150)]),
+      snapshot: snapshotOf([house(150, 1)]),
       renderTime: 1,
       elevation,
       viewport,

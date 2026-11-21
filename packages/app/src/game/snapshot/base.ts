@@ -26,6 +26,14 @@ export function num(v: unknown): number | undefined {
   return typeof v === 'number' ? v : undefined;
 }
 
+/** The worked ticks of a sim `WorkClock` value at `tick`, the snapshot's own tick: a running clock is
+ *  anchored at `startedAt`, a stopped one holds `elapsed`. Undefined when it carries neither. */
+export function workedTicks(clock: unknown, tick: number): number | undefined {
+  const value = clock as { elapsed?: unknown; startedAt?: unknown } | null | undefined;
+  const startedAt = num(value?.startedAt);
+  return startedAt === undefined ? num(value?.elapsed) : tick - startedAt;
+}
+
 export function ownerPlayerOf(e: SnapshotEntity): number | undefined {
   const owner = e.components.Owner as { player?: unknown } | undefined;
   return num(owner?.player);

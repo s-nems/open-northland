@@ -1,9 +1,9 @@
 import { type DeepReadonly, defineComponent, type Entity, type World } from '../../ecs/world.js';
+import type { WorkClock } from '../work-clock.js';
 
-/** One in-flight production batch of a {@link Production} workplace. */
-export interface ProductionCycle {
-  /** Whole ticks elapsed in this cycle; completion is the exact `elapsed >= duration`. */
-  elapsed: number;
+/** One in-flight production batch of a {@link Production} workplace. Its {@link WorkClock} counts the
+ *  ticks an operator worked it, and it completes on the exact `workClockTicks >= duration`. */
+export interface ProductionCycle extends WorkClock {
   /** Ticks this cycle takes (the recipe's `ticks`, snapshotted at cycle start; >= 1). */
   duration: number;
   /** The product this batch crafts - the key of the building type's per-product recipe (its first output's

@@ -221,11 +221,12 @@ describe('selection details panel model', () => {
         buildingEntity(1, BUILDING_JOINERY, {
           components: {
             Stockpile: { amounts: [[GOOD_WOOD, 3]] },
-            // TWO in-flight plank batches at different progress - the plank row bars the front-runner.
+            // TWO in-flight plank batches at different progress - the plank row bars the front-runner:
+            // a waiting one holding 5 ticks and one worked since tick 0, 10 ticks at the snapshot's tick.
             Production: {
               cycles: [
                 { elapsed: 5, duration: 20, goodType: GOOD_PLANK },
-                { elapsed: 10, duration: 20, goodType: GOOD_PLANK },
+                { elapsed: 0, startedAt: 0, duration: 20, goodType: GOOD_PLANK },
               ],
             },
           },

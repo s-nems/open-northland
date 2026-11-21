@@ -1,4 +1,10 @@
-import { JobAssignment, Production, type ProductionCycle, Settler } from '../../../components/index.js';
+import {
+  JobAssignment,
+  Production,
+  type ProductionCycle,
+  Settler,
+  workClockTicks,
+} from '../../../components/index.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import type { SystemContext } from '../../context.js';
 import { religionAllowsAtomic } from '../../lifecycle/needs/religion.js';
@@ -9,15 +15,20 @@ import { isWorkplaceOperator } from '../../stores/operators.js';
 /** The assignment of a present operator no batch is executable for. */
 export const FREE_SEAT = -1;
 
-/** The batch each present operator works ({@link claimInto}), or {@link FREE_SEAT}. A suspended batch
- * retains its paid materials and progress without blocking a different product or a replenished coworker. */
+/**
+ * The batch each present operator works ({@link claimInto}), or {@link FREE_SEAT}. A suspended batch
+ * retains its paid materials and progress without blocking a different product or a replenished coworker.
+ * `batchTick` is the tick the batches' clocks are read at: the current tick once production advanced them
+ * and at a settled read, the previous one ahead of that in the schedule.
+ */
 export function productionAssignments(
   world: World,
   ctx: SystemContext,
   building: Entity,
   operators: readonly Entity[],
+  batchTick: number,
 ): number[] {
-  return productionAssignmentsInto(world, ctx, building, operators, []);
+  return productionAssignmentsInto(world, ctx, building, operators, [], batchTick);
 }
 
 /**
@@ -31,10 +42,11 @@ export function productionAssignmentsInto(
   building: Entity,
   operators: readonly Entity[],
   out: number[],
+  batchTick: number,
 ): number[] {
   const cycles = world.tryGet(building, Production)?.cycles ?? NO_CYCLES;
   for (let i = 0; i < operators.length; i++) {
-    out[i] = claimInto(world, ctx, building, cycles, operators[i] as Entity, out, i);
+    out[i] = claimInto(world, ctx, building, cycles, operators[i] as Entity, out, i, batchTick);
   }
   if (out.length !== operators.length) out.length = operators.length;
   return out;
@@ -50,6 +62,7 @@ function claimInto(
   operator: Entity,
   claims: readonly number[],
   taken: number,
+  batchTick: number,
 ): number {
   for (let sweep = OWN_SWEEP; sweep <= OPEN_SWEEP; sweep++) {
     const open = sweep === OPEN_SWEEP;
@@ -58,7 +71,7 @@ function claimInto(
       if (
         cycle === undefined ||
         heldBy(claims, taken, index) ||
-        !worksBatch(world, ctx, building, operator, cycle, open)
+        !worksBatch(world, ctx, building, operator, cycle, open, batchTick)
       )
         continue;
       return index;
@@ -86,6 +99,7 @@ export function claimProductionCycle(
   building: Entity,
   operator: Entity,
   claimed: Set<number>,
+  batchTick: number,
 ): number {
   const cycles = world.tryGet(building, Production)?.cycles ?? NO_CYCLES;
   for (let sweep = OWN_SWEEP; sweep <= OPEN_SWEEP; sweep++) {
@@ -95,7 +109,7 @@ export function claimProductionCycle(
       if (
         cycle === undefined ||
         claimed.has(index) ||
-        !worksBatch(world, ctx, building, operator, cycle, open)
+        !worksBatch(world, ctx, building, operator, cycle, open, batchTick)
       )
         continue;
       claimed.add(index);
@@ -111,9 +125,10 @@ export function batchWorkedBy(
   ctx: SystemContext,
   building: Entity,
   operator: Entity,
+  batchTick: number,
 ): Readonly<ProductionCycle> | undefined {
   const cycles = world.tryGet(building, Production)?.cycles ?? NO_CYCLES;
-  return cycles[claimInto(world, ctx, building, cycles, operator, NO_CLAIMS, 0)];
+  return cycles[claimInto(world, ctx, building, cycles, operator, NO_CLAIMS, 0, batchTick)];
 }
 
 /** Whether `operator` works `cycle` now that its religion allows the craft: one of its own, or on the `open`
@@ -125,10 +140,11 @@ function worksBatch(
   operator: Entity,
   cycle: Readonly<ProductionCycle>,
   open: boolean,
+  batchTick: number,
 ): boolean {
   const own = cycle.operator === operator;
-  if (open ? own || !leftOpenTo(world, ctx, building, operator, cycle) : !own) return false;
-  return mayCraft(world, ctx, operator, cycle);
+  if (open ? own || !leftOpenTo(world, ctx, building, operator, cycle, batchTick) : !own) return false;
+  return mayCraft(world, ctx, operator, cycle, batchTick);
 }
 
 /**
@@ -142,10 +158,11 @@ function leftOpenTo(
   building: Entity,
   operator: Entity,
   cycle: Readonly<ProductionCycle>,
+  batchTick: number,
 ): boolean {
   const owner = cycle.operator;
   if (owner === null || !worksAt(world, ctx, building, owner)) return true;
-  if (mayCraft(world, ctx, owner, cycle)) return false;
+  if (mayCraft(world, ctx, owner, cycle, batchTick)) return false;
   return settlerMeetsNeed(
     world,
     ctx,
@@ -164,9 +181,10 @@ function mayCraft(
   ctx: SystemContext,
   operator: Entity,
   cycle: Readonly<ProductionCycle>,
+  batchTick: number,
 ): boolean {
   const atomic = productionAtomic(ctx.content, world.get(operator, Settler), cycle.goodType);
-  return religionAllowsAtomic(world, ctx, operator, atomic, cycle.elapsed);
+  return religionAllowsAtomic(world, ctx, operator, atomic, workClockTicks(cycle, batchTick));
 }
 
 /** Whether `operator` is still posted to `building` in one of its operator trades. */

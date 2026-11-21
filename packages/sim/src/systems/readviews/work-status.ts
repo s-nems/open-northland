@@ -385,8 +385,10 @@ interface PoolEntry {
 function crafterBatchOf(world: World, ctx: SystemContext, workplace: Entity, entity: Entity) {
   const staffing = presentOperatorsInto(world, ctx, workplace, crewScratch);
   const seat = staffing.kind === 'staffed' ? staffing.operators.indexOf(entity) : -1;
-  if (staffing.kind !== 'staffed' || seat < 0) return batchWorkedBy(world, ctx, workplace, entity);
-  const batch = productionAssignmentsInto(world, ctx, workplace, staffing.operators, batchScratch)[seat];
+  if (staffing.kind !== 'staffed' || seat < 0) return batchWorkedBy(world, ctx, workplace, entity, ctx.tick);
+  const batch = productionAssignmentsInto(world, ctx, workplace, staffing.operators, batchScratch, ctx.tick)[
+    seat
+  ];
   return batch === undefined ? undefined : world.tryGet(workplace, Production)?.cycles[batch];
 }
 

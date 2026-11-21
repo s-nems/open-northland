@@ -17,8 +17,11 @@ import { retireUndrawn } from './retained-pool.js';
  * One authored frame per tick and the house base anchor are presentation approximations. */
 const STORK_BIRTH_FRAME = 75;
 
+/** `MakingLove` as a snapshot carries it: `startedAt` anchors a running session's ticks, else `elapsed`
+ *  holds them. */
 interface LoveClock {
   readonly elapsed: number;
+  readonly startedAt?: number;
   readonly duration: number;
 }
 interface Flight {
@@ -66,11 +69,12 @@ export class FamilyEffectsLayer {
         if (!badge.hearts || frame.drawn.anchorOf(badge.id) === undefined) continue;
         const love = entityById(frame.snapshot, badge.id)?.components.MakingLove as LoveClock | undefined;
         if (love === undefined) continue;
-        const elapsed = love.elapsed + frame.renderTime - frame.snapshot.tick;
+        const worked = love.startedAt === undefined ? love.elapsed : frame.snapshot.tick - love.startedAt;
+        const elapsed = worked + frame.renderTime - frame.snapshot.tick;
         if (binding.hearts !== undefined) {
           this.place(`hearts:${badge.id}`, badge.id, binding.hearts, elapsed, frame);
         }
-        const untilBirth = love.duration - love.elapsed;
+        const untilBirth = love.duration - worked;
         if (binding.stork !== undefined && untilBirth <= STORK_BIRTH_FRAME) {
           const start = frame.snapshot.tick + untilBirth - STORK_BIRTH_FRAME;
           const flight = this.flights.get(badge.id);

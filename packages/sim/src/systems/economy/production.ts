@@ -10,9 +10,12 @@ import {
   removeCurrentAtomic,
   Settler,
   Stockpile,
+  startWorkClock,
+  stopWorkClock,
+  workClockTicks,
 } from '../../components/index.js';
 import { ONE } from '../../core/fixed.js';
-import type { Entity, World } from '../../ecs/world.js';
+import type { DeepReadonly, Entity, World } from '../../ecs/world.js';
 import type { System } from '../context.js';
 import { grantProductionExperience } from '../progression/index.js';
 import { productionAtomic } from '../readviews/production-atomic.js';
@@ -58,15 +61,17 @@ export {
 /**
  * One workplace turns input goods into output goods over time, one independent batch per present operator,
  * each advancing its own oldest batch it can perform, else one left open to it. Observed: a multi-worker
- * workshop out-produces a single-worker one. With every operator away all cycles pause and `elapsed` is held
- * rather than lost.
+ * workshop out-produces a single-worker one. With every operator away all cycles pause and their worked
+ * ticks are held rather than lost. A batch's clock is anchored while an operator works it, so a running
+ * batch writes nothing until it completes or stops.
  *
  * A workplace produces only while an assigned operator is present, the original's staffed-workshop rule; a carrier at
  * the door neither runs nor speeds the craft. A building type declaring no worker slots is
  * unstaffed-by-design and produces one anonymous batch freely.
  *
  * Inputs are consumed at cycle start and outputs deposited at completion, so goods are conserved, and timing
- * is the exact integer compare `elapsed >= duration` rather than an accumulated fixed-point step.
+ * is the exact integer compare of worked ticks against `duration` rather than an accumulated fixed-point
+ * step.
  */
 export const productionSystem: System = (world, ctx) => {
   let workforce: WorkshopWorkforce | undefined;
@@ -77,17 +82,22 @@ export const productionSystem: System = (world, ctx) => {
     // later dies. The worker-presence gate does pause mid-cycle.
     const staffing = presentOperatorsInto(world, ctx, e, advancingCrew);
     const operators = operatorCountOf(staffing);
-    if (operators <= 0) continue;
-    const prod = world.mut(e, Production);
+    const cycles = world.get(e, Production).cycles;
+    if (operators <= 0) {
+      stopUnworkedCycles(world, ctx.tick, e, cycles, NO_BATCHES);
+      continue;
+    }
+    // Ahead of this tick's advance, a running batch's clock reads as the previous tick left it.
     const batches =
       staffing.kind === 'unstaffed'
         ? UNSTAFFED_ASSIGNMENT
-        : productionAssignmentsInto(world, ctx, e, staffing.operators, assignmentScratch);
+        : productionAssignmentsInto(world, ctx, e, staffing.operators, assignmentScratch, ctx.tick - 1);
     // `duration` was clamped at cycle start, so the two complementary compares below are plain.
-    let done: ProductionCycle[] | undefined;
+    let done: DeepReadonly<ProductionCycle>[] | undefined;
     let completedOperators: Entity[] | undefined;
     for (let i = 0; i < batches.length; i++) {
-      const cycle = prod.cycles[batches[i] ?? -1];
+      const batch = batches[i] ?? -1;
+      const cycle = cycles[batch];
       const operator = staffing.kind === 'unstaffed' ? undefined : staffing.operators[i];
       if (cycle === undefined) {
         const display = operator === undefined ? undefined : world.tryGet(operator, CurrentAtomic);
@@ -97,22 +107,24 @@ export const productionSystem: System = (world, ctx) => {
       }
       // A batch left open passes to the operator now working it, so its old owner does not take it back
       // half done.
-      if (operator !== undefined && cycle.operator !== operator) cycle.operator = operator;
+      if (operator !== undefined && cycle.operator !== operator)
+        writableCycle(world, e, batch).operator = operator;
       // The batch clock owns need events, including pauses and replacement operators. The indoor
       // display atomic must not pay them again or replay an earlier frame after a re-plan.
       const settler = operator === undefined ? undefined : world.tryGet(operator, Settler);
       const atomicId =
         settler === undefined ? undefined : productionAtomic(ctx.content, settler, cycle.goodType);
-      cycle.elapsed += 1;
+      if (cycle.startedAt === undefined) startWorkClock(writableCycle(world, e, batch), ctx.tick);
+      const elapsed = workClockTicks(cycle, ctx.tick);
       if (operator !== undefined && atomicId !== undefined) {
         produceEffect.recipeOutput = cycle.goodType;
         produceAtomic.atomicId = atomicId;
-        applyAtomicNeedEvents(world, ctx, operator, produceAtomic, cycle.elapsed, false);
+        applyAtomicNeedEvents(world, ctx, operator, produceAtomic, elapsed, false);
       }
       if (
         operator !== undefined &&
         atomicId !== undefined &&
-        cycle.elapsed < cycle.duration &&
+        elapsed < cycle.duration &&
         world.tryGet(operator, Resting)?.at === e
       ) {
         const display = world.tryGet(operator, CurrentAtomic);
@@ -123,20 +135,23 @@ export const productionSystem: System = (world, ctx) => {
           display?.effect.kind !== 'produce' ||
           display.effect.recipeOutput !== cycle.goodType ||
           clock === undefined ||
-          atomicElapsed(clock, ctx.tick) !== cycle.elapsed
+          atomicElapsed(clock, ctx.tick) !== elapsed
         )
           wakeCrewInside(world, e);
       }
-      if (cycle.elapsed >= cycle.duration) {
+      if (elapsed >= cycle.duration) {
         done ??= [];
         completedOperators ??= [];
         done.push(cycle);
         if (operator !== undefined) completedOperators.push(operator);
       }
     }
+    stopUnworkedCycles(world, ctx.tick, e, cycles, batches);
     if (done === undefined || completedOperators === undefined) continue;
     wakeCrewInside(world, e);
-    prod.cycles = prod.cycles.filter((c) => c.elapsed < c.duration);
+    const finished = done;
+    const prod = world.mut(e, Production);
+    prod.cycles = prod.cycles.filter((c) => !finished.includes(c));
     const recipes = recipesByProductOf(world, ctx, e);
     for (const cycle of done) depositCycleOutput(world, ctx, e, cycle, recipes);
     countCompletedCycles(world, e, done);
@@ -182,7 +197,14 @@ export const productionSystem: System = (world, ctx) => {
     // Nobody on the door: no spare operator, so nothing starts.
     if (staffing.operators.length === 0) continue;
     // Operators without an executable batch may start another product; suspended work retains its inputs.
-    const assigned = productionAssignmentsInto(world, ctx, e, staffing.operators, assignmentScratch);
+    const assigned = productionAssignmentsInto(
+      world,
+      ctx,
+      e,
+      staffing.operators,
+      assignmentScratch,
+      ctx.tick,
+    );
     // The head `spare` entries; the list is reused rather than emptied, which would drop its storage.
     const next = spareOperators;
     let spare = 0;
@@ -239,6 +261,27 @@ export const productionSystem: System = (world, ctx) => {
 
 /** The one anonymous batch an unstaffed-by-design workplace advances: its oldest. */
 const UNSTAFFED_ASSIGNMENT: readonly number[] = [0];
+const NO_BATCHES: readonly number[] = [];
+
+/** The live batch at `index` of `building`, its write logged. */
+function writableCycle(world: World, building: Entity, index: number): ProductionCycle {
+  return world.mut(building, Production).cycles[index] as ProductionCycle;
+}
+
+/** Stop the clock of every running batch of `building` that `worked`, the batch indices this tick's
+ *  operators advance, leaves out. */
+function stopUnworkedCycles(
+  world: World,
+  tick: number,
+  building: Entity,
+  cycles: readonly DeepReadonly<ProductionCycle>[],
+  worked: readonly number[],
+): void {
+  for (let i = 0; i < cycles.length; i++) {
+    if (cycles[i]?.startedAt === undefined || worked.includes(i)) continue;
+    stopWorkClock(writableCycle(world, building, i), tick);
+  }
+}
 
 // Per-workshop lists reused across the pass, which runs synchronously and hands none of them on.
 const advancingCrew: StaffedScratch = { kind: 'staffed', operators: [] };

@@ -3,6 +3,7 @@ import {
   Production,
   removeCurrentAtomic,
   Settler,
+  workClockTicks,
 } from '../../../../../components/index.js';
 import type { Entity, World } from '../../../../../ecs/world.js';
 import type { SystemContext } from '../../../../context.js';
@@ -23,13 +24,16 @@ export function startCraftAtomic(world: World, ctx: SystemContext, e: Entity, wo
   removeCurrentAtomic(world, e);
   const staffing = presentOperatorsInto(world, ctx, workplace, crewScratch);
   if (staffing.kind === 'unstaffed') return;
-  const batch = productionAssignmentsInto(world, ctx, workplace, staffing.operators, batchScratch)[
+  // The planner runs ahead of production, so a batch's clock reads as the previous tick left it.
+  const batchTick = ctx.tick - 1;
+  const batch = productionAssignmentsInto(world, ctx, workplace, staffing.operators, batchScratch, batchTick)[
     staffing.operators.indexOf(e)
   ];
   const cycle = batch === undefined ? undefined : world.tryGet(workplace, Production)?.cycles[batch];
   if (cycle === undefined) return;
   const atomicId = productionAtomic(ctx.content, world.get(e, Settler), cycle.goodType);
-  if (atomicId === undefined || !religionAllowsAtomic(world, ctx, e, atomicId, cycle.elapsed)) return;
+  const elapsed = workClockTicks(cycle, batchTick);
+  if (atomicId === undefined || !religionAllowsAtomic(world, ctx, e, atomicId, elapsed)) return;
   const duration = Math.max(1, cycle.duration);
   addCurrentAtomic(
     world,
@@ -41,7 +45,7 @@ export function startCraftAtomic(world: World, ctx: SystemContext, e: Entity, wo
       targetEntity: workplace,
       targetTile: null,
     },
-    Math.min(cycle.elapsed, duration),
+    Math.min(elapsed, duration),
   );
 }
 

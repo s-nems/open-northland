@@ -19,6 +19,7 @@ import { productionSystem } from '../../../../src/systems/index.js';
 import { stockCapacity } from '../../../../src/systems/stores/index.js';
 import { workshopWorkforce } from '../../../../src/systems/stores/workshop-workforce.js';
 import { testContent } from '../../../fixtures/content.js';
+import { nextTickCtxOf } from '../../../fixtures/context.js';
 import {
   BAKEHOUSE,
   buildingAt,
@@ -80,9 +81,9 @@ describe('production tick cost', () => {
     settlerAt(sim, 0, 0, CARPENTER, shop);
     settlerAt(sim, 0, 0, CARPENTER, shop);
     const idle = Array.from({ length: 30 }, (_, i) => settlerAt(sim, 5 + i, 0, WOODCUTTER));
-    productionSystem(sim.world, ctxOf(sim)); // the first tick builds the kept indexes
+    productionSystem(sim.world, nextTickCtxOf(sim)); // the first tick builds the kept indexes
     const read = entitiesRead(sim.world, () => {
-      for (let tick = 0; tick < 3; tick++) productionSystem(sim.world, ctxOf(sim));
+      for (let tick = 0; tick < 3; tick++) productionSystem(sim.world, nextTickCtxOf(sim));
     });
     expect(sim.world.get(shop, Production).cycles).toHaveLength(2);
     expect(idle.filter((e) => read.has(e))).toEqual([]);
@@ -92,11 +93,11 @@ describe('production tick cost', () => {
     const sim = new Simulation({ seed: 1, content: technologyContent() });
     const mill = buildingAt(sim, SAWMILL, 0, 0, [[WOOD, 0]]);
     settlerAt(sim, 0, 0, CARPENTER, mill);
-    productionSystem(sim.world, ctxOf(sim));
-    productionSystem(sim.world, ctxOf(sim));
+    productionSystem(sim.world, nextTickCtxOf(sim));
+    productionSystem(sim.world, nextTickCtxOf(sim));
     expect(sim.world.has(mill, Production)).toBe(false);
     setStockAmount(sim.world, mill, WOOD, 2);
-    productionSystem(sim.world, ctxOf(sim));
+    productionSystem(sim.world, nextTickCtxOf(sim));
     expect(sim.world.get(mill, Production).cycles.map((cycle) => cycle.goodType)).toEqual([PLANK]);
     expect(sim.world.verifyCaches()).toEqual([]);
   });
@@ -105,11 +106,11 @@ describe('production tick cost', () => {
     const sim = new Simulation({ seed: 1, content: technologyContent(1, true) });
     const mill = buildingAt(sim, SAWMILL, 0, 0, [[WOOD, 2]]);
     settlerAt(sim, 0, 0, CARPENTER, mill);
-    productionSystem(sim.world, ctxOf(sim));
-    productionSystem(sim.world, ctxOf(sim));
+    productionSystem(sim.world, nextTickCtxOf(sim));
+    productionSystem(sim.world, nextTickCtxOf(sim));
     expect(sim.world.has(mill, Production)).toBe(false); // locked, and remembered as closed
     discoverTechnology(sim.world, undefined, VIKING, 'good', PLANK);
-    productionSystem(sim.world, ctxOf(sim));
+    productionSystem(sim.world, nextTickCtxOf(sim));
     expect(sim.world.get(mill, Production).cycles.map((cycle) => cycle.goodType)).toEqual([PLANK]);
     expect(sim.world.verifyCaches()).toEqual([]);
   });
@@ -118,11 +119,11 @@ describe('production tick cost', () => {
     const sim = new Simulation({ seed: 1, content: technologyContent() });
     const mill = buildingAt(sim, SAWMILL, 0, 0, [[WOOD, 2]]);
     const carpenter = settlerAt(sim, 3, 0, CARPENTER, mill);
-    productionSystem(sim.world, ctxOf(sim));
-    productionSystem(sim.world, ctxOf(sim));
+    productionSystem(sim.world, nextTickCtxOf(sim));
+    productionSystem(sim.world, nextTickCtxOf(sim));
     expect(sim.world.has(mill, Production)).toBe(false);
     sim.world.add(carpenter, Position, { x: fx.fromInt(0), y: fx.fromInt(0) });
-    productionSystem(sim.world, ctxOf(sim));
+    productionSystem(sim.world, nextTickCtxOf(sim));
     expect(sim.world.get(mill, Production).cycles).toHaveLength(1);
     expect(sim.world.verifyCaches()).toEqual([]);
   });

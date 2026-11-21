@@ -11,10 +11,10 @@ import type { Entity } from '../../../../../src/ecs/world.js';
 import { fx, ONE, Simulation } from '../../../../../src/index.js';
 import { productionSystem } from '../../../../../src/systems/index.js';
 import { testContent } from '../../../../fixtures/content.js';
+import { batchTicks, nextTickCtxOf } from '../../../../fixtures/context.js';
 import {
   CARPENTER,
   CYCLE_TICKS,
-  ctxOf,
   PLANK,
   PLANK_GATE_EARNED,
   sawmill,
@@ -28,7 +28,7 @@ describe('productionSystem - worker-presence gate', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
     // Inputs present, output room free - but no carpenter stands on the mill, so it must not produce.
     const { mill } = sawmill(sim, [[WOOD, 5]], false);
-    for (let t = 0; t < CYCLE_TICKS + 2; t++) productionSystem(sim.world, ctxOf(sim));
+    for (let t = 0; t < CYCLE_TICKS + 2; t++) productionSystem(sim.world, nextTickCtxOf(sim));
     expect(sim.world.has(mill, Production)).toBe(false); // never started
     expect(sim.world.get(mill, Stockpile).amounts.get(WOOD)).toBe(5); // input untouched (no waste)
     expect(sim.world.get(mill, Stockpile).amounts.get(PLANK) ?? 0).toBe(0); // nothing produced
@@ -48,7 +48,7 @@ describe('productionSystem - worker-presence gate', () => {
       enjoyment: fx.fromInt(0),
     });
     sim.world.add(wrong, Position, { x: fx.fromInt(0), y: fx.fromInt(0) });
-    for (let t = 0; t < CYCLE_TICKS + 2; t++) productionSystem(sim.world, ctxOf(sim));
+    for (let t = 0; t < CYCLE_TICKS + 2; t++) productionSystem(sim.world, nextTickCtxOf(sim));
     expect(sim.world.has(mill, Production)).toBe(false); // wrong job: still unstaffed
     expect(sim.world.get(mill, Stockpile).amounts.get(WOOD)).toBe(5);
   });
@@ -57,7 +57,7 @@ describe('productionSystem - worker-presence gate', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
     const { mill } = sawmill(sim, [[WOOD, 2]], false);
     spawnSettler(sim, CARPENTER, 0, 0, PLANK_GATE_EARNED);
-    for (let t = 0; t < CYCLE_TICKS + 2; t++) productionSystem(sim.world, ctxOf(sim));
+    for (let t = 0; t < CYCLE_TICKS + 2; t++) productionSystem(sim.world, nextTickCtxOf(sim));
     expect(sim.world.has(mill, Production)).toBe(false);
     expect(sim.world.get(mill, Stockpile).amounts.get(WOOD)).toBe(2);
   });
@@ -68,19 +68,19 @@ describe('productionSystem - worker-presence gate', () => {
     if (worker === null) throw new Error('staffed sawmill should have a worker');
 
     // Run a few ticks with the worker present so a cycle starts and partially advances.
-    for (let t = 0; t < 5; t++) productionSystem(sim.world, ctxOf(sim));
+    for (let t = 0; t < 5; t++) productionSystem(sim.world, nextTickCtxOf(sim));
     expect(sim.world.has(mill, Production)).toBe(true);
-    const elapsedAtPause = sim.world.get(mill, Production).cycles[0]?.elapsed; // 4 (tick 1 starts, 2..5 advance)
+    const elapsedAtPause = batchTicks(sim, mill); // 4 (tick 1 starts, 2..5 advance)
 
     // Worker walks away - move it off the mill's tile. The cycle must freeze (no advance).
     sim.world.mut(worker, Position).x = fx.fromInt(3);
-    for (let t = 0; t < CYCLE_TICKS * 2; t++) productionSystem(sim.world, ctxOf(sim));
-    expect(sim.world.get(mill, Production).cycles[0]?.elapsed).toBe(elapsedAtPause); // held, not advanced
+    for (let t = 0; t < CYCLE_TICKS * 2; t++) productionSystem(sim.world, nextTickCtxOf(sim));
+    expect(batchTicks(sim, mill)).toBe(elapsedAtPause); // held, not advanced
     expect(sim.world.get(mill, Stockpile).amounts.get(PLANK) ?? 0).toBe(0); // produced nothing while idle
 
     // Worker returns - the held cycle resumes and completes.
     sim.world.mut(worker, Position).x = fx.fromInt(0);
-    for (let t = 0; t < CYCLE_TICKS; t++) productionSystem(sim.world, ctxOf(sim));
+    for (let t = 0; t < CYCLE_TICKS; t++) productionSystem(sim.world, nextTickCtxOf(sim));
     expect(sim.world.get(mill, Stockpile).amounts.get(PLANK)).toBe(1); // resumed and finished
   });
 });
@@ -111,12 +111,12 @@ describe('productionSystem - parallel operators (the twin mill)', () => {
     operatorAt(sim, mill);
     operatorAt(sim, mill);
     // Tick 1 starts BOTH batches (one per present operator), each consuming its own input.
-    productionSystem(sim.world, ctxOf(sim));
+    productionSystem(sim.world, nextTickCtxOf(sim));
     expect(sim.world.get(mill, Production).cycles).toHaveLength(2);
     expect(sim.world.get(mill, Stockpile).amounts.get(WOOD)).toBe(0); // both inputs reserved
     // Both batches advance every tick (two operators) and complete together - two planks in ONE
     // cycle length, the "two millers make two flours at once" model.
-    for (let t = 0; t < CYCLE_TICKS; t++) productionSystem(sim.world, ctxOf(sim));
+    for (let t = 0; t < CYCLE_TICKS; t++) productionSystem(sim.world, nextTickCtxOf(sim));
     expect(sim.world.get(mill, Stockpile).amounts.get(PLANK)).toBe(2);
   });
 
@@ -125,22 +125,21 @@ describe('productionSystem - parallel operators (the twin mill)', () => {
     const mill = twinMill(sim, [[WOOD, 2]]);
     operatorAt(sim, mill);
     const second = operatorAt(sim, mill);
-    productionSystem(sim.world, ctxOf(sim)); // two batches start
-    productionSystem(sim.world, ctxOf(sim)); // both advance once
+    productionSystem(sim.world, nextTickCtxOf(sim)); // two batches start
+    productionSystem(sim.world, nextTickCtxOf(sim)); // both advance once
     // One operator walks away - batches are anonymous (no owning worker), so with one operator left
     // only the OLDEST batch keeps grinding; the youngest holds its elapsed until a worker frees up.
     sim.world.mut(second, Position).x = fx.fromInt(3);
-    productionSystem(sim.world, ctxOf(sim));
-    const cycles = sim.world.get(mill, Production).cycles;
-    expect(cycles[0]?.elapsed).toBe(2);
-    expect(cycles[1]?.elapsed).toBe(1); // paused - short one worker this tick
+    productionSystem(sim.world, nextTickCtxOf(sim));
+    expect(batchTicks(sim, mill, 0)).toBe(2);
+    expect(batchTicks(sim, mill, 1)).toBe(1); // paused - short one worker this tick
   });
 
   it('caps the batch count at the declared operator headcount (a third stacked operator adds nothing)', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
     const mill = twinMill(sim, [[WOOD, 3]]);
     for (let i = 0; i < 3; i++) operatorAt(sim, mill); // 3 on a 2-slot craft
-    productionSystem(sim.world, ctxOf(sim));
+    productionSystem(sim.world, nextTickCtxOf(sim));
     expect(sim.world.get(mill, Production).cycles).toHaveLength(2); // 2 slots → 2 batches, never 3
     expect(sim.world.get(mill, Stockpile).amounts.get(WOOD)).toBe(1); // only 2 inputs consumed
   });
@@ -155,7 +154,7 @@ describe('productionSystem - parallel operators (the twin mill)', () => {
     ]);
     operatorAt(sim, mill);
     operatorAt(sim, mill);
-    productionSystem(sim.world, ctxOf(sim));
+    productionSystem(sim.world, nextTickCtxOf(sim));
     expect(sim.world.get(mill, Production).cycles).toHaveLength(1);
     expect(sim.world.get(mill, Stockpile).amounts.get(WOOD)).toBe(1); // the second input untouched
   });
@@ -164,12 +163,12 @@ describe('productionSystem - parallel operators (the twin mill)', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
     const mill = twinMill(sim, [[WOOD, 2]]);
     spawnSettler(sim, CARRIER, 0, 0); // ONLY the carrier stands on the mill
-    for (let t = 0; t < CYCLE_TICKS + 2; t++) productionSystem(sim.world, ctxOf(sim));
+    for (let t = 0; t < CYCLE_TICKS + 2; t++) productionSystem(sim.world, nextTickCtxOf(sim));
     expect(sim.world.has(mill, Production)).toBe(false); // never started - no operator present
 
     // An operator joins: exactly ONE batch runs (the carrier mans none).
     operatorAt(sim, mill);
-    productionSystem(sim.world, ctxOf(sim));
+    productionSystem(sim.world, nextTickCtxOf(sim));
     expect(sim.world.get(mill, Production).cycles).toHaveLength(1);
   });
 });

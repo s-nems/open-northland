@@ -1,3 +1,5 @@
+import { Production, workClockTicks } from '../../src/components/index.js';
+import type { Entity } from '../../src/ecs/world.js';
 import type { Simulation } from '../../src/index.js';
 import type { SystemContext } from '../../src/systems/index.js';
 
@@ -31,4 +33,11 @@ export function fixtureTick(sim: Simulation): number {
 export function nextTickCtxOf(sim: Simulation): SystemContext {
   manualTicks.set(sim, fixtureTick(sim) + 1);
   return ctxOf(sim);
+}
+
+/** The ticks worked on `building`'s production batch `index` as the fixture's tick reads its clock;
+ *  undefined without that batch. */
+export function batchTicks(sim: Simulation, building: Entity, index = 0): number | undefined {
+  const cycle = sim.world.tryGet(building, Production)?.cycles[index];
+  return cycle === undefined ? undefined : workClockTicks(cycle, fixtureTick(sim));
 }

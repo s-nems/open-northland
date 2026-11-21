@@ -99,12 +99,21 @@ export class WorkSeatClaims {
   /** Claim a running batch of `workplace` for `operator`: its index in the workplace's `Production`
    *  cycles, or a negative number when none is left for him. */
   claimBatch(world: World, ctx: PlannerContext['ctx'], workplace: Entity, operator: Entity): number {
+    // The planner runs ahead of production, so a batch's clock reads as the previous tick left it.
+    const batchTick = ctx.tick - 1;
     let claimed = this.batches.get(workplace);
     if (claimed === undefined) {
       claimed = new Set();
       const present = presentOperatorsInto(world, ctx, workplace, claimCrew);
       if (present.kind === 'staffed') {
-        const assignments = productionAssignmentsInto(world, ctx, workplace, present.operators, claimBatches);
+        const assignments = productionAssignmentsInto(
+          world,
+          ctx,
+          workplace,
+          present.operators,
+          claimBatches,
+          batchTick,
+        );
         for (let i = 0; i < present.operators.length; i++) {
           const worker = present.operators[i];
           const batch = assignments[i];
@@ -114,7 +123,7 @@ export class WorkSeatClaims {
       }
       this.batches.set(workplace, claimed);
     }
-    return claimProductionCycle(world, ctx, workplace, operator, claimed);
+    return claimProductionCycle(world, ctx, workplace, operator, claimed, batchTick);
   }
 
   recipesFor(world: World, ctx: PlannerContext['ctx'], workplace: Entity): readonly Recipe[] {
@@ -292,7 +301,8 @@ const rotationMerges = new WeakMap<Recipe, RotationMerge>();
 
 /** Whether `workplace`'s batch at index `batch` has advanced a tick; false for no batch. */
 function batchBegun(world: World, workplace: Entity, batch: number): boolean {
-  return batch >= 0 && (world.tryGet(workplace, Production)?.cycles[batch]?.elapsed ?? 0) > 0;
+  const cycle = batch < 0 ? undefined : world.tryGet(workplace, Production)?.cycles[batch];
+  return cycle !== undefined && (cycle.startedAt !== undefined || cycle.elapsed > 0);
 }
 
 /** {@link mergeRecipes} of an operator's rotation, memoized by its content-owned recipes in order, so a

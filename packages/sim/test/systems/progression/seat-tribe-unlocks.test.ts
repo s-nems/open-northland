@@ -34,7 +34,7 @@ import {
   workplaceRecipeEnabled,
 } from '../../../src/systems/progression/index.js';
 import { testContent } from '../../fixtures/content.js';
-import { ctxOf } from '../../fixtures/context.js';
+import { ctxOf, nextTickCtxOf } from '../../fixtures/context.js';
 import { grassCellMap } from '../../fixtures/terrain.js';
 
 const SEAT = 0;
@@ -221,7 +221,7 @@ describe('production by the worker tribe', () => {
     const recipe = sim.content.buildings.find((b) => b.typeId === SAWMILL)?.recipes?.[0];
     if (recipe === undefined) throw new Error('fixture sawmill lacks its plank recipe');
     expect(workplaceRecipeEnabled(sim.world, ctxOf(sim), mill, recipe)).toBe(true);
-    productionSystem(sim.world, ctxOf(sim));
+    productionSystem(sim.world, nextTickCtxOf(sim));
     expect(sim.world.get(mill, Production).cycles.map((cycle) => cycle.goodType)).toEqual([PLANK]);
   });
 
@@ -231,7 +231,7 @@ describe('production by the worker tribe', () => {
     sim.step();
     expect(buildTribes(sim.world, SEAT)).toEqual([VIKING, FRANK]);
     const { mill } = frankSawmill(sim, VIKING);
-    productionSystem(sim.world, ctxOf(sim));
+    productionSystem(sim.world, nextTickCtxOf(sim));
     expect(sim.world.has(mill, Production)).toBe(false);
   });
 

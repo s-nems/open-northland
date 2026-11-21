@@ -204,7 +204,13 @@ export function beginCycle(
   operator: Entity | null,
 ): void {
   consumeGoods(world, building, recipe.inputs);
-  const cycle: ProductionCycle = { elapsed: 0, duration: Math.max(1, duration), goodType, operator };
+  const cycle: ProductionCycle = {
+    elapsed: 0,
+    startedAt: undefined,
+    duration: Math.max(1, duration),
+    goodType,
+    operator,
+  };
   const prod = world.tryMut(building, Production);
   if (prod === undefined) world.add(building, Production, { cycles: [cycle] });
   else prod.cycles.push(cycle);

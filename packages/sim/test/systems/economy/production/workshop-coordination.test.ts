@@ -21,6 +21,7 @@ import { Simulation } from '../../../../src/index.js';
 import type { NodeId } from '../../../../src/nav/terrain/index.js';
 import { plannerSystem, productionSystem } from '../../../../src/systems/index.js';
 import { testContent } from '../../../fixtures/content.js';
+import { batchTicks, nextTickCtxOf } from '../../../fixtures/context.js';
 import { pinProducts } from '../../../fixtures/production-counters.js';
 import {
   BAKEHOUSE,
@@ -127,11 +128,11 @@ it('leaves a batch to the operator that started it until that operator leaves th
   sim.world.add(shop, Production, {
     cycles: [{ elapsed: 2, duration: 20, goodType: PLANK, operator: owner }],
   });
-  productionSystem(sim.world, ctxOf(sim));
-  expect(sim.world.get(shop, Production).cycles[0]?.elapsed).toBe(2);
+  productionSystem(sim.world, nextTickCtxOf(sim));
+  expect(batchTicks(sim, shop)).toBe(2);
   sim.world.remove(owner, JobAssignment);
-  productionSystem(sim.world, ctxOf(sim));
-  expect(sim.world.get(shop, Production).cycles[0]?.elapsed).toBe(3);
+  productionSystem(sim.world, nextTickCtxOf(sim));
+  expect(batchTicks(sim, shop)).toBe(3);
 });
 
 it('two operators on different products of one scarce input take turns', () => {
@@ -180,7 +181,7 @@ it('a colleague walking to an emptied store does not hold back a startable recip
   sim.world.mut(waiting, SettlerProgress).experience.set(WOOD_TRACK, PLANK_GATE_RAW_XP);
   pinProducts(sim, waiting, [PLANK, FOOD_SIMPLE], 1);
   plannerSystem(sim.world, ctxOf(sim));
-  productionSystem(sim.world, ctxOf(sim));
+  productionSystem(sim.world, nextTickCtxOf(sim));
   expect(sim.world.get(shop, Production).cycles.map((c) => c.goodType)).toEqual([PLANK]);
 });
 
@@ -292,7 +293,7 @@ it('expensive unused selection does not let a cheap recipe steal priority', () =
   const b = settlerAt(sim, 0, 0, CARPENTER, shop);
   sim.world.mut(b, SettlerProgress).experience.set(WOOD_TRACK, PLANK_GATE_RAW_XP);
   pinProducts(sim, b, [PLANK, 7]);
-  productionSystem(sim.world, ctxOf(sim));
+  productionSystem(sim.world, nextTickCtxOf(sim));
   expect(sim.world.get(shop, Production).cycles[0]?.goodType).toBe(FOOD_SIMPLE);
 });
 
@@ -411,7 +412,7 @@ it('keeps the reservation on the tick the fetcher reaches the well, before its p
   pinProducts(sim, fetcher, [FOOD_SIMPLE]);
   sim.world.add(fetcher, SupplyRun, { site: shop, goodType: WATER, amount: 1 });
   sim.world.add(fetcher, PickupClaim, { source: well, goodType: WATER, amount: 1 });
-  productionSystem(sim.world, ctxOf(sim));
+  productionSystem(sim.world, nextTickCtxOf(sim));
   expect(sim.world.has(shop, Production)).toBe(false);
 });
 
@@ -431,11 +432,11 @@ it.each(['order', 'failed route'])(
     const incoming = settlerAt(sim, 3, 0, CARPENTER, shop);
     pinProducts(sim, incoming, [FOOD_SIMPLE]);
     sim.world.add(incoming, Carrying, { goodType: WOOD, amount: 1 });
-    productionSystem(sim.world, ctxOf(sim));
+    productionSystem(sim.world, nextTickCtxOf(sim));
     expect(sim.world.has(shop, Production)).toBe(false);
     if (reason === 'order') sim.world.add(incoming, PlayerOrder, {});
     else sim.world.add(incoming, PathRequest, { start: 6 as NodeId, goal: 0 as NodeId, failed: true });
-    productionSystem(sim.world, ctxOf(sim));
+    productionSystem(sim.world, nextTickCtxOf(sim));
     expect(sim.world.get(shop, Production).cycles[0]?.goodType).toBe(PLANK);
   },
 );

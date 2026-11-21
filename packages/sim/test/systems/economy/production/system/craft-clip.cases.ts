@@ -11,7 +11,8 @@ import type { Entity } from '../../../../../src/ecs/world.js';
 import { fx, ONE, Simulation } from '../../../../../src/index.js';
 import { productionSystem } from '../../../../../src/systems/index.js';
 import { testContent } from '../../../../fixtures/content.js';
-import { CARPENTER, CYCLE_TICKS, ctxOf, spawnSettler, WOOD } from './support.js';
+import { nextTickCtxOf } from '../../../../fixtures/context.js';
+import { CARPENTER, CYCLE_TICKS, spawnSettler, WOOD } from './support.js';
 
 /**
  * A staffed batch lasts one playthrough of the produce clip its operator's tribe and trade bind for the
@@ -103,7 +104,7 @@ function staffedShop(sim: Simulation, buildingType: number, jobType: number): En
 /** The tick, counted from the one that starts the first batch, on which `product` first lands. */
 function ticksToFirst(sim: Simulation, shop: Entity, product: number, limit: number): number {
   for (let tick = 1; tick <= limit; tick++) {
-    productionSystem(sim.world, ctxOf(sim));
+    productionSystem(sim.world, nextTickCtxOf(sim));
     if ((sim.world.get(shop, Stockpile).amounts.get(product) ?? 0) > 0) return tick;
   }
   return -1;
@@ -117,7 +118,7 @@ describe('productionSystem - a batch lasts its operator’s produce clip', () =>
     const sim = new Simulation({ seed: 1, content: clipContent() });
     const shop = staffedShop(sim, type, job);
 
-    productionSystem(sim.world, ctxOf(sim));
+    productionSystem(sim.world, nextTickCtxOf(sim));
     expect(sim.world.get(shop, Production).cycles[0]?.duration).toBe(clipTicks);
     // The start tick plus `clipTicks` advances, the last of which deposits.
     expect(ticksToFirst(sim, shop, product, DEFAULT_RECIPE_TICKS * 2)).toBe(clipTicks);
@@ -127,7 +128,7 @@ describe('productionSystem - a batch lasts its operator’s produce clip', () =>
     const sim = new Simulation({ seed: 1, content: clipContent() });
     const shop = staffedShop(sim, KITCHEN, CARPENTER);
 
-    productionSystem(sim.world, ctxOf(sim));
+    productionSystem(sim.world, nextTickCtxOf(sim));
     expect(sim.world.get(shop, Production).cycles[0]?.duration).toBe(CYCLE_TICKS);
   });
 });

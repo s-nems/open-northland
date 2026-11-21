@@ -23,6 +23,7 @@ import {
   toolBonusTenths,
 } from '../../../../../src/systems/index.js';
 import { testContent } from '../../../../fixtures/content.js';
+import { nextTickCtxOf } from '../../../../fixtures/context.js';
 import { CYCLE_TICKS, ctxOf, PLANK, sawmill, spawnSettler, WOOD } from './support.js';
 
 // The worn tool's ADDITIVE per-cycle credit (a sum with the experience tenths, never a product) + its
@@ -59,7 +60,7 @@ describe('productionSystem credits a worn tool additively and wears it per cycle
     const { mill, worker } = sawmill(sim, [[WOOD, 1]]);
     if (worker === null) throw new Error('staffed sawmill should have a worker');
     wearTool(sim, worker, TOOL_IRON);
-    for (let t = 0; t <= CYCLE_TICKS; t++) productionSystem(sim.world, ctxOf(sim));
+    for (let t = 0; t <= CYCLE_TICKS; t++) productionSystem(sim.world, nextTickCtxOf(sim));
     expect(sim.world.get(mill, Stockpile).amounts.get(PLANK)).toBe(1); // the base plank landed
     // The batch's own XP grant lands first (7 raw XP: still 0 points), then the credit: the tool's 7
     // tenths and nothing from the curve.
@@ -76,7 +77,7 @@ describe('productionSystem credits a worn tool additively and wears it per cycle
       .mut(worker, SettlerProgress)
       .experience.set(CARPENTER_PLANK_TRACK, FIVE_POINTS * EXPERIENCE_XP_PER_POINT - PLANK_XP_PER_BATCH);
     wearTool(sim, worker, TOOL_WOODEN);
-    for (let t = 0; t <= CYCLE_TICKS; t++) productionSystem(sim.world, ctxOf(sim));
+    for (let t = 0; t <= CYCLE_TICKS; t++) productionSystem(sim.world, nextTickCtxOf(sim));
     expect(sim.world.get(mill, ProductionBonus).remainders.get(PLANK)).toBe(
       experienceBonusTenths(experiencePercent(FIVE_POINTS)) + WOODEN_TENTHS,
     );

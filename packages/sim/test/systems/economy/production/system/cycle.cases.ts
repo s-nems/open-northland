@@ -4,7 +4,8 @@ import type { Entity } from '../../../../../src/ecs/world.js';
 import { Simulation } from '../../../../../src/index.js';
 import { productionSystem } from '../../../../../src/systems/index.js';
 import { testContent } from '../../../../fixtures/content.js';
-import { CYCLE_TICKS, ctxOf, PLANK, sawmill, WOOD } from './support.js';
+import { batchTicks, nextTickCtxOf } from '../../../../fixtures/context.js';
+import { CYCLE_TICKS, PLANK, sawmill, WOOD } from './support.js';
 
 describe('productionSystem - cycle lifecycle', () => {
   it('consumes the input at cycle start and produces the output on the duration-th tick', () => {
@@ -15,22 +16,33 @@ describe('productionSystem - cycle lifecycle', () => {
     ]);
 
     // Tick 1: starts a cycle - input consumed immediately, no Production-advance yet (begins next tick).
-    productionSystem(sim.world, ctxOf(sim));
+    productionSystem(sim.world, nextTickCtxOf(sim));
     expect(sim.world.get(mill, Stockpile).amounts.get(WOOD)).toBe(2); // one wood reserved/consumed
     expect(sim.world.get(mill, Stockpile).amounts.get(PLANK)).toBe(0); // no output until completion
     expect(sim.world.has(mill, Production)).toBe(true);
 
     // Ticks 2..CYCLE_TICKS: the cycle advances (elapsed 1..CYCLE_TICKS-1) - still producing.
     for (let t = 2; t <= CYCLE_TICKS; t++) {
-      productionSystem(sim.world, ctxOf(sim));
+      productionSystem(sim.world, nextTickCtxOf(sim));
       expect(sim.world.get(mill, Stockpile).amounts.get(PLANK)).toBe(0); // no output mid-cycle
     }
     // Tick CYCLE_TICKS+1: the CYCLE_TICKS-th advance completes (elapsed reaches duration) - +1 plank,
     // Production removed; then - wood still available - a fresh cycle starts the same tick.
-    productionSystem(sim.world, ctxOf(sim));
+    productionSystem(sim.world, nextTickCtxOf(sim));
     expect(sim.world.get(mill, Stockpile).amounts.get(PLANK)).toBe(1);
     expect(sim.world.get(mill, Stockpile).amounts.get(WOOD)).toBe(1); // 2nd cycle consumed another
     expect(sim.world.has(mill, Production)).toBe(true); // new cycle running
+  });
+
+  it('writes a running batch when its clock starts, and not again while it runs', () => {
+    const sim = new Simulation({ seed: 1, content: testContent() });
+    const { mill } = sawmill(sim, [[WOOD, 1]]);
+    productionSystem(sim.world, nextTickCtxOf(sim)); // the batch starts
+    productionSystem(sim.world, nextTickCtxOf(sim)); // its first worked tick starts the clock
+    const revision = sim.world.revisionOf(mill, Production);
+    for (let t = 2; t < CYCLE_TICKS; t++) productionSystem(sim.world, nextTickCtxOf(sim));
+    expect(sim.world.revisionOf(mill, Production)).toBe(revision);
+    expect(batchTicks(sim, mill)).toBe(CYCLE_TICKS - 1);
   });
 
   it('three input units yield exactly three outputs over three cycles (goods accounting)', () => {
@@ -40,7 +52,7 @@ describe('productionSystem - cycle lifecycle', () => {
       [PLANK, 0],
     ]);
     // Run long enough for all three cycles to finish.
-    for (let t = 0; t < CYCLE_TICKS * 3 + 2; t++) productionSystem(sim.world, ctxOf(sim));
+    for (let t = 0; t < CYCLE_TICKS * 3 + 2; t++) productionSystem(sim.world, nextTickCtxOf(sim));
     expect(sim.world.get(mill, Stockpile).amounts.get(WOOD)).toBe(0); // all consumed
     expect(sim.world.get(mill, Stockpile).amounts.get(PLANK)).toBe(3); // all produced
     expect(sim.world.has(mill, Production)).toBe(false); // idle: nothing left to produce
@@ -54,7 +66,7 @@ describe('productionSystem - cycle lifecycle', () => {
     ]);
     const other = sawmill(sim, [[WOOD, 3]]).mill;
     sim.world.add(mill, CompletedCycles, { byGood: new Map() });
-    for (let t = 0; t < CYCLE_TICKS * 2 + 1; t++) productionSystem(sim.world, ctxOf(sim));
+    for (let t = 0; t < CYCLE_TICKS * 2 + 1; t++) productionSystem(sim.world, nextTickCtxOf(sim));
     expect(sim.world.get(mill, CompletedCycles).byGood.get(PLANK)).toBe(2);
     expect(sim.world.has(other, CompletedCycles)).toBe(false);
   });
@@ -65,7 +77,7 @@ describe('productionSystem - cycle lifecycle', () => {
     let produced: { building: Entity; goodType: number; amount: number } | undefined;
     for (let t = 0; t <= CYCLE_TICKS; t++) {
       sim.events.clear();
-      productionSystem(sim.world, ctxOf(sim));
+      productionSystem(sim.world, nextTickCtxOf(sim));
       const evt = sim.events.current().find((e) => e.kind === 'goodProduced');
       if (evt !== undefined && evt.kind === 'goodProduced') produced = evt;
     }

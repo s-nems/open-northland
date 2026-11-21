@@ -28,9 +28,9 @@ import {
   stockCapacity,
 } from '../../../../../src/systems/index.js';
 import { testContent } from '../../../../fixtures/content.js';
+import { nextTickCtxOf } from '../../../../fixtures/context.js';
 import { pinProducts } from '../../../../fixtures/production-counters.js';
 import { waterColumnMap } from '../../../../fixtures/terrain.js';
-
 import {
   BAKEHOUSE,
   buildingAt,
@@ -893,7 +893,7 @@ describe('producer unblocks its own full output slot', () => {
     sim.world.add(diverted, PlayerOrder, {});
 
     plannerSystem(sim.world, ctxOf(sim));
-    productionSystem(sim.world, ctxOf(sim));
+    productionSystem(sim.world, nextTickCtxOf(sim));
 
     expect(sim.world.get(forge, Production).cycles[0]?.goodType).toBe(PLANK);
   });

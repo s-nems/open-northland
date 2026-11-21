@@ -28,6 +28,7 @@ import {
   staffOf,
   storageCapacityFactorOf,
   storePriorityGoodsOf,
+  workedTicks,
 } from '../../../game/snapshot/index.js';
 import { ownedByAnotherSeat, pickableSeat } from '../../../game/viewer-seat.js';
 import { messages, tribeName } from '../../../i18n/index.js';
@@ -521,15 +522,15 @@ function firstWorkerStatus(
 }
 
 /** The product of the craft cycle furthest along, labelled; null while none runs. */
-function craftingNow(ctx: UnitPanelModelContext, ent: SnapshotEntity): string | null {
+function craftingNow(ctx: UnitPanelModelContext, ent: SnapshotEntity, tick: number): string | null {
   const production = ent.components.Production as { cycles?: unknown } | undefined;
   let best: { good: number; share: number } | null = null;
   for (const c of Array.isArray(production?.cycles) ? production.cycles : []) {
-    const cycle = c as { elapsed?: unknown; duration?: unknown; goodType?: unknown } | null;
+    const cycle = c as { duration?: unknown; goodType?: unknown } | null;
     const good = num(cycle?.goodType);
     const duration = num(cycle?.duration) ?? 0;
     if (good === undefined || duration <= 0) continue;
-    const share = (num(cycle?.elapsed) ?? 0) / duration;
+    const share = (workedTicks(cycle, tick) ?? 0) / duration;
     if (best === null || share > best.share) best = { good, share };
   }
   return best === null ? null : goodLabel(ctx, best.good);
@@ -565,7 +566,7 @@ export function buildingPanelModel(
     site:
       construction === null ? null : { upgrade, pct: builtPct, stall: foreign ? null : construction.status },
     alarm,
-    crafting: site ? null : craftingNow(ctx, ent),
+    crafting: site ? null : craftingNow(ctx, ent, snapshot.tick),
     seats,
     garrison: site ? null : garrisonPosts(snapshot, def, ent.id),
     workDetail: work === undefined ? null : workStatusDetail(ctx, work),

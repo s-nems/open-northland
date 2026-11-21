@@ -29,7 +29,7 @@ import {
   wakeIdle,
 } from '../../../../src/systems/settlers/planner/idle-replan.js';
 import { testContent } from '../../../fixtures/content.js';
-import { fixtureTick, nextTickCtxOf } from '../../../fixtures/context.js';
+import { batchTicks, fixtureTick, nextTickCtxOf } from '../../../fixtures/context.js';
 import { justAbove, NEED_DRIVE_THRESHOLD } from '../../../fixtures/needs.js';
 import { setNeeds } from '../../../fixtures/settler.js';
 import {
@@ -149,7 +149,7 @@ describe('a workshop operator performing its craft', () => {
     for (let i = 0; i < 4; i++) tick(shop);
     // The clip starts on the batch's own progress and the executor advances it in step with the batch,
     // rather than back at frame zero whenever the crew re-plans.
-    const elapsed = shop.sim.world.get(shop.shop, Production).cycles[0]?.elapsed;
+    const elapsed = batchTicks(shop.sim, shop.shop);
     expect(elapsed).toBe(3);
     expect(atomicElapsed(shop.sim.world.get(shop.cook, AtomicClock), fixtureTick(shop.sim))).toBe(elapsed);
   });
@@ -183,7 +183,7 @@ describe('a workshop operator performing its craft', () => {
       for (const ev of shop.sim.events.current()) {
         if (ev.kind !== 'atomicSound') continue;
         expect(ev).toMatchObject({ entity: shop.cook, soundType: BAKER_SHOVEL_LONG });
-        batchTicksAtCue.push(shop.sim.world.tryGet(shop.shop, Production)?.cycles[0]?.elapsed ?? -1);
+        batchTicksAtCue.push(batchTicks(shop.sim, shop.shop) ?? -1);
       }
     }
     // A frame sounds on the tick after it, as on any clip; each of the two loaves sounds it once.
@@ -283,8 +283,7 @@ describe('a seated crafter between its idle beats', () => {
     const { world } = shop.sim;
     seat(shop);
     // Within one batch: its end and the next batch's start rewrite the clip by design.
-    const batchLeft = (): number =>
-      KITCHEN_RECIPE_TICKS - (world.get(shop.shop, Production).cycles[0]?.elapsed ?? 0);
+    const batchLeft = (): number => KITCHEN_RECIPE_TICKS - (batchTicks(shop.sim, shop.shop) ?? 0);
     let clipWrites = 0;
     for (let i = 0; i < IDLE_REPLAN_PERIOD_TICKS && batchLeft() > 1; i++) {
       const before = world.componentGeneration(CurrentAtomic);
@@ -293,7 +292,7 @@ describe('a seated crafter between its idle beats', () => {
     }
     expect(clipWrites).toBeLessThanOrEqual(1); // the workshop's own beat
     expect(atomicElapsed(world.get(shop.cook, AtomicClock), fixtureTick(shop.sim))).toBe(
-      world.get(shop.shop, Production).cycles[0]?.elapsed,
+      batchTicks(shop.sim, shop.shop),
     );
   });
 
@@ -313,7 +312,8 @@ describe('a seated crafter between its idle beats', () => {
     expect(eating()).toBe(true);
   });
 
-  /** A two-seat mill running `elapsed` batches, and a ctx off its crew's idle beat. */
+  /** A two-seat mill running `elapsed` batches, and a ctx whose tick and the next are off its crew's idle
+   *  beat. */
   function twinMill(...elapsed: number[]) {
     const sim = new Simulation({ seed: 1, content: craftablePlankContent(), map: grassMap(8, 1) });
     const mill = buildingAt(sim, TWIN_MILL, 1, 0, [[WOOD, 4]]);
@@ -328,14 +328,10 @@ describe('a seated crafter between its idle beats', () => {
       });
     }
     const ctx = ctxOf(sim);
-    return {
-      sim,
-      mill,
-      offBeat: {
-        ...ctx,
-        tick: idleReplanDue(ctx.tick, mill, IDLE_REPLAN_PERIOD_TICKS) ? ctx.tick + 1 : ctx.tick,
-      },
-    };
+    const due = (tick: number): boolean => idleReplanDue(tick, mill, IDLE_REPLAN_PERIOD_TICKS);
+    let tick = ctx.tick;
+    while (due(tick) || due(tick + 1)) tick++;
+    return { sim, mill, offBeat: { ...ctx, tick } };
   }
 
   /** Sit `e` at its assigned batch, standing through its idle beats. */
@@ -353,7 +349,7 @@ describe('a seated crafter between its idle beats', () => {
     sitAt(sim, offBeat, second, mill);
 
     productionSystem(sim.world, offBeat); // batch 0 lands; the one left advances to 6
-    plannerSystem(sim.world, offBeat);
+    plannerSystem(sim.world, { ...offBeat, tick: offBeat.tick + 1 }); // the planner's next pass
 
     expect(atomicElapsed(sim.world.get(second, AtomicClock), fixtureTick(sim))).toBe(6);
     expect(sim.world.has(first, CurrentAtomic)).toBe(false); // its batch landed; the other is second's

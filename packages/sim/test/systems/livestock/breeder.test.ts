@@ -29,6 +29,7 @@ import {
   recountHerdRows,
 } from '../../../src/systems/index.js';
 import { isInside } from '../../../src/systems/settlers/indoors.js';
+import { nextTickCtxOf } from '../../fixtures/context.js';
 import { grassCellMap, waterColumnMap } from '../../fixtures/terrain.js';
 import {
   BREED_TICKS,
@@ -315,7 +316,7 @@ describe('the breeder cycle - adopt, take, flush, slaughter, breed', () => {
 
     for (const sim of [lone, crowd]) {
       plan(sim);
-      productionSystem(sim.world, ctxOf(sim));
+      productionSystem(sim.world, nextTickCtxOf(sim));
     }
 
     expect(lone.world.tryGet(first.farm, Production)).toBeUndefined();

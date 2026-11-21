@@ -17,6 +17,7 @@ import { bindEmployment } from '../../../../../src/systems/economy/jobs/index.js
 import { productionSystem } from '../../../../../src/systems/index.js';
 import { setJob, setProductionCount, setProductionGoods } from '../../../../../src/systems/orders/index.js';
 import { testContent } from '../../../../fixtures/content.js';
+import { nextTickCtxOf } from '../../../../fixtures/context.js';
 import {
   CARPENTER,
   CYCLE_TICKS,
@@ -54,7 +55,7 @@ function forge(sim: Simulation, wood: number): { forge: Entity; smith: Entity } 
 
 /** Run the system until `count` cycles have completed (each takes CYCLE_TICKS + the start tick). */
 function runCycles(sim: Simulation, count: number): void {
-  for (let t = 0; t < (CYCLE_TICKS + 1) * count + 1; t++) productionSystem(sim.world, ctxOf(sim));
+  for (let t = 0; t < (CYCLE_TICKS + 1) * count + 1; t++) productionSystem(sim.world, nextTickCtxOf(sim));
 }
 
 describe('productionSystem - per-product recipes and the craft selection', () => {
@@ -73,7 +74,7 @@ describe('productionSystem - per-product recipes and the craft selection', () =>
   it('each in-flight cycle carries the product it crafts', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
     const { forge: f } = forge(sim, 2);
-    productionSystem(sim.world, ctxOf(sim)); // starts the first cycle
+    productionSystem(sim.world, nextTickCtxOf(sim)); // starts the first cycle
     expect(sim.world.get(f, Production).cycles[0]?.goodType).toBe(PLANK); // first product in content order
   });
 
@@ -191,7 +192,7 @@ describe('productionSystem - per-product recipes and the craft selection', () =>
     const { forge: f, smith } = forge(sim, 1);
     sim.world.add(smith, ProductionCounters, { counters: [], cursor: 1 });
 
-    productionSystem(sim.world, ctxOf(sim));
+    productionSystem(sim.world, nextTickCtxOf(sim));
 
     expect(sim.world.get(f, Production).cycles[0]?.goodType).toBe(PLANK);
   });

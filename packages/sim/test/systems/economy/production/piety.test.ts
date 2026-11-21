@@ -22,7 +22,7 @@ import { exportSaveGame, fx, ONE, restoreSimulation, Simulation } from '../../..
 import { atomicSystem, needBar, plannerSystem, productionSystem } from '../../../../src/systems/index.js';
 import { startCraftAtomic } from '../../../../src/systems/settlers/drives/economy/workshop/craft.js';
 import { testContent } from '../../../fixtures/content.js';
-import { nextTickCtxOf } from '../../../fixtures/context.js';
+import { batchTicks, nextTickCtxOf } from '../../../fixtures/context.js';
 import { needsOf, setNeeds } from '../../../fixtures/settler.js';
 import { buildingAt, grassMap, HEADQUARTERS } from './producer-supply/support.js';
 import {
@@ -88,7 +88,7 @@ describe('productionSystem - forging a military good charges the smith piety', (
     setNeeds(sim, worker, { piety: fx.fromInt(0) });
 
     // One full cycle to completion (CYCLE_TICKS-th advance deposits the output on tick CYCLE_TICKS+1).
-    for (let t = 0; t <= CYCLE_TICKS; t++) productionSystem(sim.world, ctxOf(sim));
+    for (let t = 0; t <= CYCLE_TICKS; t++) productionSystem(sim.world, nextTickCtxOf(sim));
     expect(needsOf(sim, worker).piety).toBe(needBar(-FORGE_PIETY_UNITS));
   });
 
@@ -98,7 +98,7 @@ describe('productionSystem - forging a military good charges the smith piety', (
     if (worker === null) throw new Error('sawmill worker missing');
     setNeeds(sim, worker, { piety: fx.fromInt(0) });
 
-    for (let t = 0; t <= CYCLE_TICKS; t++) productionSystem(sim.world, ctxOf(sim));
+    for (let t = 0; t <= CYCLE_TICKS; t++) productionSystem(sim.world, nextTickCtxOf(sim));
     expect(needsOf(sim, worker).piety).toBe(fx.fromInt(0));
   });
 
@@ -108,7 +108,7 @@ describe('productionSystem - forging a military good charges the smith piety', (
     if (worker === null) throw new Error('sawmill worker missing');
     setNeeds(sim, worker, { piety: fx.fromInt(0) });
 
-    for (let t = 0; t < CYCLE_TICKS * 40 + 5; t++) productionSystem(sim.world, ctxOf(sim));
+    for (let t = 0; t < CYCLE_TICKS * 40 + 5; t++) productionSystem(sim.world, nextTickCtxOf(sim));
     expect(needsOf(sim, worker).piety).toBe(ONE);
   });
 
@@ -119,7 +119,7 @@ describe('productionSystem - forging a military good charges the smith piety', (
     if (worker === null) throw new Error('sawmill worker missing');
     setNeeds(sim, worker, { piety: fx.fromInt(0) });
 
-    for (let t = 0; t <= CYCLE_TICKS; t++) productionSystem(sim.world, ctxOf(sim));
+    for (let t = 0; t <= CYCLE_TICKS; t++) productionSystem(sim.world, nextTickCtxOf(sim));
     expect(needsOf(sim, worker).piety).toBe(needBar(-HEAVY_PIETY_UNITS));
   });
 });
@@ -150,7 +150,7 @@ describe('production events share the batch clock with the displayed craft', () 
     productionSystem(sim.world, nextTickCtxOf(sim));
     setNeeds(sim, worker, { piety: ONE });
     for (let i = 0; i < 5; i++) productionSystem(sim.world, nextTickCtxOf(sim));
-    expect(sim.world.get(mill, Production).cycles[0]?.elapsed).toBe(1);
+    expect(batchTicks(sim, mill)).toBe(1);
     const restored = restoreSimulation(exportSaveGame(sim), { content });
     setNeeds(restored, worker, { piety: needBar(5000) });
     for (let i = 0; i < 3; i++) productionSystem(restored.world, nextTickCtxOf(restored));
@@ -254,11 +254,13 @@ describe('production events share the batch clock with the displayed craft', () 
     plannerSystem(sim.world, ctxOf(sim));
     expect(sim.world.has(worker, MoveGoal)).toBe(false);
     productionSystem(sim.world, nextTickCtxOf(sim));
-    expect(plankBatch()).toEqual({ goodType: PLANK, elapsed: 1, duration: 4, operator: worker });
+    expect(plankBatch()?.operator).toBe(worker);
+    expect(batchTicks(sim, mill)).toBe(1);
     // Its old owner's religion back, the batch stays with the colleague now working it.
     setNeeds(sim, empty, { piety: needBar(5000) });
     productionSystem(sim.world, nextTickCtxOf(sim));
-    expect(plankBatch()).toEqual({ goodType: PLANK, elapsed: 2, duration: 4, operator: worker });
+    expect(plankBatch()?.operator).toBe(worker);
+    expect(batchTicks(sim, mill)).toBe(2);
   });
 
   it('leaves a batch its owner may not craft to wait when the free colleague has not earned the ware', () => {
@@ -314,7 +316,7 @@ describe('production events share the batch clock with the displayed craft', () 
     productionSystem(sim.world, nextTickCtxOf(sim));
     expect([...sim.world.get(worker, SettlerProgress).experience]).toEqual(firstXp);
     expect([...sim.world.get(second, SettlerProgress).experience]).not.toEqual(secondXp);
-    expect(sim.world.get(mill, Production).cycles[0]?.elapsed).toBe(1);
+    expect(batchTicks(sim, mill)).toBe(1);
     expect(sim.world.get(worker, Equipment).tool?.degreeOfUse).toBe(0);
     expect(sim.world.get(second, Equipment).tool?.degreeOfUse).toBeGreaterThan(0);
     expect(sim.world.get(mill, ProductionBonus).remainders.get(PLANK)).toBe(7);
@@ -340,7 +342,8 @@ describe('production events share the batch clock with the displayed craft', () 
     atomicSystem(sim.world, ctx);
     productionSystem(sim.world, ctx);
     expect(sim.world.has(worker, IdleStand)).toBe(false);
-    startCraftAtomic(sim.world, ctx, worker, mill);
+    // The planner's next pass, a tick after production advanced the batch.
+    startCraftAtomic(sim.world, nextTickCtxOf(sim), worker, mill);
     expect(atomicElapsed(sim.world.get(worker, AtomicClock), ctx.tick)).toBe(1);
   });
 
@@ -413,7 +416,7 @@ describe('production events share the batch clock with the displayed craft', () 
       sim.world.remove(worker, JobAssignment);
       sim.world.mut(worker, Position).x = fx.fromInt(8);
       for (let i = 0; i < 3; i++) productionSystem(sim.world, nextTickCtxOf(sim));
-      expect(sim.world.get(mill, Production).cycles[0]?.elapsed).toBe(ticks);
+      expect(batchTicks(sim, mill)).toBe(ticks);
       const replacement = spawnSettler(sim, CARPENTER, 0, 0);
       sim.world.add(replacement, JobAssignment, { workplace: mill });
       const restored = restoreSimulation(exportSaveGame(sim), { content });

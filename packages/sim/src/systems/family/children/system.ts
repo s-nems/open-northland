@@ -7,6 +7,7 @@ import {
   Residence,
   Settler,
   Sheltering,
+  stopWorkClock,
 } from '../../../components/index.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import type { TerrainGraph } from '../../../nav/terrain/index.js';
@@ -32,6 +33,7 @@ export function driveChildOrders(world: World, ctx: SystemContext, terrain: Terr
     dutyClaimed,
     externalFood: new ExternalFoodIndex(world, ctx, terrain, supply),
     supply,
+    sessionsDriven: [],
   };
   const orders = world.canonicalQuery(ChildOrder, Settler, Position);
   for (let i = 0; i < orders.length; i++) {
@@ -42,6 +44,7 @@ export function driveChildOrders(world: World, ctx: SystemContext, terrain: Terr
     if (waitsOnWalk(world, ctx.tick, e, pass)) continue;
     driveOrder(world, ctx, terrain, e, pass);
   }
+  stopUndrivenSessions(world, ctx.tick, pass.sessionsDriven);
   for (let i = 0; i < dutyBefore.length; i++) {
     const e = dutyBefore[i] as Entity;
     if (dutyClaimed.has(e)) continue;
@@ -62,6 +65,16 @@ function dutyClaimsOf(world: World): DutyClaims {
     dutyClaims.set(world, claims);
   }
   return claims;
+}
+
+/** Stop the clock of every running {@link MakingLove} session no order advanced this tick. */
+function stopUndrivenSessions(world: World, tick: number, driven: readonly Entity[]): void {
+  const homes = world.canonicalQuery(MakingLove);
+  for (let i = 0; i < homes.length; i++) {
+    const home = homes[i] as Entity;
+    if (world.get(home, MakingLove).startedAt === undefined || driven.includes(home)) continue;
+    stopWorkClock(world.mut(home, MakingLove), tick);
+  }
 }
 
 /**

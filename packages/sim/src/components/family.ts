@@ -1,4 +1,5 @@
 import { defineComponent, type Entity } from '../ecs/world.js';
+import type { WorkClock } from './work-clock.js';
 
 /**
  * The original models the couple engine-internally - no readable spouse field, the pairing shows only
@@ -106,10 +107,10 @@ export const DEFAULT_HOUSEHOLD_GOOD_POLICY: Readonly<{ cooking: boolean; lodging
  * A home where a resident couple is currently making love - both parents inside, hearts over the house (the
  * original's `HOUSE_ACTION_OVERLAY_TYPE_MAKE_LOVE = 2` overlay and `PARTICEL_EFFECT_HOUSE_BASE_POINT` in
  * the make_love animations, `logicdefines.inc`). `wife` names the couple whose order advances or cancels
- * this session, since a home may house several order-holding couples. At `elapsed >= duration` the baby is
- * born.
+ * this session, since a home may house several order-holding couples. Its {@link WorkClock} counts the
+ * ticks the order drove it, and at `workClockTicks >= duration` the baby is born.
  */
-export const MakingLove = defineComponent<{ wife: Entity; elapsed: number; duration: number }>(
+export const MakingLove = defineComponent<WorkClock & { wife: Entity; duration: number }>(
   'MakingLove',
   'settlers',
 );

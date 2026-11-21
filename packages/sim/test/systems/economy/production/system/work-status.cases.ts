@@ -18,6 +18,7 @@ import { bindFreshFlag, relocateWorkFlag } from '../../../../../src/systems/econ
 import { productionSystem } from '../../../../../src/systems/index.js';
 import { setProductionCount, setProductionGoods } from '../../../../../src/systems/orders/index.js';
 import { testContent } from '../../../../fixtures/content.js';
+import { nextTickCtxOf } from '../../../../fixtures/context.js';
 import { grassCellMap } from '../../../../fixtures/terrain.js';
 import { CARPENTER, ctxOf, PLANK_GATE_EARNED, SAWMILL, spawnSettler, WOOD, WOODCUTTER } from './support.js';
 
@@ -45,7 +46,7 @@ describe('Simulation.workStatus - why a craft worker works or idles', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
     const { smith } = forge(sim, 2);
     expect(sim.workStatus(smith)).toBeUndefined(); // about to start: nothing to report
-    productionSystem(sim.world, ctxOf(sim));
+    productionSystem(sim.world, nextTickCtxOf(sim));
     expect(sim.workStatus(smith)).toEqual({ kind: 'crafting', goodType: PLANK });
   });
 
@@ -98,7 +99,7 @@ describe('Simulation.workStatus - why a craft worker works or idles', () => {
     setStockAmount(sim.world, f, WOOD, 3);
     setStockAmount(sim.world, f, 4, 2);
     expect(sim.workStatus(smith)).toBeUndefined();
-    productionSystem(sim.world, ctxOf(sim));
+    productionSystem(sim.world, nextTickCtxOf(sim));
     expect(sim.workStatus(smith)).toEqual({ kind: 'crafting', goodType: FOOD });
   });
 
