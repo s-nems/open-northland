@@ -294,6 +294,14 @@ const LAND_HEURISTIC_WEIGHT = DEFAULT_NODE_ROUGHNESS;
  */
 const ROAD_HEURISTIC_INFLATION = fx.div(fx.fromInt(3), fx.fromInt(2));
 
+/**
+ * A further inflation of the whole land estimate, past both weights above: the search then settles less of
+ * the ground beside and behind the walker, about 30% of which weighs more than grass. Approximation,
+ * measured on a replay of a late session's 23,813 walks: 39% fewer settles for routes 1.1% dearer on
+ * average, the worst 1.46 times.
+ */
+const LAND_ESTIMATE_INFLATION: Fixed = fx.div(fx.fromInt(5), fx.fromInt(4));
+
 /** Node `(hx, hy)`'s column in quarter-column units, where an odd row's shift is a whole unit. */
 function doubledColumn(hx: number, hy: number): number {
   return 2 * hx + (hy & 1);
@@ -451,7 +459,7 @@ class ResumableSearch {
     if (this.traversal !== 'land') return toGoal;
     const overGrass = fx.mulInt(toGoal, LAND_HEURISTIC_WEIGHT);
     const toRoad = this.graph.roadDistanceAt(node);
-    if (toRoad >= toGoal) return overGrass;
+    if (toRoad >= toGoal) return fx.mul(overGrass, LAND_ESTIMATE_INFLATION);
     const network = this.graph.roadNetworkNear(node);
     if (network !== this.gapNetwork) {
       this.gapNetwork = network;
@@ -461,7 +469,7 @@ class ResumableSearch {
     const inflated = fx.mul(nearRoad, ROAD_HEURISTIC_INFLATION);
     const bounded = fx.add(nearRoad, this.gap);
     const viaRoad = inflated > bounded ? inflated : bounded;
-    return viaRoad < overGrass ? viaRoad : overGrass;
+    return fx.mul(viaRoad < overGrass ? viaRoad : overGrass, LAND_ESTIMATE_INFLATION);
   }
 }
 

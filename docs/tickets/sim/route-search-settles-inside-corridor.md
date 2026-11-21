@@ -6,10 +6,10 @@ A ghost walker's walk of 16 columns and more searches a corridor of cluster regi
 (`nav/pathfinding/corridor-route.ts`), and any other land walk under the structures, a collider's
 included, is handed to it once its map-wide search has settled 2048 nodes (512 for a collider's long
 walk). What is left is the search inside the corridor: the land heuristic of
-`nav/pathfinding/find-path.ts` weighs ground as grass (2) while about 30% of walkable ground weighs 3 or
-4, so the search settles the ground behind the walker too. Measured on two late sessions (six computer
-seats on `magiczny_las` from tick 100000, eight on `diamentowa_dolina` from tick 80000), 2200 ticks each,
-before the handover:
+`nav/pathfinding/find-path.ts` weighs ground as grass (2), inflated by a quarter, while about 30% of
+walkable ground weighs 3 or 4, so the search still settles ground behind the walker. Measured on two
+late sessions (six computer seats on `magiczny_las` from tick 100000, eight on `diamentowa_dolina` from
+tick 80000), 2200 ticks each, before the handover and the inflation:
 
 - Searches of at most 2048 settles are 99% of the ghost walkers' searches and 65-71% of their settles,
   and the corridor leaves them about as they were: a walk of 32 nodes and more settles 4-5 nodes per
@@ -20,12 +20,9 @@ before the handover:
 
 ## Scope
 
-Two measured levers, both of which move routes and need the owner's sign-off on route cost:
+One measured lever, which moves routes and needs the owner's sign-off on route cost. It was measured
+before the land estimate was inflated by a quarter (`LAND_ESTIMATE_INFLATION`), so measure it again on top:
 
-- Weigh the land heuristic heavier. Over 23,813 searches of the first session, 1.25 times heavier settles
-  39% fewer nodes (47% fewer on routes of 64 nodes and more) for routes 1.1% dearer on average, the worst
-  1.46 times; heavier only past 16 columns from the goal settles 16% fewer (29% and 47% on routes of 64
-  and 128 nodes and more) for 0.4% dearer routes, the worst 1.23 times.
 - Estimate a node's remaining cost through the region route instead of along the straight line: on to
   the mean node of a region two ahead, then that region's cost to the goal. On the searches over 1024
   settles it settles 10-20% of what the map-wide search does (the 90,711-settle walk takes 3,630), for
