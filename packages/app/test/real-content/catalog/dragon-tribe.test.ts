@@ -27,7 +27,7 @@ const DRAGON_WEAPON = {
   weight: 1,
   minRange: 1,
   maxRange: 3,
-  damage: { '0': 500, '1': 250, '2': 318, '3': 125, '4': 125, '6': 85, '7': 215, '8': 375, '9': 500 },
+  damage: { '0': 500, '1': 250, '2': 318, '3': 125, '4': 125, '6': 85, '7': 215, '8': 375, '9': 375 },
 };
 const DRAGON_ATTACK_TICKS = 59;
 const DRAGON_BLOWS = 5;

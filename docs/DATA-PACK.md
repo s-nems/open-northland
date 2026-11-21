@@ -41,8 +41,13 @@ The pack's combat rules differ from the original data in these ways:
   is what a wild animal takes, column 9 what a monster with a hide (the weresnake and the werewolf)
   takes. A row without column 8 hits an animal with its leather column; one without column 9 hits such a
   monster with the column of the material it wears. The dragon has no hide and takes the column of the
-  material it wears, as a person does.
+  material it wears, as a person does. In the five nations' rows column 9 holds what the weapon did to
+  a weresnake or werewolf in the original, which wore leather there; the Frankish hero bow and every
+  monster and animal row repeat their column 8.
 - The basic weapons of every nation carry the Viking values. Hero rows keep their own values.
+- A row's leather column is never below its tunic column. The wooden spear does 360 against chain
+  and plate, the long bow 700 against no armour and 200 against a building, the short bow 80 against
+  a building, so a short bow arrow takes no health off a stockade.
 - `rules/tribes/tribetypes.ini` has tribe 42 `dragon`, a monster like the weresnake (5) and the
   werewolf (6): fighter job 31, natural weapon at weapon type 1, no trade it can be trained into.
   A map placement or script spawn of a Byzantine `soldier_spear_wooden` (tribe 3, job 32) joins as
