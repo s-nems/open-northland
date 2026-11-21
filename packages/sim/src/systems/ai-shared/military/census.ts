@@ -50,7 +50,9 @@ export interface WeaponMix {
 export function takeCensus(world: World, ctx: SystemContext, player: number): ArmyCensus {
   const ready: Entity[] = [];
   const awaitingWeapon: Entity[] = [];
-  for (const e of homeSettlers(world, ctx, player)) {
+  const settlers = homeSettlers(world, ctx, player);
+  for (let i = 0; i < settlers.length; i++) {
+    const e = settlers[i] as Entity;
     const settler = world.get(e, Settler);
     const jobType = settler.jobType;
     if (jobType === null || !isFighterJob(ctx.content, jobType)) continue;

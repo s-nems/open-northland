@@ -24,7 +24,10 @@ import { homeSettlers } from '../../home-roster.js';
  */
 export function enlistOrders(world: World, ctx: SystemContext, player: number): PlayerCommand[] {
   const commands: PlayerCommand[] = [];
-  for (const e of homeSettlers(world, ctx, player)) {
+  const settlers = homeSettlers(world, ctx, player);
+  for (let i = 0; i < settlers.length; i++) {
+    const e = settlers[i];
+    if (e === undefined) continue;
     const jobType = world.get(e, Settler).jobType;
     if (jobType === null || !isFighterJob(ctx.content, jobType)) continue;
     if (world.has(e, NoRegeneration) || hasMissionBehaviour(world, e, MISSION_BEHAVIOUR.NOT_CONTROLLABLE))

@@ -42,7 +42,10 @@ export function wallDistanceWithin(
   const at = terrain.coordsOf(entityNode(world, terrain, building));
   if (hexDistanceBetween(x, y, at.x, at.y) > band + wallSpanOf(world, ctx, terrain, building)) return null;
   let nearest = Number.POSITIVE_INFINITY;
-  for (const node of buildingBodyNodes(world, ctx, terrain, building))
+  const bodyNodes = buildingBodyNodes(world, ctx, terrain, building);
+  for (let i = 0; i < bodyNodes.length; i++) {
+    const node = bodyNodes[i] as NodeId;
     nearest = Math.min(nearest, hexDistanceBetween(x, y, terrain.xOf(node), terrain.yOf(node)));
+  }
   return nearest <= band ? nearest : null;
 }

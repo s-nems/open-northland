@@ -128,7 +128,9 @@ function beatScans(world: World): BeatScans {
  */
 function sweepStaleBookings(world: World, ctx: SystemContext): void {
   // Copies, not sorts: removal here is order-independent; the copy only guards the live iteration.
-  for (const e of [...world.query(AssistantChildOrder)]) {
+  const childOrders = [...world.query(AssistantChildOrder)];
+  for (let i = 0; i < childOrders.length; i++) {
+    const e = childOrders[i] as Entity;
     if (!world.has(e, ChildOrder)) {
       world.remove(e, AssistantChildOrder);
       continue;
@@ -139,7 +141,9 @@ function sweepStaleBookings(world: World, ctx: SystemContext): void {
     world.remove(e, ChildOrder);
     world.remove(e, AssistantChildOrder);
   }
-  for (const e of [...world.query(AssistantRecruit)]) {
+  const recruits = [...world.query(AssistantRecruit)];
+  for (let i = 0; i < recruits.length; i++) {
+    const e = recruits[i] as Entity;
     if (world.has(e, TrainingOrder)) continue;
     if (!isSoldierJob(ctx.content, world.get(e, Settler).jobType)) world.remove(e, AssistantRecruit);
   }
@@ -152,7 +156,9 @@ function sweepStaleBookings(world: World, ctx: SystemContext): void {
  */
 function releaseUnaskedArming(world: World): void {
   const unarmed = new Map<number, Map<AssistantRecruitIntent, Entity[]>>();
-  for (const e of world.canonicalQuery(AssistantRecruit)) {
+  const assistantRecruits = world.canonicalQuery(AssistantRecruit);
+  for (let j = 0; j < assistantRecruits.length; j++) {
+    const e = assistantRecruits[j] as Entity;
     const booking = world.get(e, AssistantRecruit);
     const player = ownerOf(world, e);
     if (booking.armed || booking.intent === 'trainSoldiers' || player === undefined) continue;
@@ -201,7 +207,9 @@ function dispatchBirths(
     else boysWanted -= 1;
   }
   if (girlsWanted <= 0 && boysWanted <= 0) return;
-  for (const woman of scans.mothers(player)) {
+  const mothers = scans.mothers(player);
+  for (let i = 0; i < mothers.length; i++) {
+    const woman = mothers[i] as Entity;
     if (girlsWanted <= 0 && boysWanted <= 0) return;
     if (world.has(woman, ChildOrder)) continue; // her own or an earlier booking - one at a time
     if (!mayBearChild(world, woman)) continue;
@@ -235,7 +243,9 @@ function dispatchTraining(
   scans: BeatScans,
 ): void {
   const remaining = new Map<AssistantRecruitIntent, number>();
-  for (const intent of ASSISTANT_RECRUIT_INTENTS) {
+  for (let j = 0; j < ASSISTANT_RECRUIT_INTENTS.length; j++) {
+    const intent = ASSISTANT_RECRUIT_INTENTS[j];
+    if (intent === undefined) continue;
     const counter = counters[intent];
     const target = counter.infinite ? Number.POSITIVE_INFINITY : counter.value;
     if (target > 0) remaining.set(intent, target);
@@ -277,7 +287,8 @@ function dispatchTraining(
     const e = people[i] as Entity;
     if (isBareSoldier(world, ctx, e, player)) bare.push(e);
   }
-  for (const e of bare) {
+  for (let j = 0; j < bare.length; j++) {
+    const e = bare[j] as Entity;
     const { tribe } = world.get(e, Settler);
     const classes = wantedInTurn(wanted, remaining, beat.turn).filter(
       (intent): intent is ClassIntent =>
@@ -307,7 +318,9 @@ function dispatchTraining(
 
   // Nothing to draft for: the scan below would be dropped at its first candidate.
   if (budget <= 0 || wantedInTurn(wanted, remaining, beat.turn).length === 0) return;
-  for (const e of scans.people(player)) {
+  const members = scans.people(player);
+  for (let k = 0; k < members.length; k++) {
+    const e = members[k] as Entity;
     if (!isFreeMan(world, e, player)) continue;
     if (budget <= 0) return;
     const inTurn = wantedInTurn(wanted, remaining, beat.turn);

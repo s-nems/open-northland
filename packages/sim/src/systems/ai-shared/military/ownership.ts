@@ -39,7 +39,9 @@ export function mapAiSoldierClaims(world: World, player: number): ReadonlySet<En
   const claims = new Set<Entity>();
   if (control !== null && program !== null && world.get(control, AiControl).mapAiEnabled) {
     const state = world.get(program, MapAiState);
-    for (const soldier of state.soldiers) {
+    for (let j = 0; j < state.soldiers.length; j++) {
+      const soldier = state.soldiers[j];
+      if (soldier === undefined) continue;
       if (world.tryGet(soldier.entity, Owner)?.player !== player) continue;
       const fallback = state.defaultDefend !== null && soldier.task === state.tasks.length - 1;
       if (soldier.task !== null && !fallback) claims.add(soldier.entity);

@@ -294,7 +294,8 @@ function looseFighters(world: World, ctx: SystemContext, terrain: TerrainGraph):
   let n = 0;
   // The owned-fighter index holds every owned settler of a fighting trade, ascending id: the fighters among
   // the people, without a walk over every civilian.
-  for (const e of roster) {
+  for (let i = 0; i < roster.length; i++) {
+    const e = roster[i] as Entity;
     let record = records.get(e);
     const flags = e < scan.flags.length ? (scan.flags[e] as number) : 0;
     if (record === undefined || (flags & (STALE | POSTED)) !== 0) {
@@ -445,7 +446,9 @@ export function seatVehicleThreats(
   const sight = sightOf(world, ctx, player);
   const ships: Shooter[] = [];
   const siege: Shooter[] = [];
-  for (const e of world.canonicalQuery(Vehicle, Health, Position)) {
+  const vehicles = world.canonicalQuery(Vehicle, Health, Position);
+  for (let i = 0; i < vehicles.length; i++) {
+    const e = vehicles[i] as Entity;
     const owner = world.tryGet(e, Owner)?.player;
     if (owner === undefined || world.get(e, Health).hitpoints <= 0 || !engages(world, owner, player))
       continue;
@@ -578,8 +581,14 @@ export function enemyFire(shooters: readonly Shooter[], more: readonly Shooter[]
       const kept = narrowed.get(key);
       if (kept !== undefined) return kept;
       const near: Shooter[] = [];
-      for (const s of shooters) if (within(s, x, y, radius + span)) near.push(s);
-      for (const s of more) if (within(s, x, y, radius + span)) near.push(s);
+      for (let i = 0; i < shooters.length; i++) {
+        const s = shooters[i] as Shooter;
+        if (within(s, x, y, radius + span)) near.push(s);
+      }
+      for (let i = 0; i < more.length; i++) {
+        const s = more[i] as Shooter;
+        if (within(s, x, y, radius + span)) near.push(s);
+      }
       const fire = narrowedFire(near, x, y, radius, span);
       narrowed.set(key, fire);
       return fire;
@@ -674,10 +683,12 @@ export function raidOnTheSettlement(
   if (near.length === 0) return null;
   let best: Raider | null = null;
   let bestDistance = 0;
-  for (const e of owned) {
+  for (let i = 0; i < owned.length; i++) {
+    const e = owned[i] as Entity;
     const door = terrain.componentOf(interactionCell(world, ctx, terrain, e));
     const band = watchBandOf(world, ctx, e);
-    for (const raider of near) {
+    for (let j = 0; j < near.length; j++) {
+      const raider = near[j] as Raider;
       if (raider.component !== door) continue;
       const distance = wallDistanceWithin(world, ctx, terrain, e, band, raider.x, raider.y);
       if (distance === null) continue;
@@ -717,7 +728,8 @@ export function settlementBox(
   let minY = Number.POSITIVE_INFINITY;
   let maxY = Number.NEGATIVE_INFINITY;
   let band = 0;
-  for (const e of owned) {
+  for (let i = 0; i < owned.length; i++) {
+    const e = owned[i] as Entity;
     const at = entityNode(world, terrain, e);
     const x = terrain.xOf(at);
     const y = terrain.yOf(at);

@@ -112,12 +112,16 @@ export const mapAiSystem: System = (world, ctx) => {
     autonomous ? 'computer-player' : 'map-ai',
     raiders,
   ).claimed;
-  for (const record of program.soldiers) {
+  for (let i = 0; i < program.soldiers.length; i++) {
+    const record = program.soldiers[i];
+    if (record === undefined) continue;
     if (!wanted.has(record.entity) || claims.has(record.entity)) continue;
     record.onDefault = false;
     record.task = null;
   }
-  for (const record of program.soldiers) {
+  for (let i = 0; i < program.soldiers.length; i++) {
+    const record = program.soldiers[i];
+    if (record === undefined) continue;
     if (
       reassigned.has(record.entity) ||
       (previous.get(record.entity) !== null &&
@@ -142,7 +146,10 @@ export const mapAiSystem: System = (world, ctx) => {
     ),
   );
   commands.push(...townOrders(world, ctx, terrain, seat, script, program, raiders, turn));
-  for (const command of commands) ctx.commands.enqueue(aiCommand(seat, command, 'map-ai'));
+  for (let i = 0; i < commands.length; i++) {
+    const command = commands[i] as PlayerCommand;
+    ctx.commands.enqueue(aiCommand(seat, command, 'map-ai'));
+  }
 };
 
 const NO_CLAIMS: ReadonlySet<Entity> = new Set();

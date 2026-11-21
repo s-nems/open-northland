@@ -197,7 +197,9 @@ function coversRoad(
   x: number,
   y: number,
 ): boolean {
-  for (const c of cells) {
+  for (let i = 0; i < cells.length; i++) {
+    const c = cells[i];
+    if (c === undefined) continue;
     const cx = x + footprintCellDx(y, c);
     const cy = y + c.dy;
     if (!terrain.inBounds(cx, cy)) continue;

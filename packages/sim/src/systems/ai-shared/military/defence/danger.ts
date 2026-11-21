@@ -217,10 +217,16 @@ function intrudersOf(
   if (box === null) return [];
   const sight = sightOf(world, ctx, player);
   const remembered = new Set<Entity>();
-  for (const o of offenders) remembered.add(o.entity);
+  for (let i = 0; i < offenders.length; i++) {
+    const o = offenders[i];
+    if (o === undefined) continue;
+    remembered.add(o.entity);
+  }
   const intruders: Intruder[] = [];
   const listed = new Set<Entity>();
-  for (const r of raidersNearAny(world, ctx, terrain, owned, raiders)) {
+  const near = raidersNearAny(world, ctx, terrain, owned, raiders);
+  for (let j = 0; j < near.length; j++) {
+    const r = near[j] as Raider;
     listed.add(r.entity);
     intruders.push(intruderOf(world, ctx, r.entity, r.x, r.y, r.component, remembered.has(r.entity), true));
   }
@@ -228,14 +234,18 @@ function intrudersOf(
   for (let side = 0; side < MAX_PLAYERS; side++) {
     if (side !== player && fightsPlayer(world, side, player)) enemies |= playerBit(side);
   }
-  for (const e of combatGridOf(world, ctx, terrain).ownedUnitsInBox(world, ctx.tick, enemies, box)) {
+  const ownedUnits = combatGridOf(world, ctx, terrain).ownedUnitsInBox(world, ctx.tick, enemies, box);
+  for (let i = 0; i < ownedUnits.length; i++) {
+    const e = ownedUnits[i] as Entity;
     if (!world.has(e, Person) || !isCivilian(world, ctx, e) || !isAdultSettler(world, e)) continue;
     const at = boxedNode(world, terrain, box, e);
     if (at === null || !seen(sight, player, at) || unitDanger(world, ctx, e) === 0) continue;
     listed.add(e);
     intruders.push(intruderOf(world, ctx, e, at.x, at.y, at.component, remembered.has(e), false));
   }
-  for (const o of offenders) {
+  for (let i = 0; i < offenders.length; i++) {
+    const o = offenders[i];
+    if (o === undefined) continue;
     const e = o.entity;
     if (listed.has(e)) continue;
     const side = world.tryGet(e, Owner)?.player;
@@ -308,7 +318,8 @@ function fortificationOf(
   let defence = 0;
   let shelters = false;
   let rung = false;
-  for (const e of owned) {
+  for (let i = 0; i < owned.length; i++) {
+    const e = owned[i] as Entity;
     if (!isBuilt(world, e)) continue;
     const tower = garrisonSlots(world, ctx, e).size > 0 && assignedWorkers(world, e).length > 0;
     const shelter = shelterCapacityOf(ctx.content, world.get(e, Building).buildingType) > 0;

@@ -29,7 +29,8 @@ export function fireCover(
     const y = top + row;
     runs.fill(0);
     let any = false;
-    for (const s of shooters) {
+    for (let i = 0; i < shooters.length; i++) {
+      const s = shooters[i] as Shooter;
       const rows = Math.abs(y - s.y);
       const limit = s.reach + extra;
       if (rows > limit) continue;

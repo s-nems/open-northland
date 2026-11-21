@@ -51,7 +51,9 @@ export interface Workforce {
 /** The lowest builder-trade job in content, or null when the content has no builder. */
 export function builderJobOf(ctx: SystemContext): number | null {
   let best: number | null = null;
-  for (const job of ctx.content.jobs) {
+  for (let i = 0; i < ctx.content.jobs.length; i++) {
+    const job = ctx.content.jobs[i];
+    if (job === undefined) continue;
     if (!jobCanBuild(ctx.content, job.typeId)) continue;
     if (best === null || job.typeId < best) best = job.typeId;
   }
@@ -61,7 +63,9 @@ export function builderJobOf(ctx: SystemContext): number | null {
 /** The seat's settlers who are not fighters, women and children included. */
 export function civilianCount(world: World, ctx: SystemContext, player: number): number {
   let civilians = 0;
-  for (const e of homeSettlers(world, ctx, player)) {
+  const settlers = homeSettlers(world, ctx, player);
+  for (let i = 0; i < settlers.length; i++) {
+    const e = settlers[i] as Entity;
     if (!isFighterJob(ctx.content, world.get(e, Settler).jobType)) civilians++;
   }
   return civilians;
@@ -101,7 +105,9 @@ export function classifyWorkforce(
   const fishers: Entity[] = [];
   const scouts: Entity[] = [];
   const roadsters: Entity[] = [];
-  for (const e of homeSettlers(world, ctx, player)) {
+  const settlers = homeSettlers(world, ctx, player);
+  for (let i = 0; i < settlers.length; i++) {
+    const e = settlers[i] as Entity;
     if (!isAllocatableMan(world, ctx, e)) continue;
     const job = world.get(e, Settler).jobType;
     if (world.has(e, JobAssignment)) continue; // staffing a building - keep the post
@@ -147,7 +153,10 @@ export function classifyWorkforce(
     };
     byExperience(holders, onGood).splice(targets.get(goodType) ?? 0);
     if (holders.length === 0) collectorsByGood.delete(goodType);
-    for (const e of holders) kept.add(e);
+    for (let i = 0; i < holders.length; i++) {
+      const e = holders[i] as Entity;
+      kept.add(e);
+    }
   }
   const pool = spares.filter((e) => !kept.has(e));
   return { pool, collectorsByGood, genericCollectors, fishers, scouts, roadsters };

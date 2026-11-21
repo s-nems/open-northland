@@ -30,7 +30,8 @@ export function alarmOrders(
 ): PlayerCommand[] {
   const commands: PlayerCommand[] = [];
   const near = raidersNearAny(world, ctx, terrain, owned, raiders);
-  for (const e of owned) {
+  for (let i = 0; i < owned.length; i++) {
+    const e = owned[i] as Entity;
     const building = world.get(e, Building);
     if (shelterCapacityOf(ctx.content, building.buildingType) === 0) continue;
     const up = world.has(e, DefenceMode);

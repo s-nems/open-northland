@@ -58,11 +58,14 @@ export function updateSoldierList(
   wanted: ReadonlySet<Entity>,
 ): void {
   const listed = new Map<Entity, MapAiSoldierRecord>();
-  for (const record of records) {
+  for (let i = 0; i < records.length; i++) {
+    const record = records[i] as MapAiSoldierRecord;
     if (qualifies(world, ctx, seat, record.entity)) listed.set(record.entity, record);
   }
   records.length = 0;
-  for (const e of ownedSettlers(world, seat)) {
+  const settlers = ownedSettlers(world, seat);
+  for (let i = 0; i < settlers.length; i++) {
+    const e = settlers[i] as Entity;
     if (records.length >= SOLDIER_LIST_LIMIT) break;
     if (wanted.has(e) || !qualifies(world, ctx, seat, e)) continue;
     records.push(listed.get(e) ?? { entity: e, task: null, onDefault: false });
@@ -252,7 +255,9 @@ function takeSoldiers(
   if (lead === undefined || leadDef === undefined || (leadDef.kind !== 'defend' && leadDef.kind !== 'attack'))
     return { commands: [], band: [] };
   const ranked: Array<{ record: MapAiSoldierRecord; rank: number }> = [];
-  for (const record of eligible(world, ctx, group, records, claimed)) {
+  const eligibleRecords = eligible(world, ctx, group, records, claimed);
+  for (let i = 0; i < eligibleRecords.length; i++) {
+    const record = eligibleRecords[i] as MapAiSoldierRecord;
     const at = pointOf(world, record.entity);
     let rank = hexDistanceBetween(at.hx, at.hy, group.hx, group.hy);
     if (groupOf(defs, [group], record) === null) rank += RANK_PENALTY;
@@ -359,7 +364,8 @@ export function workOrders(
   const commands: PlayerCommand[] = [];
   // The house on each Attack target, resolved once per turn rather than once per man.
   const houses = new Map<TaskGroup, Entity | null>();
-  for (const record of records) {
+  for (let i = 0; i < records.length; i++) {
+    const record = records[i] as MapAiSoldierRecord;
     const e = record.entity;
     if (!reassigned.has(e) && (fighting(world, e) || isTravelling(world, e))) continue;
     if (record.onDefault) {

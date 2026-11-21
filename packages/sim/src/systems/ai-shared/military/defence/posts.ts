@@ -156,7 +156,8 @@ function standingWalls(
   raiders: () => readonly Raider[],
 ): Wall[] {
   const walls: Wall[] = [];
-  for (const tower of owned) {
+  for (let i = 0; i < owned.length; i++) {
+    const tower = owned[i] as Entity;
     if (!isBuilt(world, tower)) continue;
     const slots = garrisonSlots(world, ctx, tower);
     if (slots.size === 0) continue;
@@ -256,7 +257,9 @@ function calmKeep(
 /** The men employed at `tower`, by class. */
 function postedMen(world: World, tower: Entity): Map<number, Entity[]> {
   const posted = new Map<number, Entity[]>();
-  for (const e of assignedWorkers(world, tower)) {
+  const workers = assignedWorkers(world, tower);
+  for (let i = 0; i < workers.length; i++) {
+    const e = workers[i] as Entity;
     const job = world.tryGet(e, Settler)?.jobType;
     if (job === undefined || job === null) continue;
     const men = posted.get(job);

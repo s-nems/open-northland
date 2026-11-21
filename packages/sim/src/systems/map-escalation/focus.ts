@@ -188,7 +188,8 @@ function bandOrders(
 ): PlayerCommand[] {
   const commands: PlayerCommand[] = [];
   const goal = pointOf(world, aim);
-  for (const e of band) {
+  for (let i = 0; i < band.length; i++) {
+    const e = band[i] as Entity;
     if (world.has(e, Engagement) || world.tryGet(e, AttackOrder)?.target === aim) continue;
     const at = pointOf(world, e);
     let order: PlayerCommand;
