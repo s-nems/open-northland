@@ -102,7 +102,9 @@ describe('shot launch', () => {
     expect(arrowAt(later).lift).toBeLessThan(first.lift ?? 0);
   });
 
-  it("draws an arrow at the length of its shooter's trade, kept after the shooter dies", () => {
+  it("draws the arrow of its shooter's trade, kept after the shooter dies", () => {
+    const long = { length: 1.3, thickness: 1.2 };
+    const short = { length: 0.8, thickness: 1 };
     const LONG_BOWMAN = 41;
     const TRIBE = 2;
     const archer = entity(30, 1, 1, { Settler: { tribe: TRIBE, jobType: LONG_BOWMAN } });
@@ -120,23 +122,23 @@ describe('shot launch', () => {
         impact: null,
       },
     });
-    const lengthIn = (snapshot: ReturnType<typeof snapshotOf>, incremental?: IncrementalScene) =>
+    const shapeIn = (snapshot: ReturnType<typeof snapshotOf>, incremental?: IncrementalScene) =>
       collectSpriteScene(
         snapshot,
-        { shotLengths: (tribe, job) => (tribe === TRIBE && job === LONG_BOWMAN ? 1.3 : 0.8) },
+        { shotShapes: (tribe, job) => (tribe === TRIBE && job === LONG_BOWMAN ? long : short) },
         undefined,
         undefined,
         incremental,
-      ).items.find((d) => d.ref === 31)?.shotLength;
+      ).items.find((d) => d.ref === 31)?.shotShape;
     const incremental = new IncrementalScene();
-    expect(lengthIn(snapshotOf([archer, shot]), incremental)).toBe(1.3);
-    expect(lengthIn(snapshotOf([shot]), incremental)).toBe(1.3);
-    expect(lengthIn(snapshotOf([shot]))).toBe(0.8);
+    expect(shapeIn(snapshotOf([archer, shot]), incremental)).toBe(long);
+    expect(shapeIn(snapshotOf([shot]), incremental)).toBe(long);
+    expect(shapeIn(snapshotOf([shot]))).toBe(short);
   });
 
   it('forgets a held look once its shot has landed', () => {
     const launches = new ShotLaunches();
-    const look = { launch: BOW_LAUNCH, length: 1 };
+    const look = { launch: BOW_LAUNCH };
     launches.hold(12, 5, look);
     launches.forgetLanded(snapshotOf([entity(12, 1, 1, {})]));
     expect(launches.of(12, 5)).toBe(look);

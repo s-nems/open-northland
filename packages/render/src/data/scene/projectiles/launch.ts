@@ -103,28 +103,31 @@ function deckFacingOf(snapshot: WorldSnapshot, source: number): number | null {
   return facing === undefined ? null : gfxDirToFacing(facing);
 }
 
-/**
- * How long the arrow a shooter's trade looses draws, as a multiple of its authored frame. Both ids are
- * undefined for a shooter that is no settler, a building firing from its walls or one that died since.
- */
-export type ShotLengthLookup = (tribe: number | undefined, job: number | undefined) => number;
-
-/** How a shot in flight draws: where it leaves from and how long its sprite is. */
-export interface ShotLook {
-  readonly launch: ShotLaunch;
+/** An arrow's drawn size as multiples of its authored frame: along its heading and across it. */
+export interface ShotShape {
   readonly length: number;
+  readonly thickness: number;
 }
 
-/** The authored frame, unstretched. */
-const AUTHORED_LENGTH = 1;
+/**
+ * The arrow a shooter's trade looses; one shared record per shape. Both ids are undefined for a shooter
+ * that is no settler, a building firing from its walls or one that died since.
+ */
+export type ShotShapeLookup = (tribe: number | undefined, job: number | undefined) => ShotShape;
 
-const SIEGE_LOOK: ShotLook = { launch: BOW_LAUNCH, length: AUTHORED_LENGTH };
+/** How a shot in flight draws: where it leaves from and its shape, absent for the authored frame. */
+export interface ShotLook {
+  readonly launch: ShotLaunch;
+  readonly shape?: ShotShape | undefined;
+}
+
+const SIEGE_LOOK: ShotLook = { launch: BOW_LAUNCH };
 
 /** What a shot's look reads besides its own components. */
 export interface LaunchContext {
   readonly snapshot: WorldSnapshot;
   readonly posts: FiringPostLookup | undefined;
-  readonly lengths: ShotLengthLookup | undefined;
+  readonly shapes: ShotShapeLookup | undefined;
   /** The looks kept across builds; absent, each build reads the shooter as it stands now. */
   readonly held: ShotLaunches | undefined;
 }
@@ -146,18 +149,21 @@ export function shotLookOf(
   const to = tileToScreen(aim.x, aim.y);
   const look: ShotLook = {
     launch: resolveLaunch(ctx, components, { x: to.x - from.x, y: to.y - from.y }, launchSpread(ref)),
-    length: resolveLength(ctx, components),
+    shape: resolveShape(ctx, components),
   };
   ctx.held?.hold(ref, launchTick, look);
   return look;
 }
 
-function resolveLength(ctx: LaunchContext, components: Readonly<Record<string, unknown>>): number {
-  if (ctx.lengths === undefined) return AUTHORED_LENGTH;
+function resolveShape(
+  ctx: LaunchContext,
+  components: Readonly<Record<string, unknown>>,
+): ShotShape | undefined {
+  if (ctx.shapes === undefined) return undefined;
   const source = readNumField(components, 'Projectile', 'source');
   const shooter = source === undefined ? undefined : entityById(ctx.snapshot, source)?.components;
-  if (shooter === undefined) return ctx.lengths(undefined, undefined);
-  return ctx.lengths(readNumField(shooter, 'Settler', 'tribe'), readNumField(shooter, 'Settler', 'jobType'));
+  if (shooter === undefined) return ctx.shapes(undefined, undefined);
+  return ctx.shapes(readNumField(shooter, 'Settler', 'tribe'), readNumField(shooter, 'Settler', 'jobType'));
 }
 
 function resolveLaunch(
@@ -181,7 +187,7 @@ function resolveLaunch(
 
 /**
  * The look each shot in flight was first drawn with, kept until it lands: a ship that turns, a shooter
- * who dies or a tower that falls mid-flight changes neither where its arrows left from nor their length.
+ * who dies or a tower that falls mid-flight changes neither where its arrows left from nor their shape.
  * Held by one build loop; a pass over the held shots forgets the landed ones, so it costs the arrows in
  * flight.
  */

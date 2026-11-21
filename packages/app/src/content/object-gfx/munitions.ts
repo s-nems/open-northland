@@ -1,5 +1,5 @@
-import type { MunitionBinding, ParticleRef, ShotLengthLookup } from '@open-northland/render';
-import { arrowLengthById, DEFAULT_ARROW_LENGTH } from '../../catalog/arrow-lengths.js';
+import type { MunitionBinding, ParticleRef, ShotShape, ShotShapeLookup } from '@open-northland/render';
+import { arrowShapeById, DEFAULT_ARROW_SHAPE } from '../../catalog/arrow-shapes.js';
 import type { ContentIr } from '../ir/rows.js';
 import { particleRef } from './particles.js';
 
@@ -55,12 +55,12 @@ export function buildMunitionBinding(
   };
 }
 
-/** The drawn arrow length of each `(tribe, job)` whose weapon row draws an arrow of its own. */
-export function shotLengthLookup(ir: ContentIr | null): ShotLengthLookup {
-  const lengths = new Map<string, number>();
+/** The drawn arrow of each `(tribe, job)` whose weapon row draws an arrow of its own. */
+export function shotShapeLookup(ir: ContentIr | null): ShotShapeLookup {
+  const shapes = new Map<string, ShotShape>();
   for (const { tribeType, jobType, id } of ir?.weapons ?? []) {
-    const length = id === undefined ? undefined : arrowLengthById(id);
-    if (length !== undefined) lengths.set(`${tribeType}:${jobType}`, length);
+    const shape = id === undefined ? undefined : arrowShapeById(id);
+    if (shape !== undefined) shapes.set(`${tribeType}:${jobType}`, shape);
   }
-  return (tribe, job) => lengths.get(`${tribe}:${job}`) ?? DEFAULT_ARROW_LENGTH;
+  return (tribe, job) => shapes.get(`${tribe}:${job}`) ?? DEFAULT_ARROW_SHAPE;
 }

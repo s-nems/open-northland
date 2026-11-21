@@ -5,7 +5,7 @@ import {
   buildMunitionBinding,
   munitionAtlasStems,
   resolveMunitionRefs,
-  shotLengthLookup,
+  shotShapeLookup,
 } from '../../../src/content/object-gfx/munitions.js';
 
 const ARROW = 1;
@@ -94,19 +94,21 @@ describe('munition sprites', () => {
   });
 });
 
-describe('shot lengths', () => {
-  it("draws the long bowman's arrow longer than every other shooter's", () => {
-    const lengths = shotLengthLookup({
+describe('shot shapes', () => {
+  it("draws the long bowman's arrow longer and thicker than every other shooter's", () => {
+    const shapes = shotShapeLookup({
       weapons: [
         { tribeType: 1, jobType: 40, id: 'short_bow' },
         { tribeType: 1, jobType: 41, id: 'long_bow' },
         { tribeType: 2, jobType: 41, id: 'short_bow' },
       ],
     });
-    const short = lengths(1, 40);
-    expect(short).toBeLessThan(1);
-    expect(lengths(1, 41)).toBeGreaterThan(1);
-    expect(lengths(2, 41)).toBe(short);
-    expect(lengths(undefined, undefined)).toBe(short);
+    const short = shapes(1, 40);
+    const long = shapes(1, 41);
+    expect(short.length).toBeLessThan(1);
+    expect(long.length).toBeGreaterThan(1);
+    expect(long.thickness).toBeGreaterThan(short.thickness);
+    expect(shapes(2, 41)).toBe(short);
+    expect(shapes(undefined, undefined)).toBe(short);
   });
 });

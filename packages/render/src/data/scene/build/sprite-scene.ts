@@ -25,7 +25,7 @@ import {
 import { type HolyFireLookup, holyFireOverlays } from '../holy-fire.js';
 import type { InHousePose, InHouseProgramLookup } from '../in-house.js';
 import { palisadeLayoutOf } from '../palisades/connections.js';
-import { type FiringPostLookup, ShotLaunches, type ShotLengthLookup } from '../projectiles/launch.js';
+import { type FiringPostLookup, ShotLaunches, type ShotShapeLookup } from '../projectiles/launch.js';
 import {
   craftAnchorOf,
   inHouseDrawAt,
@@ -124,8 +124,8 @@ export interface SpriteSceneOptions {
   readonly holyFire?: HolyFireLookup | undefined;
   /** The measured firing posts garrison shots leave from. */
   readonly firingPosts?: FiringPostLookup | undefined;
-  /** How long each weapon's arrow draws; absent draws every arrow as authored. */
-  readonly shotLengths?: ShotLengthLookup | undefined;
+  /** The arrow each trade looses; absent draws every arrow as authored. */
+  readonly shotShapes?: ShotShapeLookup | undefined;
 }
 
 /**
@@ -403,7 +403,7 @@ function collectScene(
     inHousePrograms,
     holyFire,
     firingPosts,
-    shotLengths,
+    shotShapes,
   } = opts;
   const list = order?.list ?? new DrawList();
   list.begin();
@@ -420,7 +420,7 @@ function collectScene(
     elevation,
     playerColourOf,
     palisades: palisadeLayoutOf(snapshot, elevation),
-    launch: { snapshot, posts: firingPosts, lengths: shotLengths, held: incremental?.launches },
+    launch: { snapshot, posts: firingPosts, shapes: shotShapes, held: incremental?.launches },
   };
   incremental?.launches.forgetLanded(snapshot);
 

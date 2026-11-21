@@ -38,7 +38,7 @@ export {
   PROJECTILE_ARC_PEAK_MAX_PX,
   SHOT_STRIKE_HEIGHT_PX,
 } from './projectiles/arc.js';
-export type { FiringPost, FiringPostLookup, ShotLengthLookup } from './projectiles/launch.js';
+export type { FiringPost, FiringPostLookup, ShotShape, ShotShapeLookup } from './projectiles/launch.js';
 export {
   readSiegeShot,
   type ShotPath,

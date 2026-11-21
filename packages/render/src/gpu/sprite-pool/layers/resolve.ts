@@ -1,4 +1,4 @@
-import type { DrawItem, PalisadePostDraw } from '../../../data/scene/index.js';
+import type { DrawItem, PalisadePostDraw, ShotShape } from '../../../data/scene/index.js';
 import {
   DECOR_BINDING_KEY,
   headingValency,
@@ -332,28 +332,28 @@ function pushProjectileLayers(out: LayerBuffer, sheet: SpriteSheet, item: DrawIt
   if (bob === undefined) return false;
   const layer = layeredLayerFor(sheet, 'projectile', { layer: ref.layer, bob });
   if (layer === null) return false;
-  const length = item.shotLength ?? 1;
+  const shape = item.shotShape;
   out.push(
-    ref.directional && length !== 1
-      ? stretchedLayer(layer, valencyHeading(valency, ref.valencies.length), length)
+    ref.directional && shape !== undefined
+      ? stretchedLayer(layer, valencyHeading(valency, ref.valencies.length), shape)
       : layer,
   );
   return true;
 }
 
-/** One record per heading frame and length, so an arrow in flight allocates none. */
-const stretchedLayers = new WeakMap<ResolvedLayer, Map<number, ResolvedLayer>>();
+/** One record per heading frame and shape, so an arrow in flight allocates none. */
+const stretchedLayers = new WeakMap<ResolvedLayer, WeakMap<ShotShape, ResolvedLayer>>();
 
-function stretchedLayer(layer: ResolvedLayer, along: number, by: number): ResolvedLayer {
-  let byLength = stretchedLayers.get(layer);
-  if (byLength === undefined) {
-    byLength = new Map();
-    stretchedLayers.set(layer, byLength);
+function stretchedLayer(layer: ResolvedLayer, along: number, shape: ShotShape): ResolvedLayer {
+  let byShape = stretchedLayers.get(layer);
+  if (byShape === undefined) {
+    byShape = new WeakMap();
+    stretchedLayers.set(layer, byShape);
   }
-  let stretched = byLength.get(by);
+  let stretched = byShape.get(shape);
   if (stretched === undefined) {
-    stretched = { ...layer, stretch: { along, by } };
-    byLength.set(by, stretched);
+    stretched = { ...layer, stretch: { along, by: shape.length, across: shape.thickness } };
+    byShape.set(shape, stretched);
   }
   return stretched;
 }

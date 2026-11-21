@@ -1,6 +1,6 @@
 import type { TextureSource } from 'pixi.js';
 import type { CartRecipe, CharacterPalette } from '../../data/palettes/human-palettes.js';
-import type { FiringPostLookup, InHouseProgramLookup, ShotLengthLookup } from '../../data/scene/index.js';
+import type { FiringPostLookup, InHouseProgramLookup, ShotShapeLookup } from '../../data/scene/index.js';
 import type {
   BuildTimeSheet,
   ByJobTable,
@@ -147,8 +147,8 @@ export interface SpriteSheet {
   readonly holyFire?: import('../../data/scene/holy-fire.js').HolyFireLookup;
   /** The measured firing posts garrison shots leave from. */
   readonly firingPosts?: FiringPostLookup;
-  /** How long each weapon's arrow draws; absent draws every arrow as authored. */
-  readonly shotLengths?: ShotLengthLookup;
+  /** The arrow each trade looses; absent draws every arrow as authored. */
+  readonly shotShapes?: ShotShapeLookup;
   /** Where the building bodies' chimneys smoke from; absent draws no chimney smoke. */
   readonly chimneys?: import('../../data/scene/chimney-smoke.js').ChimneyLookup;
 }

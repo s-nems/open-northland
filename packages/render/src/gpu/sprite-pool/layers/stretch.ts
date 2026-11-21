@@ -2,10 +2,8 @@ import type { Sprite } from 'pixi.js';
 import type { BoundsUnion, LayerDrawBox } from './box.js';
 import type { LayerStretch } from './resolved-layer.js';
 
-/**
- * Place `sprite` over `box` drawn `stretch.by` times as long along `stretch.along`, about the box's
- * middle. The stretch runs along one screen direction only, so a thin shaft lengthens without thickening.
- */
+/** Place `sprite` over `box` stretched about the box's middle: a thin shaft lengthens along its
+ *  direction and thickens across it by factors of their own. */
 export function placeStretched(
   sprite: Sprite,
   scale: number,
@@ -14,11 +12,12 @@ export function placeStretched(
 ): void {
   const ux = Math.cos(stretch.along);
   const uy = Math.sin(stretch.along);
-  const extra = stretch.by - 1;
-  // The stretch as a matrix over screen px: identity plus `extra` of the projection onto the direction.
-  const xx = 1 + extra * ux * ux;
+  const extra = stretch.by - stretch.across;
+  // The stretch as a matrix over screen px: `across` everywhere plus `extra` of the projection onto the
+  // direction.
+  const xx = stretch.across + extra * ux * ux;
   const xy = extra * ux * uy;
-  const yy = 1 + extra * uy * uy;
+  const yy = stretch.across + extra * uy * uy;
   const halfW = box.width / 2;
   const halfH = box.height / 2;
   sprite.position.set(box.ox + halfW - (xx * halfW + xy * halfH), box.oy + halfH - (xy * halfW + yy * halfH));
@@ -29,7 +28,7 @@ export function placeStretched(
 
 /** Add `box` as {@link placeStretched} draws it: no corner leaves the box grown by the stretch. */
 export function addStretchedBox(bounds: BoundsUnion, box: LayerDrawBox, stretch: LayerStretch): void {
-  const grow = (Math.max(1, stretch.by) - 1) / 2;
+  const grow = (Math.max(1, stretch.by, stretch.across) - 1) / 2;
   bounds.add(
     box.ox - grow * box.width,
     box.oy - grow * box.height,

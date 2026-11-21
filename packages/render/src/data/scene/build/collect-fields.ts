@@ -225,7 +225,7 @@ export function assignProjectileArc(
   item.x = arc.x;
   item.y = arc.y;
   item.rotation = arc.rotation;
-  if (look !== undefined) item.shotLength = look.length;
+  if (look?.shape !== undefined) item.shotShape = look.shape;
   const munition = readProjectileMunition(components);
   if (munition !== null) item.munition = munition;
   if (readProjectileSiege(components)) item.siege = true;

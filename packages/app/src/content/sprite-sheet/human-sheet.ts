@@ -35,7 +35,7 @@ import {
   buildMunitionBinding,
   munitionAtlasStems,
   resolveMunitionRefs,
-  shotLengthLookup,
+  shotShapeLookup,
 } from '../object-gfx/munitions.js';
 import { buildPalisadeBinding, palisadeAtlasStems, resolvePalisadeGfxRefs } from '../object-gfx/palisades.js';
 import {
@@ -273,7 +273,7 @@ export async function loadHumanSpriteSheet(
     inHousePrograms: inHouseProgramLookup(ir, goods),
     ...(craftFxBinding?.byName[HOLY_FIRE_EFFECT_NAME] !== undefined ? { holyFire: holyFireLookup(ir) } : {}),
     firingPosts: firingPostLookup(ir),
-    shotLengths: shotLengthLookup(ir),
+    shotShapes: shotShapeLookup(ir),
     chimneys: chimneyLookup(ir),
     ...(characters !== undefined ? { characters } : {}),
     ...(vehicles.palette !== undefined ? { vehiclePalette: vehicles.palette } : {}),
