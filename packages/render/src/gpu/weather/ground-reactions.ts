@@ -19,8 +19,9 @@ import type { GroundMask } from './ground-mask.js';
 import { MAP_EDGE_GLSL, NODES_PER_CELL } from './weather-reach.js';
 
 /**
- * The ground reactions as one static mesh of quads whose vertex shader places, ages and gates every
- * quad from uniforms: no per-frame CPU loop and no per-particle state. A slot's life is a hash of
+ * The ground reactions as static instanced quads, one mesh per slot group, whose vertex shader places,
+ * ages and gates every quad from uniforms: no per-frame CPU loop and no per-particle state. A group
+ * draws its running slots alone, as a prefix of its instances. A slot's life is a hash of
  * (slot, cycle) against game seconds, so pause freezes it and a replay repeats it. A slot rolls a world
  * spot each cycle, wrapped into the view so it holds still while the camera pans, finds the ground under that drawn spot (lifted terrain resolved by two
  * fixed-point steps through the lift mask), and hides unless the weather field there wins its roll:
@@ -28,7 +29,12 @@ import { MAP_EDGE_GLSL, NODES_PER_CELL } from './weather-reach.js';
  * colour below is tuned by eye; the whole layer is an Open Northland enhancement.
  */
 
-const SLOT_TOTAL = SPLASH_SLOTS + RIPPLE_SLOTS + WISP_SLOTS;
+/** The slot groups in paint order, each a range of slot ids: a slot's id seeds its life and its spots. */
+const SLOT_GROUPS = [
+  { budget: 'splashes', first: 0, slots: SPLASH_SLOTS },
+  { budget: 'ripples', first: SPLASH_SLOTS, slots: RIPPLE_SLOTS },
+  { budget: 'wisps', first: SPLASH_SLOTS + RIPPLE_SLOTS, slots: WISP_SLOTS },
+] as const satisfies readonly { budget: keyof GroundBudget; first: number; slots: number }[];
 
 /** Seconds a slot lives per cycle. */
 const SPLASH_LIFE_S = 0.35;
@@ -57,7 +63,6 @@ const VERTEX = `#version 300 es
   uniform mat3 uTransformMatrix;
   uniform vec4 uView;
   uniform float uTime;
-  uniform vec3 uCounts;
   uniform vec3 uActivity;
   uniform vec2 uWind;
   uniform vec2 uFieldScale;
@@ -96,17 +101,15 @@ const VERTEX = `#version 300 es
   void main(void) {
     int slot = int(aSlot + 0.5);
     int kind;
-    int index;
     float life;
     vec2 size;
     if (slot < ${SPLASH_SLOTS}) {
-      kind = 0; index = slot; life = ${f(SPLASH_LIFE_S)}; size = vec2(${SPLASH_SIZE.join('.0, ')}.0);
+      kind = 0; life = ${f(SPLASH_LIFE_S)}; size = vec2(${SPLASH_SIZE.join('.0, ')}.0);
     } else if (slot < ${SPLASH_SLOTS + RIPPLE_SLOTS}) {
-      kind = 1; index = slot - ${SPLASH_SLOTS}; life = ${f(RIPPLE_LIFE_S)}; size = vec2(${RIPPLE_SIZE.join('.0, ')}.0);
+      kind = 1; life = ${f(RIPPLE_LIFE_S)}; size = vec2(${RIPPLE_SIZE.join('.0, ')}.0);
     } else {
-      kind = 2; index = slot - ${SPLASH_SLOTS + RIPPLE_SLOTS}; life = ${f(WISP_LIFE_S)}; size = vec2(${WISP_SIZE.join('.0, ')}.0);
+      kind = 2; life = ${f(WISP_LIFE_S)}; size = vec2(${WISP_SIZE.join('.0, ')}.0);
     }
-    if (float(index) >= uCounts[kind]) { hide(); return; }
     uint id = uint(slot);
     float t = uTime / life + hash(id, 0u);
     uint cycle = uint(floor(t));
@@ -258,7 +261,6 @@ type ReactionUniforms = UniformGroup & {
   readonly uniforms: {
     readonly uView: Float32Array;
     uTime: number;
-    readonly uCounts: Float32Array;
     readonly uActivity: Float32Array;
     readonly uWind: Float32Array;
     readonly uFieldScale: Float32Array;
@@ -268,23 +270,17 @@ type ReactionUniforms = UniformGroup & {
   };
 };
 
-function quadGeometry(): Geometry {
-  const positions = new Float32Array(SLOT_TOTAL * 8);
-  const slots = new Float32Array(SLOT_TOTAL * 4);
-  const indices = new Uint32Array(SLOT_TOTAL * 6);
-  const corners = [0, 0, 1, 0, 1, 1, 0, 1];
-  for (let s = 0; s < SLOT_TOTAL; s++) {
-    positions.set(corners, s * 8);
-    slots.fill(s, s * 4, s * 4 + 4);
-    const v = s * 4;
-    indices.set([v, v + 1, v + 2, v, v + 2, v + 3], s * 6);
-  }
+/** One quad instanced over the slot ids `first` to `first + slots - 1`. */
+function slotGeometry(first: number, slots: number): Geometry {
+  const ids = new Float32Array(slots);
+  for (let s = 0; s < slots; s++) ids[s] = first + s;
   return new Geometry({
     attributes: {
-      aPosition: { buffer: positions, format: 'float32x2' },
-      aSlot: { buffer: slots, format: 'float32' },
+      aPosition: { buffer: new Float32Array([0, 0, 1, 0, 1, 1, 0, 1]), format: 'float32x2' },
+      aSlot: { buffer: ids, format: 'float32', instance: true },
     },
-    indexBuffer: indices,
+    indexBuffer: new Uint32Array([0, 1, 2, 0, 2, 3]),
+    instanceCount: 0,
   });
 }
 
@@ -296,9 +292,11 @@ export interface GroundView {
   readonly height: number;
 }
 
-/** The ground reaction mesh; {@link WeatherGround} drives it. */
+/** The ground reaction meshes; {@link WeatherGround} drives them. */
 export class GroundReactions {
-  readonly mesh: Mesh<Geometry, Shader>;
+  /** One per slot group, in paint order. */
+  readonly meshes: readonly Mesh<Geometry, Shader>[];
+  private readonly shader: Shader;
   private readonly uniforms: ReactionUniforms;
   private fieldTex: BufferImageSource;
   private groundTex: BufferImageSource;
@@ -307,7 +305,6 @@ export class GroundReactions {
     this.uniforms = new UniformGroup({
       uView: { value: new Float32Array(4), type: 'vec4<f32>' },
       uTime: { value: 0, type: 'f32' },
-      uCounts: { value: new Float32Array(3), type: 'vec3<f32>' },
       uActivity: { value: new Float32Array(3), type: 'vec3<f32>' },
       uWind: { value: new Float32Array(2), type: 'vec2<f32>' },
       uFieldScale: { value: new Float32Array(2), type: 'vec2<f32>' },
@@ -317,12 +314,19 @@ export class GroundReactions {
     }) as ReactionUniforms;
     this.fieldTex = blankTexture('rgba8unorm');
     this.groundTex = blankTexture('rg8unorm');
-    const shader = new Shader({
+    this.shader = new Shader({
       glProgram: glProgramFor(GROUND_REACTIONS_SOURCE),
       resources: { reactionVars: this.uniforms, uFieldTex: this.fieldTex, uGroundTex: this.groundTex },
     });
-    this.mesh = new Mesh({ geometry: quadGeometry(), shader, texture: Texture.WHITE });
-    this.mesh.visible = false;
+    this.meshes = SLOT_GROUPS.map((group) => {
+      const mesh = new Mesh({
+        geometry: slotGeometry(group.first, group.slots),
+        shader: this.shader,
+        texture: Texture.WHITE,
+      });
+      mesh.visible = false;
+      return mesh;
+    });
   }
 
   setField(field: WeatherField): void {
@@ -366,7 +370,7 @@ export class GroundReactions {
     this.uniforms.update();
   }
 
-  /** Point this frame's reactions at `view`; an empty budget hides the mesh. */
+  /** Point this frame's reactions at `view`; a group without running slots hides its mesh. */
   draw(
     view: GroundView,
     budget: GroundBudget,
@@ -375,18 +379,22 @@ export class GroundReactions {
     windY: number,
     gameSeconds: number,
   ): void {
-    const running = budget.splashes + budget.ripples + budget.wisps > 0;
-    this.mesh.visible = running;
-    if (!running) return;
+    let running = 0;
+    SLOT_GROUPS.forEach((group, at) => {
+      const mesh = this.meshes[at];
+      if (mesh === undefined) return;
+      const slots = Math.min(group.slots, budget[group.budget]);
+      mesh.geometry.instanceCount = slots;
+      mesh.visible = slots > 0;
+      running += slots;
+    });
+    if (running === 0) return;
     const u = this.uniforms.uniforms;
     u.uView[0] = view.minX;
     u.uView[1] = view.minY;
     u.uView[2] = view.width;
     u.uView[3] = view.height;
     u.uTime = ((gameSeconds % TIME_WRAP_S) + TIME_WRAP_S) % TIME_WRAP_S;
-    u.uCounts[0] = budget.splashes;
-    u.uCounts[1] = budget.ripples;
-    u.uCounts[2] = budget.wisps;
     u.uActivity[0] = activity.rain;
     u.uActivity[1] = activity.snow;
     u.uActivity[2] = activity.sand;
@@ -396,21 +404,22 @@ export class GroundReactions {
   }
 
   hide(): void {
-    this.mesh.visible = false;
+    for (const mesh of this.meshes) mesh.visible = false;
   }
 
   destroy(): void {
-    const { geometry, shader } = this.mesh;
-    this.mesh.destroy();
-    geometry.destroy();
-    shader?.destroy();
+    for (const mesh of this.meshes) {
+      const geometry = mesh.geometry;
+      mesh.destroy();
+      geometry.destroy(true);
+    }
+    this.shader.destroy();
     this.fieldTex.destroy();
     this.groundTex.destroy();
   }
 
   private replace(previous: BufferImageSource, name: string, next: BufferImageSource): BufferImageSource {
-    const resources = this.mesh.shader?.resources;
-    if (resources !== undefined) resources[name] = next;
+    this.shader.resources[name] = next;
     previous.destroy();
     return next;
   }

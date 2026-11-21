@@ -63,7 +63,7 @@ export class WeatherGround {
   };
 
   constructor(private readonly targets: readonly WeatherCoverTarget[]) {
-    this.container.addChild(this.reactions.mesh);
+    this.container.addChild(...this.reactions.meshes);
   }
 
   /** Call once per map, after the terrain is set: the next field starts its cover at equilibrium. */

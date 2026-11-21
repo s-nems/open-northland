@@ -4,10 +4,10 @@ import { WEATHER_KINDS, type WeatherConditions, type WeatherKind } from '../../d
 
 /**
  * How many ground reactions the screen shows: rain splashes on land, rings on water, snow and sand
- * wisps. Each group owns a fixed slot range in one static mesh; the budget says how many of its slots
- * run this frame. Counts follow the viewed ground's area in world px, so the ground keeps one density
- * at every zoom, never the map, and each group is capped by its slot range, which bounds a zoomed-out
- * view. Densities are tuned by eye.
+ * wisps. Each group owns a fixed slot range in a static mesh of its own; the budget says how many of
+ * its slots run this frame. Counts follow the viewed ground's area in world px, so the ground keeps one
+ * density at every zoom, never the map, and each group is capped by its slot range, which bounds a
+ * zoomed-out view. Densities are tuned by eye.
  */
 
 export const SPLASH_SLOTS = 1536;
