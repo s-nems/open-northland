@@ -14,7 +14,7 @@ import { ownedFightersOf } from '../../movement/collision/owned-fighters.js';
 import { isHeroJob } from '../../readviews/index.js';
 import { playerSeesNode } from '../../vision/gates.js';
 import { believedTowerPosts } from '../knowledge/intel/index.js';
-import { believedEnemyTowers, visibleFighters } from '../military/operations/raid-target.js';
+import { believedEnemyTowers, seesFighterWithin } from '../military/operations/raid-target.js';
 import { isLiveFighter } from '../military/points.js';
 
 /** How far (hex nodes) from a building that may shoot the scout keeps (authored): the house bow's
@@ -95,8 +95,7 @@ export function enemyFighterNear(
 ): boolean {
   for (let owner = 0; owner < MAX_PLAYERS; owner++) {
     if (owner === player || diplomacyStance(world, player, owner) !== 'enemy') continue;
-    for (const { at: seen } of visibleFighters(world, ctx, player, owner))
-      if (hexDistanceBetween(seen.hx, seen.hy, at.hx, at.hy) <= SCOUT_FIGHTER_CLEARANCE_NODES) return true;
+    if (seesFighterWithin(world, ctx, player, owner, at, SCOUT_FIGHTER_CLEARANCE_NODES)) return true;
   }
   return false;
 }

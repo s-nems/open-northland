@@ -16,7 +16,12 @@ import {
 } from '../../../../components/index.js';
 import { contentIndex } from '../../../../core/content-index.js';
 import type { Entity, World } from '../../../../ecs/world.js';
-import { type HalfCellNode, nodeManhattan, nodeOfPosition } from '../../../../nav/halfcell.js';
+import {
+  type HalfCellNode,
+  hexDistanceBetween,
+  nodeManhattan,
+  nodeOfPosition,
+} from '../../../../nav/halfcell.js';
 import type { NodeId, TerrainGraph } from '../../../../nav/terrain/index.js';
 import { everySettlerOf } from '../../../ai-shared/home-roster.js';
 import { TOWER_POST_STRENGTH } from '../../../ai-shared/military/census.js';
@@ -151,19 +156,9 @@ function enemiesOf(world: World, seat: number): number[] {
   return enemies;
 }
 
-/** `owner`'s fighters and militiamen `seat` sees now and their points, leaving out the men posted in a
- *  tower (the tower belief weighs them): an armed civilian shoots a band as surely as a soldier. Costs the
- *  owner's fighters and every seat's militia. */
-export function visibleFighters(
-  world: World,
-  ctx: SystemContext,
-  seat: number,
-  owner: number,
-): FighterSighting[] {
-  return sightingsOf(world, ctx, seat, [owner]);
-}
-
-/** {@link visibleFighters} of every enemy of `seat`, in one pass over the militia. */
+/** The fighters and militiamen of every enemy of `seat` that it sees now and their points, leaving out the
+ *  men posted in a tower (the tower belief weighs them): an armed civilian shoots a band as surely as a
+ *  soldier. Costs the enemies' fighters and every seat's militia, in one pass over the militia. */
 export function visibleEnemyFighters(world: World, ctx: SystemContext, seat: number): FighterSighting[] {
   return sightingsOf(world, ctx, seat, enemiesOf(world, seat));
 }
@@ -175,25 +170,60 @@ function sightingsOf(
   owners: readonly number[],
 ): FighterSighting[] {
   const seen: FighterSighting[] = [];
-  const sight = (e: Entity, owner: number) => {
+  eachSeenFighter(world, ctx, seat, owners, (e, owner, at) => {
+    seen.push({ owner, at, points: unitPoints(world, ctx, e) });
+    return false;
+  });
+  return seen;
+}
+
+/** Whether `seat` sees a fighter or militiaman of `owner` within `nodes` hex nodes of `at`, the men posted
+ *  in a tower left out. Costs the owner's fighters and every seat's militia. */
+export function seesFighterWithin(
+  world: World,
+  ctx: SystemContext,
+  seat: number,
+  owner: number,
+  at: HalfCellNode,
+  nodes: number,
+): boolean {
+  return eachSeenFighter(
+    world,
+    ctx,
+    seat,
+    [owner],
+    (_e, _owner, seen) => hexDistanceBetween(seen.hx, seen.hy, at.hx, at.hy) <= nodes,
+  );
+}
+
+/** Visits the fighters and militiamen of `owners` that `seat` sees now, the men posted in a tower left
+ *  out, until `visit` answers true; whether one did. */
+function eachSeenFighter(
+  world: World,
+  ctx: SystemContext,
+  seat: number,
+  owners: readonly number[],
+  visit: (e: Entity, owner: number, at: HalfCellNode) => boolean,
+): boolean {
+  const sight = (e: Entity, owner: number): boolean => {
     const at = nodeOfEntity(world, e);
-    if (at !== null && playerSeesNode(ctx.fog, seat, at.hx, at.hy))
-      seen.push({ owner, at, points: unitPoints(world, ctx, e) });
+    return at !== null && playerSeesNode(ctx.fog, seat, at.hx, at.hy) && visit(e, owner, at);
   };
   for (let i = 0; i < owners.length; i++) {
     const owner = owners[i] as number;
     const ownedFighters = ownedFightersOf(world, ctx.content, owner);
     for (let j = 0; j < ownedFighters.length; j++) {
       const e = ownedFighters[j] as Entity;
-      if (isLiveFighter(world, e) && !world.has(e, Garrison)) sight(e, owner);
+      if (isLiveFighter(world, e) && !world.has(e, Garrison) && sight(e, owner)) return true;
     }
   }
-  if (owners.length === 0) return seen;
+  if (owners.length === 0) return false;
   for (const e of world.query(Militia)) {
     const owner = world.tryGet(e, Owner)?.player;
-    if (owner !== undefined && owners.includes(owner) && isLiveFighter(world, e)) sight(e, owner);
+    if (owner !== undefined && owners.includes(owner) && isLiveFighter(world, e) && sight(e, owner))
+      return true;
   }
-  return seen;
+  return false;
 }
 
 /** The points `defence` holds over `at`: every tower in reach at {@link RAID_TOWER_DEFENCE} plus its
