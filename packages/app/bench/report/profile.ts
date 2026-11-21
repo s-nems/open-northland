@@ -2,10 +2,14 @@
  *  the machine-readable twin, loadable in Chrome DevTools (and a CPU profile in Speedscope) for the
  *  call tree this flattens. */
 import type { FunctionCost, ProfileSummary } from '../profile.js';
+import type { TickSpike } from '../spike-profile.js';
 import { type Column, table } from './table.js';
 
 const TOP_FUNCTIONS = 40;
 const TOP_FILES = 25;
+
+const SPIKE_TOP_SELF = 10;
+const SPIKE_TOP_TOTAL = 15;
 
 const BYTES_PER_KB = 1024;
 
@@ -36,9 +40,12 @@ function pct(value: number): string {
   return `${value.toFixed(1)}%`;
 }
 
-function functionRows(functions: readonly FunctionCost[]): readonly (readonly string[])[] {
+function functionRows(
+  functions: readonly FunctionCost[],
+  top = TOP_FUNCTIONS,
+): readonly (readonly string[])[] {
   return functions
-    .slice(0, TOP_FUNCTIONS)
+    .slice(0, top)
     .map((f) => [
       f.name,
       amount(f.self),
@@ -85,5 +92,37 @@ export function formatProfile(summary: ProfileSummary, ticks: number): string {
       fileColumns(summary.unit),
       summary.files.slice(0, TOP_FILES).map((f) => [f.file, amount(f.self), pct(f.selfPct)]),
     ),
+  ].join('\n');
+}
+
+function spikeSection(spike: TickSpike): readonly string[] {
+  const { summary } = spike;
+  const columns = functionColumns(summary.unit);
+  return [
+    '',
+    `tick ${spike.tick}  measured ${amount(spike.measuredMs)} ms, sampled ${amount(summary.sampled)} ms ` +
+      `in ${spike.samples} sample(s), running ${amount(spike.runningMs)} ms, ` +
+      `longest gap ${amount(spike.longestGapMs)} ms`,
+    `  by self time`,
+    ...table(
+      columns,
+      functionRows(
+        summary.functions.filter((f) => f.self > 0),
+        SPIKE_TOP_SELF,
+      ),
+    ),
+    `  by total time (self plus callees)`,
+    ...table(columns, functionRows(summary.functionsByTotal, SPIKE_TOP_TOTAL)),
+    `  heaviest call path, total ms under each frame`,
+    ...spike.path.map((f) => `    ${amount(f.totalMs).padStart(8)}  ${f.name}  ${f.location}`),
+  ];
+}
+
+/** What filled each of the slowest ticks. A `(garbage collector)` row is a GC pause that landed in the
+ *  tick; a long gap between samples is time the thread did not run, charged to whatever it was in. */
+export function formatSpikes(spikes: readonly TickSpike[]): string {
+  return [
+    `the ${spikes.length} tick(s) the thread ran longest in, by function, from the profile's samples inside each`,
+    ...spikes.flatMap(spikeSection),
   ].join('\n');
 }

@@ -72,12 +72,16 @@ ON_BENCH_PROFILE=alloc npm run bench:profile
 CPU mode writes `.cpuprofile` files and tables by function/file. Allocation mode writes `.heapprofile`
 files and bytes per tick. Open them in DevTools or Speedscope as appropriate.
 
-Uses the real-map controls except `ON_BENCH_WINDOWS`, `ON_BENCH_JSON` and `ON_BENCH_CHECKPOINTS`;
-defaults to 2000 ticks. With the march knobs, start the profile at the order with `ON_BENCH_WARMUP`:
-`ON_BENCH_CHECKPOINT=<t90000> ON_BENCH_MARCH_TICK=90202 ON_BENCH_TICKS=1500 npm run bench:profile` profiles
-the order tick and the march after the default 200-tick warm-up. Allocation sampling defaults to 4096
-bytes between samples. If the inspector reply overflows, increase `ON_BENCH_ALLOC_INTERVAL` or measure
-fewer ticks.
+CPU mode also breaks single ticks down by function: for each of the `ON_BENCH_SPIKE_TICKS` ticks the
+thread ran longest in (default 5, 0 turns it off) it prints the top functions by self and by total time
+from the samples inside that one tick, and the heaviest call path. Each tick's line gives its measured
+time, the sampled time, the sample count, the running time and the longest gap between two samples.
+Running time counts each gap up to 1 ms, ten sampling intervals: a longer gap is time the scheduler
+held the thread (a busy machine), charged to whatever function it was in, so ticks are ranked by
+running time and a stalled tick does not enter the list. A `(garbage collector)` row is a GC pause.
+The sim is deterministic, so a spike from a `bench:map` run recurs at the same tick: restore the
+checkpoint before it and set `ON_BENCH_WARMUP` so the profiled ticks start shortly before the spike. A
+slowest tick of `bench:map` that does not recur was the machine, not the sim.
 
 ### Checkpoints
 

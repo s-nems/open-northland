@@ -5,6 +5,7 @@ import { knobRecord, mapBenchKnobs, mapBenchWorld, worldSourceLines } from './ma
 import { marchKnobRecord, marchKnobs, marchProbe } from './march-order.js';
 import { measureWindows } from './measure.js';
 import {
+  type CpuCapture,
   captureAllocationProfile,
   captureCpuProfile,
   DEFAULT_ALLOCATION_SAMPLING_INTERVAL_BYTES,
@@ -12,8 +13,9 @@ import {
   summarizeAllocations,
   summarizeProfile,
 } from './profile.js';
-import { formatProfile, formatReport } from './report/index.js';
+import { formatProfile, formatReport, formatSpikes } from './report/index.js';
 import { reportFrom } from './run.js';
+import { busiestTickSpans, tickSpikes } from './spike-profile.js';
 import { benchOutDir, type ProfileKind, storeProfile } from './store.js';
 
 /**
@@ -21,7 +23,8 @@ import { benchOutDir, type ProfileKind, storeProfile } from './store.js';
  * `npm run bench:profile`. The per-system table says which system got slower; V8's sampler says
  * which function inside it burns the time. Both views cover the same ticks here, so they can be
  * read against each other. `ON_BENCH_PROFILE=alloc` samples allocations instead of CPU: which
- * function makes the garbage the window's GC columns pay for.
+ * function makes the garbage the window's GC columns pay for. CPU mode also breaks the
+ * `ON_BENCH_SPIKE_TICKS` longest-running ticks down by function (see `spike-profile.ts`).
  *
  * The `ON_BENCH_MARCH_*` knobs (see `march-order.ts`) profile a group attack-move; start the profile
  * at the order with `ON_BENCH_WARMUP` so the march fills the sampled ticks.
@@ -40,6 +43,7 @@ import { benchOutDir, type ProfileKind, storeProfile } from './store.js';
 const DEFAULT_PROFILED_TICKS = 2_000;
 /** The profile covers one segment: the per-system table beside it describes those same ticks. */
 const PROFILE_WINDOWS = 1;
+const DEFAULT_SPIKE_TICKS = 5;
 
 function profileKind(): ProfileKind {
   const kind = stringEnv('ON_BENCH_PROFILE', 'cpu');
@@ -53,16 +57,22 @@ function profileKind(): ProfileKind {
 async function profiled<T>(
   kind: ProfileKind,
   run: () => Promise<T>,
-): Promise<{ readonly raw: unknown; readonly summary: ProfileSummary; readonly result: T }> {
+): Promise<{
+  readonly raw: unknown;
+  readonly summary: ProfileSummary;
+  readonly result: T;
+  /** Null for an allocation profile, which has no sample times to cut at a tick. */
+  readonly cpu: CpuCapture | null;
+}> {
   switch (kind) {
     case 'cpu': {
-      const { profile, result } = await captureCpuProfile(run);
-      return { raw: profile, summary: summarizeProfile(profile), result };
+      const { result, ...cpu } = await captureCpuProfile(run);
+      return { raw: cpu.profile, summary: summarizeProfile(cpu.profile), result, cpu };
     }
     case 'alloc': {
       const interval = intEnv('ON_BENCH_ALLOC_INTERVAL', DEFAULT_ALLOCATION_SAMPLING_INTERVAL_BYTES, 1);
       const { profile, result } = await captureAllocationProfile(run, interval);
-      return { raw: profile, summary: summarizeAllocations(profile), result };
+      return { raw: profile, summary: summarizeAllocations(profile), result, cpu: null };
     }
   }
 }
@@ -70,6 +80,7 @@ async function profiled<T>(
 async function main(): Promise<void> {
   const knobs = mapBenchKnobs(DEFAULT_PROFILED_TICKS);
   const kind = profileKind();
+  const spikeTicks = intEnv('ON_BENCH_SPIKE_TICKS', DEFAULT_SPIKE_TICKS, 0);
   if (knobs.checkpointMarks.length > 0) {
     throw new Error(
       'bench:profile takes no ON_BENCH_CHECKPOINTS; write the marks with bench:map and name one ' +
@@ -93,6 +104,7 @@ async function main(): Promise<void> {
   const {
     raw,
     summary,
+    cpu,
     result: measured,
   } = await profiled(kind, () =>
     measureWindows(world.sim, {
@@ -125,6 +137,9 @@ async function main(): Promise<void> {
   const written = storeProfile(benchOutDir(), report, kind, raw);
   console.log(`\n${formatProfile(summary, knobs.measuredTicks)}\n`);
   console.log(`${formatReport(report)}\n`);
+  if (cpu !== null && spikeTicks > 0) {
+    console.log(`${formatSpikes(tickSpikes(cpu, busiestTickSpans(cpu, measured, spikeTicks)))}\n`);
+  }
   console.log(`${kind} profile written to ${written}`);
   console.log(`state hash: ${report.stateHash}\n`);
   if (march !== null) for (const line of march.report(measured)) console.log(line);

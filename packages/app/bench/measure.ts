@@ -39,6 +39,8 @@ export interface Measurement {
   readonly windows: readonly BenchWindow[];
   readonly perSystem: ReadonlyMap<string, Float64Array>;
   readonly tickSamples: Float64Array;
+  /** `performance.now()` at the start of each measured step, beside {@link tickSamples}. */
+  readonly tickStartsMs: Float64Array;
   readonly settlersAtStart: number;
   readonly settlersAtEnd: number;
   readonly buildings: number;
@@ -248,6 +250,7 @@ export async function measureWindows(sim: Simulation, options: MeasureOptions): 
   sampling = true;
   const firstTick = sim.tick + 1;
   const tickSamples = new Float64Array(options.measuredTicks);
+  const tickStartsMs = new Float64Array(options.measuredTicks);
   const windows: BenchWindow[] = [];
   let cpuUs = 0;
   let allocatedBytes: number | null = 0;
@@ -258,6 +261,7 @@ export async function measureWindows(sim: Simulation, options: MeasureOptions): 
       const start = performance.now();
       sim.step();
       tickSamples[i] = performance.now() - start;
+      tickStartsMs[i] = start;
       options.afterTick?.();
     }
     const windowEndMs = performance.now();
@@ -306,6 +310,7 @@ export async function measureWindows(sim: Simulation, options: MeasureOptions): 
     windows,
     perSystem: new Map([...perSystem].map(([name, series]) => [name, series.samples])),
     tickSamples,
+    tickStartsMs,
     settlersAtStart,
     settlersAtEnd: count(sim, Settler),
     buildings: count(sim, Building),

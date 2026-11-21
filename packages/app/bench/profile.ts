@@ -56,17 +56,25 @@ export interface ProfileSummary {
 
 /** The call-tree shape both V8 profilers reduce to: a CPU profile's node list as it comes, a sampling
  *  heap profile's nested tree once flattened. */
-interface CallTreeNode {
+export interface CallTreeNode {
   readonly id: number;
   readonly callFrame: Runtime.CallFrame;
   readonly children?: readonly number[] | undefined;
+}
+
+/** A CPU profile with what places its samples on the performance clock the tick timings use. */
+export interface CpuCapture {
+  readonly profile: Profiler.Profile;
+  /** `performance.now()` read as the profiler was told to stop. V8 stamps `profile.endTime` on its
+   *  own clock at that moment, measured within 0.2 ms of this read. */
+  readonly stoppedAtMs: number;
 }
 
 /** Profile one run, handing back what it resolved to. The sampler is process-wide, so the caller must
  *  do nothing else while it runs. */
 export async function captureCpuProfile<T>(
   run: () => Promise<T>,
-): Promise<{ readonly profile: Profiler.Profile; readonly result: T }> {
+): Promise<CpuCapture & { readonly result: T }> {
   const session = new Session();
   session.connect();
   try {
@@ -74,8 +82,9 @@ export async function captureCpuProfile<T>(
     await session.post('Profiler.setSamplingInterval', { interval: SAMPLING_INTERVAL_US });
     await session.post('Profiler.start');
     const result = await run();
+    const stoppedAtMs = performance.now();
     const { profile } = await session.post('Profiler.stop');
-    return { profile, result };
+    return { profile, stoppedAtMs, result };
   } finally {
     session.disconnect();
   }
@@ -127,7 +136,7 @@ function selfUsByNode(profile: Profiler.Profile): ReadonlyMap<number, number> {
   return self;
 }
 
-interface Frame {
+export interface Frame {
   readonly node: CallTreeNode;
   readonly key: string;
   readonly parent: number | null;
@@ -138,7 +147,7 @@ function keyOf(node: CallTreeNode): string {
   return `${functionName}\u0000${url}\u0000${lineNumber}`;
 }
 
-function framesOf(nodes: readonly CallTreeNode[]): ReadonlyMap<number, Frame> {
+export function framesOf(nodes: readonly CallTreeNode[]): ReadonlyMap<number, Frame> {
   const frames = new Map<number, Frame>();
   for (const node of nodes) frames.set(node.id, { node, key: keyOf(node), parent: null });
   for (const node of nodes) {
@@ -151,7 +160,7 @@ function framesOf(nodes: readonly CallTreeNode[]): ReadonlyMap<number, Frame> {
 }
 
 /** Subtree self cost per node, accumulated children-first so one pass suffices. */
-function subtreeCost(
+export function subtreeCost(
   frames: ReadonlyMap<number, Frame>,
   self: ReadonlyMap<number, number>,
 ): ReadonlyMap<number, number> {
@@ -191,7 +200,15 @@ function byCodepoint(a: string, b: string): number {
 }
 
 export function summarizeProfile(profile: Profiler.Profile): ProfileSummary {
-  return summarizeCallTree(profile.nodes, selfUsByNode(profile), 'ms', US_PER_MS);
+  return summarizeCpuSelf(profile.nodes, selfUsByNode(profile));
+}
+
+/** The summary of any part of a CPU profile: `selfUs` holds the self microseconds to count per node. */
+export function summarizeCpuSelf(
+  nodes: readonly CallTreeNode[],
+  selfUs: ReadonlyMap<number, number>,
+): ProfileSummary {
+  return summarizeCallTree(nodes, selfUs, 'ms', US_PER_MS);
 }
 
 /** A sampling heap profile's nested tree as a node list, numbered in visit order: the declared type
