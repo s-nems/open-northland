@@ -61,7 +61,7 @@ export function nearestHarvestableFor(
     readonly bound?: WorkBound | undefined;
     readonly goodFilter?: ReadonlySet<number> | undefined;
     /** Resource nodes already claimed this tick, so one node is dug by one settler at a time. */
-    readonly exclude?: ReadonlySet<Entity>;
+    readonly exclude?: { has(node: Entity): boolean };
     /** A node reserved to another settler across ticks, rejected even though this settler's trade
      *  could work it. */
     readonly reserved?: ((node: Entity) => boolean) | undefined;

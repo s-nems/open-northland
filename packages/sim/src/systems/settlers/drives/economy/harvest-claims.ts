@@ -7,7 +7,22 @@ import type { ChangeFeed, Entity, World } from '../../../../ecs/world.js';
  * crowd a colleague's swing. Claims span all owners, since two settlers cannot share one swing whoever
  * commands them. Source basis: authored.
  */
-export type HarvestClaims = Set<Entity>;
+export class HarvestClaims {
+  private picked: Set<Entity> | undefined;
+
+  /** `worked` is the live harvest index, which only the next pass's {@link collectHarvestClaims} moves. */
+  constructor(private readonly worked: ReadonlyMap<Entity, number>) {}
+
+  has(node: Entity): boolean {
+    return this.worked.has(node) || (this.picked?.has(node) ?? false);
+  }
+
+  /** Claim `node` for the rest of the pass. */
+  add(node: Entity): void {
+    this.picked ??= new Set();
+    this.picked.add(node);
+  }
+}
 
 /** The node `e`'s live harvest atomic works, if any. */
 function harvestedNode(world: World, e: Entity): Entity | undefined {
@@ -29,10 +44,10 @@ class LiveHarvests {
     this.rebuild();
   }
 
-  /** The worked nodes as of now, as a fresh set the pass may add its picks to. */
+  /** The worked nodes as of now, for a pass to add its picks to. */
   claims(): HarvestClaims {
     this.catchUp();
-    return new Set(this.workers.keys());
+    return new HarvestClaims(this.workers);
   }
 
   private catchUp(): void {

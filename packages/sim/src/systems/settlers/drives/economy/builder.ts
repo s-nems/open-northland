@@ -59,9 +59,7 @@ import {
 } from './construction-task-claims.js';
 import { type RepairCrews, startRepair } from './repair.js';
 import { boundConstructionSite } from './site-staff.js';
-import { constructionMaterialResolver, type SiteSupplyReach } from './site-supply.js';
-
-type MaterialResolver = ReturnType<typeof constructionMaterialResolver>;
+import { ConstructionMaterialResolver, type SiteSupplyReach } from './site-supply.js';
 
 /**
  * BUILD - mend the nearest damaged gate that is safe to reach, else such a building, else such a moored ship,
@@ -100,7 +98,8 @@ export function planBuilder(
     return false;
   }
   // A pinned, bound or run site was chosen past the confinement, so its material is too.
-  const orderedMaterials = (): MaterialResolver => constructionMaterialResolver(plan, spacing);
+  const orderedMaterials = (): ConstructionMaterialResolver =>
+    new ConstructionMaterialResolver(plan, spacing);
 
   const assigned = world.tryGet(e, SiteAssignment);
   const mode = world.tryGet(e, BuildMode)?.kind;
@@ -127,7 +126,7 @@ export function planBuilder(
     return true;
   }
 
-  const materials = constructionMaterialResolver(plan, spacing, { confined: supply });
+  const materials = new ConstructionMaterialResolver(plan, spacing, { confined: supply });
   const avoidSite = unreachableSiteStand(
     world,
     ctx,
@@ -412,11 +411,11 @@ function findWorkBeyondReach(
   );
   // The unconfined pick below names work beyond reach only at a site out of reach on this landmass.
   if (!anySiteBeyondReach(plan, spacing)) return null;
-  const confined = constructionMaterialResolver(plan, spacing, { confined: supply });
+  const confined = new ConstructionMaterialResolver(plan, spacing, { confined: supply });
   if (anyTaskSite(plan, spacing, claims, confined, avoidSite) !== null) return null;
   const free: PlannerContext = { ...plan, limit: null };
   const landmass = terrain.componentOf(here);
-  const ashore = constructionMaterialResolver(free, spacing, {
+  const ashore = new ConstructionMaterialResolver(free, spacing, {
     anywhere: true,
     rejectSource: (cell) => terrain.componentOf(cell) !== landmass,
   });
@@ -449,7 +448,7 @@ function anyTaskSite(
   plan: PlannerContext,
   spacing: PlannerSpacing,
   claims: ConstructionTaskClaims,
-  materials: MaterialResolver,
+  materials: ConstructionMaterialResolver,
   avoidSite: ((site: Entity) => boolean) | undefined,
 ): Entity | null {
   const { world, here, targets, owner, limit } = plan;
@@ -504,7 +503,7 @@ function standableSite(
  *  work checks run before the reach test, the costlier per site. */
 function siteHasTask(
   claims: ConstructionTaskClaims,
-  materials: MaterialResolver,
+  materials: ConstructionMaterialResolver,
   canStandAt: (site: Entity) => boolean,
 ): (site: Entity) => boolean {
   return (site) => (claims.hasHammerWork(site) || materials.has(site)) && canStandAt(site);
@@ -620,7 +619,7 @@ function workAtSite(
   plan: PlannerContext,
   spacing: PlannerSpacing,
   claims: ConstructionTaskClaims,
-  materials: MaterialResolver,
+  materials: ConstructionMaterialResolver,
   site: Entity,
 ): boolean {
   if (

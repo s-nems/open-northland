@@ -100,65 +100,9 @@ export function dispatchAssistantGrants(pass: PlannerPass): void {
   const { world, ctx, targets } = pass;
   const grants = collectGrantSpecs(world, ctx);
   if (grants.size === 0) return; // no player granted anything: the pass costs one empty query
-  // Manual orders are included, so the assistant also respects a unit the player already sent someone after.
-  // Read once, before this pass stamps any errand, and not read again while it stamps them: the errands
-  // stamped here are counted apart.
-  let underwayAtStart: ReadonlyMap<number, ReadonlyMap<number, number>> | undefined;
   const stampedHere = new PlayerGoodCounts();
   const stock = FetchableStock.of(world, ctx);
-  // Each granting player's grants its stock covers at the pass start. One it does not cover stays uncovered
-  // all pass: the stock holds still while the pass stamps errands, and a stamp only adds units underway.
-  const coverable = new Map<number, readonly GrantSpec[]>();
-  const coverableOf = (player: number, wanted: readonly GrantSpec[]): readonly GrantSpec[] => {
-    let specs = coverable.get(player);
-    if (specs === undefined) {
-      underwayAtStart ??= equipFetchesHeld(world);
-      const held = underwayAtStart.get(player);
-      specs = wanted.filter((spec) => stock.exceeds(player, spec.goodType, held?.get(spec.goodType) ?? 0));
-      coverable.set(player, specs);
-    }
-    return specs;
-  };
-  // Each granting player's goods withheld from each group, read once per pass rather than per settler.
-  const withheld = new Map<number, Readonly<Record<AssistantGrantGroup, readonly number[]>>>();
-  const upgrades = new Map<number, boolean>();
-  const upgradesOf = (player: number): boolean => {
-    let on = upgrades.get(player);
-    if (on === undefined) {
-      on = assistantUpgradesTools(world, player);
-      upgrades.set(player, on);
-    }
-    return on;
-  };
-  const keptFrom = (player: number, group: AssistantGrantGroup): readonly number[] => {
-    let byGroup = withheld.get(player);
-    if (byGroup === undefined) {
-      byGroup = {
-        civilians: assistantWithheldGoods(world, player, 'civilians'),
-        workers: assistantWithheldGoods(world, player, 'workers'),
-        soldiers: assistantWithheldGoods(world, player, 'soldiers'),
-      };
-      withheld.set(player, byGroup);
-    }
-    return byGroup[group];
-  };
-
-  // Each player's lend verdicts per granted good, kept until an errand is stamped, which may claim a unit:
-  // most takers find no store in reach, and the stores near one taker are near the next.
-  const lends = new Map<number, Map<number, StoreLends>>();
-  const lendsOf = (player: number, goodType: number): StoreLends => {
-    let byGood = lends.get(player);
-    if (byGood === undefined) {
-      byGood = new Map();
-      lends.set(player, byGood);
-    }
-    let verdicts = byGood.get(goodType);
-    if (verdicts === undefined) {
-      verdicts = storeLendVerdicts(targets.bands, world, goodType, player, pass.supply);
-      byGood.set(goodType, verdicts);
-    }
-    return verdicts;
-  };
+  const reads = new GrantPassReads(pass, stock);
 
   // Indexed loops: on this every-tick pass a for-of costs an iterator result per step.
   const due = dueThisBeat(world, ctx.tick);
@@ -169,7 +113,7 @@ export function dispatchAssistantGrants(pass: PlannerPass): void {
     if (owner === undefined) continue;
     const granted = grants.get(owner);
     if (granted === undefined) continue;
-    const wanted = coverableOf(owner, granted);
+    const wanted = reads.coverable(owner, granted);
     if (wanted.length === 0) continue;
     if (world.has(e, EquipOrder) || anotherSystemOwns(world, e)) continue;
     // A booked recruit still owed his weapon waits for the arming pass: a grant errand first would hold
@@ -189,11 +133,11 @@ export function dispatchAssistantGrants(pass: PlannerPass): void {
     // unless the player sends him. Owner's ruling.
     if (towerPostFor(world, ctx, e, jobType) !== null) continue;
     const toolless = !toolHelpsJob(ctx.content, jobType);
-    const kept = keptFrom(owner, assistantGrantGroupOf(ctx.content, jobType));
+    const kept = reads.keptFrom(owner, assistantGrantGroupOf(ctx.content, jobType));
 
-    const heldAtStart = underwayAtStart?.get(owner);
+    const heldAtStart = reads.underwayAtStart?.get(owner);
     const eq = world.tryGet(e, Equipment);
-    const upgrade = upgradesOf(owner) && upgradeDue(ctx.content, e, ctx.tick, eq);
+    const upgrade = reads.upgrades(owner) && upgradeDue(ctx.content, e, ctx.tick, eq);
     // Resolved once, and only when a grant has both a free slot and spare stock.
     let route: GrantRoute | undefined;
     for (let w = 0; w < wanted.length; w++) {
@@ -215,7 +159,7 @@ export function dispatchAssistantGrants(pass: PlannerPass): void {
         route.gate,
         route.veto,
         'pass-over',
-        lendsOf(owner, spec.goodType),
+        reads.lends(owner, spec.goodType),
       );
       if (src === null) continue; // nothing reachable through this settler's signpost network
       world.add(e, EquipOrder, {
@@ -230,9 +174,90 @@ export function dispatchAssistantGrants(pass: PlannerPass): void {
       });
       wakeIdle(world, e); // planned onto the errand this pass
       stampedHere.add(owner, spec.goodType);
-      lends.clear();
+      reads.dropLends();
       break; // one errand per settler; it chains the rest of its slots from the store
     }
+  }
+}
+
+/** What {@link dispatchAssistantGrants} reads once per granting player and pass rather than per settler.
+ *  Methods, not closures, since a closure call allocates its scope on this every-tick pass. */
+class GrantPassReads {
+  /** The errands under way at the pass start, manual orders included, so the assistant also respects a
+   *  unit the player already sent someone after. Read once, before this pass stamps any errand, and not
+   *  read again while it stamps them: the errands stamped here are counted apart. */
+  underwayAtStart: ReadonlyMap<number, ReadonlyMap<number, number>> | undefined;
+  private readonly coverableByPlayer = new Map<number, readonly GrantSpec[]>();
+  private readonly withheld = new Map<number, Readonly<Record<AssistantGrantGroup, readonly number[]>>>();
+  private readonly upgradesByPlayer = new Map<number, boolean>();
+  private readonly lendsByPlayer = new Map<number, Map<number, StoreLends>>();
+
+  constructor(
+    private readonly pass: PlannerPass,
+    private readonly stock: FetchableStock,
+  ) {}
+
+  /** The player's grants its stock covers at the pass start. One it does not cover stays uncovered all
+   *  pass: the stock holds still while the pass stamps errands, and a stamp only adds units underway. */
+  coverable(player: number, wanted: readonly GrantSpec[]): readonly GrantSpec[] {
+    let specs = this.coverableByPlayer.get(player);
+    if (specs === undefined) {
+      this.underwayAtStart ??= equipFetchesHeld(this.pass.world);
+      const held = this.underwayAtStart.get(player);
+      const covered: GrantSpec[] = [];
+      for (let i = 0; i < wanted.length; i++) {
+        const spec = wanted[i] as GrantSpec;
+        if (this.stock.exceeds(player, spec.goodType, held?.get(spec.goodType) ?? 0)) covered.push(spec);
+      }
+      specs = covered;
+      this.coverableByPlayer.set(player, specs);
+    }
+    return specs;
+  }
+
+  /** The player's goods withheld from `group`. */
+  keptFrom(player: number, group: AssistantGrantGroup): readonly number[] {
+    let byGroup = this.withheld.get(player);
+    if (byGroup === undefined) {
+      const { world } = this.pass;
+      byGroup = {
+        civilians: assistantWithheldGoods(world, player, 'civilians'),
+        workers: assistantWithheldGoods(world, player, 'workers'),
+        soldiers: assistantWithheldGoods(world, player, 'soldiers'),
+      };
+      this.withheld.set(player, byGroup);
+    }
+    return byGroup[group];
+  }
+
+  upgrades(player: number): boolean {
+    let on = this.upgradesByPlayer.get(player);
+    if (on === undefined) {
+      on = assistantUpgradesTools(this.pass.world, player);
+      this.upgradesByPlayer.set(player, on);
+    }
+    return on;
+  }
+
+  /** The player's lend verdicts for `goodType`, kept until an errand is stamped, which may claim a unit:
+   *  most takers find no store in reach, and the stores near one taker are near the next. */
+  lends(player: number, goodType: number): StoreLends {
+    let byGood = this.lendsByPlayer.get(player);
+    if (byGood === undefined) {
+      byGood = new Map();
+      this.lendsByPlayer.set(player, byGood);
+    }
+    let verdicts = byGood.get(goodType);
+    if (verdicts === undefined) {
+      const { pass } = this;
+      verdicts = storeLendVerdicts(pass.targets.bands, pass.world, goodType, player, pass.supply);
+      byGood.set(goodType, verdicts);
+    }
+    return verdicts;
+  }
+
+  dropLends(): void {
+    this.lendsByPlayer.clear();
   }
 }
 

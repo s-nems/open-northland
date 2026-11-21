@@ -179,6 +179,10 @@ export class InteractionCellIndex {
   };
   /** Moves on every edit of the candidates or their sides, so a memo over them knows when to re-read. */
   private revision = 0;
+  /** {@link linearNearest}'s `accept` verdicts by list slot, one array per nesting depth since `accept` may
+   *  search again; each search leaves its slots empty. */
+  private readonly verdictScratch: Verdicts<unknown>[] = [];
+  private verdictDepth = 0;
   /** {@link filedOnSide} per owner, with the revision it was read at. */
   private readonly sideFiled = new Map<number, { readonly revision: number; readonly filed: Int32Array }>();
   /** Greatest Manhattan offset (half-cell nodes) of a loose candidate's interaction cell from its own
@@ -788,29 +792,53 @@ export class InteractionCellIndex {
     count = list.length,
   ): NearestByCell<P> | null {
     if (walk === undefined) {
-      return this.linearScan(list, here, accept, gate, avoid, rank, undefined, bound, count, null);
+      return this.linearScan(list, here, accept, gate, avoid, rank, undefined, bound, count, null, null);
     }
-    const verdicts = new Map<Entity, Qualified<P> | null>();
-    const once = (e: Entity): Qualified<P> | null => {
-      let hit = verdicts.get(e);
-      if (hit === undefined) {
-        hit = accept(e);
-        verdicts.set(e, hit);
-      }
-      return hit;
-    };
-    const unbounded = Number.POSITIVE_INFINITY;
-    const direct = this.linearScan(list, here, once, gate, avoid, rank, undefined, unbounded, count, null);
-    if (direct === null) return null;
-    const seed = { ...direct, distance: rankLength(walk, direct.cell, direct.distance, bound) };
-    const found = this.linearScan(list, here, once, gate, avoid, rank, walk, bound, count, seed);
-    return found !== null && found.distance > bound ? null : found;
+    const depth = this.verdictDepth++;
+    this.verdictScratch[depth] ??= [];
+    const verdicts = this.verdictScratch[depth] as Verdicts<P>;
+    try {
+      const unbounded = Number.POSITIVE_INFINITY;
+      const direct = this.linearScan(
+        list,
+        here,
+        accept,
+        gate,
+        avoid,
+        rank,
+        undefined,
+        unbounded,
+        count,
+        null,
+        verdicts,
+      );
+      if (direct === null) return null;
+      const seed = { ...direct, distance: rankLength(walk, direct.cell, direct.distance, bound) };
+      const found = this.linearScan(
+        list,
+        here,
+        accept,
+        gate,
+        avoid,
+        rank,
+        walk,
+        bound,
+        count,
+        seed,
+        verdicts,
+      );
+      return found !== null && found.distance > bound ? null : found;
+    } finally {
+      verdicts.fill(undefined, 0, Math.min(count, verdicts.length));
+      this.verdictDepth--;
+    }
   }
 
   /** {@link nearestByCell}'s loop and tie-break, resolving each candidate's cell in place, over the
    *  candidates that could beat `bound` and `seed`, a candidate of the list already weighed. The filters
    *  are pure, so a candidate the best so far already beats skips them, the gate's cheap node test runs
-   *  before `accept`, which may be a whole task check, and its costly cell test last. */
+   *  before `accept`, which may be a whole task check, and its costly cell test last. `verdicts`, when given,
+   *  keeps each slot's `accept` verdict for the next scan of the same list. */
   private linearScan<P>(
     list: readonly Entity[],
     here: NodeId,
@@ -822,6 +850,7 @@ export class InteractionCellIndex {
     bound: number,
     count: number,
     seed: NearestByCell<P> | null,
+    verdicts: Verdicts<P> | null,
   ): NearestByCell<P> | null {
     const { world, ctx, terrain } = this;
     let bestEntity: Entity | undefined = seed?.entity;
@@ -841,12 +870,12 @@ export class InteractionCellIndex {
         span = manhattan(terrain, rank, cell);
         const least = leastRankLengthTo(terrain, walk, cell, span);
         if (least > bound || !closer(least, cell, bestDist, bestCell)) continue;
-        hit = accept(e);
+        hit = verdictOf(verdicts, i, e, accept);
         if (hit === null) continue;
       } else {
         const floor = leastRankLength(walk, this.looseFloor(e, rank));
         if (floor > Math.min(bound, bestDist) || this.gatedOutLoose(gate, e)) continue;
-        hit = accept(e);
+        hit = verdictOf(verdicts, i, e, accept);
         if (hit === null) continue;
         cell = interactionCell(world, ctx, terrain, e, here);
         span = manhattan(terrain, rank, cell);
@@ -869,6 +898,25 @@ export class InteractionCellIndex {
       ? null
       : { entity: bestEntity, cell: bestNode, distance: bestDist, payload: bestHit.payload };
   }
+}
+
+/** `accept` verdicts by list slot; an empty slot is not yet asked. */
+type Verdicts<P> = (Qualified<P> | null | undefined)[];
+
+/** `accept(e)` for the list slot `i`, asked once per search when `verdicts` keeps the slots. */
+function verdictOf<P>(
+  verdicts: Verdicts<P> | null,
+  i: number,
+  e: Entity,
+  accept: (e: Entity) => Qualified<P> | null,
+): Qualified<P> | null {
+  if (verdicts === null) return accept(e);
+  let hit = verdicts[i];
+  if (hit === undefined) {
+    hit = accept(e);
+    verdicts[i] = hit;
+  }
+  return hit;
 }
 
 /** Whether `avoid` rejects `cell`, a goal this seeker's routes just failed on; its own cell `here` is

@@ -1,4 +1,4 @@
-import { CARRY_CAPACITY } from '../../../../components/index.js';
+import { CARRY_CAPACITY, type GoodsLine } from '../../../../components/index.js';
 import type { Entity, World } from '../../../../ecs/world.js';
 import type { NodeId, TerrainGraph } from '../../../../nav/terrain/index.js';
 import type { SystemContext } from '../../../context.js';
@@ -35,60 +35,76 @@ export function fetchNeededMaterial(
    *  recipe inputs included, which no other fetcher may lift. */
   ownShelf?: Entity,
 ): boolean {
-  return constructionMaterialResolver(plan, spacing, { ownShelf }).fetch(site);
+  return new ConstructionMaterialResolver(plan, spacing, { ownShelf }).fetch(site);
 }
 
+/** How a {@link ConstructionMaterialResolver} sources its loads. */
+export interface MaterialResolverOptions {
+  readonly ownShelf?: Entity | undefined;
+  /** Only fetch from a source the site lies in reach of: for a site the builder picked within its own
+   *  confinement. A site it holds by order or binding takes its load past the confinement, as the
+   *  delivery's bound sink does. */
+  readonly confined?: SiteSupplyReach | undefined;
+  /** Sources no load may be lifted from, by their interaction cell. */
+  readonly rejectSource?: ((cell: NodeId) => boolean) | undefined;
+  /** Search every store of the owner's side, past the signpost and goods-search gates: the probe for
+   *  work the signposts alone keep from the builder, never a fetch. */
+  readonly anywhere?: true | undefined;
+}
+
+const NO_OPTIONS: MaterialResolverOptions = {};
+
 /** A one-builder resolver: site selection shares one source lookup per good, then consumes the chosen
- * site's cached payload. Reachability and failed-goal state are constant for this resolver's lifetime. */
-export function constructionMaterialResolver(
-  plan: PlannerContext,
-  spacing: PlannerSpacing,
-  options: {
-    ownShelf?: Entity | undefined;
-    /** Only fetch from a source the site lies in reach of: for a site the builder picked within its own
-     *  confinement. A site it holds by order or binding takes its load past the confinement, as the
-     *  delivery's bound sink does. */
-    confined?: SiteSupplyReach | undefined;
-    /** Sources no load may be lifted from, by their interaction cell. */
-    rejectSource?: ((cell: NodeId) => boolean) | undefined;
-    /** Search every store of the owner's side, past the signpost and goods-search gates: the probe for
-     *  work the signposts alone keep from the builder, never a fetch. */
-    anywhere?: true | undefined;
-  } = {},
-): {
-  has(site: Entity): boolean;
-  fetch(site: Entity): boolean;
-  /** Whether a source holds `goodType` for this fetcher, the precondition of every `has` a need of it passes. */
-  canSource(goodType: number): boolean;
-  /** The source `fetch(site)` would lift from, or null when `has(site)` is false. */
-  sourceOf(site: Entity): Entity | null;
-} {
-  const bySite = new Map<Entity, FetchableMaterial | null>();
-  const needsBySite = new Map<
-    Entity,
-    ReadonlyArray<{ readonly goodType: number; readonly amount: number }>
-  >();
-  const sourceByGood = new Map<number, MaterialSource | null>();
-  const { ownShelf, confined, rejectSource, anywhere } = options;
-  const sourceFor = (goodType: number): MaterialSource | null => {
-    const cached = sourceByGood.get(goodType);
-    if (cached !== undefined || sourceByGood.has(goodType)) return cached ?? null;
-    const source =
-      (ownShelf === undefined ? null : shelfSource(plan, ownShelf, goodType)) ??
-      materialSource(plan, goodType, rejectSource, anywhere);
-    sourceByGood.set(goodType, source);
-    return source;
-  };
+ * site's cached payload. Reachability and failed-goal state are constant for this resolver's lifetime.
+ * Its memos are made on first use, since most builders ask few sites or none. */
+export class ConstructionMaterialResolver {
+  private bySite: Map<Entity, FetchableMaterial | null> | undefined;
+  private sourceByGood: Map<number, MaterialSource | null> | undefined;
   // The nearest source serves every site it can deliver to; a site out of its reach takes the nearest of
   // the sources that can, which only a split signpost network ever asks for. Those sources are ranked once
   // per good, so a builder weighing many such sites scans the stores in its reach once, not per site.
-  // Made on first use: only a site out of its nearest source's reach asks either.
-  let liftCellByGood: Map<number, NodeId> | undefined;
-  let rankedByGood: Map<number, readonly NearestByCell[]> | undefined;
-  const rankedSources = (goodType: number, owner: number): readonly NearestByCell[] => {
-    rankedByGood ??= new Map();
-    let ranked = rankedByGood.get(goodType);
+  private liftCellByGood: Map<number, NodeId> | undefined;
+  private rankedByGood: Map<number, readonly NearestByCell[]> | undefined;
+
+  constructor(
+    private readonly plan: PlannerContext,
+    private readonly spacing: PlannerSpacing,
+    private readonly options: MaterialResolverOptions = NO_OPTIONS,
+  ) {}
+
+  has(site: Entity): boolean {
+    return this.resolve(site) !== null;
+  }
+
+  fetch(site: Entity): boolean {
+    const fetch = this.resolve(site);
+    if (fetch === null) return false;
+    startMaterialFetch(this.plan, site, fetch);
+    return true;
+  }
+
+  /** Whether a source holds `goodType` for this fetcher, the precondition of every `has` a need of it
+   *  passes. Bound, since the site claims take it as a predicate. */
+  readonly canSource = (goodType: number): boolean => this.sourceFor(goodType) !== null;
+
+  private sourceFor(goodType: number): MaterialSource | null {
+    this.sourceByGood ??= new Map();
+    const cached = this.sourceByGood.get(goodType);
+    if (cached !== undefined || this.sourceByGood.has(goodType)) return cached ?? null;
+    const { plan } = this;
+    const { ownShelf, rejectSource, anywhere } = this.options;
+    const source =
+      (ownShelf === undefined ? null : shelfSource(plan, ownShelf, goodType)) ??
+      materialSource(plan, goodType, rejectSource, anywhere);
+    this.sourceByGood.set(goodType, source);
+    return source;
+  }
+
+  private rankedSources(goodType: number, owner: number): readonly NearestByCell[] {
+    this.rankedByGood ??= new Map();
+    let ranked = this.rankedByGood.get(goodType);
     if (ranked === undefined) {
+      const { plan } = this;
       ranked = storesHoldingRanked(
         plan.targets.bands,
         plan.world,
@@ -98,23 +114,26 @@ export function constructionMaterialResolver(
         owner,
         plan.supply,
         plan.limit ?? undefined,
-        fetcherAvoid(plan, rejectSource),
+        fetcherAvoid(plan, this.options.rejectSource),
       );
-      rankedByGood.set(goodType, ranked);
+      this.rankedByGood.set(goodType, ranked);
     }
     return ranked;
-  };
-  const deliveringSourceFor = (site: Entity, goodType: number): MaterialSource | null => {
-    const nearest = sourceFor(goodType);
+  }
+
+  private deliveringSourceFor(site: Entity, goodType: number): MaterialSource | null {
+    const nearest = this.sourceFor(goodType);
+    const { plan } = this;
+    const { confined } = this.options;
     const { owner, terrain } = plan;
     if (nearest === null || confined === undefined || plan.limit === null || owner === undefined)
       return nearest;
     if (confined.liftSpots(owner, plan.jobType, site) === null) return nearest;
-    liftCellByGood ??= new Map();
-    let lift = liftCellByGood.get(goodType);
+    this.liftCellByGood ??= new Map();
+    let lift = this.liftCellByGood.get(goodType);
     if (lift === undefined) {
       lift = interactionCell(plan.world, plan.ctx, terrain, nearest.source, plan.here);
-      liftCellByGood.set(goodType, lift);
+      this.liftCellByGood.set(goodType, lift);
     }
     const lifts = (cell: NodeId): boolean => confined.liftsAt(owner, plan.jobType, site, cell);
     if (lifts(lift)) return nearest;
@@ -122,35 +141,41 @@ export function constructionMaterialResolver(
     // Only a store filed near the site can lift for it, and that set is far cheaper to ask than the spots.
     const near = confined.storesNear(owner, plan.jobType, site, goodType);
     const source = firstUnvetoed(
-      rankedSources(goodType, owner),
+      this.rankedSources(goodType, owner),
       plan.here,
       (cell, store) => near?.stores.has(store) === false || !lifts(cell),
     );
     return source === null ? null : lendingSource(plan, source.entity, goodType);
-  };
-  const resolve = (site: Entity): FetchableMaterial | null => {
-    const cached = bySite.get(site);
-    if (cached !== undefined || bySite.has(site)) return cached ?? null;
-    let needs = needsBySite.get(site);
-    if (needs === undefined) {
-      needs = neededConstructionGoods(plan.world, plan.ctx, site, plan.supply);
-      needsBySite.set(site, needs);
-    }
-    const fetch = fetchableMaterial(spacing, site, needs, (goodType) => deliveringSourceFor(site, goodType));
-    bySite.set(site, fetch);
+  }
+
+  private resolve(site: Entity): FetchableMaterial | null {
+    this.bySite ??= new Map();
+    const cached = this.bySite.get(site);
+    if (cached !== undefined || this.bySite.has(site)) return cached ?? null;
+    const fetch = this.fetchableMaterial(site);
+    this.bySite.set(site, fetch);
     return fetch;
-  };
-  return {
-    has: (site) => resolve(site) !== null,
-    fetch: (site) => {
-      const fetch = resolve(site);
-      if (fetch === null) return false;
-      startMaterialFetch(plan, site, fetch);
-      return true;
-    },
-    canSource: (goodType) => sourceFor(goodType) !== null,
-    sourceOf: (site) => resolve(site)?.source ?? null,
-  };
+  }
+
+  /** Pick without claiming, so site allocation and the claiming drive ask exactly the same question. Tries
+   *  the bill in order, so a good with no source never blocks the ones that are available. */
+  private fetchableMaterial(site: Entity): FetchableMaterial | null {
+    const { plan } = this;
+    const needs = neededConstructionGoods(plan.world, plan.ctx, site, plan.supply);
+    for (let i = 0; i < needs.length; i++) {
+      const need = needs[i] as GoodsLine;
+      const source = this.deliveringSourceFor(site, need.goodType);
+      if (source === null) continue;
+      const amount = Math.min(need.amount, source.available, CARRY_CAPACITY);
+      if (amount <= 0) continue;
+      // A site with no legal stand cell cannot take a delivery, so nothing is fetched for it. Asked after
+      // the memoized source, since an idle builder asks every waiting site while no material is in store.
+      return this.spacing.workCells(site).length === 0
+        ? null
+        : { source: source.source, goodType: need.goodType, amount };
+    }
+    return null;
+  }
 }
 
 function startMaterialFetch(plan: PlannerContext, site: Entity, fetch: FetchableMaterial): void {
@@ -172,27 +197,6 @@ interface FetchableMaterial {
 interface MaterialSource {
   readonly source: Entity;
   readonly available: number;
-}
-
-/** Pick without claiming, so site allocation and the claiming drive ask exactly the same question. */
-function fetchableMaterial(
-  spacing: PlannerSpacing,
-  site: Entity,
-  needs: ReadonlyArray<{ readonly goodType: number; readonly amount: number }>,
-  sourceFor: (goodType: number) => MaterialSource | null,
-): FetchableMaterial | null {
-  for (const need of needs) {
-    const source = sourceFor(need.goodType);
-    if (source === null) continue;
-    const amount = Math.min(need.amount, source.available, CARRY_CAPACITY);
-    if (amount <= 0) continue;
-    // A site with no legal stand cell cannot take a delivery, so nothing is fetched for it. Asked after
-    // the memoized source, since an idle builder asks every waiting site while no material is in store.
-    return spacing.workCells(site).length === 0
-      ? null
-      : { source: source.source, goodType: need.goodType, amount };
-  }
-  return null;
 }
 
 function shelfSource(plan: PlannerContext, shelf: Entity, goodType: number): MaterialSource | null {
