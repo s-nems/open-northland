@@ -8,6 +8,7 @@ import {
   Felling,
   Position,
   Resource,
+  setSettlerJob,
 } from '../../../../src/components/index.js';
 import type { AtomicEffect } from '../../../../src/core/atomic-effect.js';
 import type { Entity } from '../../../../src/ecs/world.js';
@@ -194,6 +195,32 @@ describe('atomicSystem - authored sound cues', () => {
 
   it('sounds a clip a trade inherits from the civilist body', () => {
     expect(cuesOverSwing(COLLECTOR_JOB, CIVILIST_ONLY_ATOMIC)).toEqual([{ tick: 4, soundType: VOICE }]);
+  });
+
+  it('sounds the clip of a trade taken up while the atomic runs, from that tick on', () => {
+    // The civilist binds no clip for this atomic, so only its end is ahead when the trade changes.
+    const sim = new Simulation({ seed: 1, content: cueContent() });
+    const e: Entity = settlerAt(sim, { jobType: CIVILIST_JOB });
+    addCurrentAtomic(sim.world, e, {
+      atomicId: TWO_CUE_ATOMIC,
+      duration: CHOP_LENGTH,
+      effect: { kind: 'idle' },
+      targetEntity: null,
+      targetTile: null,
+    });
+    const fired: { tick: number; soundType: number }[] = [];
+    for (let tick = 1; tick <= CHOP_LENGTH; tick++) {
+      if (tick === 2) setSettlerJob(sim.world, e, COLLECTOR_JOB);
+      sim.events.clear();
+      atomicSystem(sim.world, nextTickCtxOf(sim));
+      for (const ev of sim.events.current()) {
+        if (ev.kind === 'atomicSound') fired.push({ tick, soundType: ev.soundType });
+      }
+    }
+    expect(fired).toEqual([
+      { tick: 3, soundType: AXE },
+      { tick: 6, soundType: VOICE },
+    ]);
   });
 
   it('sounds a counted stroke and its follow-through once each, the rest never', () => {

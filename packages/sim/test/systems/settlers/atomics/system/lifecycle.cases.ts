@@ -47,6 +47,20 @@ describe('atomicSystem - clock + completion', () => {
     expect(sim.world.has(e, CurrentAtomic)).toBe(false);
   });
 
+  it('ends atomics due on one tick in the order they started, whichever tick each started on', () => {
+    const sim = new Simulation({ seed: 1, content: testContent() });
+    const first = sim.world.create();
+    const second = sim.world.create();
+    startAtomic(sim, second, { kind: 'idle' }, 3, 24);
+    atomicSystem(sim.world, nextTickCtxOf(sim));
+    startAtomic(sim, first, { kind: 'idle' }, 2, 24);
+    atomicSystem(sim.world, nextTickCtxOf(sim));
+    sim.events.clear();
+    atomicSystem(sim.world, nextTickCtxOf(sim));
+    const ended = sim.events.current().filter((ev) => ev.kind === 'atomicCompleted');
+    expect(ended.map((ev) => ev.entity)).toEqual([second, first]);
+  });
+
   it('completes on the exact tick even for a duration ONE does not divide evenly', () => {
     // Regression: ONE/3 truncates, so accumulating a fixed-point step would sum to < ONE after 3
     // ticks and hang. Integer `elapsed` makes completion exact. Try several odd durations.

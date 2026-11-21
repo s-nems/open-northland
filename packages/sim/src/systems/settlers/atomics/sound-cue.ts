@@ -55,7 +55,7 @@ function soundingClip(
 }
 
 /** {@link soundingClip} for a settler whose {@link atomicClip} is already resolved as `clip`. */
-function soundingClipOf(
+export function soundingClipOf(
   world: World,
   ctx: SystemContext,
   settler: Entity,
@@ -111,4 +111,14 @@ export function emitAtomicSoundCues(
         ...(sip ? { sip: true as const } : {}),
       });
   }
+}
+
+/**
+ * The tick of `atomic` on which {@link emitAtomicSoundCues} plays the cue its sounding clip `anim` authors
+ * at clip tick `cueTick`: the first whose scaled clip clock reaches it.
+ */
+export function atomicSoundCueTick(atomic: SoundingAtomic, anim: AtomicAnimation, cueTick: number): number {
+  if (!scalesClip(atomic.effect?.kind) || atomic.duration <= 0) return cueTick;
+  if (anim.length <= 0) return Number.POSITIVE_INFINITY;
+  return Math.ceil((cueTick * atomic.duration) / anim.length);
 }

@@ -220,6 +220,14 @@ export class World {
     return store === undefined || slot === ABSENT_SLOT ? undefined : store.revisionAt(slot);
   }
 
+  /** Where `entity` stands in `component`'s insertion order, the order {@link query} walks it in:
+   *  ascending along the walk and kept until the entity leaves the store; undefined while it carries none. */
+  insertionSeqOf(entity: Entity, component: Component<unknown>): number | undefined {
+    const store = this.storeOf(component);
+    const slot = store === undefined ? ABSENT_SLOT : store.slotOf(entity);
+    return store === undefined || slot === ABSENT_SLOT ? undefined : store.seqs[slot];
+  }
+
   /** Monotonic version of every entity mutation (`create`/`add`/`remove`/`destroy`/`mut`): the "may the
    *  previous snapshot be reused?" key for `Simulation.snapshot`'s per-tick memo. */
   get mutationVersion(): number {
