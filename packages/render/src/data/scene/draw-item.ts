@@ -210,6 +210,8 @@ export interface DrawItem extends Readonly<StaticDrawFields> {
   readonly rotation?: number;
   /** For a projectile: the `munitionType` its sprite binds by. */
   readonly munition?: number;
+  /** For a projectile: how long its sprite draws along its heading, as a multiple of the authored frame. */
+  readonly shotLength?: number;
   /** A siege shot, which the shot layer draws on its own flight clock rather than the pool. */
   readonly siege?: true;
   /** A remembered static drawn from the viewer's fog memory rather than a live entity. It draws dimmed
@@ -337,6 +339,7 @@ export function newDrawItem(
     hpFrac: undefined,
     rotation: undefined,
     munition: undefined,
+    shotLength: undefined,
     siege: undefined,
     ghost: undefined,
     portraitOnly: undefined,

@@ -32,6 +32,7 @@ import { cartDriveLook } from './layers/cart-drive.js';
 import { settlerPalette } from './layers/character.js';
 import { humanLayerRow } from './layers/human-palette-row.js';
 import type { ResolvedLayer } from './layers/resolved-layer.js';
+import { addStretchedBox, placeStretched } from './layers/stretch.js';
 import { vehicleBodyRow, vehiclePalette, vehicleYardSitePalette } from './layers/vehicle-palette.js';
 import { drawPlaceholder, placeholderBounds } from './placeholder.js';
 import {
@@ -412,6 +413,10 @@ export class LayerBinder {
         addTiltedBox(bounds, box, layer.frame.tilt, layer.shear ?? 0);
         continue;
       }
+      if (layer.stretch !== undefined) {
+        addStretchedBox(bounds, box, layer.stretch);
+        continue;
+      }
       const shearTop = box.oy * (layer.shear ?? 0);
       const shearBottom = (box.oy + box.height) * (layer.shear ?? 0);
       bounds.add(
@@ -701,9 +706,13 @@ export class LayerBinder {
           : enhanceBuilding && layer.reveal === undefined && layer.revealWindow === undefined
             ? this.textures.getBuilding(layer.source, layer.frame)
             : this.textures.get(layer.source, layer.frame));
-    const shear = layer.shear ?? 0;
-    spr.position.set(box.ox + box.drawnOy * shear, box.drawnOy);
-    setVegetationShear(spr, layer.scale, shear);
+    if (layer.stretch !== undefined) {
+      placeStretched(spr, layer.scale, box, layer.stretch);
+    } else {
+      const shear = layer.shear ?? 0;
+      spr.position.set(box.ox + box.drawnOy * shear, box.drawnOy);
+      setVegetationShear(spr, layer.scale, shear);
+    }
     // The tint setter allocates even for an unchanged value, so assign only on change.
     if (spr.tint !== tint) spr.tint = tint;
     spr.visible = true;

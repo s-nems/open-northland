@@ -9,6 +9,7 @@ import {
   resolveSignpostDraw,
   resolveSpriteBobId,
   resolveStockpileDraw,
+  valencyHeading,
 } from '../../../data/sprites/index.js';
 import type { WindSway } from '../../../data/weather/climate.js';
 import { vegetationShear } from '../../sway/vegetation.js';
@@ -331,8 +332,30 @@ function pushProjectileLayers(out: LayerBuffer, sheet: SpriteSheet, item: DrawIt
   if (bob === undefined) return false;
   const layer = layeredLayerFor(sheet, 'projectile', { layer: ref.layer, bob });
   if (layer === null) return false;
-  out.push(layer);
+  const length = item.shotLength ?? 1;
+  out.push(
+    ref.directional && length !== 1
+      ? stretchedLayer(layer, valencyHeading(valency, ref.valencies.length), length)
+      : layer,
+  );
   return true;
+}
+
+/** One record per heading frame and length, so an arrow in flight allocates none. */
+const stretchedLayers = new WeakMap<ResolvedLayer, Map<number, ResolvedLayer>>();
+
+function stretchedLayer(layer: ResolvedLayer, along: number, by: number): ResolvedLayer {
+  let byLength = stretchedLayers.get(layer);
+  if (byLength === undefined) {
+    byLength = new Map();
+    stretchedLayers.set(layer, byLength);
+  }
+  let stretched = byLength.get(by);
+  if (stretched === undefined) {
+    stretched = { ...layer, stretch: { along, by } };
+    byLength.set(by, stretched);
+  }
+  return stretched;
 }
 
 /**

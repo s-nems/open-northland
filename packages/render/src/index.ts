@@ -117,6 +117,7 @@ export {
   palisadeColumnShiftX,
   type SceneGround,
   type SceneTerrain,
+  type ShotLengthLookup,
   terrainMapToScene,
   type VehicleDrawTask,
   vehicleDrawTile,

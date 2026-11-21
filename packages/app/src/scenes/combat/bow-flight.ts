@@ -1,7 +1,7 @@
 import type { Entity, Simulation } from '@open-northland/sim';
 import { cellAnchorNode, components, nodeOfPosition, systems } from '@open-northland/sim';
 import { grassTerrain } from '../../catalog/buildings.js';
-import { JOB_ARCHER, JOB_SOLDIER_SWORD } from '../../catalog/jobs.js';
+import { JOB_ARCHER, JOB_ARCHER_LONG, JOB_SOLDIER_SWORD } from '../../catalog/jobs.js';
 import { ENEMY_PLAYER, HUMAN_PLAYER } from '../../game/rules.js';
 import { spawnSettlerDirect } from '../../game/sandbox/index.js';
 import type { SceneDefinition } from '../types.js';
@@ -15,14 +15,15 @@ const MARKSMAN_POINTS = 90;
 
 /**
  * Compact staggered-raster sight-lines: east, west, straight down the screen, and a reverse diagonal. Each
- * target is inside the short bow's ordinary range, while the four pairs are far enough apart that an
- * archer never substitutes another pair's target.
+ * target is inside both bows' ordinary range, while the four pairs are far enough apart that an archer
+ * never substitutes another pair's target. A short and a long bow shoot along each screen axis, so their
+ * arrows compare side by side.
  */
 const LANES = [
-  { archer: { x: 8, y: 6 }, target: { x: 11, y: 6 } },
-  { archer: { x: 20, y: 6 }, target: { x: 17, y: 6 } },
-  { archer: { x: 8, y: 14 }, target: { x: 8, y: 18 } },
-  { archer: { x: 20, y: 18 }, target: { x: 17, y: 14 } },
+  { bow: JOB_ARCHER, archer: { x: 8, y: 6 }, target: { x: 11, y: 6 } },
+  { bow: JOB_ARCHER_LONG, archer: { x: 20, y: 6 }, target: { x: 17, y: 6 } },
+  { bow: JOB_ARCHER_LONG, archer: { x: 8, y: 14 }, target: { x: 8, y: 18 } },
+  { bow: JOB_ARCHER, archer: { x: 20, y: 18 }, target: { x: 17, y: 14 } },
 ] as const;
 
 const { Health, Owner, Position, Projectile, Settler, SettlerProgress, Stance } = components;
@@ -37,7 +38,7 @@ function build(sim: Simulation): void {
     stance.mode = systems.MILITARY_MODE.IGNORE;
     stance.anchorCell = null;
 
-    const archer = spawnSettlerDirect(sim, JOB_ARCHER, lane.archer.x, lane.archer.y, HUMAN_PLAYER);
+    const archer = spawnSettlerDirect(sim, lane.bow, lane.archer.x, lane.archer.y, HUMAN_PLAYER);
     sim.world
       .mut(archer, SettlerProgress)
       .experience.set(systems.FIGHT_EXPERIENCE_TYPE.PERSONAL, systems.fightUnitsOfPoints(MARKSMAN_POINTS));
@@ -81,7 +82,7 @@ export const bowFlightScene: SceneDefinition = {
       predicate: archersHoldTheirLanes,
     },
     {
-      label: 'every passive target has taken a real short-bow hit without falling',
+      label: 'every passive target has taken a real bow hit without falling',
       predicate: (sim) => {
         const targets = combatants(sim, ENEMY_PLAYER);
         return (

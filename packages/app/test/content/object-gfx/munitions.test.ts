@@ -5,6 +5,7 @@ import {
   buildMunitionBinding,
   munitionAtlasStems,
   resolveMunitionRefs,
+  shotLengthLookup,
 } from '../../../src/content/object-gfx/munitions.js';
 
 const ARROW = 1;
@@ -90,5 +91,22 @@ describe('munition sprites', () => {
     expect(binding?.impactSmoke).toBeUndefined();
     expect(buildMunitionBinding(refs, new Set(['ls_smoke.smoke']))).toBeUndefined();
     expect(buildMunitionBinding(resolveMunitionRefs(null), new Set())).toBeUndefined();
+  });
+});
+
+describe('shot lengths', () => {
+  it("draws the long bowman's arrow longer than every other shooter's", () => {
+    const lengths = shotLengthLookup({
+      weapons: [
+        { tribeType: 1, jobType: 40, id: 'short_bow' },
+        { tribeType: 1, jobType: 41, id: 'long_bow' },
+        { tribeType: 2, jobType: 41, id: 'short_bow' },
+      ],
+    });
+    const short = lengths(1, 40);
+    expect(short).toBeLessThan(1);
+    expect(lengths(1, 41)).toBeGreaterThan(1);
+    expect(lengths(2, 41)).toBe(short);
+    expect(lengths(undefined, undefined)).toBe(short);
   });
 });

@@ -6,7 +6,7 @@ import { drawPassOf, spriteDepth } from '../depth.js';
 import { type MutableDrawItem, type MutableSpriteDrawItem, newDrawItem } from '../draw-item.js';
 import type { InHouseOverlay } from '../in-house.js';
 import { BOW_LAUNCH, projectileArc } from '../projectiles/arc.js';
-import { type LaunchContext, shotLaunchOf } from '../projectiles/launch.js';
+import { type LaunchContext, shotLookOf } from '../projectiles/launch.js';
 import { SIGNPOST_BOARD_FRAMES, signpostBoardSteps, signpostBoards } from '../signpost-boards.js';
 import {
   assignStaticFields,
@@ -220,15 +220,12 @@ export function assignProjectileArc(
   const raw = readProjectileOrigin(components);
   const aim = { x: to.x / ONE, y: to.y / ONE };
   const origin = raw === null ? null : { x: raw.x / ONE, y: raw.y / ONE };
-  const arc = projectileArc(
-    current,
-    aim,
-    origin,
-    origin === null ? BOW_LAUNCH : shotLaunchOf(launch, ref, components, origin, aim),
-  );
+  const look = origin === null ? undefined : shotLookOf(launch, ref, components, origin, aim);
+  const arc = projectileArc(current, aim, origin, look?.launch ?? BOW_LAUNCH);
   item.x = arc.x;
   item.y = arc.y;
   item.rotation = arc.rotation;
+  if (look !== undefined) item.shotLength = look.length;
   const munition = readProjectileMunition(components);
   if (munition !== null) item.munition = munition;
   if (readProjectileSiege(components)) item.siege = true;

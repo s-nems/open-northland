@@ -3,6 +3,11 @@ import type { AtlasFrame, BuildTimeSheet } from '../../../data/sprites/index.js'
 import type { GroundFootPart } from '../../ground-foot/index.js';
 import type { ClothWind } from '../../sway/cloth-wind.js';
 
+export interface LayerStretch {
+  readonly along: number;
+  readonly by: number;
+}
+
 /** One resolved atlas layer to draw: which source page, which frame rect, at what scale.
  *  `atlasW`/`atlasH` are the source sheet's pixel size, needed only by a vehicle's paletted mesh, which
  *  samples its atlas by UV. */
@@ -17,6 +22,9 @@ export interface ResolvedLayer {
    *  another record moved from the same one only needs placing. */
   readonly movedFrom?: ResolvedLayer;
   readonly shear?: number;
+  /** A plain layer drawn `by` times as long along the screen direction `along` (radians, y down), about
+   *  the middle of its frame; its extent across that direction keeps the authored pixels. */
+  readonly stretch?: LayerStretch;
   /** A frame of a looping landscape record: the entity re-presents on every tick though its item holds
    *  still. */
   readonly clocked?: true;

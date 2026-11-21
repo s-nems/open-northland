@@ -49,3 +49,8 @@ export function headingValency(rotation: number, count: number): number {
   const turn = (Math.PI / 2 - rotation) / (2 * Math.PI);
   return ((Math.round(turn * count) % count) + count) % count;
 }
+
+/** The screen angle the frame at `valency` points along: {@link headingValency} read backwards. */
+export function valencyHeading(valency: number, count: number): number {
+  return count <= 0 ? 0 : Math.PI / 2 - (valency / count) * 2 * Math.PI;
+}

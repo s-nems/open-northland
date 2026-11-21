@@ -1,4 +1,5 @@
-import type { MunitionBinding, ParticleRef } from '@open-northland/render';
+import type { MunitionBinding, ParticleRef, ShotLengthLookup } from '@open-northland/render';
+import { arrowLengthById, DEFAULT_ARROW_LENGTH } from '../../catalog/arrow-lengths.js';
 import type { ContentIr } from '../ir/rows.js';
 import { particleRef } from './particles.js';
 
@@ -52,4 +53,14 @@ export function buildMunitionBinding(
     trailByMunition: keep(refs.trailByMunition),
     ...(impactSmoke !== undefined ? { impactSmoke } : {}),
   };
+}
+
+/** The drawn arrow length of each `(tribe, job)` whose weapon row draws an arrow of its own. */
+export function shotLengthLookup(ir: ContentIr | null): ShotLengthLookup {
+  const lengths = new Map<string, number>();
+  for (const { tribeType, jobType, id } of ir?.weapons ?? []) {
+    const length = id === undefined ? undefined : arrowLengthById(id);
+    if (length !== undefined) lengths.set(`${tribeType}:${jobType}`, length);
+  }
+  return (tribe, job) => lengths.get(`${tribe}:${job}`) ?? DEFAULT_ARROW_LENGTH;
 }

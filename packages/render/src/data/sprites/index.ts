@@ -58,6 +58,7 @@ export {
   type MunitionBinding,
   type ParticleRef,
   particleFrame,
+  valencyHeading,
 } from './munition.js';
 export { resolveSpriteBobId } from './resolve.js';
 export {

@@ -31,7 +31,12 @@ import { loadIr, loadLayer, MissingAtlasError } from '../ir/load.js';
 import { BODY_IMAGELIB } from '../ir/rows.js';
 import { loadedFamilyEffects, resolveFamilyEffects } from '../object-gfx/family-effects.js';
 import { loadedFootfall, resolveFootfall } from '../object-gfx/footfall.js';
-import { buildMunitionBinding, munitionAtlasStems, resolveMunitionRefs } from '../object-gfx/munitions.js';
+import {
+  buildMunitionBinding,
+  munitionAtlasStems,
+  resolveMunitionRefs,
+  shotLengthLookup,
+} from '../object-gfx/munitions.js';
 import { buildPalisadeBinding, palisadeAtlasStems, resolvePalisadeGfxRefs } from '../object-gfx/palisades.js';
 import {
   berryBushAtlasStems,
@@ -268,6 +273,7 @@ export async function loadHumanSpriteSheet(
     inHousePrograms: inHouseProgramLookup(ir, goods),
     ...(craftFxBinding?.byName[HOLY_FIRE_EFFECT_NAME] !== undefined ? { holyFire: holyFireLookup(ir) } : {}),
     firingPosts: firingPostLookup(ir),
+    shotLengths: shotLengthLookup(ir),
     chimneys: chimneyLookup(ir),
     ...(characters !== undefined ? { characters } : {}),
     ...(vehicles.palette !== undefined ? { vehiclePalette: vehicles.palette } : {}),

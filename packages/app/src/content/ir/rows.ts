@@ -267,6 +267,8 @@ export interface ContentIr {
     /** The house records a tribe stands the type as on a footprint of their own. */
     recordFootprints?: readonly BuildingRecordFootprint[];
   }[];
+  /** The `weapontype` rows, narrowed to the keys a shot's drawn look joins by. */
+  readonly weapons?: readonly { tribeType?: number; jobType?: number; id?: string }[];
   /** `baseJob` is the `jobtypes.ini` parent a job's animation lookups fall back through. */
   readonly jobs?: readonly { typeId?: number; id?: string; name?: string; baseJob?: number }[];
   /** The `vehicletype` rows, narrowed to the join keys a mission script names a vehicle by, and the type a

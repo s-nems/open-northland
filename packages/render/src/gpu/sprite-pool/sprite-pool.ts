@@ -1219,6 +1219,7 @@ export class SpritePool {
         ...(this.sheet?.inHousePrograms !== undefined ? { inHousePrograms: this.sheet.inHousePrograms } : {}),
         ...(this.sheet?.holyFire !== undefined ? { holyFire: this.sheet.holyFire } : {}),
         ...(this.sheet?.firingPosts !== undefined ? { firingPosts: this.sheet.firingPosts } : {}),
+        ...(this.sheet?.shotLengths !== undefined ? { shotLengths: this.sheet.shotLengths } : {}),
         ...(frame.portraitRef !== undefined ? { portraitRef: frame.portraitRef } : {}),
         ...(frame.portraitHouse !== undefined ? { portraitHouse: frame.portraitHouse } : {}),
         ...(frame.insetRefs !== undefined ? { insetRefs: frame.insetRefs } : {}),
@@ -1377,6 +1378,7 @@ export class SpritePool {
       ...(this.sheet?.inHousePrograms !== undefined ? { inHousePrograms: this.sheet.inHousePrograms } : {}),
       ...(this.sheet?.holyFire !== undefined ? { holyFire: this.sheet.holyFire } : {}),
       ...(this.sheet?.firingPosts !== undefined ? { firingPosts: this.sheet.firingPosts } : {}),
+      ...(this.sheet?.shotLengths !== undefined ? { shotLengths: this.sheet.shotLengths } : {}),
       ...(this.playerColourOf !== undefined ? { playerColourOf: this.playerColourOf } : {}),
     });
     const frame: PoolFrame = {
