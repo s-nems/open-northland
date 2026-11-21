@@ -2,7 +2,7 @@ import type { AtomicAnimation } from '@open-northland/data';
 import { isWildlife, Settler } from '../../../components/index.js';
 import type { AtomicEffect } from '../../../core/atomic-effect.js';
 import type { Entity, World } from '../../../ecs/world.js';
-import type { SystemContext } from '../../context.js';
+import type { ContentContext, SystemContext } from '../../context.js';
 import {
   atomicAnimationByName,
   atomicClip,
@@ -57,7 +57,7 @@ function soundingClip(
 /** {@link soundingClip} for a settler whose {@link atomicClip} is already resolved as `clip`. */
 export function soundingClipOf(
   world: World,
-  ctx: SystemContext,
+  ctx: ContentContext,
   settler: Entity,
   atomic: SoundingAtomic,
   clip: AtomicAnimation | undefined,

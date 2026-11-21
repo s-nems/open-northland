@@ -1,6 +1,6 @@
 import { type CurrentAtomicState, Settler } from '../../../components/index.js';
 import type { DeepReadonly, Entity, World } from '../../../ecs/world.js';
-import type { SystemContext } from '../../context.js';
+import type { ContentContext } from '../../context.js';
 import {
   ATOMIC_EVENT_TYPE_PUT_GOOD_IN_STOCK,
   atomicClip,
@@ -18,7 +18,7 @@ import { atomicSoundCueTick, soundingClipOf } from './sound-cue.js';
  */
 export function nextAtomicEventTick(
   world: World,
-  ctx: SystemContext,
+  ctx: ContentContext,
   e: Entity,
   running: DeepReadonly<CurrentAtomicState>,
   after: number,

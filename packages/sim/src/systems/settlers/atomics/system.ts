@@ -50,10 +50,10 @@ export const atomicSystem: System = (world, ctx) => {
   // A rule only a command changes, so it holds for the whole pass.
   const needsOn = needsEnabled(world);
   const schedule = atomicSchedule(world);
-  schedule.begin(ctx.tick);
+  schedule.begin(ctx.tick, ctx.content);
   for (let e = schedule.next(); e !== NO_ATOMIC; e = schedule.next()) {
     advanceAtomic(world, ctx, e, needsOn, pendingReactions);
-    schedule.settle(ctx, e);
+    schedule.settle(e);
   }
   applyPendingHitReactions(world, pendingReactions);
 };

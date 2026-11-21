@@ -1,7 +1,8 @@
+import type { ContentSet } from '@open-northland/data';
 import { AtomicClock, CurrentAtomic, Person, Settler } from '../../../components/index.js';
 import type { ChangeFeed } from '../../../ecs/change-feed.js';
 import type { Entity, World } from '../../../ecs/world.js';
-import type { SystemContext } from '../../context.js';
+import type { ContentContext } from '../../context.js';
 import { nextAtomicEventTick } from './next-event.js';
 
 /** What {@link AtomicSchedule.next} returns once the pass has nothing left; entity ids start at 1. */
@@ -15,13 +16,16 @@ const INITIAL_PASS_CAPACITY = 256;
  * ({@link nextAtomicEventTick}), and those whose record, clock or settler identity changed since they
  * were last visited. A pass hands them out in the `CurrentAtomic` store's insertion order, as a walk of
  * the whole store would, including an atomic that starts while the pass runs. Derived from the stores
- * alone: a fresh schedule, as after a load, visits every atomic once and files it from there.
+ * alone: a fresh schedule, as after a load or a content swap, visits every atomic once and files it from
+ * there.
  */
 class AtomicSchedule {
   private readonly due = new Map<number, Entity[]>();
   /** The tick of the last pass; any other predecessor makes the next pass walk the whole store. */
   private through: number | undefined;
   private tick = 0;
+  /** The content the filed ticks were read off. */
+  private ctx: ContentContext | undefined;
   /** This pass's atomics, their first {@link count} slots, ascending by {@link seqs}. */
   private entities = new Int32Array(INITIAL_PASS_CAPACITY);
   private seqs = new Float64Array(INITIAL_PASS_CAPACITY);
@@ -40,9 +44,13 @@ class AtomicSchedule {
     private readonly feed: ChangeFeed,
   ) {}
 
-  /** Start the pass of `tick`. */
-  begin(tick: number): void {
+  /** Start the pass of `tick` over `content`. */
+  begin(tick: number, content: ContentSet): void {
     const world = this.world;
+    if (this.ctx?.content !== content) {
+      this.ctx = { content };
+      this.through = undefined;
+    }
     this.tick = tick;
     this.count = 0;
     this.at = 0;
@@ -98,8 +106,9 @@ class AtomicSchedule {
   }
 
   /** File the atomic `e` just advanced, if it runs on, under the tick of its next event. */
-  settle(ctx: SystemContext, e: Entity): void {
-    const world = this.world;
+  settle(e: Entity): void {
+    const { world, ctx } = this;
+    if (ctx === undefined) return;
     // An atomic started anew in its own visit comes back through the feed.
     if (world.insertionSeqOf(e, CurrentAtomic) !== this.currentSeq) return;
     const clock = world.get(e, AtomicClock);
@@ -159,6 +168,32 @@ class AtomicSchedule {
     this.order = new Uint32Array(capacity);
   }
 
+  /** The `verifyCaches` tripwire: an atomic with no change pending is filed by its next event's tick. */
+  verify(): string[] {
+    const { world, ctx, through } = this;
+    if (ctx === undefined || through === undefined) return [];
+    const pending = new Set<Entity>();
+    if (this.feed.peek((e) => pending.add(e))) return [];
+    const filed = new Map<Entity, number>();
+    for (const [tick, list] of this.due) {
+      for (const e of list) filed.set(e, Math.min(tick, filed.get(e) ?? Number.POSITIVE_INFINITY));
+    }
+    const violations: string[] = [];
+    for (const e of world.query(CurrentAtomic)) {
+      if (pending.has(e)) continue;
+      const clock = world.get(e, AtomicClock);
+      const elapsed = 'startedAt' in clock ? through - clock.startedAt : undefined;
+      const next =
+        elapsed === undefined
+          ? through + 1
+          : through + nextAtomicEventTick(world, ctx, e, world.get(e, CurrentAtomic), elapsed) - elapsed;
+      if ((filed.get(e) ?? Number.POSITIVE_INFINITY) > next) {
+        violations.push(`atomicSchedule: the atomic of ${e} is filed past its next event, tick ${next}`);
+      }
+    }
+    return violations;
+  }
+
   private file(e: Entity, tick: number): void {
     const list = this.due.get(tick);
     if (list === undefined) this.due.set(tick, [e]);
@@ -177,6 +212,7 @@ export function atomicSchedule(world: World): AtomicSchedule {
     const stores = [CurrentAtomic, AtomicClock, Settler, Person];
     schedule = new AtomicSchedule(world, world.watchChanges(stores, [CurrentAtomic, AtomicClock, Settler]));
     schedules.set(world, schedule);
+    world.registerCacheVerifier('atomicSchedule', () => schedules.get(world)?.verify() ?? []);
   }
   return schedule;
 }
