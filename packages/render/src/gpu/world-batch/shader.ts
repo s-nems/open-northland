@@ -105,6 +105,7 @@ uniform mat3 uProjectionMatrix;
 uniform mat3 uWorldTransformMatrix;
 uniform vec4 uWorldColorAlpha;
 uniform vec2 uResolution;
+const vec4 HIDDEN_POSITION = vec4(2.0, 2.0, 2.0, 1.0);
 
 void main(void) {
   vColor = vec4(aColor.rgb * aColor.a, aColor.a) * uWorldColorAlpha;
@@ -122,6 +123,9 @@ void main(void) {
   if (aTextureIdAndRound.x == 1.0) {
     gl_Position.xy = (floor(((gl_Position.xy * 0.5 + 0.5) * uResolution) + 0.5) / uResolution) * 2.0 - 1.0;
   }
+  // An element hidden by zero alpha draws zero colour and lit mask on every fragment path, and a cover
+  // of it discards; folding its corners onto one point outside the clip volume rasterizes none of them.
+  if (vColor == vec4(0.0)) gl_Position = HIDDEN_POSITION;
 }`;
 
 /**
