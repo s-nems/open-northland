@@ -115,9 +115,20 @@ export function buildingBlockerCells(
   const fp = houseFootprintOf(content, b);
   const body = buildingFlagBody(content, b);
   const zone = fp?.reserved.length ? fp.reserved : ANCHOR_ONLY;
-  for (const c of body) visit(hx + footprintCellDx(hy, c), hy + c.dy, OBSTACLE);
-  for (const c of zone) visit(hx + footprintCellDx(hy, c), hy + c.dy, BUILDING_ZONE);
-  for (const c of upgradeReserveCells(content, b)) {
+  for (let i = 0; i < body.length; i++) {
+    const c = body[i];
+    if (c === undefined) continue;
+    visit(hx + footprintCellDx(hy, c), hy + c.dy, OBSTACLE);
+  }
+  for (let i = 0; i < zone.length; i++) {
+    const c = zone[i];
+    if (c === undefined) continue;
+    visit(hx + footprintCellDx(hy, c), hy + c.dy, BUILDING_ZONE);
+  }
+  const reserveCells = upgradeReserveCells(content, b);
+  for (let i = 0; i < reserveCells.length; i++) {
+    const c = reserveCells[i];
+    if (c === undefined) continue;
     visit(hx + footprintCellDx(hy, c), hy + c.dy, UPGRADE_RESERVE);
   }
 }

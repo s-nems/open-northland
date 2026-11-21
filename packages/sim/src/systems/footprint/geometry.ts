@@ -139,6 +139,10 @@ export function reservedZoneOf(
   const zone = new Set<NodeId>(translatedCells(terrain, cells, anchorHx, anchorHy));
   if (zone.size === 0) return undefined;
   let reach = 0;
-  for (const c of cells) reach = Math.max(reach, footprintCellMaxAbsDx(c), Math.abs(c.dy));
+  for (let i = 0; i < cells.length; i++) {
+    const c = cells[i];
+    if (c === undefined) continue;
+    reach = Math.max(reach, footprintCellMaxAbsDx(c), Math.abs(c.dy));
+  }
   return { zone, reach };
 }

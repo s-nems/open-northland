@@ -272,7 +272,8 @@ export class ChaseStands {
     if (view === undefined) return;
     const { world, content } = view;
     const terrain = this.terrain;
-    for (const e of view.requests) {
+    for (let i = 0; i < view.requests.length; i++) {
+      const e = view.requests[i] as Entity;
       if (!world.isAlive(e) || world.has(e, PathFollow) || !hasBodyCollision(world, content, e)) continue;
       const p = world.tryGet(e, Position);
       if (p === undefined) continue;
@@ -280,7 +281,9 @@ export class ChaseStands {
       const hy = nodeHyOfPosition(p.x, p.y);
       if (terrain.inBounds(hx, hy)) this.hold(terrain.nodeAt(hx, hy), e, EVERY_PLAYER);
     }
-    for (const e of world.canonicalQuery(Engagement, MoveGoal)) {
+    const engagements = world.canonicalQuery(Engagement, MoveGoal);
+    for (let i = 0; i < engagements.length; i++) {
+      const e = engagements[i] as Entity;
       if (!world.has(e, PathFollow)) continue;
       const goal = world.get(e, MoveGoal).cell;
       if (world.get(e, PathRoute).waypoints.at(-1)?.node !== goal) continue;

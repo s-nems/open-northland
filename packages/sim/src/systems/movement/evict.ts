@@ -55,12 +55,18 @@ export function evictSettlersFromCells(
   const evicteesUnsorted: Entity[] = [];
   const nookCandidates = new Set<Entity>();
   for (const cell of body) {
-    for (const e of byNode.at(terrain.xOf(cell), terrain.yOf(cell))) {
+    const atCell = byNode.at(terrain.xOf(cell), terrain.yOf(cell));
+    for (let j = 0; j < atCell.length; j++) {
+      const e = atCell[j] as Entity;
       if (evictable(e)) evicteesUnsorted.push(e);
     }
-    for (const n of terrain.neighbours(cell)) {
+    const neighbours = terrain.neighbours(cell);
+    for (let j = 0; j < neighbours.length; j++) {
+      const n = neighbours[j] as NodeId;
       if (body.has(n)) continue;
-      for (const e of byNode.at(terrain.xOf(n), terrain.yOf(n))) {
+      const atNeighbour = byNode.at(terrain.xOf(n), terrain.yOf(n));
+      for (let k = 0; k < atNeighbour.length; k++) {
+        const e = atNeighbour[k] as Entity;
         if (evictable(e)) nookCandidates.add(e);
       }
     }
@@ -83,7 +89,8 @@ export function evictSettlersFromCells(
   // Travellers count too, since a landing must not stack on anyone.
   const occupancy = byNode;
   const claimed = new Set<NodeId>();
-  for (const e of evictees) {
+  for (let i = 0; i < evictees.length; i++) {
+    const e = evictees[i] as Entity;
     const free = nearestFreeCellOutside(
       terrain,
       entityNode(world, terrain, e),

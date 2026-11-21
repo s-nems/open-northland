@@ -90,7 +90,8 @@ export function nearestRankedCell(
   let best: NodeId | null = null;
   let bestLength = Number.POSITIVE_INFINITY;
   let bestCell = Number.POSITIVE_INFINITY;
-  for (const cell of candidates) {
+  for (let i = 0; i < candidates.length; i++) {
+    const cell = candidates[i] as NodeId;
     const span = manhattan(terrain, from, cell);
     if (!closer(leastRankLengthTo(terrain, walk, cell, span), cell, bestLength, bestCell)) continue;
     if (accept !== undefined && !accept(cell)) continue;

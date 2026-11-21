@@ -63,7 +63,10 @@ export const animalWanderSystem: System = (world, ctx) => {
   // that are stacked or leashed livestock. Only MoveGoal writes happen here, and the index replays them
   // at the next pass.
   const fields = grazingFields(world, ctx.content, terrain);
-  for (const e of fields.wanderers) {
+  const wanderers = fields.wanderers;
+  for (let i = 0; i < wanderers.length; i++) {
+    const e = wanderers[i];
+    if (e === undefined) continue;
     // Un-stack before any graze roll: an animal inside another keeper's field steps to the nearest free
     // spot with the leash ignored, since getting off a shared field beats staying strictly inside the
     // territory. The sidestep draws no rng; the `continue` drops this animal's cadence roll for the tick.

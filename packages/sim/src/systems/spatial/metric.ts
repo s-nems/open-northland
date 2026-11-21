@@ -92,7 +92,8 @@ export function nearestHexCell(
   let best: NodeId | null = null;
   let bestDist = Number.POSITIVE_INFINITY;
   let bestCell = Number.POSITIVE_INFINITY;
-  for (const cell of candidates) {
+  for (let i = 0; i < candidates.length; i++) {
+    const cell = candidates[i] as NodeId;
     const dist = hexDistanceBetween(fx, fy, terrain.xOf(cell), terrain.yOf(cell));
     if (!closer(dist, cell, bestDist, bestCell) || (accept !== undefined && !accept(cell))) continue;
     best = cell;

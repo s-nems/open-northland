@@ -137,13 +137,17 @@ export function startBlockerJournal<V extends number>(
 
   return {
     catchUp: () => {
-      for (const store of BLOCKER_STORES) {
+      for (let i = 0; i < BLOCKER_STORES.length; i++) {
+        const store = BLOCKER_STORES[i] as BlockerStore;
         const gen = world.componentGeneration(store.component);
         const held = gens.get(store.component) ?? 0;
         if (gen === held) continue;
         const deltas = world.membershipDeltasSince(store.component, held);
         if (deltas === null) return false;
-        for (const e of deltas) resync(store, e);
+        for (let j = 0; j < deltas.length; j++) {
+          const e = deltas[j] as Entity;
+          resync(store, e);
+        }
         gens.set(store.component, gen);
       }
       const valueGen = world.componentValueGeneration(Building);

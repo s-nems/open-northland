@@ -295,7 +295,10 @@ export class CorridorRoutes {
 
   private closeCorridor(): void {
     const bytes = this.blocks.bytes;
-    for (const cluster of this.opened) this.regions.fillCluster(bytes, cluster, OUTSIDE);
+    for (let i = 0; i < this.opened.length; i++) {
+      const cluster = this.opened[i] as number;
+      this.regions.fillCluster(bytes, cluster, OUTSIDE);
+    }
     this.opened.length = 0;
   }
 }

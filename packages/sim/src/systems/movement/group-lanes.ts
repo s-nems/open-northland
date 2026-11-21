@@ -76,7 +76,9 @@ export class GroupLanes {
       const remaining = latticeDistanceTo(terrain, gx, gy, at);
       let chosen: NodeId | undefined;
       let deviation = Number.POSITIVE_INFINITY;
-      for (const step of this.edgesAt(blocked, at)) {
+      const steps = this.edgesAt(blocked, at);
+      for (let i = 0; i < steps.length; i++) {
+        const step = steps[i] as LaneStep;
         if (step.weight > maxWeight) continue;
         if (fx.add(step.cost, latticeDistanceTo(terrain, gx, gy, step.node)) !== remaining) continue;
         const side = Math.abs((step.x - sx) * dy - (step.y - sy) * dx);

@@ -489,7 +489,8 @@ export function drainPathRequests(
   if (requests.length === 0) return;
   const drain = pathDrainOf(world, ctx, terrain);
   const { spent, claimedStandIns } = drain;
-  for (const e of requests) {
+  for (let i = 0; i < requests.length; i++) {
+    const e = requests[i] as Entity;
     // A player order must not trickle into motion in entity-id order. Sharing cuts its search cost,
     // but a member too far from a corridor still receives its own route in this tick.
     const playerOrdered = world.has(e, PlayerOrder);

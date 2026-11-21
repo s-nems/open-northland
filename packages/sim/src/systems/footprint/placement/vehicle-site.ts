@@ -261,12 +261,16 @@ function landObjection(
 ): Objection {
   const body = bodyNodes(terrain, site.footprint, hx, hy);
   if (body === null) return 'blocked';
-  for (const node of body) if (parked.has(node)) return 'occupied';
+  for (let i = 0; i < body.length; i++) {
+    const node = body[i] as NodeId;
+    if (parked.has(node)) return 'occupied';
+  }
   if (!canPlaceBuilding(world, ctx, terrain, site.house.typeId, site.tribe, hx, hy)) return 'blocked';
   const point = workPoint(terrain, site.footprint, hx, hy);
   if (point === null || terrain.componentOf(point) !== workerContinent) return 'blocked';
   const clearance = vehicleClearance(world, ctx, terrain);
-  for (const node of body) {
+  for (let i = 0; i < body.length; i++) {
+    const node = body[i] as NodeId;
     if (clearance.classOf(node) < vehicle.logicSize) return 'blocked';
   }
   return 'none';

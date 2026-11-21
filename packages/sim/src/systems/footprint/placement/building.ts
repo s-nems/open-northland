@@ -44,7 +44,9 @@ function canPlaceAnchor(
   // 1. Reserved zone - the max-level body plus the source's margin ring: on the map, on buildable ground,
   //    clear of OBSTACLE nodes and other buildings' reserved zones, so two buildings' reserved rings never
   //    overlap. Vehicles and signposts are discounted: placement pushes them aside.
-  for (const c of footprint.reserved) {
+  for (let i = 0; i < footprint.reserved.length; i++) {
+    const c = footprint.reserved[i];
+    if (c === undefined) continue;
     const cx = x + footprintCellDx(y, c);
     const cy = y + c.dy;
     if (cx < 0 || cy < 0 || cx >= w || cy >= h) return false;
@@ -55,7 +57,9 @@ function canPlaceAnchor(
   // 2. Family body, the largest body the level chain reaches: clear of resource EXCLUSION zones and wall
   //    bodies, so placing level 0 already reserves the top level's space. familyBody ⊆ reserved, so loop 1
   //    already proved every cell in-bounds; the guard only shields a hand-authored footprint that breaks that.
-  for (const c of footprint.familyBody) {
+  for (let i = 0; i < footprint.familyBody.length; i++) {
+    const c = footprint.familyBody[i];
+    if (c === undefined) continue;
     const cx = x + footprintCellDx(y, c);
     const cy = y + c.dy;
     if (cx < 0 || cy < 0 || cx >= w || cy >= h) continue;

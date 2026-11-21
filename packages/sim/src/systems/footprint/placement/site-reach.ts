@@ -78,11 +78,15 @@ function sourceRows(world: World, player: number): SourceRows {
     else row.push(nodeHxOfPosition(p.x, p.y));
   };
   if (isValidPlayer(player)) {
-    for (const e of ownedSettlers(world, player)) {
+    const settlers = ownedSettlers(world, player);
+    for (let j = 0; j < settlers.length; j++) {
+      const e = settlers[j] as Entity;
       const health = world.tryGet(e, Health);
       if (health === undefined || health.hitpoints > 0) add(e);
     }
-    for (const e of ownedBuildings(world, player)) {
+    const buildings = ownedBuildings(world, player);
+    for (let j = 0; j < buildings.length; j++) {
+      const e = buildings[j] as Entity;
       if (!world.has(e, UnderConstruction) || world.has(e, Upgrading)) add(e);
     }
     for (const e of world.query(Signpost, Owner)) {

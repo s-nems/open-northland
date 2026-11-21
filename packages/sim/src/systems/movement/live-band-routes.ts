@@ -45,7 +45,10 @@ export function liveBandRoutes(
   const routes: NodeId[][] = [];
   const marks = nodeMarksOf(terrain);
   const taken = marks.next();
-  for (const e of world.canonicalQuery(PlayerOrder)) {
+  const playerOrders = world.canonicalQuery(PlayerOrder);
+  for (let i = 0; i < playerOrders.length; i++) {
+    const e = playerOrders[i];
+    if (e === undefined) continue;
     if (routes.length >= MAX_LIVE_BAND_ROUTES) break;
     if (world.tryGet(e, Owner)?.player !== player) continue;
     if ((world.get(e, PlayerOrder).attackMove !== undefined) !== marching) continue;
@@ -57,7 +60,10 @@ export function liveBandRoutes(
     if (hasBodyCollision(world, content, e) !== collides) continue;
     const path = latticePath(terrain, stops, next, blocked);
     if (path === null || path.length < LIVE_ROUTE_MIN_NODES) continue;
-    for (const node of path) marks.stamps[node] = taken;
+    for (let j = 0; j < path.length; j++) {
+      const node = path[j] as NodeId;
+      marks.stamps[node] = taken;
+    }
     routes.push(path);
   }
   return routes;
