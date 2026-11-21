@@ -23,8 +23,13 @@ export interface AiSeatReading extends systems.SeatStrategyView {
   readonly work: SeatWork;
 }
 
-/** The sim's last answer on a computer seat's apprentices; undefined until one landed. */
-export type ApprenticesOf = (player: number) => readonly systems.ApprenticeView[] | undefined;
+/** The sim's last answers on a computer seat; each undefined until one landed. */
+export interface SeatAnswers {
+  readonly apprentices: (player: number) => readonly systems.ApprenticeView[] | undefined;
+  readonly intel: (player: number) => systems.SeatIntelView | null | undefined;
+}
+
+const NO_ANSWERS: SeatAnswers = { apprentices: () => undefined, intel: () => undefined };
 
 /** The goods whose deposits the band table sums, in row order. */
 const BAND_GOOD_IDS: readonly string[] = ['wood', 'stone', 'mud'];
@@ -38,11 +43,11 @@ function isDifficulty(value: unknown): value is components.ComputerDifficulty {
 
 /** Every seat whose lowest-id `AiControl` carrier lets the computer controller run, ascending by slot,
  *  with its saved strategy, its seat brief, its mind and its work. Reads the indexed carriers and
- *  lessons, never the entity list. */
+ *  lessons, never the entity list; the seat's memory and apprentices come from `answers`. */
 export function readAiSeats(
   snapshot: WorldSnapshot,
   scripts: AiScriptInputs | null,
-  apprenticesOf: ApprenticesOf = () => undefined,
+  answers: SeatAnswers = NO_ANSWERS,
 ): AiSeatReading[] {
   const scan = entitiesWith(snapshot, 'MapBrief')[0]?.components.MapBrief as
     | components.MapBriefView
@@ -65,8 +70,15 @@ export function readAiSeats(
       difficulty: control.difficulty,
       strategy: strategy ?? null,
       brief: brief === null ? null : systems.seatBriefOf(brief, player),
-      mind: readSeatMind(snapshot.tick, carrier, player, brief, scripts, pupils.get(player)),
-      work: readSeatWork(snapshot, carrier, scripts?.content ?? null, apprenticesOf(player)),
+      mind: readSeatMind(
+        snapshot.tick,
+        answers.intel(player) ?? null,
+        player,
+        brief,
+        scripts,
+        pupils.get(player),
+      ),
+      work: readSeatWork(snapshot, carrier, scripts?.content ?? null, answers.apprentices(player)),
     });
   }
   return seats.sort((a, b) => a.player - b.player);

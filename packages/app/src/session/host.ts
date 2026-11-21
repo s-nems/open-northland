@@ -234,6 +234,8 @@ export interface SessionHost {
   standsTo(entity: Entity): Promise<boolean>;
   /** The discoveries computer seat `player` earns ahead of time and the man pinned on each; admin debug. */
   computerApprentices(player: number): Promise<readonly systems.ApprenticeView[]>;
+  /** What computer seat `player` remembers of the other seats, null before its first intel pass; admin debug. */
+  computerIntel(player: number): Promise<systems.SeatIntelView | null>;
   /** Whether an unload order would set the vehicle's riders down here: a door point on land. */
   canUnloadPeople(vehicle: Entity): Promise<boolean>;
   /** Why a tradesman works or stands idle; undefined when no status applies. */

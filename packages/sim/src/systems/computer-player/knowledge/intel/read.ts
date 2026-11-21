@@ -1,7 +1,6 @@
 import {
   aiControlEntity,
   ComputerIntel,
-  type ComputerIntelSnapshot,
   type ComputerIntelState,
   diplomacyStance,
   type IntelBuilding,
@@ -170,9 +169,23 @@ export interface SeatIntelSummary {
   readonly zones: number;
 }
 
-/** A plain-data digest of one seat's memory at `tick`; takes the `ComputerIntel` component as a snapshot
- *  carries it, so a debug view can feed it a snapshot's copy. */
-export function summarizeIntel(intel: DeepReadonly<ComputerIntelSnapshot>, tick: number): SeatIntelSummary {
+/** One seat's memory as a debug view reads it: detached plain data, as of {@link tick}. */
+export interface SeatIntelView {
+  readonly tick: number;
+  readonly summary: SeatIntelSummary;
+  /** Per map-brief zone, row-major, the last tick the seat saw into it, else `NEVER_SEEN`. */
+  readonly zoneSeenAt: readonly number[];
+}
+
+/** {@link SeatIntelView} of `seat` at `tick`; null before the seat's first intel pass. */
+export function seatIntelView(world: World, seat: number, tick: number): SeatIntelView | null {
+  const intel = intelOf(world, seat);
+  if (intel === undefined) return null;
+  return { tick, summary: summarizeIntel(intel, tick), zoneSeenAt: [...intel.zoneSeenAt] };
+}
+
+/** A plain-data digest of one seat's memory at `tick`. */
+function summarizeIntel(intel: IntelView, tick: number): SeatIntelSummary {
   const owners = new Map<number, { buildings: number; unseenBuildings: number; posts: number }>();
   const tally = (owner: number) => {
     let held = owners.get(owner);

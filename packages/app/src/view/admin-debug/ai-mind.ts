@@ -1,7 +1,6 @@
 import type { ContentSet, MapAiSeat } from '@open-northland/data';
 import {
   components,
-  type EntitySnapshot,
   entitiesWith,
   type MissionScript,
   systems,
@@ -32,11 +31,13 @@ export interface PupilCount {
   readonly count: number;
 }
 
-/** What a computer seat knows and intends beyond its economy, as the snapshot and the scripts hold it. */
+/** What a computer seat knows and intends beyond its economy, as the sim's answer, the snapshot and the
+ *  scripts hold it. */
 export interface SeatMind {
   readonly tick: number;
-  /** Null before the seat's first intel pass. */
-  readonly intel: systems.SeatIntelSummary | null;
+  /** The sim's last answer, with the tick its ages count from; null before one landed and before the
+   *  seat's first intel pass. */
+  readonly intel: systems.SeatIntelView | null;
   /** The other seats' start zones, stalest first, at most {@link STALE_ZONES_SHOWN}. */
   readonly staleZones: readonly StaleZone[];
   /** Null without the scripts to read. */
@@ -67,21 +68,20 @@ export function pupilsBySeat(snapshot: WorldSnapshot): Map<number, Map<number, n
   return bySeat;
 }
 
-/** One seat's mind off its `AiControl` carrier, the map brief and the session's scripts. */
+/** One seat's mind off the sim's answer on its memory, the map brief and the session's scripts. */
 export function readSeatMind(
   tick: number,
-  carrier: EntitySnapshot,
+  intel: systems.SeatIntelView | null,
   player: number,
   brief: components.MapBriefView | null,
   scripts: AiScriptInputs | null,
   pupils: ReadonlyMap<number, number> | undefined,
 ): SeatMind {
-  const intel = carrier.components.ComputerIntel as components.ComputerIntelSnapshot | undefined;
   const territory = systems.seatTerritoryOf(brief, player);
   return {
     tick,
-    intel: intel === undefined ? null : systems.summarizeIntel(intel, tick),
-    staleZones: intel === undefined || brief === null ? [] : staleStartZones(brief, intel, player, tick),
+    intel,
+    staleZones: intel === null || brief === null ? [] : staleStartZones(brief, intel, player),
     intent:
       scripts === null
         ? null
@@ -107,9 +107,8 @@ export function readSeatMind(
 /** The other seats' start zones, never seen first, then the longest unseen; ties to the lower slot. */
 function staleStartZones(
   brief: components.MapBriefView,
-  intel: components.ComputerIntelSnapshot,
+  intel: systems.SeatIntelView,
   player: number,
-  tick: number,
 ): StaleZone[] {
   const zones = brief.seats
     .filter((start) => start.player !== player)
@@ -119,7 +118,7 @@ function staleStartZones(
       return {
         player: start.player,
         zone,
-        staleTicks: seenAt === components.NEVER_SEEN ? null : tick - seenAt,
+        staleTicks: seenAt === components.NEVER_SEEN ? null : intel.tick - seenAt,
       };
     });
   const age = (z: StaleZone): number => z.staleTicks ?? Number.POSITIVE_INFINITY;
@@ -197,14 +196,15 @@ export function intelTables(mind: SeatMind, ownPoints: number | null, msgs: Mess
   const copy = msgs.admin.ai;
   const player = (p: number): string => formatMessage(copy.player, { player: p });
   const forces: string[][] = [[copy.own, count(ownPoints), NO_VALUE, NO_VALUE, NO_VALUE, NO_VALUE]];
-  for (const owner of mind.intel?.owners ?? []) {
+  const intel = mind.intel;
+  for (const owner of intel?.summary.owners ?? []) {
     forces.push([
       player(owner.owner),
       count(owner.points),
       count(owner.fighters),
       formatMessage(copy.buildingsValue, { buildings: owner.buildings, unseen: owner.unseenBuildings }),
       String(owner.posts),
-      owner.fightersSeenAt === null ? NO_VALUE : minutes(mind.tick - owner.fightersSeenAt),
+      owner.fightersSeenAt === null || intel === null ? NO_VALUE : minutes(intel.tick - owner.fightersSeenAt),
     ]);
   }
   const tables: AdminAiTable[] = [
@@ -213,11 +213,11 @@ export function intelTables(mind: SeatMind, ownPoints: number | null, msgs: Mess
       rows: forces,
     },
   ];
-  if (mind.intel === null) return tables;
+  if (intel === null) return tables;
   tables.push({
     head: [copy.startZone, copy.zone, copy.unseenFor],
     rows: [
-      [copy.zonesSeen, NO_VALUE, `${mind.intel.zonesSeen}/${mind.intel.zones}`],
+      [copy.zonesSeen, NO_VALUE, `${intel.summary.zonesSeen}/${intel.summary.zones}`],
       ...mind.staleZones.map((z) => [
         player(z.player),
         String(z.zone),

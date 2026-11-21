@@ -30,7 +30,6 @@ import {
   rememberedLandPoints,
   SCOUT_LOSS_MEMORY_TICKS,
   scoutLossZones,
-  summarizeIntel,
   UNSEEN_ARMY_GROWTH_LIMIT,
   updateComputerIntel,
 } from '../../../../../src/systems/computer-player/index.js';
@@ -225,10 +224,8 @@ describe('computer seat intel', () => {
     while (sim.tick <= due) sim.step();
     const later = newestOther(sim);
     expect(believed(sim)).toContain(later);
-    const carrier = aiControlEntity(sim.world, SEAT);
-    const intel = carrier === null ? undefined : sim.world.tryGet(carrier, ComputerIntel);
-    if (intel === undefined) throw new Error('the seat has no intel');
-    const summary = summarizeIntel(intel, sim.tick);
+    const summary = sim.computerIntel(SEAT)?.summary;
+    if (summary === undefined) throw new Error('the seat has no intel');
     expect(summary.zonesSeen).toBe(summary.zones);
     expect(summary.owners.map((o) => [o.owner, o.unseenBuildings])).toEqual([[OTHER, 0]]);
   });

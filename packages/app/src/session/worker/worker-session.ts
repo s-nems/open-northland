@@ -588,6 +588,7 @@ class WorkerClient<E> {
       equipPicksForSelection: (...args) => this.ask('equipPicksForSelection', args),
       standsTo: (...args) => this.ask('standsTo', args),
       computerApprentices: (...args) => this.ask('computerApprentices', args),
+      computerIntel: (...args) => this.ask('computerIntel', args),
       canUnloadPeople: (...args) => this.ask('canUnloadPeople', args),
       workStatus: (...args) => this.ask('workStatus', args),
       constructionSupply: (...args) => this.ask('constructionSupply', args),

@@ -1,10 +1,4 @@
-import {
-  type components,
-  type Entity,
-  type systems,
-  TICKS_PER_SECOND,
-  type WorldSnapshot,
-} from '@open-northland/sim';
+import { type components, type systems, TICKS_PER_SECOND, type WorldSnapshot } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import { formatMessage, messages } from '../../../src/i18n/index.js';
 import {
@@ -47,47 +41,25 @@ const BRIEF = {
   ],
 } as unknown as components.MapBriefView;
 
-const INTEL: components.ComputerIntelState = {
-  buildings: [
-    {
-      entity: 50 as Entity,
-      owner: 3,
-      buildingType: 1,
-      hx: 40,
-      hy: 5,
-      seenAt: 100,
-      posted: 2,
-      postedPoints: 20,
-    },
-    {
-      entity: 51 as Entity,
-      owner: 3,
-      buildingType: 2,
-      hx: 42,
-      hy: 5,
-      seenAt: -1,
-      posted: 0,
-      postedPoints: 0,
-    },
-  ],
-  forces: [
-    {
-      player: 3,
-      peak: 4,
-      peakAt: NOW,
-      peakPoints: 40,
-      peakPointsAt: NOW,
-      mostPoints: 40,
-      ownPointsAtMost: 0,
-      lands: [],
-      lastSeenAt: NOW - 3 * MINUTE,
-      lastZone: 1,
-    },
-  ],
+const INTEL: systems.SeatIntelView = {
+  tick: NOW,
+  summary: {
+    owners: [
+      {
+        owner: 3,
+        buildings: 2,
+        unseenBuildings: 1,
+        posts: 1,
+        fighters: 4,
+        points: 40,
+        fightersSeenAt: NOW - 3 * MINUTE,
+        fightersZone: 1,
+      },
+    ],
+    zonesSeen: 3,
+    zones: 4,
+  },
   zoneSeenAt: [NOW, NOW - 2 * MINUTE, NOW, -1],
-  scout: null,
-  scoutLostAt: [-1, -1, -1, -1],
-  scoutTurnedBackAt: [-1, -1, -1, -1],
 };
 
 describe('AI mind rows', () => {
@@ -117,14 +89,7 @@ describe('AI mind rows', () => {
   });
 
   it('weighs own points against each remembered seat and lists the stalest start zones', () => {
-    const mind = readSeatMind(
-      NOW,
-      { id: 1, components: { ComputerIntel: INTEL } },
-      2,
-      BRIEF,
-      null,
-      undefined,
-    );
+    const mind = readSeatMind(NOW, INTEL, 2, BRIEF, null, undefined);
     // Seat 4's zone was never seen, so it leads; seat 3's is two minutes stale.
     expect(mind.staleZones).toEqual([
       { player: 4, zone: 3, staleTicks: null },

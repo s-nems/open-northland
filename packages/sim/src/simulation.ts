@@ -94,6 +94,7 @@ import {
   SyncDigestRecorder,
   type SyncDigestRecorderOptions,
 } from './simulation/sync-digest.js';
+import { type SeatIntelView, seatIntelView } from './systems/computer-player/knowledge/intel/read.js';
 import {
   type ApprenticeView,
   seatApprenticeViews,
@@ -588,6 +589,12 @@ export class Simulation {
    *  debug view. Reads the world as it stands and issues no command. */
   computerApprentices(player: number): readonly ApprenticeView[] {
     return seatApprenticeViews(this.world, this.context(), player);
+  }
+
+  /** What computer seat `player` remembers of the other seats, for a debug view; null before its first
+   *  intel pass. */
+  computerIntel(player: number): SeatIntelView | null {
+    return seatIntelView(this.world, player, this.tick);
   }
 
   /** {@link signpostProbe}'s verdict over every node of `area`, as plain data. */

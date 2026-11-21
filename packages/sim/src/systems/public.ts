@@ -29,10 +29,10 @@ export {
 // The difficulty profiles, whose craft plans and trimmed build orders the real-content suite resolves too.
 export { AI_PROFILES, profileBuildOrder } from './computer-player/difficulty.js';
 // What a computer seat remembers of the other seats, for a debug view.
-export {
-  type IntelOwnerSummary,
-  type SeatIntelSummary,
-  summarizeIntel,
+export type {
+  IntelOwnerSummary,
+  SeatIntelSummary,
+  SeatIntelView,
 } from './computer-player/knowledge/intel/index.js';
 // What the map's scripts mean for a seat - objectives and scripted attacks - for a debug view; the
 // static part (`seatMapIntentOf`) reads only the scripts and the brief, so a snapshot view can call it.

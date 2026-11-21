@@ -156,8 +156,12 @@ function mountAdminPanel(
   zoomOut: { readonly unlocked: () => boolean; readonly setUnlocked: (unlocked: boolean) => void },
 ): AdminDebugHandle {
   const { app, canvas, host } = opts;
-  // The AI tab's apprentice read, asked again once the tick moved; the tab reads it once a second.
+  // The AI tab's reads of the sim, asked again once the tick moved; the tab reads them once a second.
   const apprentices = createLastAnswerCache<readonly systems.ApprenticeView[]>({
+    tick: () => host.tick,
+    same: samePlainData,
+  });
+  const intel = createLastAnswerCache<systems.SeatIntelView | null>({
     tick: () => host.tick,
     same: samePlainData,
   });
@@ -217,9 +221,11 @@ function mountAdminPanel(
     setZoomOutUnlocked: zoomOut.setUnlocked,
     ...(opts.paintGood !== undefined ? { paintGood: opts.paintGood } : {}),
     aiSeats: () =>
-      readAiSeats(host.snapshot(), host, (player) =>
-        apprentices.read(`${player}`, () => host.computerApprentices(player), NO_INPUTS, PER_TICK),
-      ),
+      readAiSeats(host.snapshot(), host, {
+        apprentices: (player) =>
+          apprentices.read(`${player}`, () => host.computerApprentices(player), NO_INPUTS, PER_TICK),
+        intel: (player) => intel.read(`${player}`, () => host.computerIntel(player), NO_INPUTS, PER_TICK),
+      }),
   });
 }
 
