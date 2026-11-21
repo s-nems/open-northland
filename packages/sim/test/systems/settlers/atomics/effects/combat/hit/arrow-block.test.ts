@@ -1,10 +1,14 @@
 import { IR_VERSION, parseContentSet } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
 import {
+  Engagement,
   Health,
+  Owner,
   Position,
   Projectile,
   SettlerProgress,
+  Stance,
+  setDiplomacyStance,
   WALK_DIRECTION,
   WalkFacing,
 } from '../../../../../../../src/components/index.js';
@@ -13,6 +17,7 @@ import { type Fixed, fx, positionOfNode, Simulation } from '../../../../../../..
 import { hexNeighboursOf } from '../../../../../../../src/nav/halfcell.js';
 import { projectileSystem } from '../../../../../../../src/systems/conflict/projectile.js';
 import { FIGHT_EXPERIENCE_TYPE } from '../../../../../../../src/systems/index.js';
+import { MILITARY_MODE } from '../../../../../../../src/systems/readviews/index.js';
 import { fixtureTick, nextTickCtxOf } from '../../../../../../fixtures/context.js';
 import { addSettlerOfTribe } from '../../../../../../fixtures/settler.js';
 import { grassCellMap } from '../../../../../../fixtures/terrain.js';
@@ -27,6 +32,12 @@ const PLAIN_SWORD = 8;
 const SWORD_MAIN_TYPE = 3;
 /** A certain block, so every possible block happens. */
 const CERTAIN_PCT = 100;
+/** The shield's ruled chance, which must let some arrows through. */
+const QUARTER_PCT = 25;
+/** Arrows of {@link ARROW_DAMAGE} the victim's {@link HITPOINTS} survive all of. */
+const VOLLEY = 20;
+const SHIELD_PLAYER = 0;
+const ARCHER_PLAYER = 1;
 const BLOCK_SOUND = 80;
 const ARROW = 1;
 const BOW_MAIN_TYPE = 6;
@@ -38,7 +49,7 @@ const HITPOINTS = 1000;
 const VICTIM = { hx: 4, hy: 4 } as const;
 const [EAST, WEST, NORTH_WEST, NORTH_EAST] = hexNeighboursOf(VICTIM.hx, VICTIM.hy);
 
-function content() {
+function content(chancePct = CERTAIN_PCT) {
   return parseContentSet({
     manifest: { version: IR_VERSION, generatedFrom: { data: 'synthetic-arrow-block-test' }, locale: 'eng' },
     goods: [{ typeId: 0, id: 'none' }],
@@ -57,7 +68,7 @@ function content() {
         jobType: SHIELD_BEARER,
         mainType: SWORD_MAIN_TYPE,
         damage: { '0': ARROW_DAMAGE },
-        arrowBlock: { chancePct: CERTAIN_PCT, soundType: BLOCK_SOUND },
+        arrowBlock: { chancePct, soundType: BLOCK_SOUND },
       },
       {
         typeId: PLAIN_SWORD,
@@ -86,8 +97,8 @@ function settlerAt(sim: Simulation, at: { x: Fixed; y: Fixed }, tribe: number, j
   return e;
 }
 
-function setup(victimJob: number) {
-  const sim = new Simulation({ seed: 1, content: content(), map: grassCellMap(6, 6) });
+function setup(victimJob: number, chancePct = CERTAIN_PCT) {
+  const sim = new Simulation({ seed: 1, content: content(chancePct), map: grassCellMap(6, 6) });
   const shooter = settlerAt(sim, positionOfNode(0, 0), ARCHER_TRIBE, IDLE);
   const victim = settlerAt(sim, positionOfNode(VICTIM.hx, VICTIM.hy), SHIELD_TRIBE, victimJob);
   sim.world.add(victim, WalkFacing, { direction: WALK_DIRECTION.E, target: WALK_DIRECTION.E });
@@ -154,6 +165,29 @@ describe('a weapon with a block chance stops an arrow', () => {
     expect(sim.rng.getState()).toBe(rolls);
     expect(events.map((e) => e.kind)).toEqual(['projectileHit']);
     expect(sim.world.get(victim, Health).hitpoints).toBeLessThan(HITPOINTS);
+  });
+
+  it('lets the rest through when its chance is below certain', () => {
+    const { sim, shooter, victim } = setup(SHIELD_BEARER, QUARTER_PCT);
+    const outcomes = Array.from({ length: VOLLEY }, () =>
+      landShot(sim, shooter, victim, EAST).map((e) => e.kind),
+    );
+    const blocked = outcomes.filter((kinds) => kinds.includes('arrowBlocked')).length;
+    const landed = outcomes.filter((kinds) => kinds.includes('projectileHit')).length;
+    expect(blocked).toBeGreaterThan(0);
+    expect(landed).toBeGreaterThan(0);
+    expect(blocked + landed).toBe(VOLLEY);
+  });
+
+  it('still turns its bearer on the shooter', () => {
+    const { sim, shooter, victim } = setup(SHIELD_BEARER);
+    setDiplomacyStance(sim.world, SHIELD_PLAYER, ARCHER_PLAYER, 'enemy');
+    setDiplomacyStance(sim.world, ARCHER_PLAYER, SHIELD_PLAYER, 'enemy');
+    sim.world.add(victim, Owner, { player: SHIELD_PLAYER });
+    sim.world.add(victim, Stance, { mode: MILITARY_MODE.ATTACK, anchorCell: null });
+    sim.world.add(shooter, Owner, { player: ARCHER_PLAYER });
+    expect(landShot(sim, shooter, victim, EAST).map((e) => e.kind)).toEqual(['arrowBlocked']);
+    expect(sim.world.tryGet(victim, Engagement)?.target).toBe(shooter);
   });
 
   it('trains its shooter nothing from a blocked arrow, where a landed one trains him', () => {
