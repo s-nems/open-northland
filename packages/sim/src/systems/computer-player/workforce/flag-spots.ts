@@ -21,7 +21,6 @@ import {
   type WalkDistances,
   WalkFlood,
   walkSeedNear,
-  walkWithinCap,
 } from '../walk-distance.js';
 
 /** A collector's flag stands 2-3 tiles from its resource (authored) - 4..6 half-cell nodes. */
@@ -60,8 +59,8 @@ const ORIGIN_WALK_BUDGET_NODES = 16384;
 /** The same for a computer seat's own posts, whose aimed walks search a corridor rather than a disc
  *  (authored): a target that corridor cannot reach within it ranks by straight distance instead. */
 const AIMED_WALK_BUDGET_NODES = 4096;
-/** The nodes a walk aimed at a resource past the carriers' flood settles before {@link FlagGround.walksWithin}
- *  calls it too far (authored): a corridor round a long ridge, not a disc. */
+/** The nodes a walk on from the carriers' flood, aimed at a resource past it, settles before
+ *  {@link FlagGround.walksWithin} calls it too far (authored): a corridor round a long ridge, not a disc. */
 const AIMED_DETOUR_BUDGET_NODES = 8192;
 /** How many such aimed walks one decision runs (authored): a far bank of rejected trees costs a handful,
  *  not one each. */
@@ -175,7 +174,7 @@ export function flagGround(
       // No ground to walk from, or a pocket behind its building the carriers leave by the door: no measure.
       if (seed.node === null || seed.pocketed) return true;
       // The carriers' own held flood answers near nodes; one it has spent its budget short of gets a walk
-      // aimed at it.
+      // on from it, aimed at the node.
       const flood = held.floodOf(seed.node, ORIGIN_WALK_BUDGET_NODES);
       if (flood.costWithin(node, cap) !== undefined) return true;
       // Settled past the cap, or every walk still open already costs more.
@@ -183,12 +182,10 @@ export function flagGround(
       const key = `${seed.node}:${node}:${cap}`;
       let verdict = aimedVerdicts.get(key);
       if (verdict === undefined) {
-        // Past the decision's allowance, a far candidate counts as too far unmeasured. The walk on from
-        // the flood refuses cheaply what the cap rules out; the walk from the seed decides the rest.
+        // Past the decision's allowance, or the walk's own budget, a far candidate counts as too far.
         verdict =
           aimedVerdicts.size < AIMED_DETOURS_PER_DECISION &&
-          flood.walkOnWithin(node, cap, AIMED_DETOUR_BUDGET_NODES) !== false &&
-          walkWithinCap(terrain, blocked, seed.node, node, cap, AIMED_DETOUR_BUDGET_NODES);
+          flood.walkOnWithin(node, cap, AIMED_DETOUR_BUDGET_NODES) === true;
         aimedVerdicts.set(key, verdict);
       }
       return verdict;
