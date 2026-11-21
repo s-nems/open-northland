@@ -188,4 +188,33 @@ describe('World.canonicalQuery', () => {
       "canonicalQuery(CanonicalQueryP) diverges from the stores - a missed change or a reader's edit",
     ]);
   });
+  it('lends the same members as a canonical query from two arrays it reuses', () => {
+    const w = new World();
+    const rng = new Rng(13);
+    // Both stores exist from the start, so no ask is answered with the shared empty list.
+    const first = w.create();
+    w.add(first, P, { n: 0 });
+    w.add(first, Q, { n: 0 });
+    const entities: Entity[] = [first];
+    const lent = new Set<readonly Entity[]>();
+    for (let step = 0; step < 600; step++) {
+      const roll = rng.int(10);
+      if (roll === 0 || entities.length === 0) {
+        entities.push(w.create());
+      } else {
+        const e = entities[rng.int(entities.length)];
+        if (e === undefined || !w.isAlive(e)) continue;
+        if (roll === 1) w.destroy(e);
+        else if (roll < 5) w.remove(e, roll < 3 ? P : Q);
+        else w.add(e, roll < 8 ? P : Q, { n: step });
+      }
+      const list = w.lentCanonicalQuery(P, Q);
+      lent.add(list);
+      expect(list).toEqual(sortedQuery(w, P, Q));
+      expect(w.canonicalQuery(P, Q)).toEqual(list);
+      expect(w.lentCanonicalQuery(Unused, P)).toEqual([]);
+    }
+    expect(lent.size).toBe(2);
+    expect(w.verifyCaches()).toEqual([]);
+  });
 });

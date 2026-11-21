@@ -28,6 +28,9 @@ interface SortedIds {
    *  the first {@link pendingCount}, the array keeping its storage across settles. */
   readonly pending: Entity[];
   pendingCount: number;
+  /** A lent list's other array: a settle merges into it and swaps it with {@link ids}, so the list its
+   *  one reader held is overwritten two settles later instead of a fresh one being made each time. */
+  spare?: Entity[];
 }
 
 /** One component's members, kept current by every membership change once tracked. */
@@ -59,6 +62,8 @@ interface JointNode {
 export class CanonicalQueries {
   private readonly members = new Map<Component<unknown>, Members>();
   private readonly trie: JointNode = { next: new Map(), joint: null };
+  /** The joints {@link lend} hands out, apart from {@link trie}'s so a snapshot reader never gets one. */
+  private readonly lentTrie: JointNode = { next: new Map(), joint: null };
   private readonly joints: Joint[] = [];
 
   constructor(private readonly stores: Stores) {}
@@ -80,7 +85,18 @@ export class CanonicalQueries {
       settle(m);
       return m.ids;
     }
-    let node = this.trie;
+    return this.joint(this.trie, required, false);
+  }
+
+  /** {@link query} for a reader that drops the list before it next asks or changes a required
+   *  component's membership: the same ids in arrays the joint reuses, so a list whose members change
+   *  every tick is not copied out every tick. */
+  lend(required: readonly Component<unknown>[]): readonly Entity[] {
+    return required.length === 0 ? NO_ENTITIES : this.joint(this.lentTrie, required, true);
+  }
+
+  private joint(root: JointNode, required: readonly Component<unknown>[], lent: boolean): readonly Entity[] {
+    let node = root;
     for (let i = 0; i < required.length; i++) {
       const c = required[i] as Component<unknown>;
       let child = node.next.get(c);
@@ -90,7 +106,7 @@ export class CanonicalQueries {
       }
       node = child;
     }
-    node.joint ??= this.join(required);
+    node.joint ??= this.join(required, lent);
     const joint = node.joint;
     if (joint === null) return NO_ENTITIES;
     settle(joint);
@@ -99,7 +115,7 @@ export class CanonicalQueries {
 
   /** Walks the smallest required member list once and registers the joint with every required component.
    *  Null while a required store does not exist yet. */
-  private join(required: readonly Component<unknown>[]): Joint | null {
+  private join(required: readonly Component<unknown>[], lent: boolean): Joint | null {
     // Asked before any list is tracked or settled: a query naming a component nothing carried yet is
     // repeated every tick, and must not pay the other components' merges to learn it is empty.
     for (const c of required) if (!this.stores.has(c)) return null;
@@ -117,6 +133,7 @@ export class CanonicalQueries {
     if (smallest === null) return null;
     const ids = smallest.ids.filter((e) => carriesAll(stores, e));
     const joint: Joint = { required, stores, ids, pending: [], pendingCount: 0 };
+    if (lent) joint.spare = [];
     for (const m of tracked) if (!m.joints.includes(joint)) m.joints.push(joint);
     this.joints.push(joint);
     return joint;
@@ -190,7 +207,19 @@ function settle(list: SortedIds): void {
   }
   if (!merging) return;
   while (at < ids.length) mergeScratch[n++] = ids[at++] as Entity;
-  list.ids = mergeScratch.slice(0, n);
+  const spare = list.spare;
+  if (spare === undefined) {
+    list.ids = mergeScratch.slice(0, n);
+    return;
+  }
+  // Pushed past its length rather than resized up, so the array stays packed.
+  for (let k = 0; k < n; k++) {
+    if (k < spare.length) spare[k] = mergeScratch[k] as Entity;
+    else spare.push(mergeScratch[k] as Entity);
+  }
+  spare.length = n;
+  list.spare = ids as Entity[];
+  list.ids = spare;
 }
 
 /** Sort the first `count` pending entities ascending, in place. */

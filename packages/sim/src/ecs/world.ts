@@ -303,6 +303,13 @@ export class World {
     return this.canonicalQueries.query(required);
   }
 
+  /** {@link canonicalQuery} in a list lent until the caller next asks for these components or changes the
+   *  membership of one: the world reuses its storage, so a holder past that reads other members. For a
+   *  per-tick census of a list whose members change every tick. */
+  lentCanonicalQuery(...required: Array<Component<unknown>>): readonly Entity[] {
+    return this.canonicalQueries.lend(required);
+  }
+
   /**
    * Ascending-sorted alive entity ids: the canonical order for snapshots, golden hashes, and any system that
    * must *pick* an entity deterministically. Shared and not frozen (a frozen array costs every `for...of`

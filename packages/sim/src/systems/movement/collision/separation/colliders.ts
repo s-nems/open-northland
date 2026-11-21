@@ -25,7 +25,8 @@ export function collectColliders(
   const { movers } = scratch;
   scratch.census++;
   // Ascending id, held by the world across ticks, so the census neither collects nor sorts the walkers.
-  const walkers = world.canonicalQuery(PathFollow, Position);
+  // Lent: walkers start and stop every tick, and the list is read out into the columns below.
+  const walkers = world.lentCanonicalQuery(PathFollow, Position);
   // Before the dormancy exit: a grind ends on arrival, a re-route, or a profession change out of the
   // fighting trades, and none of those walk, so its holder is never a mover.
   // Indexed loops: a for-of over these lists hands out an iterator result per walker that the compiler
