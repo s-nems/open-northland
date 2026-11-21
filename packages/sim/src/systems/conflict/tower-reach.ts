@@ -32,17 +32,18 @@ export function pileUnderEnemyTowers(
   e: Entity,
 ): boolean {
   if (player === undefined) return false;
-  const p = world.tryGet(e, Position);
-  if (p === undefined || !isLoosePile(world, e)) return false;
   const fire = towerFireOf(world, ctx);
   const shooters = shootersAt(world, fire, player);
   if (shooters === 0) return false;
+  const p = world.tryGet(e, Position);
+  if (p === undefined) return false;
   const hx = nodeHxOfPosition(p.x, p.y);
   const hy = nodeHyOfPosition(p.x, p.y);
   for (const bowman of fire.bowmen) {
     if ((shooters & (1 << bowman.owner)) === 0) continue;
     if (hx < bowman.minHx || hx > bowman.maxHx || hy < bowman.minHy || hy > bowman.maxHy) continue;
-    if (nearestWallDistance(bowman.walls, hx, hy) <= bowman.reach) return true;
+    // The pile test last: most asks end at the boxes.
+    if (nearestWallDistance(bowman.walls, hx, hy) <= bowman.reach) return isLoosePile(world, e);
   }
   return false;
 }
@@ -97,18 +98,25 @@ interface TowerFire {
   readonly bowmen: readonly PostedBowman[];
   /** By player, the players of the bowmen who fight that player, as a slot mask, filled on first ask. */
   readonly shooters: Map<number, number>;
+  /** The world mutation version the revision was last read at: no write since, no new revision. */
+  confirmedAt: number;
 }
 
 const towerFires = new WeakMap<World, TowerFire>();
 
 function towerFireOf(world: World, ctx: MapContext): TowerFire {
-  const revision = towerFireRevision(world, ctx);
   const held = towerFires.get(world);
-  if (held !== undefined && held.revision === revision && held.ctx.terrain === ctx.terrain) return held;
+  const mutation = world.mutationVersion;
+  if (held !== undefined && held.confirmedAt === mutation && held.ctx.terrain === ctx.terrain) return held;
+  const revision = towerFireRevision(world, ctx);
+  if (held !== undefined && held.revision === revision && held.ctx.terrain === ctx.terrain) {
+    held.confirmedAt = mutation;
+    return held;
+  }
   if (held === undefined) world.registerCacheVerifier('towerFire', () => verifyTowerFire(world));
   const bowmen: PostedBowman[] = [];
   mannedPostsOf(world, ctx.content).forEachManning((e, post) => keepBowman(world, ctx, bowmen, e, post));
-  const fire: TowerFire = { revision, ctx, bowmen, shooters: new Map() };
+  const fire: TowerFire = { revision, ctx, bowmen, shooters: new Map(), confirmedAt: mutation };
   towerFires.set(world, fire);
   return fire;
 }
