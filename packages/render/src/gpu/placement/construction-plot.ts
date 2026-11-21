@@ -1,10 +1,13 @@
 import { Container, Graphics, GraphicsContext, type Texture } from 'pixi.js';
 import {
+  aabbIntersects,
+  type Box,
   halfCellToScreenX,
   halfCellToScreenY,
   rowStagger,
   TILE_HALF_H,
   TILE_HALF_W,
+  type Viewport,
 } from '../../data/projection/index.js';
 import { type ElevationField, terrainLiftAt } from '../../data/terrain/index.js';
 import type { EntityBounds } from '../sprite-pool/pooled-entity.js';
@@ -38,6 +41,8 @@ const FEATHER: readonly { readonly width: number; readonly alpha: number }[] = [
   { width: 8, alpha: 0.38 },
   { width: 4, alpha: 0.55 },
 ];
+/** World px a feather band reaches past the outline it is stroked along. */
+const FEATHER_REACH = Math.max(...FEATHER.map((band) => band.width)) / 2;
 /** Corner rounding cap in world px. */
 const MAX_CORNER_RADIUS = 12;
 
@@ -49,23 +54,28 @@ interface PickPlot {
 }
 
 export class ConstructionPlotLayer {
-  readonly container = new Container();
-  private readonly g = new Graphics();
+  /** Its own Pixi render group: an island the cull shows or hides rebuilds this short list alone. */
+  readonly container = new Container({ isRenderGroup: true });
+  /** The earth's paint passes, back to front: one per feather band, then the fill. Every island draws
+   *  one decal in each, so a band of one island never paints over a later band or the fill of another. */
+  private readonly passes: readonly Container[];
   /** The list last handed in: the frame loop passes the same array while no plot changed. */
   private drawn: readonly ConstructionPlotFrame[] | null = null;
   /** Signature of the plot set last drawn - an unchanged set skips the rebuild. */
   private key = '';
   private readonly picks = new Map<number, PickPlot>();
-  /** The outlines of the plot islands last drawn, by the ref of each island's first plot. */
-  private islands = new Map<number, IslandOutline>();
+  /** The plot islands last drawn, by the ref of each island's first plot. */
+  private islands = new Map<number, Island>();
+  private culled: Viewport | null = null;
   private pickGeneration = 0;
   private readonly point = { x: 0, y: 0 };
   private elevation: ElevationField | undefined;
 
   /** `earth` tiles over the plots in world px; absent, a flat wash stands in. */
   constructor(private readonly earth?: Texture) {
-    this.g.alpha = earth === undefined ? FALLBACK_ALPHA : EARTH_ALPHA;
-    this.container.addChild(this.g);
+    this.passes = (earth === undefined ? [null] : [...FEATHER, null]).map(() =>
+      this.container.addChild(new Container()),
+    );
   }
 
   /** Redraw the plots for the current set of construction sites; an empty list clears them. */
@@ -98,40 +108,82 @@ export class ConstructionPlotLayer {
     const key = signatureOf(earth);
     if (key === this.key && !elevationChanged) return;
     this.key = key;
-
-    if (elevationChanged) this.islands.clear();
-    const g = this.g.clear();
-    if (earth.length === 0) {
-      this.islands.clear();
-      return;
-    }
-    fillLoops(g.context, this.outlinedLoops(earth, elevation), this.earth);
+    this.drawIslands(earth, elevation, elevationChanged);
   }
 
-  /** Every outline loop of `plots` in {@link plotOutlines}' order, reusing the projected loops of each
-   *  island whose plots held since the last draw, so a site placed or finished outlines its island only. */
-  private outlinedLoops(plots: readonly ConstructionPlotFrame[], elevation: ElevationField): OrderedLoop[] {
-    const drawn = new Map<number, IslandOutline>();
-    const loops: OrderedLoop[] = [];
-    for (const island of plotIslands(plots)) {
-      const first = island[0];
+  /**
+   * Show the islands whose earth reaches `vp` and hide the rest, so the plots drawn follow the screen
+   * and not the map's count of sites. `vp` must cover everything the next render shows.
+   */
+  cull(vp: Viewport): void {
+    const last = this.culled;
+    if (
+      last !== null &&
+      last.minX === vp.minX &&
+      last.minY === vp.minY &&
+      last.maxX === vp.maxX &&
+      last.maxY === vp.maxY
+    )
+      return;
+    this.culled = vp;
+    for (const island of this.islands.values()) showIsland(island, aabbIntersects(vp, island));
+  }
+
+  /** One island per group of plots whose outlines can meet, keeping the decals of each island whose
+   *  plots held since the last draw, so a site placed or finished redraws its island only. */
+  private drawIslands(
+    plots: readonly ConstructionPlotFrame[],
+    elevation: ElevationField,
+    elevationChanged: boolean,
+  ): void {
+    const held = this.islands;
+    const drawn = new Map<number, Island>();
+    for (const plotsOfIsland of plotIslands(plots)) {
+      const first = plotsOfIsland[0];
       if (first === undefined) continue;
-      const held = this.islands.get(first.ref);
-      const outline =
-        held !== undefined && sameIsland(held.plots, island)
-          ? held
-          : { plots: island, loops: projectedLoops(island, elevation) };
-      drawn.set(first.ref, outline);
-      for (const loop of outline.loops) loops.push(loop);
+      const kept = elevationChanged ? undefined : held.get(first.ref);
+      if (kept !== undefined && sameIsland(kept.plots, plotsOfIsland)) {
+        held.delete(first.ref);
+        drawn.set(first.ref, kept);
+        continue;
+      }
+      const island = this.makeIsland(plotsOfIsland, elevation);
+      if (this.culled !== null) showIsland(island, aabbIntersects(this.culled, island));
+      drawn.set(first.ref, island);
     }
+    for (const island of held.values()) for (const decal of island.decals) decal.destroy();
     this.islands = drawn;
-    return loops.sort(byOutlineOrder);
+  }
+
+  private makeIsland(plots: readonly ConstructionPlotFrame[], elevation: ElevationField): Island {
+    const loops = projectedLoops(plots, elevation);
+    const box = { minX: Infinity, minY: Infinity, maxX: -Infinity, maxY: -Infinity };
+    for (const loop of loops) {
+      for (const { x, y } of loop.points) {
+        box.minX = Math.min(box.minX, x - FEATHER_REACH);
+        box.minY = Math.min(box.minY, y - FEATHER_REACH);
+        box.maxX = Math.max(box.maxX, x + FEATHER_REACH);
+        box.maxY = Math.max(box.maxY, y + FEATHER_REACH);
+      }
+    }
+    const decals = this.passes.map((pass, index) => {
+      const decal = new Graphics();
+      // Never through Pixi's batcher, which places a small shape's vertices itself: every decal
+      // rasterizes through the one path, whatever its size.
+      decal.context.batchMode = 'no-batch';
+      decal.alpha = this.earth === undefined ? FALLBACK_ALPHA : EARTH_ALPHA;
+      paintPass(decal.context, loops, index, this.earth);
+      return pass.addChild(decal);
+    });
+    return { plots, decals, ...box };
   }
 
   destroy(): void {
     for (const pick of this.picks.values()) pick.shape?.destroy();
     this.picks.clear();
-    this.g.destroy();
+    // A decal destroyed through its parent keeps its context alive.
+    for (const island of this.islands.values()) for (const decal of island.decals) decal.destroy();
+    this.islands.clear();
     this.container.destroy({ children: true });
   }
 
@@ -179,37 +231,55 @@ function sameCells(a: ConstructionPlotFrame['cells'], b: ConstructionPlotFrame['
   return true;
 }
 
-/** One outline loop, projected and radiused for `roundShape`, with the edge its walk started from. */
-interface OrderedLoop {
-  readonly start: OutlineStart;
+/** One outline loop, projected and radiused for `roundShape`. */
+interface OutlineLoop {
   /** Handed to `roundShape`, which keeps the array but only reads it. */
   readonly points: { x: number; y: number; radius: number }[];
 }
 
-/** The plots of one island, as last handed in, and their projected loops. */
-interface IslandOutline {
+/** The plots of one island, as last handed in, its decal in each paint pass, and the world box its
+ *  earth reaches. */
+interface Island extends Box {
   readonly plots: readonly ConstructionPlotFrame[];
-  readonly loops: readonly OrderedLoop[];
+  readonly decals: readonly Graphics[];
+}
+
+function showIsland(island: Island, shown: boolean): void {
+  for (const decal of island.decals) decal.visible = shown;
 }
 
 function projectedLoops(
   plots: readonly Pick<ConstructionPlotFrame, 'cells'>[],
   elevation: ElevationField,
-): OrderedLoop[] {
-  return startedOutlines(plots).map(({ start, loop }) => ({
-    start,
+): OutlineLoop[] {
+  return plotOutlines(plots).map((loop) => ({
     points: withCornerRadii(loop.map(({ u, v }) => projectUV(elevation, u, v))),
   }));
 }
 
-function fillLoops(context: GraphicsContext, loops: readonly OrderedLoop[], earth?: Texture): void {
+function traceLoops(context: GraphicsContext, loops: readonly OutlineLoop[]): void {
   for (const loop of loops) context.roundShape(loop.points, MAX_CORNER_RADIUS);
+}
+
+/**
+ * Paint pass `index` of `loops`: with the earth art, the feather band of that index, a band of the same
+ * earth stroked along the outline, and after the last band the fill; without it, the flat wash.
+ */
+function paintPass(
+  context: GraphicsContext,
+  loops: readonly OutlineLoop[],
+  index: number,
+  earth?: Texture,
+): void {
+  traceLoops(context, loops);
   if (earth === undefined) {
     context.fill(FALLBACK_COLOR);
     return;
   }
+  const band = FEATHER[index];
   // World-space texels: neighbouring plots continue one stretch of earth.
-  for (const band of FEATHER) {
+  if (band === undefined) context.fill({ texture: earth, textureSpace: 'global' });
+  else {
     context.stroke({
       texture: earth,
       textureSpace: 'global',
@@ -217,18 +287,16 @@ function fillLoops(context: GraphicsContext, loops: readonly OrderedLoop[], eart
       alpha: band.alpha,
       join: 'round',
     });
-    for (const loop of loops) context.roundShape(loop.points, MAX_CORNER_RADIUS);
   }
-  context.fill({ texture: earth, textureSpace: 'global' });
 }
 
-/** Outline every plot afresh and fill them as one shape, the picture the layer's island cache keeps. */
+/** Outline every plot afresh and fill them as one shape: a site's click shape. */
 export function fillPlotOutlines(
   context: GraphicsContext,
   plots: readonly ConstructionPlotFrame[],
   elevation: ElevationField,
 ): void {
-  fillLoops(context, projectedLoops(plots, elevation));
+  paintPass(context, projectedLoops(plots, elevation), 0);
 }
 
 /** Add every plot's rounded outline to `context` as paths, for the caller to fill or stroke. */
@@ -237,7 +305,7 @@ export function tracePlotOutlines(
   plots: readonly Pick<ConstructionPlotFrame, 'cells'>[],
   elevation: ElevationField,
 ): void {
-  for (const loop of projectedLoops(plots, elevation)) context.roundShape(loop.points, MAX_CORNER_RADIUS);
+  traceLoops(context, projectedLoops(plots, elevation));
 }
 
 function sameIsland(a: readonly ConstructionPlotFrame[], b: readonly ConstructionPlotFrame[]): boolean {
@@ -323,25 +391,6 @@ export function plotIslands(plots: readonly ConstructionPlotFrame[]): Constructi
 export function plotOutlines(
   plots: readonly Pick<ConstructionPlotFrame, 'cells'>[],
 ): { u: number; v: number }[][] {
-  return startedOutlines(plots).map(({ loop }) => loop);
-}
-
-/** The vertex key and direction of the boundary edge an outline loop's walk started from. */
-interface OutlineStart {
-  readonly key: string;
-  readonly dir: number;
-}
-
-/** {@link plotOutlines}' loops are walked in this order of their start edges. */
-function byOutlineOrder(a: { readonly start: OutlineStart }, b: { readonly start: OutlineStart }): number {
-  if (a.start.key !== b.start.key) return a.start.key < b.start.key ? -1 : 1;
-  return a.start.dir - b.start.dir;
-}
-
-/** {@link plotOutlines} with the start edge of each loop. */
-function startedOutlines(
-  plots: readonly Pick<ConstructionPlotFrame, 'cells'>[],
-): { start: OutlineStart; loop: { u: number; v: number }[] }[] {
   // 1. The covered unit squares, keyed by their min corner "a,b".
   const squares = new Set<string>();
   for (const plot of plots) {
@@ -377,7 +426,7 @@ function startedOutlines(
   }
 
   // 3. Chain edges into loops, merging collinear runs.
-  const loops: { start: OutlineStart; loop: { u: number; v: number }[] }[] = [];
+  const loops: { u: number; v: number }[][] = [];
   for (const [startKey, startDirs] of [...edges.entries()].sort(([x], [y]) => (x < y ? -1 : 1))) {
     for (let startDir = 0; startDir < 4; startDir++) {
       if (!startDirs[startDir]) continue;
@@ -405,7 +454,7 @@ function startedOutlines(
           (first.v === last.v && first.v === (loop[1]?.v ?? Number.NaN));
         if (closingCollinear) loop.shift();
       }
-      if (loop.length >= 3) loops.push({ start: { key: startKey, dir: startDir }, loop });
+      if (loop.length >= 3) loops.push(loop);
     }
   }
   return loops;

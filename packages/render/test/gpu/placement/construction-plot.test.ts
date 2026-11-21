@@ -17,6 +17,13 @@ const DIAMOND_HALF_W = TILE_HALF_W;
 const DIAMOND_HALF_H = TILE_HALF_H / 2;
 const EPSILON = 1e-9;
 
+/** Every decal the layer holds, pass by pass in paint order. */
+function decalsOf(layer: ConstructionPlotLayer): Graphics[] {
+  return layer.container.children.flatMap((pass) =>
+    pass.children.filter((child): child is Graphics => child instanceof Graphics),
+  );
+}
+
 type Cell = { readonly col: number; readonly row: number };
 
 /** A loop's flat world vertices as sorted "x,y" keys. */
@@ -206,41 +213,36 @@ describe('construction plot picking', () => {
       expect(layer.hit(7, 136, 76)).toBe(true);
       expect(layer.hit(8, 340, 76)).toBe(false);
       expect(layer.hit(8, 408, 76)).toBe(true);
-      // The decal's two outlines and the changed site's pick shape.
-      expect(outline).toHaveBeenCalledTimes(outlines + 3);
+      // The changed site's decal and its pick shape.
+      expect(outline).toHaveBeenCalledTimes(outlines + 2);
     } finally {
       outline.mockRestore();
       layer.destroy();
     }
   });
 
-  it('lays the earth as a fill over feather strokes of the same outline, each on a path of its own', () => {
+  it('lays the earth as feather strokes of the outline and a fill over them, a pass each', () => {
     const layer = new ConstructionPlotLayer(Texture.WHITE);
     layer.set([{ ref: 7, foundation: true, cells: [{ col: 4, row: 4 }] }], FLAT);
-    const drawn = layer.container.children[0];
-    if (!(drawn instanceof Graphics)) throw new Error('missing plot graphics');
-    const actions = drawn.context.instructions.map((entry) => entry.action);
-    expect(actions.at(-1)).toBe('fill');
-    expect(actions.slice(0, -1).every((action) => action === 'stroke')).toBe(true);
+    const actions = decalsOf(layer).map((decal) => decal.context.instructions.map((entry) => entry.action));
+    expect(actions.at(-1)).toEqual(['fill']);
+    expect(actions.slice(0, -1).every(([action, more]) => action === 'stroke' && more === undefined)).toBe(
+      true,
+    );
     expect(actions.length).toBeGreaterThan(1);
     // The feather reaches past the body's outline; the click shape does not.
     const body = layer.boundsOf(7, undefined);
-    expect(drawn.getLocalBounds().minX).toBeLessThan(body?.minX ?? Number.NaN);
+    expect(layer.container.getLocalBounds().minX).toBeLessThan(body?.minX ?? Number.NaN);
     layer.destroy();
   });
 
   it('draws no earth for a vehicle yard, which is still picked by its body outline', () => {
     const layer = new ConstructionPlotLayer();
     const cells = [{ col: 4, row: 4 }];
-    const drawn = (): number => {
-      const earth = layer.container.children[0];
-      if (!(earth instanceof Graphics)) throw new Error('missing plot graphics');
-      return earth.context.instructions.length;
-    };
     layer.set([{ ref: 7, foundation: true, cells }], FLAT);
-    expect(drawn()).toBe(1);
+    expect(decalsOf(layer)).toHaveLength(1);
     layer.set([{ ref: 7, foundation: false, cells }], FLAT);
-    expect(drawn()).toBe(0);
+    expect(decalsOf(layer)).toHaveLength(0);
     expect(layer.hit(7, 136, 76)).toBe(true);
     layer.destroy();
   });
@@ -316,22 +318,22 @@ describe('construction plot islands', () => {
     block(10, 30, 35, 6, 1),
     { ref: 11, foundation: true, cells: [{ col: 60, row: 60 }] },
   ];
-  /** The path each fill of `context` paints, as its drawing calls; the fill objects carry ids. */
-  const shapesOf = (context: GraphicsContext): unknown[] =>
-    context.instructions.map((instruction) =>
+  /** The shapes each fill of `context` paints, as their drawing calls; the fill objects carry ids. */
+  const shapesOf = (context: GraphicsContext): string[] =>
+    context.instructions.flatMap((instruction) =>
       instruction.action === 'fill'
-        ? instruction.data.path.instructions.map(({ action, data }) => [action, data])
-        : instruction.action,
+        ? instruction.data.path.instructions.map(({ action, data }) => JSON.stringify([action, data]))
+        : [],
     );
-  const drawnShapes = (layer: ConstructionPlotLayer): unknown[] => {
-    const g = layer.container.children[0];
-    if (!(g instanceof Graphics)) throw new Error('the plot layer draws one Graphics');
-    return shapesOf(g.context);
-  };
-  const freshShapes = (plots: readonly ConstructionPlotFrame[]): unknown[] => {
+  /** The islands' shapes together: islands share no paint, so their order among each other is free. */
+  const drawnShapes = (layer: ConstructionPlotLayer): string[] =>
+    decalsOf(layer)
+      .flatMap((decal) => shapesOf(decal.context))
+      .sort();
+  const freshShapes = (plots: readonly ConstructionPlotFrame[]): string[] => {
     const context = new GraphicsContext();
     fillPlotOutlines(context, plots, hilly);
-    return shapesOf(context);
+    return shapesOf(context).sort();
   };
 
   it('groups only plots whose outlines can meet', () => {
@@ -356,19 +358,18 @@ describe('construction plot islands', () => {
     try {
       for (const plots of steps) {
         layer.set(plots, hilly);
-        expect(drawnShapes(layer)).toEqual(plots.length === 0 ? [] : freshShapes(plots));
+        expect(drawnShapes(layer)).toEqual(freshShapes(plots));
       }
     } finally {
       layer.destroy();
     }
   });
 
-  it('outlines again only the island whose plots changed', () => {
+  it('draws again only the island whose plots changed', () => {
     const layer = new ConstructionPlotLayer();
-    const round = vi.spyOn(GraphicsContext.prototype, 'roundShape');
     try {
       layer.set(town(), hilly);
-      const first = round.mock.calls.map(([points]) => points);
+      const first = decalsOf(layer);
       layer.set(
         [
           ...town().filter((plot) => plot.ref !== 11),
@@ -376,12 +377,30 @@ describe('construction plot islands', () => {
         ],
         hilly,
       );
-      const second = round.mock.calls.slice(first.length).map(([points]) => points);
+      const second = decalsOf(layer);
       expect(second).toHaveLength(first.length);
-      // Every loop but the moved site's is the very array drawn before.
-      expect(second.filter((points, i) => points !== first[i])).toHaveLength(1);
+      expect(second.filter((decal) => !first.includes(decal))).toHaveLength(1);
     } finally {
-      round.mockRestore();
+      layer.destroy();
+    }
+  });
+
+  it('shows only the islands whose earth reaches the culled view, as they are placed too', () => {
+    const layer = new ConstructionPlotLayer();
+    const shown = (): number => decalsOf(layer).filter((decal) => decal.visible).length;
+    try {
+      layer.set(town(), hilly);
+      expect(shown()).toBe(plotIslands(town()).length);
+      // Around the lone plot at (60, 60) alone.
+      const [x, y] = [60 * DIAMOND_HALF_W, 60 * DIAMOND_HALF_H];
+      const near = { minX: x - 200, minY: y - 200, maxX: x + 200, maxY: y + 200 };
+      layer.cull(near);
+      expect(shown()).toBe(1);
+      layer.set([...town(), block(12, 61, 62, 1, 1), block(13, 0, 40, 1, 1)], hilly);
+      expect(shown()).toBe(2);
+      layer.cull({ minX: -1e6, minY: -1e6, maxX: 1e6, maxY: 1e6 });
+      expect(shown()).toBe(plotIslands(town()).length + 2);
+    } finally {
       layer.destroy();
     }
   });

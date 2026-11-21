@@ -11,7 +11,7 @@ import type { RememberedMarkers, SeenRoadNetwork, Sight, ViewerFogMemory } from 
 import { LightSiteList } from '../../data/lighting/light-sites.js';
 
 import type { LightGrade } from '../../data/lighting/types.js';
-import { cameraViewport, snapCameraToDevicePixels } from '../../data/projection/index.js';
+import { cameraViewport, snapCameraToDevicePixels, type Viewport } from '../../data/projection/index.js';
 import {
   type DrawItem,
   type HouseBodyOf,
@@ -619,7 +619,7 @@ export class WorldRenderer {
     this.mapObjects.setDetail(detail);
     const environmentMotion = this.enhancements.environmentMotion && detail.motion;
     this.syncRoads(snapshot);
-    this.terrain.cull(vp);
+    this.cullGround(vp);
     // Game seconds, so a pause freezes the weather with the world.
     const gameSeconds = (tick + alpha) / TICKS_PER_SECOND;
     const waterSeconds = this.waterClock.advance(gameSeconds, frame.selectionTime, this.paused);
@@ -765,7 +765,7 @@ export class WorldRenderer {
     this.portrait.draw(camera, {
       toInset: (cam, iw, ih) => {
         const view = cameraViewport(cam, iw, ih, this.elevation.maxLift);
-        this.terrain.cull(view);
+        this.cullGround(view);
         // An inset borrows the world without the see-through view, as the pool's pass does for its own.
         this.mapObjects.setDecorFade(undefined);
         // The bands the main cull would keep for this view: anchors within the sprite margin, and a
@@ -777,7 +777,7 @@ export class WorldRenderer {
         );
       },
       restore: () => {
-        this.terrain.cull(vp);
+        this.cullGround(vp);
         this.mapObjects.setDecorFade(decorFade);
         this.spriteLayer.showBands(this.insetBands);
       },
@@ -796,7 +796,7 @@ export class WorldRenderer {
       {
         cullTo: (cam, iw, ih) => {
           const viewVp = cameraViewport(cam, iw, ih, SPRITE_CULL_MARGIN + this.elevation.maxLift);
-          this.terrain.cull(cameraViewport(cam, iw, ih, this.elevation.maxLift));
+          this.cullGround(cameraViewport(cam, iw, ih, this.elevation.maxLift));
           // The map objects keep the main view's tier: a second detail would rebind every one of
           // them twice a frame while a view is open.
           this.mapObjects.update(viewVp, tick);
@@ -804,7 +804,7 @@ export class WorldRenderer {
           this.fog.container.visible = false;
         },
         restore: () => {
-          this.terrain.cull(vp);
+          this.cullGround(vp);
           this.mapObjects.update(vp, tick, this.fog.cellStateAt, fogFrame.fogEpoch);
           this.mapObjects.setDecorFade(decorFade);
           this.fog.container.visible = true;
@@ -835,6 +835,14 @@ export class WorldRenderer {
   /** The door nodes the road tool lights; null while it is not held. */
   updateRoadEntrances(doors: readonly PlacementOverlayCell[] | null): void {
     this.entranceMarks.set(doors, this.elevation);
+  }
+
+  /** Cull the ground a view draws by its own boxes, the terrain blocks and the construction plots, to
+   *  `vp`: the main frame's, or a framed view's while it renders. */
+  private cullGround(vp: Viewport): void {
+    this.terrain.cull(vp);
+    this.constructionPlots.cull(vp);
+    this.rememberedPlots.cull(vp);
   }
 
   /** Every live construction site's foundation; the fog decides which of them draw. Call after

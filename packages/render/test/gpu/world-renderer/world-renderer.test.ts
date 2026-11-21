@@ -308,8 +308,8 @@ describe('WorldRenderer scene graph', () => {
     const world = worldLayerOf(app) as Container;
     /** Whether the plot layer in `slot` drew any foundation. */
     const draws = (slot: keyof WorldSceneLayers): boolean => {
-      const plot = world.children[SLOTS.indexOf(slot)]?.children[0];
-      return plot instanceof Graphics && plot.context.instructions.length > 0;
+      const passes = world.children[SLOTS.indexOf(slot)]?.children ?? [];
+      return passes.some((pass) => pass.children.some((decal) => decal instanceof Graphics && decal.visible));
     };
     // On an even row the stagger is 0, so the site's cell is its tile.
     const frame = (state: number, generation: number): void => {
