@@ -4,9 +4,9 @@ import { NO_WALK } from './node-circle.js';
 import { HEX_DX_EVEN, HEX_DX_ODD, HEX_DY } from './range-search.js';
 import type { NodeId, TerrainGraph } from './terrain/index.js';
 
-/** Per-call scratch, reset before use: each node's fewest steps over a window around the start, and the
- *  open nodes as one linked stack per estimate (the first entry, then each entry's node, steps and
- *  successor). */
+/** Per-call scratch: each node's fewest steps over a window around the start, every slot
+ *  {@link UNREACHED} between calls, and the open nodes as one linked stack per estimate (the first entry,
+ *  then each entry's node, steps and successor), reset before use. */
 let stepScratch = new Uint16Array(0);
 let headScratch = new Int32Array(0);
 let entryNodes = new Int32Array(0);
@@ -55,9 +55,8 @@ export function walkStepsBetween(
   const side = 2 * within + 1;
   const windowX = fromX - within;
   const windowY = fromY - within;
-  if (stepScratch.length < side * side) stepScratch = new Uint16Array(side * side);
+  if (stepScratch.length < side * side) stepScratch = new Uint16Array(side * side).fill(UNREACHED);
   const best = stepScratch;
-  best.fill(UNREACHED, 0, side * side);
   if (headScratch.length < within) headScratch = new Int32Array(within);
   const heads = headScratch;
   heads.fill(NO_ENTRY, 0, within);
@@ -72,7 +71,8 @@ export function walkStepsBetween(
   entryNext[0] = NO_ENTRY;
   heads[direct - 1] = entries++;
   let settled = 0;
-  for (let estimate = direct - 1; estimate < within; estimate++) {
+  let found: number | undefined = NO_WALK;
+  search: for (let estimate = direct - 1; estimate < within; estimate++) {
     // A push lands on this stack or a later one, so the stack is popped until it stays empty.
     for (let entry = heads[estimate] as number; entry !== NO_ENTRY; entry = heads[estimate] as number) {
       heads[estimate] = entryNext[entry] as number;
@@ -81,8 +81,14 @@ export function walkStepsBetween(
       const x = node % mapWidth;
       const y = (node - x) / mapWidth;
       if (best[(y - windowY) * side + x - windowX] !== steps) continue;
-      if (hexDistanceBetween(x, y, toX, toY) === 1) return steps + 1;
-      if (++settled > maxSettled) return undefined;
+      if (hexDistanceBetween(x, y, toX, toY) === 1) {
+        found = steps + 1;
+        break search;
+      }
+      if (++settled > maxSettled) {
+        found = undefined;
+        break search;
+      }
       const dxs = (y & 1) === 0 ? HEX_DX_EVEN : HEX_DX_ODD;
       for (let k = 0; k < HEX_DY.length; k++) {
         const nx = x + (dxs[k] as number);
@@ -103,5 +109,13 @@ export function walkStepsBetween(
       }
     }
   }
-  return NO_WALK;
+  // Every slot written belongs to an entry: clearing those keeps the window unreached for the next
+  // call at the cost of the nodes this search touched, not of the whole window.
+  for (let entry = 0; entry < entries; entry++) {
+    const node = entryNodes[entry] as number;
+    const x = node % mapWidth;
+    const y = (node - x) / mapWidth;
+    best[(y - windowY) * side + x - windowX] = UNREACHED;
+  }
+  return found;
 }
