@@ -356,7 +356,11 @@ export class SpritePool {
   private passErased: PoolFrame['erased'];
   private passStyle: PoolFrame['selectionStyle'];
   private passHovered: PoolFrame['hovered'];
-  private passHasPortrait = false;
+  /** The selected, flagged and flashing refs the last full pass saw: it gave each its emphasis, or
+   *  found it off the draw list or drawn plain, so a still frame owes it nothing new. */
+  private readonly passNamed = new Set<number>();
+  /** Whether the last full pass kept every item because no inset had framed its portrait subjects. */
+  private passUnframed = false;
   /** The portrait subject the last frame named, which a detail tier leaves its shadows. */
   private shadowedSubject: PoolFrame['portraitRef'];
   /** Whether an entity must bind again on a frame that otherwise repeats the last pass. */
@@ -610,7 +614,7 @@ export class SpritePool {
     this.stepperStep = loopStepOf(frame.tick, frame.alpha, frame.environmentMotion === true);
     this.coatsIngested = false;
     this.movingHeld.length = 0;
-    this.passHasPortrait = false;
+    this.passNamed.clear();
     this.rebindPending = false;
     const kept = scene.kept;
     const generation = this.holdGeneration;
@@ -664,6 +668,10 @@ export class SpritePool {
       const item = pe?.bound.item;
       if (pe !== undefined && pe.held === generation && pe.lastSeen !== this.frameId && item !== undefined)
         this.visitHeld(pe, item as SpriteDrawItem, frame);
+    }
+    // Not the pick marks: a refused target draws plain until a selection names it.
+    for (const refs of [frame.selection, frame.flagged, frame.flashes?.keys()]) {
+      for (const ref of refs ?? NO_REFS) this.passNamed.add(ref);
     }
     this.stepLoopers(frame);
     this.lastItems = scene.items;
@@ -741,10 +749,7 @@ export class SpritePool {
       layer.rearrive(pe.container);
     }
     pe.lastSeen = this.frameId;
-    if (item.portraitOnly === true) {
-      this.portrait.capture(item.ref, pe, item.frozen === true);
-      this.passHasPortrait = true;
-    }
+    if (item.portraitOnly === true) this.portrait.capture(item.ref, pe, item.frozen === true);
     const rests = !emphasis && this.restsInPlace(pe, item);
     const still = rests && pe.bound.clockFree;
     // Only a static-run item may stand unvisited: the scene names it among its released statics when a
@@ -795,7 +800,8 @@ export class SpritePool {
       screenOnly && this.cullScreenOnly && !this.epoch.viewMoved && castShear === this.cullShear;
     this.cullScreenOnly = screenOnly;
     this.cullShear = castShear;
-    if (!screenOnly && !framesSubjects(this.framed, subjects)) return undefined;
+    this.passUnframed = !screenOnly && !framesSubjects(this.framed, subjects);
+    if (this.passUnframed) return undefined;
     const screen = cameraViewport(frame.camera, frame.screenW, frame.screenH);
     const boxes: Partial<Record<DrawItem['kind'], Viewport[]>> = {};
     for (const kind of Object.keys(this.reaches) as (keyof KindReaches)[]) {
@@ -990,8 +996,9 @@ export class SpritePool {
 
   /**
    * Whether this frame differs from the last full pass only in the frame alpha: the same draw list, no
-   * tick, setting, camera or mark change, and every selected or flagged entity already among the
-   * moving ones. Then only {@link moving} needs a present; everything else holds still where it is.
+   * tick, setting, camera or mark change, and every selected or flagged entity among the moving ones
+   * or settled by that pass. Then only {@link moving} needs a present; everything else holds still
+   * where it is.
    */
   private repeatsStill(scene: SpriteScene, frame: PoolFrame): boolean {
     if (
@@ -1000,17 +1007,24 @@ export class SpritePool {
       this.rebindPending ||
       this.epoch.current !== this.passEpoch ||
       this.epoch.viewMoved ||
-      this.passHasPortrait ||
+      // The insets have framed the subjects since: a full pass now culls by their views.
+      (this.passUnframed && framesSubjects(this.framed, portraitSubjectsOf(frame))) ||
       frame.marks !== this.passMarks ||
       frame.erased !== this.passErased ||
       frame.selectionStyle !== this.passStyle ||
       frame.hovered !== this.passHovered
     )
       return false;
-    for (const ref of frame.selection ?? NO_REFS) if (!this.movingRefs.has(ref)) return false;
-    for (const ref of frame.flagged ?? NO_REFS) if (!this.movingRefs.has(ref)) return false;
-    for (const ref of frame.flashes?.keys() ?? NO_REFS) if (!this.movingRefs.has(ref)) return false;
+    for (const ref of frame.selection ?? NO_REFS) if (!this.emphasisStands(ref)) return false;
+    for (const ref of frame.flagged ?? NO_REFS) if (!this.emphasisStands(ref)) return false;
+    for (const ref of frame.flashes?.keys() ?? NO_REFS) if (!this.emphasisStands(ref)) return false;
     return true;
+  }
+
+  /** Whether a still frame serves a selected, flagged or flashing `ref`: it presents a moving one, and
+   *  the last full pass settled every ref it saw. */
+  private emphasisStands(ref: number): boolean {
+    return this.movingRefs.has(ref) || this.passNamed.has(ref);
   }
 
   /** A still frame's pass: present the entities that move with the frame clock, in draw-list order. */
@@ -1526,6 +1540,7 @@ export class SpritePool {
     this.lastPooled.length = 0;
     this.moving.length = 0;
     this.movingRefs.clear();
+    this.passNamed.clear();
     this.steppers.length = 0;
     this.movingHeld.length = 0;
     this.loopers.length = 0;

@@ -41,6 +41,9 @@ const SETTLER = 1;
 const TREE = 2;
 const HEAP = 3;
 const POST = 4;
+const FAR_SUBJECT = 5;
+/** A row far below {@link VIEW}, so a settler on it draws only as a portrait subject. */
+const FAR_ROW = 60;
 const walker = { Settler: { tribe: 0 } };
 
 function mirrorOf(entities: readonly EntitySnapshot[]): SnapshotMirror {
@@ -395,6 +398,42 @@ describe('SpritePool - a still frame', () => {
     pool.reconcile(frameOf(snapshot, { alpha: 0.5, marks, selectionTime: 0.35 }));
     expect(refs()).toContain(TREE);
     expect(refs()).not.toContain(POST);
+  });
+
+  it('keeps still frames while a selected entity is off the draw list', () => {
+    const OFF_SCREEN = 999;
+    const selected = { selection: new Set([OFF_SCREEN]), selectionStyle: 'outline' as const };
+    const { pool, snapshot } = settled(selected);
+    const refs = presentedRefs();
+    pool.reconcile(frameOf(snapshot, { alpha: 0.5, ...selected }));
+    expect(refs()).not.toContain(POST);
+    // A selection the last full pass never saw still takes one.
+    pool.reconcile(frameOf(snapshot, { alpha: 0.75, selection: new Set([OFF_SCREEN, POST]) }));
+    expect(refs()).toContain(POST);
+  });
+
+  it('keeps still frames over a subject drawn for its portrait alone, once a pass culled by the inset', () => {
+    const mirror = mirrorOf([
+      entity(SETTLER, 1, 1, walker),
+      entity(POST, 5, 1, { Signpost: { owner: 0 } }),
+      entity(FAR_SUBJECT, 1, FAR_ROW, walker),
+    ]);
+    const portrait = { portraitRef: FAR_SUBJECT };
+    const pool = new SpritePool(new Container(), new TextureCache(), sheet);
+    pool.reconcile(frameOf(mirror.snapshot(), portrait));
+    const snapshot = advance(mirror, [moved(SETTLER, 2, walker)]);
+    pool.reconcile(frameOf(snapshot, portrait));
+    const main = { camera: { offsetX: 0, offsetY: 0 }, width: 800, height: 600 };
+    const frameInset = () => pool.portraitPass([FAR_SUBJECT], main, main, () => {});
+    frameInset();
+    const refs = presentedRefs();
+    const postPresents = () => refs().filter((ref) => ref === POST).length;
+    // The pass before the inset framed kept every item: the next one runs in full to cull by it.
+    pool.reconcile(frameOf(snapshot, { alpha: 0.25, ...portrait }));
+    expect(postPresents()).toBe(1);
+    frameInset();
+    pool.reconcile(frameOf(snapshot, { alpha: 0.5, ...portrait }));
+    expect(postPresents()).toBe(1);
   });
 
   // A still signpost is visited by every full pass and by no still frame.
