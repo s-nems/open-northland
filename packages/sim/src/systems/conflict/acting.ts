@@ -147,17 +147,23 @@ export const READY_MEMBERSHIP: readonly Component<unknown>[] = [
 ];
 export const READY_VALUES: readonly Component<unknown>[] = [Owner, Stance, CurrentAtomic, Weapon];
 
-/** How a combatant might pass {@link mayEngage} wherever it stands ({@link readinessOf}). */
-export type Readiness = 'ready' | 'posted' | 'none';
+/** How a combatant might pass {@link mayEngage} ({@link readinessOf}). */
+export type Readiness = 'ready' | 'posted' | 'astray' | 'settled' | 'none';
 
 /**
- * How combatant `e` might pass {@link mayEngage} wherever it stands, read off `e`'s own
- * {@link READY_MEMBERSHIP} stores alone. `ready` covers every `true` that function returns without the
- * index's presence test: a superset. `posted` is a garrison in a player slot holding none of those, which
- * passes only off its post or by its presence test ({@link idleAtPost}). `none` passes only when an owned
- * one's presence test does.
+ * How combatant `e` might pass {@link mayEngage}, read off `e`'s own {@link READY_MEMBERSHIP} stores and,
+ * for an anchored guard at rest, its node. `ready` covers every `true` that function returns without the
+ * index's presence test wherever `e` stands: a superset. `posted` is a garrison in a player slot holding
+ * none of those, which passes only off its post or by its presence test ({@link idleAtPost}). A guard at
+ * rest is `astray` off its anchor, where it passes as `ready` does, and `settled` on it; the answer holds
+ * until its node changes. `settled` and `none` pass only when an owned one's presence test does.
  */
-export function readinessOf(world: World, content: ContentSet, e: Entity): Readiness {
+export function readinessOf(
+  world: World,
+  content: ContentSet,
+  terrain: TerrainGraph | undefined,
+  e: Entity,
+): Readiness {
   if (holdsLadderState(world, e)) return 'ready';
   // A sleeper in the open, or one asleep on its tower.
   const garrisoned = world.has(e, Garrison);
@@ -176,11 +182,11 @@ export function readinessOf(world: World, content: ContentSet, e: Entity): Readi
   if (garrisoned) return 'posted';
   const mode = stanceMode(world, content, e, settler.jobType);
   if (!guardsAnchor(content, mode, settler.jobType) || isTravelling(world, e)) return 'none';
-  const anchored =
-    (world.tryGet(e, Stance)?.anchorCell ?? null) !== null ||
-    world.has(e, PathRoute) ||
-    world.has(e, Stranded);
-  return anchored ? 'ready' : 'none';
+  if (world.has(e, PathRoute) || world.has(e, Stranded)) return 'ready';
+  const anchor = world.tryGet(e, Stance)?.anchorCell ?? null;
+  if (anchor === null) return 'none';
+  // Beside a covered anchor only `guardPost` says whether the guard is home, so `mayEngage` asks it.
+  return terrain !== undefined && entityNode(world, terrain, e) === anchor ? 'settled' : 'astray';
 }
 
 /**

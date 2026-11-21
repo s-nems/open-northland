@@ -1,7 +1,9 @@
 import type { ContentSet } from '@open-northland/data';
 import { Health, Position, Settler, settlerTradeLog } from '../../components/index.js';
 import type { ChangeFeed, Entity, World } from '../../ecs/world.js';
+import type { TerrainGraph } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
+import { type NodeMoveFeed, watchNodeMoves } from '../spatial/node-moves.js';
 import {
   idleAtPost,
   PRESENCE_RADIUS,
@@ -16,14 +18,16 @@ import type { CombatIndex } from './combat-index.js';
 import { EpochMarks } from './epoch-marks.js';
 
 /**
- * The combatants by {@link readinessOf}, the `ready` and the `posted`, those of the rest
+ * The combatants by {@link readinessOf}, the `ready` with the `astray` and the `posted`, those of the rest
  * {@link searchesPastPresence} names (`wide`) and the other fighters with a {@link reachPastPresence}
- * (`reaching`), kept per world from a change feed over the stores they read, so a pass costs the units
- * whose state changed rather than every combatant. Derived state, never hashed; the registered verifier
- * re-derives it.
+ * (`reaching`), kept per world from a change feed over the stores they read and, for the guards at rest,
+ * the node moves, so a pass costs the units whose state changed rather than every combatant. Derived
+ * state, never hashed; the registered verifier re-derives it.
  */
 class ReadyUnits {
   private readonly ready = new Set<Entity>();
+  /** The `astray` and the `settled`: the units whose readiness a node change alone can turn. */
+  private readonly restingGuards = new Set<Entity>();
   readonly posted = new Set<Entity>();
   readonly wide = new Set<Entity>();
   readonly reaching = new Set<Entity>();
@@ -37,19 +41,32 @@ class ReadyUnits {
   private readonly jobChanges: Set<Entity>;
   /** The content the reach checks resolve weapons against. */
   private readonly ctx: Pick<SystemContext, 'content'>;
+  /** The terrain the held guards' nodes were read on. */
+  private terrain: TerrainGraph | undefined;
+  private readonly replaceMovedGuard = (e: Entity): void => {
+    if (this.restingGuards.has(e)) this.place(this.world, e);
+  };
 
   constructor(
-    world: World,
+    private readonly world: World,
     readonly content: ContentSet,
     private readonly feed: ChangeFeed,
+    private readonly moves: NodeMoveFeed,
   ) {
     this.jobChanges = settlerTradeLog(world, 'combatReady');
     this.ctx = { content };
   }
 
-  sync(world: World): ReadonlySet<Entity> {
-    if (!this.built || this.feed.drain((e) => this.place(world, e))) {
+  sync(world: World, terrain: TerrainGraph | undefined): ReadonlySet<Entity> {
+    const lost =
+      !this.built ||
+      this.terrain !== terrain ||
+      this.feed.drain((e) => this.place(world, e)) ||
+      this.moves.drain(this.replaceMovedGuard);
+    if (lost) {
       this.feed.drain(() => {});
+      this.moves.drain(() => {});
+      this.terrain = terrain;
       this.rebuild(world);
     } else {
       // forEach rather than for-of: a Set iterator hands out a result object per member.
@@ -64,14 +81,16 @@ class ReadyUnits {
   verify(world: World): string[] {
     if (!this.built) return [];
     const pending = new Set<Entity>(this.jobChanges);
-    if (this.feed.peek((e) => pending.add(e))) return [];
+    if (this.feed.peek((e) => pending.add(e)) || this.moves.peek((e) => pending.add(e))) return [];
     for (const e of world.query(Settler, Health, Position)) {
       if (pending.has(e)) continue;
-      const readiness = readinessOf(world, this.content, e);
+      const readiness = readinessOf(world, this.content, this.terrain, e);
+      const guard = readiness === 'astray' || readiness === 'settled';
       const wide = readiness !== 'posted' && searchesPastPresence(world, e);
       const reach = readiness === 'posted' || wide ? 0 : reachPastPresence(world, this.ctx, e);
       if (
-        (readiness === 'ready') !== this.ready.has(e) ||
+        (readiness === 'ready' || readiness === 'astray') !== this.ready.has(e) ||
+        guard !== this.restingGuards.has(e) ||
         (readiness === 'posted') !== this.posted.has(e) ||
         wide !== this.wide.has(e) ||
         reach > 0 !== this.reaching.has(e) ||
@@ -80,7 +99,7 @@ class ReadyUnits {
         return [`combatReadyUnits holds a stale entry for ${e} - it changed without a feed entry`];
       }
     }
-    for (const held of [this.ready, this.posted, this.wide, this.reaching]) {
+    for (const held of [this.ready, this.restingGuards, this.posted, this.wide, this.reaching]) {
       for (const e of held) {
         if (!pending.has(e) && !isCombatant(world, e))
           return [`combatReadyUnits still holds ${e}, no longer a combatant`];
@@ -91,9 +110,11 @@ class ReadyUnits {
 
   private place(world: World, e: Entity): void {
     const combatant = isCombatant(world, e);
-    const readiness = combatant ? readinessOf(world, this.content, e) : 'none';
-    if (readiness === 'ready') this.ready.add(e);
+    const readiness = combatant ? readinessOf(world, this.content, this.terrain, e) : 'none';
+    if (readiness === 'ready' || readiness === 'astray') this.ready.add(e);
     else this.ready.delete(e);
+    if (readiness === 'astray' || readiness === 'settled') this.restingGuards.add(e);
+    else this.restingGuards.delete(e);
     if (readiness === 'posted') this.posted.add(e);
     else this.posted.delete(e);
     const wide = combatant && readiness !== 'posted' && searchesPastPresence(world, e);
@@ -108,6 +129,7 @@ class ReadyUnits {
 
   private rebuild(world: World): void {
     this.ready.clear();
+    this.restingGuards.clear();
     this.posted.clear();
     this.wide.clear();
     this.reaching.clear();
@@ -122,7 +144,12 @@ const readySets = new WeakMap<World, ReadyUnits>();
 function readyUnitsOf(world: World, content: ContentSet): ReadyUnits {
   const held = readySets.get(world);
   if (held !== undefined && held.content === content) return held;
-  const ready = new ReadyUnits(world, content, world.watchChanges(READY_MEMBERSHIP, READY_VALUES));
+  const ready = new ReadyUnits(
+    world,
+    content,
+    world.watchChanges(READY_MEMBERSHIP, READY_VALUES),
+    watchNodeMoves(world),
+  );
   readySets.set(world, ready);
   world.registerCacheVerifier('combatReadyUnits', () => readySets.get(world)?.verify(world) ?? []);
   return ready;
@@ -131,8 +158,8 @@ function readyUnitsOf(world: World, content: ContentSet): ReadyUnits {
 /**
  * The combatants a combat pass asks `mayEngage` about, in ascending id: the owned units with a stranger
  * within {@link PRESENCE_RADIUS}, the long-reach fighters with one within their reach, the units searching
- * past it wherever they stand, the garrisons not {@link idleAtPost}, and the kept ready set. Every other
- * combatant proves `mayEngage` false. Read after the queued alarms are answered, since an alarm hands its
+ * past it wherever they stand, the garrisons not {@link idleAtPost}, and the kept ready set, which leaves
+ * out a guard at rest on its anchor. Every other combatant proves `mayEngage` false. Read after the queued alarms are answered, since an alarm hands its
  * answerers ladder state.
  */
 export function engageCandidates(world: World, ctx: SystemContext, index: CombatIndex): EngageCandidates {
@@ -140,7 +167,7 @@ export function engageCandidates(world: World, ctx: SystemContext, index: Combat
   // Gathered unsorted, with repeats; never shrunk, so a pass grows it only past the longest one before.
   const { gathered } = scratch;
   const units = readyUnitsOf(world, ctx.content);
-  const ready = units.sync(world);
+  const ready = units.sync(world, ctx.terrain);
   let count = index.unitsNearStrangers(PRESENCE_RADIUS, gathered, 0);
   if (units.reaching.size > 0)
     count = index.unitsNearStrangers(units.reachingRadius, gathered, count, units.reaching);

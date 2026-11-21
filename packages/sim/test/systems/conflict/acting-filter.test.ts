@@ -16,7 +16,7 @@ import {
   setSettlerJob,
 } from '../../../src/components/index.js';
 import type { Entity } from '../../../src/ecs/world.js';
-import { cellAnchorNode, fx, ONE, Simulation } from '../../../src/index.js';
+import { cellAnchorNode, fx, ONE, positionOfNode, Simulation } from '../../../src/index.js';
 import type { TerrainGraph } from '../../../src/nav/terrain/index.js';
 import { mayEngage, PRESENCE_RADIUS } from '../../../src/systems/conflict/acting.js';
 import { BattleFront } from '../../../src/systems/conflict/battle-alert.js';
@@ -239,20 +239,25 @@ describe('combat pass - who may engage', () => {
   it('draws every combatant the filter lets act among the candidates, and leaves the quiet ones out', () => {
     const sim = mixedScene();
     const stir = quietRecruits(sim);
-    // A guard standing on its anchor stays ready, so it is drawn far from any stranger and refused there.
+    // Guards standing on their anchors are left out far from any stranger, until one is moved off its own.
     const settled = combatantAtNode(sim, 52, 110, P0, MILITARY_MODE.DEFEND);
     sim.world.mut(settled, Stance).anchorCell = entityNode(sim.world, terrainOf(sim), settled);
+    const shoved = combatantAtNode(sim, 56, 110, P0, MILITARY_MODE.DEFEND);
+    sim.world.mut(shoved, Stance).anchorCell = entityNode(sim.world, terrainOf(sim), shoved);
     let outside = 0;
     const far: FarAnswers = { acted: 0, refused: 0 };
     for (let t = 0; t < TICKS; t++) {
-      if (t === TICKS / 2) stir();
+      if (t === TICKS / 2) {
+        stir();
+        sim.world.mut(shoved, Position).x = positionOfNode(60, 110).x;
+      }
       outside += outsideCandidatesRefused(sim, far);
       sim.step();
       expect(sim.world.verifyCaches()).toEqual([]);
     }
     expect(outside).toBeGreaterThan(TICKS); // the quiet village and the grazing herd are never drawn
-    expect(far.acted).toBeGreaterThan(0); // the far guard walking back to its moved anchor
-    expect(far.refused).toBeGreaterThan(0);
+    expect(far.acted).toBeGreaterThan(0); // the far guards walking back to an anchor they are off
+    expect(far.refused).toBe(0); // no candidate far from every stranger is drawn only to be refused
   });
 
   it('the verifiers flag a readiness or a position written around the tracked seams', () => {
