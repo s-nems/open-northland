@@ -21,8 +21,6 @@ const ARM_TIMEOUT_MS = 2000;
 const WALK_REACH = { x: 170, y: 70 };
 /** No drawn sprite may stand this close to a ground target, so the right click lands on bare ground. */
 const GROUND_CLEARANCE = 34;
-/** A walk's route ends this close to the clicked point on screen: a group spreads around its target. */
-const ARRIVAL_REACH = 110;
 /** Settlers a marquee aims to take; a small group keeps the order and its pathing cheap. */
 const GROUP_SIZE = 5;
 /** Screen offsets from the group's centre a building is tried at, farthest first: ground near the
@@ -343,35 +341,28 @@ async function groundTarget(page, seat, ids, side) {
   );
 }
 
-/** Each of `ids`' order, queue and route end, the end as a point on screen, as the world holds them now. */
+/** Each of `ids`' order, its walk goal node and its queue, as the world holds them now. */
 function orderState(page, ids) {
   return evaluate(
     page,
-    async ({ ids, modules }) => {
-      const { ONE } = await import(modules.fixed);
-      const { tileToScreen } = await import(modules.projection);
+    ({ ids }) => {
       const debug = window.__opennorthland;
-      const camera = debug.cameraCtl.camera();
       const wanted = new Set(ids);
       const rows = {};
       for (const entity of debug.host.snapshot().entities) {
         if (!wanted.has(entity.id)) continue;
-        const route = entity.components.PathRoute?.waypoints;
-        const last = route === undefined || route.length === 0 ? null : route[route.length - 1];
-        const end = last === null ? null : tileToScreen(last.x / ONE, last.y / ONE);
+        const order = entity.components.PlayerOrder;
+        // An attack-move keeps its goal on the order and a carrier parks it there until its load is down.
+        const goal = order?.attackMove?.goal ?? order?.pendingGoal ?? entity.components.MoveGoal?.cell;
         rows[entity.id] = {
-          end:
-            end === null
-              ? null
-              : { x: end.x * camera.scale + camera.offsetX, y: end.y * camera.scale + camera.offsetY },
-          order: entity.components.PlayerOrder !== undefined,
-          attackMove: entity.components.PlayerOrder?.attackMove !== undefined,
+          goal: order === undefined ? null : (goal ?? null),
+          attackMove: order?.attackMove !== undefined,
           queued: entity.components.OrderQueue?.orders.length ?? 0,
         };
       }
       return { tick: debug.host.tick, rows };
     },
-    { ids, modules: sourceModules },
+    { ids },
     'order state',
   );
 }
@@ -387,16 +378,15 @@ async function awaitEffect(page, ids, before, issuedAt, test) {
   return { appliedMs: null, ticks: null };
 }
 
-/** A selected settler holds a player order whose route now ends by `target`, which it did not before:
- *  an older order still being walked out cannot pass for this one. */
-const routeTo = (target) => (before, now) =>
-  Object.entries(now.rows).some(([id, row]) => {
-    const near = (end) => end !== null && Math.hypot(end.x - target.x, end.y - target.y) <= ARRIVAL_REACH;
-    return row.order && near(row.end) && !near(before.rows[id]?.end ?? null);
-  });
+/** A selected settler holds a player order to a goal it did not walk to before: an older order still
+ *  being walked out keeps its goal. */
+const newWalkGoal = (before, now) =>
+  Object.entries(now.rows).some(
+    ([id, row]) => row.goal !== null && row.goal !== (before.rows[id]?.goal ?? null),
+  );
 
-/** Right-click bare ground beside the selected group: a walk order, applied once a selected settler's
- *  route ends by the clicked point. */
+/** Right-click bare ground beside the selected group: a walk order, applied once a selected settler
+ *  walks to a new goal. */
 export async function walkOrder(player, seat, ids, side) {
   const { page } = player;
   const target = await groundTarget(page, seat, ids, side);
@@ -405,7 +395,7 @@ export async function walkOrder(player, seat, ids, side) {
   const before = await orderState(page, ids);
   const issuedAt = Date.now();
   await holdClick(page, target, 'right');
-  return { kind: 'walk', ...(await awaitEffect(page, ids, before, issuedAt, routeTo(target))) };
+  return { kind: 'walk', ...(await awaitEffect(page, ids, before, issuedAt, newWalkGoal)) };
 }
 
 /** Shift + right-click on bare ground: a walk queued behind the current one, applied once a selected
@@ -452,7 +442,7 @@ export async function attackMoveOrder(player, seat, ids, side) {
       ids,
       before,
       issuedAt,
-      (then, now) => routeTo(target)(then, now) && Object.values(now.rows).some((row) => row.attackMove),
+      (then, now) => newWalkGoal(then, now) && Object.values(now.rows).some((row) => row.attackMove),
     )),
   };
 }
