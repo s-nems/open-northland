@@ -47,8 +47,10 @@ Per-frame draw cost must follow the viewport, not total map size.
 
 Portrait insets (`WorldRenderer.setPortraitInsets`) take every HUD box that shows a live world cutout
 this frame: the settler panel's portrait and the trade window's two houses. Each is one more framed
-render of the world layer, so the cost grows with the boxes on screen, not the map; the app passes
-the same list object while the boxes hold still.
+render of the world layer that draws only what reaches its view: the terrain blocks and decor chunks
+its box meets, and the depth bands whose packed quads reach it, the others left in the instructions
+undrawn (`DepthSortedLayer.hideBandsOutside`). A layer that grows with the screen joins that cull
+before it joins the pass. The app passes the same list object while the boxes hold still.
 
 A scene build takes its candidates from the snapshot's position index over the viewport
 (`positionedWithin`, `data/scene/build/entity-source.ts`) and culls each candidate. The lookups a build
