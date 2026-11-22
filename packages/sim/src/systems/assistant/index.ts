@@ -36,7 +36,7 @@ import { childOrderBlocker } from '../family/children/index.js';
 import { isMarried } from '../family/eligibility.js';
 import { isCivilianTrade } from '../lifecycle/ageclass.js';
 import { mayBearChild } from '../orders/family.js';
-import { mayChangeTrade } from '../orders/guards.js';
+import { isTradeAssignable } from '../orders/guards.js';
 import { mayDrillAt, mayWalkToDrill, startDrill } from '../orders/training.js';
 import { hasUnclaimedSeat } from '../orders/training-seats.js';
 import { baseSoldierJobType, isBarracks, isSoldierJob } from '../readviews/index.js';
@@ -534,9 +534,10 @@ function ownedBarracks(world: World, ctx: SystemContext, player: number, scans: 
 
 /**
  * Whether `e` is `player`'s bare-handed soldier an armed class's counter arms before drafting anyone: the
- * unarmed base trade with no weapon worn and no booking, out of the vehicles. Authored: the tower, script
- * and trade-lock exclusions, off the towers, held by no map script and with a trade the arming may change.
- * Shared with the AI's garrison sizing, so its counters count the men this dispatcher holds slots for.
+ * unarmed base trade with no weapon worn and no booking, out of the vehicles. Authored: the tower and
+ * script exclusions, off the towers and held by no map script; a script's trade lock does not exclude him,
+ * since arming only sets his class. Shared with the AI's garrison sizing, so its counters count the men
+ * this dispatcher holds slots for.
  */
 export function isBareSoldier(world: World, ctx: SystemContext, e: Entity, player: number): boolean {
   if (ownerOf(world, e) !== player) return false;
@@ -545,7 +546,7 @@ export function isBareSoldier(world: World, ctx: SystemContext, e: Entity, playe
   if ((world.tryGet(e, Equipment)?.weapon ?? null) !== null) return false;
   if (world.has(e, AssistantRecruit) || world.has(e, TrainingOrder) || world.has(e, Rider)) return false;
   if (
-    !mayChangeTrade(world, ctx.content, e) ||
+    !isTradeAssignable(world, ctx.content, e) ||
     hasMissionBehaviour(world, e, MISSION_BEHAVIOUR.NOT_CONTROLLABLE)
   )
     return false;

@@ -16,7 +16,6 @@ import type { Entity, World } from '../../ecs/world.js';
 import { ownedSettlers } from '../ai-shared/seat-roster.js';
 import { towerPostFor } from '../conflict/tower-post.js';
 import type { SystemContext } from '../context.js';
-import { weaponKeepsLockedJob } from '../readviews/equip-pick.js';
 import { isSoldierJob, mayChangeEquipment } from '../readviews/index.js';
 import { takeUpWeaponGood } from '../settlers/atomics/effects/goods/weapon-class.js';
 import { isEscalationHero } from './heroes.js';
@@ -135,15 +134,14 @@ function giveGood(world: World, ctx: SystemContext, e: Entity, slug: string | un
 
 /**
  * Swap the soldier's weapon `from` for a fresh `to` and take it up as a soldier equipping it at a store
- * does: the trade that weapon arms and the combat weapon follow. The old weapon is gone. A trade the
- * script locks keeps its weapon. The soldier keeps the stance and anchor it had, so a guard stays posted.
+ * does: the trade that weapon arms and the combat weapon follow. The old weapon is gone. The soldier
+ * keeps the stance and anchor it had, so a guard stays posted.
  */
 function upgradeWeapon(world: World, ctx: SystemContext, e: Entity, upgrade: WeaponUpgrade): void {
   const index = contentIndex(ctx.content);
   const from = index.goodTypeBySlug.get(upgrade.from);
   const to = index.goodTypeBySlug.get(upgrade.to);
   if (from === undefined || to === undefined || carriedWeapon(world, ctx, e) !== from) return;
-  if (!weaponKeepsLockedJob(world, ctx.content, e, to)) return;
   const stance = world.tryGet(e, Stance);
   const kept = stance === undefined ? undefined : { mode: stance.mode, anchorCell: stance.anchorCell };
   ensureEquipment(world, e);

@@ -491,6 +491,10 @@ no company on its own; and a vehicle's cargo hand keeps serving the hold.
 
 Original behavior: bit 12 stops only shoe wear; a barefoot step checks bit 0 instead.
 
+Authored: bit 6 keeps a soldier in the soldier band, not in one class. The band is one trade, so his
+class still follows the weapon he takes up or lays down, and the builder assistant arms him like any
+other bare-handed soldier.
+
 Original behavior: bit 10 only skips repainting the human in its player's colours when the
 renderer is asked to; play is unaffected, and this build ignores it. Bit 18 appears in mask 272507.
 Bits 8, 10 and 18 are read from the original's behavior and not yet confirmed against the running

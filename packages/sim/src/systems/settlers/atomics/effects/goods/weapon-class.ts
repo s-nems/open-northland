@@ -11,7 +11,6 @@ import { contentIndex } from '../../../../../core/content-index.js';
 import type { Entity, World } from '../../../../../ecs/world.js';
 import type { SystemContext } from '../../../../context.js';
 import { applyTradeChange } from '../../../../economy/jobs/index.js';
-import { weaponKeepsLockedJob } from '../../../../readviews/equip-pick.js';
 import { baseSoldierJobType, isSoldierJob, WEAPON_MAIN_TYPE } from '../../../../readviews/index.js';
 
 /**
@@ -37,7 +36,6 @@ export const INTENT_WEAPON_CLASS: Readonly<Record<Exclude<AssistantRecruitIntent
  */
 export function takeUpWeaponGood(world: World, ctx: SystemContext, e: Entity, goodType: number): void {
   const settler = world.get(e, Settler);
-  if (!weaponKeepsLockedJob(world, ctx.content, e, goodType)) return;
   if (!isSoldierJob(ctx.content, settler.jobType)) return;
   const weapon = contentIndex(ctx.content).weaponByTribeAndGoodType.get(settler.tribe)?.get(goodType);
   if (weapon === undefined || weapon.jobType === undefined) {
@@ -61,7 +59,6 @@ export function takeUpWeaponGood(world: World, ctx: SystemContext, e: Entity, go
  * is `applyTradeChange`'s own disarm.
  */
 export function layDownWeaponGood(world: World, ctx: SystemContext, e: Entity): void {
-  if (!weaponKeepsLockedJob(world, ctx.content, e, null)) return;
   const settler = world.get(e, Settler);
   if (!isSoldierJob(ctx.content, settler.jobType)) return;
   const base = baseSoldierJobType(ctx.content);

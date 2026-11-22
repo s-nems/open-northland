@@ -1,7 +1,6 @@
 import { parseContentSet } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
 import {
-  Carrying,
   CurrentAtomic,
   Equipment,
   EquipOrder,
@@ -14,10 +13,8 @@ import {
 import type { Entity } from '../../../../src/ecs/world.js';
 import { fx, Simulation } from '../../../../src/index.js';
 import { attackerWeapon, startAttack } from '../../../../src/systems/conflict/weapons.js';
-import {
-  equipFromStore,
-  unequipWornGood,
-} from '../../../../src/systems/settlers/atomics/effects/goods/equip.js';
+import { applyTradeChange } from '../../../../src/systems/economy/jobs/trade-change.js';
+import { equipFromStore } from '../../../../src/systems/settlers/atomics/effects/goods/equip.js';
 import { takeUpWeaponGood } from '../../../../src/systems/settlers/atomics/effects/goods/weapon-class.js';
 import { createSettler } from '../../../../src/systems/spawn/index.js';
 import { testContent } from '../../../fixtures/content.js';
@@ -25,6 +22,8 @@ import { ctxOf } from '../../../fixtures/context.js';
 
 const WOOD = 32;
 const IRON = 33;
+/** The fixture's woodcutter, a civilian trade. */
+const WOODCUTTER = 1;
 const WOOD_GOOD = 901;
 const IRON_GOOD = 902;
 const TRIBE = 3;
@@ -114,12 +113,11 @@ function arms(sim: Simulation, e: Entity) {
 }
 
 describe('trade change - the equipped weapon names the soldier class', () => {
-  it('refuses class-changing equipment before consuming stock when a mission locks the job', () => {
+  it('lets a mission-locked soldier change class by his weapon but never leave the band', () => {
     const sim = new Simulation({ seed: 17, content: spearContent() });
     const spearman = spawn(sim, WOOD);
     const store = sim.world.create();
     sim.world.add(store, Stockpile, { amounts: new Map([[IRON_GOOD, 2]]) });
-    const originalGear = structuredClone(sim.world.get(spearman, Equipment));
     sim.world.add(spearman, EquipOrder, {
       group: 'weapon',
       slot: 0,
@@ -129,17 +127,15 @@ describe('trade change - the equipped weapon names the soldier class', () => {
       returnTo: null,
       queued: [],
     });
-    // The mission can lock the class after the fetch starts but before the pickup lands.
     setMissionBehaviour(sim.world, spearman, MISSION_BEHAVIOUR.JOB_LOCKED, true);
     equipFromStore(sim.world, ctxOf(sim), spearman, store, IRON_GOOD, 'weapon', 0);
-    expect(sim.world.get(store, Stockpile).amounts.get(IRON_GOOD)).toBe(2);
-    expect(sim.world.get(spearman, Equipment)).toEqual(originalGear);
-    expect(sim.world.get(spearman, EquipOrder).stage).toBe('return');
-    unequipWornGood(sim.world, ctxOf(sim), spearman, 'weapon', 0, store);
-    expect(sim.world.get(spearman, Equipment)).toEqual(originalGear);
-    expect(sim.world.has(spearman, Carrying)).toBe(false);
-    expect(sim.world.get(spearman, Settler).jobType).toBe(WOOD);
-    expect(arms(sim, spearman).weapon.damage['0']).toBe(500);
+    expect(sim.world.get(store, Stockpile).amounts.get(IRON_GOOD)).toBe(1);
+    expect(sim.world.get(spearman, Settler).jobType).toBe(IRON);
+    expect(arms(sim, spearman).weapon.damage['0']).toBe(3800);
+
+    applyTradeChange(sim.world, ctxOf(sim), spearman, WOODCUTTER);
+    expect(sim.world.get(spearman, Settler).jobType).toBe(IRON);
+    expect(sim.world.get(spearman, Equipment).weapon?.goodType).toBe(IRON_GOOD);
   });
 
   it('keeps an equipped iron soldier in his class when a profession command requests another', () => {

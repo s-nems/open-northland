@@ -13,7 +13,6 @@ import type { SystemContext } from '../../../../context.js';
 /** An equip errand lifts one unit into one slot, the amount its fetch claims at the source. */
 export const EQUIP_FETCH_UNITS = 1;
 
-import { weaponKeepsLockedJob } from '../../../../readviews/equip-pick.js';
 import { accessibleStockAmounts, setAccessibleStockAmount } from '../../../../stores/index.js';
 import { cappedByStorageMinimum } from '../../../targets/stores/storage-reserve.js';
 import { addCarry } from './carry.js';
@@ -49,10 +48,6 @@ export function equipFromStore(
   slot: number,
 ): void {
   world.remove(settler, PickupClaim);
-  if (group === 'weapon' && !weaponKeepsLockedJob(world, ctx.content, settler, goodType)) {
-    advanceOrder(world, settler, 'return');
-    return;
-  }
   const stock = accessibleStockAmounts(world, from);
   if (stock === undefined) return;
   const have = stock.get(goodType) ?? 0;
@@ -85,10 +80,6 @@ export function unequipWornGood(
   slot: number,
   sink: Entity | null,
 ): void {
-  if (group === 'weapon' && !weaponKeepsLockedJob(world, ctx.content, settler, null)) {
-    advanceOrder(world, settler, 'return');
-    return;
-  }
   const previous = wornSlot(world, settler, group, slot);
   if (previous === null) return;
   writeEquipSlot(world, settler, group, slot, null);

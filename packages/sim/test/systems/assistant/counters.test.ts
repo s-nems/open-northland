@@ -982,8 +982,11 @@ describe('the training queue', () => {
     expect(men.filter((e) => sim.world.has(e, TrainingOrder))).toHaveLength(1);
   });
 
-  it('leaves a bare-handed soldier a script holds or whose trade it fixed to the draft', () => {
-    for (const behaviour of [MISSION_BEHAVIOUR.JOB_LOCKED, MISSION_BEHAVIOUR.NOT_CONTROLLABLE]) {
+  it('leaves a bare-handed soldier a script holds to the draft, and arms one whose trade it fixed', () => {
+    for (const [behaviour, armed] of [
+      [MISSION_BEHAVIOUR.NOT_CONTROLLABLE, false],
+      [MISSION_BEHAVIOUR.JOB_LOCKED, true],
+    ] as const) {
       const sim = trainSim();
       barracksAt(sim, 6, 3);
       const held = settlerAt(sim, SOLDIER, 3, 3);
@@ -993,8 +996,16 @@ describe('the training queue', () => {
 
       setCounter(sim, 'trainSword', 1);
       run(sim, 3 * BEAT_TICKS);
-      expect(sim.world.has(held, AssistantRecruit)).toBe(false);
-      expect(sim.world.has(civilian, TrainingOrder)).toBe(true);
+      expect(sim.world.has(held, AssistantRecruit)).toBe(armed);
+      expect(sim.world.has(civilian, TrainingOrder)).toBe(!armed);
+      if (armed) {
+        runUntil(
+          sim,
+          () => sim.world.get(held, Settler).jobType === SWORDSMAN_LONG,
+          3000,
+          'locked man armed',
+        );
+      }
     }
   });
 

@@ -55,9 +55,12 @@ import { syncWorkFlagToJob } from '../work-flag.js';
  * setting or dropping the workplace binding, stay the calling path's own steps.
  */
 export function applyTradeChange(world: World, ctx: SystemContext, e: Entity, jobType: number): void {
-  // A script may fix a unit's trade (`MISSIONS.md`, behaviour bit 6). It holds against every player
-  // order, drill and equipment promotion; growing out of an age class still reclasses the settler.
-  if (hasMissionBehaviour(world, e, MISSION_BEHAVIOUR.JOB_LOCKED)) return;
+  // A script may fix a unit's trade (`MISSIONS.md`, behaviour bit 6). It holds against every player order
+  // and drill, but the soldier band is one trade: a fixed soldier's class still follows his weapon. Growing
+  // out of an age class still reclasses the settler.
+  const soldierClassChange =
+    isSoldierJob(ctx.content, world.get(e, Settler).jobType) && isSoldierJob(ctx.content, jobType);
+  if (hasMissionBehaviour(world, e, MISSION_BEHAVIOUR.JOB_LOCKED) && !soldierClassChange) return;
   // Soldier specializations follow the equipped good. A profession order must not combine one
   // weapon's damage with another class's health and attack events, or conjure a replacement weapon.
   const goodType = world.tryGet(e, Equipment)?.weapon?.goodType;
