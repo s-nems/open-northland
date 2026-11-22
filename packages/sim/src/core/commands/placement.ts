@@ -117,7 +117,7 @@ export interface ConvertPalisadeGateCommand {
 /**
  * Place a {@link Building} of `buildingType` at (x,y) for `tribe`, fully built (`built = ONE`) unless
  * `underConstruction` is set. A type with an empty `construction` cost (the headquarters) finishes on
- * its first construction tick.
+ * its first construction tick. A vehicle house placed fully built stands as its vehicle instead.
  */
 interface PlaceBuildingFields {
   readonly kind: 'placeBuilding';

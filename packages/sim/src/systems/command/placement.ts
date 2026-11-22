@@ -1,4 +1,5 @@
 import {
+  BUILDING_KIND,
   type BuildingType,
   buildingHitpointsFor,
   hasRecordFootprint,
@@ -44,6 +45,7 @@ import { cancelRoadSitesUnder } from '../roads/sites.js';
 import { wakeCrewInside } from '../settlers/planner/idle-replan.js';
 import { displaceSignpostsFromFootprint } from '../signposts/index.js';
 import { stockCapacity } from '../stores/index.js';
+import { createVehicle } from '../vehicles/create.js';
 import { evictVehiclesFromFootprint } from '../vehicles/evict.js';
 
 /**
@@ -63,10 +65,11 @@ export function unbindWorkersOf(world: World, ctx: SystemContext, building: Enti
 }
 
 /** Whether `paper` may be spent on a `buildingType` placement: a placing kind whose named house, if any,
- *  is the one being placed. */
-function paperCoversPlacement(paper: Paper, buildingType: number): boolean {
+ *  is the one being placed. An open paper's choice never offers a vehicle house. */
+function paperCoversPlacement(paper: Paper, buildingType: number, type: BuildingType): boolean {
   if (!PLACING_PAPER_KINDS.has(paper.kind)) return false;
-  return paper.kind === 'placeAny' || paper.param === buildingType;
+  if (paper.kind === 'placeAny') return type.kind !== BUILDING_KIND.vehicle;
+  return paper.param === buildingType;
 }
 
 /** Puts the command's building down once its gates pass. A `seatIssued` order is held to the seat's site
@@ -83,7 +86,7 @@ export function placeBuilding(
   const paper = command.paper;
   if (
     paper !== undefined &&
-    (command.owner === undefined || !paperCoversPlacement(paper, command.buildingType))
+    (command.owner === undefined || !paperCoversPlacement(paper, command.buildingType, type))
   ) {
     return;
   }
@@ -122,6 +125,20 @@ export function placeBuilding(
   // Spent only once every gate has passed, so a refused placement keeps the paper.
   if (paper !== undefined && command.owner !== undefined && !takePaper(world, command.owner, paper)) return;
 
+  const underConstruction = paper === undefined && command.underConstruction === true;
+  if (!underConstruction && type.kind === BUILDING_KIND.vehicle && type.vehicleType !== undefined) {
+    // Original behavior: a finished vehicle house, a map's included, gives way at once to its vehicle
+    // with no mission id, as a finished vehicle site does.
+    createVehicle(world, ctx, {
+      vehicleType: type.vehicleType,
+      tribe: command.tribe,
+      ...(command.owner !== undefined ? { owner: command.owner } : {}),
+      x: command.x,
+      y: command.y,
+    });
+    return;
+  }
+
   assembleBuilding(world, ctx, type, {
     buildingType: command.buildingType,
     tribe: command.tribe,
@@ -129,7 +146,7 @@ export function placeBuilding(
     missionId: command.missionId,
     x: command.x,
     y: command.y,
-    underConstruction: paper === undefined && command.underConstruction === true,
+    underConstruction,
     stockFill: stockFillOf(command),
     initialGoods: command.initialGoods,
     level: command.level,

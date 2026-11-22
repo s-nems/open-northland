@@ -66,7 +66,9 @@ type 6, the ox-less cart. The worker producing that good:
    house within radius 40 that is not a home, where another workshop's inputs stay hidden;
 3. works on the site with the ordinary build animation;
 4. when the site reaches the finished state the house is freed and a vehicle of `logicvehicletype`
-   spawns at the house position for the same player and tribe, with mission id 0.
+   spawns at the house position for the same player and tribe, with mission id 0. The original runs
+   this on any finished vehicle house, so a vehicle house a map's `sethouse` places built starts the
+   game as its vehicle.
 
 In the data pack every tribe allowed the small ship's good (61) is allowed the big ship's good (62)
 too, so all five nations build both ships (owner's choice).

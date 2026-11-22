@@ -4,7 +4,9 @@ import {
   addPerson,
   Building,
   JobAssignment,
+  MissionObjectId,
   Owner,
+  type Paper,
   Position,
   Production,
   ProductionCounters,
@@ -748,6 +750,55 @@ describe('building the vehicle', () => {
     expect(vehiclesOf(s, HANDCART)).toHaveLength(1);
     expect(s.world.get(shop, Stockpile).amounts.get(WOOD)).toBe(shelved - HANDCART_WOOD);
     expect(s.world.get(store, Stockpile).amounts.get(WOOD)).toBe(10);
+  });
+
+  it('stands a yard house a map places finished as its cart, and one placed unfinished as a yard', () => {
+    const s = sim();
+    const place = {
+      kind: 'placeBuilding',
+      buildingType: HANDCART_YARD,
+      tribe: VIKING,
+      owner: P0,
+      force: true,
+    } as const;
+    s.enqueueSetup({ ...place, x: 8, y: 8, missionId: 7 });
+    s.enqueueSetup({ ...place, x: 30, y: 30, underConstruction: true });
+    s.step();
+    const [cart] = vehiclesOf(s, HANDCART);
+    if (cart === undefined) throw new Error('the finished yard house stood no cart');
+    expect(vehiclesOf(s, HANDCART)).toHaveLength(1);
+    expect(anchorOf(s, cart)).toEqual({ hx: 8, hy: 8 });
+    expect(s.world.get(cart, Owner).player).toBe(P0);
+    expect(s.world.get(cart, Vehicle)).toMatchObject({ vehicleType: HANDCART, tribe: VIKING });
+    expect(s.world.has(cart, MissionObjectId)).toBe(false);
+    expect(sitesOf(s, HANDCART_YARD).map((e) => anchorOf(s, e))).toEqual([{ hx: 30, hy: 30 }]);
+    expect([...s.world.query(Building)].filter((e) => !s.world.has(e, UnderConstruction))).toEqual([]);
+  });
+
+  it('spends no open paper on a vehicle house, and a paper naming one stands its cart', () => {
+    const s = sim();
+    const open: Paper = { kind: 'placeAny', param: 0 };
+    const named: Paper = { kind: 'placeHouse', param: HANDCART_YARD };
+    s.enqueueSetup({ kind: 'setPlayerPlacementTribes', player: P0, tribes: [VIKING] });
+    s.enqueueSetup({ kind: 'spawnSettler', jobType: CIVILIAN, x: 8, y: 8, tribe: VIKING, owner: P0 });
+    s.enqueueSetup({ kind: 'grantPaper', player: P0, paper: open });
+    s.enqueueSetup({ kind: 'grantPaper', player: P0, paper: named });
+    s.step();
+    const command = {
+      kind: 'placeBuilding',
+      buildingType: HANDCART_YARD,
+      tribe: VIKING,
+      x: 14,
+      y: 14,
+    } as const;
+    s.enqueue(playerCommand(P0, { ...command, paper: open }));
+    s.step();
+    expect(vehiclesOf(s, HANDCART)).toEqual([]);
+    expect(s.papers(P0)).toEqual([open, named]);
+    s.enqueue(playerCommand(P0, { ...command, paper: named }));
+    s.step();
+    expect(vehiclesOf(s, HANDCART)).toHaveLength(1);
+    expect(s.papers(P0)).toEqual([open]);
   });
 
   it('alternates: the cart turn follows a plank start and the rotation moves past it once built', () => {
