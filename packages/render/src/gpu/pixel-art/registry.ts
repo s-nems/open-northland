@@ -238,3 +238,15 @@ export function setWorldShadowStyle(style: ShadowStyle | null): void {
 export function worldShadowStyle(): ShadowStyle | null {
   return shadowStyle;
 }
+
+/** Whether the world draws elements without blood through the batch programs compiled without the
+ *  blood code; off, every element takes the full program and the others are never linked. */
+let unstainedPrograms = true;
+
+export function setUnstainedWorldPrograms(enabled: boolean): void {
+  unstainedPrograms = enabled;
+}
+
+export function unstainedWorldPrograms(): boolean {
+  return unstainedPrograms;
+}

@@ -1,6 +1,10 @@
 import { type GlProgram, WebGLRenderer } from 'pixi.js';
-import { expect, it } from 'vitest';
-import { WORLD_MAGNIFY_MODES } from '../../../src/gpu/pixel-art/registry.js';
+import { afterEach, expect, it } from 'vitest';
+import {
+  setUnstainedWorldPrograms,
+  unstainedWorldPrograms,
+  WORLD_MAGNIFY_MODES,
+} from '../../../src/gpu/pixel-art/registry.js';
 import { glProgramFor } from '../../../src/gpu/shaders/program-source.js';
 import { linkRendererPrograms } from '../../../src/gpu/shaders/renderer-links.js';
 import { WEATHER_AIR_SOURCE } from '../../../src/gpu/weather/atmosphere.js';
@@ -9,6 +13,7 @@ import { DEFAULT_SHADOW_STYLE } from '../../../src/gpu/world-batch/shadow-style.
 import { useHeadlessShaderContext } from '../../support/shader-context.js';
 
 useHeadlessShaderContext();
+afterEach(() => setUnstainedWorldPrograms(true));
 
 /** A renderer limit past the slots any batch program is compiled for. */
 const UNCAPPED_LIMIT = 2 * WORLD_BATCH_MAX_TEXTURES;
@@ -40,6 +45,43 @@ it('links the very programs the world batch binds, capped at its slots, each onc
   expect(new Set(linked).size).toBe(linked.length);
   // The context has no dual-source blending, so the grade and veil keep their own passes.
   expect(linked).not.toContain(glProgramFor(WEATHER_AIR_SOURCE));
+});
+
+it('links the unstained batch programs only where links compile in parallel', async () => {
+  const settings = {
+    enhancedSampling: true,
+    pixelArtScaler: 'xbr',
+    softShadows: true,
+    environmentMotion: false,
+    weather: false,
+    blood: true,
+  } as const;
+  const unstained = glProgramFor(
+    worldBatchProgramSource(
+      WORLD_BATCH_MAX_TEXTURES,
+      WORLD_MAGNIFY_MODES.xbr,
+      DEFAULT_SHADOW_STYLE,
+      'magnifying',
+      'unstained',
+    ),
+  );
+  const linkedWith = async (extension: object | null): Promise<GlProgram[]> => {
+    const linked: GlProgram[] = [];
+    const renderer = Object.assign(Object.create(WebGLRenderer.prototype) as WebGLRenderer, {
+      limits: { maxBatchableTextures: WORLD_BATCH_MAX_TEXTURES },
+      gl: {
+        isContextLost: () => false,
+        getExtension: (name: string) => (name === 'KHR_parallel_shader_compile' ? extension : null),
+      },
+      shader: { _getProgramData: (program: GlProgram) => linked.push(program) },
+    });
+    await linkRendererPrograms(renderer, settings);
+    return linked;
+  };
+  expect(await linkedWith({})).toContain(unstained);
+  expect(unstainedWorldPrograms()).toBe(true);
+  expect(await linkedWith(null)).not.toContain(unstained);
+  expect(unstainedWorldPrograms()).toBe(false);
 });
 
 it('stops linking once the context is lost', async () => {

@@ -32,6 +32,7 @@ import {
   palettedLutOf,
   setPixelArtMagnification,
   setPrescaledPage,
+  setUnstainedWorldPrograms,
   setWorldShadowStyle,
   WORLD_MAGNIFY_MODES,
 } from '../../../src/gpu/pixel-art/registry.js';
@@ -53,8 +54,10 @@ import {
   worldBatched,
 } from '../../../src/gpu/world-batch/batcher.js';
 import {
+  SELECTION_STAMP,
   WORLD_FLAG_MAGNIFY,
   type WorldBatchSampling,
+  type WorldBatchStains,
   worldBatchProgramSource,
 } from '../../../src/gpu/world-batch/shader.js';
 import { DEFAULT_SHADOW_STYLE } from '../../../src/gpu/world-batch/shadow-style.js';
@@ -924,8 +927,8 @@ describe('world batcher shader selection', () => {
     } as unknown as DefaultBatchableMeshElement;
   }
 
-  const program = (sampling: WorldBatchSampling): GlProgram =>
-    glProgramFor(worldBatchProgramSource(PAGES_AND_LUT, WORLD_MAGNIFY_MODES.xbr, null, sampling));
+  const program = (sampling: WorldBatchSampling, stains: WorldBatchStains = 'unstained'): GlProgram =>
+    glProgramFor(worldBatchProgramSource(PAGES_AND_LUT, WORLD_MAGNIFY_MODES.xbr, null, sampling, stains));
 
   it('draws through the unmagnified program while no gathering element is magnified', () => {
     setPixelArtMagnification('xbr');
@@ -986,6 +989,55 @@ describe('world batcher shader selection', () => {
     expect(startProgram(build(scaledQuad(page, 1), scaledQuad(badge, 4)), new Matrix())).toBe(
       program('unmagnified'),
     );
+    batcher.destroy();
+  });
+
+  it('draws through the stained program only while an element it packed carries blood', () => {
+    setPixelArtMagnification('xbr');
+    const page = new Texture({ source: new TextureSource({ width: 8, height: 8 }) });
+    const WorldBatcher = installWorldBatcher();
+    const batcher = new WorldBatcher({ maxTextures: PAGES_AND_LUT });
+    const build = (...elements: DefaultBatchableQuadElement[]): Batch => {
+      batcher.begin();
+      for (const element of elements) batcher.add(element);
+      batcher.break(new InstructionSet());
+      return batcher.batches[0] as Batch;
+    };
+    const quadOf = (sprite: Sprite): DefaultBatchableQuadElement => {
+      const quad = scaledQuad(page, 1);
+      Object.assign(quad, { renderable: sprite });
+      return quad;
+    };
+    const clean = new SelectionSprite(page);
+    const coated = new SelectionSprite(page);
+    coated.bloodEffect = 1;
+    const splashed = new SelectionSprite(page);
+    bloodSurface(splashed, 0).packed.set([0xffffff, 0, 0, 1]);
+    // A silhouette draws its colour over the body's coverage alone, whatever blood its sprite holds.
+    const silhouette = new SelectionSprite(page);
+    silhouette.bloodEffect = 1;
+    silhouette.selectionEffect = SELECTION_STAMP;
+
+    const sampling = 'unmagnified';
+    expect(startProgram(build(quadOf(clean)), new Matrix())).toBe(program(sampling, 'unstained'));
+    expect(startProgram(build(quadOf(clean), quadOf(coated)), new Matrix())).toBe(
+      program(sampling, 'stained'),
+    );
+    expect(startProgram(build(quadOf(splashed)), new Matrix())).toBe(program(sampling, 'stained'));
+    expect(startProgram(build(quadOf(silhouette)), new Matrix())).toBe(program(sampling, 'unstained'));
+    // A coat arriving on a quad repacked in place stains its draw without a rebuild.
+    const late = quadOf(clean);
+    const batch = build(late);
+    expect(startProgram(batch, new Matrix())).toBe(program(sampling, 'unstained'));
+    clean.bloodEffect = 1;
+    batcher.updateElement(late);
+    expect(startProgram(batch, new Matrix())).toBe(program(sampling, 'stained'));
+    // A world that draws without the unstained programs takes the full one for every draw.
+    setUnstainedWorldPrograms(false);
+    expect(startProgram(build(quadOf(new SelectionSprite(page))), new Matrix())).toBe(
+      program(sampling, 'stained'),
+    );
+    setUnstainedWorldPrograms(true);
     batcher.destroy();
   });
 });

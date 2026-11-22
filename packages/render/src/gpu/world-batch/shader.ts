@@ -182,19 +182,46 @@ const vec3 SHADOW_TINT = vec3(${red}, ${green}, ${blue});`,
  */
 export type WorldBatchSampling = 'magnifying' | 'unmagnified';
 
-/** The batch program for a texture limit, magnification mode, shadow style and sampling. */
+/**
+ * Whether a program paints blood: `unstained` leaves the coat and splash code out, for draws in which
+ * no element carries either. It draws those exactly as the full program does, and every fragment runs
+ * faster without that code compiled in (measured on a Radeon Vega on Direct3D 11).
+ */
+export const WORLD_BATCH_STAINS = ['stained', 'unstained'] as const;
+export type WorldBatchStains = (typeof WORLD_BATCH_STAINS)[number];
+
+/** The batch program for a texture limit, magnification mode, shadow style, sampling and stains. */
 export function worldBatchProgramSource(
   maxTextures: number,
   mode: number,
   shadow: ShadowStyle | null,
   sampling: WorldBatchSampling,
+  stains: WorldBatchStains = 'stained',
 ): GlslProgramSource {
-  const variant = sampling === 'unmagnified' ? '/unmagnified' : '';
+  const variant = `${sampling === 'unmagnified' ? '/unmagnified' : ''}${stains === 'unstained' ? '/unstained' : ''}`;
   return {
     name: `world-batch/textures${maxTextures}/${worldMagnifyModeName(mode) ?? mode}/${shadow === null ? 'no-shadow' : 'shadow'}${variant}`,
     vertex: WORLD_BATCH_VERTEX,
-    fragment: worldBatchFragment(maxTextures, mode, shadow, sampling),
+    fragment: worldBatchFragment(maxTextures, mode, shadow, sampling, stains),
   };
+}
+
+/** The coat and the splashes over a body's colour, which only a stained element's fragments take. */
+function bloodGlsl(prescaled: boolean): string {
+  return /* glsl */ `  if (vBlood > 0.0 && outColor.a > 0.0) {
+    vec2 bodyUV = (vUV - vFrame.xy) / max(vFrame.zw - vFrame.xy, vec2(0.000001));
+    outColor.rgb = coatBlood(outColor.rgb / outColor.a, bodyUV, vBlood) * outColor.a;
+  }
+  if (vSplashes.w != 0.0 && outColor.a > 0.0) {
+    if (WORLD_MAGNIFY < 0.5) texSize = pageSize();
+    vec2 size = max((vFrame.zw - vFrame.xy) * texSize${prescaled ? ' / pageTexelScale()' : ''}, vec2(1.0));
+    vec2 uv = (vUV - vFrame.xy) / max(vFrame.zw - vFrame.xy, vec2(0.000001));
+    // Negative coat data is a facade cutoff: crop the imprint, never shrink the entire splash.
+    if (uv.y >= max(0.0, -vBlood)) {
+      float edge = vBlood < 0.0 ? smoothstep(-vBlood, -vBlood + 2.0 / size.y, uv.y) : 1.0;
+      outColor.rgb = mix(outColor.rgb, splashBlood(outColor.rgb / outColor.a, uv, size, vSplashes) * outColor.a, edge);
+    }
+  }`;
 }
 
 /** The prescaled program reads which slots hold a twin, so a frame keeps its page's texel scale. */
@@ -281,9 +308,11 @@ export function worldBatchFragment(
   mode: number,
   shadow: ShadowStyle | null,
   sampling: WorldBatchSampling,
+  stains: WorldBatchStains = 'stained',
 ): string {
   const shading = shadowShadingGlsl(shadow);
   const prescaled = mode === WORLD_MAGNIFY_MODES.prescaled;
+  const stained = stains === 'stained';
   const magnifies = sampling === 'magnifying';
   const gather = filteredGather(maxTextures, sampling);
   return /* glsl */ `#version 300 es
@@ -347,8 +376,7 @@ ${LIFT_COLOURS_GLSL}
 // vSplashes carries the uv step per unit offset in x and y.
 const int OUTLINE_TAPS = ${OUTLINE_DIRECTIONS.length};
 const vec2 OUTLINE_DIRECTIONS[OUTLINE_TAPS] = vec2[OUTLINE_TAPS](${OUTLINE_DIRECTIONS.map(([x, y]) => `vec2(${glslFloat(x)}, ${glslFloat(y)})`).join(', ')});${shading.declarations}
-${BLOOD_COAT_GLSL}
-${BLOOD_SURFACE_GLSL}
+${stained ? `${BLOOD_COAT_GLSL}\n${BLOOD_SURFACE_GLSL}` : ''}
 // The texels one fragment blends: xBR's neighbourhood of the sample point's corner, or 2x2 windows read
 // one at a time. A tap outside the element's frame is transparent, and an indexed tap resolves its
 // colour before any blend, so the magnifiers blend colours, never indices. The taps and the rest of the
@@ -548,20 +576,7 @@ ${gather}
   if (paletted && hasFlag(flags, WORLD_FLAG_GLOW)) {
     outColor = vec4(paletteColour(GLOW_PALETTE_INDEX / PALETTE_INDEX_MAX, lutRow), 1.0) * outColor.a;
   }
-  if (vBlood > 0.0 && outColor.a > 0.0) {
-    vec2 bodyUV = (vUV - vFrame.xy) / max(vFrame.zw - vFrame.xy, vec2(0.000001));
-    outColor.rgb = coatBlood(outColor.rgb / outColor.a, bodyUV, vBlood) * outColor.a;
-  }
-  if (vSplashes.w != 0.0 && outColor.a > 0.0) {
-    if (WORLD_MAGNIFY < 0.5) texSize = pageSize();
-    vec2 size = max((vFrame.zw - vFrame.xy) * texSize${prescaled ? ' / pageTexelScale()' : ''}, vec2(1.0));
-    vec2 uv = (vUV - vFrame.xy) / max(vFrame.zw - vFrame.xy, vec2(0.000001));
-    // Negative coat data is a facade cutoff: crop the imprint, never shrink the entire splash.
-    if (uv.y >= max(0.0, -vBlood)) {
-      float edge = vBlood < 0.0 ? smoothstep(-vBlood, -vBlood + 2.0 / size.y, uv.y) : 1.0;
-      outColor.rgb = mix(outColor.rgb, splashBlood(outColor.rgb / outColor.a, uv, size, vSplashes) * outColor.a, edge);
-    }
-  }
+${stained ? bloodGlsl(prescaled) : ''}
   ${shading.output}
   float packedLift = max(0.0, vSelection);
   float tone = min(floor(packedLift / SELECTION_TONE_BAND), float(LIFT_TONES - 1));

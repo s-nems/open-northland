@@ -66,7 +66,7 @@ const STALL_LIMIT_MS = 20_000;
  *  until the link ends. */
 const STALLED_POLL_MS = 1000;
 
-const KHR_PARALLEL_SHADER_COMPILE = 'KHR_parallel_shader_compile';
+export const KHR_PARALLEL_SHADER_COMPILE = 'KHR_parallel_shader_compile';
 /** `COMPLETION_STATUS_KHR` of the extension; the GL enum, so no typed extension object is needed. */
 const COMPLETION_STATUS_KHR = 0x91b1;
 

@@ -11,6 +11,7 @@ import {
   PRESCALED_SCALERS,
   type PrescaledScaler,
   prescaledScalerOf,
+  unstainedWorldPrograms,
   WORLD_MAGNIFY_MODE_NUMBERS,
   WORLD_MAGNIFY_MODES,
   type WorldMagnification,
@@ -21,7 +22,12 @@ import { WEATHER_AIR_SOURCE, WEATHER_GRADE_SOURCE, WEATHER_VEIL_SOURCE } from '.
 import { ATMOSPHERE_NOISE_BAKE_SOURCE } from '../weather/atmosphere-noise.js';
 import { GROUND_REACTIONS_SOURCE } from '../weather/ground-reactions.js';
 import { precipitationSource, WISP_UPSCALE_SOURCE } from '../weather/precipitation-shader.js';
-import { WORLD_BATCH_MAX_TEXTURES, worldBatchProgramSource } from '../world-batch/shader.js';
+import {
+  WORLD_BATCH_MAX_TEXTURES,
+  WORLD_BATCH_STAINS,
+  type WorldBatchSampling,
+  worldBatchProgramSource,
+} from '../world-batch/shader.js';
 import { DEFAULT_SHADOW_STYLE, type ShadowStyle } from '../world-batch/shadow-style.js';
 import { OFFSCREEN_WORLD_SOURCE } from '../world-renderer/offscreen-world.js';
 import type { GlslProgramSource } from './program-source.js';
@@ -92,15 +98,19 @@ function prescalePrograms(scaler: PrescaledScaler): readonly GlslProgramSource[]
 }
 
 /** The batch programs one mode and shadow style draw with: a magnifying mode also draws its unmagnified
- *  program wherever no page is magnified. */
+ *  program wherever no page is magnified, and each of them its unstained program wherever no element
+ *  carries blood, unless the world draws without those. */
 function worldBatchPrograms(
   maxTextures: number,
   mode: number,
   shadow: ShadowStyle | null,
 ): GlslProgramSource[] {
-  const magnifying = worldBatchProgramSource(maxTextures, mode, shadow, 'magnifying');
-  if (mode === WORLD_MAGNIFY_MODES.off) return [magnifying];
-  return [magnifying, worldBatchProgramSource(maxTextures, mode, shadow, 'unmagnified')];
+  const samplings: readonly WorldBatchSampling[] =
+    mode === WORLD_MAGNIFY_MODES.off ? ['magnifying'] : ['magnifying', 'unmagnified'];
+  const stains = WORLD_BATCH_STAINS.filter((kind) => kind === 'stained' || unstainedWorldPrograms());
+  return samplings.flatMap((sampling) =>
+    stains.map((kind) => worldBatchProgramSource(maxTextures, mode, shadow, sampling, kind)),
+  );
 }
 
 /** The settings that decide which programs a world can draw with. */

@@ -36,6 +36,7 @@ import {
   palettedRowOf,
   pixelArtMagnifyMode,
   prescaledPageOf,
+  unstainedWorldPrograms,
   WORLD_MAGNIFY_MODES,
   worldShadowStyle,
 } from '../pixel-art/registry.js';
@@ -55,6 +56,7 @@ import {
   WORLD_FLAG_SHADOW,
   WORLD_LUT_ROW_SHIFT,
   type WorldBatchSampling,
+  type WorldBatchStains,
   worldBatchProgramSource,
 } from './shader.js';
 import type { ShadowStyle } from './shadow-style.js';
@@ -334,6 +336,8 @@ export interface LutListingBatcher {
   lutBinding(batch: Batch): LutBinding | null;
 }
 export interface WorldBatcherApi extends Batcher, LutListingBatcher {
+  /** The program for a draw of this batcher's sampling, painting blood only when `stained`. */
+  shaderWith(stained: boolean): Shader;
   /** Packs `element` at `index` after a change Pixi reported, writing no more than changed. */
   repackQuad(
     element: DefaultBatchableQuadElement,
@@ -371,6 +375,8 @@ interface PackedQuad {
   shading: boolean;
   /** Whether its body may gather, so its texel bound counts. */
   bounded: boolean;
+  /** Whether it carries a blood coat or splashes, which only the stained program paints. */
+  stained: boolean;
   /** Page texels per unit of the quad's own x and y, before its transform; zero where snapping, a
    *  rotated frame or an empty quad leaves them unknown. */
   texelsX: number;
@@ -385,6 +391,11 @@ let wholePacks = 0;
 /** The number of `element`'s last whole pack in any buffer, or NaN, which equals nothing, before one. */
 export function wholePackOf(element: DefaultBatchableQuadElement): number {
   return (element as PackedQuadHost)[PACKED]?.serial ?? Number.NaN;
+}
+
+/** Whether `element`'s last whole pack in any buffer carried blood; false before one. */
+export function stainedPackOf(element: DefaultBatchableQuadElement): boolean {
+  return (element as PackedQuadHost)[PACKED]?.stained ?? false;
 }
 
 /** The sprite's count of view changes, or NaN, which equals nothing, where a whole pack must follow
@@ -446,6 +457,7 @@ function defineWorldBatcher(): WorldBatcherClass {
         readonly maxAlpha: number | undefined;
         readonly tint: number | undefined;
         readonly sampling: WorldBatchSampling;
+        readonly stains: WorldBatchStains;
         readonly shader: Shader;
       }
     | undefined;
@@ -459,6 +471,7 @@ function defineWorldBatcher(): WorldBatcherClass {
     mode: number,
     shadow: ShadowStyle | null,
     sampling: WorldBatchSampling,
+    stains: WorldBatchStains,
   ): Shader {
     // Most batches use the same variant; avoid formatting its cache key on every bind.
     if (
@@ -468,11 +481,12 @@ function defineWorldBatcher(): WorldBatcherClass {
       lastShader.alphaGain === shadow?.alphaGain &&
       lastShader.maxAlpha === shadow?.maxAlpha &&
       lastShader.tint === shadow?.tint &&
-      lastShader.sampling === sampling
+      lastShader.sampling === sampling &&
+      lastShader.stains === stains
     )
       return lastShader.shader;
     const shading = shadowKey(shadow);
-    const key = `${maxTextures}:${mode}:${shading}:${sampling}`;
+    const key = `${maxTextures}:${mode}:${shading}:${sampling}:${stains}`;
     let shader = shaders.get(key);
     if (shader === undefined) {
       const twinSlots: TwinSlotsUniforms | null =
@@ -485,7 +499,7 @@ function defineWorldBatcher(): WorldBatcherClass {
         { isStatic: true },
       );
       shader = new Shader({
-        glProgram: glProgramFor(worldBatchProgramSource(maxTextures, mode, shadow, sampling)),
+        glProgram: glProgramFor(worldBatchProgramSource(maxTextures, mode, shadow, sampling, stains)),
         resources: {
           batchSamplers: getBatchSamplersUniformGroup(maxTextures),
           pageSizes,
@@ -504,6 +518,7 @@ function defineWorldBatcher(): WorldBatcherClass {
       maxAlpha: shadow?.maxAlpha,
       tint: shadow?.tint,
       sampling,
+      stains,
       shader,
     };
     return shader;
@@ -527,6 +542,12 @@ function defineWorldBatcher(): WorldBatcherClass {
     maxU: 0,
     maxV: 0,
   };
+
+  /** Whether the element being packed takes the shader's coat or splash code: a silhouette takes
+   *  neither, and its splash slots carry an outline's reach. */
+  function packingStained(): boolean {
+    return packing.selection >= 0 && (packing.blood > 0 || packing.splash3 !== 0);
+  }
 
   function packSplashes(splashes: Float32Array | undefined): void {
     packing.splash0 = splashes?.[0] ?? 0;
@@ -661,6 +682,7 @@ function defineWorldBatcher(): WorldBatcherClass {
         d: 0,
         shading: false,
         bounded: false,
+        stained: false,
         texelsX: 0,
         texelsY: 0,
         serial: 0,
@@ -677,6 +699,7 @@ function defineWorldBatcher(): WorldBatcherClass {
     packed.d = transform.d;
     packed.shading = worldShadowStyle() !== null;
     packed.bounded = packing.selection >= 0 && gathers(packing.flags);
+    packed.stained = packingStained();
     packed.texelsX = 0;
     packed.texelsY = 0;
     if (!packed.bounded) return packed;
@@ -723,6 +746,8 @@ function defineWorldBatcher(): WorldBatcherClass {
      *  body may gather; an element repacked in place only lowers it. The still mesh's packer never
      *  begins, so its bound holds every quad it ever packed. */
     private texelsPerUnit = Number.POSITIVE_INFINITY;
+    /** Whether any element packed since the last `begin` carries blood; a repack in place only raises it. */
+    private stained = false;
 
     override updateElement(element: BatchableElement): void {
       const buffer = this.geometry.buffers[0];
@@ -867,6 +892,7 @@ function defineWorldBatcher(): WorldBatcherClass {
     override begin(): void {
       this.forgetLeftPages();
       this.texelsPerUnit = Number.POSITIVE_INFINITY;
+      this.stained = false;
       this.endLutRuns();
       super.begin();
     }
@@ -892,6 +918,27 @@ function defineWorldBatcher(): WorldBatcherClass {
       return this.texelsPerUnit >= MAGNIFIED_BELOW * UNMAGNIFIED_MARGIN * drawPixelsPerUnit
         ? 'unmagnified'
         : 'magnifying';
+    }
+
+    /** The program its own draws take: stained once any element it packed carries blood. */
+    ownShader(): Shader {
+      return this.shaderWith(this.stained);
+    }
+
+    shaderWith(stained: boolean): Shader {
+      const mode = pixelArtMagnifyMode();
+      // A draw that may take either sampling keeps the one bound, saving a program switch.
+      const sampling: WorldBatchSampling =
+        mode === WORLD_MAGNIFY_MODES.off
+          ? 'magnifying'
+          : (this.samplingNow() ?? lastShader?.sampling ?? 'magnifying');
+      return shaderFor(
+        this.maxTextures + LUT_SLOTS,
+        mode,
+        worldShadowStyle(),
+        sampling,
+        stained || !unstainedWorldPrograms() ? 'stained' : 'unstained',
+      );
     }
 
     override destroy(options?: { shader?: boolean }): void {
@@ -998,6 +1045,7 @@ function defineWorldBatcher(): WorldBatcherClass {
       const textureIdAndRound = (textureId << 16) | (element.roundPixels & 0xffff);
       beginRenderable(renderableOf(element));
       beginElement(element.texture, textureIdAndRound, element.color, this.flagsOf(element));
+      if (packingStained()) this.stained = true;
       // A mesh's vertices may stretch its texels anywhere.
       if (packing.selection >= 0 && gathers(packing.flags)) this.texelsPerUnit = 0;
       const { a, b, c, d, tx, ty } = element.transform;
@@ -1026,7 +1074,9 @@ function defineWorldBatcher(): WorldBatcherClass {
       const renderable = renderableOf(element);
       const outline = beginRenderable(renderable);
       beginElement(texture, textureIdAndRound, element.color, this.flagsOf(element));
-      this.noteTexelBound(notePacked(element, renderable));
+      const packed = notePacked(element, renderable);
+      if (packed.stained) this.stained = true;
+      this.noteTexelBound(packed);
       if (outline !== null) packOutline(outline);
       const { a, b, c, d, tx, ty } = element.transform;
       const { minX, minY, maxX, maxY } = element.bounds;
@@ -1051,13 +1101,7 @@ function defineWorldBatcher(): WorldBatcherClass {
   // setting change takes effect on the next frame. Pixi's base class never assigns the property.
   Object.defineProperty(WorldBatcher.prototype, 'shader', {
     get(this: WorldBatcher) {
-      const mode = pixelArtMagnifyMode();
-      // A draw that may take either program keeps the one bound, saving a program switch.
-      const sampling: WorldBatchSampling =
-        mode === WORLD_MAGNIFY_MODES.off
-          ? 'magnifying'
-          : (this.samplingNow() ?? lastShader?.sampling ?? 'magnifying');
-      return shaderFor(this.maxTextures + LUT_SLOTS, mode, worldShadowStyle(), sampling);
+      return this.ownShader();
     },
     set() {}, // Pixi's base class never assigns it; the mode owns the choice
   });

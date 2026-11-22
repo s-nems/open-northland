@@ -132,11 +132,13 @@ describe('boot shader programs', () => {
     const names = namesOf(bootShaderPrograms(16, { ...EVERY_EFFECT, magnification: 'xbr', shadow: null }));
     expect(names.filter((name) => name.startsWith('world-batch/'))).toEqual([
       'world-batch/textures16/xbr/no-shadow',
+      'world-batch/textures16/xbr/no-shadow/unstained',
       'world-batch/textures16/xbr/no-shadow/unmagnified',
+      'world-batch/textures16/xbr/no-shadow/unmagnified/unstained',
     ]);
     expect(
       namesOf(bootShaderPrograms(16, NO_EFFECT)).filter((name) => name.startsWith('world-batch/')),
-    ).toEqual(['world-batch/textures16/off/no-shadow']);
+    ).toEqual(['world-batch/textures16/off/no-shadow', 'world-batch/textures16/off/no-shadow/unstained']);
     expect(names).toContain('shaded-terrain');
     expect(names).toContain('decor-shadow');
     expect(names).toContain('paletted-sprite');

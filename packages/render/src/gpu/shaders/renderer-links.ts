@@ -1,7 +1,8 @@
 import { type Renderer, WebGLRenderer } from 'pixi.js';
+import { setUnstainedWorldPrograms } from '../pixel-art/registry.js';
 import { bootShaderPrograms } from './catalog.js';
 import { glProgramFor, supportsProgram } from './program-source.js';
-import { shaderSelection, type WarmupSettings } from './warmup.js';
+import { KHR_PARALLEL_SHADER_COMPILE, shaderSelection, type WarmupSettings } from './warmup.js';
 
 /** A catalogue program the renderer linked ahead of its first frame. */
 export interface RendererLink {
@@ -21,6 +22,12 @@ export async function linkRendererPrograms(
   settings: WarmupSettings,
 ): Promise<readonly RendererLink[]> {
   if (!(renderer instanceof WebGLRenderer)) return [];
+  // Without parallel compile every link blocks this thread, and such a browser keeps no linked
+  // programs between runs: the unstained programs would cost their Direct3D compile on every start.
+  // A lost context reports no extension at all, so it leaves the choice as it stands.
+  if (!renderer.gl.isContextLost()) {
+    setUnstainedWorldPrograms(renderer.gl.getExtension(KHR_PARALLEL_SHADER_COMPILE) !== null);
+  }
   const programs = bootShaderPrograms(renderer.limits.maxBatchableTextures, shaderSelection(settings)).filter(
     (source) => supportsProgram(renderer.gl, source),
   );

@@ -26,6 +26,7 @@ import {
   type LutBinding,
   type LutListingBatcher,
   lutSlotOf,
+  stainedPackOf,
   WORLD_VERTEX_SIZE,
   type WorldBatcherApi,
   wholePackOf,
@@ -141,6 +142,8 @@ interface MeshQuad extends TableQuad {
   packedSlot: number;
   /** The record's whole-pack number as the mesh last packed it; another buffer packing it since moves it. */
   packSerial: number;
+  /** Whether the quad in its slot carries blood, as the mesh last packed it. */
+  stained: boolean;
   /** The renders it was last packed on, and the one before. */
   packFrame: number;
   previousPackFrame: number;
@@ -323,6 +326,8 @@ class BandStills extends Batcher implements LutListingBatcher {
   indexCount = 0;
   readonly draws: Batch[] = [];
   drawCount = 0;
+  /** Whether a quad the last rebuild placed, or one repacked since, carries blood. */
+  stained = false;
   members: Member[] = [];
   spareMembers: Member[] = [];
   build = 0;
@@ -350,7 +355,7 @@ class BandStills extends Batcher implements LutListingBatcher {
     readonly band: Container,
     private readonly mesh: StillSpriteMesh,
     store: QuadStore,
-    packer: Batcher,
+    packer: WorldBatcherApi,
   ) {
     super({
       maxTextures: packer.maxTextures,
@@ -373,7 +378,7 @@ class BandStills extends Batcher implements LutListingBatcher {
         return geometry;
       },
     });
-    Object.defineProperty(this, 'shader', { get: () => packer.shader });
+    Object.defineProperty(this, 'shader', { get: () => packer.shaderWith(this.stained) });
   }
 
   /** The table taking the running rebuild's quads; null before its first member. */
@@ -536,6 +541,7 @@ export class StillSpriteMesh implements StillBandCollector {
     this.classify(state, children, layer);
     state.indexCount = 0;
     state.drawCount = 0;
+    state.stained = false;
     state.beginTables();
     const previous = state.members;
     state.members = state.spareMembers;
@@ -631,6 +637,7 @@ export class StillSpriteMesh implements StillBandCollector {
     if (quad.sprite.parent === null || !this.takes(quad.owner))
       state.band.renderGroup.structureDidChange = true;
     this.packInPlace(this.packer, store, quad, quad.textureId);
+    if (quad.stained) state.stained = true;
     quad.containerTick = quad.sprite._didContainerChangeTick;
     quad.viewTick = quad.sprite._didViewChangeTick;
     quad.previousPackFrame = quad.packFrame;
@@ -793,6 +800,7 @@ export class StillSpriteMesh implements StillBandCollector {
         quad.textureId = id;
         quad.element._textureId = id;
       }
+      if (quad.stained) state.stained = true;
       quad.table = table;
       quad.element._batcher = state;
       // Pixi clears this as it collects a view, so the sprite's next change notifies the group again.
@@ -852,6 +860,7 @@ export class StillSpriteMesh implements StillBandCollector {
         slot: store.allocate(),
         packedSlot: UNPACKED,
         packSerial: Number.NaN,
+        stained: false,
         containerTick: Number.NaN,
         viewTick: Number.NaN,
         packFrame: Number.NEGATIVE_INFINITY,
@@ -917,6 +926,7 @@ export class StillSpriteMesh implements StillBandCollector {
     else packer.packQuadAttributes(element, store.f32, store.u32, start, textureId);
     quad.packedSlot = quad.slot;
     quad.packSerial = wholePackOf(element);
+    quad.stained = stainedPackOf(element);
   }
 
   /**

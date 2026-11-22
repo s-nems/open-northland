@@ -14,6 +14,7 @@ import {
 } from 'pixi.js';
 import { afterEach, describe, expect, it } from 'vitest';
 import { markPalettedTexture } from '../../../src/gpu/pixel-art/registry.js';
+import { SelectionSprite } from '../../../src/gpu/selection/sprite-effect.js';
 import type { DrawTable } from '../../../src/gpu/still-mesh/draw-table.js';
 import { QUAD_FLOATS, QuadStore, VERTICES_PER_QUAD } from '../../../src/gpu/still-mesh/quad-store.js';
 import {
@@ -142,6 +143,7 @@ interface MeshInternals {
     Container,
     {
       build: number;
+      stained: boolean;
       members: {
         quads: { slot: number; sprite: Sprite; live: boolean; table: DrawTable | null; textureId: number }[];
       }[];
@@ -332,6 +334,32 @@ describe('StillSpriteMesh', () => {
     expect((tree.parent as Container).renderGroup.structureDidChange).toBe(false);
     expect(h.frame()).toEqual(painterOrder(h.layer));
     expect(packedOf(h, body)).toEqual(freshPack(h, body));
+  });
+
+  it('marks a band stained while a quad it draws carries blood', () => {
+    const h = harness();
+    const fighter = new Container();
+    const body = worldBatched(new SelectionSprite(textureOn(0)));
+    fighter.addChild(body);
+    h.layer.addChild(fighter);
+    h.held.add(fighter);
+    const stained = (): boolean[] =>
+      [...(h.mesh as unknown as MeshInternals).bands.values()].map((state) => state.stained);
+    h.frame();
+    expect(stained()).toEqual([false]);
+    // A coat reaches the quad through Pixi's update, with no rebuild.
+    body.bloodEffect = 1;
+    h.frame();
+    expect(stained()).toEqual([true]);
+    // A rebuild that places the coated quad unchanged keeps the mark; one after the coat is gone drops it.
+    entity(h.layer, 1);
+    h.frame();
+    expect(stained()).toEqual([true]);
+    body.bloodEffect = 0;
+    h.frame();
+    entity(h.layer, 2);
+    h.frame();
+    expect(stained()).toEqual([false]);
   });
 
   it('repacks a sprite that changed in the frame its band rebuilds', () => {
