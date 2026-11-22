@@ -16,6 +16,7 @@ import {
   Settler,
   SettlerNeeds,
   Stockpile,
+  StorageRules,
   YoungAnimal,
 } from '../../../components/index.js';
 import type { ChangeFeed } from '../../../ecs/change-feed.js';
@@ -37,10 +38,20 @@ const INITIAL_ENTITY_CAPACITY = 1024;
 /**
  * Which workshops the production pass visits on a tick. A visit that found nothing to do files the
  * workshop under the tick its batches next complete or pay a need event, or asleep; a change to the
- * workshop, to a settler or herd animal bound to it or to the technology unlocks ends the wait. Derived
- * from the stores alone: a fresh one, as after a load or a content swap, visits every workshop once and
- * files it from there.
+ * workshop, to a settler or herd animal bound to it, to the technology unlocks or to the storage factor
+ * ends the wait. Derived from the stores alone: a fresh one, as after a load or a content swap, visits
+ * every workshop once and files it from there.
  */
+/** Moves whenever a world-wide input of a start gate does: the technology unlocks, and the storage factor
+ *  that sizes a storage building's output room. */
+function startRulesGeneration(world: World): number {
+  return (
+    technologyUnlockGeneration(world) +
+    world.componentGeneration(StorageRules) +
+    world.componentValueGeneration(StorageRules)
+  );
+}
+
 export class ProductionDormancy {
   /** By workshop id, the tick its batches are next advanced on. */
   private advanceAt = new Float64Array(INITIAL_ENTITY_CAPACITY);
@@ -98,9 +109,10 @@ export class ProductionDormancy {
     if (this.changes.drain(this.changed) || this.moves.drain(this.moved) || lost) this.reset();
   }
 
-  /** Wake every workshop a technology unlock since the last call may let start a batch. */
+  /** Wake every workshop a technology unlock or a new storage factor since the last call may let start a
+   *  batch. */
   catchUpUnlocks(): void {
-    const unlocks = technologyUnlockGeneration(this.world);
+    const unlocks = startRulesGeneration(this.world);
     if (unlocks === this.unlocks) return;
     this.unlocks = unlocks;
     this.startAsleep.fill(0);
@@ -156,7 +168,7 @@ export class ProductionDormancy {
         violations.push(`productionDormancy: workshop ${e} advances on tick ${filed}, due on ${due}`);
       }
     }
-    if (technologyUnlockGeneration(world) !== this.unlocks) return violations;
+    if (startRulesGeneration(world) !== this.unlocks) return violations;
     for (const e of world.query(Building, Stockpile)) {
       if (pending.has(e) || this.startAsleep[e] !== 1 || starts(e, next)) continue;
       violations.push(`productionDormancy: workshop ${e} sleeps with a batch it may start`);
@@ -190,7 +202,7 @@ export class ProductionDormancy {
     this.postOf.fill(NO_POST);
     for (const e of world.query(JobAssignment)) this.setPost(e, boundWorkshopOf(world, e));
     for (const e of world.query(FarmAnimal)) this.setPost(e, boundWorkshopOf(world, e));
-    this.unlocks = technologyUnlockGeneration(world);
+    this.unlocks = startRulesGeneration(world);
   }
 
   private grow(id: number): void {
