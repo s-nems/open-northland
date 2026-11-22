@@ -1,12 +1,16 @@
 import {
+  type Batch,
   Container,
   type ContainerChild,
   type InstructionSet,
   type Renderer,
   type RenderLayer,
 } from 'pixi.js';
+import type { Viewport } from '../../data/projection/index.js';
 import { paintsUnderSortedPass, rowOfDepth } from '../../data/scene/index.js';
+import { drawRenderGroup, drawsRenderGroup } from '../pixi-app/inherited-group-uniforms.js';
 import type { StillBandCollector } from '../still-mesh/still-mesh.js';
+import { tellsQuadReach } from '../world-batch/quad-reach.js';
 
 /** Painter-depth span one band holds, in world px of feet row (a row is 38): narrower bands rebuild
  *  fewer entries per change but each adds a render-group pass and a draw call. Chosen by measuring the
@@ -169,6 +173,35 @@ class DepthBand extends Container {
   }
 }
 
+/** The render pipe of Pixi's batch draws, the still mesh's among them. */
+const BATCH_PIPE = 'batch';
+
+/**
+ * Whether `band` may draw into `view` grown by `pad` world px, by the quads its batches last packed.
+ * A band due a rebuild, and one drawing anything but batches of quads, answers true.
+ *
+ * Undocumented Pixi behaviour, verified on pixi.js 8.22, re-verify on a bump: a render group's
+ * instructions hold every draw it issues, and a batch names the batcher whose buffers it draws from.
+ */
+function drawsInto(band: DepthBand, view: Viewport, pad: number): boolean {
+  const group = band.renderGroup;
+  if (group.structureDidChange) return true;
+  const { instructions, instructionSize } = group.instructionSet;
+  // A band draws through two batchers at most, Pixi's and the still mesh's, each asked once.
+  let asked: unknown;
+  let askedBefore: unknown;
+  for (let i = 0; i < instructionSize; i++) {
+    const instruction = instructions[i];
+    if (instruction?.renderPipeId !== BATCH_PIPE) return true;
+    const batcher: unknown = (instruction as Batch).batcher;
+    if (batcher === asked || batcher === askedBefore) continue;
+    if (!tellsQuadReach(batcher) || batcher.quadsReach(view, pad) !== false) return true;
+    askedBefore = asked;
+    asked = batcher;
+  }
+  return false;
+}
+
 /** The container `child` draws in: the layer of a depth band, else its parent. */
 export function drawLayerOf(child: Container): Container | null {
   const parent = child.parent;
@@ -249,25 +282,32 @@ export class DepthSortedLayer extends Container {
   }
 
   /**
-   * Hide every shown band whose feet rows all lie outside `[minRow, maxRow]`, appending each to `hidden`
-   * for `showBands`. A band hidden here changes this layer's short list of bands, never a band's own
-   * instructions. A band no pass files (a key pinned above every row) stays shown.
+   * Leave out of the renders every shown band whose feet rows all lie outside `[minRow, maxRow]`, and
+   * with `view` every one whose packed quads all miss it by more than `pad` world px. Each goes to
+   * `hidden` for `showBands`. A band left out keeps its place in this layer's instructions and its own
+   * (see `drawRenderGroup`). A band no pass files (a key pinned above every row) passes the rows.
    */
-  hideBandsOutside(minRow: number, maxRow: number, hidden: Container[]): void {
+  hideBandsOutside(minRow: number, maxRow: number, hidden: Container[], view?: Viewport, pad = 0): void {
     for (const band of this.children) {
       if (!(band instanceof DepthBand) || !band.visible) continue;
       const first = band.index * BAND_DEPTH;
       const top = rowOfDepth(first);
-      if (top === null || (top + bandSpanAt(first) >= minRow && top <= maxRow)) continue;
+      const inRows = top === null || (top + bandSpanAt(first) >= minRow && top <= maxRow);
+      if (inRows && (view === undefined || drawsInto(band, view, pad))) continue;
       hidden.push(band);
-      band.visible = false;
+      drawRenderGroup(band.renderGroup, false);
     }
   }
 
-  /** Show the bands `hideBandsOutside` hid and empty the list. */
+  /** Draw the bands `hideBandsOutside` left out again and empty the list. */
   showBands(hidden: Container[]): void {
-    for (const band of hidden) band.visible = true;
+    for (const band of hidden) drawRenderGroup(band.renderGroup, true);
     hidden.length = 0;
+  }
+
+  /** Whether the renders draw `band`: shown, and not left out by `hideBandsOutside`. */
+  drawsBand(band: Container): boolean {
+    return band.visible && drawsRenderGroup(band.renderGroup);
   }
 
   /** Every entry in painter order; allocates, for tests and tools rather than per-frame work. */

@@ -13,6 +13,7 @@ import {
   TextureSource,
 } from 'pixi.js';
 import { afterEach, describe, expect, it } from 'vitest';
+import type { Viewport } from '../../../src/data/projection/index.js';
 import { markPalettedTexture } from '../../../src/gpu/pixel-art/registry.js';
 import { SelectionSprite } from '../../../src/gpu/selection/sprite-effect.js';
 import type { DrawTable } from '../../../src/gpu/still-mesh/draw-table.js';
@@ -23,6 +24,7 @@ import {
   StillSpriteMesh,
 } from '../../../src/gpu/still-mesh/still-mesh.js';
 import { installWorldBatcher, worldBatched } from '../../../src/gpu/world-batch/batcher.js';
+import { type QuadReaching, tellsQuadReach } from '../../../src/gpu/world-batch/quad-reach.js';
 import { DepthSortedLayer } from '../../../src/gpu/world-renderer/depth-sorted-layer.js';
 
 /**
@@ -309,6 +311,16 @@ function freshPack(h: Harness, sprite: Sprite): number[] {
   return [...out];
 }
 
+/** The still mesh's batcher of the band holding `child`, which its draws name. */
+function stillsOf(child: Container): QuadReaching {
+  const set = (child.parent as Container).renderGroup.instructionSet;
+  for (let i = 0; i < set.instructionSize; i++) {
+    const batcher: unknown = (set.instructions[i] as { batcher?: unknown }).batcher;
+    if (tellsQuadReach(batcher)) return batcher;
+  }
+  throw new Error('the band draws nothing from the mesh');
+}
+
 describe('StillSpriteMesh', () => {
   it('draws still runs between the others in Pixi painter order, each sprite once', () => {
     const h = harness();
@@ -320,6 +332,25 @@ describe('StillSpriteMesh', () => {
     // Runs [0,1], [3,4], [6] in the first band, [far] in the second.
     expect(h.meshDraws()).toBe(4);
     expect(h.mesh.quadCount).toBe(12);
+  });
+
+  it('tells whether a quad its band draws reaches a view, by the corners it last packed', () => {
+    const h = harness();
+    // Each sprite of an entity is half a page wide and tall, at the entity's place.
+    const half = PAGE_SIZE / 2;
+    const tree = entity(h.layer, 0);
+    entity(h.layer, 5);
+    h.held.add(tree);
+    h.frame();
+    const stills = stillsOf(tree);
+    const around = (x: number, y: number): Viewport => ({ minX: x, minY: y, maxX: x + 1, maxY: y + 1 });
+    expect(stills.quadsReach(around(half / 2, half / 2), 0)).toBe(true);
+    expect(stills.quadsReach(around(half + 1, half / 2), 0)).toBe(false);
+    expect(stills.quadsReach(around(half + 1, half / 2), 1)).toBe(true);
+    const body = tree.children[1] as Sprite;
+    body.position.set(FAR, 0);
+    h.frame();
+    expect(stills.quadsReach(around(FAR + half / 2, half / 2), 0)).toBe(true);
   });
 
   it('keeps a meshed sprite current through Pixi updates without a rebuild', () => {

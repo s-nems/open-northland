@@ -109,6 +109,10 @@ import { WorldFog } from './world-fog.js';
 import { WorldMarks } from './world-marks.js';
 import { WorldSites } from './world-sites.js';
 
+/** Screen px a quad may draw off the corners its batch last packed: a paletted quad's snap to the
+ *  main camera's device grid and to an inset's, and the batch shader's rounding, half a px each. */
+const QUAD_SNAP_PX = 2;
+
 export class WorldRenderer {
   private readonly app: Application;
   /** The world layer, the weather sky, the scene light and the screen chrome: what the offscreen world draws
@@ -769,11 +773,15 @@ export class WorldRenderer {
         // An inset borrows the world without the see-through view, as the pool's pass does for its own.
         this.mapObjects.setDecorFade(undefined);
         // The bands the main cull would keep for this view: anchors within the sprite margin, and a
-        // claimed road plot sorting back by its plot's top.
+        // claimed road plot sorting back by its plot's top. Of those, the ones whose quads reach it,
+        // as the main render packed them: a paletted quad snaps to either camera's device grid since.
+        const snap = QUAD_SNAP_PX / Math.min(cam.scale ?? 1, camera.scale ?? 1);
         this.spriteLayer.hideBandsOutside(
           view.minY - SPRITE_CULL_MARGIN + PLOT_BOUNDS.top,
           view.maxY + SPRITE_CULL_MARGIN,
           this.insetBands,
+          cameraViewport(cam, iw, ih),
+          snap,
         );
       },
       restore: () => {

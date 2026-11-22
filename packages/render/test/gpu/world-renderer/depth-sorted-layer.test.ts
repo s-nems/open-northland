@@ -1,5 +1,6 @@
 import { Container } from 'pixi.js';
 import { describe, expect, it } from 'vitest';
+import type { Viewport } from '../../../src/data/projection/index.js';
 import { drawPassDepth, rowOfDepth } from '../../../src/data/scene/index.js';
 import { PLOT_BOUNDS } from '../../../src/gpu/placement/plan-road.js';
 import { BAND_DEPTH, DepthSortedLayer } from '../../../src/gpu/world-renderer/depth-sorted-layer.js';
@@ -28,6 +29,21 @@ function bandOf(child: Container): Container {
   if (band === null) throw new Error('child is not in a band');
   return band;
 }
+
+/** Whether the renders draw `child`'s band. */
+function drawn(layer: DepthSortedLayer, child: Container): boolean {
+  return layer.drawsBand(bandOf(child));
+}
+
+/** Stand `instructions` in for what the band of `child` last built. */
+function draws(child: Container, instructions: readonly object[]): void {
+  const set = bandOf(child).renderGroup.instructionSet;
+  set.instructions.length = 0;
+  set.instructions.push(...(instructions as typeof set.instructions));
+  set.instructionSize = instructions.length;
+}
+
+const batch = (batcher: object): object => ({ renderPipeId: 'batch', batcher });
 
 function settle(layer: DepthSortedLayer): void {
   layer.renderGroup.structureDidChange = false;
@@ -259,12 +275,14 @@ describe('depth sorted layer', () => {
     settle(layer);
     const hidden: Container[] = [];
     layer.hideBandsOutside(0, 200, hidden);
-    expect([near, nearFish, pinned].map((child) => bandOf(child).visible)).toEqual([true, true, true]);
-    expect([far, farGround].map((child) => bandOf(child).visible)).toEqual([false, false]);
-    // The bands' own instructions stand; only the layer's list of bands changes.
+    expect([near, nearFish, pinned].map((child) => drawn(layer, child))).toEqual([true, true, true]);
+    expect([far, farGround].map((child) => drawn(layer, child))).toEqual([false, false]);
+    // No instructions change: neither a band's own nor the layer's list of bands.
     expect(layer.children.some((band) => band.renderGroup.structureDidChange)).toBe(false);
-    layer.showBands(hidden);
+    expect(layer.renderGroup.structureDidChange).toBe(false);
     expect(layer.children.every((band) => band.visible)).toBe(true);
+    layer.showBands(hidden);
+    expect(layer.children.every((band) => layer.drawsBand(band))).toBe(true);
     expect(hidden).toEqual([]);
   });
 
@@ -283,7 +301,7 @@ describe('depth sorted layer', () => {
     expect(topRow + BAND_DEPTH).toBeGreaterThan(WINDOW_TOP);
     const hidden: Container[] = [];
     layer.hideBandsOutside(WINDOW_TOP, WINDOW_BOTTOM, hidden);
-    expect([top, bottom, past].map((child) => bandOf(child).visible)).toEqual([true, true, false]);
+    expect([top, bottom, past].map((child) => drawn(layer, child))).toEqual([true, true, false]);
     expect(hidden).toEqual([bandOf(past)]);
   });
 
@@ -316,7 +334,7 @@ describe('depth sorted layer', () => {
     if (!heap || !far) throw new Error('missing children');
     const hidden: Container[] = [];
     layer.hideBandsOutside(WINDOW_TOP, WINDOW_BOTTOM, hidden);
-    expect([heap, far].map((child) => bandOf(child).visible)).toEqual([true, false]);
+    expect([heap, far].map((child) => drawn(layer, child))).toEqual([true, false]);
   });
 
   it('keeps a claimed road plot sorting back past the window top once the window lowers by the plot', () => {
@@ -330,9 +348,55 @@ describe('depth sorted layer', () => {
     if (!plot) throw new Error('missing children');
     const hidden: Container[] = [];
     layer.hideBandsOutside(anchorRow, WINDOW_BOTTOM, hidden);
-    expect(bandOf(plot).visible).toBe(false);
+    expect(drawn(layer, plot)).toBe(false);
     layer.showBands(hidden);
     layer.hideBandsOutside(anchorRow + PLOT_BOUNDS.top, WINDOW_BOTTOM, hidden);
-    expect(bandOf(plot).visible).toBe(true);
+    expect(drawn(layer, plot)).toBe(true);
+    layer.showBands(hidden);
+  });
+
+  it('leaves out a band inside the rows whose packed quads all miss the view', () => {
+    const sorted = drawPassDepth('sorted');
+    const row = sorted + WINDOW_TOP + BAND_DEPTH;
+    const depths = [0, 1, 2, 3, 4, 5, 6].map((band) => row + band * FAR);
+    const { layer, children } = layerWith(depths);
+    const [missing, reaching, mixed, unknown, graphic, rebuilding, empty] = children;
+    if (!missing || !reaching || !mixed || !unknown || !graphic || !rebuilding || !empty)
+      throw new Error('missing children');
+    settle(layer);
+    const asked: Viewport[] = [];
+    const batcher = (answer: boolean | undefined) => ({
+      quadsReach: (view: Viewport) => {
+        asked.push(view);
+        return answer;
+      },
+    });
+    const outside = batcher(false);
+    // A band draws through each of its batchers more than once; each answers once.
+    draws(missing, [batch(outside), batch(outside), batch(batcher(false)), batch(outside)]);
+    draws(reaching, [batch(batcher(true))]);
+    draws(mixed, [batch(batcher(false)), batch(batcher(true))]);
+    // Geometry the batcher cannot place, a batcher that tells nothing, and a draw that is no batch.
+    draws(unknown, [batch(batcher(undefined))]);
+    draws(graphic, [batch(batcher(false)), batch({}), { renderPipeId: 'mesh' }]);
+    draws(rebuilding, [batch(batcher(false))]);
+    bandOf(rebuilding).renderGroup.structureDidChange = true;
+    draws(empty, []);
+    const view: Viewport = { minX: 0, minY: 0, maxX: 10, maxY: 10 };
+    const hidden: Container[] = [];
+    layer.hideBandsOutside(sorted, sorted + 7 * FAR, hidden, view);
+    expect(children.map((child) => drawn(layer, child))).toEqual([
+      false,
+      true,
+      true,
+      true,
+      true,
+      true,
+      false,
+    ]);
+    expect(asked).toHaveLength(7);
+    expect(asked.every((seen) => seen === view)).toBe(true);
+    layer.showBands(hidden);
+    expect(layer.children.every((band) => layer.drawsBand(band))).toBe(true);
   });
 });

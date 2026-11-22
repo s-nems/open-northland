@@ -23,6 +23,7 @@ import {
   type ViewContainer,
   WebGLRenderer,
 } from 'pixi.js';
+import type { Viewport } from '../../data/projection/index.js';
 import { BloodSurfaceSprite } from '../blood/surface-sprite.js';
 import { MAGNIFIED_BELOW } from '../pixel-art/magnify.js';
 import {
@@ -43,6 +44,7 @@ import {
 import { OutlineSprite, SelectionGraphics, SelectionSprite } from '../selection/sprite-effect.js';
 import { glProgramFor } from '../shaders/program-source.js';
 import { WorldAttributeBuffer } from './attribute-buffer.js';
+import { packedQuadsReach, type QuadReaching } from './quad-reach.js';
 import {
   LUT_SLOTS,
   lutSlotOf,
@@ -335,7 +337,7 @@ export interface LutListingBatcher {
   /** Where `batch` lists its LUT, or null for a batch without one; valid until the next call. */
   lutBinding(batch: Batch): LutBinding | null;
 }
-export interface WorldBatcherApi extends Batcher, LutListingBatcher {
+export interface WorldBatcherApi extends Batcher, LutListingBatcher, QuadReaching {
   /** The program for a draw of this batcher's sampling, painting blood only when `stained`. */
   shaderWith(stained: boolean): Shader;
   /** Packs `element` at `index` after a change Pixi reported, writing no more than changed. */
@@ -748,6 +750,19 @@ function defineWorldBatcher(): WorldBatcherClass {
     private texelsPerUnit = Number.POSITIVE_INFINITY;
     /** Whether any element packed since the last `begin` carries blood; a repack in place only raises it. */
     private stained = false;
+    /** Whether every element packed since the last `begin` was a quad. */
+    private quadsOnly = true;
+
+    quadsReach(view: Viewport, pad: number): boolean | undefined {
+      if (!this.quadsOnly) return undefined;
+      return packedQuadsReach(
+        this.attributeBuffer.float32View,
+        this.vertexSize,
+        this.attributeSize,
+        view,
+        pad,
+      );
+    }
 
     override updateElement(element: BatchableElement): void {
       const buffer = this.geometry.buffers[0];
@@ -893,6 +908,7 @@ function defineWorldBatcher(): WorldBatcherClass {
       this.forgetLeftPages();
       this.texelsPerUnit = Number.POSITIVE_INFINITY;
       this.stained = false;
+      this.quadsOnly = true;
       this.endLutRuns();
       super.begin();
     }
@@ -1043,6 +1059,7 @@ function defineWorldBatcher(): WorldBatcherClass {
       textureId: number,
     ): void {
       const textureIdAndRound = (textureId << 16) | (element.roundPixels & 0xffff);
+      this.quadsOnly = false;
       beginRenderable(renderableOf(element));
       beginElement(element.texture, textureIdAndRound, element.color, this.flagsOf(element));
       if (packingStained()) this.stained = true;

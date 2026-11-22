@@ -1,7 +1,7 @@
 import {
   Batch,
   BatchableGraphics,
-  type BatchableSprite,
+  BatchableSprite,
   type Batcher,
   BatcherPipe,
   BatchTextureArray,
@@ -22,6 +22,7 @@ import {
   WebGLRenderer,
 } from 'pixi.js';
 import { afterEach, describe, expect, it } from 'vitest';
+import type { Viewport } from '../../../src/data/projection/index.js';
 import { bloodSurface } from '../../../src/gpu/blood/surface-sprite.js';
 import {
   markIndexedSource,
@@ -368,6 +369,73 @@ describe('world batcher repack in place', () => {
     expect(repackedWhole()).toBe(true);
     batcher.destroy();
     sprite.destroy();
+  });
+});
+
+describe('world batcher quad reach', () => {
+  const NEAR: Viewport = { minX: 0, minY: 0, maxX: 10, maxY: 10 };
+  const AWAY: Viewport = { minX: 500, minY: 0, maxX: 510, maxY: 10 };
+  const BETWEEN: Viewport = { minX: 200, minY: 0, maxX: 210, maxY: 10 };
+
+  /** A 2x4 quad standing at `x`, as the sprite pipe hands one to the batcher. */
+  function quadAt(x: number): BatchableSprite {
+    const sprite = new SelectionSprite(Texture.WHITE);
+    const element = new BatchableSprite();
+    element.renderable = sprite;
+    element.transform = new Matrix(1, 0, 0, 1, x, 0);
+    element.texture = sprite.texture;
+    element.bounds = { minX: 0, minY: 0, maxX: 2, maxY: 4 };
+    element.roundPixels = 0;
+    return element;
+  }
+
+  function batcherOf(...elements: BatchableSprite[]) {
+    const WorldBatcher = installWorldBatcher();
+    const batcher = new WorldBatcher({ maxTextures: PAGES_AND_LUT });
+    const build = (): void => {
+      batcher.begin();
+      for (const element of elements) batcher.add(element);
+      batcher.break(new InstructionSet());
+    };
+    build();
+    return { batcher, build };
+  }
+
+  it('answers by the corners of the quads it packed, moved ones as they were repacked', () => {
+    const moving = quadAt(AWAY.minX);
+    const { batcher } = batcherOf(quadAt(NEAR.minX), moving);
+    expect([NEAR, AWAY, BETWEEN].map((view) => batcher.quadsReach(view, 0))).toEqual([true, true, false]);
+    moving.transform.tx = BETWEEN.minX;
+    expect(batcher.quadsReach(BETWEEN, 0)).toBe(false);
+    batcher.updateElement(moving);
+    expect([AWAY, BETWEEN].map((view) => batcher.quadsReach(view, 0))).toEqual([false, true]);
+  });
+
+  it('forgets the quads of the build before', () => {
+    const { batcher } = batcherOf(quadAt(NEAR.minX), quadAt(AWAY.minX));
+    batcher.begin();
+    batcher.add(quadAt(NEAR.minX));
+    batcher.break(new InstructionSet());
+    expect([NEAR, AWAY].map((view) => batcher.quadsReach(view, 0))).toEqual([true, false]);
+  });
+
+  it('answers nothing while it holds a mesh, until its next build', () => {
+    const { batcher, build } = batcherOf(quadAt(NEAR.minX));
+    const mesh = {
+      texture: Texture.WHITE,
+      renderable: new SelectionSprite(Texture.WHITE),
+      transform: new Matrix(),
+      positions: new Float32Array(0),
+      uvs: new Float32Array(0),
+      attributeOffset: 0,
+      attributeSize: 0,
+      color: 0xffffffff,
+      roundPixels: 0,
+    } as unknown as DefaultBatchableMeshElement;
+    batcher.packAttributes(mesh, new Float32Array(0), new Uint32Array(0), 0, 0);
+    expect(batcher.quadsReach(NEAR, 0)).toBeUndefined();
+    build();
+    expect(batcher.quadsReach(NEAR, 0)).toBe(true);
   });
 });
 

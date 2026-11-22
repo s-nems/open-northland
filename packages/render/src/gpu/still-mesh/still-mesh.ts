@@ -19,6 +19,7 @@ import {
   ViewContainer,
   type WebGLRenderer,
 } from 'pixi.js';
+import type { Viewport } from '../../data/projection/index.js';
 import { worldShadowStyle } from '../pixel-art/registry.js';
 import {
   installWorldBatcher,
@@ -32,6 +33,7 @@ import {
   wholePackOf,
   worldBatchGeometry,
 } from '../world-batch/batcher.js';
+import { indexedQuadsReach, type QuadReaching } from '../world-batch/quad-reach.js';
 import { LUT_SLOTS } from '../world-batch/shader.js';
 import { DrawTable, type TableQuad } from './draw-table.js';
 import { type ByteUploader, QuadStore, VERTICES_PER_QUAD } from './quad-store.js';
@@ -312,7 +314,7 @@ function viewTicksOf(member: Member): number {
  * draws its last rebuild placed. The batcher is the record every meshed sprite of the band names, so
  * Pixi's updates reach the mesh; its geometry and shader are what the band's draws bind.
  */
-class BandStills extends Batcher implements LutListingBatcher {
+class BandStills extends Batcher implements LutListingBatcher, QuadReaching {
   override name = 'stillMesh';
   protected override vertexSize = WORLD_VERTEX_SIZE;
   declare geometry: Geometry;
@@ -354,7 +356,7 @@ class BandStills extends Batcher implements LutListingBatcher {
   constructor(
     readonly band: Container,
     private readonly mesh: StillSpriteMesh,
-    store: QuadStore,
+    private readonly store: QuadStore,
     packer: WorldBatcherApi,
   ) {
     super({
@@ -416,6 +418,10 @@ class BandStills extends Batcher implements LutListingBatcher {
     this.binding.lut = table.lut;
     this.binding.pages = table.count;
     return this.binding;
+  }
+
+  quadsReach(view: Viewport, pad: number): boolean {
+    return indexedQuadsReach(this.store.f32, WORLD_VERTEX_SIZE, this.indices, this.indexCount, view, pad);
   }
 
   /** A destroyed page or LUT must leave the tables before the band draws again. */

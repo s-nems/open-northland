@@ -7,7 +7,11 @@ import {
   RenderGroupPipe,
 } from 'pixi.js';
 import { describe, expect, it, vi } from 'vitest';
-import { inheritParentGroupUniforms } from '../../../src/gpu/pixi-app/inherited-group-uniforms.js';
+import {
+  drawRenderGroup,
+  drawsRenderGroup,
+  inheritParentGroupUniforms,
+} from '../../../src/gpu/pixi-app/inherited-group-uniforms.js';
 
 const WHITE_OPAQUE = 0xffffffff;
 const HALF_ALPHA_WHITE = 0x80ffffff;
@@ -82,6 +86,26 @@ describe('inheritParentGroupUniforms', () => {
     execute(fakeGroup({ renderable: false }));
     expect(pushed).not.toHaveBeenCalled();
     expect(drawn).not.toHaveBeenCalled();
+  });
+
+  it('draws nothing of a group left out, until it is drawn again', () => {
+    const { pushed, drawn, execute } = harness(new Matrix());
+    const inParentSpace = fakeGroup();
+    const pushing = fakeGroup({ colour: HALF_ALPHA_WHITE });
+    drawRenderGroup(inParentSpace, false);
+    drawRenderGroup(pushing, false);
+    execute(inParentSpace);
+    execute(pushing);
+    expect(drawsRenderGroup(inParentSpace)).toBe(false);
+    expect(pushed).not.toHaveBeenCalled();
+    expect(drawn).not.toHaveBeenCalled();
+    drawRenderGroup(inParentSpace, true);
+    drawRenderGroup(pushing, true);
+    execute(inParentSpace);
+    execute(pushing);
+    expect(drawsRenderGroup(inParentSpace)).toBe(true);
+    expect(pushed).toHaveBeenCalledOnce();
+    expect(drawn).toHaveBeenCalledOnce();
   });
 
   it('patches each renderer once, and every renderer on its own', () => {
