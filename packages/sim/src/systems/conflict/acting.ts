@@ -146,6 +146,8 @@ function searchMayFind(
   if (guard && world.has(e, StandIn)) return true;
   let radius = Math.max(PRESENCE_RADIUS, reachOf(world, ctx, e));
   const anchor = world.tryGet(e, Stance)?.anchorCell ?? null;
+  // A guard standing on its covered anchor steps off to the post beside it.
+  if (guard && guardPost(world, ctx, terrain, anchor ?? here, here) !== here) return true;
   if (anchor !== null && anchor !== here) {
     const off = hexNodeDistance(terrain, anchor, here);
     if (guard) radius += off;

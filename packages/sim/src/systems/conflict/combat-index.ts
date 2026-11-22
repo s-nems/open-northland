@@ -1,5 +1,6 @@
 import {
   combatHostileMasks,
+  Engagement,
   EVERY_PLAYER,
   Health,
   hostileMaskOf,
@@ -130,7 +131,12 @@ export class CombatIndex {
   /** Every building holding a Health pool joins at every wall node, and every vehicle at every node of its
    *  disc, so a search finds a body at the distance to its nearest face. A `presence` index answers the
    *  target queries alone and holds no {@link firing} set, so no shot, flee or strike rank may read it. */
-  constructor(world: World, ctx: SystemContext, terrain: TerrainGraph, use: 'pass' | 'presence' = 'pass') {
+  constructor(
+    private readonly world: World,
+    ctx: SystemContext,
+    terrain: TerrainGraph,
+    use: 'pass' | 'presence' = 'pass',
+  ) {
     this.tick = ctx.tick;
     this.hostileMasks = combatHostileMasks(world);
     this.grid = combatGridOf(world, ctx, terrain);
@@ -444,7 +450,11 @@ export class CombatIndex {
       const memberBit = bit[i] ?? 0;
       if (memberBit !== 0 && (memberBit & hostile) === 0) continue;
       if (Math.abs((x[i] ?? 0) - hx) > radius || Math.abs((y[i] ?? 0) - hy) > radius) continue;
-      if (units && memberBit === 0 && this.grid.holdsPassiveWildlife(members[i] ?? (0 as Entity))) continue;
+      if (units && memberBit === 0) {
+        // Game a herd rally handed a target since the grid's sync presses an attack and is a target now.
+        const member = members[i] ?? (0 as Entity);
+        if (this.grid.holdsPassiveWildlife(member) && !this.world.has(member, Engagement)) continue;
+      }
       return true;
     }
     return false;

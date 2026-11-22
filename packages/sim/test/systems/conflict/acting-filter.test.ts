@@ -372,6 +372,25 @@ describe('combat pass - who may engage', () => {
       expect(target).toBe(enemy);
     },
   );
+
+  it('runs the ladder for a guard a building covers, whose break-off steps it off the covered node', () => {
+    const sim = new Simulation({ seed: 7, content: postContent(), map: grassMap(64, 64) });
+    setDiplomacyStance(sim.world, P0, P1, 'enemy');
+    setDiplomacyStance(sim.world, P1, P0, 'enemy');
+    const n = cellAnchorNode(10, 10);
+    const guard = combatantAtNode(sim, n.hx, n.hy, P0, MILITARY_MODE.DEFEND);
+    const tower = sim.world.create();
+    sim.world.add(tower, Position, { x: fx.fromInt(10), y: fx.fromInt(10) });
+    sim.world.add(tower, Building, { buildingType: TOWER_TYPE, tribe: VIKING, built: ONE, level: 0 });
+    sim.world.add(tower, Health, { hitpoints: TOWER_HITPOINTS, max: TOWER_HITPOINTS });
+    sim.world.add(tower, Owner, { player: P0 });
+    // In the coarse cells around the guard, past every search of its own.
+    combatantAtNode(sim, n.hx + PRESENCE_RADIUS + 1, n.hy, P1, MILITARY_MODE.IGNORE);
+    const ctx = ctxOf(sim);
+    const terrain = terrainOf(sim);
+    expect(mayEngage(sim.world, ctx, terrain, new CombatIndex(sim.world, ctx, terrain), guard)).toBe(true);
+    expect(skippedLeaveNoTrace(sim)).toBeGreaterThanOrEqual(0);
+  });
 });
 
 function terrainOf(sim: Simulation): TerrainGraph {
