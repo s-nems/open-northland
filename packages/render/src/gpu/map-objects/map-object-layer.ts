@@ -56,11 +56,16 @@ interface PlayingClip {
 }
 
 export class MapObjectLayer {
-  /** Flat map-object decor (waves, grass, mine stains). */
-  readonly decorContainer = new Container();
+  /** Flat map-object decor (waves, grass, mine stains). Its own Pixi render group, as the shadows are:
+   *  a chunk shown or hidden, on a pan or for a portrait inset, rebuilds this short list of chunks. */
+  readonly decorContainer = new Container({ isRenderGroup: true });
   /** The decor's cast shadows, mounted under {@link decorContainer}; its children pair with that
    *  container's by index. */
-  readonly decorShadowContainer = new Container();
+  readonly decorShadowContainer = new Container({ isRenderGroup: true });
+  /** The chunk lanes {@link hideDecorOutside} hid. */
+  private readonly hiddenDecor: Container[] = [];
+  /** The chunks whose bodies it hid, which a fade change skips meanwhile. */
+  private readonly hiddenDecorBodies: DecorChunk[] = [];
   private decorStyle: DecorBatchStyle = {
     shadow: makeDecorShadowUniforms(),
     cover: { texture: makeGroundCoverTexture(1, 1), uniforms: makeDecorCoverUniforms() },
@@ -332,6 +337,29 @@ export class MapObjectLayer {
       this.detail,
       collectOccluders,
     );
+  }
+
+  /** Hide the shown decor chunks, bodies and shadows, that `vp` misses, for a framed pass;
+   *  {@link showDecor} shows them again. `vp` carries the margin {@link update}'s viewport does. */
+  hideDecorOutside(vp: Viewport): void {
+    for (const chunk of this.decorChunks.values()) {
+      if (aabbIntersects(vp, chunk)) continue;
+      if (chunk.container.visible) this.hiddenDecorBodies.push(chunk);
+      for (const lane of [chunk.container, chunk.shadowContainer]) {
+        if (!lane.visible) continue;
+        lane.visible = false;
+        this.hiddenDecor.push(lane);
+      }
+    }
+  }
+
+  /** Show the chunks {@link hideDecorOutside} hid, in the fade in force: a fade set while a chunk
+   *  was hidden did not reach it. */
+  showDecor(): void {
+    for (const lane of this.hiddenDecor) lane.visible = true;
+    this.hiddenDecor.length = 0;
+    for (const chunk of this.hiddenDecorBodies) fadeDecorChunk(chunk, this.decorFade);
+    this.hiddenDecorBodies.length = 0;
   }
 
   /** Fade the see-through decor to `alpha`, or draw it solid again on `undefined`. A change reaches the

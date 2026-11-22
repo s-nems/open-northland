@@ -777,6 +777,9 @@ export class WorldRenderer {
         this.rememberedPlots.cull(view);
         // An inset borrows the world without the see-through view, as the pool's pass does for its own.
         this.mapObjects.setDecorFade(undefined);
+        this.mapObjects.hideDecorOutside(
+          cameraViewport(cam, iw, ih, SPRITE_CULL_MARGIN + this.elevation.maxLift),
+        );
         // The bands the main cull would keep for this view: anchors within the sprite margin, and a
         // claimed road plot sorting back by its plot's top. Of those, the ones whose quads reach it,
         // as the main render packed them: a paletted quad snaps to either camera's device grid since.
@@ -792,6 +795,7 @@ export class WorldRenderer {
       restore: () => {
         this.cullGround(vp);
         this.mapObjects.setDecorFade(decorFade);
+        this.mapObjects.showDecor();
         this.spriteLayer.showBands(this.insetBands);
       },
       backdrop: this.terrain.groundColour(),

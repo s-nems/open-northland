@@ -53,4 +53,17 @@ describe('see-through decor', () => {
     expect(alphas(layer, 1)).toEqual([FADE]);
     layer.destroy();
   });
+
+  it('shows a chunk hidden for a framed pass in the fade set meanwhile', () => {
+    const layer = new MapObjectLayer(new Container(), new TextureCache());
+    layer.set([decor(10, true), decor(5000, true)]);
+    layer.update({ minX: 0, minY: -100, maxX: 6000, maxY: 100 }, 0);
+    layer.setDecorFade(FADE);
+    layer.setDecorFade(undefined);
+    layer.hideDecorOutside({ minX: 0, minY: -100, maxX: 100, maxY: 100 });
+    layer.setDecorFade(FADE);
+    layer.showDecor();
+    expect([alphas(layer, 0), alphas(layer, 1)]).toEqual([[FADE], [FADE]]);
+    layer.destroy();
+  });
 });

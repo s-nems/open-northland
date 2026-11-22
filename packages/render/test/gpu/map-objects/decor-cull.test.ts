@@ -75,4 +75,24 @@ describe('animated decor follows the view, not the chunk', () => {
     expect(shownFrame(layer, home, 1)).toBe(1);
     layer.destroy();
   });
+
+  it('hides the shown chunks a framed pass misses and shows them again, leaving a culled one hidden', () => {
+    const layer = new MapObjectLayer(new Container(), new TextureCache());
+    layer.set([NEAR, SAME_CHUNK, ACROSS]);
+    const [home, away] = [0, 1];
+    const shown = () => [home, away].map((chunk) => layer.decorContainer.children[chunk]?.visible);
+    const everything: Viewport = { minX: -1000, minY: -1000, maxX: 30000, maxY: 20000 };
+    layer.update(everything, 1);
+    expect(shown()).toEqual([true, true]);
+    layer.hideDecorOutside(around(NEAR.x, NEAR.y));
+    expect(shown()).toEqual([true, false]);
+    layer.showDecor();
+    expect(shown()).toEqual([true, true]);
+    // A chunk the main cull hid is not the pass's to show.
+    layer.update(around(ACROSS.x, ACROSS.y), 2);
+    expect(shown()).toEqual([false, true]);
+    layer.hideDecorOutside(around(NEAR.x, NEAR.y));
+    layer.showDecor();
+    expect(shown()).toEqual([false, true]);
+  });
 });
