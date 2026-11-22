@@ -3,7 +3,7 @@ import { ownerOf, professionProgressionEnabled, Settler, SettlerProgress } from 
 import { contentIndex } from '../../core/content-index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { ContentContext } from '../context.js';
-import { isFighterJob, isHeroJob, isSoldierJob } from '../readviews/index.js';
+import { baseSoldierJobType, isFighterJob, isHeroJob, isSoldierJob } from '../readviews/index.js';
 import { jobEnabled, typeAllowed } from './availability.js';
 import { requirementRepeats } from './bonus.js';
 
@@ -137,14 +137,20 @@ function needRowsOf(requirements: readonly JobRequirement[]): NeedRows {
   return rows;
 }
 
+/**
+ * Whether the settler may take `jobType` by a profession order. The base soldier trade is the one Soldier
+ * profession, whose class the weapon decides: one who is or was a soldier takes it back whether or not the
+ * owner has discovered it, since a map's armed soldiers discover only their own classes.
+ */
 export function canChooseJob(
   world: World,
   ctx: ContentContext,
   subject: NeedSubject,
   jobType: number,
 ): boolean {
+  if (!settlerMeetsNeed(world, ctx, subject, 'job', jobType)) return false;
   return (
-    jobEnabled(world, ctx, subject.owner, subject.tribe, jobType) &&
-    settlerMeetsNeed(world, ctx, subject, 'job', jobType)
+    jobType === baseSoldierJobType(ctx.content) ||
+    jobEnabled(world, ctx, subject.owner, subject.tribe, jobType)
   );
 }

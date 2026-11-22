@@ -7,8 +7,10 @@ import {
 } from '../../../../src/components/index.js';
 import { Simulation } from '../../../../src/index.js';
 import {
+  canChooseJob,
   experienceRequirementMet,
   goodEnabled,
+  jobEnabled,
   type NeedSubject,
   settlerMeetsNeed,
 } from '../../../../src/systems/index.js';
@@ -188,19 +190,29 @@ describe('settlerMeetsNeed - a fighter trade', () => {
   /** The extracted rows' sword fight bucket, track-less. */
   const SWORD_BUCKET = 73;
 
-  /** The fixture plus a second soldier class, gated by an unmet `needforjob` row. */
-  function fighterSim(): Simulation {
+  /** The extracted rows' unarmed fight bucket. */
+  const UNARMED_BUCKET = 69;
+
+  /** The fixture plus a second soldier class, gated by an unmet `needforjob` row; `technology` gives the
+   *  tribe a houseless tech table, under which the base soldier trade too waits on its discovery. */
+  function fighterSim(technology = false): Simulation {
     const content = testContent();
     const unarmed = content.jobs.find((job) => job.typeId === SOLDIER_JOB);
-    if (unarmed === undefined) throw new Error('fixture lost its soldier trade');
+    const tribe = content.tribes[0];
+    if (unarmed === undefined || tribe === undefined) throw new Error('fixture lost its soldier trade');
     content.jobs.push({ ...unarmed, typeId: SWORD_SOLDIER_JOB, id: 'soldier_sword_short' });
-    content.tribes[0]?.jobRequirements.push({
+    const need = (targetId: number, amount: number, track: number): JobRequirement => ({
       requirement: 'need',
       target: 'job',
-      targetId: SWORD_SOLDIER_JOB,
-      amount: 10,
-      experienceTypes: [SWORD_BUCKET],
+      targetId,
+      amount,
+      experienceTypes: [track],
     });
+    tribe.jobRequirements.push(need(SWORD_SOLDIER_JOB, 10, SWORD_BUCKET));
+    if (technology) {
+      tribe.jobRequirements.push(need(SOLDIER_JOB, 5, UNARMED_BUCKET));
+      content.tribes[0] = { ...tribe, technology: { houses: [] } };
+    }
     return new Simulation({ seed: 1, content });
   }
 
@@ -234,6 +246,18 @@ describe('settlerMeetsNeed - a fighter trade', () => {
     expect(settlerMeetsNeed(sim.world, ctx, veteran, 'job', SWORD_SOLDIER_JOB)).toBe(true);
     expect(settlerMeetsNeed(sim.world, ctx, soldier, 'job', HERO_JOB)).toBe(false);
     expect(settlerMeetsNeed(sim.world, ctx, subject(HERO_JOB), 'job', SOLDIER_JOB)).toBe(false);
+  });
+
+  it('lets a veteran take the base soldier trade back before the owner discovered it', () => {
+    const sim = fighterSim(true);
+    setProfessionProgression(sim.world, true);
+    const ctx = ctxOf(sim);
+    // A map's armed soldier discovers his class alone, never the weaponless base trade.
+    expect(jobEnabled(sim.world, ctx, HUMAN_PLAYER, VIKING, SOLDIER_JOB)).toBe(false);
+    const veteran = subject(null, [SWORD_SOLDIER_JOB]);
+    expect(canChooseJob(sim.world, ctx, veteran, SOLDIER_JOB)).toBe(true);
+    expect(canChooseJob(sim.world, ctx, veteran, SWORD_SOLDIER_JOB)).toBe(false);
+    expect(canChooseJob(sim.world, ctx, subject(null), SOLDIER_JOB)).toBe(false);
   });
 });
 

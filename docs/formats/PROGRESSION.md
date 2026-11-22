@@ -21,7 +21,10 @@ profession-general and product-specific experience tracks. `DataCnmd/types/house
 - Discoveries persist through retraining, ownership changes, death and save/load. A new owner retains
   its own discoveries and can gain discoveries from the worker it receives.
 - Existing buildings keep operating without requiring their construction technology again. A new
-  profession requires player availability and the individual qualification.
+  profession requires player availability and the individual qualification. The base soldier trade
+  needs only the qualification: the soldier band is one profession whose class the weapon decides, so
+  anyone who is or was a soldier takes it back, though a map's armed soldiers discover only their own
+  classes.
 - At the start a job with no `needforjob` row and a good no job produces count as discovered for the
   seat's own nations. Such a job, the life stages and the civilist among them, is never recorded or
   announced as a discovery. A computer seat earns its discoveries and meets the experience gates like
