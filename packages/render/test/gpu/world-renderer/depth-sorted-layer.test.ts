@@ -287,6 +287,38 @@ describe('depth sorted layer', () => {
     expect(hidden).toEqual([bandOf(past)]);
   });
 
+  it('files a pass under the sorted one into wide bands, in painter order under the sorted rows', () => {
+    const sorted = drawPassDepth('sorted');
+    const goods = drawPassDepth('goods');
+    const ground = drawPassDepth('ground');
+    const rows = [0, 3 * BAND_DEPTH, 9 * BAND_DEPTH];
+    const { layer, children } = layerWith([
+      ...rows.map((row) => sorted + row),
+      ...rows.map((row) => goods + row),
+      ...rows.map((row) => ground + row),
+    ]);
+    const bands = children.map(bandOf);
+    // Rows a few narrow bands apart: a band each where settlers walk, one band where nothing does.
+    expect(new Set(bands.slice(0, 3)).size).toBe(3);
+    expect(new Set(bands.slice(3, 6)).size).toBe(1);
+    expect(new Set(bands.slice(6, 9)).size).toBe(1);
+    expect(bands[3]).not.toBe(bands[6]);
+    expect(layer.entries().map((child) => child.zIndex)).toEqual(
+      [...children].map((child) => child.zIndex).sort((a, b) => a - b),
+    );
+  });
+
+  it('keeps a wide band whose rows reach into the window', () => {
+    const goods = drawPassDepth('goods');
+    // One wide band from row zero: the heap lies above the window, the band's last rows inside it.
+    const { layer, children } = layerWith([goods, goods + FAR]);
+    const [heap, far] = children;
+    if (!heap || !far) throw new Error('missing children');
+    const hidden: Container[] = [];
+    layer.hideBandsOutside(WINDOW_TOP, WINDOW_BOTTOM, hidden);
+    expect([heap, far].map((child) => bandOf(child).visible)).toEqual([true, false]);
+  });
+
   it('keeps a claimed road plot sorting back past the window top once the window lowers by the plot', () => {
     const sorted = drawPassDepth('sorted');
     // A plot anchored on the window's top row sorts back by the plot's top, onto the last row of a band

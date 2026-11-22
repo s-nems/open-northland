@@ -13,6 +13,7 @@ export type { ChimneyLookup, ChimneyPoint, ChimneySmokeKind } from './chimney-sm
 export {
   drawPassDepth,
   drawPassOf,
+  paintsUnderSortedPass,
   rowOfDepth,
   SHADOW_DEPTH_EPS,
   SIGN_DEPTH_EPS,

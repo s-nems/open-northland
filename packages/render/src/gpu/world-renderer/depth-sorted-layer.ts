@@ -5,7 +5,7 @@ import {
   type Renderer,
   type RenderLayer,
 } from 'pixi.js';
-import { rowOfDepth } from '../../data/scene/index.js';
+import { paintsUnderSortedPass, rowOfDepth } from '../../data/scene/index.js';
 import type { StillBandCollector } from '../still-mesh/still-mesh.js';
 
 /** Painter-depth span one band holds, in world px of feet row (a row is 38): narrower bands rebuild
@@ -13,9 +13,20 @@ import type { StillBandCollector } from '../still-mesh/still-mesh.js';
  *  instruction rebuild at the dense and the widest zoom. */
 export const BAND_DEPTH = 32;
 
-/** A band's place in painter order; a NaN depth files last. */
+/** {@link BAND_DEPTH}s a band of a pass under the row-sorted one holds. Nothing walks there, so such a
+ *  band rebuilds only as an entry appears or leaves, and a wide one stands for the render groups and
+ *  draws of the narrow bands it replaces. */
+const STILL_PASS_BAND_WIDTH = 16;
+
+/** The painter-depth span of the band `depth` files into. */
+function bandSpanAt(depth: number): number {
+  return paintsUnderSortedPass(depth) ? STILL_PASS_BAND_WIDTH * BAND_DEPTH : BAND_DEPTH;
+}
+
+/** A band's place in painter order, its first depth in {@link BAND_DEPTH}s; a NaN depth files last. */
 function bandIndexOf(depth: number): number {
-  const index = Math.floor(depth / BAND_DEPTH);
+  const span = bandSpanAt(depth);
+  const index = Math.floor(depth / span) * (span / BAND_DEPTH);
   return Number.isNaN(index) ? Number.POSITIVE_INFINITY : index;
 }
 
@@ -245,8 +256,9 @@ export class DepthSortedLayer extends Container {
   hideBandsOutside(minRow: number, maxRow: number, hidden: Container[]): void {
     for (const band of this.children) {
       if (!(band instanceof DepthBand) || !band.visible) continue;
-      const top = rowOfDepth(band.index * BAND_DEPTH);
-      if (top === null || (top + BAND_DEPTH >= minRow && top <= maxRow)) continue;
+      const first = band.index * BAND_DEPTH;
+      const top = rowOfDepth(first);
+      if (top === null || (top + bandSpanAt(first) >= minRow && top <= maxRow)) continue;
       hidden.push(band);
       band.visible = false;
     }

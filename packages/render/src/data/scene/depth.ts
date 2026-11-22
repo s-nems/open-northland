@@ -68,6 +68,13 @@ export function rowOfDepth(depth: number): number | null {
   return PASS_OFFSETS.has(offset) ? depth - offset : null;
 }
 
+/** Whether `depth` files into a pass painted under the row-sorted one: the still ground, the goods or
+ *  the fish, where nothing walks from row to row. */
+export function paintsUnderSortedPass(depth: number): boolean {
+  const offset = Math.round(depth / PASS_BAND) * PASS_BAND;
+  return offset !== PASS_DEPTH.sorted && PASS_OFFSETS.has(offset);
+}
+
 /** A depth under every pass, for the ground tiles' own band. */
 export const UNDER_EVERY_PASS = -4 * PASS_BAND;
 
