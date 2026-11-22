@@ -67,6 +67,7 @@ export {
   visibleTileRange,
 } from './projection/index.js';
 export { anchorTileBox } from './scene/build/entity-source.js';
+export { collectRebuiltPositioned } from './scene/build/scene-feeds.js';
 export type { ImportMarkerExemption } from './scene/import-markers.js';
 export {
   indoorHouseOf,

@@ -1,6 +1,5 @@
-import { isIndoorSettler } from '@open-northland/render/data';
+import { collectRebuiltPositioned, isIndoorSettler } from '@open-northland/render/data';
 import {
-  collectPositioned,
   type EntitySnapshot,
   hexNeighboursOf,
   nodeHxOfPosition,
@@ -51,7 +50,8 @@ export function computeOpenDoors(
   const houses = buildingsIn(snapshot, box);
   if (houses.length === 0) return [];
   stands.clear();
-  const count = collectPositioned(snapshot, box, positioned);
+  // The scene's own index of the kinds it rebuilds, settlers among them: no tree or pile is walked.
+  const count = collectRebuiltPositioned(snapshot, box, positioned);
   for (let i = 0; i < count; i++) {
     const e = positioned[i] as SnapshotEntity;
     if (!isSettler(e)) continue;
