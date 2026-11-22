@@ -768,8 +768,13 @@ export class WorldRenderer {
     this.groundWaves.suspend(true);
     this.portrait.draw(camera, {
       toInset: (cam, iw, ih) => {
+        const framed = cameraViewport(cam, iw, ih);
         const view = cameraViewport(cam, iw, ih, this.elevation.maxLift);
-        this.cullGround(view);
+        // A terrain block's box holds its lifted ground, so the bare view culls it; the plots keep the
+        // view grown by the lift.
+        this.terrain.cull(framed);
+        this.constructionPlots.cull(view);
+        this.rememberedPlots.cull(view);
         // An inset borrows the world without the see-through view, as the pool's pass does for its own.
         this.mapObjects.setDecorFade(undefined);
         // The bands the main cull would keep for this view: anchors within the sprite margin, and a
@@ -780,7 +785,7 @@ export class WorldRenderer {
           view.minY - SPRITE_CULL_MARGIN + PLOT_BOUNDS.top,
           view.maxY + SPRITE_CULL_MARGIN,
           this.insetBands,
-          cameraViewport(cam, iw, ih),
+          framed,
           snap,
         );
       },
