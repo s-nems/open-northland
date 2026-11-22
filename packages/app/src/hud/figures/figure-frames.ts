@@ -253,6 +253,11 @@ export class FigureFrames {
     this.palettes = new FigurePalettes(sheet);
   }
 
+  /** Moves each time the page is emptied: an image resolved under an earlier value has lost its pixels. */
+  generation(): number {
+    return this.pageGeneration;
+  }
+
   /**
    * `item`'s images for `layers` into `out`, one per layer, null for a layer drawn without an image (a
    * shadow, an undrawable source). A recolour due once `performance.now()` has passed `deadline` stops it:

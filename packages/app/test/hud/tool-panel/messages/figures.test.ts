@@ -1,7 +1,14 @@
-import type { ResolvedLayer } from '@open-northland/render';
-import { describe, expect, it } from 'vitest';
+import type { DrawItem, ResolvedLayer, SpriteSheet } from '@open-northland/render';
+import type { WorldSnapshot } from '@open-northland/sim';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import type { FigureFrameImage, FigureFrames } from '../../../../src/hud/figures/figure-frames.js';
+import { FigureScene } from '../../../../src/hud/figures/figure-scene.js';
 import { growFigureBounds, vehicleFit } from '../../../../src/hud/figures/vehicle-fit.js';
-import { feetLine } from '../../../../src/hud/tool-panel/messages/figures.js';
+import {
+  feetLine,
+  type NoticeFigureSlot,
+  NoticeFigures,
+} from '../../../../src/hud/tool-panel/messages/figures.js';
 
 const HEIGHT = 50;
 /** The usual gap under the feet (design px). */
@@ -85,5 +92,74 @@ describe('notice vehicle fit', () => {
     // The cover's top padding stops at 24 px however far the card is covered.
     const most = vehicleFit(tall, WIDTH, HEIGHT, 0, PIXEL_SCALE);
     expect(most.zoom).toBeCloseTo((HEIGHT - BOTTOM - 24) / 100);
+  });
+});
+
+describe('notice figure painting', () => {
+  const BOX = { width: 46, height: 48, pixelScale: 1 };
+  const snapshot = {} as WorldSnapshot;
+  const sheet = {} as SpriteSheet;
+
+  function slotFor(entity: number): NoticeFigureSlot {
+    const ctx = { clearRect: vi.fn() };
+    const canvas = { width: 0, height: 0, getContext: () => ctx } as unknown as HTMLCanvasElement;
+    return { entity, canvas, visible: BOX.height };
+  }
+
+  /** A painter over a stub scene, every entity a settler with one layer, and stub frames that log each
+   *  call and empty their page during the resolves numbered in `emptiedBy`. */
+  function painter(emptiedBy: readonly number[] = []) {
+    vi.spyOn(FigureScene.prototype, 'items').mockImplementation(
+      (_snap, subjects) => new Map(subjects.map((ref) => [ref, { kind: 'settler', ref } as DrawItem])),
+    );
+    vi.spyOn(FigureScene.prototype, 'layers').mockImplementation((item) => [
+      { scale: 1, frame: { ref: item.ref, offsetY: 0 } } as unknown as ResolvedLayer,
+    ]);
+    const calls: string[] = [];
+    let generation = 0;
+    let resolves = 0;
+    const frames = {
+      generation: () => generation,
+      resolve: (_layers: readonly ResolvedLayer[], item: DrawItem, out: (FigureFrameImage | null)[]) => {
+        if (emptiedBy.includes(resolves++)) generation++;
+        calls.push(`resolve ${item.ref}`);
+        out.length = 0;
+        // An image of the page as it stands: one resolved before the page emptied is stale.
+        out.push({ x: generation } as FigureFrameImage);
+        return true;
+      },
+      paint: (_ctx: unknown, _layers: unknown, images: readonly (FigureFrameImage | null)[]) => {
+        calls.push(`paint from page ${images[0]?.x}`);
+      },
+    };
+    const figures = new NoticeFigures(sheet, frames as unknown as FigureFrames);
+    const render = (slots: readonly NoticeFigureSlot[]) =>
+      figures.render(snapshot, slots, BOX, 0, 0, () => {});
+    return { render, calls, page: () => generation };
+  }
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('resolves every figure before it draws the first', () => {
+    const { render, calls } = painter();
+    render([slotFor(1), slotFor(2)]);
+    expect(calls).toEqual(['resolve 1', 'resolve 2', 'paint from page 0', 'paint from page 0']);
+  });
+
+  it('resolves the figures again when a later one emptied the page under an earlier', () => {
+    const { render, calls, page } = painter([1]);
+    render([slotFor(1), slotFor(2)]);
+    expect(calls.filter((call) => call.startsWith('paint'))).toEqual(
+      Array(2).fill(`paint from page ${page()}`),
+    );
+  });
+
+  it('draws each figure from the page as it stands when every pass emptied it', () => {
+    const { render, calls } = painter([1, 3]);
+    render([slotFor(1), slotFor(2)]);
+    // Both passes left figure 1 stale, so each figure resolves once more right before its draw.
+    expect(calls.slice(-4)).toEqual(['resolve 1', 'paint from page 2', 'resolve 2', 'paint from page 2']);
   });
 });

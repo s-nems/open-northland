@@ -1,4 +1,4 @@
-import type { ResolvedLayer, SpriteSheet } from '@open-northland/render';
+import type { DrawItem, ResolvedLayer, SpriteSheet } from '@open-northland/render';
 import type { WorldSnapshot } from '@open-northland/sim';
 import { CanvasContexts } from '../../figures/canvas-contexts.js';
 import type { FigureFrameImage, FigureFrames } from '../../figures/figure-frames.js';
@@ -30,10 +30,24 @@ export function feetLine(
   return Math.min(Math.max(usual, centred), height - THUMB_FEET_INSET_MIN * pixelScale);
 }
 
+/** A frame's figures resolve together at most this often: a page emptied by the first pass has room for
+ *  them all in the second. */
+const RESOLVE_PASSES = 2;
+
 interface FigurePlace {
   readonly zoom: number;
   readonly feetX: number;
   readonly feetY: number;
+}
+
+/** One figure a frame draws, between resolving its images and painting them. */
+interface PendingFigure {
+  canvas: HTMLCanvasElement;
+  ctx: CanvasRenderingContext2D;
+  item: DrawItem;
+  layers: readonly ResolvedLayer[];
+  place: FigurePlace;
+  readonly images: (FigureFrameImage | null)[];
 }
 
 /** One card's figure canvas, the settler or vehicle it shows and how much of the card's height the fan leaves
@@ -68,7 +82,8 @@ export class NoticeFigures {
   private live: ReadonlySet<number> = new Set();
   /** What each canvas shows, so a frame that would paint the same picture leaves it alone. */
   private readonly shown = new WeakMap<HTMLCanvasElement, DrawKey>();
-  private readonly images: (FigureFrameImage | null)[] = [];
+  /** The figures of the frame being rendered, kept from frame to frame so a steady column allocates none. */
+  private readonly pending: PendingFigure[] = [];
   private readonly key: DrawKey = [];
 
   /** `frames` is the sheet's recoloured-frame cache, shared with every other figure painter. */
@@ -103,6 +118,7 @@ export class NoticeFigures {
     const width = Math.max(1, Math.round(box.width * box.pixelScale));
     const height = Math.max(1, Math.round(box.height * box.pixelScale));
     const { pixelScale } = box;
+    let count = 0;
     for (const slot of slots) {
       const { canvas } = slot;
       // A resize clears the canvas.
@@ -122,12 +138,29 @@ export class NoticeFigures {
         if (this.shown.delete(canvas)) ctx.clearRect(0, 0, width, height);
         continue;
       }
-      this.frames.resolve(layers, item, this.images);
-      writeDrawKey(this.key, layers, this.images, place.zoom, place.feetX, place.feetY);
+      const figure = this.pending[count];
+      if (figure === undefined) this.pending.push({ canvas, ctx, item, layers, place, images: [] });
+      else {
+        figure.canvas = canvas;
+        figure.ctx = ctx;
+        figure.item = item;
+        figure.layers = layers;
+        figure.place = place;
+      }
+      count++;
+    }
+    const settled = this.resolveAll(count);
+    for (let index = 0; index < count; index++) {
+      const figure = this.pending[index];
+      if (figure === undefined) continue;
+      const { canvas, ctx, layers, place, images } = figure;
+      // Unsettled, the page may have lost this figure's images to a later one's recolour.
+      if (!settled) this.frames.resolve(layers, figure.item, images);
+      writeDrawKey(this.key, layers, images, place.zoom, place.feetX, place.feetY);
       let shown = this.shown.get(canvas);
       if (shown !== undefined && sameDrawKey(shown, this.key)) continue;
       ctx.clearRect(0, 0, width, height);
-      this.frames.paint(ctx, layers, this.images, place.zoom, place.feetX, place.feetY);
+      this.frames.paint(ctx, layers, images, place.zoom, place.feetX, place.feetY);
       if (shown === undefined) {
         shown = [];
         this.shown.set(canvas, shown);
@@ -135,6 +168,25 @@ export class NoticeFigures {
       shown.length = 0;
       shown.push(...this.key);
     }
+    // Drops the canvases of the cards that left.
+    this.pending.length = count;
+  }
+
+  /**
+   * Resolve the first `count` pending figures before any is drawn: in Chrome a recolour written to the page
+   * after a canvas drew from it in the same frame costs about four times one written before. False when the
+   * page was emptied in every pass, which takes the images resolved before it.
+   */
+  private resolveAll(count: number): boolean {
+    for (let pass = 0; pass < RESOLVE_PASSES; pass++) {
+      const generation = this.frames.generation();
+      for (let index = 0; index < count; index++) {
+        const figure = this.pending[index];
+        if (figure !== undefined) this.frames.resolve(figure.layers, figure.item, figure.images);
+      }
+      if (this.frames.generation() === generation) return true;
+    }
+    return false;
   }
 
   private settlerPlace(
