@@ -142,7 +142,10 @@ function entryView(entry: NewsEntry, key: number, lang: Language): NewsEntryView
     link:
       link === undefined
         ? null
-        : { url: link.url, label: link.label === undefined ? null : pickText(link.label, lang) },
+        : {
+            url: typeof link.url === 'string' ? link.url : pickText(link.url, lang),
+            label: link.label === undefined ? null : pickText(link.label, lang),
+          },
     startsAt: entry.startsAt === undefined ? null : Date.parse(entry.startsAt),
     identity: `${entry.title.eng}\n${entry.startsAt ?? ''}`,
   };

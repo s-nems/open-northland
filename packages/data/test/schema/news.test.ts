@@ -27,6 +27,12 @@ describe('news document', () => {
     expect(first?.title.eng).toBe('Showmatch tonight');
   });
 
+  it('accepts a link with one URL per language', () => {
+    const url = { pol: 'https://example.org/pl', eng: 'https://example.org/en' };
+    const result = validateNewsDocument(withEntry({ link: { url } }));
+    expect(result.ok && result.value.entries[0]?.link?.url).toEqual(url);
+  });
+
   it('refuses each malformed field with its path', () => {
     const cases: readonly [unknown, string][] = [
       [withEntry({ title: { pol: 'Tylko po polsku' } }), 'entries.0.title.eng'],
@@ -40,6 +46,11 @@ describe('news document', () => {
       [withEntry({ until: '2026-11-25T18:00:00Z' }), 'entries.0.until'],
       [withEntry({ link: { url: 'http://example.org/stream' } }), 'entries.0.link.url'],
       [withEntry({ link: { url: '/stream' } }), 'entries.0.link.url'],
+      [withEntry({ link: { url: { pol: 'https://example.org/pl' } } }), 'entries.0.link.url'],
+      [
+        withEntry({ link: { url: { pol: 'https://a.org/', eng: 'http://a.org/' } } }),
+        'entries.0.link.url.eng',
+      ],
       [document(...Array.from({ length: NEWS_MAX_ENTRIES + 1 }, () => ENTRY)), 'entries'],
       [{ schema: 2, entries: [] }, 'schema'],
     ];

@@ -161,9 +161,10 @@ Incompatible manifests trigger reconversion.
 
 Only `title` is required. Texts are keyed by game language code and need `pol` and `eng`; the other
 languages fall back to English. Dates carry an offset or `Z`, and `until` follows `startsAt`. Links
-are `https:`. Unknown keys are refused in the file; the game drops the keys it does not know, so a
-field or a language added later does not cost an older build its news. At most 20 entries and
-64 KiB; titles 80, texts 280 and link labels 40 characters.
+are `https:`; a link's `url` is one address or, keyed like a text, one per language
+(`{ "pol": "https://…/pl", "eng": "https://…/en" }`). Unknown keys are refused in the file; the
+game drops the keys it does not know, so a field or a language added later does not cost an older
+build its news. At most 20 entries and 64 KiB; titles 80, texts 280 and link labels 40 characters.
 
 - A missing file serves `{ "schema": 1, "entries": [] }`, and its news does not come back later.
 - Each request compares the file's inode, size, modification and change time; a change is read on

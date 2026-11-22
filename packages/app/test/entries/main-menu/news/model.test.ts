@@ -141,6 +141,15 @@ describe('news panel model', () => {
     ]);
   });
 
+  it('opens the link in the language, else English', () => {
+    const link = { url: { eng: 'https://chat.test/en', pol: 'https://chat.test/pl' } };
+    const news = { schema: 1 as const, entries: [{ title: { eng: 'Chat', pol: 'Czat' }, link }] };
+    const linkIn = (lang: 'pol' | 'ger') =>
+      newsPanelModel({ news, feed: null }, NOW, lang, DESKTOP).entries[0]?.link;
+    expect(linkIn('pol')?.url).toBe('https://chat.test/pl');
+    expect(linkIn('ger')?.url).toBe('https://chat.test/en');
+  });
+
   it('is empty when nothing loaded or nothing shows', () => {
     expect(panelIsEmpty(newsPanelModel({ news: null, feed: null }, NOW, 'eng', DESKTOP))).toBe(true);
     const ended = { schema: 1 as const, entries: [entry('ended', { until: '2026-11-01T00:00:00Z' })] };

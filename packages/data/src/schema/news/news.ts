@@ -26,20 +26,23 @@ type UnknownKeys = 'refuse' | 'strip';
 function newsDocumentSchema(unknownKeys: UnknownKeys) {
   const object = <S extends z.core.$ZodLooseShape>(shape: S) =>
     unknownKeys === 'refuse' ? z.strictObject(shape) : z.object(shape);
-  /** One text per game language. The owner writes Polish and English; the other languages fall back
+  /** One value per game language. The owner writes Polish and English; the other languages fall back
    *  to English. */
-  const localizedText = (max: number) =>
+  const localized = <T extends z.ZodType<string>>(value: T) =>
     object({
-      pol: line(max),
-      eng: line(max),
-      ger: line(max).optional(),
-      rus: line(max).optional(),
-      ita: line(max).optional(),
-      chs: line(max).optional(),
-      cht: line(max).optional(),
+      pol: value,
+      eng: value,
+      ger: value.optional(),
+      rus: value.optional(),
+      ita: value.optional(),
+      chs: value.optional(),
+      cht: value.optional(),
     } satisfies Record<Language, z.ZodType>);
+  const localizedText = (max: number) => localized(line(max));
   const link = object({
-    url: httpsUrl,
+    url: z.union([httpsUrl, localized(httpsUrl)], {
+      error: 'expected an https URL, or one per language with at least pol and eng',
+    }),
     label: localizedText(NEWS_LABEL_MAX_CHARS).optional(),
   });
   const entry = object({
