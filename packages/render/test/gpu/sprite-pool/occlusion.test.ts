@@ -4,7 +4,6 @@ import { describe, expect, it } from 'vitest';
 import { HumanPaletteBook } from '../../../src/data/palettes/human-palettes.js';
 import type { ElevationField } from '../../../src/data/terrain/index.js';
 import {
-  type CoverSprite,
   GhostOutlineSprite,
   SelectionGraphics,
   type SelectionSprite,
@@ -294,45 +293,6 @@ describe('SpritePool - a unit a standing sprite hides shows as an occlusion ghos
     const cover = pool.occlusionGhosts.covers.children[0]?.children[0] as SelectionSprite;
     expect(cover.texture).toBe(body.texture);
     expect([cover.position.x, cover.position.y]).toEqual([unit.minX, unit.minY]);
-    pool.destroy();
-  });
-
-  it('cuts a cover to the marks that read its depth, and leaves one whole that stands out of its box', () => {
-    const layer = new Container();
-    const pool = new SpritePool(layer, new TextureCache(), sheetWithAnimals());
-    pool.reconcile(frame(snapshotOf([settler(1, 0, 0)])));
-    const unit = pool.boundsOf(1);
-    if (unit === undefined) throw new Error('the unit drew no bounds');
-    // A wide crown around the unit, drawn unscaled, so a unit of its bounds is a world px.
-    const SIDE = 256;
-    const body = new Sprite(new Texture({ source: new TextureSource({ width: SIDE, height: SIDE }) }));
-    const left = Math.floor(unit.minX) - SIDE / 2;
-    const top = Math.floor(unit.minY) - SIDE / 2;
-    body.position.set(left, top);
-    const box = { minX: left, minY: top, maxX: left + SIDE, maxY: top + SIDE };
-    const crown: GhostOccluder = { depth: 1e9, bounds: () => box, body: () => body };
-    pool.reconcile({ ...frame(snapshotOf([settler(1, 0, 0)])), tick: 1, staticOccluders: [crown] });
-    const ghosts = pool.occlusionGhosts;
-    const cover = ghosts.covers.children[0]?.children[0] as CoverSprite;
-    const [minX = 0, minY = 0, maxX = 0, maxY = 0] = cover.clip;
-    expect(cover.alpha).toBe(1);
-    expect(maxX - minX).toBeLessThan(SIDE / 2);
-    expect(maxY - minY).toBeLessThan(SIDE / 2);
-    const stamp = ghosts.marks.children[0];
-    expect(stamp?.children.length).toBeGreaterThan(0);
-    for (const child of stamp?.children ?? []) {
-      // Every pixel a ring can draw lies on the part of the cover that still writes depth.
-      const ring = child.getBounds();
-      expect(left + minX).toBeLessThanOrEqual(ring.minX);
-      expect(top + minY).toBeLessThanOrEqual(ring.minY);
-      expect(left + maxX).toBeGreaterThanOrEqual(ring.maxX);
-      expect(top + maxY).toBeGreaterThanOrEqual(ring.maxY);
-    }
-    // The same crown reporting a box its art stands out of: the marks claim by the box, so no cut.
-    const tight: GhostOccluder = { depth: 1e9, bounds: () => unit, body: () => body };
-    pool.reconcile({ ...frame(snapshotOf([settler(1, 0, 0)])), tick: 2, staticOccluders: [tight] });
-    const whole = ghosts.covers.children[0]?.children[0] as CoverSprite;
-    expect(Array.from(whole.clip)).toEqual([-Infinity, -Infinity, Infinity, Infinity]);
     pool.destroy();
   });
 

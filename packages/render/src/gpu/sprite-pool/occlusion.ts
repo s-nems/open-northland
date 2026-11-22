@@ -4,15 +4,10 @@ import { createHumanPaletteColours, type HumanPaletteBook } from '../../data/pal
 import type { DrawItem, SpriteDrawItem } from '../../data/scene/index.js';
 import { PalettedSprite } from '../paletted-sprite/index.js';
 import { isShadowTexture } from '../pixel-art/registry.js';
-import {
-  CoverSprite,
-  GhostOutlineSprite,
-  SelectionGraphics,
-  SelectionSprite,
-} from '../selection/sprite-effect.js';
+import { GhostOutlineSprite, SelectionGraphics, SelectionSprite } from '../selection/sprite-effect.js';
 import type { TextureCache } from '../textures/texture-cache.js';
 import { worldBatched } from '../world-batch/batcher.js';
-import { SELECTION_STAMP } from '../world-batch/shader.js';
+import { SELECTION_COVER, SELECTION_STAMP } from '../world-batch/shader.js';
 import { clipDepthOf, GhostClip } from './ghost-clip.js';
 import { pooledDepth } from './pooled-depth.js';
 import type { EntityBounds, PooledEntity } from './pooled-entity.js';
@@ -92,11 +87,6 @@ export const GHOST_FILL_ALPHA = 0.45;
 export const GHOST_UNDER_RING_FILL_ALPHA = 0.2;
 /** Screen px the ring reaches past the body art. Approximation, tuned by eye for legibility. */
 export const GHOST_OUTLINE_RADIUS = 2;
-/** World px a mark's box grows by before it claims covers, and that a cover's quad may stand out of its
- *  occluder's box and still be cut: slack for the rounding between the boxes and the quads they bound. */
-const MARK_BOX_SLACK = 1;
-/** Units of its own bounds, texels of its art, a cut cover keeps past the marks it clips. */
-const COVER_CLIP_MARGIN = 1;
 /** Bytes per palette entry: the team palettes are RGB triplets. */
 const RGB = 3;
 
@@ -163,16 +153,12 @@ interface OccluderSlot {
    *  the first time it does. */
   coverRun: number;
   cover: CoverStamp | undefined;
-  /** The scan run {@link clip} was gathered in, and the world-px box of the marks that test this
-   *  occluder's depth in that run: all of its copies a mark can read. */
-  clipRun: number;
-  readonly clip: MutableBox;
 }
 
 /** An occluder's copies in the ghosts' clip: one quad per art layer drawn this frame. */
 interface CoverStamp {
   readonly container: Container;
-  readonly quads: CoverSprite[];
+  readonly quads: SelectionSprite[];
 }
 
 /** A unit's pooled ghost stamps, kept while its unit draws and dropped when it stops. */
@@ -184,8 +170,6 @@ interface GhostStamp {
   readonly rings: GhostOutlineSprite[];
   /** The placeholder's stamp, minted when an unbound body draws the marker instead of atlas layers. */
   placeholder: SelectionGraphics | undefined;
-  /** The box of every shown quad, in the container's space, as last laid. */
-  readonly box: MutableBox;
   /** The entity the stamps copy, refreshed when the pool replaces its ref's entity. */
   pe: PooledEntity;
   /** The bind and view the quads were laid from, and whether the camera had moved then: any changing
@@ -232,8 +216,8 @@ export class OcclusionGhosts {
   private unitRun = 0;
   /** The slots holding a cover, which the sweep hides or frees. */
   private readonly coverSlots = new Set<OccluderSlot>();
-  /** The slots the last unit walk found in front of a unit, laid once every mark has claimed its part
-   *  and again on each frame the walk repeats in, since an occluder's art may sway where it stands. */
+  /** The slots the last unit walk found in front of a unit, laid after the walk and again on each frame
+   *  it repeats in, since an occluder's art may sway where it stands. */
   private readonly covering: OccluderSlot[] = [];
   /** The settlers of the last walked draw list that may ghost, flat, with what the scan last read of
    *  each ({@link SEEN_STRIDE} numbers per candidate): a frame repeating the list re-reads only these. */
@@ -273,8 +257,6 @@ export class OcclusionGhosts {
   private fadedNowStatic = new Set<GhostOccluder>();
   /** Scratch for laying one ring quad or the placeholder over its body layer. */
   private readonly transform = new Matrix();
-  private readonly inverse = new Matrix();
-  private readonly box: MutableBox = emptyBox();
 
   /**
    * Scan the painter-ordered draw list the pool just presented: fade the occluders when `revealAll`
@@ -509,9 +491,7 @@ export class OcclusionGhosts {
       const pe = this.unitPe[u];
       if (pe === undefined) continue;
       const depth = this.unitDepth[u] ?? 0;
-      if (!this.coverUnit(pe, depth)) continue;
-      const stamp = this.stamp(pe, depth, viewMoved, zoom, marks);
-      if (stamp !== undefined) this.claimCovers(stamp, depth);
+      if (this.coverUnit(pe, depth)) this.stamp(pe, depth, viewMoved, zoom, marks);
     }
     for (const slot of this.covering) this.layCover(slot);
   }
@@ -651,8 +631,6 @@ export class OcclusionGhosts {
         visited: -1,
         coverRun: -1,
         cover: undefined,
-        clipRun: -1,
-        clip: emptyBox(),
       };
       this.slots.set(key, slot);
       this.marked.push(slot);
@@ -737,47 +715,9 @@ export class OcclusionGhosts {
     return covered;
   }
 
-  /**
-   * Add `stamp`'s box to the clip of every occluder whose depth its marks can read: one nearer than the
-   * unit, since a mark draws only over a nearer cover's depth and a farther cover never lowers the
-   * depth below the unit's own. A cover is then cut to what its marks claimed.
-   */
-  private claimCovers(stamp: GhostStamp, depth: number): void {
-    const local = stamp.box;
-    if (local.minX > local.maxX) return;
-    const { x, y } = stamp.container.position;
-    const b = this.box;
-    b.minX = local.minX + x - MARK_BOX_SLACK;
-    b.minY = local.minY + y - MARK_BOX_SLACK;
-    b.maxX = local.maxX + x + MARK_BOX_SLACK;
-    b.maxY = local.maxY + y + MARK_BOX_SLACK;
-    this.unitRun++;
-    const run = this.unitRun;
-    for (let gx = Math.floor(b.minX / CELL); gx <= Math.floor(b.maxX / CELL); gx++) {
-      for (let gy = Math.floor(b.minY / CELL); gy <= Math.floor(b.maxY / CELL); gy++) {
-        const cell = this.cellSlots.get(cellKey(gx, gy));
-        if (cell === undefined) continue;
-        for (const slot of cell) {
-          if (slot.run !== this.markRun || slot.visited === run) continue;
-          slot.visited = run;
-          if (slot.depth <= depth || !boxesOverlap(b, slot.bounds)) continue;
-          if (slot.clipRun !== this.run) {
-            slot.clipRun = this.run;
-            clearBox(slot.clip);
-          }
-          growBox(slot.clip, b);
-        }
-      }
-    }
-  }
-
   /** Lay `slot`'s copies over its art as drawn this frame, one quad per layer that hides anything: a
    *  shadow and a layer the picker ignores hide nothing. */
   private layCover(slot: OccluderSlot): void {
-    if (slot.clipRun !== this.run) {
-      slot.clipRun = this.run;
-      clearBox(slot.clip);
-    }
     let cover = slot.cover;
     if (cover === undefined) {
       cover = { container: new Container(), quads: [] };
@@ -796,67 +736,24 @@ export class OcclusionGhosts {
           continue;
         if (!pe.paletted && pe.pickExempt[i] === true) continue;
         if (isShadowTexture(body.texture)) continue;
-        this.layCoverQuad(coverQuadAt(cover, count++), body, z, slot, cover.container);
+        this.layCoverQuad(coverQuadAt(cover, count++), body, z);
       }
     } else {
       const body = slot.occ?.body();
-      if (body !== undefined) this.layCoverQuad(coverQuadAt(cover, count++), body, z, slot, cover.container);
+      if (body !== undefined) this.layCoverQuad(coverQuadAt(cover, count++), body, z);
     }
     // A layer the art dropped takes its copy with it, for the same reason an unused cover dies.
     while (cover.quads.length > count) cover.quads.pop()?.destroy();
   }
 
-  private layCoverQuad(
-    quad: CoverSprite,
-    body: Sprite,
-    z: number,
-    slot: OccluderSlot,
-    container: Container,
-  ): void {
+  /** A cover packs its art's whole quad: cut to the marks, it would interpolate its uvs between other
+   *  corners, and a fragment on a texel edge could flip its depth write and move a ghost's edge pixel. */
+  private layCoverQuad(quad: SelectionSprite, body: Sprite, z: number): void {
     body.updateLocalTransform();
+    quad.alpha = 1;
     quad.clipDepth = z;
     quad.texture = body.texture;
-    const placed = frameTransform(this.transform, body.localTransform, body.anchor, body.texture);
-    quad.setFromMatrix(placed);
-    quad.alpha = this.clipCover(quad, placed, slot, container) ? 1 : 0;
-  }
-
-  /**
-   * Cut `quad`, placed by `placed` in `container`, to the marks `slot` gathered; false when none can
-   * read it, so it draws nothing. Depth is tested only on a mark's own pixels, so the picture keeps
-   * every fragment it had. A quad standing out of the occluder's box, which the marks claimed by, stays
-   * whole.
-   */
-  private clipCover(quad: CoverSprite, placed: Matrix, slot: OccluderSlot, container: Container): boolean {
-    const { x, y } = container.position;
-    const own = quad.visualBounds;
-    const world = boxOfRect(this.box, placed, own.minX, own.minY, own.maxX, own.maxY);
-    const within = slot.bounds;
-    const bounded =
-      world.minX + x >= within.minX - MARK_BOX_SLACK &&
-      world.minY + y >= within.minY - MARK_BOX_SLACK &&
-      world.maxX + x <= within.maxX + MARK_BOX_SLACK &&
-      world.maxY + y <= within.maxY + MARK_BOX_SLACK;
-    const clip = slot.clip;
-    if (!bounded || placed.a * placed.d - placed.b * placed.c === 0) {
-      quad.setClip(
-        Number.NEGATIVE_INFINITY,
-        Number.NEGATIVE_INFINITY,
-        Number.POSITIVE_INFINITY,
-        Number.POSITIVE_INFINITY,
-      );
-      return true;
-    }
-    if (clip.minX > clip.maxX) return false;
-    const inverse = this.inverse.copyFrom(placed).invert();
-    const cut = boxOfRect(this.box, inverse, clip.minX - x, clip.minY - y, clip.maxX - x, clip.maxY - y);
-    const minX = Math.max(own.minX, Math.floor(cut.minX) - COVER_CLIP_MARGIN);
-    const minY = Math.max(own.minY, Math.floor(cut.minY) - COVER_CLIP_MARGIN);
-    const maxX = Math.min(own.maxX, Math.ceil(cut.maxX) + COVER_CLIP_MARGIN);
-    const maxY = Math.min(own.maxY, Math.ceil(cut.maxY) + COVER_CLIP_MARGIN);
-    if (minX >= maxX || minY >= maxY) return false;
-    quad.setClip(minX, minY, maxX, maxY);
-    return true;
+    quad.setFromMatrix(frameTransform(this.transform, body.localTransform, body.anchor, body.texture));
   }
 
   /** Fade every occluder this scan marked, whether or not a unit hides behind it. */
@@ -889,15 +786,9 @@ export class OcclusionGhosts {
 
   /** Show or mint `pe`'s stamps at the unit's painter `depth`, tracking its body's placement; lay the
    *  quads when the body rebinds. */
-  private stamp(
-    pe: PooledEntity,
-    depth: number,
-    viewMoved: boolean,
-    zoom: number,
-    marks: GhostMarks,
-  ): GhostStamp | undefined {
+  private stamp(pe: PooledEntity, depth: number, viewMoved: boolean, zoom: number, marks: GhostMarks): void {
     const ref = pe.bound.item?.ref;
-    if (ref === undefined) return undefined;
+    if (ref === undefined) return;
     this.ghostedUnits.add(ref);
     let stamp = this.stamps.get(ref);
     if (stamp === undefined) {
@@ -906,7 +797,6 @@ export class OcclusionGhosts {
         fills: [],
         rings: [],
         placeholder: undefined,
-        box: emptyBox(),
         pe,
         bindSerial: -1,
         laidUnderMovedView: !viewMoved,
@@ -935,7 +825,6 @@ export class OcclusionGhosts {
     for (const quad of stamp.fills) quad.clipDepth = z;
     for (const quad of stamp.rings) quad.clipDepth = z;
     if (stamp.placeholder !== undefined) stamp.placeholder.clipDepth = z;
-    return stamp;
   }
 
   /** Lay the marks' fill and ring quads per stamped body layer, each over its body's placement and
@@ -957,8 +846,6 @@ export class OcclusionGhosts {
     const fillAlpha = ring ? GHOST_UNDER_RING_FILL_ALPHA : GHOST_FILL_ALPHA;
     // The ghost takes its owner's colour; an owner change rebinds the body, which lays the quads again.
     const tint = this.tintOf?.(pe) ?? GHOST_TINT;
-    const box = stamp.box;
-    clearBox(box);
     let fills = 0;
     let rings = 0;
     for (let i = 0; i < pe.sprites.length; i++) {
@@ -976,7 +863,6 @@ export class OcclusionGhosts {
         quad.alpha = body.alpha * fillAlpha;
         quad.texture = body.texture;
         quad.setFromMatrix(this.transform);
-        growBox(box, boxOfQuad(this.box, this.transform, quad));
       }
       // Last: the ring grows the transform past the body.
       if (ring) {
@@ -984,8 +870,6 @@ export class OcclusionGhosts {
         quad.tint = tint;
         quad.alpha = body.alpha * GHOST_ALPHA;
         placeOutline(quad, body.texture, this.transform, this.textures, reach);
-        // The ring's own quad: the body's grown by the reach, unless a flat transform hid it.
-        if (quad.alpha > 0) growBox(box, boxOfQuad(this.box, this.transform, quad));
       }
     }
     let marker = false;
@@ -1001,8 +885,6 @@ export class OcclusionGhosts {
       stamped.tint = tint;
       stamped.alpha = pe.placeholder.alpha * (fill ? fillAlpha : GHOST_ALPHA);
       stamped.setFromMatrix(this.transform.copyFrom(pe.placeholder.localTransform));
-      const drawn = stamped.context.bounds;
-      growBox(box, boxOfRect(this.box, this.transform, drawn.minX, drawn.minY, drawn.maxX, drawn.maxY));
       marker = true;
     }
     for (let i = fills; i < stamp.fills.length; i++) {
@@ -1039,10 +921,11 @@ function ringAt(stamp: GhostStamp, index: number): GhostOutlineSprite {
 }
 
 /** The cover quad at `index` of `cover`. */
-function coverQuadAt(cover: CoverStamp, index: number): CoverSprite {
+function coverQuadAt(cover: CoverStamp, index: number): SelectionSprite {
   const held = cover.quads[index];
   if (held !== undefined) return held;
-  const quad = worldBatched(new CoverSprite());
+  const quad = worldBatched(new SelectionSprite());
+  quad.selectionEffect = SELECTION_COVER;
   cover.quads[index] = quad;
   cover.container.addChild(quad);
   return quad;
@@ -1061,63 +944,6 @@ function hideStamp(stamp: GhostStamp): void {
   for (const quad of stamp.fills) if (quad !== undefined) hideQuad(quad);
   for (const quad of stamp.rings) if (quad !== undefined) hideQuad(quad);
   if (stamp.placeholder !== undefined) stamp.placeholder.alpha = 0;
-}
-
-interface MutableBox {
-  minX: number;
-  minY: number;
-  maxX: number;
-  maxY: number;
-}
-
-/** A box holding nothing: its minimum lies past its maximum until something grows it. */
-function emptyBox(): MutableBox {
-  return clearBox({ minX: 0, minY: 0, maxX: 0, maxY: 0 });
-}
-
-function clearBox(box: MutableBox): MutableBox {
-  box.minX = Number.POSITIVE_INFINITY;
-  box.minY = Number.POSITIVE_INFINITY;
-  box.maxX = Number.NEGATIVE_INFINITY;
-  box.maxY = Number.NEGATIVE_INFINITY;
-  return box;
-}
-
-function growBox(box: MutableBox, by: EntityBounds): void {
-  if (by.minX < box.minX) box.minX = by.minX;
-  if (by.minY < box.minY) box.minY = by.minY;
-  if (by.maxX > box.maxX) box.maxX = by.maxX;
-  if (by.maxY > box.maxY) box.maxY = by.maxY;
-}
-
-/** `out` set to the box of the rectangle `minX..maxY` after `m` places it. */
-function boxOfRect(
-  out: MutableBox,
-  m: Matrix,
-  minX: number,
-  minY: number,
-  maxX: number,
-  maxY: number,
-): MutableBox {
-  const ax = m.a * minX;
-  const bx = m.a * maxX;
-  const cx = m.c * minY;
-  const dx = m.c * maxY;
-  const ay = m.b * minX;
-  const by = m.b * maxX;
-  const cy = m.d * minY;
-  const dy = m.d * maxY;
-  out.minX = Math.min(ax, bx) + Math.min(cx, dx) + m.tx;
-  out.maxX = Math.max(ax, bx) + Math.max(cx, dx) + m.tx;
-  out.minY = Math.min(ay, by) + Math.min(cy, dy) + m.ty;
-  out.maxY = Math.max(ay, by) + Math.max(cy, dy) + m.ty;
-  return out;
-}
-
-/** `out` set to the box `quad` covers when `placed` is the matrix it was laid from. */
-function boxOfQuad(out: MutableBox, placed: Matrix, quad: Sprite): MutableBox {
-  const own = quad.visualBounds;
-  return boxOfRect(out, placed, own.minX, own.minY, own.maxX, own.maxY);
 }
 
 function sameBox(a: EntityBounds, b: EntityBounds): boolean {

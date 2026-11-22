@@ -39,18 +39,12 @@ import {
   WORLD_MAGNIFY_MODES,
   worldShadowStyle,
 } from '../pixel-art/registry.js';
-import {
-  CoverSprite,
-  OutlineSprite,
-  SelectionGraphics,
-  SelectionSprite,
-} from '../selection/sprite-effect.js';
+import { OutlineSprite, SelectionGraphics, SelectionSprite } from '../selection/sprite-effect.js';
 import { glProgramFor } from '../shaders/program-source.js';
 import { WorldAttributeBuffer } from './attribute-buffer.js';
 import {
   LUT_SLOTS,
   lutSlotOf,
-  SELECTION_COVER,
   WORLD_BATCH_MAX_TEXTURES,
   WORLD_FLAG_GLOW,
   WORLD_FLAG_INDEXED,
@@ -588,56 +582,6 @@ function defineWorldBatcher(): WorldBatcherClass {
   }
 
   /**
-   * A cover's quad cut to its clip, whether it was cut: the corners move along the quad's own axes and
-   * take the uv the whole quad has there, so a fragment that is left reads what it read uncut.
-   */
-  function packCover(
-    cover: CoverSprite,
-    element: DefaultBatchableQuadElement,
-    f32: Float32Array,
-    u32: Uint32Array,
-    index: number,
-  ): boolean {
-    const { minX, minY, maxX, maxY } = element.bounds;
-    const clip = cover.clip;
-    const left = Math.min(maxX, Math.max(minX, clip[0] ?? minX));
-    const top = Math.min(maxY, Math.max(minY, clip[1] ?? minY));
-    const right = Math.max(left, Math.min(maxX, clip[2] ?? maxX));
-    const bottom = Math.max(top, Math.min(maxY, clip[3] ?? maxY));
-    // An uncut quad packs its own corners, bit for bit.
-    if (left === minX && top === minY && right === maxX && bottom === maxY) return false;
-    // Corners snapped to the pixel grid would shift a cut quad's uvs against the whole one's.
-    if (element.roundPixels !== 0 || maxX <= minX || maxY <= minY) return false;
-    const { a, b, c, d, tx, ty } = element.transform;
-    const { x0, y0, x1, y1, x3, y3 } = element.texture.uvs;
-    const width = maxX - minX;
-    const height = maxY - minY;
-    // The uv a step along each of the quad's axes adds to its first corner's.
-    const uLeft = ((left - minX) * (x1 - x0)) / width;
-    const vLeft = ((left - minX) * (y1 - y0)) / width;
-    const uRight = ((right - minX) * (x1 - x0)) / width;
-    const vRight = ((right - minX) * (y1 - y0)) / width;
-    const uTop = ((top - minY) * (x3 - x0)) / height;
-    const vTop = ((top - minY) * (y3 - y0)) / height;
-    const uBottom = ((bottom - minY) * (x3 - x0)) / height;
-    const vBottom = ((bottom - minY) * (y3 - y0)) / height;
-    let i = index;
-    f32[i++] = a * left + c * top + tx;
-    f32[i++] = d * top + b * left + ty;
-    i = packVertex(f32, u32, i, x0 + uLeft + uTop, y0 + vLeft + vTop);
-    f32[i++] = a * right + c * top + tx;
-    f32[i++] = d * top + b * right + ty;
-    i = packVertex(f32, u32, i, x0 + uRight + uTop, y0 + vRight + vTop);
-    f32[i++] = a * right + c * bottom + tx;
-    f32[i++] = d * bottom + b * right + ty;
-    i = packVertex(f32, u32, i, x0 + uRight + uBottom, y0 + vRight + vBottom);
-    f32[i++] = a * left + c * bottom + tx;
-    f32[i++] = d * bottom + b * left + ty;
-    packVertex(f32, u32, i, x0 + uLeft + uBottom, y0 + vLeft + vBottom);
-    return true;
-  }
-
-  /**
    * The fewest page texels per render-group unit a quad's fragments see under the transform `packed`
    * holds, as the shader measures its footprint: the larger of the two rows of the unit-to-texel map,
    * each row's absolute sum. Zero where the quad's own texel density is unknown.
@@ -1082,18 +1026,8 @@ function defineWorldBatcher(): WorldBatcherClass {
       const renderable = renderableOf(element);
       const outline = beginRenderable(renderable);
       beginElement(texture, textureIdAndRound, element.color, this.flagsOf(element));
-      const packed = notePacked(element, renderable);
-      this.noteTexelBound(packed);
+      this.noteTexelBound(notePacked(element, renderable));
       if (outline !== null) packOutline(outline);
-      if (
-        packing.selection === SELECTION_COVER &&
-        renderable instanceof CoverSprite &&
-        packCover(renderable, element, float32View, uint32View, index)
-      ) {
-        // A move in place would rewrite the uncut corners under the cut uvs.
-        packed.viewTick = Number.NaN;
-        return;
-      }
       const { a, b, c, d, tx, ty } = element.transform;
       const { minX, minY, maxX, maxY } = element.bounds;
       const uvs = texture.uvs;
