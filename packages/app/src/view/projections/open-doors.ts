@@ -3,6 +3,8 @@ import {
   collectPositioned,
   type EntitySnapshot,
   hexNeighboursOf,
+  nodeHxOfPosition,
+  nodeHyOfPosition,
   nodeOfPosition,
   type TileBox,
   type WorldSnapshot,
@@ -24,7 +26,15 @@ import type { BuildingDoorInfoOf } from './door-badges.js';
 /** Reused output of the box's position query. */
 const positioned: EntitySnapshot[] = [];
 
-const standKey = (hx: number, hy: number, player: number): string => `${hx},${hy},${player}`;
+/** Reused set of the stands the box's settlers take. */
+const stands = new Set<number>();
+
+/** Spans a half-cell coordinate and a player slot stay under, so a stand packs into one exact number. */
+const NODE_SPAN = 2 ** 20;
+const PLAYER_SPAN = 2 ** 10;
+
+const standKey = (hx: number, hy: number, player: number): number =>
+  (hy * NODE_SPAN + hx) * PLAYER_SPAN + player;
 
 /**
  * The finished buildings in `box` whose door stands open, ascending by id. Original behavior: a door is
@@ -40,7 +50,7 @@ export function computeOpenDoors(
 ): number[] {
   const houses = buildingsIn(snapshot, box);
   if (houses.length === 0) return [];
-  const stands = new Set<string>();
+  stands.clear();
   const count = collectPositioned(snapshot, box, positioned);
   for (let i = 0; i < count; i++) {
     const e = positioned[i] as SnapshotEntity;
@@ -51,8 +61,7 @@ export function computeOpenDoors(
     const tribe = settlerTribeOf(e);
     if (tribe !== undefined && isLivestockTribe(tribe)) continue;
     if (isIndoorSettler(snapshot, e.components)) continue;
-    const node = nodeOfPosition(at.x, at.y);
-    stands.add(standKey(node.hx, node.hy, player));
+    stands.add(standKey(nodeHxOfPosition(at.x, at.y), nodeHyOfPosition(at.x, at.y), player));
   }
   if (stands.size === 0) return [];
   const open: number[] = [];
