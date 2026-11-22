@@ -423,6 +423,11 @@ function stepsOnWholeTicks(value: unknown): boolean {
   return whole;
 }
 
+/** Whether every frame time under the sheet's building bindings is a whole number of ticks. */
+export function buildingsStepOnWholeTicks(sheet: SpriteSheet): boolean {
+  return stepsOnWholeTicks(sheet.bindings.building);
+}
+
 /**
  * Whether `char`'s frame choice reads its clocks only through whole ticks: then two presents of one item
  * in one tick pick the same frames unless the animation clock crossed a whole tick between them.

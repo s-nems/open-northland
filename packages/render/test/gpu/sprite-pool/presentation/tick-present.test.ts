@@ -168,6 +168,80 @@ describe('presentItem - a repeat within one tick', () => {
   });
 });
 
+describe('presentItem - a standing building within one tick', () => {
+  const MILL = 13;
+  const [BODY, STILL_BLADE, SPIN_A, SPIN_B] = [0, 1, 2, 3];
+  function millSheet(ticksPerFrame?: number): SpriteSheet {
+    return {
+      ...body,
+      bindings: {
+        settler: 0,
+        resource: 0,
+        building: {
+          byType: { [MILL]: { layer: 'mill', bob: BODY } },
+          default: BODY,
+          overlayByType: {
+            [MILL]: {
+              layer: 'mill',
+              idle: STILL_BLADE,
+              working: [SPIN_A, SPIN_B],
+              ...(ticksPerFrame === undefined ? {} : { ticksPerFrame }),
+            },
+          },
+        },
+      },
+      families: { mill: body },
+    };
+  }
+  const mill: DrawItem = { kind: 'building', ref: 2, x: 0, y: 20, depth: 0, typeId: MILL, working: true };
+  function building() {
+    const track = createPresentationTrack('building');
+    return { track, resolves: vi.spyOn(track.layers, 'reset') };
+  }
+  const fresh = (item: DrawItem, sheet: SpriteSheet, alpha: number) => [
+    ...(presentItem(createPresentationTrack('building'), item, TICK, alpha, sheet, true) ?? []),
+  ];
+
+  it('skips the resolve while only the frame alpha moved, and resolves as the clock steps', () => {
+    const sheet = millSheet();
+    const { track, resolves } = building();
+    presentItem(track, mill, TICK, 0.25, sheet, true);
+    expect(presentItem(track, mill, TICK, 0.75, sheet, true)).toEqual(fresh(mill, sheet, 0.75));
+    expect(resolves).toHaveBeenCalledTimes(1);
+    const stepped = [...(presentItem(track, mill, TICK, 1, sheet, true) ?? [])];
+    expect(resolves).toHaveBeenCalledTimes(2);
+    expect(stepped).toEqual(fresh(mill, sheet, 1));
+    expect(stepped).not.toEqual(fresh(mill, sheet, 0.25));
+  });
+
+  it('resolves every present of a rotor with a fractional frame time', () => {
+    const sheet = millSheet(1.5);
+    const { track, resolves } = building();
+    presentItem(track, mill, TICK, 0.25, sheet, true);
+    const later = [...(presentItem(track, mill, TICK, 0.75, sheet, true) ?? [])];
+    expect(resolves).toHaveBeenCalledTimes(2);
+    expect(later).toEqual(fresh(mill, sheet, 0.75));
+    expect(later).not.toEqual(fresh(mill, sheet, 0.25));
+  });
+
+  it('resolves every present of a damaged body, of a rising one and of one that moved', () => {
+    const sheet = millSheet();
+    const cases: readonly (readonly [DrawItem, DrawItem])[] = [
+      [mill, { ...mill, hpFrac: 0.5 }],
+      [mill, { ...mill, working: false, builtPct: 40 }],
+      [{ ...mill, x: -4 }, mill],
+    ];
+    for (const [before, item] of cases) {
+      const { track, resolves } = building();
+      presentItem(track, before, TICK - 1, 1, sheet, true);
+      presentItem(track, item, TICK, 0.25, sheet, true);
+      resolves.mockClear();
+      presentItem(track, item, TICK, 0.75, sheet, true);
+      expect(resolves).toHaveBeenCalledTimes(1);
+    }
+  });
+});
+
 describe('SpritePool - a frame between ticks', () => {
   const SETTLER = 1;
   const snapshot = snapshotOf([entity(SETTLER, 0, 0, { Settler: { tribe: 0 } })], TICK);

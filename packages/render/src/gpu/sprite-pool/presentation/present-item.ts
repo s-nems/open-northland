@@ -1,10 +1,19 @@
 import { clamp01 } from '../../../data/math.js';
 import type { DrawItem } from '../../../data/scene/index.js';
-import { IDLE_PHASE_STAGGER_TICKS, type SpriteKind } from '../../../data/sprites/index.js';
+import {
+  FLAG_WAVE_TICKS_PER_FRAME,
+  IDLE_PHASE_STAGGER_TICKS,
+  type SpriteKind,
+} from '../../../data/sprites/index.js';
 import type { WindSway } from '../../../data/weather/climate.js';
 import type { SettlerCharacter, SpriteSheet } from '../../textures/sprite-sheet.js';
 import { cartDriveLook } from '../layers/cart-drive.js';
-import { characterGaitRate, characterStepsOnWholeTicks, settlerCharacterOf } from '../layers/character.js';
+import {
+  buildingsStepOnWholeTicks,
+  characterGaitRate,
+  characterStepsOnWholeTicks,
+  settlerCharacterOf,
+} from '../layers/character.js';
 import { resolveLayersInto } from '../layers/resolve.js';
 import { LayerBuffer, type ResolvedLayer } from '../layers/resolved-layer.js';
 import {
@@ -13,7 +22,7 @@ import {
   type InterpolationTrack,
   interpolateAtomicPose,
 } from './atomic-pose.js';
-import { drawAlphaForKind, type MotionTrack, snapDistanceForKind, trackMotion } from './motion.js';
+import { atRest, drawAlphaForKind, type MotionTrack, snapDistanceForKind, trackMotion } from './motion.js';
 import { easeReveal, revealedItem, walkPose, writeMotionClocks } from './presentation.js';
 
 /**
@@ -120,6 +129,34 @@ export function createPresentationTrack(kind: SpriteKind): PresentationTrack {
   };
 }
 
+/** Kinds whose layers read the animation clock alone, a frame per whole number of ticks: no gait, wind
+ *  or sea clock, and no pose of their own. */
+const WHOLE_TICK_KINDS: ReadonlySet<SpriteKind> = new Set<SpriteKind>([
+  'building',
+  'palisade',
+  'roadsite',
+  'stockpile',
+  'craftfx',
+]);
+
+/** Whether a flag's wave changes frame only on a whole tick. */
+const FLAGS_STEP_ON_WHOLE_TICKS = Number.isInteger(FLAG_WAVE_TICKS_PER_FRAME);
+
+/**
+ * Whether another present of a standing `item` in the same tick resolves the layers the last one did
+ * until the animation clock reaches another whole tick: a {@link WHOLE_TICK_KINDS} entity drawn at one
+ * anchor whatever the frame alpha. A damaged body is left out, since its bind is redone every present.
+ */
+function standsThroughTick(
+  track: PresentationTrack,
+  item: DrawItem,
+  sheet: SpriteSheet | undefined,
+): boolean {
+  if (!WHOLE_TICK_KINDS.has(track.kind) || item.hpFrac !== undefined || !atRest(track.motion)) return false;
+  if (!FLAGS_STEP_ON_WHOLE_TICKS) return false;
+  return track.kind !== 'building' || sheet === undefined || buildingsStepOnWholeTicks(sheet);
+}
+
 /**
  * Advance `track` to this frame and resolve the layers the item draws into `track.layers`: the atomic's
  * cadence, the gait clock and the walk-pose gaps all come from the track, so a figure presented from it
@@ -202,12 +239,10 @@ export function presentItem(
     pose.state !== 'acting' &&
     (displayed.state !== 'moving' || displayed.inHouse === true);
   const repeatable =
-    track.kind === 'settler' &&
-    look !== undefined &&
-    !smooth &&
-    !held &&
     track.reveal === undefined &&
-    (!readsAlpha || characterStepsOnWholeTicks(look));
+    (track.kind === 'settler'
+      ? look !== undefined && !smooth && !held && (!readsAlpha || characterStepsOnWholeTicks(look))
+      : standsThroughTick(track, item, sheet));
   last.item = repeatable ? item : undefined;
   last.tick = tick;
   last.sheet = sheet;
