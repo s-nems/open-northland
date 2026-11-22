@@ -27,8 +27,9 @@ const {
 
 const MAP_ID = 'magiczny_las';
 const HUMAN_SEAT = 0;
-/** Long enough for the seat's idle builders to have paired off into chatter before the order arrives. */
-const IDLE_TICKS = 50;
+/** Ticks the seat's idle builders get to pair off into chatter before the order arrives; they first stand
+ *  through their idle warm-up. */
+const MAX_IDLE_TICKS = 1_000;
 /** The command's tick, then one idle re-plan period for every idle builder to see the new site. */
 const CREW_TICKS = 1 + systems.IDLE_REPLAN_PERIOD_TICKS;
 /** Half-cell nodes scanned around the headquarters for legal ground. */
@@ -66,8 +67,9 @@ describe.runIf(hasRealIr() && existsSync(realMapPath(MAP_ID)))(
       );
       expect(builders.length).toBeGreaterThan(0);
 
-      sim.run(IDLE_TICKS);
-      expect(builders.some((b) => sim.world.tryGet(b, Chat)?.kind === 'pastime')).toBe(true);
+      const chatting = (builder: Entity): boolean => sim.world.tryGet(builder, Chat)?.kind === 'pastime';
+      for (let tick = 0; tick < MAX_IDLE_TICKS && !builders.some(chatting); tick++) sim.run(1);
+      expect(builders.some(chatting)).toBe(true);
       const plot = plotNear(sim, hq, house);
       if (plot === null) throw new Error('no legal house plot beside the headquarters');
       sim.enqueue(
