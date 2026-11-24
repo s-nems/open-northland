@@ -160,12 +160,11 @@ Not every schema carries provenance yet. The decoder is the authoritative mappin
 IR fields. Keep that mapping small, testable, and supported by source evidence from the owned files.
 
 A map's `.meta.json` sidecar, which the pipeline writes for every converted map, carries the map's
-own `provenance { kind, folder, layer }`: `kind` is `user` for a `UserMaps` folder, `mod` for a mod
-folder or a map read from a separate mod root, `base` for a map proven to come from the game's own
-archive, and `unknown` for anything else, a loose `Data/maps` folder included; `folder` is the map's
-folder relative to its source root, never an installation path; `layer` names the root it was read
-from. Only `mod` and `user` maps may be sent to another player, so a sidecar without provenance
-counts as `unknown`. The sidecar also carries the `[misc_maptype]` header: `mapTypes`, the
+own `provenance { kind, folder }`: `kind` is `user` for a `UserMaps` folder, `mod` for the mod's own
+maps (`maps/community/` and `extras/`), `catalog` for a map installed from the catalogue, and
+`unknown` for anything else, a loose `Data/maps` folder included; `folder` is the map's folder
+relative to its source root, never an installation path. Only `mod`, `user` and `catalog` maps may be
+sent to another player, so a sidecar without provenance counts as `unknown`. The sidecar also carries the `[misc_maptype]` header: `mapTypes`, the
 distinct `CLEAN_MAP_TYPE_*` codes of its `maptype` lines (absent when the header declares no valid
 one), `multiplayerOnly` for `mapmultiplayeronly`, and `campaign` for the `mapcampaignid` pair a
 sub-mission is found by (`docs/formats/MISSIONS.md`); the served `/maps-index` carries all three,
