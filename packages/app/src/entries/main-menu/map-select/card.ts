@@ -1,6 +1,12 @@
 import { playerSwatchHex } from '../../../catalog/roster.js';
 import type { LocalizedMapString } from '../../../game/map/strings.js';
-import { bcp47Tag, formatMessage, messages, pluralForm, tribeName as localizedTribeName } from '../../../i18n/index.js';
+import {
+  bcp47Tag,
+  formatMessage,
+  messages,
+  pluralForm,
+  tribeName as localizedTribeName,
+} from '../../../i18n/index.js';
 import { segControl } from '../../../view/settings/controls.js';
 import { mapItemLineup } from '../lineup/model.js';
 import { lineupLabel } from '../lineup/view.js';
