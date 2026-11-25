@@ -222,7 +222,7 @@ export function lobbyScreen(
         refocus = `chip:${player}`;
         update(claimSeat(state, player));
       },
-    }, tribeLabel);
+    }, tribeLabel, mapText.text);
     const rows: HTMLElement[] = [];
     const slotRows = lobbySlotRows(players, state);
     const byPlayer = new Map(slotRows.map((row) => [row.slot.player, row]));

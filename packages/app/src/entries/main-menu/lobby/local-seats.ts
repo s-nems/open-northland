@@ -1,3 +1,4 @@
+import type { MapTextLanguage } from '@open-northland/data';
 import type { ComputerDifficulty } from '@open-northland/lockstep';
 import { localizedMapText } from '../../../game/map/strings.js';
 import { currentLocale, formatMessage, messages, tribeName } from '../../../i18n/index.js';
@@ -17,6 +18,17 @@ interface SeatActions {
   readonly pickTribe: (player: number, tribe: number) => void;
   readonly pickDifficulty: (player: number, difficulty: ComputerDifficulty) => void;
   readonly claim: (player: number) => void;
+}
+
+/** A map-authored lobby seat name in the language selected by the reader. */
+export function localizedLobbySlotTitle(
+  name: LobbySlotRow['slot']['name'],
+  lang: MapTextLanguage,
+  fallback: string,
+  translateMapText: (found: LocalizedMapString) => string,
+): string {
+  const found = localizedMapTextWithLang(name, lang);
+  return found === undefined ? fallback : translateMapText(found);
 }
 
 export function localSeatElements(
