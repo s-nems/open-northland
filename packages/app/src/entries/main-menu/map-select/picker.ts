@@ -1,7 +1,6 @@
 import { apiBaseUrl, playableMapSources } from '../../../content/map-source/index.js';
 import { quietTextField } from '../../../hud/dom/parts/text-field.js';
 import { bcp47Tag, formatMessage, messages, pluralForm } from '../../../i18n/index.js';
-import { translatedTribeName } from '../../../i18n/translate/tribe-name.js';
 import { MAP_SCENES, SCENES } from '../../../scenes/index.js';
 import { menuMapTextReader } from '../map-text.js';
 import { createMapDetailsCard, metaLine, narratorBadge, paintMapThumb } from './card.js';
@@ -106,8 +105,7 @@ export function mapPicker(options: MapPickerOptions): MapPicker {
   body.className = 'main-menu__map-body';
   let repaint = (): void => undefined;
   const mapText = menuMapTextReader(() => repaint());
-  const tribeLabel = (tribe: number): string =>
-    translatedTribeName(tribe, mapText.text, mapText.target(), mapText.enabled());
+  const tribeLabel = (tribe: number): string => mapText.tribeName(tribe);
   const listCol = document.createElement('div');
   listCol.className = 'main-menu__map-list-col';
   const tutorialIntro = document.createElement('div');

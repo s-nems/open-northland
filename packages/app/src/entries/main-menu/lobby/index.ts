@@ -2,7 +2,6 @@ import { isMultiplayerMapType } from '@open-northland/data';
 import { mapOreYield } from '../../../game/match/session-rules.js';
 import { drawSessionSeed } from '../../../game/match/session-url.js';
 import { messages } from '../../../i18n/index.js';
-import { translatedTribeName } from '../../../i18n/translate/tribe-name.js';
 import type { LaunchEntry } from '../../../launch.js';
 import { targetSearch } from '../../../view/target-search.js';
 import { mapItemLineup, seatStanceReader } from '../lineup/model.js';
@@ -95,8 +94,7 @@ export function lobbyScreen(
   let played = item;
   let refreshTranslated = (): void => undefined;
   const mapText = menuMapTextReader(() => refreshTranslated());
-  const tribeLabel = (tribe: number): string =>
-    translatedTribeName(tribe, mapText.text, mapText.target(), mapText.enabled());
+  const tribeLabel = (tribe: number): string => mapText.tribeName(tribe);
 
   const side = document.createElement('aside');
   side.className = 'main-menu__lobby-side';

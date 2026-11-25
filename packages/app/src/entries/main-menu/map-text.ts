@@ -1,7 +1,9 @@
+import { loadGuiStrings } from '../../content/gui/gfx.js';
 import type { Locale } from '../../i18n/index.js';
 import type { LocalizedMapString } from '../../game/map/strings.js';
 import { createMissionTranslator, type MissionTranslator } from '../../i18n/translate/mission-translate.js';
 import { sharedMapTextTranslator } from '../../i18n/translate/service.js';
+import { translatedTribeName } from '../../i18n/translate/tribe-name.js';
 import { menuSettings, onSettingsChange } from './settings/state.js';
 
 /** The translation surface a menu screen reads map-authored text through. */
@@ -9,6 +11,7 @@ export interface MenuMapTextReader {
   text(found: LocalizedMapString): string;
   target(): Locale | null;
   enabled(): boolean;
+  tribeName(tribe: number | undefined): string;
   dispose(): void;
 }
 
@@ -16,6 +19,7 @@ export interface MenuMapTextReader {
 let shared: MissionTranslator | null = null;
 const settingsLifetime = new AbortController();
 const listeners = new Set<() => void>();
+let englishTribeNames: Readonly<Record<string, string>> = {};
 
 function targetLanguage(): Locale | null {
   const settings = menuSettings();
@@ -38,6 +42,11 @@ function translator(): MissionTranslator {
     enabled: () => menuSettings().mapTextTranslation,
     translator: sharedMapTextTranslator(),
     onChange: notify,
+  });
+  void loadGuiStrings('eng').then((strings) => {
+    if (strings === null) return;
+    englishTribeNames = strings.tribes ?? {};
+    notify();
   });
   onSettingsChange((settings) => {
     const nextTarget = targetLanguage();
@@ -69,6 +78,14 @@ export function menuMapTextReader(onChange: () => void): MenuMapTextReader {
     },
     target: targetLanguage,
     enabled: () => menuSettings().mapTextTranslation,
+    tribeName: (tribe) =>
+      translatedTribeName(
+        tribe,
+        englishTribeNames[String(tribe)],
+        bridge.text,
+        targetLanguage(),
+        menuSettings().mapTextTranslation,
+      ),
     dispose: () => listeners.delete(onChange),
   };
 }
