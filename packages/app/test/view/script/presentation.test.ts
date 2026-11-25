@@ -106,7 +106,7 @@ function harness(
     effects,
     weather,
     mapText,
-    mapTextVersion,
+    ...(mapTextVersion === undefined ? {} : { mapTextVersion }),
     goodLabel: (typeId) => (typeId === WOOD ? 'Wood' : undefined),
     now: () => 0,
     exit: () => calls.push('exit'),

@@ -118,7 +118,9 @@ describe('the mission book translate menu', () => {
     click(button);
     expect(menu.querySelector('[data-translate-choice="ger"]')?.getAttribute('aria-checked')).toBe('true');
     click(button);
-    click(menu.querySelector<HTMLButtonElement>('[data-translate-choice="original"]'));
+    const original = menu.querySelector<HTMLButtonElement>('[data-translate-choice="original"]');
+    if (original === null) throw new Error('translate menu: original row');
+    click(original);
     expect(picks).toEqual(['ger', 'original']);
     click(button);
     expect(menu.querySelector('[data-translate-choice="original"]')?.getAttribute('aria-checked')).toBe(

@@ -387,7 +387,7 @@ describe('createMissionTranslator rapid switching', () => {
       translator: {
         translate: vi.fn((texts: readonly string[], _from: MapTextLanguage, to: MapTextLanguage) => {
           asked.push({ texts: [...texts], to });
-          return new Promise((resolve, reject) => {
+          return new Promise<readonly string[]>((resolve, reject) => {
             pending.push({ resolve, reject });
           });
         }),
