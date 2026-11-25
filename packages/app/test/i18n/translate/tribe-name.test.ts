@@ -5,7 +5,7 @@ import { translatedTribeName } from '../../../src/i18n/translate/tribe-name.js';
 
 const tribe = CIVILIZATION_TRIBES[0];
 if (tribe === undefined) throw new Error('tribe name test: no civilization tribes');
-const english = 'Vikings';
+const english = 'Example tribe';
 
 beforeEach(() => setActiveLocale('ger'));
 
