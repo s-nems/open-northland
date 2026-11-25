@@ -178,7 +178,8 @@ describe('createMapTextTranslator', () => {
     const worker = lastWorker();
     const enDeLoads = worker.received.filter(
       (message) =>
-        message.name === 'loadTranslationModel' && (message.args[0] as { from: string; to: string }).to === 'de',
+        message.name === 'loadTranslationModel' &&
+        (message.args[0] as { from: string; to: string }).to === 'de',
     );
     expect(enDeLoads.length).toBe(2);
     translator.dispose();
