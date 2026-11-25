@@ -49,6 +49,8 @@ const OWNER = 2;
 const STRANGER = 3;
 const GROUP = 55;
 const FAR = { hx: POINT.hx + 16, hy: POINT.hy };
+/** A point straight down the map: a band's places fill the rows on its near side first. */
+const SOUTH = { hx: POINT.hx, hy: POINT.hy + 16 };
 const OUTSIDE = { hx: POINT.hx + 20, hy: POINT.hy };
 /** Wide enough to hold a settler that has been idling since the world started. */
 const AREA = 10;
@@ -135,6 +137,20 @@ describe('SendHuman', () => {
       const terrain = sim.terrain;
       if (terrain === undefined) throw new Error('map expected');
       expect(hexDistance({ hx: terrain.xOf(goal), hy: terrain.yOf(goal) }, FAR)).toBeLessThanOrEqual(BAND);
+    }
+  });
+
+  it('seats no man of a band nearer where it stood than the point', () => {
+    const sim = firingSim([{ opcode: 'SendHuman', humanId: GROUP, point: SOUTH }]);
+    for (let i = 0; i < BAND; i++) spawn(sim, { player: OWNER, missionId: GROUP, job: SOLDIER, at: POINT });
+    sim.run(LOAD_PASS);
+    const terrain = sim.terrain;
+    if (terrain === undefined) throw new Error('map expected');
+    for (const e of humansOf(sim, OWNER)) {
+      const goal = sim.world.get(e, PlayerOrder).attackMove?.goal;
+      if (goal === undefined) throw new Error('march expected');
+      const place = { hx: terrain.xOf(goal), hy: terrain.yOf(goal) };
+      expect(hexDistance(place, POINT)).toBeGreaterThanOrEqual(hexDistance(SOUTH, POINT));
     }
   });
 
