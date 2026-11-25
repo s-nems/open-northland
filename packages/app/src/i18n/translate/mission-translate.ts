@@ -94,8 +94,12 @@ export function createMissionTranslator(deps: MissionTranslatorDeps): MissionTra
       queued.clear();
       failed.clear();
       for (const drop of drops) drop();
+      // Publish the new target before notifying views: an onChange callback may synchronously
+      // rebuild a view, which reads its text through targetOf() again.
+      served = to;
       version++;
       deps.onChange();
+      return to;
     }
     served = to;
     return to;

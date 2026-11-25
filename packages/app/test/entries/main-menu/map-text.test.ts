@@ -32,13 +32,19 @@ beforeEach(() => {
 });
 
 describe('map-selection translation control', () => {
-  it('is visible and writes the shared mission-book language choice', () => {
-    const mapText = menuMapTextReader(() => undefined);
-    const card = createMapDetailsCard({
+  it('is visible, writes the shared choice, and safely refreshes on a target change', () => {
+    const item = mapItem(entry());
+    let card: ReturnType<typeof createMapDetailsCard> | undefined;
+    // The real picker re-renders synchronously when the target language changes.
+    const mapText = menuMapTextReader(() => {
+      card?.show(item);
+    });
+    card = createMapDetailsCard({
+      translateText: mapText.text,
       translateTarget: mapText.translateChoice,
       onTranslateTarget: mapText.setTranslateChoice,
     });
-    card.show(mapItem(entry()));
+    card.show(item);
 
     const button = card.root.querySelector<HTMLButtonElement>('.main-menu__map-translate');
     const menu = card.root.querySelector<HTMLElement>('.main-menu__map-translate-menu');
