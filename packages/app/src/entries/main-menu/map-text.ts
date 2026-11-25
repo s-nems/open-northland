@@ -1,16 +1,24 @@
 import { loadGuiStrings } from '../../content/gui/gfx.js';
 import type { Locale } from '../../i18n/index.js';
 import type { LocalizedMapString } from '../../game/map/strings.js';
-import { createMissionTranslator, type MissionTranslator } from '../../i18n/translate/mission-translate.js';
+import {
+  createMissionTranslator,
+  type MissionTranslator,
+  type TranslateChoice,
+} from '../../i18n/translate/mission-translate.js';
 import { sharedMapTextTranslator } from '../../i18n/translate/service.js';
 import { translatedTribeName } from '../../i18n/translate/tribe-name.js';
-import { menuSettings, onSettingsChange } from './settings/state.js';
+import { menuSettings, onSettingsChange, updateSettings } from './settings/state.js';
 
 /** The translation surface a menu screen reads map-authored text through. */
 export interface MenuMapTextReader {
   text(found: LocalizedMapString): string;
   target(): Locale | null;
   enabled(): boolean;
+  /** The shared mission-book language choice, also used by the map-selection card. */
+  translateChoice(): TranslateChoice;
+  /** Changes the shared choice, so the mission book and map descriptions stay in sync. */
+  setTranslateChoice(choice: TranslateChoice): void;
   tribeName(tribe: number | undefined): string;
   dispose(): void;
 }
@@ -81,6 +89,10 @@ export function menuMapTextReader(onChange: () => void): MenuMapTextReader {
     },
     target: targetLanguage,
     enabled: () => menuSettings().mapTextTranslation,
+    translateChoice: () => menuSettings().missionBookLanguage,
+    setTranslateChoice: (choice) => {
+      void updateSettings({ missionBookLanguage: choice });
+    },
     tribeName: (tribe) =>
       translatedTribeName(
         tribe,
