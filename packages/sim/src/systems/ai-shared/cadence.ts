@@ -1,4 +1,4 @@
-import { AiControl, aiControlEntity } from '../../components/ai/control.js';
+import { aiControlEntity, mapAiRuns } from '../../components/ai/control.js';
 import type { World } from '../../ecs/world.js';
 
 /**
@@ -94,9 +94,7 @@ export function machineSeatOnTurn(world: World, tick: number): number | null {
  *  seat's or belongs to a seat the map `AI_Disable`d. */
 export function mapAiSeatOnTurn(world: World, tick: number): number | null {
   const player = machineSeatOnTurn(world, tick);
-  if (player === null) return null;
-  const seat = aiControlEntity(world, player);
-  return seat !== null && world.get(seat, AiControl).mapAiEnabled ? player : null;
+  return player !== null && mapAiRuns(world, player) ? player : null;
 }
 
 /** The turn number the handler on `tick` is given: how many whole rounds have passed. */

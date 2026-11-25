@@ -2,7 +2,7 @@ import {
   diplomacyStance,
   GateControl,
   Health,
-  isMachinePlayer,
+  mapAiRuns,
   ownerOf,
   Palisade,
   Position,
@@ -65,7 +65,8 @@ export function setPalisadeGateMode(
   world.add(command.palisade, GateControl, { mode: command.mode });
 }
 
-/** AI adopts existing and newly built gates without a scripted handler or a first-turn gate limit.
+/** A seat's scripted map AI adopts its existing and newly built gates, without a first-turn gate limit.
+ * Original behavior: the map AI works the gates, so a seat the map `AI_Disable`s leaves them as placed.
  * An explicit order owns the policy from then on, including when an occupied passage must retry. */
 export const gateControlSystem: System = (world, ctx) => {
   if (ctx.terrain === undefined) return;
@@ -74,7 +75,7 @@ export const gateControlSystem: System = (world, ctx) => {
     if (world.has(e, UnderConstruction) || !world.has(e, Position)) continue;
     const owner = ownerOf(world, e);
     let control = world.tryGet(e, GateControl);
-    if (control === undefined && owner !== undefined && isMachinePlayer(world, owner)) {
+    if (control === undefined && owner !== undefined && mapAiRuns(world, owner)) {
       world.add(e, GateControl, { mode: 'automatic' });
       control = world.get(e, GateControl);
     }

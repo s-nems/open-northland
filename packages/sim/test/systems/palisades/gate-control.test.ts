@@ -90,10 +90,10 @@ const MAP = {
   landscapes: { types: [gateType(CLOSED, false, OPEN), gateType(OPEN, true, CLOSED)], placements: [] },
 };
 
-function gateSim(scripted = true): Simulation {
+function gateSim(scripted = true, allDisabled = false): Simulation {
   const row: MapAiSeat = {
     player: SEAT,
-    allDisabled: false,
+    allDisabled,
     computerDisabled: true,
     disabledComputerModules: [...COMPUTER_MODULE_IDS],
     conditions: [],
@@ -106,7 +106,13 @@ function gateSim(scripted = true): Simulation {
     ...(scripted ? { mapAiScript: [row] } : {}),
   });
   const off = Object.fromEntries(COMPUTER_MODULE_IDS.map((id) => [id, false]));
-  sim.enqueueSetup({ kind: 'setAiControl', player: SEAT, enabled: true, modules: off });
+  sim.enqueueSetup({
+    kind: 'setAiControl',
+    player: SEAT,
+    enabled: true,
+    modules: off,
+    ...(allDisabled ? { mapAiEnabled: false } : {}),
+  });
   sim.enqueueSetup({ kind: 'placeBuilding', buildingType: HQ_TYPE, ...HQ, tribe: VIKING, owner: SEAT });
   sim.step();
   return sim;
@@ -157,6 +163,14 @@ describe('shared gate control', () => {
     sim.world.destroy(enemy);
     sim.step();
     expect(isOpen(sim, gate)).toBe(true);
+  });
+
+  it('leaves the gates of a seat whose map AI is disabled as placed', () => {
+    const sim = gateSim(true, true);
+    const gate = placeGate(sim, GATE, false);
+    sim.step();
+    expect(sim.world.has(gate, GateControl)).toBe(false);
+    expect(isOpen(sim, gate)).toBe(false);
   });
 
   it('closes only at the 12-point boundary and reopens outside it', () => {
