@@ -1,6 +1,9 @@
 import type { MapTextLanguage } from '@open-northland/data';
 import type { ComputerDifficulty } from '@open-northland/lockstep';
-import { localizedMapText } from '../../../game/map/strings.js';
+import {
+  localizedMapTextWithLang,
+  type LocalizedMapString,
+} from '../../../game/map/strings.js';
 import { currentLocale, formatMessage, messages, tribeName } from '../../../i18n/index.js';
 import { colorChip, colorPalette } from '../lobby-controls/color.js';
 import { difficultyControl } from '../lobby-controls/difficulty.js';
@@ -37,6 +40,7 @@ export function localSeatElements(
   pickerSlot: number | null,
   actions: SeatActions,
   nameOfTribe: (tribe: number) => string = tribeName,
+  translateMapText: (found: LocalizedMapString) => string = ({ text }) => text,
 ) {
   const lobby = messages().mainMenu.lobby;
   const colorName = (color: number): string => messages().animation.playerColors[color] ?? String(color);
@@ -140,11 +144,16 @@ export function localSeatElements(
 
   /** `relations` is the seat's own relation line, for a seat its lineup group leaves unexplained. */
   const slotRow = (row: LobbySlotRow, relations: HTMLElement | null): HTMLElement => {
-    const title =
-      localizedMapText(row.slot.name, currentLocale()) ??
-      (row.kind === 'open'
+    const fallbackTitle =
+      row.kind === 'open'
         ? lobby.freeSlot
-        : formatMessage(lobby.playerSlotLabel, { n: row.slot.player + 1 }));
+        : formatMessage(lobby.playerSlotLabel, { n: row.slot.player + 1 });
+    const title = localizedLobbySlotTitle(
+      row.slot.name,
+      currentLocale(),
+      fallbackTitle,
+      translateMapText,
+    );
     const action = document.createElement('div');
     action.className = 'main-menu__lobby-action';
     if (row.kind === 'open') {
