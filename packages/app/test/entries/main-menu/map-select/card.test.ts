@@ -1,11 +1,13 @@
 // @vitest-environment jsdom
 import {
+  LANGUAGES,
   MAP_TEXT_LANGUAGES,
   MAP_TYPE,
   type MapsIndexEntry,
   type MapsIndexPlayerSlot,
 } from '@open-northland/data';
 import { beforeEach, describe, expect, it } from 'vitest';
+import type { TranslateChoice } from '../../../../src/i18n/translate/mission-translate.js';
 import {
   createMapDetailsCard,
   metaLine,
@@ -75,6 +77,53 @@ it('uses the translated map description on the details card', () => {
   });
   card.show(item);
   expect(card.root.querySelector('.main-menu__map-desc')?.textContent).toBe('translated: Opis misji');
+});
+
+
+it('provides the mission-book language menu beside the map description', () => {
+  let selected: TranslateChoice = 'auto';
+  const picks: TranslateChoice[] = [];
+  const card = createMapDetailsCard({
+    translateTarget: () => selected,
+    onTranslateTarget: (choice) => {
+      selected = choice;
+      picks.push(choice);
+    },
+  });
+  card.show(mapItem({ ...entry(), description: { pol: 'Opis misji' } }));
+
+  const button = card.root.querySelector<HTMLButtonElement>('.main-menu__map-translate');
+  const menu = card.root.querySelector<HTMLElement>('.main-menu__map-translate-menu');
+  if (button === null || menu === null) throw new Error('map translation control: markup');
+  expect(button.getAttribute('aria-label')).toBe(messages().hud.missionBook.translate);
+  expect(button.hidden).toBe(false);
+  expect(menu.hidden).toBe(true);
+
+  button.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+  expect(menu.hidden).toBe(false);
+  const rows = [...menu.querySelectorAll<HTMLButtonElement>('[data-translate-choice]')];
+  expect(rows.map((row) => row.dataset.translateChoice)).toEqual([
+    'auto',
+    ...LANGUAGES,
+    'original',
+  ]);
+  expect(rows[0]?.getAttribute('aria-checked')).toBe('true');
+  expect(rows[3]?.textContent).toBe(messages().mainMenu.settings.languageNames.ger);
+
+  const german = menu.querySelector<HTMLButtonElement>('[data-translate-choice="ger"]');
+  if (german === null) throw new Error('map translation control: German choice');
+  german.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+  expect(picks).toEqual(['ger']);
+  expect(selected).toBe('ger');
+  expect(menu.hidden).toBe(true);
+  expect(button.getAttribute('aria-expanded')).toBe('false');
+
+  card.show(mapItem({ ...entry(), description: { pol: 'Opis misji' } }));
+  button.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+  expect(menu.querySelector('[data-translate-choice="ger"]')?.getAttribute('aria-checked')).toBe(
+    'true',
+  );
+  card.dispose();
 });
 
 describe('meta line', () => {

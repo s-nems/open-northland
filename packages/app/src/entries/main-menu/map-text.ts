@@ -35,6 +35,7 @@ function translator(): MissionTranslator {
   if (shared !== null) return shared;
   const initial = menuSettings();
   let lastTarget = targetLanguage();
+  let lastChoice = initial.missionBookLanguage;
   let lastLanguage = initial.language;
   let lastEnabled = initial.mapTextTranslation;
   shared = createMissionTranslator({
@@ -52,12 +53,14 @@ function translator(): MissionTranslator {
     const nextTarget = targetLanguage();
     if (
       nextTarget === lastTarget &&
+      settings.missionBookLanguage === lastChoice &&
       settings.language === lastLanguage &&
       settings.mapTextTranslation === lastEnabled
     ) {
       return;
     }
     lastTarget = nextTarget;
+    lastChoice = settings.missionBookLanguage;
     lastLanguage = settings.language;
     lastEnabled = settings.mapTextTranslation;
     const before = shared?.version() ?? 0;

@@ -135,7 +135,12 @@ export function mapPicker(options: MapPickerOptions): MapPicker {
 
   const previewCol = document.createElement('div');
   previewCol.className = 'main-menu__map-preview-col';
-  const card = createMapDetailsCard({ translateText: mapText.text, tribeName: tribeLabel });
+  const card = createMapDetailsCard({
+    translateText: mapText.text,
+    tribeName: tribeLabel,
+    translateTarget: mapText.translateChoice,
+    onTranslateTarget: mapText.setTranslateChoice,
+  });
   const primary = document.createElement('button');
   primary.type = 'button';
   primary.className = 'main-menu__primary';
@@ -296,6 +301,9 @@ export function mapPicker(options: MapPickerOptions): MapPicker {
       for (const item of rowButtons.keys()) if (item.id === id) selectItem(item);
     },
     reload: loadMaps,
-    dispose: () => mapText.dispose(),
+    dispose: () => {
+      card.dispose();
+      mapText.dispose();
+    },
   };
 }
