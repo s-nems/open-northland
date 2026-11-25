@@ -305,6 +305,8 @@
 
 /* One bordered card: preview section on top, details below. Vertically centered in the column. */
 .main-menu__map-card {
+  /* Anchors the translate icon in the top-right corner. */
+  position: relative;
   margin: auto 0;
   display: flex;
   flex-direction: column;
@@ -312,7 +314,9 @@
   border-radius: 8px;
   background: rgba(16, 29, 44, 0.6);
   box-shadow: 0 0 34px rgb(var(--accent-rgb) / 0.15);
-  overflow: hidden;
+  /* Visible, so the translate menu reaches past a short card (the lobby's has no description); the
+     preview rounds its own top corners instead of being clipped to the card's. */
+  overflow: visible;
 }
 
 /* `display: flex` above outweighs the UA's `[hidden]`; restate it for the no-selection state. */
@@ -332,6 +336,7 @@
   padding: calc(var(--u) * 20);
   background: rgba(10, 18, 30, 0.55);
   border-bottom: 1px solid rgb(var(--accent-rgb) / 0.25);
+  border-radius: 6px 6px 0 0;
 }
 
 .main-menu__map-preview img {
@@ -439,96 +444,89 @@
 }
 
 .main-menu__map-desc-tools {
-  position: relative;
-  display: flex;
-  justify-content: flex-end;
-  min-height: calc(var(--u) * 26);
+  position: absolute;
+  top: calc(var(--u) * 12);
+  right: calc(var(--u) * 12);
+  z-index: 2;
 }
 
+/* A quiet round glyph that stands out only on hover or while its menu is open, as in the book. */
 .main-menu__map-translate {
-  all: unset;
-  box-sizing: border-box;
   display: grid;
   place-items: center;
-  width: calc(var(--u) * 34);
-  height: calc(var(--u) * 34);
-  border: 2px solid rgba(219, 232, 227, 0.25);
-  border-radius: 6px;
-  background: transparent;
-  color: rgba(219, 232, 227, 0.68);
+  width: calc(var(--u) * 38);
+  height: calc(var(--u) * 38);
+  padding: 0;
+  border: 1px solid rgb(var(--accent-rgb) / 0.35);
+  border-radius: 50%;
+  background: rgba(10, 18, 30, 0.6);
+  color: var(--text-muted);
+  opacity: 0.7;
   cursor: var(--cursor-pointer, pointer);
-  transition:
-    color 150ms ease-out,
-    border-color 150ms ease-out,
-    background-color 150ms ease-out;
 }
 
 .main-menu__map-translate:hover,
+.main-menu__map-translate:focus-visible,
 .main-menu__map-translate[aria-expanded="true"] {
-  border-color: rgb(var(--accent-rgb) / 0.65);
-  background: rgb(var(--accent-rgb) / 0.1);
-  color: var(--accent-bright);
+  opacity: 1;
+  border-color: rgb(var(--accent-rgb) / 0.8);
+  color: var(--text-primary);
 }
 
-.main-menu__map-translate:focus-visible {
-  outline: 2px solid var(--accent-bright);
-  outline-offset: 2px;
-}
-
-.main-menu__map-translate .on-glyph {
-  width: calc(var(--u) * 18);
-  height: calc(var(--u) * 18);
+.main-menu__map-translate svg {
+  width: calc(var(--u) * 22);
+  height: calc(var(--u) * 22);
+  fill: none;
+  stroke: currentColor;
   stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 .main-menu__map-translate-menu {
   position: absolute;
-  top: calc(var(--u) * 40);
+  top: calc(100% + var(--u) * 6);
   right: 0;
-  z-index: 20;
   display: flex;
   flex-direction: column;
-  min-width: calc(var(--u) * 190);
-  max-height: calc(var(--u) * 320);
+  min-width: calc(var(--u) * 230);
+  max-height: calc(var(--u) * 430);
   padding: calc(var(--u) * 6);
   overflow-y: auto;
-  border: 1px solid rgb(var(--accent-rgb) / 0.38);
+  border: 1px solid rgb(var(--accent-rgb) / 0.45);
   border-radius: 6px;
-  background: rgba(12, 20, 32, 0.97);
-  box-shadow: 0 calc(var(--u) * 8) calc(var(--u) * 24) rgba(0, 0, 0, 0.55);
-  color: var(--text-body);
-  font: 500 calc(var(--u) * 17) / 1.25 var(--font-body);
-  scrollbar-color: var(--accent) transparent;
-  scrollbar-width: thin;
+  background: rgb(12, 22, 34);
+  box-shadow: 0 calc(var(--u) * 12) calc(var(--u) * 28) rgba(0, 0, 0, 0.7);
 }
 
+/* `display: flex` above outweighs the UA's `[hidden]`; the menu stands open only while its icon holds it. */
 .main-menu__map-translate-menu[hidden] {
   display: none;
 }
 
 .main-menu__map-translate-item {
-  all: unset;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: calc(var(--u) * 10);
+  gap: calc(var(--u) * 12);
   padding: calc(var(--u) * 8) calc(var(--u) * 12);
+  border: 0;
   border-radius: 4px;
+  background: none;
+  font: 700 calc(var(--u) * 19) / 1.2 var(--font-body);
   color: var(--text-muted);
+  text-align: left;
   cursor: var(--cursor-pointer, pointer);
-  transition:
-    color 150ms ease-out,
-    background-color 150ms ease-out;
 }
 
 .main-menu__map-translate-item:hover,
 .main-menu__map-translate-item:focus-visible {
-  background: rgb(var(--accent-rgb) / 0.1);
-  color: var(--text-body);
+  background: rgb(var(--accent-rgb) / 0.18);
+  color: var(--text-primary);
 }
 
 .main-menu__map-translate-item[aria-checked="true"] {
-  color: var(--accent-bright);
+  color: var(--text-primary);
 }
 
 .main-menu__map-translate-item[aria-checked="true"]::after {
@@ -537,7 +535,7 @@
 
 .main-menu__map-translate-item[data-translate-choice="original"] {
   margin-top: calc(var(--u) * 4);
-  border-top: 1px solid rgb(var(--accent-rgb) / 0.22);
+  border-top: 1px solid rgb(var(--accent-rgb) / 0.2);
   border-radius: 0 0 4px 4px;
 }
 
