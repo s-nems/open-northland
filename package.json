@@ -77,10 +77,10 @@
     "test:gate": "npm run test:e2e --workspace @open-northland/app"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.6.6",
+    "@biomejs/biome": "^2.6.8",
     "esbuild": "^0.28.2",
-    "jsdom": "^31.0.0",
-    "playwright": "^1.65.0",
+    "jsdom": "^31.0.1",
+    "playwright": "^1.65.1",
     "typescript": "^7.0.2",
     "vitest": "^5.1.0"
   },
