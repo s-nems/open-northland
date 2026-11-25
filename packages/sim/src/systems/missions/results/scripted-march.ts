@@ -47,9 +47,10 @@ function riderMayWalk(world: World, ctx: SystemContext, e: Entity): boolean {
 const FORMATION_HOLD_SLACK_NODES = 8;
 
 /**
- * Order every human with the id to the point: each to his own place around it, as a player's group
- * order seats a band (avoiding standing fighters), paired so neighbours stay neighbours; a fighter goes
- * on an attack-move, so the band fights what it meets, and a civilian walks. A man whose order already
+ * Order every human with the id to the point: each to his own place around it, none nearer where the
+ * band stood than the point, as a player's group order seats a band (avoiding standing fighters),
+ * paired so neighbours stay neighbours; a fighter goes on an attack-move, so the band fights what it
+ * meets, and a civilian walks. A man whose order already
  * leads into the formation, or a fighter fighting within it, keeps it, so a repeating line neither
  * breaks off a fight nor reshuffles a walking band; a man the line adds takes a place nobody holds.
  * The places the pass's earlier lines handed out are held too, so a party sent in one line per man
@@ -151,7 +152,12 @@ function formationPlaces(
     return places;
   }
   const rows = military ? MILITARY_ROW_SPACING : 1;
-  const occupancy = standingStrangers(ctx, held);
+  const strangers = standingStrangers(ctx, held);
+  const short = shortOfPoint(world, humans, point);
+  const occupancy: Occupancy = (w, t, movers) => {
+    const taken = strangers(w, t, movers);
+    return (node) => taken(node) || short(t.xOf(node), t.yOf(node));
+  };
   // A band with fighters attack-moves, so it takes slots past a wall as a player's attack-move does.
   const order = military ? 'attackMove' : 'move';
   for (const group of formationSlotGroups(
@@ -181,6 +187,29 @@ function formationPlaces(
     }
   }
   return places;
+}
+
+/**
+ * Whether a node lies nearer the band's mean start than `point` does. Such a slot would stop a man short
+ * of the point, while the original walks every one of them to the point itself and a script tests that the
+ * band has left where it stood by measuring from there. Authored.
+ */
+function shortOfPoint(
+  world: World,
+  humans: readonly Entity[],
+  point: HalfCellNode,
+): (hx: number, hy: number) => boolean {
+  let sumX = 0;
+  let sumY = 0;
+  for (const e of humans) {
+    const at = world.get(e, Position);
+    const node = nodeOfPosition(at.x, at.y);
+    sumX += node.hx;
+    sumY += node.hy;
+  }
+  const start = { hx: Math.floor(sumX / humans.length), hy: Math.floor(sumY / humans.length) };
+  const reach = hexDistance(start, point);
+  return (hx, hy) => hexDistance(start, { hx, hy }) < reach;
 }
 
 /** A node in world units, so a band splits on the axis it is widest across on screen. */
