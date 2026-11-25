@@ -2,6 +2,7 @@
 import { MAP_TYPE, type MapsIndexEntry } from '@open-northland/data';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import type { MapSource } from '../../../../src/content/map-source/index.js';
+import * as mapSources from '../../../../src/content/map-source/index.js';
 import { keptRoomSave, roomSavePick } from '../../../../src/entries/main-menu/network/save-pick.js';
 import type { SaveSlotInfo } from '../../../../src/view/runtime/save-load/store.js';
 import * as storeBrowser from '../../../../src/view/runtime/save-load/store-browser.js';
@@ -32,18 +33,15 @@ function source(id: string, mapType: number): MapSource {
   return { entry, stale: false, fetch: () => Promise.reject(new Error('No map files in this test')) };
 }
 
-vi.mock('../../../../src/content/map-source/index.js', async (importOriginal) => ({
-  ...(await importOriginal<object>()),
-  playableMapSources: async () => [
-    source('arena', MAP_TYPE.MULTI_PLAYER_FREE),
-    source('valley', MAP_TYPE.SINGLE_PLAYER_FREE),
-  ],
-}));
-
 // jsdom lays nothing out, so it has no scrolling to do.
 const scrollIntoView = Element.prototype.scrollIntoView;
 beforeEach(() => {
   Element.prototype.scrollIntoView = () => undefined;
+  // A spy, not `vi.mock`: another file in the worker may have loaded the module first.
+  vi.spyOn(mapSources, 'playableMapSources').mockResolvedValue([
+    source('arena', MAP_TYPE.MULTI_PLAYER_FREE),
+    source('valley', MAP_TYPE.SINGLE_PLAYER_FREE),
+  ]);
 });
 afterEach(() => {
   Element.prototype.scrollIntoView = scrollIntoView;

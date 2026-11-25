@@ -1,6 +1,6 @@
 import { loadGuiStrings } from '../../content/gui/gfx.js';
-import type { Locale } from '../../i18n/index.js';
 import type { LocalizedMapString } from '../../game/map/strings.js';
+import type { Locale } from '../../i18n/index.js';
 import {
   createMissionTranslator,
   type MissionTranslator,

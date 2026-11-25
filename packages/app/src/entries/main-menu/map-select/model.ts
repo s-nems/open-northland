@@ -10,9 +10,9 @@ import { isMultiplayerMapType, MAP_TYPE, narratedLanguages } from '@open-northla
 import { catalogEntryThumbnailUrl, type MapSource } from '../../../content/map-source/index.js';
 import { contentUrl } from '../../../content/url.js';
 import {
+  type LocalizedMapString,
   localizedMapText,
   localizedMapTextWithLang,
-  type LocalizedMapString,
 } from '../../../game/map/strings.js';
 import { hasWords, searchWords } from '../../../hud/dom/parts/name-search.js';
 import { compareLabels, currentLocale } from '../../../i18n/index.js';
@@ -123,9 +123,7 @@ export function mapItem(entry: MapsIndexEntry, lang: MapTextLanguage = currentLo
     relations: entry.relations ?? [],
     fixedColors: entry.fixedColors === true,
     ...(tutorialStep !== undefined ? { tutorialStep } : {}),
-    ...(descriptionText === undefined
-      ? {}
-      : { description: descriptionText.text, descriptionText }),
+    ...(descriptionText === undefined ? {} : { description: descriptionText.text, descriptionText }),
     picture: entry.picture,
     minimap: entry.minimap,
     narration: narratedLanguages(entry.voices),

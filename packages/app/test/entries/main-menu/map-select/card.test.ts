@@ -7,7 +7,6 @@ import {
   type MapsIndexPlayerSlot,
 } from '@open-northland/data';
 import { beforeEach, describe, expect, it } from 'vitest';
-import type { TranslateChoice } from '../../../../src/i18n/translate/mission-translate.js';
 import {
   createMapDetailsCard,
   metaLine,
@@ -16,6 +15,7 @@ import {
 } from '../../../../src/entries/main-menu/map-select/card.js';
 import { mapItem, sceneItem } from '../../../../src/entries/main-menu/map-select/model.js';
 import { LOCALE_CODES, messages, setActiveLocale } from '../../../../src/i18n/index.js';
+import type { TranslateChoice } from '../../../../src/i18n/translate/mission-translate.js';
 import { TINY_FINGERPRINT } from '../../../support/catalog-maps.js';
 
 function entry(voices?: readonly string[]): MapsIndexEntry {
@@ -79,8 +79,7 @@ it('uses the translated map description on the details card', () => {
   expect(card.root.querySelector('.main-menu__map-desc')?.textContent).toBe('translated: Opis misji');
 });
 
-
-it('provides the mission-book language menu beside the map description', () => {
+it("provides the mission-book language menu in the card's corner", () => {
   let selected: TranslateChoice = 'auto';
   const picks: TranslateChoice[] = [];
   const card = createMapDetailsCard({
@@ -98,15 +97,14 @@ it('provides the mission-book language menu beside the map description', () => {
   expect(button.getAttribute('aria-label')).toBe(messages().hud.missionBook.translate);
   expect(button.hidden).toBe(false);
   expect(menu.hidden).toBe(true);
+  // On the card itself, not in the description block a screen may hide (the lobby does).
+  expect(button.closest('.main-menu__map-desc-block')).toBeNull();
+  expect(button.parentElement?.parentElement).toBe(card.root);
 
   button.dispatchEvent(new MouseEvent('click', { bubbles: true }));
   expect(menu.hidden).toBe(false);
   const rows = [...menu.querySelectorAll<HTMLButtonElement>('[data-translate-choice]')];
-  expect(rows.map((row) => row.dataset.translateChoice)).toEqual([
-    'auto',
-    ...LANGUAGES,
-    'original',
-  ]);
+  expect(rows.map((row) => row.dataset.translateChoice)).toEqual(['auto', ...LANGUAGES, 'original']);
   expect(rows[0]?.getAttribute('aria-checked')).toBe('true');
   expect(rows[3]?.textContent).toBe(messages().mainMenu.settings.languageNames.ger);
 
@@ -120,9 +118,32 @@ it('provides the mission-book language menu beside the map description', () => {
 
   card.show(mapItem({ ...entry(), description: { pol: 'Opis misji' } }));
   button.dispatchEvent(new MouseEvent('click', { bubbles: true }));
-  expect(menu.querySelector('[data-translate-choice="ger"]')?.getAttribute('aria-checked')).toBe(
-    'true',
+  expect(menu.querySelector('[data-translate-choice="ger"]')?.getAttribute('aria-checked')).toBe('true');
+  card.dispose();
+});
+
+it('keeps the language menu for a map with seats but no description', () => {
+  const card = createMapDetailsCard({ translateTarget: () => 'auto', onTranslateTarget: () => undefined });
+  card.show(
+    mapItem({
+      ...entry(),
+      players: [
+        {
+          player: 0,
+          type: 'human',
+          tribeId: 1,
+          colorId: 0,
+          claimable: true,
+          hidden: false,
+          aiAllowed: true,
+          noneAllowed: true,
+          hasComputerControl: true,
+        },
+      ],
+    }),
   );
+  expect(card.root.querySelector<HTMLButtonElement>('.main-menu__map-translate')?.hidden).toBe(false);
+  expect(card.root.querySelector<HTMLElement>('.main-menu__map-desc-block')?.hidden).toBe(true);
   card.dispose();
 });
 

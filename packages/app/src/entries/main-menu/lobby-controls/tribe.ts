@@ -23,11 +23,7 @@ function star(): SVGSVGElement {
 }
 
 /** A list entry's name, over a small starred line on the map's own civilization. */
-function caption(
-  tribe: number,
-  authored: number,
-  nameOfTribe: (tribe: number) => string,
-): HTMLElement {
+function caption(tribe: number, authored: number, nameOfTribe: (tribe: number) => string): HTMLElement {
   const root = node('span', 'lobby-tribe__caption');
   root.append(node('span', 'lobby-tribe__name', nameOfTribe(tribe)));
   if (tribe === authored) {

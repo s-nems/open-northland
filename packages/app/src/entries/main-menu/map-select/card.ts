@@ -1,16 +1,16 @@
 import { LANGUAGES } from '@open-northland/data';
 import { playerSwatchHex } from '../../../catalog/roster.js';
 import type { LocalizedMapString } from '../../../game/map/strings.js';
+import { GLYPH } from '../../../hud/dom/icons.js';
 import {
   bcp47Tag,
   formatMessage,
   isLocale,
+  tribeName as localizedTribeName,
   messages,
   pluralForm,
-  tribeName as localizedTribeName,
 } from '../../../i18n/index.js';
 import type { TranslateChoice } from '../../../i18n/translate/mission-translate.js';
-import { GLYPH } from '../../../hud/dom/icons.js';
 import { segControl } from '../../../view/settings/controls.js';
 import { mapItemLineup } from '../lineup/model.js';
 import { lineupLabel } from '../lineup/view.js';
@@ -105,11 +105,7 @@ export function narratorBadge(item: MapSelectItem): HTMLElement | null {
   return badge;
 }
 
-function seatChip(
-  tribeId: number,
-  colorId: number,
-  nameOfTribe: (tribe: number) => string,
-): HTMLElement {
+function seatChip(tribeId: number, colorId: number, nameOfTribe: (tribe: number) => string): HTMLElement {
   const chip = document.createElement('span');
   chip.className = 'main-menu__seat-chip';
   const dot = document.createElement('span');
@@ -206,11 +202,13 @@ export function createMapDetailsCard(options: MapDetailsCardOptions = {}): MapDe
   descriptionTools.append(translateButton, translateMenu);
   const description = document.createElement('p');
   description.className = 'main-menu__map-desc';
-  descriptionBlock.append(descriptionTools, description);
+  descriptionBlock.append(description);
   const actions = document.createElement('div');
   actions.className = 'main-menu__map-actions';
   details.append(name, meta, narration, seats, descriptionBlock, actions);
-  card.append(frame, details);
+  // The book's place for the translate icon: the card's top-right corner, its menu opening over the
+  // preview, so it stays in reach where a screen hides the description (the lobby).
+  card.append(frame, details, descriptionTools);
 
   const hasTranslateControl =
     options.translateTarget !== undefined && options.onTranslateTarget !== undefined;
@@ -251,9 +249,10 @@ export function createMapDetailsCard(options: MapDetailsCardOptions = {}): MapDe
     else closeTranslateMenu();
   });
   translateMenu.addEventListener('click', (event) => {
-    const target = event.target instanceof Element
-      ? event.target.closest<HTMLButtonElement>('[data-translate-choice]')
-      : null;
+    const target =
+      event.target instanceof Element
+        ? event.target.closest<HTMLButtonElement>('[data-translate-choice]')
+        : null;
     const choice = target?.dataset.translateChoice;
     if (choice === 'auto' || choice === 'original' || isLocale(choice)) {
       closeTranslateMenu();
@@ -300,17 +299,19 @@ export function createMapDetailsCard(options: MapDetailsCardOptions = {}): MapDe
           : []),
       );
       seats.hidden = !showSeats;
-      const hasDescription = item.descriptionText !== undefined
-        ? item.descriptionText.text.trim() !== ''
-        : (item.description ?? '').trim() !== '';
-      description.textContent = item.descriptionText === undefined
-        ? (item.description ?? '')
-        : (options.translateText?.(item.descriptionText) ?? item.descriptionText.text);
+      const hasDescription =
+        item.descriptionText !== undefined
+          ? item.descriptionText.text.trim() !== ''
+          : (item.description ?? '').trim() !== '';
+      description.textContent =
+        item.descriptionText === undefined
+          ? (item.description ?? '')
+          : (options.translateText?.(item.descriptionText) ?? item.descriptionText.text);
       description.hidden = !hasDescription;
       const hasSeats = item.tutorialStep === undefined && item.seats.length > 0;
       translateButton.hidden = !hasTranslateControl || (!hasDescription && !hasSeats);
       descriptionTools.hidden = translateButton.hidden;
-      descriptionBlock.hidden = !hasDescription && translateButton.hidden;
+      descriptionBlock.hidden = !hasDescription;
       syncTranslateMenu();
       showPreview(item, defaultMapPreview(item));
     },
