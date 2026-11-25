@@ -22,7 +22,7 @@ import { petNamesOf } from '../../game/character-names/pet-names.js';
 import { briefingMatchObjectives, briefingPage, mapBriefFallback } from '../../game/map/mission-brief.js';
 import { playerTribe } from '../../game/map/roster.js';
 import { mapStartFocus } from '../../game/map/start.js';
-import { localizedMapText, mapStringLookup } from '../../game/map/strings.js';
+import { localizedMapText, mapStringLookup, mapStringLookupWithLang } from '../../game/map/strings.js';
 import { observerSeats } from '../../game/match/observer-seats.js';
 import { hasEliminationGoal, playersDecidedBeforeEnd } from '../../game/match/participants.js';
 import { seatNameMap } from '../../game/match/seat-names.js';
@@ -289,7 +289,10 @@ export async function presentMapWorld(
     playerColourOf,
     seatTribeOf: (player) => playerTribe({ players: world.seatedPlayers }, player),
     tribes: world.tribes,
-    seatNameOf: seatNameMap(session, script, currentLocale(), runtime.seatedNickOf),
+    // The seat names build with the view's translating read handed in, so the map's authored tribe
+    // names translate like its mission texts; the composed labels (nick, level) wrap the result.
+    seatNameSource: (translate) =>
+      seatNameMap(session, script, currentLocale(), runtime.seatedNickOf, translate),
     rosterPlayers: script?.players.map((p) => p.player) ?? [],
     relationFlags: script?.relationFlags ?? [],
     ...terrainColourOption(world.terrain),
@@ -315,6 +318,8 @@ export async function presentMapWorld(
       ? { soundScenery: soundScenery(loaded.objects, ir, simHeld) }
       : {}),
     mapText: mapStringLookup(world.strings, currentLocale()),
+    // The same strings with their language, so the mission book translates the foreign ones.
+    missionText: mapStringLookupWithLang(world.strings, currentLocale()),
     ...(stagedSave?.parent !== undefined ? { parentSave: stagedSave.parent } : {}),
     ...(stagedSave !== null ? { restoredView: stagedSave.header.view } : {}),
     petNames: givenNames,

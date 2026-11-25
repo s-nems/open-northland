@@ -11,7 +11,7 @@ import {
   type MissionStatus,
   SUCCESSFUL_IF,
 } from '@open-northland/sim';
-import { localizedMapText } from './strings.js';
+import { localizedMapTextWithLang } from './strings.js';
 
 /**
  * What the mission book shows for one world: its briefing pages and the goal list. Pure joins over the
@@ -39,6 +39,11 @@ export interface MissionPage {
   readonly blocks: readonly HypertextBlock[];
   /** The map text language the page is written in; null for text in the app's language. */
   readonly lang: string | null;
+  /**
+   * The language tag the prose reads in when that is not `lang`: a translated page keeps `lang` for
+   * its narration and callbacks while its prose reads in the app's language. Absent otherwise.
+   */
+  readonly proseLang?: string;
 }
 
 /** A briefing page and the map text language it was found in. */
@@ -51,8 +56,16 @@ export interface BriefingText {
 export interface MissionBriefSource {
   /** The briefing page for a cutscene id, in the player's language; null when the map ships none. */
   readonly page: (id: number) => BriefingText | null;
-  /** What the task tab shows with no page: the map's menu name and description. */
-  readonly fallback: { readonly title: string; readonly description?: string };
+  /**
+   * What the task tab shows with no page: the map's menu name and description. `lang` names the
+   * language they read in, or null for the app's; absent for a scene's own summary, which the app
+   * ships in the reader's language.
+   */
+  readonly fallback: {
+    readonly title: string;
+    readonly description?: string;
+    readonly lang?: MapTextLanguage | null;
+  };
   /** The skirmish goal text, listed whenever a match runs, since it is the rule that decides; null
    *  for a world that declared none. */
   readonly skirmishGoal: string | null;
@@ -85,20 +98,25 @@ export function briefingMatchObjectives(script: MissionScript | undefined): Read
   return objectives;
 }
 
-/** The map's menu name and description in `lang`, the task tab's text when no page is shipped. */
+/** The map's menu name and description in `lang`, the task tab's text when no page is shipped, with
+ *  the language they read in (null for the app's), so foreign fallback text is handled like pages. */
 export function mapBriefFallback(
   meta: Pick<MapMeta, 'name' | 'description'> | null,
   lang: MapTextLanguage,
 ): MissionBriefSource['fallback'] {
-  const description = localizedMapText(meta?.description, lang);
+  const description = localizedMapTextWithLang(meta?.description, lang);
+  const name = localizedMapTextWithLang(meta?.name, lang);
+  // The description is the body the task tab shows; its language decides, a lone name's otherwise.
+  const read = description ?? name;
   return {
-    title: localizedMapText(meta?.name, lang) ?? '',
-    ...(description !== undefined ? { description } : {}),
+    title: name?.text ?? '',
+    ...(description !== undefined ? { description: description.text } : {}),
+    ...(read !== undefined ? { lang: read.lang } : {}),
   };
 }
 
 /** A goal description starting with this is printed without it, in the window's emphasis colour. */
-const GOAL_EMPHASIS_MARK = '@';
+export const GOAL_EMPHASIS_MARK = '@';
 
 /** The briefing page for `id` in `lang`, falling back through the authoring languages. */
 export function briefingPage(
@@ -170,15 +188,16 @@ export function missionGoalList(
 }
 
 /** The page as authored, headline included; without one, the fallback name heads the fallback
- *  description. */
+ *  description. The fallback reads in the language it was found in, so foreign text is handled
+ *  like a page's. */
 export function missionPage(source: MissionBriefSource, page: number | null): MissionPage {
   const text = page === null ? null : source.page(page);
   if (text !== null) return { title: '', ...text };
-  const { title, description } = source.fallback;
+  const { title, description, lang } = source.fallback;
   return {
     title,
     blocks: description === undefined ? [] : [{ kind: 'text', style: 'body', text: description }],
-    lang: null,
+    lang: lang ?? null,
   };
 }
 
@@ -205,14 +224,20 @@ export interface MissionReader {
 }
 
 /** A {@link MissionReader} over the live world; pages are fixed content, the goals are memoised per
- *  tick. */
+ *  tick and `revision`, which a caller bumps when the goal texts change outside the sim (a landed
+ *  translation does), so a held clock still re-reads them. */
 export function missionReader(
   source: MissionBriefSource,
   world: MissionBriefWorld,
   textOf: (stringId: number) => string | undefined,
+  revision: () => number = () => 0,
 ): MissionReader {
   const pages = new Map<number | null, MissionPage>();
-  let goals: { readonly tick: number; readonly list: readonly MissionGoal[] } | null = null;
+  let goals: {
+    readonly tick: number;
+    readonly revision: number;
+    readonly list: readonly MissionGoal[];
+  } | null = null;
   return {
     page(page) {
       let found = pages.get(page);
@@ -224,8 +249,13 @@ export function missionReader(
     },
     goals() {
       const tick = world.tick();
-      if (goals === null || goals.tick !== tick) {
-        goals = { tick, list: missionGoalList(source, world.status(), textOf, world.outcome()) };
+      const rev = revision();
+      if (goals === null || goals.tick !== tick || goals.revision !== rev) {
+        goals = {
+          tick,
+          revision: rev,
+          list: missionGoalList(source, world.status(), textOf, world.outcome()),
+        };
       }
       return goals.list;
     },

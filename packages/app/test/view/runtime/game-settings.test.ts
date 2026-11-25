@@ -85,6 +85,16 @@ describe('a live setting', () => {
     expect(parseStoredSettings('{"hoverOutline":false}').hoverOutline).toBe(false);
     expect(parseStoredSettings('{}').hoverOutline).toBe(true);
   });
+
+  it("reads the mission book's translate choice as auto, the original, or one of the game's languages", () => {
+    expect(defaultSettings().missionBookLanguage).toBe('auto');
+    expect(parseStoredSettings('{"missionBookLanguage":"auto"}').missionBookLanguage).toBe('auto');
+    expect(parseStoredSettings('{"missionBookLanguage":"original"}').missionBookLanguage).toBe('original');
+    expect(parseStoredSettings('{"missionBookLanguage":"ger"}').missionBookLanguage).toBe('ger');
+    expect(parseStoredSettings('{"missionBookLanguage":"klingon"}').missionBookLanguage).toBe('auto');
+    expect(parseStoredSettings('{"missionBookLanguage":42}').missionBookLanguage).toBe('auto');
+    expect(parseStoredSettings('{}').missionBookLanguage).toBe('auto');
+  });
 });
 
 function harness(overrides: Partial<GameSettingsRuntimeDeps> = {}) {

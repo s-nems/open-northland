@@ -315,6 +315,11 @@ export function createSettingsPage(opts: {
         },
       );
       markSegment(language.root, 'language');
+      const mapTextTranslation = togglePill(settings.mapTextTranslation, (on) => {
+        void opts.settings.update({ mapTextTranslation: on });
+      });
+      mapTextTranslation.setAttribute('aria-label', text.mapTextTranslation);
+      mapTextTranslation.dataset.settingsFocus = 'map-text-translation';
       const scrollSpeed = (
         label: string,
         value: number,
@@ -372,6 +377,7 @@ export function createSettingsPage(opts: {
           language.root,
           opts.settings.bootOwnedChangesDeferred === true ? { tip: text.nextGameTip } : undefined,
         ),
+        settingRow(text.mapTextTranslation, mapTextTranslation, { tip: text.mapTextTranslationTip }),
         settingsHeading(text.cameraHeading),
         settingRow(
           text.keyboardScrollSpeed,

@@ -469,6 +469,9 @@ export const deSurfaces = {
         chs: '简体中文',
         cht: '繁體中文',
       },
+      mapTextTranslation: 'Missionstexte übersetzen',
+      mapTextTranslationTip:
+        'Führt eine Karte keine Missionstexte in deiner Sprache, werden sie auf diesem Gerät mit der Offline-Engine übersetzt, die auch Firefox Translate nutzt. Die erste Partie in einer Sprache lädt deren Paket einmal (rund 30 MB je Sprache) und prüft es; nichts wird irgendwohin gesendet.',
       keyboardScrollSpeed: 'Scrollgeschwindigkeit per Tastatur',
       edgeScrollSpeed: 'Scrollgeschwindigkeit am Bildschirmrand',
       dragScrollSpeed: 'Scrollgeschwindigkeit beim Ziehen',

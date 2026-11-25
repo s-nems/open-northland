@@ -48,6 +48,7 @@ import type {
 import type { ResidentsSeam } from '../hud/tool-panel/residents/seam.js';
 import type { ClientPoint } from '../hud/tool-panel/wall-demolish.js';
 import { bcp47Tag, compareLabels, currentLocale, goodName, type Locale } from '../i18n/index.js';
+import type { TranslateChoice } from '../i18n/translate/mission-translate.js';
 import type { PresentationPack } from '../presentation/pack.js';
 import type { SessionHost } from '../session/index.js';
 import { clientToScreen, screenScale } from './camera/index.js';
@@ -168,6 +169,9 @@ export interface GameToolPanelDeps {
   readonly missionHuman?: (missionId: number) => number | null;
   /** Bumped when a mission read above lands anew, which rebuilds an open mission book. */
   readonly missionAnswersVersion?: () => number;
+  /** The book's translate menu: the choice the map's texts read by now, and the pick to store. */
+  readonly missionTranslateTarget?: () => TranslateChoice;
+  readonly onMissionTranslateTarget?: (choice: TranslateChoice) => void;
   /** A briefing picture's URL; absent, only the shipped pictures resolve, never an installed map's. */
   readonly missionPictureUrl?: (file: string) => string;
   /** The open mission book holds the game. */
@@ -371,6 +375,12 @@ export async function mountGameToolPanel(deps: GameToolPanelDeps): Promise<GameT
     ...(deps.missionHuman !== undefined ? { missionHuman: deps.missionHuman } : {}),
     ...(deps.missionAnswersVersion !== undefined
       ? { missionAnswersVersion: deps.missionAnswersVersion }
+      : {}),
+    ...(deps.missionTranslateTarget !== undefined
+      ? { missionTranslateTarget: deps.missionTranslateTarget }
+      : {}),
+    ...(deps.onMissionTranslateTarget !== undefined
+      ? { onMissionTranslateTarget: deps.onMissionTranslateTarget }
       : {}),
     ...(deps.missionPictureUrl !== undefined ? { missionPictureUrl: deps.missionPictureUrl } : {}),
     ...(deps.onMissionHold !== undefined ? { onMissionHold: deps.onMissionHold } : {}),

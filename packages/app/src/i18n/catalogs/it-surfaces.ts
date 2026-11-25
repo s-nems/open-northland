@@ -467,6 +467,9 @@ export const itSurfaces = {
         chs: '简体中文',
         cht: '繁體中文',
       },
+      mapTextTranslation: 'Traduci i testi delle missioni',
+      mapTextTranslationTip:
+        'Quando una mappa non ha testi di missione nella tua lingua, vengono tradotti su questo dispositivo con il motore offline usato da Firefox Translate. La prima partita in una lingua ne scarica il pacchetto una volta (circa 30 MB per lingua) e lo verifica; nulla viene inviato in rete.',
       keyboardScrollSpeed: 'Velocità di scorrimento con la tastiera',
       edgeScrollSpeed: 'Velocità di scorrimento ai bordi',
       dragScrollSpeed: 'Velocità di trascinamento col mouse',

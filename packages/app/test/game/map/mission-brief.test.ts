@@ -159,12 +159,46 @@ describe('briefingPage and missionBrief', () => {
     expect(reads).toBe(2);
     expect(reader.missionName).toBe('Burza Piaskowa');
   });
+
+  it('re-reads the goal texts when the revision moves, even while the tick stands', () => {
+    let tick = 1;
+    let revision = 0;
+    let reads = 0;
+    const reader = missionReader(
+      source(null),
+      {
+        tick: () => tick,
+        status: () => {
+          reads++;
+          return [status({})];
+        },
+        outcome: () => 'undecided',
+      },
+      (id) => (id === 300 && revision > 0 ? 'Besiege die Sarazenen' : textOf(id)),
+      () => revision,
+    );
+    expect(reader.goals()[0]?.text).toBe('Pokonaj saracenów');
+    const before = reader.goals();
+    expect(reader.goals()).toBe(before); // the same revision and tick hold one list
+    revision = 1;
+    const next = reader.goals();
+    expect(next).not.toBe(before);
+    expect(next[0]?.text).toBe('Besiege die Sarazenen');
+    expect(next).toBe(reader.goals());
+    expect(reads).toBe(2); // one list per revision, not per call
+    tick = 2;
+    expect(reader.goals()[0]?.text).toBe('Besiege die Sarazenen');
+  });
 });
 
 describe('mapBriefFallback', () => {
   it('reads the menu name and description in the player language, else a shipped one', () => {
     const meta = { name: { pol: 'Burza Piaskowa', eng: 'Sandstorm' }, description: { pol: 'Opis z menu.' } };
-    expect(mapBriefFallback(meta, 'eng')).toEqual({ title: 'Sandstorm', description: 'Opis z menu.' });
+    expect(mapBriefFallback(meta, 'eng')).toEqual({
+      title: 'Sandstorm',
+      description: 'Opis z menu.',
+      lang: 'pol',
+    });
     expect(mapBriefFallback(null, 'eng')).toEqual({ title: '' });
   });
 });

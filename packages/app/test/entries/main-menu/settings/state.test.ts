@@ -97,6 +97,8 @@ describe('parseStoredSettings', () => {
       narrationRate: 1.5,
       soundQuality: 'lossless',
       language: 'eng',
+      mapTextTranslation: false,
+      missionBookLanguage: 'ger',
       keyboardScrollSpeed: 1.25,
       edgeScrollSpeed: 2.25,
       dragScrollSpeed: 1.75,

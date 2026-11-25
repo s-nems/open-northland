@@ -129,6 +129,10 @@ export const GLYPH = {
   ban: '<svg aria-hidden="true" class="on-glyph" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="m6.5 6.5 11 11"/></svg>',
   addPerson:
     '<svg aria-hidden="true" class="on-glyph" viewBox="0 0 24 24"><circle cx="9" cy="6.5" r="2"/><path d="M6 20v-6l1-4h4l1 4v6M18 8v8M14 12h8"/></svg>',
+  /* Two speech bubbles, the first with a letter of one alphabet, the second with a crossed stroke of
+     another: the mission book's translate menu. */
+  translate:
+    '<svg aria-hidden="true" class="on-glyph" viewBox="0 0 24 24"><path d="M3 4h10v8H8l-4 3.5V12H3Z"/><path d="m6 9.5 2-4 2 4M6.5 8.2h3"/><path d="M13 10.5h8V18h-3v3l-3-3h-2Z"/><path d="M15.5 13h3M17 13v3"/></svg>',
 } as const;
 
 /** The stock categories' tab faces, indexed by stock tab (`good-categories.ts`), as solid silhouettes

@@ -60,6 +60,7 @@ import { setReportGameView } from '../../diag/report/view.js';
 import { settlerName } from '../../game/character-names/index.js';
 import { installPetNames, type PetNames, petNamesOf } from '../../game/character-names/pet-names.js';
 import { type MissionBriefSource, missionReader } from '../../game/map/mission-brief.js';
+import type { LocalizedMapString } from '../../game/map/strings.js';
 import type { ObserverSeatEntry } from '../../game/match/observer-seats.js';
 import { HUMAN_PLAYER, PRIMARY_TRIBE } from '../../game/rules.js';
 import { papersRuleEnabled } from '../../game/snapshot/index.js';
@@ -107,7 +108,9 @@ import {
 } from '../../hud/tool-panel/residents/projection.js';
 import type { ResidentRow } from '../../hud/tool-panel/residents/rows.js';
 import { displayViewOf, uiScaleFor } from '../../hud/ui-scale.js';
-import { currentLocale, mapTextLanguage, messages } from '../../i18n/index.js';
+import { currentLocale, type Locale, mapTextLanguage, messages } from '../../i18n/index.js';
+import { createMissionTranslator } from '../../i18n/translate/mission-translate.js';
+import { sharedMapTextTranslator } from '../../i18n/translate/service.js';
 import { presentationPack } from '../../presentation/pack.js';
 import type { OffThreadTickCost, SessionHost } from '../../session/index.js';
 import { setUpdateContinuation } from '../../update/watcher.js';
@@ -162,7 +165,7 @@ import { createScriptEffects } from '../script/effects.js';
 import { createScriptMarkers } from '../script/markers.js';
 import { createScriptPresentation } from '../script/presentation.js';
 import { mountScriptTints } from '../script/tints.js';
-import { patchStoredSettings, readStoredSettings } from '../settings/store.js';
+import { onStoredSettingsChange, patchStoredSettings, readStoredSettings } from '../settings/store.js';
 import { installSpectatorKeys } from '../spectator-keys.js';
 import { createShortfallLook } from '../speed-shortfall.js';
 import { createTooltip, TOOLTIP_Z_INDEX } from '../tooltip.js';
@@ -295,6 +298,11 @@ export interface GameViewDeps {
   readonly playerColourOf?: (player: number) => number;
   /** Owner slot to the seat's name in play (`seatNameMap`), which the HUD prefers over the slot id. */
   readonly seatNameOf?: (player: number) => string | undefined;
+  /** Builds the seat names with the translator's per-text read handed in, so a map's authored seat
+   *  names (the tribes the diplomacy window lists) come out translated; it wins over `seatNameOf`. */
+  readonly seatNameSource?: (
+    translate: (found: LocalizedMapString) => string,
+  ) => (player: number) => string | undefined;
   /** A relayed session's nick of the person who played a seat, which the result's ranking prefers. */
   readonly playerNickOf?: (player: number) => string | undefined;
   /** A relayed session's nick of the person sitting a seat now, which the spectator's seat names lead with. */
@@ -310,6 +318,9 @@ export interface GameViewDeps {
   /** The map's own string by id: the tribute descriptions, the goal texts, the info lines and the
    *  names a map gives its settlers. */
   readonly mapText?: (stringId: number) => string | undefined;
+  /** The same strings with the language each read in, so the mission book translates the ones the
+   *  reader's language does not carry. Absent for a scene, whose strings are the app's own. */
+  readonly missionText?: (stringId: number) => LocalizedMapString | undefined;
   /** Extra per-frame hook after the standard updates. */
   readonly onFrame?: (snapshot: WorldSnapshot) => void;
   /** Called each frame right after the renderer takes the viewer's fog, before anything draws. */
@@ -633,6 +644,67 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
     const { diplomacyView, buildAvailability } = answers;
     const nationEmblemType = emblemBuildingType(host.content.buildings);
     const goodIdByType = new Map(host.content.goods.map((good) => [good.typeId, good.id]));
+    const mapText = deps.mapText ?? ((): undefined => undefined);
+    // Mission texts a map ships in a language the reader does not read are translated on the device;
+    // the option edits live, the language stays the one the world booted in.
+    let mapTextTranslation = storedSettings.mapTextTranslation;
+    // The mission book's translate menu chooses what its texts read in: the reader's own language,
+    // the map's original, or a language picked in the menu; it edits live too.
+    let missionBookLanguage = storedSettings.missionBookLanguage;
+    cleanup.push(
+      onStoredSettingsChange((settings) => {
+        mapTextTranslation = settings.mapTextTranslation;
+      }),
+    );
+    // The book reads by its menu's choice: the reader's own language (which the option gates), the
+    // map's original, or the picked language — an explicit pick answers whether the option is on.
+    const bookTarget = (): Locale | null =>
+      missionBookLanguage === 'original'
+        ? null
+        : missionBookLanguage === 'auto'
+          ? mapTextTranslation
+            ? lang
+            : null
+          : missionBookLanguage;
+    const missionTranslator = createMissionTranslator({
+      target: bookTarget,
+      enabled: () => true,
+      translator: sharedMapTextTranslator(),
+      onChange: () => undefined,
+    });
+    // The seat names and tribute titles the diplomacy window shows keep the option's own target: the
+    // reader's language, translated while the option is on.
+    const nameTranslator = createMissionTranslator({
+      target: () => lang,
+      enabled: () => mapTextTranslation,
+      translator: sharedMapTextTranslator(),
+      onChange: () => undefined,
+    });
+    cleanup.push(() => {
+      missionTranslator.dispose();
+      nameTranslator.dispose();
+    });
+    // A change of the book's choice retargets its bridge at once, so an open book rebuilds on the
+    // frame after the pick, not only when its next text is read.
+    cleanup.push(
+      onStoredSettingsChange((settings) => {
+        missionBookLanguage = settings.missionBookLanguage;
+        missionTranslator.retarget();
+      }),
+    );
+    // A map's strings carry their language, so foreign goal and info-line texts translate; a scene's
+    // summary strings are the app's own and read as authored.
+    const missionTextOf =
+      deps.missionText !== undefined ? missionTranslator.textOf(deps.missionText) : mapText;
+    // The diplomacy window's own map strings (tribute titles) read through the names bridge, so the
+    // book's menu choice never changes what the diplomacy window reads.
+    const diplomacyTextOf =
+      deps.missionText !== undefined ? nameTranslator.textOf(deps.missionText) : mapText;
+    // The map's authored seat names (the tribes the diplomacy window and the stats panel name) read
+    // translated through the names bridge; a plain `seatNameOf` stands in when no source is offered.
+    const seatNameOf = deps.seatNameSource
+      ? deps.seatNameSource((found) => nameTranslator.text(found))
+      : deps.seatNameOf;
     const diplomacyRows = (): readonly DiplomacyPanelRow[] =>
       diplomacyPanelRows(diplomacyView, {
         localPlayer: viewerPlayer(),
@@ -640,12 +712,14 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
         observer: viewer.wholeMap(),
         goodLabelOf: (goodType) => goodLabelByType.get(goodType),
         goodIdOf: (goodType) => goodIdByType.get(goodType),
-        ...(deps.mapText !== undefined ? { mapText: deps.mapText } : {}),
+        // The window's tribute titles read translated like the rest of the map's foreign strings,
+        // on the reader's language as the seat names above; the book's menu choice never reaches here.
+        mapText: diplomacyTextOf,
         tribeOf: seatTribeOf,
         canPay: !readOnly(),
         canDeclare: !readOnly(),
         ...(deps.relationFlags !== undefined ? { relationFlags: deps.relationFlags } : {}),
-        ...(deps.seatNameOf !== undefined ? { seatNameOf: deps.seatNameOf } : {}),
+        ...(seatNameOf !== undefined ? { seatNameOf } : {}),
         ...(deps.playerColourOf !== undefined ? { playerColourOf: deps.playerColourOf } : {}),
       });
     const metSeats = (): readonly MetSeat[] =>
@@ -655,18 +729,21 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
         observer: viewer.wholeMap(),
         ...(deps.relationFlags !== undefined ? { relationFlags: deps.relationFlags } : {}),
       });
-    const mapText = deps.mapText ?? ((): undefined => undefined);
     const mission =
       deps.missionBriefSource === undefined
         ? undefined
-        : missionReader(
-            deps.missionBriefSource,
-            {
-              tick: () => host.tick,
-              status: () => host.missionStatus(),
-              outcome: () => host.matchOutcome(viewerPlayer()),
-            },
-            mapText,
+        : missionTranslator.reader(
+            missionReader(
+              deps.missionBriefSource,
+              {
+                tick: () => host.tick,
+                status: () => host.missionStatus(),
+                outcome: () => host.matchOutcome(viewerPlayer()),
+              },
+              missionTextOf,
+              // A landed translation re-reads the goal list even while the clock is held.
+              missionTranslator.version,
+            ),
           );
 
     // The unit controls mount after the panel and the minimap, so a note's Select and a minimap order
@@ -872,7 +949,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       },
       modalOpen,
       escapeClaimed: () => escapeClaimed?.() === true,
-      ...(deps.seatNameOf !== undefined ? { seatNameOf: deps.seatNameOf } : {}),
+      ...(seatNameOf !== undefined ? { seatNameOf } : {}),
       ...(mission !== undefined ? { mission } : {}),
       ...(deps.missionPictureUrl === undefined ? {} : { missionPictureUrl: deps.missionPictureUrl }),
       ...(soundDriver === null || deps.missionVoices === undefined
@@ -888,7 +965,12 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       missionBriefingHistory: answers.missionBriefingHistory,
       askMissionBriefing: answers.askMissionBriefing,
       missionHuman: answers.missionHuman,
-      missionAnswersVersion: answers.versions.mission,
+      // A landed translation rebuilds the book the way a delivered page does.
+      missionAnswersVersion: () => answers.versions.mission() + missionTranslator.version(),
+      missionTranslateTarget: () => missionBookLanguage,
+      onMissionTranslateTarget: (choice) => {
+        void patchStoredSettings({ missionBookLanguage: choice });
+      },
       onMissionHold: (held) => {
         if (held) pauseHolds.hold(PAUSE_HOLDER_MISSION);
         else pauseHolds.release(PAUSE_HOLDER_MISSION);
@@ -983,7 +1065,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
         sharedClock,
         scriptedEnding: scriptEndsVictory,
         ranking: () => host.matchRanking(),
-        ...(deps.seatNameOf !== undefined ? { seatNameOf: deps.seatNameOf } : {}),
+        ...(seatNameOf !== undefined ? { seatNameOf } : {}),
         playerNickOf: deps.playerNickOf,
         hud: hudDom,
         onOpen: () => systemMenu?.close(),
@@ -1187,7 +1269,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
           observer: viewer.wholeMap(),
           tribeOf: seatTribeOf,
           ...(deps.relationFlags !== undefined ? { relationFlags: deps.relationFlags } : {}),
-          ...(deps.seatNameOf !== undefined ? { seatNameOf: deps.seatNameOf } : {}),
+          ...(seatNameOf !== undefined ? { seatNameOf } : {}),
           ...(deps.playerColourOf !== undefined ? { playerColourOf: deps.playerColourOf } : {}),
         }),
       snapshot: () => host.snapshot(),
@@ -1320,7 +1402,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       },
       workStatus: answers.workStatus,
       diplomacyStance: (owner) => host.diplomacyStance(viewerPlayer(), owner),
-      ...(deps.seatNameOf !== undefined ? { seatNameOf: deps.seatNameOf } : {}),
+      ...(seatNameOf !== undefined ? { seatNameOf } : {}),
     });
     controlGroupMembers = controls.controlGroupMembers;
     toggleMapPing = controls.toggleMapPing;
@@ -1401,7 +1483,9 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
         weatherParam(params),
         deps.ambientWeather ?? null,
       ),
-      mapText,
+      mapText: missionTextOf,
+      // The info lines re-read when a translation lands, the way their tallies re-read on the tick.
+      mapTextVersion: missionTranslator.version,
       goodLabel: (typeId) => goodLabelByType.get(typeId),
       siegeRows: siege.infoRows,
       now: () => performance.now(),
@@ -1465,7 +1549,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
     // panel filters it out only because its own Production window already counts the herd.
     const hoverOwners: HoverOwnerContext = {
       viewer,
-      seatNameOf: deps.seatNameOf,
+      seatNameOf,
       diplomacyStance: (owner) => host.diplomacyStance(viewerPlayer(), owner),
       playerColourOf: deps.playerColourOf,
     };

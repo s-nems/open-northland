@@ -429,6 +429,9 @@ export const enSurfaces = {
         chs: '简体中文',
         cht: '繁體中文',
       },
+      mapTextTranslation: 'Translate mission texts',
+      mapTextTranslationTip:
+        'When a map ships no mission text in your language, its texts are translated on this device with the offline engine Firefox Translate uses. The first game on a language downloads its pack once (about 30 MB per language) and verifies it; nothing is sent anywhere.',
       keyboardScrollSpeed: 'Keyboard scroll speed',
       edgeScrollSpeed: 'Edge scroll speed',
       dragScrollSpeed: 'Mouse drag scroll speed',

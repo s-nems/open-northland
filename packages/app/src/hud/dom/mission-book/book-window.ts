@@ -5,10 +5,12 @@ import type {
   HypertextCallback,
   HypertextUserIcon,
 } from '@open-northland/data';
+import { LANGUAGES } from '@open-northland/data';
 import type { MapViewTarget } from '@open-northland/render';
 import type { MissionInfoRow } from '../../../game/map/info-lines.js';
 import type { MissionGoal, MissionPage } from '../../../game/map/mission-brief.js';
 import { bcp47Tag, formatMessage, isLocale, messages } from '../../../i18n/index.js';
+import type { TranslateChoice } from '../../../i18n/translate/mission-translate.js';
 import { navBeamRect } from '../../nav-beam.js';
 import { NOTICE_COLUMN, TOP_BAR_HEIGHT } from '../../regions.js';
 import { GLYPH } from '../icons.js';
@@ -55,6 +57,22 @@ export interface ShownCallback {
 }
 const TABS: readonly BookTab[] = ['brief', 'goals', 'history'];
 
+/** The translate menu's choices: the reader's own language, every game language, the map's original. */
+const TRANSLATE_CHOICES: readonly TranslateChoice[] = ['auto', ...LANGUAGES, 'original'];
+
+/** One menu row per choice; each language names itself, as the settings' language list does. */
+const translateItems = (): string =>
+  TRANSLATE_CHOICES.map((choice) => {
+    const copy = messages().hud.missionBook;
+    const label =
+      choice === 'auto'
+        ? copy.translateAuto
+        : choice === 'original'
+          ? copy.translateOriginal
+          : messages().mainMenu.settings.languageNames[choice];
+    return `<button type="button" role="menuitemradio" class="on-book__translate-item" data-translate-choice="${choice}" aria-checked="false"><span>${escapeHtml(label)}</span></button>`;
+  }).join('');
+
 /** Where the reader stands in an open book. */
 export interface BookReading {
   readonly tab: BookTab;
@@ -86,6 +104,10 @@ export interface BookWindowDeps {
   readonly takeGoalMarks: () => ReadonlyMap<string, GoalMark>;
   /** The close medallion closed the book. */
   readonly onDismiss: () => void;
+  /** The book's translate menu: the choice the map's texts read by now, and the choice a menu pick
+   *  stores (the reader's language, the map's original, or a language to read in). */
+  readonly translateTarget: () => TranslateChoice;
+  readonly onTranslateTarget: (choice: TranslateChoice) => void;
   readonly cue: (cue: UiCue) => void;
 }
 
@@ -154,6 +176,8 @@ export function createBookWindow(deps: BookWindowDeps): BookWindow {
       <div class="on-book__spread"></div>
       <div class="on-book__leaves" inert></div>
       <button type="button" class="on-medallion on-book__close" aria-label="${escapeHtml(messages().hud.shell.close)}">${GLYPH.close}</button>
+      <button type="button" class="on-book__translate" aria-label="${escapeHtml(copy.translate)}" aria-haspopup="menu" aria-expanded="false">${GLYPH.translate}</button>
+      <div class="on-book__translate-menu" role="menu" aria-label="${escapeHtml(copy.translate)}" hidden>${translateItems()}</div>
     </section>`;
   const book = scene.querySelector<HTMLElement>('.on-book');
   const cover = scene.querySelector<HTMLElement>('.on-book__cover');
@@ -161,13 +185,17 @@ export function createBookWindow(deps: BookWindowDeps): BookWindow {
   const leaves = scene.querySelector<HTMLElement>('.on-book__leaves');
   const goalCount = scene.querySelector<HTMLElement>('.on-tab__count');
   const dim = scene.querySelector<HTMLElement>('.on-book-scene__dim');
+  const translateButton = scene.querySelector<HTMLButtonElement>('.on-book__translate');
+  const translateMenu = scene.querySelector<HTMLElement>('.on-book__translate-menu');
   if (
     book === null ||
     cover === null ||
     spreadEl === null ||
     leaves === null ||
     goalCount === null ||
-    dim === null
+    dim === null ||
+    translateButton === null ||
+    translateMenu === null
   ) {
     throw new Error('mission book: markup');
   }
@@ -213,12 +241,23 @@ export function createBookWindow(deps: BookWindowDeps): BookWindow {
   };
   const chapterPage = (
     index: number,
-  ): { readonly page: BookPage; readonly title: string | null; readonly lang: string | null } => {
+  ): {
+    readonly page: BookPage;
+    readonly title: string | null;
+    readonly lang: string | null;
+    /** The language the prose sets its `lang` attribute by: a translated page's app language. */
+    readonly proseLang: string | null;
+  } => {
     const list = chapters();
     const shown = deps.page(list[Math.min(index, list.length - 1)] ?? null);
     const page = pageSegments(shown.blocks);
     // The fallback text is headed by the map's name; a page without its own title gets none.
-    return { page, title: shown.title !== '' ? shown.title : page.title, lang: shown.lang };
+    return {
+      page,
+      title: shown.title !== '' ? shown.title : page.title,
+      lang: shown.lang,
+      proseLang: shown.proseLang ?? shown.lang,
+    };
   };
 
   const iconBox = (icon: HypertextUserIcon): UserIconBox | null => userIconBox(icon, deps.missionHuman);
@@ -249,7 +288,7 @@ export function createBookWindow(deps: BookWindowDeps): BookWindow {
   const briefMarkup = (): string => {
     const count = chapters().length;
     const index = Math.min(reading.chapter, count - 1);
-    const { page, title, lang } = chapterPage(index);
+    const { page, title, lang, proseLang } = chapterPage(index);
     callbacks = page.callbacks;
     callbackLang = lang;
     shownVoice = chapterVoice(page, lang, deps.voice);
@@ -272,7 +311,9 @@ export function createBookWindow(deps: BookWindowDeps): BookWindow {
         : flowMarkup(page, flowContext());
     const foot = `<span class="on-book__foot-chapter">${escapeHtml(formatMessage(copy.chapterOf, { n: index + 1, count }))}</span>
       <span class="on-book__folio" data-folio="right"></span>${shownVoice === null ? '<span></span>' : voiceRows.markup()}`;
-    return readingSpread(head, flow, foot, lang);
+    // The prose reads (and hyphenates) in the language the page's text is written in, which a
+    // translated page names apart from the one its narration speaks.
+    return readingSpread(head, flow, foot, proseLang);
   };
 
   const tableMarkup = (id: string): string => {
@@ -591,15 +632,62 @@ export function createBookWindow(deps: BookWindowDeps): BookWindow {
     if (!scene.hidden && place()) relayout();
   });
 
+  /** The translate menu's outside-pointer listener while it stands open; null while closed. */
+  let translateOutside: ((event: PointerEvent) => void) | null = null;
+  /** The menu rows carry the choice the map's texts read by, marked before the menu shows. */
+  const syncTranslateMenu = (): void => {
+    const choice = deps.translateTarget();
+    for (const item of translateMenu.querySelectorAll<HTMLElement>('[data-translate-choice]')) {
+      item.setAttribute('aria-checked', String(item.dataset.translateChoice === choice));
+    }
+  };
+  const openTranslateMenu = (): void => {
+    syncTranslateMenu();
+    setHidden(translateMenu, false);
+    translateButton.setAttribute('aria-expanded', 'true');
+    translateOutside = (event) => {
+      if (
+        event.target instanceof Node &&
+        (translateMenu.contains(event.target) || translateButton.contains(event.target))
+      ) {
+        return;
+      }
+      closeTranslateMenu();
+    };
+    document.addEventListener('pointerdown', translateOutside, true);
+  };
+  const closeTranslateMenu = (): void => {
+    if (translateOutside === null) return;
+    setHidden(translateMenu, true);
+    translateButton.setAttribute('aria-expanded', 'false');
+    document.removeEventListener('pointerdown', translateOutside, true);
+    translateOutside = null;
+  };
+
   const onClick = (event: MouseEvent): void => {
     const target = event.target instanceof Element ? event.target : null;
     const control = target?.closest<HTMLElement>(
-      '[data-tab], [data-turn], .on-book__close, [data-pick], [data-read], [data-jump], [data-table], [data-back], [data-go]',
+      '[data-tab], [data-turn], .on-book__close, .on-book__translate, [data-pick], [data-read], [data-jump], [data-table], [data-back], [data-go], [data-translate-choice]',
     );
     if (control === null || control === undefined || !scene.contains(control)) return;
     const data = control.dataset;
     if (data.turn !== undefined) {
       turn(data.turn === '-1' ? -1 : 1);
+      return;
+    }
+    if (data.translateChoice !== undefined) {
+      const choice = data.translateChoice;
+      if (choice === 'auto' || choice === 'original' || isLocale(choice)) {
+        closeTranslateMenu();
+        deps.cue('confirm');
+        deps.onTranslateTarget(choice);
+      }
+      return;
+    }
+    if (control.classList.contains('on-book__translate')) {
+      deps.cue('confirm');
+      if (translateMenu.hidden) openTranslateMenu();
+      else closeTranslateMenu();
       return;
     }
     deps.cue('confirm');
@@ -673,6 +761,7 @@ export function createBookWindow(deps: BookWindowDeps): BookWindow {
       turning = null;
       leaves.replaceChildren();
       waiting = [];
+      closeTranslateMenu();
       setHidden(scene, true);
       voiceRows.hide();
       arrival = false;
@@ -726,6 +815,7 @@ export function createBookWindow(deps: BookWindowDeps): BookWindow {
     },
     dispose(): void {
       if (turning !== null) clearTimeout(turning);
+      closeTranslateMenu();
       resizes.disconnect();
       stopPlacing();
       underlay.dispose();
