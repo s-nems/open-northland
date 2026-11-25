@@ -1,0 +1,11 @@
+{
+  "reason": "Angielska strona drugiego zadania Króla każe wyprodukować 10 jednostek żywności, a handel w skrypcie, tekst celu misji oraz wersje polska i niemiecka dotyczą oleju. Poprawka zamienia food na oil.",
+  "file": "campaigns/asgard/campaign_01_03/text/eng/briefings/briefings.txt",
+  "sha256": "78d6f9eaccd9d096b652eefdff373c9a346a01b5c75fde696fdaceb843a13fd3",
+  "lines": [
+    {
+      "from": "Produce 10 units of food and trade them with the warehouse in the ruined city.",
+      "to": "Produce 10 units of oil and trade them with the warehouse in the ruined city."
+    }
+  ]
+}
