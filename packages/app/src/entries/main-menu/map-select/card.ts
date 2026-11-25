@@ -1,5 +1,6 @@
 import { playerSwatchHex } from '../../../catalog/roster.js';
-import { bcp47Tag, formatMessage, messages, pluralForm, tribeName } from '../../../i18n/index.js';
+import type { LocalizedMapString } from '../../../game/map/strings.js';
+import { bcp47Tag, formatMessage, messages, pluralForm, tribeName as localizedTribeName } from '../../../i18n/index.js';
 import { segControl } from '../../../view/settings/controls.js';
 import { mapItemLineup } from '../lineup/model.js';
 import { lineupLabel } from '../lineup/view.js';
@@ -93,19 +94,28 @@ export function narratorBadge(item: MapSelectItem): HTMLElement | null {
   return badge;
 }
 
-function seatChip(tribeId: number, colorId: number): HTMLElement {
+function seatChip(
+  tribeId: number,
+  colorId: number,
+  nameOfTribe: (tribe: number) => string,
+): HTMLElement {
   const chip = document.createElement('span');
   chip.className = 'main-menu__seat-chip';
   const dot = document.createElement('span');
   dot.className = 'main-menu__seat-dot';
   dot.style.background = playerSwatchHex(colorId);
   const tribe = document.createElement('span');
-  tribe.textContent = tribeName(tribeId);
+  tribe.textContent = nameOfTribe(tribeId);
   chip.append(dot, tribe);
   return chip;
 }
 
-export function createMapDetailsCard(): MapDetailsCard {
+export interface MapDetailsCardOptions {
+  readonly translateText?: (found: LocalizedMapString) => string;
+  readonly tribeName?: (tribe: number) => string;
+}
+
+export function createMapDetailsCard(options: MapDetailsCardOptions = {}): MapDetailsCard {
   const select = messages().mainMenu.mapSelect;
 
   const card = document.createElement('div');
@@ -185,10 +195,16 @@ export function createMapDetailsCard(): MapDetailsCard {
       narration.hidden = narrated === null;
       const showSeats = item.tutorialStep === undefined && item.seats.length > 0;
       seats.replaceChildren(
-        ...(showSeats ? item.seats.map((seat) => seatChip(seat.tribeId, seat.colorId)) : []),
+        ...(showSeats
+          ? item.seats.map((seat) =>
+              seatChip(seat.tribeId, seat.colorId, options.tribeName ?? localizedTribeName),
+            )
+          : []),
       );
       seats.hidden = !showSeats;
-      description.textContent = item.description ?? '';
+      description.textContent = item.descriptionText === undefined
+        ? (item.description ?? '')
+        : (options.translateText?.(item.descriptionText) ?? item.descriptionText.text);
       description.hidden = item.description === undefined || item.description === '';
       showPreview(item, defaultMapPreview(item));
     },

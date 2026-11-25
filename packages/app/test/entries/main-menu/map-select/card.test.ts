@@ -68,6 +68,15 @@ describe('narrated briefing mark', () => {
   });
 });
 
+it('uses the translated map description on the details card', () => {
+    const item = mapItem({ ...entry(), description: { pol: 'Opis misji' } });
+    const card = createMapDetailsCard({
+      translateText: ({ text }) => `translated: ${text}`,
+    });
+    card.show(item);
+    expect(card.root.querySelector('.main-menu__map-desc')?.textContent).toBe('translated: Opis misji');
+  });
+
 describe('meta line', () => {
   function slot(player: number, claimable: boolean, hidden = false): MapsIndexPlayerSlot {
     return {

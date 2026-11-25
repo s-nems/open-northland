@@ -1,7 +1,9 @@
 import { apiBaseUrl, playableMapSources } from '../../../content/map-source/index.js';
 import { quietTextField } from '../../../hud/dom/parts/text-field.js';
 import { bcp47Tag, formatMessage, messages, pluralForm } from '../../../i18n/index.js';
+import { translatedTribeName } from '../../../i18n/translate/tribe-name.js';
 import { MAP_SCENES, SCENES } from '../../../scenes/index.js';
+import { menuMapTextReader } from '../map-text.js';
 import { createMapDetailsCard, metaLine, narratorBadge, paintMapThumb } from './card.js';
 import {
   filterItems,
@@ -42,6 +44,7 @@ export interface MapPicker {
   select(id: string): void;
   /** Reads the map sources again, after the catalogue installed or removed a map. */
   reload(): void;
+  dispose(): void;
 }
 
 function sceneRows(): readonly MapSelectItem[] {
@@ -101,6 +104,10 @@ export function mapPicker(options: MapPickerOptions): MapPicker {
 
   const body = document.createElement('div');
   body.className = 'main-menu__map-body';
+  let repaint = (): void => undefined;
+  const mapText = menuMapTextReader(() => repaint());
+  const tribeLabel = (tribe: number): string =>
+    translatedTribeName(tribe, mapText.text, mapText.target(), mapText.enabled());
   const listCol = document.createElement('div');
   listCol.className = 'main-menu__map-list-col';
   const tutorialIntro = document.createElement('div');
@@ -130,7 +137,7 @@ export function mapPicker(options: MapPickerOptions): MapPicker {
 
   const previewCol = document.createElement('div');
   previewCol.className = 'main-menu__map-preview-col';
-  const card = createMapDetailsCard();
+  const card = createMapDetailsCard({ translateText: mapText.text, tribeName: tribeLabel });
   const primary = document.createElement('button');
   primary.type = 'button';
   primary.className = 'main-menu__primary';
@@ -251,6 +258,7 @@ export function mapPicker(options: MapPickerOptions): MapPicker {
     paintFade();
   };
 
+  repaint = renderList;
   search.value = memory.query;
   search.addEventListener('input', () => {
     memory.query = search.value;
@@ -290,5 +298,6 @@ export function mapPicker(options: MapPickerOptions): MapPicker {
       for (const item of rowButtons.keys()) if (item.id === id) selectItem(item);
     },
     reload: loadMaps,
+    dispose: () => mapText.dispose(),
   };
 }

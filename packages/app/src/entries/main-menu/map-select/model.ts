@@ -9,7 +9,7 @@ import type {
 import { isMultiplayerMapType, MAP_TYPE, narratedLanguages } from '@open-northland/data';
 import { catalogEntryThumbnailUrl, type MapSource } from '../../../content/map-source/index.js';
 import { contentUrl } from '../../../content/url.js';
-import { localizedMapText } from '../../../game/map/strings.js';
+import { localizedMapText, localizedMapTextWithLang, type LocalizedMapString } from '../../../game/map/strings.js';
 import { hasWords, searchWords } from '../../../hud/dom/parts/name-search.js';
 import { compareLabels, currentLocale } from '../../../i18n/index.js';
 
@@ -72,6 +72,8 @@ export interface MapSelectItem {
   /** Mission number inside the authored tutorial campaign; absent for every other map and scene. */
   readonly tutorialStep?: number;
   readonly description?: string;
+  /** The map's description and the language its winning text table speaks. */
+  readonly descriptionText?: LocalizedMapString;
   /** The authored illustration `/maps/<id>.png` exists, or `pictureUrl` names another picture. */
   readonly picture: boolean;
   /** Where the picture shows from when not `/maps/<id>.png`: an installed map's own store, or the
@@ -100,7 +102,7 @@ export interface MapSelectMode {
 
 /** The row a map lists as, its title and description read in `lang`. */
 export function mapItem(entry: MapsIndexEntry, lang: MapTextLanguage = currentLocale()): MapSelectItem {
-  const description = localizedMapText(entry.description, lang);
+  const descriptionText = localizedMapTextWithLang(entry.description, lang);
   const listed = entry.players?.filter((slot) => !slot.hidden) ?? [];
   // The converted mod identifies its tutorial as campaign 100. Using campaign metadata keeps the
   // menu stable when a source folder or generated id is renamed.
@@ -117,7 +119,9 @@ export function mapItem(entry: MapsIndexEntry, lang: MapTextLanguage = currentLo
     relations: entry.relations ?? [],
     fixedColors: entry.fixedColors === true,
     ...(tutorialStep !== undefined ? { tutorialStep } : {}),
-    ...(description !== undefined ? { description } : {}),
+    ...(descriptionText === undefined
+      ? {}
+      : { description: descriptionText.text, descriptionText }),
     picture: entry.picture,
     minimap: entry.minimap,
     narration: narratedLanguages(entry.voices),

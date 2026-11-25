@@ -24,6 +24,7 @@ export function localSeatElements(
   state: RosterState,
   pickerSlot: number | null,
   actions: SeatActions,
+  nameOfTribe: (tribe: number) => string = tribeName,
 ) {
   const lobby = messages().mainMenu.lobby;
   const colorName = (color: number): string => messages().animation.playerColors[color] ?? String(color);
@@ -104,7 +105,12 @@ export function localSeatElements(
   // A monster seat keeps its people, named on its detail line instead.
   const tribeCell = (row: LobbySlotRow): HTMLElement => {
     if (!row.offersTribe) return document.createElement('div');
-    const picker = tribePicker(row.slot.tribeId, (tribe) => actions.pickTribe(row.slot.player, tribe));
+    const picker = tribePicker(
+      row.slot.tribeId,
+      (tribe) => actions.pickTribe(row.slot.player, tribe),
+      '',
+      nameOfTribe,
+    );
     picker.update(row.tribe, false);
     picker.button.dataset.focus = `tribe:${row.slot.player}`;
     return picker.root;
@@ -151,7 +157,7 @@ export function localSeatElements(
       controls: [tribeCell(row), controlCell(row), difficultyCell(row), action],
     });
     // The control cell says who plays the seat; only a monster seat's people get a detail line.
-    seat.update(title, row.offersTribe ? '' : tribeName(row.tribe), row.kind === 'yours');
+    seat.update(title, row.offersTribe ? '' : nameOfTribe(row.tribe), row.kind === 'yours');
     seat.root.classList.toggle('is-scenario', row.kind === 'scenario');
     return seat.root;
   };

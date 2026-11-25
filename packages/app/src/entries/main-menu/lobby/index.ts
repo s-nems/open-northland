@@ -2,11 +2,13 @@ import { isMultiplayerMapType } from '@open-northland/data';
 import { mapOreYield } from '../../../game/match/session-rules.js';
 import { drawSessionSeed } from '../../../game/match/session-url.js';
 import { messages } from '../../../i18n/index.js';
+import { translatedTribeName } from '../../../i18n/translate/tribe-name.js';
 import type { LaunchEntry } from '../../../launch.js';
 import { targetSearch } from '../../../view/target-search.js';
 import { mapItemLineup, seatStanceReader } from '../lineup/model.js';
 import { lineupRoster, lineupTitle, relationLine } from '../lineup/view.js';
 import { mapModeToggles } from '../lobby-controls/mode.js';
+import { menuMapTextReader } from '../map-text.js';
 import { createMapDetailsCard } from '../map-select/card.js';
 import type { MapSelectItem } from '../map-select/model.js';
 import type { MenuScreen, MountedScreen } from '../model.js';
@@ -90,9 +92,15 @@ export function lobbyScreen(
   main.append(cols, list, footnote, watch);
 
   // Swapping the map goes through the header back button or Esc, so the card carries no actions here.
+  let played = item;
+  let refreshTranslated = (): void => undefined;
+  const mapText = menuMapTextReader(() => refreshTranslated());
+  const tribeLabel = (tribe: number): string =>
+    translatedTribeName(tribe, mapText.text, mapText.target(), mapText.enabled());
+
   const side = document.createElement('aside');
   side.className = 'main-menu__lobby-side';
-  const card = createMapDetailsCard();
+  const card = createMapDetailsCard({ translateText: mapText.text, tribeName: tribeLabel });
   card.show(item);
 
   const launchPanel = document.createElement('div');
@@ -100,7 +108,6 @@ export function lobbyScreen(
 
   const search = new URLSearchParams(window.location.search);
   const options = localLobbyOptions(search, item.types);
-  let played = item;
   // The player's own ore richness, given back when a mode that brings its own is turned off.
   let ownOreYield = options.oreYield;
   options.oreYield ??= mapOreYield(item.roomDefaults);
@@ -217,7 +224,7 @@ export function lobbyScreen(
         refocus = `chip:${player}`;
         update(claimSeat(state, player));
       },
-    });
+    }, tribeLabel);
     const rows: HTMLElement[] = [];
     const slotRows = lobbySlotRows(players, state);
     const byPlayer = new Map(slotRows.map((row) => [row.slot.player, row]));
@@ -249,6 +256,10 @@ export function lobbyScreen(
       if (again !== null && !(again instanceof HTMLButtonElement && again.disabled)) again.focus();
     }
   };
+  refreshTranslated = () => {
+    card.show(played);
+    renderSeats();
+  };
   renderSeats();
   gateStart();
 
@@ -275,6 +286,7 @@ export function lobbyScreen(
     dispose: () => {
       window.removeEventListener('keydown', onKeydown, true);
       optionsCard.dispose();
+      mapText.dispose();
     },
   };
 }
