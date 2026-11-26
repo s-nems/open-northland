@@ -65,7 +65,12 @@ export function showCrashBanner(text: string, cause: string): void {
     const title = document.createElement('strong');
     title.textContent = copy.crashTitle;
     const message = document.createElement('div');
-    Object.assign(message.style, { fontFamily: 'ui-monospace,monospace', fontSize: '12px' });
+    Object.assign(message.style, {
+      fontFamily: 'ui-monospace,monospace',
+      fontSize: '12px',
+      userSelect: 'text',
+      webkitUserSelect: 'text',
+    });
     const hint = document.createElement('div');
     // Brave Shields have broken the game where every other browser ran it.
     hint.textContent = isBrave() ? `${copy.crashHint} ${copy.crashBraveHint}` : copy.crashHint;

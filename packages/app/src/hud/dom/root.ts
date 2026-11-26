@@ -3,6 +3,9 @@ import './foundation.css';
 import { forgetPlane } from './plane-size.js';
 import { HUD_SYMBOLS } from './symbols.js';
 
+/** Set on `body` while a game runs; foundation.css keeps its text unselectable. */
+const GAME_BODY_CLASS = 'on-game';
+
 /** Below the system menu (2000). */
 export const HUD_DOM_Z = 40;
 
@@ -70,6 +73,7 @@ export function mountHudDomRoot(initialScale: number): HudDomRoot {
   const plane = createHudPlane(initialScale);
   host.append(plane.element);
   document.body.append(host);
+  document.body.classList.add(GAME_BODY_CLASS);
   return {
     ...plane,
     setChromeHidden: (hidden) => {
@@ -79,6 +83,7 @@ export function mountHudDomRoot(initialScale: number): HudDomRoot {
     dispose: () => {
       forgetPlane(plane.element);
       host.remove();
+      document.body.classList.remove(GAME_BODY_CLASS);
     },
   };
 }

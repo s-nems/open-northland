@@ -17,6 +17,22 @@ body.on-drag-scroll.on-drag-scroll-free * {
   cursor: grabbing !important;
 }
 
+/* A game's text takes no selection, Ctrl+A included, except where the player types or copies. */
+body.on-game {
+  -webkit-user-select: none;
+  user-select: none;
+}
+body.on-game
+  :is(
+    input,
+    textarea,
+    .on-net-chat__list,
+    .on-report__json
+  ) {
+  -webkit-user-select: text;
+  user-select: text;
+}
+
 .on-hud {
   --hud-scale: 1;
   --hud-control-height: 32px;
@@ -10254,6 +10270,7 @@ body.on-drag-scroll.on-drag-scroll-free * {
 .on-hud .on-admin__cursor-text {
   font-variant-numeric: tabular-nums;
   color: var(--text-hi);
+  -webkit-user-select: text;
   user-select: text;
 }
 .on-hud .on-admin__cursor small {
