@@ -66,7 +66,9 @@ test('downloads, verifies, caches and stages each unique gzip asset', async (t) 
 });
 
 test('rejects a downloaded gzip whose uncompressed hash does not match the pin', async (t) => {
-  const { compressed, file } = fixture();
+  const { bytes, file } = fixture();
+  const corrupted = Buffer.from(bytes);
+  corrupted[0] ^= 1;
   const root = await temporary(t);
   const models = { 'test-pair': { model: file, shortlist: file, vocabs: [] } };
   await assert.rejects(
@@ -75,7 +77,7 @@ test('rejects a downloaded gzip whose uncompressed hash does not match the pin',
       cacheDir: join(root, 'cache'),
       outputDir: join(root, 'content', 'translate-models'),
       log: () => undefined,
-      fetchImpl: async () => new Response(gzipSync(Buffer.from('tampered')), { status: 200 }),
+      fetchImpl: async () => new Response(gzipSync(corrupted), { status: 200 }),
     }),
     /sha-256/,
   );
