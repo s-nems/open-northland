@@ -16,7 +16,7 @@
     "tools/*"
   ],
   "scripts": {
-    "build": "node scripts/content/build-content.mjs --if-stale && npm run typecheck && npm run build --workspace @open-northland/app",
+    "build": "node scripts/content/build-content.mjs --if-stale && npm run build:translation-models && npm run typecheck && npm run build --workspace @open-northland/app",
     "clean": "tsc --build --clean",
     "typecheck": "npm run typecheck:test",
     "typecheck:test": "tsc --build && tsc --project tsconfig.tests.json",
@@ -63,7 +63,7 @@
     "api:image": "docker buildx build --file packages/api/Dockerfile --tag open-northland-api --load .",
     "relay:image": "docker buildx build --file packages/net-server/Dockerfile --tag open-northland-relay --load .",
     "web:image": "docker buildx build --file deploy/web/Dockerfile --build-context app=packages/app/dist --build-context content=content --tag open-northland-web --load deploy/web",
-    "dev": "node scripts/content/build-content.mjs --if-stale && npm run dev --workspace @open-northland/app --",
+    "dev": "node scripts/content/build-content.mjs --if-stale && npm run build:translation-models && npm run dev --workspace @open-northland/app --",
     "dev:ports": "scripts/dev/ports.sh",
     "dev:verify": "npm run dev:verify --workspace @open-northland/app --",
     "dev:reset": "scripts/dev/reset.sh",
@@ -73,6 +73,7 @@
     "translations:skeleton": "npm run translations:skeleton --workspace @open-northland/translation-tools --",
     "translations:derive-cht": "npm run translations:derive-cht --workspace @open-northland/translation-tools --",
     "build:content": "node scripts/content/build-content.mjs",
+    "build:translation-models": "node scripts/translate-models/build.mjs",
     "test:desktop": "npm run build && npm run test:e2e --workspace @open-northland/desktop",
     "test:gate": "npm run test:e2e --workspace @open-northland/app"
   },

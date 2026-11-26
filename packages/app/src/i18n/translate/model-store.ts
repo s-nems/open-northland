@@ -1,10 +1,10 @@
 import { completed, openDb } from '../../view/runtime/save-load/idb.js';
+import { contentUrl } from '../../content/url.js';
 import type { ModelFile } from './model-files.js';
 
 /**
- * The device cache of downloaded Bergamot model files: a gzip downloads once, is decoded and
- * verified against its pinned SHA-256, then lands in IndexedDB so the next game starts without the
- * download. The records hold the uncompressed bytes the engine loads from.
+ * Bundled Bergamot gzip files are decoded and verified against their pinned SHA-256, then cached
+ * uncompressed in IndexedDB so later games need neither a network request nor another decode.
  */
 
 const DB_NAME = 'open-northland-translate';
@@ -64,7 +64,8 @@ export async function fetchModelFile(file: ModelFile): Promise<ArrayBuffer> {
   const request = await inDb('readonly', (txn) => txn.objectStore(FILES).get(key));
   const cached = request.result as ArrayBuffer | undefined;
   if (cached !== undefined && cached.byteLength === file.bytes) return cached;
-  const bytes = await decompressed(fetch(file.url, { credentials: 'omit' }));
+  const url = contentUrl(`/translate-models/${file.sha256}.gz`);
+  const bytes = await decompressed(fetch(url, { credentials: 'omit' }));
   if (bytes.byteLength !== file.bytes) {
     throw new Error(`${file.name}: ${bytes.byteLength} bytes, expected ${file.bytes}`);
   }
