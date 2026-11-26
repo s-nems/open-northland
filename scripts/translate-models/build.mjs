@@ -1,16 +1,7 @@
 #!/usr/bin/env node
 
 import { createHash } from 'node:crypto';
-import {
-  copyFile,
-  lstat,
-  mkdir,
-  mkdtemp,
-  readFile,
-  rename,
-  rm,
-  writeFile,
-} from 'node:fs/promises';
+import { copyFile, lstat, mkdir, mkdtemp, readFile, rename, rm, writeFile } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { gunzipSync } from 'node:zlib';

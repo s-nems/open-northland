@@ -21,10 +21,16 @@ vi.mock('@open-northland/render', async (original) => ({
 vi.mock('../../../src/view/boot/progress.js', () => ({
   mountBootProgress: () => ({ begin: async () => undefined, finish: async () => undefined }),
 }));
-vi.mock('../../../src/view/settings/store.js', async (original) => ({
-  ...(await original<typeof import('../../../src/view/settings/store.js')>()),
-  readStoredSettings: () => ({ renderScale: 1, debugToolsEnabled: false }),
-}));
+vi.mock('../../../src/view/settings/store.js', async (original) => {
+  const store = await original<typeof import('../../../src/view/settings/store.js')>();
+  return {
+    ...store,
+    // No project isolates modules, so this mock leaks into the files this worker runs afterwards: a
+    // partial settings object makes a later diag report read an undefined nick and crash while it
+    // redacts. Hand out full settings with only boot's fields overridden.
+    readStoredSettings: () => ({ ...store.defaultSettings(), renderScale: 1, debugToolsEnabled: false }),
+  };
+});
 vi.mock('../../../src/content/ir/load.js', () => ({ loadIr: async () => null }));
 vi.mock('../../../src/content/sprite-sheet/index.js', () => ({ resolveSpriteSheet: mocks.sprites }));
 vi.mock('../../../src/content/map/terrain.js', async (original) => ({

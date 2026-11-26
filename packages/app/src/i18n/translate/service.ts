@@ -213,10 +213,7 @@ export function createMapTextTranslator(): MapTextTranslator {
       })
       .then(job.resolve, (error: unknown) => {
         const detail = error instanceof Error ? error.message : String(error);
-        diag.warn(
-          'translate',
-          `translating ${job.texts.length} texts from ${job.from} failed: ${detail}`,
-        );
+        diag.warn('translate', `translating ${job.texts.length} texts from ${job.from} failed: ${detail}`);
         job.reject(error instanceof Error ? error : new Error(String(error)));
       });
   };
