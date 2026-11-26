@@ -22,13 +22,7 @@ body.on-game {
   -webkit-user-select: none;
   user-select: none;
 }
-body.on-game
-  :is(
-    input,
-    textarea,
-    .on-net-chat__list,
-    .on-report__json
-  ) {
+body.on-game :is(input, textarea, .on-net-chat__list, .on-report__json) {
   -webkit-user-select: text;
   user-select: text;
 }
