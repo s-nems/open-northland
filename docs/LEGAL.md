@@ -101,6 +101,12 @@ results are documented as original behavior.
 Contributors should record the source basis for new format, mechanic, timing, and visual decisions.
 When exact behavior is unknown, the implementation and its tests must identify the approximation.
 
+## Third-party model data
+
+The on-device map-text translation models are the pinned Firefox Translations models published by Mozilla in its public Google Cloud Storage bucket. Mozilla's upstream `mozilla/translations` project states that its model files are distributed under the Mozilla Public License 2.0. Open Northland downloads the compressed files at build time, verifies their uncompressed sizes and SHA-256 digests against `packages/app/src/i18n/translate/model-files.ts`, and ships the unchanged model data with the web and desktop builds. The attribution and license text are included in `packages/app/public/licenses/THIRD-PARTY-NOTICES.txt` and `MPL-2.0.txt`.
+
+Upstream: https://github.com/mozilla/translations
+
 ## Third-party code
 
 The art filter's prescaled scalers port GPU shaders from the libretro shader collection

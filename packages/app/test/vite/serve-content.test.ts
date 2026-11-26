@@ -52,6 +52,7 @@ describe('isContentPath', () => {
       '/bobs/x.png',
       '/campaigns-index.json',
       '/campaigns/x/intro.webm',
+      '/translate-models/abcdef.gz',
     ])
       expect(isContentPath(path)).toBe(true);
   });

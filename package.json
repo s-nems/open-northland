@@ -72,7 +72,7 @@
     "import:cultures-localization": "npm run import:cultures-localization --workspace @open-northland/translation-tools --",
     "translations:skeleton": "npm run translations:skeleton --workspace @open-northland/translation-tools --",
     "translations:derive-cht": "npm run translations:derive-cht --workspace @open-northland/translation-tools --",
-    "build:content": "node scripts/content/build-content.mjs",
+    "build:content": "node scripts/content/build-content.mjs && npm run build:translation-models",
     "build:translation-models": "node scripts/translate-models/build.mjs",
     "test:desktop": "npm run build && npm run test:e2e --workspace @open-northland/desktop",
     "test:gate": "npm run test:e2e --workspace @open-northland/app"
