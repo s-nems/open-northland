@@ -29,25 +29,41 @@ interface EngineUrls {
 const scope = self as unknown as WorkerScope;
 let engine: EngineUrls | null = null;
 
+/** The wrapper and Emscripten glue declare globals, so each asset may execute only once per worker. */
+const importedScripts = new Set<string>();
+
 /** Takes the bootstrap before the wrapper's own listener can reject the unknown method name. */
 scope.addEventListener('message', (event) => {
   const data = event.data as { readonly id?: number; readonly name?: string; readonly args?: unknown[] };
   if (data?.name !== 'bootstrap') return;
   event.stopImmediatePropagation();
-  engine = data.args?.[0] as EngineUrls;
-  scope.importScripts(engine.wrapperUrl);
+
+  // A repeated bootstrap must not re-evaluate the wrapper: its top-level YAML class is a global
+  // lexical declaration and Chromium throws when the same script runs in this worker twice.
+  if (engine === null) {
+    engine = data.args?.[0] as EngineUrls;
+    scope.importScripts(engine.wrapperUrl);
+  }
   // The wrapper never saw this message, so the client's round-trip is answered here.
   scope.postMessage({ id: data.id, result: null });
 });
 
 const realImportScripts = scope.importScripts.bind(scope);
 scope.importScripts = (...urls: readonly (string | URL)[]): void => {
-  realImportScripts(
-    ...urls.map((url) => {
-      const name = String(url).split('/').pop();
-      return name === 'bergamot-translator-worker.js' && engine !== null ? engine.glueUrl : url;
-    }),
-  );
+  const pending: (string | URL)[] = [];
+  const seen = new Set<string>();
+  for (const url of urls) {
+    const name = String(url).split('/').pop();
+    const resolved = name === 'bergamot-translator-worker.js' && engine !== null ? engine.glueUrl : url;
+    const key = String(resolved);
+    if (!importedScripts.has(key) && !seen.has(key)) {
+      pending.push(resolved);
+      seen.add(key);
+    }
+  }
+  if (pending.length === 0) return;
+  realImportScripts(...pending);
+  for (const url of pending) importedScripts.add(String(url));
 };
 
 const realFetch = scope.fetch.bind(scope);
