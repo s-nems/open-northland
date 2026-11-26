@@ -23,6 +23,7 @@ const CONTENT_TYPES: Readonly<Record<string, string>> = {
   '.wav': 'audio/wav',
   '.ogg': 'audio/ogg',
   '.webm': 'video/webm',
+  '.wasm': 'application/wasm',
   '.srt': 'application/x-subrip',
   '.map': 'application/json',
   '.woff2': 'font/woff2',
