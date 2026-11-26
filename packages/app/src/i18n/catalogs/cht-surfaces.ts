@@ -414,6 +414,9 @@ export const chtSurfaces = {
         chs: '简体中文',
         cht: '繁體中文',
       },
+      mapTextTranslation: '翻譯任務文本',
+      mapTextTranslationTip:
+        '當地圖沒有你的語言的任務文本時，會在本機上以 Firefox Translate 所用的離線引擎翻譯。每種語言首次遊玩時會一次下載其語言包（每個約 30 MB）並驗證；不會傳送任何內容到網路上。',
       keyboardScrollSpeed: '鍵盤捲動速度',
       edgeScrollSpeed: '邊緣捲動速度',
       dragScrollSpeed: '滑鼠拖曳捲動速度',

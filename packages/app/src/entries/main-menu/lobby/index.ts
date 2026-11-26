@@ -9,6 +9,7 @@ import { lineupRoster, lineupTitle, relationLine } from '../lineup/view.js';
 import { mapModeToggles } from '../lobby-controls/mode.js';
 import { createMapDetailsCard } from '../map-select/card.js';
 import type { MapSelectItem } from '../map-select/model.js';
+import { menuMapTextReader } from '../map-text.js';
 import type { MenuScreen, MountedScreen } from '../model.js';
 import { screenHead } from '../screen-head.js';
 import { localSeatElements } from './local-seats.js';
@@ -90,9 +91,20 @@ export function lobbyScreen(
   main.append(cols, list, footnote, watch);
 
   // Swapping the map goes through the header back button or Esc, so the card carries no actions here.
+  let played = item;
+  let refreshTranslated = (): void => undefined;
+  const mapText = menuMapTextReader(() => refreshTranslated());
+  const tribeLabel = (tribe: number): string => mapText.tribeName(tribe);
+
   const side = document.createElement('aside');
   side.className = 'main-menu__lobby-side';
-  const card = createMapDetailsCard();
+  // The card's translate icon picks what the slot names, tribe names and description read in.
+  const card = createMapDetailsCard({
+    translateText: mapText.text,
+    tribeName: tribeLabel,
+    translateTarget: mapText.translateChoice,
+    onTranslateTarget: mapText.setTranslateChoice,
+  });
   card.show(item);
 
   const launchPanel = document.createElement('div');
@@ -100,7 +112,6 @@ export function lobbyScreen(
 
   const search = new URLSearchParams(window.location.search);
   const options = localLobbyOptions(search, item.types);
-  let played = item;
   // The player's own ore richness, given back when a mode that brings its own is turned off.
   let ownOreYield = options.oreYield;
   options.oreYield ??= mapOreYield(item.roomDefaults);
@@ -191,33 +202,40 @@ export function lobbyScreen(
     const focused = document.activeElement;
     const key = refocus ?? (focused instanceof HTMLElement ? (focused.dataset.focus ?? null) : null);
     refocus = null;
-    const seats = localSeatElements(played, state, pickerSlot, {
-      togglePicker(player) {
-        pickerSlot = pickerSlot === player ? null : player;
-        renderSeats();
+    const seats = localSeatElements(
+      played,
+      state,
+      pickerSlot,
+      {
+        togglePicker(player) {
+          pickerSlot = pickerSlot === player ? null : player;
+          renderSeats();
+        },
+        pickColor(player, color) {
+          const next = setSlotColor(state, player, color);
+          pickerSlot = null;
+          refocus = `chip:${player}`;
+          if (next !== null) update(next);
+          else renderSeats();
+        },
+        setMode(player, mode) {
+          update(setVacantMode(state, player, mode));
+        },
+        pickTribe(player, tribe) {
+          update(setSlotTribe(state, player, tribe));
+        },
+        pickDifficulty(player, difficulty) {
+          update(setSlotDifficulty(state, player, difficulty));
+        },
+        claim(player) {
+          pickerSlot = null;
+          refocus = `chip:${player}`;
+          update(claimSeat(state, player));
+        },
       },
-      pickColor(player, color) {
-        const next = setSlotColor(state, player, color);
-        pickerSlot = null;
-        refocus = `chip:${player}`;
-        if (next !== null) update(next);
-        else renderSeats();
-      },
-      setMode(player, mode) {
-        update(setVacantMode(state, player, mode));
-      },
-      pickTribe(player, tribe) {
-        update(setSlotTribe(state, player, tribe));
-      },
-      pickDifficulty(player, difficulty) {
-        update(setSlotDifficulty(state, player, difficulty));
-      },
-      claim(player) {
-        pickerSlot = null;
-        refocus = `chip:${player}`;
-        update(claimSeat(state, player));
-      },
-    });
+      tribeLabel,
+      mapText.text,
+    );
     const rows: HTMLElement[] = [];
     const slotRows = lobbySlotRows(players, state);
     const byPlayer = new Map(slotRows.map((row) => [row.slot.player, row]));
@@ -249,6 +267,10 @@ export function lobbyScreen(
       if (again !== null && !(again instanceof HTMLButtonElement && again.disabled)) again.focus();
     }
   };
+  refreshTranslated = () => {
+    card.show(played);
+    renderSeats();
+  };
   renderSeats();
   gateStart();
 
@@ -275,6 +297,8 @@ export function lobbyScreen(
     dispose: () => {
       window.removeEventListener('keydown', onKeydown, true);
       optionsCard.dispose();
+      card.dispose();
+      mapText.dispose();
     },
   };
 }

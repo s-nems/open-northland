@@ -67,6 +67,41 @@ describe('the notice filters', () => {
   });
 });
 
+describe('the mission text translation', () => {
+  it('toggles in the gameplay tab beside the language and patches only its own setting', async () => {
+    const patches: Partial<MenuSettings>[] = [];
+    const page = createSettingsPage({
+      settings: {
+        current: defaultSettings,
+        update: async (patch) => {
+          patches.push(patch);
+          return true;
+        },
+        pinnedUiScale: null,
+        effectiveUiScaleFor: (factor) => factor,
+      },
+      memory: { ...initialSettingsMemory(), tab: 'gameplay' },
+      signal: new AbortController().signal,
+    });
+    document.body.append(page.el);
+    page.render();
+    const toggle = document.querySelector<HTMLButtonElement>('[data-settings-focus="map-text-translation"]');
+    if (toggle === null) throw new Error('the map-text-translation toggle is missing');
+    expect(toggle.getAttribute('aria-label')).not.toBeNull();
+    // It stands under the language, before the camera section begins.
+    const language = document.querySelector('[data-settings-focus^="language:"]');
+    const camera = document.querySelector('.main-menu__settings-heading');
+    if (language === null || camera === null) throw new Error('the language row or a heading is missing');
+    const follows = (first: Element, second: Element): boolean =>
+      (first.compareDocumentPosition(second) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0;
+    expect(follows(language, toggle)).toBe(true);
+    expect(follows(toggle, camera)).toBe(true);
+    toggle.click();
+    await Promise.resolve();
+    expect(patches).toEqual([{ mapTextTranslation: false }]);
+  });
+});
+
 describe('the gameplay tab sections', () => {
   it('group the scroll rows under controls, then notices, then tools and reports', () => {
     settingsTab('gameplay', false);

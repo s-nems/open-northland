@@ -121,6 +121,8 @@ it('refreshes counters on an open goal page even when the mission list stays unc
     onShowOnMap: () => {},
     onCallback: () => {},
     takeGoalMarks: () => new Map(),
+    translateTarget: () => 'auto',
+    onTranslateTarget: () => {},
     onDismiss: () => {},
     cue: () => {},
   });

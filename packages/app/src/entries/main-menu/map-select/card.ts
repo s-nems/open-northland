@@ -1,5 +1,16 @@
+import { LANGUAGES } from '@open-northland/data';
 import { playerSwatchHex } from '../../../catalog/roster.js';
-import { bcp47Tag, formatMessage, messages, pluralForm, tribeName } from '../../../i18n/index.js';
+import type { LocalizedMapString } from '../../../game/map/strings.js';
+import { GLYPH } from '../../../hud/dom/icons.js';
+import {
+  bcp47Tag,
+  formatMessage,
+  isLocale,
+  tribeName as localizedTribeName,
+  messages,
+  pluralForm,
+} from '../../../i18n/index.js';
+import type { TranslateChoice } from '../../../i18n/translate/mission-translate.js';
 import { segControl } from '../../../view/settings/controls.js';
 import { mapItemLineup } from '../lineup/model.js';
 import { lineupLabel } from '../lineup/view.js';
@@ -23,6 +34,7 @@ export interface MapDetailsCard {
   readonly actions: HTMLElement;
   show(item: MapSelectItem): void;
   hide(): void;
+  dispose(): void;
 }
 
 /** Fills a row or room thumb with the map's default preview, or leaves it empty. */
@@ -93,19 +105,26 @@ export function narratorBadge(item: MapSelectItem): HTMLElement | null {
   return badge;
 }
 
-function seatChip(tribeId: number, colorId: number): HTMLElement {
+function seatChip(tribeId: number, colorId: number, nameOfTribe: (tribe: number) => string): HTMLElement {
   const chip = document.createElement('span');
   chip.className = 'main-menu__seat-chip';
   const dot = document.createElement('span');
   dot.className = 'main-menu__seat-dot';
   dot.style.background = playerSwatchHex(colorId);
   const tribe = document.createElement('span');
-  tribe.textContent = tribeName(tribeId);
+  tribe.textContent = nameOfTribe(tribeId);
   chip.append(dot, tribe);
   return chip;
 }
 
-export function createMapDetailsCard(): MapDetailsCard {
+export interface MapDetailsCardOptions {
+  readonly translateText?: (found: LocalizedMapString) => string;
+  readonly tribeName?: (tribe: number) => string;
+  readonly translateTarget?: () => TranslateChoice;
+  readonly onTranslateTarget?: (choice: TranslateChoice) => void;
+}
+
+export function createMapDetailsCard(options: MapDetailsCardOptions = {}): MapDetailsCard {
   const select = messages().mainMenu.mapSelect;
 
   const card = document.createElement('div');
@@ -146,12 +165,100 @@ export function createMapDetailsCard(): MapDetailsCard {
   narration.append(narratorGlyph(), narrationText);
   const seats = document.createElement('div');
   seats.className = 'main-menu__map-seats';
+  const descriptionBlock = document.createElement('div');
+  descriptionBlock.className = 'main-menu__map-desc-block';
+  const descriptionTools = document.createElement('div');
+  descriptionTools.className = 'main-menu__map-desc-tools';
+  const translateButton = document.createElement('button');
+  translateButton.type = 'button';
+  translateButton.className = 'main-menu__map-translate';
+  translateButton.innerHTML = GLYPH.translate;
+  const translateLabel = messages().hud.missionBook.translate;
+  translateButton.setAttribute('aria-label', translateLabel);
+  translateButton.setAttribute('aria-haspopup', 'menu');
+  translateButton.setAttribute('aria-expanded', 'false');
+  const translateMenu = document.createElement('div');
+  translateMenu.className = 'main-menu__map-translate-menu';
+  translateMenu.setAttribute('role', 'menu');
+  translateMenu.setAttribute('aria-label', translateLabel);
+  translateMenu.hidden = true;
+  const translateChoices: readonly TranslateChoice[] = ['auto', ...LANGUAGES, 'original'];
+  for (const choice of translateChoices) {
+    const label =
+      choice === 'auto'
+        ? messages().hud.missionBook.translateAuto
+        : choice === 'original'
+          ? messages().hud.missionBook.translateOriginal
+          : messages().mainMenu.settings.languageNames[choice];
+    const row = document.createElement('button');
+    row.type = 'button';
+    row.className = 'main-menu__map-translate-item';
+    row.dataset.translateChoice = choice;
+    row.setAttribute('role', 'menuitemradio');
+    row.setAttribute('aria-checked', 'false');
+    row.textContent = label;
+    translateMenu.append(row);
+  }
+  descriptionTools.append(translateButton, translateMenu);
   const description = document.createElement('p');
   description.className = 'main-menu__map-desc';
+  descriptionBlock.append(description);
   const actions = document.createElement('div');
   actions.className = 'main-menu__map-actions';
-  details.append(name, meta, narration, seats, description, actions);
-  card.append(frame, details);
+  details.append(name, meta, narration, seats, descriptionBlock, actions);
+  // The book's place for the translate icon: the card's top-right corner, its menu opening over the
+  // preview, so it stays in reach where a screen hides the description (the lobby).
+  card.append(frame, details, descriptionTools);
+
+  const hasTranslateControl =
+    options.translateTarget !== undefined && options.onTranslateTarget !== undefined;
+  let translateOutside: ((event: PointerEvent) => void) | null = null;
+  const syncTranslateMenu = (): void => {
+    const choice = options.translateTarget?.() ?? 'auto';
+    for (const row of translateMenu.querySelectorAll<HTMLElement>('[data-translate-choice]')) {
+      row.setAttribute('aria-checked', String(row.dataset.translateChoice === choice));
+    }
+  };
+  const closeTranslateMenu = (): void => {
+    translateMenu.hidden = true;
+    translateButton.setAttribute('aria-expanded', 'false');
+    if (translateOutside !== null) {
+      document.removeEventListener('pointerdown', translateOutside, true);
+      translateOutside = null;
+    }
+  };
+  const openTranslateMenu = (): void => {
+    syncTranslateMenu();
+    translateMenu.hidden = false;
+    translateButton.setAttribute('aria-expanded', 'true');
+    translateOutside = (event) => {
+      if (
+        event.target instanceof Node &&
+        (translateMenu.contains(event.target) || translateButton.contains(event.target))
+      ) {
+        return;
+      }
+      closeTranslateMenu();
+    };
+    document.addEventListener('pointerdown', translateOutside, true);
+  };
+  translateButton.hidden = !hasTranslateControl;
+  descriptionTools.hidden = !hasTranslateControl;
+  translateButton.addEventListener('click', () => {
+    if (translateMenu.hidden) openTranslateMenu();
+    else closeTranslateMenu();
+  });
+  translateMenu.addEventListener('click', (event) => {
+    const target =
+      event.target instanceof Element
+        ? event.target.closest<HTMLButtonElement>('[data-translate-choice]')
+        : null;
+    const choice = target?.dataset.translateChoice;
+    if (choice === 'auto' || choice === 'original' || isLocale(choice)) {
+      closeTranslateMenu();
+      options.onTranslateTarget?.(choice);
+    }
+  });
 
   // A missing file collapses to the empty frame instead of a broken-image glyph.
   previewImg.addEventListener('error', () => {
@@ -185,19 +292,39 @@ export function createMapDetailsCard(): MapDetailsCard {
       narration.hidden = narrated === null;
       const showSeats = item.tutorialStep === undefined && item.seats.length > 0;
       seats.replaceChildren(
-        ...(showSeats ? item.seats.map((seat) => seatChip(seat.tribeId, seat.colorId)) : []),
+        ...(showSeats
+          ? item.seats.map((seat) =>
+              seatChip(seat.tribeId, seat.colorId, options.tribeName ?? localizedTribeName),
+            )
+          : []),
       );
       seats.hidden = !showSeats;
-      description.textContent = item.description ?? '';
-      description.hidden = item.description === undefined || item.description === '';
+      const hasDescription =
+        item.descriptionText !== undefined
+          ? item.descriptionText.text.trim() !== ''
+          : (item.description ?? '').trim() !== '';
+      description.textContent =
+        item.descriptionText === undefined
+          ? (item.description ?? '')
+          : (options.translateText?.(item.descriptionText) ?? item.descriptionText.text);
+      description.hidden = !hasDescription;
+      const hasSeats = item.tutorialStep === undefined && item.seats.length > 0;
+      translateButton.hidden = !hasTranslateControl || (!hasDescription && !hasSeats);
+      descriptionTools.hidden = translateButton.hidden;
+      descriptionBlock.hidden = !hasDescription;
+      syncTranslateMenu();
       showPreview(item, defaultMapPreview(item));
     },
     hide() {
+      closeTranslateMenu();
       card.hidden = true;
       shown = null;
       previewImg.hidden = true;
       previewImg.removeAttribute('src');
       frameLabel.textContent = '';
+    },
+    dispose() {
+      closeTranslateMenu();
     },
   };
 }

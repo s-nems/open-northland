@@ -74,7 +74,11 @@ const REGEX_SPECIAL = /[.*+?^${}()|[\]\\]/g;
 const WORD_CHAR = '[\\p{L}\\p{N}_]';
 
 export function reportSecrets(values: readonly string[], names: readonly string[]): ReportSecrets {
-  const words = [...new Set(names.filter((name) => name !== ''))].sort((a, b) => b.length - a.length);
+  // Names reach here from a settings handover as well as the route; a handover that missed its nick
+  // must not crash the whole report, so anything that is not a text never becomes a scrub target.
+  const words = [
+    ...new Set(names.filter((name): name is string => typeof name === 'string' && name !== '')),
+  ].sort((a, b) => b.length - a.length);
   return {
     values: [...new Set(values)].sort((a, b) => b.length - a.length),
     names:

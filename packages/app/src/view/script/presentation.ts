@@ -44,6 +44,9 @@ export interface ScriptPresentationDeps {
   readonly weather: WeatherFeed;
   /** The map's own string by id, for the info lines. */
   readonly mapText: (stringId: number) => string | undefined;
+  /** Bumped when the info-line texts change outside the sim, as a landed translation does; the lines
+   *  re-read then, without waiting for the tick. */
+  readonly mapTextVersion?: () => number;
   /** A good's display name, for the goal table's progress lines. */
   readonly goodLabel: (typeId: number) => string | undefined;
   /** The info lines at `tick` with what the map's siege leads them with; absent, they pass as read. */
@@ -197,7 +200,7 @@ export function createScriptPresentation(deps: ScriptPresentationDeps): ScriptPr
                     }),
                   ],
                 ),
-              `${linesTick}`,
+              `${linesTick}:${deps.mapTextVersion?.() ?? 0}`,
             ) ?? NO_LINES);
       // Pushed every frame; the book keeps an unchanged list as it is.
       toolPanel.controller.setInfoLines(deps.siegeRows?.(lines, snapshot.tick) ?? lines);

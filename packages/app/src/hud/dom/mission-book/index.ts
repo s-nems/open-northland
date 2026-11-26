@@ -3,6 +3,7 @@ import { callbackVoice, type HypertextBook } from '@open-northland/data';
 import type { MapViewTarget } from '@open-northland/render';
 import type { MissionInfoRow } from '../../../game/map/info-lines.js';
 import type { MissionBriefingAnswer, MissionReader } from '../../../game/map/mission-brief.js';
+import type { TranslateChoice } from '../../../i18n/translate/mission-translate.js';
 import type { ToolWindow } from '../../tool-panel/window-shell.js';
 import {
   type BookReading,
@@ -43,6 +44,10 @@ export interface MissionBookDeps {
   readonly missionHuman: MissionHumanLookup;
   /** Bumped when the briefing history, the replay page or a mission human lands anew. */
   readonly answersVersion: () => number;
+  /** The book's translate menu: the choice the map's texts read by now, and the pick to store;
+   *  absent, the menu reads the reader's own language and keeps the pick. */
+  readonly translateTarget?: () => TranslateChoice;
+  readonly onTranslateTarget?: (choice: TranslateChoice) => void;
   readonly pictureUrl: (file: string) => string;
   /** Whether a held pause stops the clock; a shared clock is nobody's to hold. */
   readonly pauseStopsClock: boolean;
@@ -168,6 +173,8 @@ export function createMissionBook(deps: MissionBookDeps, parts: MissionBookParts
     history: deps.history,
     missionHuman: deps.missionHuman,
     pictureUrl: deps.pictureUrl,
+    translateTarget: deps.translateTarget ?? ((): TranslateChoice => 'auto'),
+    onTranslateTarget: deps.onTranslateTarget ?? (() => undefined),
     onShowOnMap: (target) => {
       close();
       deps.onShowOnMap(target);

@@ -428,6 +428,9 @@ export const plSurfaces = {
         chs: '简体中文',
         cht: '繁體中文',
       },
+      mapTextTranslation: 'Tłumacz teksty misji',
+      mapTextTranslationTip:
+        'Gdy mapa nie zawiera tekstów misji w Twoim języku, są one tłumaczone na tym urządzeniu silnikiem offline, którego używa Firefox Translate. Pierwsza gra w danym języku pobiera jego pakiet raz (około 30 MB na język) i weryfikuje go; nic nie jest nigdzie wysyłane.',
       keyboardScrollSpeed: 'Prędkość przewijania klawiszami',
       edgeScrollSpeed: 'Prędkość przewijania przy krawędzi',
       dragScrollSpeed: 'Prędkość przewijania przeciąganiem',

@@ -28,6 +28,7 @@ import { canonicalJobType } from '../../game/sandbox/index.js';
 import type { SnapshotEntity } from '../../game/snapshot/index.js';
 import type { ViewerSeat, WatchTarget } from '../../game/viewer-seat.js';
 import { messages, professionLabel } from '../../i18n/index.js';
+import type { TranslateChoice } from '../../i18n/translate/mission-translate.js';
 import type { PresentationPack } from '../../presentation/pack.js';
 import { type AssistantSource, createAssistantWindow } from '../dom/assistant-window/index.js';
 import type { BuildingPanelWindows } from '../dom/building-panel/actions.js';
@@ -278,6 +279,9 @@ export interface ToolPanelOptions {
   readonly missionHuman?: MissionHumanLookup;
   /** Bumped when a mission read above lands anew, which rebuilds an open mission book. */
   readonly missionAnswersVersion?: () => number;
+  /** The book's translate menu: the choice the map's texts read by now, and the pick to store. */
+  readonly missionTranslateTarget?: () => TranslateChoice;
+  readonly onMissionTranslateTarget?: (choice: TranslateChoice) => void;
   /** The open mission book holds the game. */
   readonly onMissionHold?: (held: boolean) => void;
   /** Whether a held pause stops the clock; false on a shared clock. */
@@ -601,6 +605,12 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
           history,
           missionHuman: opts.missionHuman ?? ((): null => null),
           answersVersion: opts.missionAnswersVersion ?? ((): number => 0),
+          ...(opts.missionTranslateTarget !== undefined
+            ? { translateTarget: opts.missionTranslateTarget }
+            : {}),
+          ...(opts.onMissionTranslateTarget !== undefined
+            ? { onTranslateTarget: opts.onMissionTranslateTarget }
+            : {}),
           pictureUrl: opts.missionPictureUrl ?? hypertextPictureUrl,
           pauseStopsClock: opts.pauseStopsClock ?? false,
           onHold: (held) => opts.onMissionHold?.(held),

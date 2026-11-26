@@ -103,8 +103,16 @@ describe('mapItem', () => {
       picture: false,
       minimap: false,
     };
-    expect(mapItem(entry, 'eng')).toMatchObject({ title: 'ARABIAN ISLANDS', description: 'Opis' });
-    expect(mapItem(entry, 'pol')).toMatchObject({ title: 'ARABSKIE WYSPY', description: 'Opis' });
+    expect(mapItem(entry, 'eng')).toMatchObject({
+      title: 'ARABIAN ISLANDS',
+      description: 'Opis',
+      descriptionText: { text: 'Opis', lang: 'pol' },
+    });
+    expect(mapItem(entry, 'pol')).toMatchObject({
+      title: 'ARABSKIE WYSPY',
+      description: 'Opis',
+      descriptionText: { text: 'Opis', lang: null },
+    });
   });
 
   it('recognizes and orders tutorial lessons from campaign metadata instead of the map id', () => {

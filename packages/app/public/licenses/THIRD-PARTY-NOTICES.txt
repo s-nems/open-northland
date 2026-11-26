@@ -25,6 +25,13 @@ flag-icons (the flags beside players' names in the multiplayer menu, from the fl
 package, https://github.com/lipis/flag-icons)
   Copyright (c) 2013 Panayiotis Lipiridis, MIT license (below).
 
+Firefox Translations models (the on-device map-text translation data, fetched from Mozilla's public model bucket)
+  The model files are published by Mozilla as part of Firefox Translations and are distributed under the
+  Mozilla Public License 2.0. The model files are bundled unchanged; each downloaded file is checked
+  against its pinned uncompressed SHA-256 digest before it is included in a build.
+  Upstream: https://github.com/mozilla/translations
+  License: MPL-2.0.txt beside this notice.
+
 MIT license, as granted by each copyright holder above:
 
   Permission is hereby granted, free of charge, to any person obtaining a copy

@@ -76,4 +76,30 @@ describe('seatNameMap', () => {
     sitting.delete(0);
     expect(nameOf(0)).toBe('Ragnar');
   });
+
+  it('translates the authored name per read and wraps the result with the level or nick', () => {
+    let landed = false;
+    const nameOf = seatNameMap(
+      {
+        seats: [
+          { player: 0, mode: 'human', color: 0 },
+          { player: 1, mode: 'computer', color: 1, difficulty: 'hard' },
+          { player: 4, mode: 'map-ai', color: 4 },
+        ],
+      },
+      SCRIPT,
+      'pol',
+      (player) => (player === 0 ? 'Seba' : undefined),
+      (found) => (landed ? `[${found.text}]` : found.text),
+    );
+    // Until the translation lands the seat reads the map's own words.
+    expect(nameOf(1)).toBe('Wikingowie 1 (Trudny)');
+    expect(nameOf(0)).toBe('Seba (Ragnar)');
+    expect(nameOf(4)).toBe('Potwory');
+    landed = true;
+    // The level and the nick wrap the translated name; they never go into the engine themselves.
+    expect(nameOf(1)).toBe('[Wikingowie 1] (Trudny)');
+    expect(nameOf(0)).toBe('Seba ([Ragnar])');
+    expect(nameOf(4)).toBe('[Potwory]');
+  });
 });

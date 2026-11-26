@@ -1,5 +1,6 @@
+import type { MapTextLanguage } from '@open-northland/data';
 import type { ComputerDifficulty } from '@open-northland/lockstep';
-import { localizedMapText } from '../../../game/map/strings.js';
+import { type LocalizedMapString, localizedMapTextWithLang } from '../../../game/map/strings.js';
 import { currentLocale, formatMessage, messages, tribeName } from '../../../i18n/index.js';
 import { colorChip, colorPalette } from '../lobby-controls/color.js';
 import { difficultyControl } from '../lobby-controls/difficulty.js';
@@ -19,11 +20,24 @@ interface SeatActions {
   readonly claim: (player: number) => void;
 }
 
+/** A map-authored lobby seat name in the language selected by the reader. */
+export function localizedLobbySlotTitle(
+  name: LobbySlotRow['slot']['name'],
+  lang: MapTextLanguage,
+  fallback: string,
+  translateMapText: (found: LocalizedMapString) => string,
+): string {
+  const found = localizedMapTextWithLang(name, lang);
+  return found === undefined ? fallback : translateMapText(found);
+}
+
 export function localSeatElements(
   item: MapSelectItem,
   state: RosterState,
   pickerSlot: number | null,
   actions: SeatActions,
+  nameOfTribe: (tribe: number) => string = tribeName,
+  translateMapText: (found: LocalizedMapString) => string = ({ text }) => text,
 ) {
   const lobby = messages().mainMenu.lobby;
   const colorName = (color: number): string => messages().animation.playerColors[color] ?? String(color);
@@ -104,7 +118,12 @@ export function localSeatElements(
   // A monster seat keeps its people, named on its detail line instead.
   const tribeCell = (row: LobbySlotRow): HTMLElement => {
     if (!row.offersTribe) return document.createElement('div');
-    const picker = tribePicker(row.slot.tribeId, (tribe) => actions.pickTribe(row.slot.player, tribe));
+    const picker = tribePicker(
+      row.slot.tribeId,
+      (tribe) => actions.pickTribe(row.slot.player, tribe),
+      '',
+      nameOfTribe,
+    );
     picker.update(row.tribe, false);
     picker.button.dataset.focus = `tribe:${row.slot.player}`;
     return picker.root;
@@ -122,11 +141,9 @@ export function localSeatElements(
 
   /** `relations` is the seat's own relation line, for a seat its lineup group leaves unexplained. */
   const slotRow = (row: LobbySlotRow, relations: HTMLElement | null): HTMLElement => {
-    const title =
-      localizedMapText(row.slot.name, currentLocale()) ??
-      (row.kind === 'open'
-        ? lobby.freeSlot
-        : formatMessage(lobby.playerSlotLabel, { n: row.slot.player + 1 }));
+    const fallbackTitle =
+      row.kind === 'open' ? lobby.freeSlot : formatMessage(lobby.playerSlotLabel, { n: row.slot.player + 1 });
+    const title = localizedLobbySlotTitle(row.slot.name, currentLocale(), fallbackTitle, translateMapText);
     const action = document.createElement('div');
     action.className = 'main-menu__lobby-action';
     if (row.kind === 'open') {
@@ -151,7 +168,7 @@ export function localSeatElements(
       controls: [tribeCell(row), controlCell(row), difficultyCell(row), action],
     });
     // The control cell says who plays the seat; only a monster seat's people get a detail line.
-    seat.update(title, row.offersTribe ? '' : tribeName(row.tribe), row.kind === 'yours');
+    seat.update(title, row.offersTribe ? '' : nameOfTribe(row.tribe), row.kind === 'yours');
     seat.root.classList.toggle('is-scenario', row.kind === 'scenario');
     return seat.root;
   };

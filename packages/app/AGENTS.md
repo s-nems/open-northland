@@ -176,6 +176,9 @@ Group code by user-facing concern, one feature folder each:
 - `hud/`: interface models, layout, drawing, and controllers; `hud/dom/`: DOM panels, with notices,
   system and network windows grouped;
 - `scenes/<domain>/`: acceptance setups by mechanic; `scenes/` itself holds the registry and runtime;
+- `i18n/`: the locale catalogs and `i18n/translate/`, which translates a map's mission texts on the
+  device: pinned Firefox Translate (Bergamot) models, the engine worker, and the wrappers the mission
+  reader reads through;
 - `diag/`: logging, crash reports, replay diagnostics, and performance instrumentation.
 
 Tests mirror `src/` under `test/` (`test/content/` holds the `src/content/` tests). `test/real-content/`

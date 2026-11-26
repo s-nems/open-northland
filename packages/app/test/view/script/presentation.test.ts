@@ -50,6 +50,8 @@ function harness(
   showBriefings = true,
   keepPlayingAfterResult = () => false,
   goalProgress: readonly MatchGoalProgress[] = [],
+  mapText: (id: number) => string | undefined = (id) => (id === 7 ? 'Held: %d of %d' : undefined),
+  mapTextVersion?: () => number,
 ) {
   const calls: string[] = [];
   const infoLines: (readonly MissionInfoRow[])[] = [];
@@ -103,7 +105,8 @@ function harness(
     markers,
     effects,
     weather,
-    mapText: (id) => (id === 7 ? 'Held: %d of %d' : undefined),
+    mapText,
+    ...(mapTextVersion === undefined ? {} : { mapTextVersion }),
     goodLabel: (typeId) => (typeId === WOOD ? 'Wood' : undefined),
     now: () => 0,
     exit: () => calls.push('exit'),
@@ -193,6 +196,32 @@ describe('createScriptPresentation', () => {
     await landed();
     presentation.frame(snapshotAt(24), CAMERA, 0);
     expect(infoLines.at(-1)).toEqual([{ kind: 'text', text: 'Held: 2 of 4' }]);
+  });
+
+  it('re-reads the info lines when the map-text version moves, without waiting for the tick', async () => {
+    const lines: InfoLineView[] = [{ index: 0, stringId: 7, count: 1, extra: 4 }];
+    const texts: Record<number, string> = { 7: 'Held: %d of %d' };
+    let version = 0;
+    const { presentation, infoLines } = harness(
+      lines,
+      undefined,
+      undefined,
+      true,
+      undefined,
+      [],
+      (id) => texts[id],
+      () => version,
+    );
+    presentation.frame(snapshotAt(0), CAMERA, 0);
+    await landed();
+    presentation.frame(snapshotAt(0), CAMERA, 0);
+    expect(infoLines.at(-1)).toEqual([{ kind: 'text', text: 'Held: 1 of 4' }]);
+    texts[7] = 'Helden: %d von %d';
+    version = 1;
+    presentation.frame(snapshotAt(0), CAMERA, 0);
+    await landed();
+    presentation.frame(snapshotAt(0), CAMERA, 0);
+    expect(infoLines.at(-1)).toEqual([{ kind: 'text', text: 'Helden: 1 von 4' }]);
   });
 
   it('appends the goal table rows after the map lines', async () => {

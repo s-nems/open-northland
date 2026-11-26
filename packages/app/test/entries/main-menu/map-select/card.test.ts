@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import {
+  LANGUAGES,
   MAP_TEXT_LANGUAGES,
   MAP_TYPE,
   type MapsIndexEntry,
@@ -14,6 +15,7 @@ import {
 } from '../../../../src/entries/main-menu/map-select/card.js';
 import { mapItem, sceneItem } from '../../../../src/entries/main-menu/map-select/model.js';
 import { LOCALE_CODES, messages, setActiveLocale } from '../../../../src/i18n/index.js';
+import type { TranslateChoice } from '../../../../src/i18n/translate/mission-translate.js';
 import { TINY_FINGERPRINT } from '../../../support/catalog-maps.js';
 
 function entry(voices?: readonly string[]): MapsIndexEntry {
@@ -66,6 +68,83 @@ describe('narrated briefing mark', () => {
       for (const lang of MAP_TEXT_LANGUAGES) expect(select.narratedLanguageNames[lang]).not.toBe('');
     }
   });
+});
+
+it('uses the translated map description on the details card', () => {
+  const item = mapItem({ ...entry(), description: { pol: 'Opis misji' } });
+  const card = createMapDetailsCard({
+    translateText: ({ text }) => `translated: ${text}`,
+  });
+  card.show(item);
+  expect(card.root.querySelector('.main-menu__map-desc')?.textContent).toBe('translated: Opis misji');
+});
+
+it("provides the mission-book language menu in the card's corner", () => {
+  let selected: TranslateChoice = 'auto';
+  const picks: TranslateChoice[] = [];
+  const card = createMapDetailsCard({
+    translateTarget: () => selected,
+    onTranslateTarget: (choice) => {
+      selected = choice;
+      picks.push(choice);
+    },
+  });
+  card.show(mapItem({ ...entry(), description: { pol: 'Opis misji' } }));
+
+  const button = card.root.querySelector<HTMLButtonElement>('.main-menu__map-translate');
+  const menu = card.root.querySelector<HTMLElement>('.main-menu__map-translate-menu');
+  if (button === null || menu === null) throw new Error('map translation control: markup');
+  expect(button.getAttribute('aria-label')).toBe(messages().hud.missionBook.translate);
+  expect(button.hidden).toBe(false);
+  expect(menu.hidden).toBe(true);
+  // On the card itself, not in the description block a screen may hide (the lobby does).
+  expect(button.closest('.main-menu__map-desc-block')).toBeNull();
+  expect(button.parentElement?.parentElement).toBe(card.root);
+
+  button.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+  expect(menu.hidden).toBe(false);
+  const rows = [...menu.querySelectorAll<HTMLButtonElement>('[data-translate-choice]')];
+  expect(rows.map((row) => row.dataset.translateChoice)).toEqual(['auto', ...LANGUAGES, 'original']);
+  expect(rows[0]?.getAttribute('aria-checked')).toBe('true');
+  expect(rows[3]?.textContent).toBe(messages().mainMenu.settings.languageNames.ger);
+
+  const german = menu.querySelector<HTMLButtonElement>('[data-translate-choice="ger"]');
+  if (german === null) throw new Error('map translation control: German choice');
+  german.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+  expect(picks).toEqual(['ger']);
+  expect(selected).toBe('ger');
+  expect(menu.hidden).toBe(true);
+  expect(button.getAttribute('aria-expanded')).toBe('false');
+
+  card.show(mapItem({ ...entry(), description: { pol: 'Opis misji' } }));
+  button.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+  expect(menu.querySelector('[data-translate-choice="ger"]')?.getAttribute('aria-checked')).toBe('true');
+  card.dispose();
+});
+
+it('keeps the language menu for a map with seats but no description', () => {
+  const card = createMapDetailsCard({ translateTarget: () => 'auto', onTranslateTarget: () => undefined });
+  card.show(
+    mapItem({
+      ...entry(),
+      players: [
+        {
+          player: 0,
+          type: 'human',
+          tribeId: 1,
+          colorId: 0,
+          claimable: true,
+          hidden: false,
+          aiAllowed: true,
+          noneAllowed: true,
+          hasComputerControl: true,
+        },
+      ],
+    }),
+  );
+  expect(card.root.querySelector<HTMLButtonElement>('.main-menu__map-translate')?.hidden).toBe(false);
+  expect(card.root.querySelector<HTMLElement>('.main-menu__map-desc-block')?.hidden).toBe(true);
+  card.dispose();
 });
 
 describe('meta line', () => {

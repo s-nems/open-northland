@@ -12,6 +12,7 @@
     "test:e2e": "vitest run --config vitest.e2e.ts"
   },
   "dependencies": {
+    "@browsermt/bergamot-translator": "0.4.9",
     "@open-northland/art-contracts": "*",
     "@open-northland/audio": "*",
     "@open-northland/data": "*",

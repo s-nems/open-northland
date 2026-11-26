@@ -1,6 +1,6 @@
 import type { MapScript, MapTextLanguage } from '@open-northland/data';
 import { PRIMARY_TRIBE } from '../rules.js';
-import { localizedMapText } from './strings.js';
+import { type LocalizedMapString, localizedMapText, localizedMapTextWithLang } from './strings.js';
 
 /**
  * The seat's tribe (`MapPlayerSlot.tribeId`), which the entities it raises are stamped with, falling back
@@ -24,6 +24,19 @@ export function playerNameMap(
   const bySlot = new Map<number, string>();
   for (const p of script?.players ?? []) {
     const name = localizedMapText(p.name, lang);
+    if (name !== undefined) bySlot.set(p.player, name);
+  }
+  return (player) => bySlot.get(player);
+}
+
+/** {@link playerNameMap} with the language each name read in, so a foreign one can be translated. */
+export function playerNameMapWithLang(
+  script: Pick<MapScript, 'players'> | null,
+  lang: MapTextLanguage,
+): (player: number) => LocalizedMapString | undefined {
+  const bySlot = new Map<number, LocalizedMapString>();
+  for (const p of script?.players ?? []) {
+    const name = localizedMapTextWithLang(p.name, lang);
     if (name !== undefined) bySlot.set(p.player, name);
   }
   return (player) => bySlot.get(player);

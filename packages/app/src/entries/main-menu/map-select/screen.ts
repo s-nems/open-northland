@@ -61,5 +61,11 @@ export function mapSelectScreen(
     if (content !== null) section.append(content.element);
   }
   showContent(memory.content);
-  return { element: section, dispose: () => content?.dispose?.() };
+  return {
+    element: section,
+    dispose: () => {
+      content?.dispose?.();
+      picker.dispose();
+    },
+  };
 }

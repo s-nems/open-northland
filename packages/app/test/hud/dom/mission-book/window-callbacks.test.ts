@@ -88,6 +88,8 @@ function mountWindow(
       if (callback !== null) fired.push(callback.args);
     },
     takeGoalMarks: () => new Map(),
+    translateTarget: () => 'auto',
+    onTranslateTarget: () => {},
     onDismiss: () => undefined,
     cue: () => undefined,
   });

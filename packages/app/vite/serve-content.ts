@@ -21,6 +21,7 @@ const CONTENT_ROOTS = new Set([
   'gui',
   'goods',
   'terrain-palettes',
+  'translate-models',
 ]);
 
 const HTTP_PARTIAL_CONTENT = 206;

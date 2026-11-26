@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { localizedMapText, mapStringLookup } from '../../../src/game/map/strings.js';
+import {
+  localizedMapText,
+  localizedMapTextWithLang,
+  mapStringLookup,
+  mapStringLookupWithLang,
+} from '../../../src/game/map/strings.js';
 
 describe('mapStringLookup', () => {
   const strings = {
@@ -31,5 +36,27 @@ describe('localizedMapText', () => {
     expect(localizedMapText({ eng: 'Only English' }, 'pol')).toBe('Only English');
     expect(localizedMapText({ rus: 'НОВАЯ' }, 'eng')).toBe('НОВАЯ');
     expect(localizedMapText(undefined, 'eng')).toBeUndefined();
+  });
+});
+
+describe('localizedMapTextWithLang', () => {
+  it("names the language each text read in, and the reader's own as null", () => {
+    const name = { pol: 'ARABSKIE WYSPY', eng: 'ARABIAN ISLANDS' };
+    expect(localizedMapTextWithLang(name, 'eng')).toEqual({ text: 'ARABIAN ISLANDS', lang: null });
+    expect(localizedMapTextWithLang(name, 'ger')).toEqual({ text: 'ARABSKIE WYSPY', lang: 'pol' });
+    expect(localizedMapTextWithLang(undefined, 'eng')).toBeUndefined();
+  });
+});
+
+describe('mapStringLookupWithLang', () => {
+  const strings = { pol: { '1': 'Drewno dla sąsiada' }, eng: { '1': 'Timber for the neighbour' } };
+
+  it('carries the table language beside the string', () => {
+    const german = mapStringLookupWithLang(strings, 'ger');
+    expect(german(1)).toEqual({ text: 'Drewno dla sąsiada', lang: 'pol' }); // the registry order reads Polish first
+    const english = mapStringLookupWithLang(strings, 'eng');
+    expect(english(1)).toEqual({ text: 'Timber for the neighbour', lang: null });
+    expect(english(9)).toBeUndefined();
+    expect(mapStringLookupWithLang(null, 'pol')(1)).toBeUndefined();
   });
 });

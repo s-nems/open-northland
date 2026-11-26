@@ -89,6 +89,10 @@ export const COLOR_BLIND_FILTERS: readonly ColorBlindFilter[] = [
 export const CURSOR_CONFINES = ['never', 'fullscreen', 'always'] as const;
 export type CursorConfine = (typeof CURSOR_CONFINES)[number];
 
+/** What the mission book's translate menu reads a map's texts in: the reader's own language, the
+ *  map's original, or one of the game's languages. */
+export type MissionBookLanguage = 'auto' | 'original' | Locale;
+
 export const SCROLL_SPEED_MIN = 0.5;
 export const SCROLL_SPEED_MAX = 3;
 export const DEFAULT_SCROLL_SPEED = 1.5;
@@ -206,6 +210,13 @@ export interface MenuSettings {
   /** Which sound banks a starting game loads: FLAC or the smaller Opus encoding. */
   readonly soundQuality: SoundQuality;
   readonly language: Locale;
+  /** Mission texts a map ships in no language the reader reads are translated on the device, with
+   *  the offline engine Firefox Translate uses. Off, they keep their authored language. */
+  readonly mapTextTranslation: boolean;
+  /** What the mission book reads a map's texts in: the reader's own language (`auto`, which the
+   *  map-text-translation option gates), the map's original, or a language picked in the book's
+   *  translate menu. */
+  readonly missionBookLanguage: MissionBookLanguage;
   readonly keyboardScrollSpeed: number;
   readonly edgeScrollSpeed: number;
   readonly dragScrollSpeed: number;
@@ -304,6 +315,8 @@ export function defaultSettings(): MenuSettings {
     narrationRate: 1,
     soundQuality: defaultSoundQuality(),
     language: defaultLocale(),
+    mapTextTranslation: true,
+    missionBookLanguage: 'auto',
     keyboardScrollSpeed: DEFAULT_SCROLL_SPEED,
     edgeScrollSpeed: DEFAULT_SCROLL_SPEED,
     dragScrollSpeed: DEFAULT_SCROLL_SPEED,
@@ -523,6 +536,16 @@ export function parseStoredSettings(raw: string | null): MenuSettings {
     narrationRate: isNarrationRate(record.narrationRate) ? record.narrationRate : defaults.narrationRate,
     soundQuality: SOUND_QUALITIES.find((quality) => quality === record.soundQuality) ?? defaults.soundQuality,
     language: isLocale(record.language) ? record.language : defaults.language,
+    mapTextTranslation:
+      typeof record.mapTextTranslation === 'boolean'
+        ? record.mapTextTranslation
+        : defaults.mapTextTranslation,
+    missionBookLanguage:
+      record.missionBookLanguage === 'original' ||
+      record.missionBookLanguage === 'auto' ||
+      isLocale(record.missionBookLanguage)
+        ? record.missionBookLanguage
+        : defaults.missionBookLanguage,
     keyboardScrollSpeed: clampScrollSpeed(record.keyboardScrollSpeed),
     edgeScrollSpeed: clampScrollSpeed(record.edgeScrollSpeed),
     dragScrollSpeed: clampScrollSpeed(record.dragScrollSpeed),
