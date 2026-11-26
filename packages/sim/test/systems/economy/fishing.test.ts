@@ -609,6 +609,46 @@ describe('fishing', () => {
     expect([beyond, within].map((e) => sim.world.get(e, FishSwarm).count)).toEqual([0, 2]);
   });
 
+  it("has a full swarm off its water's number found a swarm with the map's number that fishers can fish", () => {
+    const width = 40;
+    const height = 6;
+    const laneContinent = 7;
+    const authoredContinent = 8;
+    const typeIds = new Array<number>(width * height).fill(0);
+    const groundKinds = new Array<number>(width * height).fill(GROUND_LAND);
+    const waterContinents = new Array<number>(width * height).fill(1);
+    for (let y = 0; y < height; y++) {
+      for (let x = 2; x < width; x++) {
+        const node = y * width + x;
+        typeIds[node] = 1;
+        groundKinds[node] = GROUND_WATER;
+        waterContinents[node] = laneContinent;
+      }
+    }
+    const map = { resolution: 'half-cell' as const, width, height, typeIds, groundKinds, waterContinents };
+    const sim = new Simulation({ seed: 1, content: fishingContent(), map });
+    const terrain = sim.terrain;
+    if (terrain === undefined) throw new Error('test needs terrain');
+    const [first, second] = addFishSwarms(sim.world, terrain, [
+      { hx: 10, hy: 3, count: 30, continent: authoredContinent },
+      { hx: 14, hy: 3, count: 30, continent: authoredContinent },
+    ]);
+    if (first === undefined || second === undefined) throw new Error('fish swarms did not spawn');
+    const water = terrain.nodeAt(3, 3);
+    expect(takeFishNear(sim.world, terrain, water, laneContinent)).toBeNull();
+
+    fishReproductionSystem(sim.world, { ...ctxOf(sim), tick: FISH_REPRODUCTION_TICKS });
+
+    const caught = takeFishNear(sim.world, terrain, water, laneContinent);
+    expect(caught).not.toBeNull();
+    // The first founds a swarm with one fish on its own spot; the second, finding it, feeds it.
+    expect(sim.world.canonicalQuery(FishSwarm).filter((e) => e !== first && e !== second)).toEqual([caught]);
+    if (caught === null) throw new Error('no swarm was founded');
+    expect(sim.world.get(caught, Position)).toEqual(sim.world.get(first, Position));
+    expect(sim.world.get(caught, FishSwarm)).toMatchObject({ count: 1, continent: laneContinent });
+    expect([first, second].map((e) => sim.world.get(e, FishSwarm).count)).toEqual([30, 30]);
+  });
+
   it('reselects a nearby nonempty swarm when a planned target was depleted by another fisher', () => {
     const sim = new Simulation({ seed: 1, content: fishingContent(), map: grassNodeMap(20, 8) });
     const terrain = sim.terrain;

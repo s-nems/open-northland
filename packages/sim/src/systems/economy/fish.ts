@@ -1,5 +1,5 @@
 import { type ContentSet, footprintCellDx } from '@open-northland/data';
-import { FishSwarm, Position } from '../../components/index.js';
+import { FishSwarm, Position, type PositionState, positionRecord } from '../../components/index.js';
 import { contentIndex } from '../../core/content-index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import { hexDistance, nodeOfPosition, positionOfNode } from '../../nav/halfcell.js';
@@ -29,6 +29,8 @@ export function workplaceShoreSearchRadius(content: ContentSet, workplace: House
 export const FISH_REPRODUCTION_TICKS = 2160;
 /** A full swarm feeds a swarm fewer than this many map points away (original behavior). */
 export const FISH_SPREAD_RADIUS = 16;
+/** The fish a swarm founded by a full one starts with (original behavior). */
+const FOUNDED_SWARM_FISH = 1;
 
 /** The raw fish, the fisher's work and experience good whatever form lands in hand. Resolved by slug so
  *  modded numeric ids stay valid. */
@@ -115,8 +117,11 @@ export function takeFishNear(
 /**
  * Once per {@link FISH_REPRODUCTION_TICKS}, in swarm order, a positive swarm below the cap gains one fish
  * and a full one gives one to its nearest non-full swarm on the same water within
- * {@link FISH_SPREAD_RADIUS}, an emptied one included. Original behavior; the pass reads each count as
- * it reaches the swarm, so a swarm fed earlier in the pass grows again on its own visit.
+ * {@link FISH_SPREAD_RADIUS}, an emptied one included. The water is the map's number under the full
+ * swarm, not its own: when no swarm of that number lies within the radius, it founds one with one fish
+ * on its own spot, so an authored swarm whose number differs from its water's still feeds a swarm the
+ * fishers there can catch. Original behavior; the pass reads each count as it reaches the swarm, so a
+ * swarm fed earlier in the pass grows again on its own visit, while a founded one first grows next pass.
  */
 export const fishReproductionSystem: System = (world, ctx) => {
   if (ctx.tick % FISH_REPRODUCTION_TICKS !== 0) return;
@@ -127,27 +132,53 @@ export const fishReproductionSystem: System = (world, ctx) => {
       world.mut(e, FishSwarm).count = count + 1;
       continue;
     }
-    const fed = nearestUnfilledSwarm(world, e);
-    if (fed !== null) world.mut(fed, FishSwarm).count += 1;
+    spreadFrom(world, ctx.terrain, e);
   }
 };
 
-/** The non-full swarm on `full`'s water nearest it within {@link FISH_SPREAD_RADIUS}, the lower id on a tie. */
-function nearestUnfilledSwarm(world: World, full: Entity): Entity | null {
+/**
+ * Give one fish from `full` to the non-full swarm of its water nearest it within
+ * {@link FISH_SPREAD_RADIUS}, the lower id on a tie, or found a swarm with one fish when no swarm of that
+ * water, `full` itself or a full one included, lies within the radius.
+ */
+function spreadFrom(world: World, terrain: TerrainGraph | undefined, full: Entity): void {
   const at = world.get(full, Position);
   const origin = nodeOfPosition(at.x, at.y);
-  const continent = world.get(full, FishSwarm).continent;
+  const node = terrain?.nodeAtClamped(origin.hx, origin.hy);
+  const continent =
+    (node === undefined ? undefined : terrain?.waterContinents?.[node]) ??
+    world.get(full, FishSwarm).continent;
   let best: Entity | null = null;
   let bestDistance = FISH_SPREAD_RADIUS;
+  let sameWater = false;
   for (const entity of fishSwarmsNearNode(world, origin.hx, origin.hy, FISH_SPREAD_RADIUS - 1)) {
     const swarm = world.get(entity, FishSwarm);
-    if (swarm.count >= MAX_FISH_PER_SWARM || swarm.continent !== continent) continue;
+    if (swarm.continent !== continent) continue;
     const position = world.get(entity, Position);
     const distance = hexDistance(origin, nodeOfPosition(position.x, position.y));
-    if (distance < bestDistance) {
+    if (distance >= FISH_SPREAD_RADIUS) continue;
+    sameWater = true;
+    if (swarm.count < MAX_FISH_PER_SWARM && distance < bestDistance) {
       best = entity;
       bestDistance = distance;
     }
   }
-  return best;
+  if (best !== null) {
+    world.mut(best, FishSwarm).count += 1;
+  } else if (!sameWater && terrain !== undefined && node !== undefined) {
+    foundSwarm(world, terrain, at, node, continent);
+  }
+}
+
+/** A new swarm of one fish at `at`, standing on `water` of `continent`, its shore resolved like an authored one's. */
+function foundSwarm(
+  world: World,
+  terrain: TerrainGraph,
+  at: Readonly<PositionState>,
+  water: NodeId,
+  continent: number,
+): void {
+  const e = world.create();
+  world.add(e, Position, positionRecord(at));
+  world.add(e, FishSwarm, { count: FOUNDED_SWARM_FISH, continent, shore: nearestShore(terrain, water) });
 }
