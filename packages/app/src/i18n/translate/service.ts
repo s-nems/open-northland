@@ -149,7 +149,11 @@ export function createMapTextTranslator(): MapTextTranslator {
     worker.addEventListener('messageerror', () => {
       diag.warn('translate', 'a bergamot worker message failed to clone');
     });
-    worker.addEventListener('error', () => reset('crashed'));
+    worker.addEventListener('error', (event: ErrorEvent) => {
+      const detail = event.message || 'unknown worker error';
+      const location = event.filename ? ` at ${event.filename}:${event.lineno}:${event.colno}` : '';
+      reset(`crashed: ${detail}${location}`);
+    });
     return worker;
   };
 
@@ -208,9 +212,11 @@ export function createMapTextTranslator(): MapTextTranslator {
         return job.texts.map((_, index) => result[index]?.target.text ?? '');
       })
       .then(job.resolve, (error: unknown) => {
-        diag.warn('translate', `translating ${job.texts.length} texts from ${job.from} failed`, {
-          error: error instanceof Error ? error.message : String(error),
-        });
+        const detail = error instanceof Error ? error.message : String(error);
+        diag.warn(
+          'translate',
+          `translating ${job.texts.length} texts from ${job.from} failed: ${detail}`,
+        );
         job.reject(error instanceof Error ? error : new Error(String(error)));
       });
   };
