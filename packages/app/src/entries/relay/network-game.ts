@@ -362,6 +362,7 @@ export function renderNetworkGame(
       driver: relayedSessionDriver(session.driver, client),
       offThreadTickCost: session.offThreadTickCost,
       captureSaveFile: session.captureSaveFile,
+      captureReplayFile: world.hosted.worker.captureReplayFile,
       sharedClock: true,
       confirmedMatchEnd: () => deliveredMatchEnd(client, session.host),
       networkSave: networkSaveSession(client, worldId),

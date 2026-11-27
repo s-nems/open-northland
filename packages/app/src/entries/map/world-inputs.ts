@@ -172,5 +172,17 @@ export function buildRelayedMapWorld(
             ),
           },
         }));
-  return { ...world, generation: save === null ? DESCRIPTOR_WORLD : save.header.tick, initialSeatSetups };
+  // The session keeps its own recording, as a single-player world does, unless the relay restored it
+  // from a snapshot: that state exists as a parsed sim here, not as the text a playback would
+  // restore it from, so a capture of it could never be played back.
+  const replaySource =
+    snapshot === null
+      ? { descriptor: inputs.session, fromTick: world.sim.tick, initialSaveText: saveText }
+      : undefined;
+  return {
+    ...world,
+    ...(replaySource !== undefined ? { replaySource } : {}),
+    generation: save === null ? DESCRIPTOR_WORLD : save.header.tick,
+    initialSeatSetups,
+  };
 }
