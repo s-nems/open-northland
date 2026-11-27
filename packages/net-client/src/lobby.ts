@@ -98,13 +98,30 @@ export class RelayLobby {
     this.send({ kind: 'listRooms' });
   }
 
-  /** `password` locks the room: every later join must name it. */
-  createRoom(settings: RoomSettings, seats: readonly RoomSeatSetup[], password?: string): void {
-    this.send({ kind: 'createRoom', settings, seats, ...(password === undefined ? {} : { password }) });
+  /** `password` locks the room: every later join must name it. A given `noReplay` carries the
+   *  player's refusal as it stands now, so a changed choice reaches the room without a reconnect. */
+  createRoom(
+    settings: RoomSettings,
+    seats: readonly RoomSeatSetup[],
+    password?: string,
+    noReplay?: boolean,
+  ): void {
+    this.send({
+      kind: 'createRoom',
+      settings,
+      seats,
+      ...(password === undefined ? {} : { password }),
+      ...(noReplay === undefined ? {} : { noReplay: noReplay === true }),
+    });
   }
 
-  joinRoom(roomId: string, password?: string): void {
-    this.send({ kind: 'joinRoom', roomId, ...(password === undefined ? {} : { password }) });
+  joinRoom(roomId: string, password?: string, noReplay?: boolean): void {
+    this.send({
+      kind: 'joinRoom',
+      roomId,
+      ...(password === undefined ? {} : { password }),
+      ...(noReplay === undefined ? {} : { noReplay: noReplay === true }),
+    });
   }
 
   leaveRoom(): void {

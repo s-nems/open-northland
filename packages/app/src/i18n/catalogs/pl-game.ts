@@ -285,6 +285,7 @@ export const plGame = {
     matchReplaySave: 'Zapisz powtórkę',
     matchReplaySaving: 'Nagrywanie…',
     matchReplaySaved: 'Powtórka zapisana.',
+    matchReplayCapturesDenied: 'Nagrania są zablokowane w tym meczu.',
     matchReplaySaveFailed: 'Zapisanie nagrania nie powiodło się.',
     matchTribesKicker: 'Losy plemion',
     matchWatchHint: 'Możesz obserwować mapę i pozostałych graczy bez wydawania rozkazów.',

@@ -7,11 +7,12 @@ import { browserSaveDownload, type PickedSaveFile, pickedSaveOf } from './file-a
 import { displayNameOf } from './list-model.js';
 import { relaunchSearch } from './relaunch.js';
 import type { ReplayCaptureFile, ReplayCaptureOptions } from './replay.js';
+import { REPLAY_CAPTURE_DENIED } from './replay.js';
 import type { ReplaySlotInfo, ReplayStore } from './replay-store.js';
 import type { SaveSlotInfo, SaveStore } from './store.js';
 import type { SavedView } from './view-state.js';
 
-export type SaveOutcome = { kind: 'saved' } | { kind: 'failed' };
+export type SaveOutcome = { kind: 'saved' } | { kind: 'failed' } | { kind: 'denied' };
 
 export type LoadOutcome =
   | { kind: 'loading' }
@@ -210,7 +211,8 @@ export function saveLoadSession(deps: SaveLoadDeps): SaveLoadSession {
         return { kind: 'saved' };
       } catch (err) {
         diag.warn('save', `writing the session replay failed: ${String(err)}`);
-        return { kind: 'failed' };
+        // The session's own denial is no broken save: the windows say the recording is locked.
+        return String(err).includes(REPLAY_CAPTURE_DENIED) ? { kind: 'denied' } : { kind: 'failed' };
       }
     },
 

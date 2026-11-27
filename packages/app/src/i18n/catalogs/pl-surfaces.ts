@@ -775,6 +775,7 @@ export const plSurfaces = {
     saveReplayHint: 'Nagrywa całą sesję: początek i każdą komendę, odtwarzane od pierwszego ticku mapy.',
     replaySaving: 'Zapisywanie nagrania…',
     replaySaved: 'Powtórka zapisana.',
+    replayCapturesDenied: 'Nagrania powtórek są zablokowane w tym meczu.',
     replaySaveFailed: 'Zapisanie nagrania nie powiodło się.',
     replayPlay: 'Obejrzyj',
     replayPreparing: 'Przygotowywanie…',

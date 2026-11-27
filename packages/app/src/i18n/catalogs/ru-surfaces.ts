@@ -808,6 +808,7 @@ export const ruSurfaces = {
     saveReplayHint: 'Записывает всю сессию: начало и каждую команду, воспроизводится с первого такта карты.',
     replaySaving: 'Сохранение записи…',
     replaySaved: 'Повтор сохранён.',
+    replayCapturesDenied: 'Запись повторов для этого матча запрещена.',
     replaySaveFailed: 'Не удалось сохранить запись.',
     replayPlay: 'Смотреть',
     replayPreparing: 'Подготовка…',

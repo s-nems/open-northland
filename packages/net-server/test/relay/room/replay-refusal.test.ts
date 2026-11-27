@@ -31,6 +31,35 @@ describe('a member that refuses recordings', () => {
     expect(s.a.last('start')?.session.replayCaptures).toBe(false);
   });
 
+  it('follows the refusal the room entry carries, so a changed choice reaches the room it hosts', () => {
+    const s = stage();
+    // The host's hello refused recordings, its room entry does not: the entry is the newest word.
+    const a = s.introduce(TOKEN_A, 'Ania', undefined, true);
+    const b = s.introduce(TOKEN_B, 'Bartek');
+    a.send({ kind: 'createRoom', settings: SETTINGS, seats: SEATS, noReplay: false });
+    b.send({ kind: 'joinRoom', roomId: roomIdOf(a) });
+    a.send({ kind: 'claimSeat', player: 0 });
+    b.send({ kind: 'claimSeat', player: 1 });
+    for (const peer of [a, b]) peer.send({ kind: 'setReady', ready: true });
+    a.send({ kind: 'start' });
+    expect('replayCaptures' in (b.last('start')?.session ?? {})).toBe(false);
+    expect('replayCaptures' in (a.last('start')?.session ?? {})).toBe(false);
+  });
+
+  it("turns a refusal a joining member's entry carries into the started session's denial", () => {
+    const s = stage();
+    const a = s.introduce(TOKEN_A, 'Ania');
+    const b = s.introduce(TOKEN_B, 'Bartek');
+    a.send({ kind: 'createRoom', settings: SETTINGS, seats: SEATS });
+    b.send({ kind: 'joinRoom', roomId: roomIdOf(a), noReplay: true });
+    a.send({ kind: 'claimSeat', player: 0 });
+    b.send({ kind: 'claimSeat', player: 1 });
+    for (const peer of [a, b]) peer.send({ kind: 'setReady', ready: true });
+    a.send({ kind: 'start' });
+    expect(b.last('start')?.session.replayCaptures).toBe(false);
+    expect(a.last('start')?.session.replayCaptures).toBe(false);
+  });
+
   it('leaves a room without a refusal recording, so no field denies anything', () => {
     const s = seatedRoom(false);
     s.a.send({ kind: 'start' });

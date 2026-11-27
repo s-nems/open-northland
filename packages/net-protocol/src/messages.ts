@@ -296,8 +296,17 @@ export type ClientMessage =
       readonly settings: RoomSettings;
       readonly seats: readonly RoomSeatSetup[];
       readonly password?: string;
+      /** The player's refusal as it stands when the room is entered: a choice made while connected
+       *  reaches the room it hosts without a reconnect. */
+      readonly noReplay?: boolean;
     }
-  | { readonly kind: 'joinRoom'; readonly roomId: string; readonly password?: string }
+  | {
+      readonly kind: 'joinRoom';
+      readonly roomId: string;
+      readonly password?: string;
+      /** The player's refusal as it stands when the room is entered, as `createRoom` carries it. */
+      readonly noReplay?: boolean;
+    }
   | { readonly kind: 'leaveRoom' }
   | { readonly kind: 'claimSeat'; readonly player: number | null }
   | {

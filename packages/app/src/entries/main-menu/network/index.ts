@@ -14,6 +14,7 @@ import {
 } from '../../../net/relay-reason.js';
 import { runningGame } from '../../../update/outdated.js';
 import { nextPaint } from '../../../view/next-paint.js';
+import { readStoredSettings } from '../../../view/settings/store.js';
 import { relayIdentity, rememberFlag } from '../../relay/identity.js';
 import { node } from '../dom.js';
 import { type MapSelectItem, mapSourceItem } from '../map-select/model.js';
@@ -156,7 +157,7 @@ export function networkScreen(
       if (current === null || !current.connected || busy) return;
       busy = true;
       sync();
-      current.client.joinRoom(roomId, password);
+      current.client.joinRoom(roomId, password, readStoredSettings().replayOptOut === true);
     },
   });
   const head = screenHead('multiplayer', open);
@@ -171,7 +172,12 @@ export function networkScreen(
         const creation = await prepareRoomCreation(choice, params);
         if (disposed || mine !== generation || connection !== current || !current.connected) return;
         assets?.prepare(creation.initial, creation.handle);
-        current.client.createRoom(creation.settings, creation.seats, choice.password);
+        current.client.createRoom(
+          creation.settings,
+          creation.seats,
+          choice.password,
+          readStoredSettings().replayOptOut === true,
+        );
       } finally {
         busy = false;
         sync();

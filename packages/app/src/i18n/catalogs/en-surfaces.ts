@@ -778,6 +778,7 @@ export const enSurfaces = {
       "Records the whole session: its start and every command, replayed from the map's first tick.",
     replaySaving: 'Recording…',
     replaySaved: 'Replay saved.',
+    replayCapturesDenied: 'Replay recordings are denied for this match.',
     replaySaveFailed: 'Recording the replay failed.',
     replayPlay: 'Watch',
     replayPreparing: 'Preparing…',

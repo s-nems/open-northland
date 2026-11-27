@@ -749,6 +749,7 @@ export const chtSurfaces = {
     saveReplayHint: '記錄整場遊戲：起點與每條指令，自地圖首個時鐘刻重播。',
     replaySaving: '正在儲存錄影…',
     replaySaved: '錄影已儲存。',
+    replayCapturesDenied: '本局禁止錄製錄影。',
     replaySaveFailed: '儲存錄影失敗。',
     replayPlay: '觀看',
     replayPreparing: '準備中…',

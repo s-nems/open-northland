@@ -288,6 +288,7 @@ export const enGame = {
     matchReplaySave: 'Save replay',
     matchReplaySaving: 'Recording…',
     matchReplaySaved: 'Replay saved.',
+    matchReplayCapturesDenied: 'Recordings are denied for this match.',
     matchReplaySaveFailed: 'Recording the replay failed.',
     matchTribesKicker: 'The fate of the tribes',
     matchWatchHint: 'You can watch the map and the other players without issuing orders.',

@@ -823,6 +823,7 @@ export const itSurfaces = {
       'Registra la sessione completa: inizio e ogni comando, riprodotti dal primo tick della mappa.',
     replaySaving: 'Salvataggio della registrazione…',
     replaySaved: 'Replay salvato.',
+    replayCapturesDenied: 'Le registrazioni dei replay sono negate per questa partita.',
     replaySaveFailed: 'Salvataggio della registrazione non riuscito.',
     replayPlay: 'Guarda',
     replayPreparing: 'Preparazione…',

@@ -283,6 +283,7 @@ export const chtGame = {
     matchReplaySave: '儲存錄影',
     matchReplaySaving: '正在錄製…',
     matchReplaySaved: '錄影已儲存。',
+    matchReplayCapturesDenied: '本局禁止錄製。',
     matchReplaySaveFailed: '錄製錄影失敗。',
     matchTribesKicker: '各族的命運',
     matchWatchHint: '你可以觀看地圖與其他玩家，但不能下達命令。',

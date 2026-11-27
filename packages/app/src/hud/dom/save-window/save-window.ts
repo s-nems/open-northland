@@ -116,7 +116,11 @@ export function createSaveWindow(
         progress(copy.replaySaving);
         await nextPaint();
         const outcome = await deps.saveLoad.saveReplay();
-        return outcome.kind === 'saved' ? copy.replaySaved : copy.replaySaveFailed;
+        return outcome.kind === 'saved'
+          ? copy.replaySaved
+          : outcome.kind === 'denied'
+            ? copy.replayCapturesDenied
+            : copy.replaySaveFailed;
       }),
     );
   }

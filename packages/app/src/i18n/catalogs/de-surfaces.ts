@@ -822,6 +822,7 @@ export const deSurfaces = {
       'Zeichnet die gesamte Sitzung auf: den Anfang und jeden Befehl, abgespielt ab dem ersten Tick der Karte.',
     replaySaving: 'Aufnahme wird gesichert…',
     replaySaved: 'Replay gesichert.',
+    replayCapturesDenied: 'Replay-Aufnahmen sind für diese Partie gesperrt.',
     replaySaveFailed: 'Sichern der Aufnahme fehlgeschlagen.',
     replayPlay: 'Ansehen',
     replayPreparing: 'Wird vorbereitet…',

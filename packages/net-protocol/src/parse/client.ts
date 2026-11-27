@@ -84,12 +84,16 @@ export function parseClientMessage(value: unknown): ClientMessage {
         settings: parseRoomSettings(raw.settings, 'createRoom.settings'),
         seats: parseSeatSetups(raw.seats, 'createRoom.seats'),
         ...parsePassword(raw, 'createRoom.password'),
+        // Absent is no word on the subject, which leaves the hello's refusal standing; a sent
+        // `false` is a retraction.
+        ...(raw.noReplay === undefined ? {} : { noReplay: raw.noReplay === true }),
       };
     case 'joinRoom':
       return {
         kind,
         roomId: asString(raw.roomId, 'joinRoom.roomId', MAX_ROOM_ID_LENGTH),
         ...parsePassword(raw, 'joinRoom.password'),
+        ...(raw.noReplay === undefined ? {} : { noReplay: raw.noReplay === true }),
       };
     case 'claimSeat':
       return { kind, player: raw.player === null ? null : parseSeatIndex(raw.player, 'claimSeat.player') };

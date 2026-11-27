@@ -748,6 +748,7 @@ export const chsSurfaces = {
     saveReplayHint: '记录整局游戏：起点与每条指令，从地图首个时钟刻回放。',
     replaySaving: '正在保存录像…',
     replaySaved: '录像已保存。',
+    replayCapturesDenied: '本局禁止录制录像。',
     replaySaveFailed: '保存录像失败。',
     replayPlay: '观看',
     replayPreparing: '准备中…',

@@ -288,6 +288,7 @@ export const itGame = {
     matchReplaySave: 'Salva replay',
     matchReplaySaving: 'Registrazione…',
     matchReplaySaved: 'Replay salvato.',
+    matchReplayCapturesDenied: 'Le registrazioni sono negate per questa partita.',
     matchReplaySaveFailed: 'Registrazione del replay non riuscita.',
     matchTribesKicker: 'Il destino delle tribù',
     matchWatchHint: 'Puoi osservare la mappa e gli altri giocatori senza impartire ordini.',

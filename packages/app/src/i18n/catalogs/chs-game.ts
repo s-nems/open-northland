@@ -283,6 +283,7 @@ export const chsGame = {
     matchReplaySave: '保存录像',
     matchReplaySaving: '正在录制…',
     matchReplaySaved: '录像已保存。',
+    matchReplayCapturesDenied: '本局禁止录制。',
     matchReplaySaveFailed: '录制录像失败。',
     matchTribesKicker: '各族的命运',
     matchWatchHint: '你可以观看地图和其他玩家，但无法下达命令。',

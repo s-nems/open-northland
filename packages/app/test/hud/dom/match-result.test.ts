@@ -34,7 +34,7 @@ function setup(
     localPlayer?: number | null;
     playerNickOf?: (player: number) => string | undefined;
     holdsSeat?: () => boolean;
-    saveReplay?: { save: () => Promise<'saved' | 'failed'>; auto: () => boolean };
+    saveReplay?: { save: () => Promise<'saved' | 'failed' | 'denied'>; auto: () => boolean };
   } = {},
 ) {
   vi.stubGlobal(
@@ -477,6 +477,18 @@ it('lets the player retry a replay capture that failed', async () => {
   await vi.waitFor(() => expect(saveButton?.textContent).toBe(copy.matchReplaySaved));
   expect(save).toHaveBeenCalledTimes(2);
   expect(saveButton?.disabled).toBe(true);
+});
+
+it('says the recording is locked when the session denies captures', async () => {
+  const save = vi.fn(async () => 'denied' as const);
+  const copy = messages().hud;
+  const h = setup(false, () => [], { saveReplay: { save, auto: () => false } });
+  h.overlay.announce('victory');
+  const saveButton = h.body.buttons()[1];
+  saveButton?.click();
+  await vi.waitFor(() => expect(saveButton?.textContent).toBe(copy.matchReplayCapturesDenied));
+  expect(saveButton?.disabled).toBe(false);
+  expect(save).toHaveBeenCalledOnce();
 });
 
 it('records the replay on its own once at the result, when recording is turned on', async () => {

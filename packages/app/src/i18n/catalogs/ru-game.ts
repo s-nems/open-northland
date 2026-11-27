@@ -311,6 +311,7 @@ export const ruGame = {
     matchReplaySave: 'Сохранить повтор',
     matchReplaySaving: 'Запись…',
     matchReplaySaved: 'Повтор сохранён.',
+    matchReplayCapturesDenied: 'Запись для этого матча запрещена.',
     matchReplaySaveFailed: 'Не удалось записать повтор.',
     matchTribesKicker: 'Судьба племён',
     matchWatchHint: 'Можно наблюдать за картой и другими игроками, не отдавая приказов.',

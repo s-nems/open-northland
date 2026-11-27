@@ -612,6 +612,9 @@ export class Relay {
       case 'createRoom': {
         if (client.room !== null) return { code: 'alreadyInRoom' };
         if (this.rooms.size >= this.maxRooms) return { code: 'relayFull', rooms: this.maxRooms };
+        // The entry carries the player's refusal as it stands now, so a choice made while connected
+        // reaches the room it hosts without a reconnect; absent is no word, keeping the hello's.
+        if (message.noReplay !== undefined) client.noReplay = message.noReplay;
         const member = this.newMember(client, client.nick);
         const room = new Room(
           this.newRoomId(),
@@ -633,6 +636,9 @@ export class Relay {
         const room = this.rooms.get(message.roomId);
         if (room === undefined) return { code: 'noRoom' };
         if (client.token === null) throw new Error('a joining client must have introduced itself');
+        // The entry carries the player's refusal as it stands now, as a hosted room's entry does;
+        // absent is no word, keeping the hello's.
+        if (message.noReplay !== undefined) client.noReplay = message.noReplay;
         const entry = room.entryRefusal(
           client.token,
           client.connection.address,

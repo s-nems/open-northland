@@ -11,7 +11,11 @@ import { diag } from '../../diag/log.js';
 import { diagCadenceAt } from '../../diag/session.js';
 import { profiledInstrument, SystemProfile } from '../../diag/system-profile.js';
 import { compressSaveText, type SaveFile, saveFileOfDetached } from '../../view/runtime/save-load/codec.js';
-import { type ReplayCaptureFile, replayDocumentTextOf } from '../../view/runtime/save-load/replay.js';
+import {
+  REPLAY_CAPTURE_DENIED,
+  type ReplayCaptureFile,
+  replayDocumentTextOf,
+} from '../../view/runtime/save-load/replay.js';
 import type { SessionHost } from '../host.js';
 import { inlineSessionHost } from '../inline-host.js';
 import { changedFacts, WorldFactsReader } from './facts.js';
@@ -664,9 +668,9 @@ export class ServedSession<E> {
           throw new Error('this session keeps no replay: its input is not its own command log');
         }
         // The descriptor's own denial: the session the relay started for a refusing member records
-        // nothing, whatever a client of it asks for.
+        // nothing, whatever a client of it asks for. The message names the lock, not a failure.
         if (this.replaySource.descriptor.replayCaptures === false) {
-          throw new Error('this session denies replay captures');
+          throw new Error(REPLAY_CAPTURE_DENIED);
         }
         // The log crosses as the text its queue already holds, joined into the document whole, so no
         // command ever materializes as an object on either side.
