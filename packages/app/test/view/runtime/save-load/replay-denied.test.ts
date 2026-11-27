@@ -1,18 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { type SaveLoadDeps, saveLoadSession } from '../../../../src/view/runtime/save-load/controller.js';
-import type { ReplayCaptureFile } from '../../../../src/view/runtime/save-load/replay.js';
+import { testContent } from '../../../../../sim/test/fixtures/content.js';
+import { saveLoadSession } from '../../../../src/view/runtime/save-load/controller.js';
 import { REPLAY_CAPTURE_DENIED } from '../../../../src/view/runtime/save-load/replay.js';
 import type { ReplayStore } from '../../../../src/view/runtime/save-load/replay-store.js';
-import type { SaveStore } from '../../../../src/view/runtime/save-load/store.js';
 
 /** The controller's denial handling: a capture the session refuses is its own outcome, worded as a
  *  lock by the windows, while any other capture fault stays an ordinary failure. */
-
-const captureDeniedWith = (message: string): SaveLoadDeps['captureReplayFile'] => {
-  return async () => {
-    throw new Error(message);
-  };
-};
 
 function sessionOf(denyWith: string) {
   const replayStore: ReplayStore = {
@@ -22,8 +15,16 @@ function sessionOf(denyWith: string) {
     remove: async () => undefined,
   };
   return saveLoadSession({
-    host: { mapFingerprint: null, content: { manifest: { version: 1 } } } as SaveLoadDeps['host'],
-    captureReplayFile: captureDeniedWith(denyWith) as (options: never) => Promise<ReplayCaptureFile>,
+    host: {
+      mapFingerprint: undefined,
+      content: testContent(),
+      exportSave: () => {
+        throw new Error('unexpected save export');
+      },
+    },
+    captureReplayFile: async () => {
+      throw new Error(denyWith);
+    },
     replayStore,
     loadOtherWorld: async () => undefined,
     worldToken: null,
@@ -39,7 +40,7 @@ function sessionOf(denyWith: string) {
       read: async () => null,
       write: async () => undefined,
       remove: async () => undefined,
-    } as SaveStore,
+    },
   });
 }
 

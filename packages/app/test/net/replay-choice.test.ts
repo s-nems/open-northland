@@ -1,6 +1,6 @@
 import { MessageChannel } from 'node:worker_threads';
 import { PROTOCOL_VERSION } from '@open-northland/net-protocol';
-import { afterEach, expect, it } from 'vitest';
+import { afterEach, it } from 'vitest';
 import { patchStoredSettings } from '../../src/view/settings/store.js';
 import { inProcessConnection, testLink, until } from '../support/net-worker/in-process-relay.js';
 

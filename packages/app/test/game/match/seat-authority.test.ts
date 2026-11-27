@@ -1,6 +1,6 @@
 import { MapScript, mapLobbySlots } from '@open-northland/data';
 import type { RoomSeatView } from '@open-northland/net-protocol';
-import { exportSaveGame } from '@open-northland/sim';
+import { exportSaveGame, serializeSaveGame } from '@open-northland/sim';
 import { expect, it } from 'vitest';
 import { buildRelayedMapWorld } from '../../../src/entries/map/world-inputs.js';
 import { assertMapRoomSeats } from '../../../src/game/match/session-roster.js';
@@ -16,7 +16,16 @@ const script = MapScript.parse({
   multiplayer: { hiddenSlots: [2] },
 });
 const session = mapSession(new URLSearchParams('map=test&player=0&seed=1'), mapLobbySlots(script));
-const boot = { map: null, ir: null, script, content: null, session, missions: null, saveText: null };
+const boot = {
+  map: null,
+  ir: null,
+  script,
+  content: null,
+  session,
+  missions: null,
+  saveText: null,
+  replayText: null,
+};
 
 it.each([
   [0, 'map-ai'],
@@ -30,14 +39,19 @@ it.each([
     ...session,
     seats: session.seats.map((seat) => (seat.player === player ? { ...seat, mode } : seat)),
   };
-  expect(() => buildRelayedMapWorld({ ...boot, session: forged }, null)).toThrow('control restrictions');
+  expect(() => buildRelayedMapWorld({ ...boot, session: forged }, null, null)).toThrow(
+    'control restrictions',
+  );
 });
 
 it('checks saved starts and reconnect snapshots against the same authored reservations', () => {
-  const source = buildRelayedMapWorld(boot, null).sim;
+  const source = buildRelayedMapWorld(boot, null, null).sim;
   const save = exportSaveGame(source);
+  const saveText = serializeSaveGame(save);
   const forged = { ...session, seats: session.seats.map((seat) => ({ ...seat, mode: 'human' as const })) };
-  expect(() => buildRelayedMapWorld({ ...boot, session: forged }, save)).toThrow('control restrictions');
+  expect(() => buildRelayedMapWorld({ ...boot, session: forged }, save, saveText)).toThrow(
+    'control restrictions',
+  );
   expect(() =>
     buildRelayedMapWorld(
       {
@@ -45,6 +59,7 @@ it('checks saved starts and reconnect snapshots against the same authored reserv
         session: { ...forged, initialSave: { tick: save.header.tick, fingerprint: 'a'.repeat(64) } },
       },
       save,
+      saveText,
     ),
   ).toThrow('control restrictions');
 });
