@@ -9,6 +9,7 @@ export type MenuScreen =
   | 'knowledge'
   | 'lobby'
   | 'load'
+  | 'replays'
   | 'settings'
   | 'credits';
 
@@ -27,7 +28,7 @@ export type MainNavItem =
   | {
       readonly id: Extract<
         MenuScreen,
-        'newGame' | 'load' | 'multiplayer' | 'catalogue' | 'knowledge' | 'settings' | 'credits'
+        'newGame' | 'load' | 'replays' | 'multiplayer' | 'catalogue' | 'knowledge' | 'settings' | 'credits'
       >;
       readonly kind: 'open';
     }
@@ -37,6 +38,7 @@ export type MainNavItem =
 export const MAIN_NAV: readonly MainNavItem[] = [
   { id: 'newGame', kind: 'open' },
   { id: 'load', kind: 'open' },
+  { id: 'replays', kind: 'open' },
   { id: 'multiplayer', kind: 'open' },
   { id: 'catalogue', kind: 'open' },
   { id: 'knowledge', kind: 'open' },

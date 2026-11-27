@@ -14,6 +14,9 @@ import './saves.css';
 export interface MenuSavesPanelOptions {
   /** The stored saves this panel offers out of all of them, newest first; all of them when absent. */
   readonly offered?: (slots: readonly SaveSlotInfo[]) => Promise<readonly SaveSlotInfo[]>;
+  /** The store the panel lists, reads and deletes through; the save store when absent, so the
+   *  replay screen rides the same sheet over its own recordings. */
+  readonly store?: SaveStore;
   readonly emptyHint: string;
   readonly onSelect: (slot: SaveSlotInfo | null) => void;
   /** Double click or Enter on a row. */
@@ -43,7 +46,7 @@ export interface MenuSavesPanel {
 export function menuSavesPanel(opts: MenuSavesPanelOptions): MenuSavesPanel {
   const copy = messages().saveList;
   const scope = new AbortController();
-  const store = browserSaveStore();
+  const store = opts.store ?? browserSaveStore();
   const host = element('div', 'main-menu__saves');
   const plane = createHudPlane(menuHudScale());
   window.addEventListener('resize', () => void plane.setUiScale(menuHudScale()), { signal: scope.signal });

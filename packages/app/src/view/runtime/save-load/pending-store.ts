@@ -15,19 +15,27 @@ function openPendingDb(): Promise<IDBDatabase> {
   return openDb(DB_NAME, (db) => db.createObjectStore(STORE_NAME));
 }
 
-/** What the store holds between the hand-off and the boot: the save and whether the world resumes
- *  running at once, which a sub-mission transition asks for and a load from the menu does not. */
-interface PendingSession {
-  readonly bytes: SaveBytes;
-  readonly resume: boolean;
-}
+/** What the store holds between the hand-off and the boot: a save the next boot restores (and whether
+ *  the world resumes running at once, which a sub-mission transition asks for and a load from the
+ *  menu does not), or a replay recording the next boot plays. */
+type PendingSession =
+  | { readonly kind: 'save'; readonly bytes: SaveBytes; readonly resume: boolean }
+  | { readonly kind: 'replay'; readonly bytes: SaveBytes };
 
 /** Stage a validated save file's bytes for the page reload that follows. */
 export async function storePendingLoad(bytes: SaveBytes, resume = false): Promise<void> {
+  await storePendingSession({ kind: 'save', bytes, resume });
+}
+
+/** Stage a validated replay file's bytes for the page reload that plays it. */
+export async function storePendingReplay(bytes: SaveBytes): Promise<void> {
+  await storePendingSession({ kind: 'replay', bytes });
+}
+
+async function storePendingSession(session: PendingSession): Promise<void> {
   const db = await openPendingDb();
   try {
     const txn = db.transaction(STORE_NAME, 'readwrite');
-    const session: PendingSession = { bytes, resume };
     txn.objectStore(STORE_NAME).put(session, ENTRY_KEY);
     await completed(txn);
   } finally {
@@ -49,7 +57,8 @@ export async function clearPendingLoad(): Promise<void> {
 
 /**
  * Read and delete the staged session in one transaction, so a boot that fails to restore it cannot
- * loop the failure; null on a normal fresh boot or over a record of another shape.
+ * loop the failure; null on a normal fresh boot or over a record of another shape. A record an older
+ * build staged without a kind is a save, the only shape it could write.
  */
 export async function takePendingSession(): Promise<PendingSession | null> {
   const db = await openPendingDb();
@@ -60,10 +69,13 @@ export async function takePendingSession(): Promise<PendingSession | null> {
     store.delete(ENTRY_KEY);
     await completed(txn);
     const value: unknown = read.result;
-    if (typeof value !== 'object' || value === null || !('bytes' in value) || !('resume' in value))
+    if (typeof value !== 'object' || value === null || !('bytes' in value) || !isSaveBytes(value.bytes)) {
       return null;
-    if (!isSaveBytes(value.bytes) || typeof value.resume !== 'boolean') return null;
-    return { bytes: value.bytes, resume: value.resume };
+    }
+    if ((value as Record<string, unknown>).kind === 'replay') return { kind: 'replay', bytes: value.bytes };
+    const resume = (value as Record<string, unknown>).resume;
+    if (typeof resume !== 'boolean') return null;
+    return { kind: 'save', bytes: value.bytes, resume };
   } finally {
     db.close();
   }

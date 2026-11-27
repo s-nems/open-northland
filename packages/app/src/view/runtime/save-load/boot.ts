@@ -2,6 +2,7 @@ import { parseSaveGame, type SaveGame } from '@open-northland/sim';
 import { diag } from '../../../diag/index.js';
 import { decodeSaveText, saveDocumentOf } from './codec.js';
 import { takePendingSession } from './pending-store.js';
+import { parseReplayDocument, type ReplayDocument } from './replay.js';
 
 /** Parse staged text through the same seam that accepted it, and pin it to this boot's world. */
 export function stagedSaveFrom(text: string, worldToken: string | null): SaveGame {
@@ -14,20 +15,30 @@ export function stagedSaveFrom(text: string, worldToken: string | null): SaveGam
   return save;
 }
 
+/** A staged replay, with the text it was staged as: the boot hands it on as one string, where the
+ *  parsed document's log would be cloned object by object. */
+export interface StagedReplay {
+  readonly document: ReplayDocument;
+  readonly text: string;
+}
+
 /** A staged save, with the text it was staged as: a host on another thread takes the text, which
- *  crosses as one string where the parsed save is cloned object by object. */
+ *  crosses as one string where the parsed save is cloned object by object. A staged replay carries
+ *  the recording the boot plays instead. */
 export interface StagedSession {
   readonly save: SaveGame | null;
   readonly text: string | null;
   readonly resume: boolean;
+  readonly replay: StagedReplay | null;
 }
 
-const NOTHING_STAGED: StagedSession = { save: null, text: null, resume: false };
+const NOTHING_STAGED: StagedSession = { save: null, text: null, resume: false, replay: null };
 
 /**
- * The staged save this boot must restore, or nothing staged for a fresh boot. Taking is destructive, so
- * any failure from here on throws for the entry's halt overlay rather than silently starting a fresh
- * world. An unreadable store degrades to a fresh boot: nothing was staged that could be lost.
+ * The staged session this boot must pick up - a save to restore or a replay to play - or nothing
+ * staged for a fresh boot. Taking is destructive, so any failure from here on throws for the entry's
+ * halt overlay rather than silently starting a fresh world. An unreadable store degrades to a fresh
+ * boot: nothing was staged that could be lost.
  */
 export async function takeStagedSession(worldToken: string | null): Promise<StagedSession> {
   let pending: Awaited<ReturnType<typeof takePendingSession>>;
@@ -39,5 +50,16 @@ export async function takeStagedSession(worldToken: string | null): Promise<Stag
   }
   if (pending === null) return NOTHING_STAGED;
   const text = await decodeSaveText(pending.bytes);
-  return { save: stagedSaveFrom(text, worldToken), text, resume: pending.resume };
+  if (pending.kind === 'replay') {
+    const document = parseReplayDocument(text);
+    // The embedded restore save parses straight off the document; its text crosses to the worker as
+    // one string, where the parsed save would be cloned object by object.
+    return {
+      save: document.initialSave === null ? null : parseSaveGame(document.initialSave),
+      text: document.initialSave === null ? null : JSON.stringify(document.initialSave),
+      resume: false,
+      replay: { document, text },
+    };
+  }
+  return { save: stagedSaveFrom(text, worldToken), text, resume: pending.resume, replay: null };
 }

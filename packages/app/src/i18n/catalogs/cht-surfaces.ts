@@ -13,6 +13,7 @@ export const chtSurfaces = {
   mainMenu: {
     eyebrow: '維京時代的經濟策略遊戲',
     items: {
+      replays: '錄影',
       newGame: '新遊戲',
       load: '載入遊戲',
       multiplayer: '多人遊戲',
@@ -49,6 +50,7 @@ export const chtSurfaces = {
     // A back link names the screen it returns to, not "Back".
     backLabels: { main: '主選單', newGame: '地圖選擇' },
     screenTitles: {
+      replays: '錄影重播',
       multiplayer: '多人遊戲',
       newGame: '新遊戲',
       catalogue: '地圖庫',
@@ -738,6 +740,15 @@ export const chtSurfaces = {
   },
   // Shared by the in-game save panels and the main menu's load screen.
   saveList: {
+    saveReplay: '儲存錄影',
+    saveReplayHint: '記錄整場遊戲：起點與每條指令，自地圖首個時鐘刻重播。',
+    replaySaving: '正在儲存錄影…',
+    replaySaved: '錄影已儲存。',
+    replaySaveFailed: '儲存錄影失敗。',
+    replayPlay: '觀看',
+    replayPreparing: '準備中…',
+    replayCorrupt: '錄影已損壞，或來自其他版本。',
+    emptyReplayHint: '在遊戲選單中儲存錄影，即可在此觀看。',
     autosave: '自動存檔',
     autosaveOff: '關閉',
     autosaveEvery: '{n} 分鐘',

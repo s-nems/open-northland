@@ -6,6 +6,8 @@ import { evaluateSaveFile, type SaveRejection } from './evaluate.js';
 import { browserSaveDownload, type PickedSaveFile, pickedSaveOf } from './file-access.js';
 import { displayNameOf } from './list-model.js';
 import { relaunchSearch } from './relaunch.js';
+import type { ReplayCaptureFile, ReplayCaptureOptions } from './replay.js';
+import type { ReplaySlotInfo, ReplayStore } from './replay-store.js';
 import type { SaveSlotInfo, SaveStore } from './store.js';
 import type { SavedView } from './view-state.js';
 
@@ -22,6 +24,10 @@ export interface SaveLoadDeps {
   readonly captureSave?: (options: ExportSaveOptions) => SaveGame | Promise<SaveGame>;
   /** The same capture as file bytes, produced where the sim runs; preferred over `captureSave`. */
   readonly captureSaveFile?: (options: ExportSaveOptions) => Promise<SaveFile>;
+  /** The session's replay capture, produced where the sim runs; absent, the session keeps no replay. */
+  readonly captureReplayFile?: (options: ReplayCaptureOptions) => Promise<ReplayCaptureFile>;
+  /** The replay list the capture writes into; absent, nothing records a replay. */
+  readonly replayStore?: ReplayStore;
   readonly parent?: SaveGame;
   /** Hand the page to the entry that boots `save`'s own session, staging `bytes` for it. */
   readonly loadOtherWorld: (save: SaveGame, bytes: SaveBytes) => Promise<void>;
@@ -54,9 +60,15 @@ export interface SaveLoadSession {
   readonly worldToken: string | null;
   /** With `worldToken`, the running playthrough (`SaveSlotInfo.seed`). */
   readonly worldSeed: number | null;
+  /** Whether the session's replay can be captured, so the save window offers it. */
+  readonly canSaveReplay: boolean;
   listSaves(): Promise<SaveSlotInfo[]>;
   /** Write the running game into the named slot, overwriting a same-named save. */
   saveGame(name: string): Promise<SaveOutcome>;
+  /** Record the running session's replay into the replay store, under its auto name. */
+  saveReplay(): Promise<SaveOutcome>;
+  /** Every stored replay, newest first, for the menu's replay screen. */
+  listReplays(): Promise<ReplaySlotInfo[]>;
   /** Stage the running game for this page's next boot to pick up where it stands; no slot is written. */
   stageForReload(): Promise<void>;
   loadSave(id: string): Promise<LoadOutcome>;
@@ -158,6 +170,7 @@ export function saveLoadSession(deps: SaveLoadDeps): SaveLoadSession {
   return {
     worldToken,
     worldSeed: deps.worldSeed ?? null,
+    canSaveReplay: deps.captureReplayFile !== undefined && deps.replayStore !== undefined,
 
     listSaves: () => deps.store.list(),
 
@@ -180,6 +193,28 @@ export function saveLoadSession(deps: SaveLoadDeps): SaveLoadSession {
         return { kind: 'failed' };
       }
     },
+
+    /** Record the running session's replay into the replay store, under its auto name. */
+    async saveReplay(): Promise<SaveOutcome> {
+      const capture = deps.captureReplayFile;
+      const store = deps.replayStore;
+      if (capture === undefined || store === undefined) return { kind: 'failed' };
+      try {
+        const file = await capture({ savedAt: Date.now(), irVersion: deps.host.content.manifest.version });
+        await store.write(replaySlotName(file.mapId, file.savedAt), file.bytes, {
+          mapId: file.mapId,
+          untilTick: file.untilTick,
+          seed: file.seed,
+          savedAt: file.savedAt,
+        });
+        return { kind: 'saved' };
+      } catch (err) {
+        diag.warn('save', `writing the session replay failed: ${String(err)}`);
+        return { kind: 'failed' };
+      }
+    },
+
+    listReplays: () => deps.replayStore?.list() ?? Promise.resolve([]),
 
     async loadSave(id: string): Promise<LoadOutcome> {
       let bytes: SaveBytes | null;
@@ -226,6 +261,16 @@ export function saveLoadSession(deps: SaveLoadDeps): SaveLoadSession {
 /** Suffix the exported file for the payload it actually carries; a slot name is whatever the player typed. */
 function exportFileName(id: string, bytes: SaveBytes): string {
   return `${displayNameOf(id)}${isGzipSave(bytes) ? '.json.gz' : '.json'}`;
+}
+
+/** Name a replay by its world and the capture's moment, so two replays of one map sort by time. */
+function replaySlotName(mapId: string, savedAt: number): string {
+  const at = new Date(savedAt);
+  const pad = (value: number): string => String(value).padStart(2, '0');
+  const stamp =
+    `${at.getFullYear()}-${pad(at.getMonth() + 1)}-${pad(at.getDate())}` +
+    ` ${pad(at.getHours())}:${pad(at.getMinutes())}`;
+  return mapId === '' ? stamp : `${mapId} · ${stamp}`;
 }
 
 /** The menu screen's backup path over a stored slot: download the slot's bytes under its display name. */

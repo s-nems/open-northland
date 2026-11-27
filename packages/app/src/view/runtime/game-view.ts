@@ -226,6 +226,11 @@ export interface GameViewDeps {
   readonly offThreadTickCost?: () => OffThreadTickCost;
   /** Present when the sim runs on another thread: the driver's save capture as file bytes made there. */
   readonly captureSaveFile?: SaveLoadSessionOptions['captureSaveFile'];
+  /** Present when the sim runs on another thread: the session's replay capture as file bytes made
+   *  there. A session playing a recording back keeps none. */
+  readonly captureReplayFile?: SaveLoadSessionOptions['captureReplayFile'];
+  /** The session plays a recording back: no autosave writes a watched state into the save list. */
+  readonly replayPlayback?: boolean;
   /** True when the clock is shared with other clients: the menus and sheets that hold a local game
    *  paused hold nothing, and a file cannot be loaded over the shared world. */
   readonly sharedClock?: boolean;
@@ -427,6 +432,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
     presentation: presentationMemory,
     captureSave: (options) => driver.captureSave(options),
     ...(deps.captureSaveFile !== undefined ? { captureSaveFile: deps.captureSaveFile } : {}),
+    ...(deps.captureReplayFile !== undefined ? { captureReplayFile: deps.captureReplayFile } : {}),
     host,
     worldToken: deps.worldToken ?? null,
     worldSeed: deps.worldSeed ?? null,
@@ -1654,7 +1660,12 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       gpuAdapter,
     });
 
-    const autosave = createAutosave(saveLoad, host.tick, liveSettings.settings.current(), lifetime.signal);
+    // A watched recording writes no autosave: a replay's clock pauses itself at its end, and the
+    // states worth keeping are the player's own saves of them.
+    const autosave =
+      deps.replayPlayback === true
+        ? null
+        : createAutosave(saveLoad, host.tick, liveSettings.settings.current(), lifetime.signal);
     const shortfallLook = createShortfallLook(devSpeeds);
     // This mount owns construction; the loop owns the pinned per-frame order.
     loop = startFrameLoop({
@@ -1662,7 +1673,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
         ...deps,
         onEvents,
         onFrame: (snapshot) => {
-          autosave.update(snapshot.tick, liveSettings.settings.current());
+          autosave?.update(snapshot.tick, liveSettings.settings.current());
           siege.frame();
           scriptTints.frame(snapshot.tick);
           netOverlays?.refresh();

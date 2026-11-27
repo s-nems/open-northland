@@ -13,6 +13,7 @@ export const enSurfaces = {
   mainMenu: {
     eyebrow: 'A Viking-era economic strategy game',
     items: {
+      replays: 'Replays',
       newGame: 'New game',
       load: 'Load game',
       multiplayer: 'Multiplayer',
@@ -49,6 +50,7 @@ export const enSurfaces = {
     // A back link names the screen it returns to, not "Back".
     backLabels: { main: 'Menu', newGame: 'Map selection' },
     screenTitles: {
+      replays: 'Replays',
       multiplayer: 'Multiplayer',
       newGame: 'New game',
       catalogue: 'Map catalogue',
@@ -765,6 +767,16 @@ export const enSurfaces = {
   },
   // Shared by the in-game save panels and the main menu's load screen.
   saveList: {
+    saveReplay: 'Save replay',
+    saveReplayHint:
+      "Records the whole session: its start and every command, replayed from the map's first tick.",
+    replaySaving: 'Recording…',
+    replaySaved: 'Replay saved.',
+    replaySaveFailed: 'Recording the replay failed.',
+    replayPlay: 'Watch',
+    replayPreparing: 'Preparing…',
+    replayCorrupt: 'The recording is damaged or from another build.',
+    emptyReplayHint: 'Save a replay from the in-game menu, and watch it here.',
     autosave: 'Autosave',
     autosaveOff: 'Off',
     autosaveEvery: '{n} min',

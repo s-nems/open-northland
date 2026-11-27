@@ -105,6 +105,21 @@ export function createSaveWindow(
   };
 
   const exportButton = exportAction(deps, () => sheet.selected(), run);
+  /** A replay of the session as it stands: its own action, for it takes no name and no slot. */
+  const replaySave = deps.saveLoad.canSaveReplay ? button('on-button', GLYPH.list) : null;
+  if (replaySave !== null) {
+    replaySave.append(copy.saveReplay);
+    setTip(replaySave, copy.saveReplayHint);
+    replaySave.addEventListener('click', () =>
+      run(async (progress) => {
+        // Assembling a long session's recording blocks the worker, so say so before it starts.
+        progress(copy.replaySaving);
+        await nextPaint();
+        const outcome = await deps.saveLoad.saveReplay();
+        return outcome.kind === 'saved' ? copy.replaySaved : copy.replaySaveFailed;
+      }),
+    );
+  }
   const sheet = createSlotSheet({
     running: { mapId: deps.saveLoad.worldToken, seed: deps.saveLoad.worldSeed },
     signal: deps.signal,
@@ -127,6 +142,7 @@ export function createSaveWindow(
   sheet.el.prepend(note);
   frame.window.body.append(label, nameRow, hint, sheet.el);
   frame.leading.after(autosave);
+  if (replaySave !== null) frame.actions.append(replaySave);
   frame.actions.append(exportButton);
 
   /** Only the newest refresh may publish: an earlier one resolving late would put the pre-save list

@@ -13,8 +13,10 @@ import { sessionWorldOptions } from '../../game/match/session-world.js';
 import { servedOverLoopback } from '../../session/worker/loopback.js';
 import type { RelayedBuild } from '../../session/worker/net-world-port.js';
 import type { WorkerSessionOptions } from '../../session/worker/protocol.js';
+import { servedOverReplay } from '../../session/worker/replay.js';
 import type { BuiltWorld, HostedBuild } from '../../session/worker/serve.js';
 import { saveDocumentOf } from '../../view/runtime/save-load/codec.js';
+import { parseReplayDocument } from '../../view/runtime/save-load/replay.js';
 import { buildMapWorld, restoreMapWorld } from './world.js';
 
 /**
@@ -105,22 +107,32 @@ function contentNamesOf(ir: ContentIr | null): MapModulesContentNames | null {
 export type MapWorldDocuments = Omit<MapWorldInputs, 'save'>;
 
 /**
- * The worker's boot message: the inputs with the staged save as the text it was staged as. The text
- * crosses as one string; the parsed save of the six-AI magiczny_las world at tick 40000 took about
- * 200 ms of this thread's time to post.
+ * The worker's boot message: the inputs with the staged save as the text it was staged as, and a
+ * staged replay's recording when the boot plays one back. The text crosses as one string; the parsed
+ * save of the six-AI magiczny_las world at tick 40000 took about 200 ms of this thread's time to post.
  */
 export interface MapWorkerBoot extends MapWorldDocuments {
   readonly saveText: string | null;
+  readonly replayText: string | null;
 }
 
-/** The world a single-player session serves over the loopback transport. */
+/** The world a single-player session serves over the loopback transport, or plays back when the boot
+ *  staged a replay. */
 export function buildMapWorkerWorld(
   boot: MapWorkerBoot,
   options: WorkerSessionOptions,
 ): HostedBuild<MapWorldPlacements> {
-  const { saveText, ...inputs } = boot;
+  const { saveText, replayText, ...inputs } = boot;
   const save = saveText === null ? null : parseSaveGame(saveDocumentOf(saveText));
-  return servedOverLoopback(buildMapWorldFromInputs({ ...inputs, save }), options);
+  const world = buildMapWorldFromInputs({ ...inputs, save });
+  if (replayText === null) {
+    return {
+      ...servedOverLoopback(world, options),
+      replaySource: { descriptor: inputs.session, fromTick: world.sim.tick, initialSaveText: saveText },
+    };
+  }
+  const { log, untilTick } = parseReplayDocument(replayText);
+  return servedOverReplay(world, options, { log, endTick: untilTick });
 }
 
 /** A relayed session's world: restored from the snapshot the relay served, else from the boot's save
@@ -130,7 +142,8 @@ export function buildRelayedMapWorld(
   snapshot: SaveGame | null,
 ): RelayedBuild<MapWorldPlacements> {
   assertMapSessionSeats(boot.session.seats, boot.script);
-  const { saveText, ...inputs } = boot;
+  const { saveText, replayText, ...inputs } = boot;
+  if (replayText !== null) throw new Error('a relayed world never plays back a recording');
   const save = snapshot ?? (saveText === null ? null : parseSaveGame(saveDocumentOf(saveText)));
   const world = buildMapWorldFromInputs({ ...inputs, save });
   const previous =

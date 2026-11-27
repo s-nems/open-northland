@@ -12,6 +12,7 @@ export const itSurfaces = {
   mainMenu: {
     eyebrow: "Un gioco di strategia economica nell'epoca vichinga",
     items: {
+      replays: 'Replay',
       newGame: 'Nuova partita',
       load: 'Carica partita',
       multiplayer: 'Multiplayer',
@@ -47,6 +48,7 @@ export const itSurfaces = {
     },
     backLabels: { main: 'Menu', newGame: 'Scelta della mappa' },
     screenTitles: {
+      replays: 'Replay',
       multiplayer: 'Multiplayer',
       newGame: 'Nuova partita',
       catalogue: 'Catalogo mappe',
@@ -810,6 +812,16 @@ export const itSurfaces = {
     randomMore: '▶ casuale (+{count} altri)',
   },
   saveList: {
+    saveReplay: 'Salva replay',
+    saveReplayHint:
+      'Registra la sessione completa: inizio e ogni comando, riprodotti dal primo tick della mappa.',
+    replaySaving: 'Salvataggio della registrazione…',
+    replaySaved: 'Replay salvato.',
+    replaySaveFailed: 'Salvataggio della registrazione non riuscito.',
+    replayPlay: 'Guarda',
+    replayPreparing: 'Preparazione…',
+    replayCorrupt: 'La registrazione è danneggiata o creata con una versione differente.',
+    emptyReplayHint: 'Salva un replay dal menu di gioco e guardalo qui.',
     autosave: 'Salvataggio automatico',
     autosaveOff: 'Disattivato',
     autosaveEvery: '{n} min',
