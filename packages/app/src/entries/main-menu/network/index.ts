@@ -281,6 +281,7 @@ export function networkScreen(
     const shown = mountNetworkRoom({
       client: current.client,
       copy: messages().networkRoom,
+      refused: () => readStoredSettings().replayOptOut === true,
       savedRoster: () => assets?.savedRoster() ?? null,
       mapSlots: () => assets?.mapSlots() ?? null,
       mapRelations: () => assets?.mapRelations() ?? null,

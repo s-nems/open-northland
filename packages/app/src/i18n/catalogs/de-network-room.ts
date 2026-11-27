@@ -58,4 +58,6 @@ export const deNetworkRoom = {
   unseated: 'Zuschauer',
   disconnected: 'Verbindung getrennt',
   load: '{ms} ms/Tick, gepuffert: {buffered}',
+  replayRefusalIgnored:
+    'Dieser Relay ignoriert die Aufnahme-Verweigerung: Partien hier können weiterhin aufgezeichnet werden. Aktualisiere den Relay-Server.',
 } as const;

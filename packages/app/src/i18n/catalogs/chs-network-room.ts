@@ -56,4 +56,5 @@ export const chsNetworkRoom = {
   unseated: '观战者',
   disconnected: '已断开连接',
   load: '{ms} ms/逻辑帧，缓冲 {buffered}',
+  replayRefusalIgnored: '此中继服务器忽略录制拒绝：对局仍可能被录制。请更新中继服务器。',
 } as const;

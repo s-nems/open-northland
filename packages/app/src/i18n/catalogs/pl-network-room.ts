@@ -59,4 +59,6 @@ export const plNetworkRoom: { readonly [Key in keyof typeof enNetworkRoom]: stri
   unseated: 'Obserwator',
   disconnected: 'Brak połączenia',
   load: '{ms} ms/krok, w buforze {buffered}',
+  replayRefusalIgnored:
+    'Ten przekaźnik ignoruje odmowę nagrywania: mecze nadal mogą być nagrywane. Zaktualizuj serwer przekaźnika.',
 };

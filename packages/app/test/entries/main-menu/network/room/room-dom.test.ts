@@ -67,6 +67,7 @@ function lobby(): RoomView {
 function mount(
   mapPreview: NetworkRoomDeps['mapPreview'] = () => null,
   mapSlots?: NetworkRoomDeps['mapSlots'],
+  refused: NetworkRoomDeps['refused'] = () => false,
 ) {
   const client = {
     nick: 'Astrid',
@@ -84,6 +85,7 @@ function mount(
     mapPreview,
     ...(mapSlots === undefined ? {} : { mapSlots }),
     copy: messages().networkRoom,
+    refused,
     onLeave: vi.fn(),
     rejoin: null,
     onRetryCompatibility: vi.fn(),
@@ -630,4 +632,33 @@ it('always leaves one free observer row after the occupied rows', () => {
   expect(join?.disabled).toBe(false);
   join?.click();
   expect(client.claimSeat).toHaveBeenCalledWith(null);
+});
+
+it('names a relay that ignores the recording refusal, and quiet once the room echoes it', () => {
+  const { room } = mount(
+    () => null,
+    undefined,
+    () => true,
+  );
+  const view = lobby();
+  room.update(view, true);
+  const refused = room.element.querySelector('.network-room__refusal');
+  if (refused === null) throw new Error('missing refusal notice');
+  expect(refused.hidden).toBe(false);
+  const echoed: RoomView = {
+    ...view,
+    members: view.members.map((member) =>
+      member.nick === 'Astrid' ? { ...member, noReplay: true } : member,
+    ),
+  };
+  room.update(echoed, true);
+  expect(refused.hidden).toBe(true);
+  // A client that asserts no refusal stays quiet whatever the room view says.
+  const quiet = mount(
+    () => null,
+    undefined,
+    () => false,
+  );
+  quiet.room.update(view, true);
+  expect(quiet.room.element.querySelector('.network-room__refusal')?.hidden).toBe(true);
 });

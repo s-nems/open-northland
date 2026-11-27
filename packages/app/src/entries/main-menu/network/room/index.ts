@@ -41,6 +41,11 @@ export function mountNetworkRoom(deps: NetworkRoomDeps) {
   noticeLine.hidden = true;
   const linkLine = node('p', 'network-room__notice', copy.reconnecting);
   linkLine.hidden = true;
+  // A refusal the room view does not echo back is a relay that predates the refusal feature: the
+  // match stays recordable however this player chose, so say so instead of failing silently.
+  const refusalIgnored = node('p', 'network-room__notice network-room__refusal', copy.replayRefusalIgnored);
+  refusalIgnored.setAttribute('role', 'alert');
+  refusalIgnored.hidden = true;
   const seats = roomSeats(deps);
   const settings = roomSettings(deps);
   const body = node('div', 'network-room__body');
@@ -102,7 +107,7 @@ export function mountNetworkRoom(deps: NetworkRoomDeps) {
   const rejoin = deps.rejoin === null ? null : button(copy.rejoin, deps.rejoin);
   rejoin?.classList.add('network-room__button--primary');
   footer.append(guidance, release, ready, start, ...(rejoin === null ? [] : [rejoin]));
-  element.append(heading, noticeLine, linkLine, checks, body, setup, footer);
+  element.append(heading, noticeLine, linkLine, refusalIgnored, checks, body, setup, footer);
   element.addEventListener('keydown', (event) => {
     if (event.key === 'Escape' && seats.closePalette()) {
       event.stopPropagation();
@@ -119,6 +124,8 @@ export function mountNetworkRoom(deps: NetworkRoomDeps) {
       locked.hidden = !room.locked;
       identity.textContent = `${copy.title} · ${room.id} · ${deps.worldTitle(room.settings.world)} · ${client.nick}`;
       linkLine.hidden = connected;
+      const self = room.members.find((member) => member.nick === client.nick);
+      refusalIgnored.hidden = !(connected && deps.refused() && self !== undefined && self.noReplay !== true);
       seats.update(room, connected);
       settings.update(room, permissions.creator);
       const map = deps.mapPreview?.(room.settings.world) ?? null;

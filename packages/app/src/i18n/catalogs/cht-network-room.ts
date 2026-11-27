@@ -56,4 +56,5 @@ export const chtNetworkRoom = {
   unseated: '觀戰者',
   disconnected: '已中斷連線',
   load: '{ms} 毫秒/邏輯幀，已緩衝 {buffered}',
+  replayRefusalIgnored: '此中繼伺服器忽略錄製拒絕：對局仍可能被錄製。請更新中繼伺服器。',
 } as const;

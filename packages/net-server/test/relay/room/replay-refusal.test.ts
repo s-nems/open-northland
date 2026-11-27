@@ -1,3 +1,5 @@
+import { parseGameSession } from '@open-northland/lockstep';
+import { PROTOCOL_VERSION, parseClientMessage, parseServerMessage } from '@open-northland/net-protocol';
 import { describe, expect, it } from 'vitest';
 import { type Peer, SEATS, SETTINGS, stage, TOKEN_A, TOKEN_B } from '../../support/message-stage.js';
 
@@ -105,5 +107,42 @@ describe('a member that refuses recordings', () => {
     b.send({ kind: 'joinRoom', roomId: roomIdOf(a) });
     expect(a.last('room')?.room.members.find((member) => member.nick === 'Ania')?.noReplay).toBe(undefined);
     expect(a.last('room')?.room.members.find((member) => member.nick === 'Bartek')?.noReplay).toBe(true);
+  });
+
+  it('keeps the refusal through the real wire transforms on the way in and the session on the way out', () => {
+    const s = stage();
+    const a = s.introduce(TOKEN_A, 'Ania');
+    const b = s.peer();
+    // The refusal chosen before the room, crossing the JSON and parse the relay's socket runs.
+    b.send(
+      parseClientMessage(
+        JSON.parse(
+          JSON.stringify({
+            kind: 'hello',
+            protocol: PROTOCOL_VERSION,
+            token: TOKEN_B,
+            nick: 'Bartek',
+            noReplay: true,
+          }),
+        ),
+      ),
+    );
+    a.send(
+      parseClientMessage(
+        JSON.parse(JSON.stringify({ kind: 'createRoom', settings: SETTINGS, seats: SEATS })),
+      ),
+    );
+    b.send(parseClientMessage(JSON.parse(JSON.stringify({ kind: 'joinRoom', roomId: roomIdOf(a) }))));
+    a.send({ kind: 'claimSeat', player: 0 });
+    b.send({ kind: 'claimSeat', player: 1 });
+    for (const peer of [a, b]) peer.send({ kind: 'setReady', ready: true });
+    a.send({ kind: 'start' });
+    // The started session crosses the link and is read back by the client's own session parse.
+    for (const peer of [a, b]) {
+      const start = peer.last('start');
+      expect(start).toBeDefined();
+      const parsed = parseServerMessage(JSON.parse(JSON.stringify(start)), parseGameSession);
+      expect(parsed.session.replayCaptures).toBe(false);
+    }
   });
 });
