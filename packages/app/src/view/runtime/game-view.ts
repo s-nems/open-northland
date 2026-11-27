@@ -999,6 +999,15 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
         onQuit: quitToMenu,
         ...(sharedClock ? {} : { onLoad: (back) => systemMenu?.openPage('load', back) }),
         ...(replay !== undefined ? { playAgain: replay } : {}),
+        ...(saveLoad.canSaveReplay
+          ? {
+              saveReplay: {
+                save: async (): Promise<'saved' | 'failed'> =>
+                  (await saveLoad.saveReplay()).kind === 'saved' ? 'saved' : 'failed',
+                auto: () => liveSettings.settings.current().replayAutosave === true,
+              },
+            }
+          : {}),
         ...(sharedClock ? { holdsSeat: () => !watching } : {}),
         onContinue: () => {
           if (!sharedClock) issueTrusted({ kind: 'continueMatch', player: localPlayer });

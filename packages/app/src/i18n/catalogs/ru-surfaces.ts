@@ -799,6 +799,7 @@ export const ruSurfaces = {
     randomMore: '▶ случайная (+{count} ещё)',
   },
   saveList: {
+    replayAutosave: 'Сохранять повторы автоматически',
     saveReplay: 'Сохранить повтор',
     saveReplayHint: 'Записывает всю сессию: начало и каждую команду, воспроизводится с первого такта карты.',
     replaySaving: 'Сохранение записи…',

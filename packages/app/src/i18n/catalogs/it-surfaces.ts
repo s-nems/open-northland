@@ -812,6 +812,7 @@ export const itSurfaces = {
     randomMore: '▶ casuale (+{count} altri)',
   },
   saveList: {
+    replayAutosave: 'Salva i replay automaticamente',
     saveReplay: 'Salva replay',
     saveReplayHint:
       'Registra la sessione completa: inizio e ogni comando, riprodotti dal primo tick della mappa.',

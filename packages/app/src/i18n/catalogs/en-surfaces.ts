@@ -767,6 +767,7 @@ export const enSurfaces = {
   },
   // Shared by the in-game save panels and the main menu's load screen.
   saveList: {
+    replayAutosave: 'Save replays automatically',
     saveReplay: 'Save replay',
     saveReplayHint:
       "Records the whole session: its start and every command, replayed from the map's first tick.",

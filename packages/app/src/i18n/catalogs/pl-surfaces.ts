@@ -766,6 +766,7 @@ export const plSurfaces = {
   },
   // Shared by the in-game save panels and the main menu's load screen.
   saveList: {
+    replayAutosave: 'Zapisuj powtórki automatycznie',
     saveReplay: 'Zapisz powtórkę',
     saveReplayHint: 'Nagrywa całą sesję: początek i każdą komendę, odtwarzane od pierwszego ticku mapy.',
     replaySaving: 'Zapisywanie nagrania…',

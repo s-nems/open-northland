@@ -26,6 +26,7 @@ function setup(
     localPlayer = 0,
     playerNickOf,
     holdsSeat,
+    saveReplay,
   }: {
     onLoad?: (back: () => void) => void;
     playAgain?: () => void;
@@ -33,6 +34,7 @@ function setup(
     localPlayer?: number | null;
     playerNickOf?: (player: number) => string | undefined;
     holdsSeat?: () => boolean;
+    saveReplay?: { save: () => Promise<'saved' | 'failed'>; auto: () => boolean };
   } = {},
 ) {
   vi.stubGlobal(
@@ -65,6 +67,7 @@ function setup(
     ...(onLoad !== undefined ? { onLoad } : {}),
     ...(playAgain !== undefined ? { playAgain: { scope: 'thisMap', start: playAgain } } : {}),
     ...(holdsSeat !== undefined ? { holdsSeat } : {}),
+    ...(saveReplay !== undefined ? { saveReplay } : {}),
   });
   overlays.push(overlay);
   const body = {
@@ -437,4 +440,81 @@ it('offers a lost local map again behind a confirmation, and not after a victory
   expect(h.onQuit).not.toHaveBeenCalled();
   expect(h.onContinue).not.toHaveBeenCalled();
   expect(h.overlay.isOpen()).toBe(false);
+});
+
+it('offers saving the session replay at the result, and says what the capture did', async () => {
+  const save = vi.fn(async () => 'saved' as const);
+  const copy = messages().hud;
+  const h = setup(false, () => [], { saveReplay: { save, auto: () => false } });
+  h.overlay.announce('victory');
+  expect(save).not.toHaveBeenCalled();
+  expect(h.body.buttons().map((button) => button.textContent)).toEqual([
+    copy.matchContinue,
+    copy.matchReplaySave,
+    copy.returnToMenu,
+  ]);
+  const saveButton = h.body.buttons()[1];
+  saveButton?.click();
+  expect(saveButton?.textContent).toBe(copy.matchReplaySaving);
+  expect(saveButton?.disabled).toBe(true);
+  await vi.waitFor(() => expect(saveButton?.textContent).toBe(copy.matchReplaySaved));
+  expect(save).toHaveBeenCalledOnce();
+  expect(saveButton?.disabled).toBe(true);
+});
+
+it('lets the player retry a replay capture that failed', async () => {
+  let failed = true;
+  const save = vi.fn(async () => (failed ? ('failed' as const) : ('saved' as const)));
+  const copy = messages().hud;
+  const h = setup(false, () => [], { saveReplay: { save, auto: () => false } });
+  h.overlay.announce('defeat');
+  const saveButton = h.body.buttons()[1];
+  saveButton?.click();
+  await vi.waitFor(() => expect(saveButton?.textContent).toBe(copy.matchReplaySaveFailed));
+  expect(saveButton?.disabled).toBe(false);
+  failed = false;
+  saveButton?.click();
+  await vi.waitFor(() => expect(saveButton?.textContent).toBe(copy.matchReplaySaved));
+  expect(save).toHaveBeenCalledTimes(2);
+  expect(saveButton?.disabled).toBe(true);
+});
+
+it('records the replay on its own once at the result, when recording is turned on', async () => {
+  const save = vi.fn(async () => 'saved' as const);
+  const copy = messages().hud;
+  const h = setup(false, () => [], { saveReplay: { save, auto: () => true } });
+  h.overlay.announce('victory');
+  await vi.waitFor(() => expect(save).toHaveBeenCalledOnce());
+  // The open window flips to the recorded state once the capture lands.
+  await vi.waitFor(() => {
+    const saveButton = h.body.buttons().find((button) => button.textContent === copy.matchReplaySaved);
+    expect(saveButton?.disabled).toBe(true);
+  });
+  // A result shown again never writes a second recording.
+  h.overlay.finish('victory');
+  await Promise.resolve();
+  expect(save).toHaveBeenCalledOnce();
+  expect(h.body.buttons().find((button) => button.textContent === copy.matchReplaySaved)?.disabled).toBe(
+    true,
+  );
+});
+
+it('records nothing on its own when recording is off or no seat has a verdict', async () => {
+  const save = vi.fn(async () => 'saved' as const);
+  const off = setup(false, () => [], { saveReplay: { save, auto: () => false } });
+  off.overlay.announce('victory');
+  expect(save).not.toHaveBeenCalled();
+  off.overlay.dispose();
+
+  const undecided = setup(true, () => [], {
+    saveReplay: { save, auto: () => true },
+    localPlayer: null,
+  });
+  undecided.overlay.playersDecided('undecided');
+  undecided.overlay.finish('undecided');
+  expect(save).not.toHaveBeenCalled();
+  // The control stays for the person watching, without having recorded anything itself.
+  expect(
+    undecided.body.buttons().find((button) => button.textContent === messages().hud.matchReplaySave),
+  ).not.toBeUndefined();
 });

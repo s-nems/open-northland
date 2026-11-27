@@ -811,6 +811,7 @@ export const deSurfaces = {
     randomMore: '▶ Zufall (+{count} weitere)',
   },
   saveList: {
+    replayAutosave: 'Replays automatisch sichern',
     saveReplay: 'Replay sichern',
     saveReplayHint:
       'Zeichnet die gesamte Sitzung auf: den Anfang und jeden Befehl, abgespielt ab dem ersten Tick der Karte.',

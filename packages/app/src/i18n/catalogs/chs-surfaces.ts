@@ -739,6 +739,7 @@ export const chsSurfaces = {
   },
   // Shared by the in-game save panels and the main menu's load screen.
   saveList: {
+    replayAutosave: '自动保存录像',
     saveReplay: '保存录像',
     saveReplayHint: '记录整局游戏：起点与每条指令，从地图首个时钟刻回放。',
     replaySaving: '正在保存录像…',

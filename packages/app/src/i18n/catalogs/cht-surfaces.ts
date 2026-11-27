@@ -740,6 +740,7 @@ export const chtSurfaces = {
   },
   // Shared by the in-game save panels and the main menu's load screen.
   saveList: {
+    replayAutosave: '自動儲存錄影',
     saveReplay: '儲存錄影',
     saveReplayHint: '記錄整場遊戲：起點與每條指令，自地圖首個時鐘刻重播。',
     replaySaving: '正在儲存錄影…',
