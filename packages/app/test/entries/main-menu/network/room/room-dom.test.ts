@@ -642,7 +642,7 @@ it('names a relay that ignores the recording refusal, and quiet once the room ec
   );
   const view = lobby();
   room.update(view, true);
-  const refused = room.element.querySelector('.network-room__refusal');
+  const refused = room.element.querySelector<HTMLElement>('.network-room__refusal');
   if (refused === null) throw new Error('missing refusal notice');
   expect(refused.hidden).toBe(false);
   const echoed: RoomView = {
@@ -660,5 +660,5 @@ it('names a relay that ignores the recording refusal, and quiet once the room ec
     () => false,
   );
   quiet.room.update(view, true);
-  expect(quiet.room.element.querySelector('.network-room__refusal')?.hidden).toBe(true);
+  expect(quiet.room.element.querySelector<HTMLElement>('.network-room__refusal')?.hidden).toBe(true);
 });

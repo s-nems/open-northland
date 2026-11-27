@@ -5,7 +5,7 @@ import type { MapWorkerBoot, MapWorldPlacements } from '../../src/entries/map/wo
 import { type HostedRelayedWorld, NetworkConnection } from '../../src/net/connection.js';
 import { relayedSessionDriver } from '../../src/net/net-worker-client.js';
 import { createSceneSim, SCENES } from '../../src/scenes/index.js';
-import { type RelayLinkFactory, serveRelay } from '../../src/session/worker/net-serve.js';
+import { serveRelay } from '../../src/session/worker/net-serve.js';
 import type { RelayedWorldBuilder } from '../../src/session/worker/net-world-port.js';
 import { decodeSaveText } from '../../src/view/runtime/save-load/codec.js';
 import {

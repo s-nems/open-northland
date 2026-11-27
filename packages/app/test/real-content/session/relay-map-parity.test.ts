@@ -128,6 +128,7 @@ async function relayedMapBoot(mapId: string): Promise<(session: GameSession) => 
     session,
     missions: null,
     saveText: null,
+    replayText: null,
   });
 }
 

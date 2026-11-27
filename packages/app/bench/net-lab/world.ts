@@ -199,5 +199,6 @@ export async function worldBoot(mapId: string): Promise<(session: GameSession) =
     session,
     missions: null,
     saveText: null,
+    replayText: null,
   });
 }

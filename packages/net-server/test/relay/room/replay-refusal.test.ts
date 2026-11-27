@@ -3,8 +3,6 @@ import { PROTOCOL_VERSION, parseClientMessage, parseServerMessage } from '@open-
 import { describe, expect, it } from 'vitest';
 import { type Peer, SEATS, SETTINGS, stage, TOKEN_A, TOKEN_B } from '../../support/message-stage.js';
 
-const TOKEN_C = 'token-c-0123456789ab';
-
 function roomIdOf(peer: Peer): string {
   const id = peer.last('room')?.room.id;
   if (id === undefined) throw new Error('no room');
@@ -142,6 +140,7 @@ describe('a member that refuses recordings', () => {
       const start = peer.last('start');
       expect(start).toBeDefined();
       const parsed = parseServerMessage(JSON.parse(JSON.stringify(start)), parseGameSession);
+      if (parsed.kind !== 'start') throw new Error(`expected start, got ${parsed.kind}`);
       expect(parsed.session.replayCaptures).toBe(false);
     }
   });

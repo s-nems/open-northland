@@ -34,7 +34,7 @@ const MAP_TIMEOUT_MS = 240_000;
 
 /** The boot the map entry posts: the inputs with the staged save as its text. */
 function workerBoot({ save: _parsed, ...inputs }: MapWorldInputs, saveText: string | null): MapWorkerBoot {
-  return { ...inputs, saveText };
+  return { ...inputs, saveText, replayText: null };
 }
 
 describe.runIf(hasRealIr() && existsSync(realMapPath(MAP_ID)))('session worker host on a decoded map', () => {

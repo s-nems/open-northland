@@ -2,7 +2,7 @@ import { fileURLToPath } from 'node:url';
 import { type GameSession, NO_RULE_OVERRIDES } from '@open-northland/lockstep';
 import { type RoomSeatSetup, type RoomSettings, TICKS_PER_SECOND } from '@open-northland/net-protocol';
 import { MIN_GOVERNED_SPEED, Relay } from '@open-northland/net-server';
-import { type SaveGame, serializeSaveGame } from '@open-northland/sim';
+import { serializeSaveGame } from '@open-northland/sim';
 import { afterAll, beforeAll, expect, it } from 'vitest';
 import { HeadlessClient } from '../../../net-server/test/support/headless-client.js';
 import type { Stage } from '../../../net-server/test/support/session-run.js';
@@ -71,6 +71,7 @@ function fallbackBoot(session: GameSession): MapWorkerBoot {
     session: { ...session, localSeat: OWNER_SEAT },
     missions: null,
     saveText: null,
+    replayText: null,
   };
 }
 
