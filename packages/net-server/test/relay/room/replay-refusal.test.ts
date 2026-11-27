@@ -77,6 +77,26 @@ describe('a member that refuses recordings', () => {
     expect('replayCaptures' in (s.b.last('start')?.session ?? {})).toBe(false);
   });
 
+  it('takes a refusal a member tells its room without leaving, and denies the started session', () => {
+    const s = seatedRoom(false);
+    s.b.send({ kind: 'noReplay', noReplay: true });
+    expect(s.a.last('room')?.room.members.find((member) => member.nick === 'Bartek')?.noReplay).toBe(true);
+    s.a.send({ kind: 'start' });
+    expect(s.b.last('start')?.session.replayCaptures).toBe(false);
+    expect(s.a.last('start')?.session.replayCaptures).toBe(false);
+  });
+
+  it('takes a retraction a member tells its room, and records the started session', () => {
+    const s = seatedRoom(true);
+    s.b.send({ kind: 'noReplay', noReplay: false });
+    expect(s.a.last('room')?.room.members.find((member) => member.nick === 'Bartek')?.noReplay).toBe(
+      undefined,
+    );
+    s.a.send({ kind: 'start' });
+    expect('replayCaptures' in (s.b.last('start')?.session ?? {})).toBe(false);
+    expect('replayCaptures' in (s.a.last('start')?.session ?? {})).toBe(false);
+  });
+
   it('shows the refusal in the room view, and a peer without one shows none', () => {
     const s = stage();
     const a = s.introduce(TOKEN_A, 'Ania');

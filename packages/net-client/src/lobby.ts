@@ -24,9 +24,10 @@ export class RelayLobby {
   readonly token: string;
   /** The flag this client says `hello` with; none when absent. */
   readonly flag: PlayerFlag | undefined;
-  /** Whether this client refuses recordings; the relay turns one member's refusal into the whole
-   *  started session's denial. */
-  readonly noReplay: boolean;
+  /** Whether this client refuses recordings, as the setting stands now: the relay turns one member's
+   *  refusal into the whole started session's denial. `setNoReplay` follows a changed setting, so the
+   *  room takes it without a re-entry and the next `hello` carries it again. */
+  noReplay: boolean;
   protected readonly state: RelayState;
   protected send: (message: ClientMessage) => void = () => {
     throw new Error(`${this.nick} is not attached to a network`);
@@ -37,6 +38,12 @@ export class RelayLobby {
     this.flag = flag;
     this.noReplay = noReplay === true;
     this.state = new RelayState(nick);
+  }
+
+  /** The refusal as the player chose it now, told to the room this client sits in. */
+  setNoReplay(noReplay: boolean): void {
+    this.noReplay = noReplay === true;
+    this.send({ kind: 'noReplay', noReplay: this.noReplay });
   }
 
   get nick(): string {

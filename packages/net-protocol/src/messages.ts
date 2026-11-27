@@ -307,6 +307,10 @@ export type ClientMessage =
       /** The player's refusal as it stands when the room is entered, as `createRoom` carries it. */
       readonly noReplay?: boolean;
     }
+  /** The player's refusal as it stands now, from a client that may already sit in a room: the room
+   *  takes it at once, so a started session denies its captures for a member who changed their mind
+   *  without leaving, and the next `hello` carries the same stand again. */
+  | { readonly kind: 'noReplay'; readonly noReplay: boolean }
   | { readonly kind: 'leaveRoom' }
   | { readonly kind: 'claimSeat'; readonly player: number | null }
   | {

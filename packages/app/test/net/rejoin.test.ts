@@ -21,7 +21,7 @@ describe('the rejoin probe after the link came back', () => {
   it('asks for the started room again on the welcome, and takes being already in it quietly', () => {
     const { client, probe } = probeOf(STARTED);
     expect(probe(WELCOME)).toBe('passed');
-    expect(client.joinRoom).toHaveBeenCalledWith('room1');
+    expect(client.joinRoom).toHaveBeenCalledWith('room1', undefined, false);
     expect(probe(rejected('alreadyInRoom'))).toBe('consumed');
   });
 

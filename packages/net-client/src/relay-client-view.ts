@@ -37,6 +37,7 @@ const LOBBY_ACTIONS = [
   'sayInHall',
   'kick',
   'sendBlob',
+  'setNoReplay',
 ] as const satisfies readonly (keyof RelayLobby)[];
 
 export type LobbyAction = (typeof LOBBY_ACTIONS)[number];

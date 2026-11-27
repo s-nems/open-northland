@@ -1,6 +1,7 @@
 import { closingCode } from '@open-northland/net-protocol';
 import { type ConnectionEvent, NetworkConnection } from '../../net/connection.js';
 import { reloadDocument } from '../../view/platform/navigation-guard.js';
+import { readStoredSettings } from '../../view/settings/store.js';
 
 /** How long giving a seat up waits for the relay before the menu opens anyway; the seat then stays held
  *  and the room can still vote it out. */
@@ -10,7 +11,7 @@ type Identity = NetworkConnection['identity'];
 
 /** The part of a connection giving a seat up uses. */
 export interface SurrenderConnection {
-  readonly client: { joinRoom(roomId: string): void };
+  readonly client: { joinRoom(roomId: string, password?: string, noReplay?: boolean): void };
   subscribe(listener: (event: ConnectionEvent) => void): () => void;
   dispose(leave: boolean): void;
 }
@@ -66,7 +67,10 @@ export function surrenderSeat(
         if (event.state === 'closed') finish(false);
       } else {
         const { message } = event;
-        if (message.kind === 'welcome') connection.client.joinRoom(roomId);
+        if (message.kind === 'welcome')
+          // The refusal as the player chose it now: the re-entry's record takes it, whatever the
+          // connection's hello said when it was built.
+          connection.client.joinRoom(roomId, undefined, readStoredSettings().replayOptOut === true);
         else if (message.kind === 'room') finish(message.room.id === roomId);
         // `alreadyInRoom` answers the join beside the relay's own restoration; the room view follows.
         else if (message.kind === 'rejected' && message.of === 'joinRoom') {

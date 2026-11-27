@@ -659,6 +659,17 @@ export class Relay {
         room.welcome(member);
         return null;
       }
+      case 'noReplay': {
+        // The choice as it stands now, from a client that may already sit in a room: the room takes
+        // it at once, so a session the host starts afterwards denies its captures for a member who
+        // changed their mind without leaving, and the next `hello` carries the same stand again.
+        client.noReplay = message.noReplay === true;
+        if (client.member !== null) {
+          client.member.noReplay = client.noReplay;
+          client.room?.broadcastView();
+        }
+        return null;
+      }
       case 'leaveRoom': {
         const { room, member } = client;
         if (room === null || member === null) return { code: 'notInRoom' };

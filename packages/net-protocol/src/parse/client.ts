@@ -25,6 +25,7 @@ export const CLIENT_KINDS = keysOf<ClientMessageKind>({
   requestMap: true,
   createRoom: true,
   joinRoom: true,
+  noReplay: true,
   leaveRoom: true,
   claimSeat: true,
   setSeat: true,
@@ -95,6 +96,8 @@ export function parseClientMessage(value: unknown): ClientMessage {
         ...parsePassword(raw, 'joinRoom.password'),
         ...(raw.noReplay === undefined ? {} : { noReplay: raw.noReplay === true }),
       };
+    case 'noReplay':
+      return { kind, noReplay: raw.noReplay === true };
     case 'claimSeat':
       return { kind, player: raw.player === null ? null : parseSeatIndex(raw.player, 'claimSeat.player') };
     case 'moveMember':

@@ -205,7 +205,7 @@ describe('network connection mirror', () => {
     worker.send({ kind: 'message', message: { kind: 'room', room: { ...ROOM, state: 'running' } } });
     worker.send({ kind: 'link', state: 'reconnecting' });
     worker.send({ kind: 'message', message: { kind: 'welcome', protocol: PROTOCOL_VERSION, nick: 'Ania' } });
-    expect(worker.posted.at(-1)).toEqual({ kind: 'lobby', name: 'joinRoom', args: ['r'] });
+    expect(worker.posted.at(-1)).toEqual({ kind: 'lobby', name: 'joinRoom', args: ['r', undefined, false] });
     worker.send({
       kind: 'message',
       message: { kind: 'rejected', of: 'joinRoom', reason: { code: 'alreadyInRoom' } },
