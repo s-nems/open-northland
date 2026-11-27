@@ -218,4 +218,13 @@ export class CommandQueue {
     for (const text of this.openLog) out.push(JSON.parse(text) as LoggedCommand);
     return out;
   }
+
+  /** The replay log as the text of one JSON array, decoded-free: the sealed chunks' entries and the
+   *  open chunk's joined in recording order. A replay capture persists the whole log, and holding the
+   *  entries as strings lets it cross as text instead of materializing every command as an object. */
+  logText(): string {
+    const entries = this.sealedLog.map((chunk) => chunk.slice(1, -1));
+    if (this.openLog.length > 0) entries.push(this.openLog.join(','));
+    return `[${entries.join(',')}]`;
+  }
 }
