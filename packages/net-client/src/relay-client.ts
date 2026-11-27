@@ -55,6 +55,15 @@ const OWED_TICKS_ON_REFUSAL = 1;
 type LobbyBlob = 'map' | 'initialSave';
 const LOBBY_BLOB_OF = { requestMap: 'map', requestInitialSave: 'initialSave' } as const;
 
+/** What a session's own recording rests on, as the world builder pinned it: the descriptor the session
+ *  runs, the tick the build stands at, and the save text it started from, if any. A world without one
+ *  keeps no recording, for its input is not its own command log. */
+export interface OpenedReplaySource {
+  readonly descriptor: GameSession;
+  readonly fromTick: number;
+  readonly initialSaveText: string | null;
+}
+
 /** A world the client runs, and the generation its acknowledgements carry: `DESCRIPTOR_WORLD` for a
  *  world built from the descriptor, else the tick of the snapshot it was restored from. */
 export interface OpenedWorld {
@@ -62,6 +71,9 @@ export interface OpenedWorld {
   readonly generation: number;
   readonly initialSaveFingerprint?: string;
   readonly initialSeatSetups?: readonly InitialSaveSeatSetup[];
+  /** The recording's footing, when the builder pinned one: the served session captures against it,
+   *  and a world that crosses without it records nothing. */
+  readonly replaySource?: OpenedReplaySource;
 }
 
 /** A world the client adopted, numbered so a host can tell it from the worlds before and after it. */
