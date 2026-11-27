@@ -257,7 +257,16 @@ it('resumes valid Computer and Idle transitions and preserves unchanged controll
     roster,
   );
   expect(previous.seats.map((seat) => seat.mode)).toEqual(['idle', 'computer', 'map-ai', 'idle', 'computer']);
-  const boot = { map, ir: null, script, content: null, session: previous, missions: null, saveText: null };
+  const boot = {
+    map,
+    ir: null,
+    script,
+    content: null,
+    session: previous,
+    missions: null,
+    saveText: null,
+    replayText: null,
+  };
   const original = buildRelayedMapWorld(boot, null).sim;
   original.step();
   original.enqueueSetup({ kind: 'setAiControl', player: 2, enabled: true });

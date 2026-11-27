@@ -98,6 +98,9 @@ export function withFlag(flag: PlayerFlag | undefined): { readonly flag?: Player
 export interface RoomMemberView {
   readonly nick: string;
   readonly flag?: PlayerFlag;
+  /** Whether the member refuses any recording of the matches it plays; false, its presence alone
+   *  lets a session's members record their own view of it. */
+  readonly noReplay?: boolean;
   readonly seat: number | null;
   readonly connected: boolean;
   readonly compatibility: LobbyCompatibility | null;
@@ -278,6 +281,10 @@ export type ClientMessage =
       readonly token: string;
       readonly nick: string;
       readonly flag?: PlayerFlag;
+      /** The player's choice to refuse recordings, carried again on every hello, so a changed
+       *  setting reaches the room it rejoins; the relay then denies a started session's captures
+       *  for all of its members. */
+      readonly noReplay?: boolean;
     }
   | { readonly kind: 'listRooms' }
   | { readonly kind: 'requestInitialSave' }

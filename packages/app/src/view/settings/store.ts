@@ -240,6 +240,9 @@ export interface MenuSettings {
   /** Records every match's replay on its own at the result, into the replay store; off, the result
    *  window still offers the save by hand. */
   readonly replayAutosave: boolean;
+  /** Whether this player refuses recordings of the matches they play. On a relay, their refusal
+   *  becomes the started session's denial for every member; a local game then keeps no recording. */
+  readonly replayOptOut: boolean;
   /** Which main-menu news columns the player folded, and what each last showed them. */
   readonly menuNews: MenuNewsColumns;
 }
@@ -326,6 +329,7 @@ export function defaultSettings(): MenuSettings {
     autosaveMinutes: 0,
     autosaveCount: DEFAULT_AUTOSAVE_COUNT,
     replayAutosave: false,
+    replayOptOut: false,
     menuNews: DEFAULT_MENU_NEWS,
   };
 }
@@ -468,6 +472,7 @@ export function parseStoredSettings(raw: string | null): MenuSettings {
     autosaveCount: AUTOSAVE_COUNTS.find((count) => count === record.autosaveCount) ?? DEFAULT_AUTOSAVE_COUNT,
     replayAutosave:
       typeof record.replayAutosave === 'boolean' ? record.replayAutosave : defaults.replayAutosave,
+    replayOptOut: typeof record.replayOptOut === 'boolean' ? record.replayOptOut : defaults.replayOptOut,
     displayMode: record.displayMode === 'fullscreen' ? 'fullscreen' : 'window',
     renderScale: clampRenderScale(record.renderScale),
     backingDensity: parseBackingDensitySetting(record.backingDensity) ?? 'auto',

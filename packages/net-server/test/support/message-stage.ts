@@ -43,7 +43,7 @@ export interface MessageStage {
   readonly now: () => number;
   advance(ms: number): void;
   peer(address?: string): Peer;
-  introduce(token: string, nick: string, address?: string): Peer;
+  introduce(token: string, nick: string, address?: string, noReplay?: boolean): Peer;
 }
 
 /** The stage's wall clock at its start, in Unix epoch ms; it runs with the stage's own clock. */
@@ -97,9 +97,15 @@ export function stage(
       last: (kind) => of(kind).at(-1),
     };
   };
-  const introduce = (token: string, nick: string, address?: string): Peer => {
+  const introduce = (token: string, nick: string, address?: string, noReplay?: boolean): Peer => {
     const p = peer(address);
-    p.send({ kind: 'hello', protocol: PROTOCOL_VERSION, token, nick });
+    p.send({
+      kind: 'hello',
+      protocol: PROTOCOL_VERSION,
+      token,
+      nick,
+      ...(noReplay === true ? { noReplay: true } : {}),
+    });
     return p;
   };
   return { relay, now: () => time.ms, advance, peer, introduce };

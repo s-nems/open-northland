@@ -32,6 +32,7 @@ export function roomView(
     members: [...members.values()].map((member) => ({
       nick: member.nick,
       ...withFlag(member.flag),
+      ...(member.noReplay ? { noReplay: true } : {}),
       seat: member.seat,
       connected: member.connected,
       compatibility: member.compatibility,
@@ -49,6 +50,7 @@ export function sessionForMember(
   member: Member,
   settings: RoomSettings,
   seats: GameSession['seats'] | null,
+  replayCaptures: boolean,
 ): GameSession {
   if (seats === null) throw new Error('no descriptor before the start');
   return {
@@ -60,5 +62,7 @@ export function sessionForMember(
     localSeat: member.seat ?? 'observer',
     rules: settings.rules,
     speed: settings.speed,
+    // The room fixed this at its start: a member's refusal there denies every member's recording.
+    ...(replayCaptures ? {} : { replayCaptures: false }),
   };
 }

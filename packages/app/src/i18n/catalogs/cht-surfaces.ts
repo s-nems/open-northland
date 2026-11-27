@@ -426,6 +426,11 @@ export const chtSurfaces = {
       invertDragScroll: '反轉拖曳捲動',
       invertDragScrollTip: '啟用後，向右拖曳會讓地圖向左移動，反之亦然。',
       cameraHeading: '鏡頭',
+      replaysHeading: '錄影',
+      replayAutosave: '自動儲存錄影',
+      replayAutosaveTip: '自動錄製每場結束的比賽；可在錄影列表中查看。',
+      replayOptOut: '拒絕錄製錄影',
+      replayOptOutTip: '你在無錄製下遊玩，且多人對局中任何人都無法錄製。',
       debugHeading: '除錯',
       noticesHeading: '通知',
       noticeNewSoldier: '新士兵',
@@ -740,7 +745,6 @@ export const chtSurfaces = {
   },
   // Shared by the in-game save panels and the main menu's load screen.
   saveList: {
-    replayAutosave: '自動儲存錄影',
     saveReplay: '儲存錄影',
     saveReplayHint: '記錄整場遊戲：起點與每條指令，自地圖首個時鐘刻重播。',
     replaySaving: '正在儲存錄影…',

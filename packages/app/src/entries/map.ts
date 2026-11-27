@@ -13,6 +13,7 @@ import { replaceEntryUrl } from '../view/platform/navigation-guard.js';
 import { type StagedSession, takeStagedSession } from '../view/runtime/save-load/index.js';
 import { type ReplayDocument, replaySessionOf } from '../view/runtime/save-load/replay.js';
 import { haltOnFailedRestore } from '../view/runtime/world-bootstrap.js';
+import { readStoredSettings } from '../view/settings/store.js';
 import { assembleMapWorld, type HostedMapWorld, presentMapWorld } from './map/boot.js';
 import { workerReports } from './map/worker-reports.js';
 import type { MapWorkerBoot, MapWorldDocuments, MapWorldPlacements } from './map/world-inputs.js';
@@ -122,7 +123,10 @@ export async function renderMap(canvas: HTMLCanvasElement, params: URLSearchPara
     offThreadTickCost: worker.offThreadTickCost,
     captureSaveFile: worker.captureSaveFile,
     // A playback keeps no replay of its own: the recording is the only command source it admits.
-    ...(replay === null ? { captureReplayFile: worker.captureReplayFile } : {}),
+    // A session that denies captures gets none to offer, so no window shows one.
+    ...(replay === null && world.session.replayCaptures !== false
+      ? { captureReplayFile: worker.captureReplayFile }
+      : {}),
     replayPlayback: replayDocument !== null,
     introAtStart: replayDocument === null && stagedSave === null && introParam(params),
   }).catch((err: unknown) => {
@@ -142,12 +146,15 @@ export async function renderMap(canvas: HTMLCanvasElement, params: URLSearchPara
   }
 }
 
-/** The session a replayed boot plays on: the recording's world, watched as a spectator. */
+/** The session a replayed boot plays on: the recording's world, watched as a spectator. A fresh
+ *  boot takes the recording refusal the player stored, which a relayed start would otherwise
+ *  carry for it. */
 function mapSessionOf(
   replayDocument: ReplayDocument | null,
   params: URLSearchParams,
   roster: readonly SessionRosterSlot[],
 ): GameSession {
   if (replayDocument !== null) return replaySessionOf(replayDocument.descriptor);
-  return mapSession(params, roster);
+  const session = mapSession(params, roster);
+  return readStoredSettings().replayOptOut === true ? { ...session, replayCaptures: false } : session;
 }

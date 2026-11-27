@@ -69,6 +69,8 @@ export function parseClientMessage(value: unknown): ClientMessage {
         nick: parseNick(raw.nick, 'hello.nick'),
         // A flag this version cannot read is left out: hello must parse for any version.
         ...readableFlag(raw),
+        // Absent is the absence of a refusal, never one.
+        ...(raw.noReplay === true ? { noReplay: true } : {}),
       };
     case 'requestInitialSave':
     case 'requestMap':

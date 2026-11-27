@@ -16,6 +16,9 @@ export interface Member {
   readonly nick: string;
   /** The flag the member said `hello` with when it joined; none when absent. */
   readonly flag?: PlayerFlag;
+  /** Whether the member refuses recordings, as its latest `hello` carried it; the room takes every
+   *  member's choice into the session it starts, so one refusal denies them for all. */
+  noReplay: boolean;
   connected: boolean;
   /** When the current connection was made, then the order of joining; the earliest wins a digest tie. */
   connectedSince: number;
@@ -137,11 +140,13 @@ export function createMember(
   now: number,
   link: MeasuredLink,
   flag?: PlayerFlag,
+  noReplay?: boolean,
 ): Member {
   return {
     token,
     nick,
     ...withFlag(flag),
+    noReplay: noReplay === true,
     connected: true,
     connectedSince: now,
     joinOrder: 0,

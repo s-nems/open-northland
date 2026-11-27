@@ -484,6 +484,12 @@ export const itSurfaces = {
       invertDragScroll: 'Inverti il trascinamento',
       invertDragScrollTip: 'Se attivo, trascinando a destra la mappa si sposta a sinistra, e viceversa.',
       cameraHeading: 'Visuale',
+      replaysHeading: 'Replay',
+      replayAutosave: 'Salva i replay automaticamente',
+      replayAutosaveTip: 'Registra da sola ogni partita che concludi; la trovi sotto Replay.',
+      replayOptOut: 'Rifiuta le registrazioni dei replay',
+      replayOptOutTip:
+        'Giochi senza registrazione e in una partita multigiocatore nessuno può registrarne una.',
       debugHeading: 'Debug',
       noticesHeading: 'Notifiche',
       noticeNewSoldier: 'Nuovo soldato',
@@ -812,7 +818,6 @@ export const itSurfaces = {
     randomMore: '▶ casuale (+{count} altri)',
   },
   saveList: {
-    replayAutosave: 'Salva i replay automaticamente',
     saveReplay: 'Salva replay',
     saveReplayHint:
       'Registra la sessione completa: inizio e ogni comando, riprodotti dal primo tick della mappa.',

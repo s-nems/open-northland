@@ -90,6 +90,8 @@ export type ToNetWorker<B> =
       readonly token: string;
       readonly nick: string;
       readonly flag?: PlayerFlag;
+      /** Whether the player refuses recordings of the matches it plays; carried in every `hello`. */
+      readonly noReplay?: boolean;
     }
   | { readonly kind: 'lobby'; readonly name: LobbyAction; readonly args: readonly unknown[] }
   | { readonly kind: 'clock'; readonly paused?: boolean; readonly speed?: number }

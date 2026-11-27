@@ -663,6 +663,11 @@ export class ServedSession<E> {
         if (this.replaySource === undefined) {
           throw new Error('this session keeps no replay: its input is not its own command log');
         }
+        // The descriptor's own denial: the session the relay started for a refusing member records
+        // nothing, whatever a client of it asks for.
+        if (this.replaySource.descriptor.replayCaptures === false) {
+          throw new Error('this session denies replay captures');
+        }
         // The log crosses as the text its queue already holds, joined into the document whole, so no
         // command ever materializes as an object on either side.
         const text = replayDocumentTextOf({

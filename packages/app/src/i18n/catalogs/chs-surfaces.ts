@@ -426,6 +426,11 @@ export const chsSurfaces = {
       invertDragScroll: '反转拖动滚动',
       invertDragScrollTip: '启用后，向右拖动会使地图向左移动，反之亦然。',
       cameraHeading: '镜头',
+      replaysHeading: '录像',
+      replayAutosave: '自动保存录像',
+      replayAutosaveTip: '自动录制每局结束的比赛；可在录像列表中查看。',
+      replayOptOut: '拒绝录制录像',
+      replayOptOutTip: '你在无录制下游戏，且多人对局中任何人都无法录制。',
       debugHeading: '调试',
       noticesHeading: '通知',
       noticeNewSoldier: '新士兵',
@@ -739,7 +744,6 @@ export const chsSurfaces = {
   },
   // Shared by the in-game save panels and the main menu's load screen.
   saveList: {
-    replayAutosave: '自动保存录像',
     saveReplay: '保存录像',
     saveReplayHint: '记录整局游戏：起点与每条指令，从地图首个时钟刻回放。',
     replaySaving: '正在保存录像…',

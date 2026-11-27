@@ -57,6 +57,7 @@ it('replaces the canvas before a resync assembles another WebGL renderer', async
   const destroy = vi.fn();
   const disposeWorker = vi.fn();
   mocks.assemble.mockResolvedValue({
+    session,
     app: { destroy },
     loaded: {},
     hosted: { worker: { dispose: disposeWorker } },
@@ -91,7 +92,7 @@ it('shows the link as it stands on a HUD mounted after the link changed', async 
   const link = vi.fn();
   mocks.mountHud.mockReturnValue({ link, observe: vi.fn(), dispose: vi.fn() });
   const worker = { dispose: vi.fn(), driver: {}, host: {}, offThreadTickCost: vi.fn() };
-  mocks.assemble.mockResolvedValue({ app: { destroy: vi.fn() }, loaded: {}, hosted: { worker } });
+  mocks.assemble.mockResolvedValue({ session, app: { destroy: vi.fn() }, loaded: {}, hosted: { worker } });
   mocks.present.mockResolvedValue({ destroy: vi.fn(), viewState: () => null, presentation: () => null });
   let port: NetWorldPort | undefined;
   let onWorld: ((world: HostedRelayedWorld) => void) | undefined;
@@ -159,7 +160,7 @@ function presentedGame() {
     returnToMenu: null,
   };
   const worker = { dispose: vi.fn(), driver: {}, host: {}, offThreadTickCost: vi.fn() };
-  mocks.assemble.mockResolvedValue({ app: { destroy: vi.fn() }, loaded: {}, hosted: { worker } });
+  mocks.assemble.mockResolvedValue({ session, app: { destroy: vi.fn() }, loaded: {}, hosted: { worker } });
   mocks.mountHud.mockReturnValue({ link: vi.fn(), observe: vi.fn(), dispose: vi.fn() });
   mocks.present.mockImplementation(
     async (

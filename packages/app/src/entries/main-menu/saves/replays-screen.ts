@@ -14,7 +14,6 @@ import { targetSearch } from '../../../view/target-search.js';
 import { node } from '../dom.js';
 import type { MenuScreen, MountedScreen } from '../model.js';
 import { screenHead } from '../screen-head.js';
-import { menuSettings, updateSettings } from '../settings/state.js';
 import { menuSavesPanel } from './panel.js';
 
 /** The main menu's replay screen: the replay store's recordings, played back on the map entry. */
@@ -42,7 +41,6 @@ export function replaysScreen(open: (screen: MenuScreen) => void, launch: Launch
   });
   const { run } = panel;
   panel.actions.append(exportButton, play);
-  panel.leading.append(replayAutosaveToggle());
 
   /** Set once a replay is staged: the entry downloading behind the screen owns those bytes, and a
    *  second hand-off would swap them under it. */
@@ -133,23 +131,4 @@ function replayStoreAsSaves(store: {
     write: async () => undefined,
     remove: (id) => store.remove(id),
   };
-}
-
-/** The screen's one preference: record every match's replay on its own at the result. Pressed, the
- *  toggle carries the setting; the next match's result window reads it as it shows. */
-function replayAutosaveToggle(): HTMLButtonElement {
-  const copy = messages().saveList;
-  const toggle = button('on-button', copy.replayAutosave);
-  toggle.setAttribute('aria-pressed', 'false');
-  const paint = (on: boolean): void => {
-    toggle.setAttribute('aria-pressed', String(on));
-    toggle.classList.toggle('on-button--primary', on);
-  };
-  paint(menuSettings().replayAutosave === true);
-  toggle.addEventListener('click', () => {
-    void updateSettings({ replayAutosave: menuSettings().replayAutosave !== true }).then((settings) =>
-      paint(settings.replayAutosave === true),
-    );
-  });
-  return toggle;
 }

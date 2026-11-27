@@ -441,6 +441,11 @@ export const plSurfaces = {
       invertDragScroll: 'Odwróć przewijanie przeciąganiem',
       invertDragScrollTip: 'Po włączeniu przeciągnięcie w prawo przesuwa mapę w lewo i odwrotnie.',
       cameraHeading: 'Kamera',
+      replaysHeading: 'Powtórki',
+      replayAutosave: 'Zapisuj powtórki automatycznie',
+      replayAutosaveTip: 'Sama nagrywa każdą ukończoną rozgrywkę; znajdziesz ją w zakładce Powtórki.',
+      replayOptOut: 'Odmawiaj nagrań powtórek',
+      replayOptOutTip: 'Grasz bez nagrania, a w meczu wieloosobowym nikt nie może nagrywać.',
       debugHeading: 'Debug',
       noticesHeading: 'Powiadomienia',
       noticeNewSoldier: 'Nowy żołnierz',
@@ -766,7 +771,6 @@ export const plSurfaces = {
   },
   // Shared by the in-game save panels and the main menu's load screen.
   saveList: {
-    replayAutosave: 'Zapisuj powtórki automatycznie',
     saveReplay: 'Zapisz powtórkę',
     saveReplayHint: 'Nagrywa całą sesję: początek i każdą komendę, odtwarzane od pierwszego ticku mapy.',
     replaySaving: 'Zapisywanie nagrania…',

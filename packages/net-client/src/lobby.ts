@@ -24,14 +24,18 @@ export class RelayLobby {
   readonly token: string;
   /** The flag this client says `hello` with; none when absent. */
   readonly flag: PlayerFlag | undefined;
+  /** Whether this client refuses recordings; the relay turns one member's refusal into the whole
+   *  started session's denial. */
+  readonly noReplay: boolean;
   protected readonly state: RelayState;
   protected send: (message: ClientMessage) => void = () => {
     throw new Error(`${this.nick} is not attached to a network`);
   };
 
-  constructor(token: string, nick: string, flag?: PlayerFlag) {
+  constructor(token: string, nick: string, flag?: PlayerFlag, noReplay?: boolean) {
     this.token = token;
     this.flag = flag;
+    this.noReplay = noReplay === true;
     this.state = new RelayState(nick);
   }
 
@@ -86,6 +90,7 @@ export class RelayLobby {
       token: this.token,
       nick: this.nick,
       ...withFlag(this.flag),
+      ...(this.noReplay ? { noReplay: true } : {}),
     });
   }
 

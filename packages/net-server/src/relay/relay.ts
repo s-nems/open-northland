@@ -85,6 +85,8 @@ class Client {
   /** The nick `welcome` last named: unique among the connected on `hello`, then the room's. */
   nick = '';
   flag: PlayerFlag | undefined;
+  /** Whether this connection's `hello` refused recordings; false until its first. */
+  noReplay = false;
   /** The client heard the whole hall since it last arrived outside a room. */
   hallSynced = false;
   /** What it last heard of the room list and of presence, and how many hall lines (`Hall.said`);
@@ -556,6 +558,10 @@ export class Relay {
     client.nick = member?.nick ?? uniqueNick(message.nick, this.takenNicks(client));
     // A member keeps the flag it joined with, none included.
     client.flag = member === null ? message.flag : member.flag;
+    // The refusal follows the setting each `hello` carries, so a changed choice reaches the room it
+    // re-enters: unlike the flag, the member takes the connection's latest.
+    client.noReplay = message.noReplay === true;
+    if (member !== null) member.noReplay = client.noReplay;
     this.welcome(client);
     if (room !== undefined && member !== null) {
       client.room = room;
@@ -747,6 +753,7 @@ export class Relay {
       this.now(),
       { delayTicks, roundTripMs, jitterMs, measured: samples > 0 },
       client.flag,
+      client.noReplay,
     );
   }
 
