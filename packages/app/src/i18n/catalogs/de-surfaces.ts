@@ -815,6 +815,8 @@ export const deSurfaces = {
     replayPreparing: 'Wird vorbereitet…',
     replayCorrupt: 'Die Aufnahme ist beschädigt oder stammt aus einem anderen Build.',
     emptyReplayHint: 'Jedes Spiel zeichnet sein Replay selbst auf; sieh es hier an.',
+    replayOtherVersion: 'Aufgenommen mit {version}',
+
     autosave: 'Autospeichern',
     autosaveOff: 'Aus',
     autosaveEvery: '{n} Min.',

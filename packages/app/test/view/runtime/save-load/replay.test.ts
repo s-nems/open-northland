@@ -50,6 +50,9 @@ function documentTextOf(parts: {
     savedAt: 1764240000000,
     startedAt: 1764239000000,
     irVersion: 7,
+    identity: { clientBuild: 'test-build', gameVersion: '9.9.9-test', contentFingerprint: 'content-x' },
+    mapFingerprint: null,
+    stateHash: 'abcd0123',
     descriptor: descriptorOf(MAP_ID),
     fromTick: parts.fromTick,
     untilTick: parts.untilTick,
@@ -69,6 +72,9 @@ function recordedText(): string {
     savedAt: 1764240000000,
     startedAt: 1764239000000,
     irVersion: 7,
+    identity: { clientBuild: 'test-build', gameVersion: '9.9.9-test', contentFingerprint: 'content-x' },
+    mapFingerprint: null,
+    stateHash: 'abcd0123',
     descriptor: descriptorOf(MAP_ID),
     fromTick: 1,
     untilTick: sim.tick,
@@ -83,6 +89,13 @@ describe('replay document', () => {
     expect(parsed.kind).toBe(REPLAY_KIND);
     expect(parsed.version).toBe(REPLAY_FORMAT_VERSION);
     expect(parsed.irVersion).toBe(7);
+    expect(parsed.identity).toEqual({
+      clientBuild: 'test-build',
+      gameVersion: '9.9.9-test',
+      contentFingerprint: 'content-x',
+    });
+    expect(parsed.mapFingerprint).toBeNull();
+    expect(parsed.stateHash).toBe('abcd0123');
     expect(parsed.fromTick).toBe(1);
     expect(parsed.untilTick).toBe(2);
     expect(parsed.initialSave).toBeNull();
@@ -102,7 +115,7 @@ describe('replay document', () => {
 
   it('refuses another kind and version', () => {
     expect(() => parseReplayDocument('{"kind":"open-northland-save"}')).toThrow(/not a replay/);
-    expect(() => parseReplayDocument(recordedText().replace('"version":2', '"version":3'))).toThrow(
+    expect(() => parseReplayDocument(recordedText().replace('"version":3', '"version":4'))).toThrow(
       /unsupported replay format version/,
     );
   });

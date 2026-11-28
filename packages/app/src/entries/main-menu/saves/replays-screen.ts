@@ -1,5 +1,5 @@
 import { IR_VERSION } from '@open-northland/data/ir-version';
-import { SAVE_FORMAT_VERSION } from '@open-northland/sim';
+import { CLIENT_BUILD, GAME_VERSION } from '../../../build-version.js';
 import { GLYPH } from '../../../hud/dom/icons.js';
 import { button } from '../../../hud/dom/parts/dom.js';
 import { formatMessage, messages } from '../../../i18n/index.js';
@@ -7,6 +7,11 @@ import type { LaunchEntry } from '../../../launch.js';
 import { decodeSaveText, type SaveBytes } from '../../../view/runtime/save-load/codec.js';
 import { downloadStoredSave } from '../../../view/runtime/save-load/controller.js';
 import { storePendingReplay } from '../../../view/runtime/save-load/pending-store.js';
+import {
+  parseReplayDocument,
+  type ReplayDocument,
+  replayRefusalOn,
+} from '../../../view/runtime/save-load/replay.js';
 import type { ReplaySlotInfo } from '../../../view/runtime/save-load/replay-store.js';
 import { browserReplayStore } from '../../../view/runtime/save-load/replay-store.js';
 import type { SaveSlotInfo, SaveStore } from '../../../view/runtime/save-load/store.js';
@@ -34,10 +39,16 @@ export function replaysScreen(open: (screen: MenuScreen) => void, launch: Launch
     store: replayStoreAsSaves(store),
     emptyHint: copy.emptyReplayHint,
     onSelect: (slot) => {
-      play.disabled = slot === null;
+      // A replay another build recorded never plays: the button names why rather than starting a boot
+      // that refuses itself.
+      play.disabled = slot === null || slot.clientBuild !== CLIENT_BUILD;
       exportButton.disabled = slot === null;
     },
     onActivate: () => playSelected(),
+    unplayableTag: (slot) =>
+      slot.clientBuild === CLIENT_BUILD || slot.version === null || slot.version === undefined
+        ? null
+        : formatMessage(copy.replayOtherVersion, { version: slot.version }),
   });
   const { run } = panel;
   panel.actions.append(exportButton, play);
@@ -62,18 +73,22 @@ export function replaysScreen(open: (screen: MenuScreen) => void, launch: Launch
       } catch {
         return copy.replayCorrupt;
       }
-      // A build cannot reproduce a run its format or content moved under; refuse it before the boot
-      // spends its time standing a world up.
+      // A build cannot reproduce a run its build or content moved under; the shared header check
+      // refuses it before the boot spends its time standing a world up.
+      let document: ReplayDocument;
       try {
-        const parsed = JSON.parse(text) as {
-          version?: unknown;
-          formatVersion?: unknown;
-          irVersion?: unknown;
-        };
-        if (parsed.version !== 1 || parsed.formatVersion !== SAVE_FORMAT_VERSION) return copy.replayCorrupt;
-        if (parsed.irVersion !== IR_VERSION) return errors.wrongContent;
+        document = parseReplayDocument(text);
       } catch {
         return copy.replayCorrupt;
+      }
+      if (
+        replayRefusalOn(document, {
+          irVersion: IR_VERSION,
+          clientBuild: CLIENT_BUILD,
+          gameVersion: GAME_VERSION,
+        }) !== null
+      ) {
+        return formatMessage(copy.replayOtherVersion, { version: document.identity.gameVersion });
       }
       if (handedOff) return null;
       try {
@@ -125,6 +140,8 @@ function replayStoreAsSaves(store: {
           savedAt: slot.savedAt,
           seed: slot.seed,
           thumbnail: null,
+          version: slot.gameVersion,
+          clientBuild: slot.clientBuild,
         }),
       ),
     read: (id) => store.read(id),

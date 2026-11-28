@@ -410,6 +410,8 @@ export const plGame = {
     },
     dismiss: 'Zamknij',
     speedShortfall: 'Gra działa w tempie {delivered} zamiast {requested}',
+    replayMismatch: 'Powtórka rozeszła się z nagraniem przy ticku {tick}.',
+
     simStalled: 'Symulacja nie odpowiada od {seconds} s.',
     crashTitle: 'Gra napotkała błąd',
     crashHint: 'Pobierz raport i załącz go do zgłoszenia błędu.',

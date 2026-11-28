@@ -21,6 +21,10 @@ export interface ReplaySlotInfo {
   readonly seed: number;
   /** Milliseconds since the epoch, taken at the capture. */
   readonly savedAt: number;
+  /** The build the recording was made on, which the list marks a replay too old to play with. */
+  readonly clientBuild: string;
+  /** The release name the recording's build reported, shown beside the replay. */
+  readonly gameVersion: string;
 }
 
 /** The replay header's provenance, recorded beside the bytes so a list never inflates a recording. */
@@ -30,6 +34,8 @@ export interface ReplaySlotMeta {
   readonly untilTick: number;
   readonly seed: number;
   readonly savedAt: number;
+  readonly clientBuild: string;
+  readonly gameVersion: string;
 }
 
 /** The replay store: slots keyed by their session, newest first. */
@@ -116,9 +122,19 @@ function storedMetaOf(value: unknown): Omit<ReplaySlotInfo, 'id'> | null {
     typeof raw.seed !== 'number' ||
     !Number.isSafeInteger(raw.seed) ||
     typeof raw.savedAt !== 'number' ||
-    !Number.isSafeInteger(raw.savedAt)
+    !Number.isSafeInteger(raw.savedAt) ||
+    typeof raw.clientBuild !== 'string' ||
+    typeof raw.gameVersion !== 'string'
   ) {
     return null;
   }
-  return { name: raw.name, mapId: raw.mapId, untilTick: raw.untilTick, seed: raw.seed, savedAt: raw.savedAt };
+  return {
+    name: raw.name,
+    mapId: raw.mapId,
+    untilTick: raw.untilTick,
+    seed: raw.seed,
+    savedAt: raw.savedAt,
+    clientBuild: raw.clientBuild,
+    gameVersion: raw.gameVersion,
+  };
 }

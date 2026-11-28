@@ -743,6 +743,8 @@ export const chsSurfaces = {
     replayPreparing: '准备中…',
     replayCorrupt: '录像已损坏，或来自其他版本。',
     emptyReplayHint: '每局游戏都会自动录制自己的录像，在此观看。',
+    replayOtherVersion: '录制于 {version}',
+
     autosave: '自动存档',
     autosaveOff: '关闭',
     autosaveEvery: '{n} 分钟',

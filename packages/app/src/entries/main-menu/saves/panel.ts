@@ -12,6 +12,8 @@ import { menuHudScale } from '../hud-scale.js';
 import './saves.css';
 
 export interface MenuSavesPanelOptions {
+  /** A tag naming why a listed game cannot play here; null, no tag. */
+  readonly unplayableTag?: (slot: SaveSlotInfo) => string | null;
   /** The stored saves this panel offers out of all of them, newest first; all of them when absent. */
   readonly offered?: (slots: readonly SaveSlotInfo[]) => Promise<readonly SaveSlotInfo[]>;
   /** The store the panel lists, reads and deletes through; the save store when absent, so the
@@ -75,6 +77,7 @@ export function menuSavesPanel(opts: MenuSavesPanelOptions): MenuSavesPanel {
     emptyHint: opts.emptyHint,
     onSelect: opts.onSelect,
     onActivate: opts.onActivate,
+    ...(opts.unplayableTag === undefined ? {} : { unplayableTag: opts.unplayableTag }),
     onDelete: (slot) =>
       run(async () => {
         const confirmed = await menuConfirm(host, {

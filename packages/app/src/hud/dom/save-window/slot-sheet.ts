@@ -14,6 +14,8 @@ import { foldText } from '../parts/name-search.js';
 export interface SlotSheetOptions {
   /** A save of another world than the running one, whose game is tagged so. */
   readonly otherWorld?: (slot: SaveSlotInfo) => boolean;
+  /** A tag naming why the newest slot of a game cannot play here, if it cannot; null, no tag. */
+  readonly unplayableTag?: (slot: SaveSlotInfo) => string | null;
   /** The game running now, whose saves come first and open. */
   readonly running: RunningWorld | null;
   readonly emptyHint: string;
@@ -173,6 +175,9 @@ export function createSlotSheet(opts: SlotSheetOptions): SlotSheet {
     const newest = playthrough.slots[0];
     if (newest !== undefined && opts.otherWorld?.(newest) === true)
       title.append(textElement('span', 'on-saves__tag', copy.otherWorld));
+    const unplayable = newest !== undefined ? opts.unplayableTag?.(newest) : null;
+    if (unplayable !== undefined && unplayable !== null)
+      title.append(textElement('span', 'on-saves__tag', unplayable));
     const count = playthrough.slots.length;
     const summary = [
       formatMessage(pluralForm(count, copy.saveCount, tag), { count }),
@@ -203,9 +208,13 @@ export function createSlotSheet(opts: SlotSheetOptions): SlotSheet {
     } else thumb.innerHTML = GLYPH.papers;
     const playtime = slot.tick !== null ? formatPlaytime(slot.tick) : '-';
     const title = element('span', 'on-saves__title');
+    const sub =
+      slot.version === undefined || slot.version === null
+        ? formatMessage(copy.playtime, { time: playtime })
+        : `${formatMessage(copy.playtime, { time: playtime })} · ${slot.version}`;
     title.append(
       textElement('strong', 'on-saves__name', slot.name),
-      textElement('span', 'on-saves__sub', formatMessage(copy.playtime, { time: playtime })),
+      textElement('span', 'on-saves__sub', sub),
     );
     const when = textElement('span', 'on-saves__when', formatSavedAgo(slot.savedAt, now, tag));
     setTip(when, formatSavedAt(slot.savedAt, tag));

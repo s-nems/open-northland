@@ -803,6 +803,8 @@ export const ruSurfaces = {
     replayPreparing: 'Подготовка…',
     replayCorrupt: 'Запись повреждена или сделана в другой сборке.',
     emptyReplayHint: 'Каждая игра записывает свой повтор сама; посмотрите его здесь.',
+    replayOtherVersion: 'Записано в версии {version}',
+
     autosave: 'Автосохранение',
     autosaveOff: 'Выключено',
     autosaveEvery: '{n} мин',

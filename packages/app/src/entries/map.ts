@@ -1,5 +1,6 @@
 import { IR_VERSION } from '@open-northland/data/ir-version';
 import { type GameSession, isSpectator, localPlayerOf } from '@open-northland/lockstep';
+import { CLIENT_BUILD, GAME_VERSION } from '../build-version.js';
 import { scheduleFaultDrills } from '../diag/capture/drills.js';
 import { hasDebugFlag } from '../diag/debug-flags.js';
 import { diag, HASH_TRACE_DEBUG_FLAG } from '../diag/index.js';
@@ -11,7 +12,7 @@ import { formatSearch, introParam } from '../view/params.js';
 import { bindDisplayMode } from '../view/platform/fullscreen.js';
 import { replaceEntryUrl } from '../view/platform/navigation-guard.js';
 import { type StagedSession, takeStagedSession } from '../view/runtime/save-load/index.js';
-import { type ReplayDocument, replaySessionOf } from '../view/runtime/save-load/replay.js';
+import { type ReplayDocument, replayRefusalOn, replaySessionOf } from '../view/runtime/save-load/replay.js';
 import { haltOnFailedRestore } from '../view/runtime/world-bootstrap.js';
 import { assembleMapWorld, type HostedMapWorld, presentMapWorld } from './map/boot.js';
 import { workerReports } from './map/worker-reports.js';
@@ -54,10 +55,17 @@ export async function renderMap(canvas: HTMLCanvasElement, params: URLSearchPara
       halt('only a map session records a replay this boot can play');
       return;
     }
-    // A build cannot reproduce a run its content or format moved under, so the recording refuses it
-    // before the worker stands up.
-    if (replayDocument.irVersion !== IR_VERSION) {
-      halt('the replay was recorded on other content than this build serves');
+    // A build cannot reproduce a run its build or content moved under, so the recording refuses it
+    // before the worker stands up; the message names the version that recorded it.
+    const refusal = replayRefusalOn(replayDocument, {
+      irVersion: IR_VERSION,
+      clientBuild: CLIENT_BUILD,
+      gameVersion: GAME_VERSION,
+    });
+    if (refusal !== null) {
+      halt(
+        `the replay was recorded on game version ${replayDocument.identity.gameVersion}, which this build cannot play`,
+      );
       return;
     }
   }

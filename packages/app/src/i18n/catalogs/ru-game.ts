@@ -445,6 +445,8 @@ export const ruGame = {
     },
     dismiss: 'Скрыть',
     speedShortfall: 'Игра идёт в темпе {delivered} вместо {requested}',
+    replayMismatch: 'Повтор разошёлся со своей записью на такте {tick}.',
+
     simStalled: 'Симуляция не отвечает уже {seconds} с.',
     crashTitle: 'В игре произошла ошибка',
     crashHint: 'Скачайте отчёт и приложите его к сообщению об ошибке.',

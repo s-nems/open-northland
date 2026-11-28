@@ -299,4 +299,11 @@ export type FromWorker<E> =
       readonly error: WireError;
     }
   | { readonly kind: 'fault'; readonly fault: WorkerFault }
+  /** A playback reached its recording's last tick and its state hash diverged from the recorded one. */
+  | {
+      readonly kind: 'replayMismatch';
+      readonly tick: number;
+      readonly expected: string;
+      readonly actual: string;
+    }
   | { readonly kind: 'pong' };

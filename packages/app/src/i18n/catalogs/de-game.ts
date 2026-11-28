@@ -447,6 +447,8 @@ export const deGame = {
     },
     dismiss: 'Ausblenden',
     speedShortfall: 'Das Spiel läuft mit {delivered} statt {requested}',
+    replayMismatch: 'Das Replay wich bei Tick {tick} von seiner Aufnahme ab.',
+
     simStalled: 'Die Simulation antwortet seit {seconds} s nicht.',
     crashTitle: 'Im Spiel ist ein Fehler aufgetreten',
     crashHint: 'Lade den Bericht herunter und füge ihn deiner Fehlermeldung bei.',

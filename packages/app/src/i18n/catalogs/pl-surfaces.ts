@@ -770,6 +770,8 @@ export const plSurfaces = {
     replayPreparing: 'Przygotowywanie…',
     replayCorrupt: 'Nagranie jest uszkodzone lub pochodzi z innej wersji.',
     emptyReplayHint: 'Każda gra nagrywa swoją powtórkę sama; obejrzyj ją tutaj.',
+    replayOtherVersion: 'Nagranie z wersji {version}',
+
     autosave: 'Autozapis',
     autosaveOff: 'Wyłączony',
     autosaveEvery: '{n} min',

@@ -87,6 +87,7 @@ it('records a relayed session from its own log: the capture carries the descript
     savedAt: 1721097600000,
     startedAt: 1721097500000,
     irVersion: 1,
+    identity: { clientBuild: 'test-build', gameVersion: '9.9.9-test', contentFingerprint: 'content-x' },
   });
   expect(file.seed).toBe(SANDBOX_SESSION.seed);
   expect(file.untilTick).toBeGreaterThanOrEqual(FRAMES);

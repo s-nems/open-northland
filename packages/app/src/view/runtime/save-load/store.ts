@@ -16,6 +16,11 @@ export interface SaveSlotInfo {
   readonly seed: number | null;
   /** A small picture of the world as it stood, when one was taken. */
   readonly thumbnail: Blob | null;
+  /** The game version the slot was written on; null when the store records none. */
+  readonly version?: string | null;
+  /** The build the slot was written on, which decides whether this build can play it; null when the
+   *  store records none. */
+  readonly clientBuild?: string | null;
 }
 
 /** The save header's provenance, recorded beside the bytes so a list never inflates a save. */

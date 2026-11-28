@@ -816,6 +816,8 @@ export const itSurfaces = {
     replayPreparing: 'Preparazione…',
     replayCorrupt: 'La registrazione è danneggiata o creata con una versione differente.',
     emptyReplayHint: 'Ogni partita registra il suo replay da sola; guardalo qui.',
+    replayOtherVersion: 'Registrato su {version}',
+
     autosave: 'Salvataggio automatico',
     autosaveOff: 'Disattivato',
     autosaveEvery: '{n} min',

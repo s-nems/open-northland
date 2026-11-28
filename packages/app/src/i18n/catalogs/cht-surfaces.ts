@@ -744,6 +744,8 @@ export const chtSurfaces = {
     replayPreparing: '準備中…',
     replayCorrupt: '錄影已損壞，或來自其他版本。',
     emptyReplayHint: '每局遊戲都會自動錄製自己的錄影，在此觀看。',
+    replayOtherVersion: '錄製於 {version}',
+
     autosave: '自動存檔',
     autosaveOff: '關閉',
     autosaveEvery: '{n} 分鐘',

@@ -84,6 +84,12 @@ export interface WorkerReports extends StallReports {
   /** The worker posted an uncaught error or rejection, or a tick threw there. A `fatal` fault's error
    *  is the one the session then fails with. */
   faulted(error: Error, source: string | undefined, fatal: boolean): void;
+  /** A playback diverged from its recording at its last tick; absent, the mismatch stays in the log. */
+  replayMismatch?(mismatch: {
+    readonly tick: number;
+    readonly expected: string;
+    readonly actual: string;
+  }): void;
 }
 
 export interface WorkerSessionTimings {
@@ -314,6 +320,9 @@ class WorkerClient<E> {
         this.fail(error);
         return;
       }
+      case 'replayMismatch':
+        this.reports.replayMismatch?.(message);
+        return;
       case 'ready':
       case 'bootFailed':
       case 'fault':

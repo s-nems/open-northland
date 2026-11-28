@@ -13,12 +13,24 @@ import type { SaveBytes } from './codec.js';
 export const REPLAY_KIND = 'open-northland-replay';
 
 /** Single monotonic version of the whole persisted layout; any layout change bumps it. */
-export const REPLAY_FORMAT_VERSION = 2;
+export const REPLAY_FORMAT_VERSION = 3;
 
 /** Every replay plays back as a spectator: the recording decides the commands, so the watching
  *  client issues none, and the spectator's sight shows the whole map. */
 export function replaySessionOf(descriptor: GameSession): GameSession {
   return { ...descriptor, localSeat: 'observer' };
+}
+
+/** The build-side identity a replay is bound to, beside the save format and content version the
+ *  header stamps: a sim change without a format bump plays a different match, and only these name
+ *  the build that recorded it. */
+export interface ReplayIdentity {
+  /** The bundle hash of the client packages; `unbundled` when the sources load loose. */
+  readonly clientBuild: string;
+  /** The release name the build reported. */
+  readonly gameVersion: string;
+  /** The content fingerprint the lobby pins a room with (`contentLobbyFingerprint`). */
+  readonly contentFingerprint: string;
 }
 
 export interface ReplayDocument {
@@ -28,6 +40,13 @@ export interface ReplayDocument {
   readonly formatVersion: number;
   /** The content the run was built on, as the save header's `irVersion` pins it. */
   readonly irVersion: number;
+  /** The build identity the run was recorded on; a mismatch refuses the replay, saying this. */
+  readonly identity: ReplayIdentity;
+  /** The terrain fingerprint the recording sim stood on (`Simulation.mapFingerprint`); null when it
+   *  kept none. */
+  readonly mapFingerprint: string | null;
+  /** The state hash the recording took at its last tick; playback checks it there. */
+  readonly stateHash: string;
   /** Milliseconds since the epoch, taken at the capture. */
   readonly savedAt: number;
   /** Milliseconds since the epoch, taken when the recorded session began; two captures of one
@@ -55,6 +74,9 @@ export interface ReplayCaptureParts {
   readonly savedAt: number;
   readonly startedAt: number;
   readonly irVersion: number;
+  readonly identity: ReplayIdentity;
+  readonly mapFingerprint: string | null;
+  readonly stateHash: string;
   readonly descriptor: GameSession;
   readonly fromTick: number;
   readonly untilTick: number;
@@ -70,6 +92,11 @@ export function replayDocumentTextOf(parts: ReplayCaptureParts): string {
     `,"version":${REPLAY_FORMAT_VERSION}` +
     `,"formatVersion":${SAVE_FORMAT_VERSION}` +
     `,"irVersion":${parts.irVersion}` +
+    `,"clientBuild":${JSON.stringify(parts.identity.clientBuild)}` +
+    `,"gameVersion":${JSON.stringify(parts.identity.gameVersion)}` +
+    `,"contentFingerprint":${JSON.stringify(parts.identity.contentFingerprint)}` +
+    `,"mapFingerprint":${parts.mapFingerprint === null ? 'null' : JSON.stringify(parts.mapFingerprint)}` +
+    `,"stateHash":${JSON.stringify(parts.stateHash)}` +
     `,"savedAt":${parts.savedAt}` +
     `,"startedAt":${parts.startedAt}` +
     `,"descriptor":${JSON.stringify(parts.descriptor)}` +
@@ -112,6 +139,8 @@ export interface ReplayCaptureOptions {
   /** The recorded session's own start, which keys its slot; the caller holds it for the session. */
   readonly startedAt: number;
   readonly irVersion: number;
+  /** The build identity this client runs on, stamped into the recording. */
+  readonly identity: ReplayIdentity;
 }
 
 /** The assembled recording as file bytes, with the header the slot list shows. */
@@ -124,6 +153,41 @@ export interface ReplayCaptureFile {
   readonly savedAt: number;
   /** The session start the call carried, echoed for the slot's key and name. */
   readonly startedAt: number;
+  /** The build identity the recording was made on, echoed for the slot list's version mark. */
+  readonly identity: ReplayIdentity;
+}
+
+function identityOf(raw: Record<string, unknown>): ReplayIdentity {
+  for (const field of ['clientBuild', 'gameVersion', 'contentFingerprint'] as const) {
+    const value = raw[field];
+    if (typeof value !== 'string' || value.length === 0) {
+      throw new Error(`replay ${field} must be a non-empty string`);
+    }
+  }
+  return {
+    clientBuild: raw.clientBuild as string,
+    gameVersion: raw.gameVersion as string,
+    contentFingerprint: raw.contentFingerprint as string,
+  };
+}
+
+/** Why this build refuses a replay: the header's build stamps against this build's own, checked
+ *  before anything spends time on the recording. The message names the version that recorded it. */
+export type ReplayRefusal = { readonly kind: 'otherBuild'; readonly recorded: ReplayDocument };
+
+/** The stamps a build compares a replay's header against wherever it decides to play one: the
+ *  bundle's own build and release, and the content version. The content and terrain fingerprints
+ *  are compared where their sides are loaded — the menu and the boot know no map, and the worker
+ *  that stands the world up knows both. */
+export function replayRefusalOn(
+  document: ReplayDocument,
+  on: { readonly irVersion: number; readonly clientBuild: string; readonly gameVersion: string },
+): ReplayRefusal | null {
+  const same =
+    document.identity.clientBuild === on.clientBuild &&
+    document.identity.gameVersion === on.gameVersion &&
+    document.irVersion === on.irVersion;
+  return same ? null : { kind: 'otherBuild', recorded: document };
 }
 
 /** Parse a replay's text: kind, version, ticks, descriptor and every log entry are checked before
@@ -140,6 +204,15 @@ export function parseReplayDocument(text: string): ReplayDocument {
     throw new Error('the replay was recorded on another save format');
   }
   if (typeof raw.irVersion !== 'number') throw new Error('replay irVersion must be a number');
+  if (typeof raw.stateHash !== 'string' || raw.stateHash.length === 0) {
+    throw new Error('replay stateHash must be a non-empty string');
+  }
+  if (
+    raw.mapFingerprint !== null &&
+    (typeof raw.mapFingerprint !== 'string' || raw.mapFingerprint.length === 0)
+  ) {
+    throw new Error('replay mapFingerprint must be a fingerprint or null');
+  }
   if (typeof raw.savedAt !== 'number' || !Number.isSafeInteger(raw.savedAt)) {
     throw new Error('replay savedAt must be an integer');
   }
@@ -156,6 +229,9 @@ export function parseReplayDocument(text: string): ReplayDocument {
     version: REPLAY_FORMAT_VERSION,
     formatVersion: SAVE_FORMAT_VERSION,
     irVersion: raw.irVersion,
+    identity: identityOf(raw),
+    mapFingerprint: raw.mapFingerprint,
+    stateHash: raw.stateHash,
     savedAt: raw.savedAt,
     startedAt,
     descriptor: parseGameSession(raw.descriptor),

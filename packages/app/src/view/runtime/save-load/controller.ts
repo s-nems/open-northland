@@ -1,4 +1,6 @@
 import type { ExportSaveOptions, SaveGame } from '@open-northland/sim';
+import { CLIENT_BUILD, GAME_VERSION } from '../../../build-version.js';
+import { contentLobbyFingerprint } from '../../../content/lobby-identity.js';
 import { diag } from '../../../diag/index.js';
 import type { SessionHost } from '../../../session/index.js';
 import { isGzipSave, type SaveBytes, type SaveFile, saveFileOf } from './codec.js';
@@ -216,6 +218,11 @@ export function saveLoadSession(deps: SaveLoadDeps): SaveLoadSession {
           savedAt: Date.now(),
           startedAt: at,
           irVersion: deps.host.content.manifest.version,
+          identity: {
+            clientBuild: CLIENT_BUILD,
+            gameVersion: GAME_VERSION,
+            contentFingerprint: contentLobbyFingerprint(deps.host.content),
+          },
         });
         await store.write(replaySlotKeyOf(file.startedAt, file.seed), file.bytes, {
           name: replaySlotNameOf(file.mapId, file.startedAt),
@@ -223,6 +230,8 @@ export function saveLoadSession(deps: SaveLoadDeps): SaveLoadSession {
           untilTick: file.untilTick,
           seed: file.seed,
           savedAt: file.savedAt,
+          clientBuild: file.identity.clientBuild,
+          gameVersion: file.identity.gameVersion,
         });
         return { kind: 'saved' };
       } catch (err) {

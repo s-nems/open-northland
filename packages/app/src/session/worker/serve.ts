@@ -64,6 +64,15 @@ export interface HostedBuild<E> extends BuiltWorld<E> {
   readonly timeScale?: () => number;
   /** Where a replay capture reads this session's start; absent, the session keeps no replay. */
   readonly replaySource?: ReplaySource;
+  /** What a playback checks at its recording's last tick; absent, the session steps nothing
+   *  recorded. */
+  readonly replayEnd?: ReplayEnd;
+}
+
+/** The last tick a playback runs and the state hash its recording took there. */
+export interface ReplayEnd {
+  readonly endTick: number;
+  readonly stateHash: string;
 }
 
 /** The tick costs a session's driver cannot measure itself. */
@@ -207,6 +216,8 @@ export class ServedSession<E> {
   private readonly costs: TickCostSink | undefined;
   private readonly timeScale: (() => number) | undefined;
   private readonly replaySource: ReplaySource | undefined;
+  private readonly replayEnd: ReplayEnd | undefined;
+  private replayHashChecked = false;
   private deltas: SnapshotDeltaStream;
   /** Answers the request-shaped reads as the inline host does, over this thread's sim. */
   private readonly answers: SessionHost;
@@ -261,6 +272,7 @@ export class ServedSession<E> {
     this.costs = built.costs;
     this.timeScale = built.timeScale;
     this.replaySource = built.replaySource;
+    this.replayEnd = built.replayEnd;
     this.outbox = new TickOutbox({
       take: (records, leadTicks) => this.takeBatch(records, leadTicks),
       post: (batch) => this.post({ kind: 'ticks', batch }, fogTransfer(batch.fog)),
@@ -566,6 +578,18 @@ export class ServedSession<E> {
     });
     this.recordedTick = tick;
     this.stepStartMs = performance.now();
+    // A playback's recording took its state hash at its last tick; the same state must reproduce it.
+    if (!this.replayHashChecked && this.replayEnd !== undefined && tick === this.replayEnd.endTick) {
+      this.replayHashChecked = true;
+      const hash = sim.hashState();
+      if (hash !== this.replayEnd.stateHash) {
+        diag.error(
+          'session',
+          `replay mismatch at tick ${tick}: the recording took ${this.replayEnd.stateHash}, the playback stands at ${hash}`,
+        );
+        this.post({ kind: 'replayMismatch', tick, expected: this.replayEnd.stateHash, actual: hash });
+      }
+    }
     return stops;
   };
 
@@ -669,6 +693,9 @@ export class ServedSession<E> {
           savedAt: call.options.savedAt,
           startedAt: call.options.startedAt,
           irVersion: call.options.irVersion,
+          identity: call.options.identity,
+          mapFingerprint: this.sim.mapFingerprint ?? null,
+          stateHash: this.sim.hashState(),
           descriptor: this.replaySource.descriptor,
           fromTick: this.replaySource.fromTick,
           untilTick: this.sim.tick,
@@ -683,6 +710,7 @@ export class ServedSession<E> {
           untilTick: this.sim.tick,
           savedAt: call.options.savedAt,
           startedAt: call.options.startedAt,
+          identity: call.options.identity,
         };
       }
       case 'profileRows':

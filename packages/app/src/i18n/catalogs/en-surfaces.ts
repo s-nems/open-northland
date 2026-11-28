@@ -771,6 +771,8 @@ export const enSurfaces = {
     replayPreparing: 'Preparing…',
     replayCorrupt: 'The recording is damaged or from another build.',
     emptyReplayHint: 'Every game records its replay on its own; watch one here.',
+    replayOtherVersion: 'Recorded on {version}',
+
     autosave: 'Autosave',
     autosaveOff: 'Off',
     autosaveEvery: '{n} min',

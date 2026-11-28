@@ -1,4 +1,4 @@
-import { contentFingerprint, jsonFingerprint } from '@open-northland/data';
+import { type ContentSet, contentFingerprint, jsonFingerprint } from '@open-northland/data';
 import { type LobbyCompatibility, PROTOCOL_VERSION } from '@open-northland/net-protocol';
 import { GAME_VERSION } from '../build-version.js';
 import { mapFetch } from './map-source/sources.js';
@@ -12,6 +12,20 @@ import {
 import { type ContentFetch, contentFetch } from './url.js';
 
 declare const __CLIENT_BUILD__: string;
+
+/** The content fingerprint a lobby and a replay stamp: what the served content says, what it merges
+ *  to once the real files overlay the catalog, and the authored names the scripts join against. */
+export function contentLobbyFingerprint(content: ContentSet): string {
+  return jsonFingerprint({
+    content: contentFingerprint(content),
+    resolved: contentFingerprint(mergeRealContent(content).content),
+    // Authored placements join script names against these.
+    authoredNames: {
+      goods: content.goods.map((row) => [row.typeId, row.name ?? row.id]),
+      jobs: content.jobs.map((row) => [row.typeId, row.name ?? row.id]),
+    },
+  });
+}
 
 export async function loadLobbyCompatibility(
   mapId: string,
@@ -29,15 +43,7 @@ export async function loadLobbyCompatibility(
   if (content === null) throw new Error('Missing game content');
   if (documents !== null) readVerifiedMapDocuments(documents, mapId);
   return {
-    content: jsonFingerprint({
-      content: contentFingerprint(content),
-      resolved: contentFingerprint(mergeRealContent(content).content),
-      // Authored placements join script names against these.
-      authoredNames: {
-        goods: content.goods.map((row) => [row.typeId, row.name ?? row.id]),
-        jobs: content.jobs.map((row) => [row.typeId, row.name ?? row.id]),
-      },
-    }),
+    content: contentLobbyFingerprint(content),
     map: documents?.fingerprint ?? null,
     client,
     version: GAME_VERSION,

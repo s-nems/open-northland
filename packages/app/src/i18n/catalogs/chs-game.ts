@@ -405,6 +405,8 @@ export const chsGame = {
     },
     dismiss: '关闭',
     speedShortfall: '游戏以 {delivered} 运行，而非 {requested}',
+    replayMismatch: '回放在第 {tick} 刻与其录制内容出现分歧。',
+
     simStalled: '模拟已有 {seconds} 秒没有响应。',
     crashTitle: '游戏发生错误',
     crashHint: '请下载报告并附在你的错误报告中。',

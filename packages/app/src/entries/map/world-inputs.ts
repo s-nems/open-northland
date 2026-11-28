@@ -3,8 +3,10 @@ import { assertMapModulesFitMap, type MapModulesContentNames, mapLobbySlots } fr
 import { type GameSession, localPlayerOf, parseSavedSessionMetadata } from '@open-northland/lockstep';
 import { DESCRIPTOR_WORLD } from '@open-northland/net-protocol';
 import { type Entity, parseSaveGame, type SaveGame } from '@open-northland/sim';
+import { CLIENT_BUILD, GAME_VERSION } from '../../build-version.js';
 import { buildingFootprints } from '../../content/ir/joins.js';
 import type { ContentIr } from '../../content/ir/rows.js';
+import { contentLobbyFingerprint } from '../../content/lobby-identity.js';
 import { resolveAiControlPolicy } from '../../game/match/ai-control-policy.js';
 import { sessionMapScript } from '../../game/match/seat-tribes.js';
 import { assertMapSessionSeats } from '../../game/match/session-roster.js';
@@ -16,7 +18,7 @@ import type { WorkerSessionOptions } from '../../session/worker/protocol.js';
 import { servedOverReplay } from '../../session/worker/replay.js';
 import type { BuiltWorld, HostedBuild } from '../../session/worker/serve.js';
 import { saveDocumentOf } from '../../view/runtime/save-load/codec.js';
-import { parseReplayDocument } from '../../view/runtime/save-load/replay.js';
+import { parseReplayDocument, type ReplayDocument } from '../../view/runtime/save-load/replay.js';
 import { buildMapWorld, restoreMapWorld } from './world.js';
 
 /**
@@ -123,16 +125,46 @@ export function buildMapWorkerWorld(
   options: WorkerSessionOptions,
 ): HostedBuild<MapWorldPlacements> {
   const { saveText, replayText, ...inputs } = boot;
+  const replay = replayText === null ? null : parseReplayDocument(replayText);
+  if (replay !== null) refuseForeignReplay(replay, inputs.content);
   const save = saveText === null ? null : parseSaveGame(saveDocumentOf(saveText));
   const world = buildMapWorldFromInputs({ ...inputs, save });
-  if (replayText === null) {
+  if (replay === null) {
     return {
       ...servedOverLoopback(world, options),
       replaySource: { descriptor: inputs.session, fromTick: world.sim.tick, initialSaveText: saveText },
     };
   }
-  const { log, untilTick } = parseReplayDocument(replayText);
-  return servedOverReplay(world, options, { log, endTick: untilTick });
+  // A recording plays only on the terrain it was made on: the built world's own fingerprint names
+  // the map this boot serves, whatever the search asked for.
+  if (replay.mapFingerprint !== null && replay.mapFingerprint !== (world.sim.mapFingerprint ?? null)) {
+    throw new Error(recordedByMessage(replay));
+  }
+  return servedOverReplay(world, options, {
+    log: replay.log,
+    endTick: replay.untilTick,
+    stateHash: replay.stateHash,
+  });
+}
+
+/** What the boot halts with when a replay names another build than this one: the version that
+ *  recorded it, which is all a player can act on. */
+function recordedByMessage(replay: ReplayDocument): string {
+  return `the replay was recorded on game version ${replay.identity.gameVersion}, which this build cannot play`;
+}
+
+/** A replay plays only on the build and content it was recorded on: a sim change without a format
+ *  bump plays a different match, and only the build and content fingerprints name it. The map's
+ *  own fingerprint is checked against the built world. */
+function refuseForeignReplay(replay: ReplayDocument, content: MapWorldInputs['content']): void {
+  if (replay.identity.clientBuild !== CLIENT_BUILD || replay.identity.gameVersion !== GAME_VERSION) {
+    throw new Error(recordedByMessage(replay));
+  }
+  // A checkout without served content runs the sandbox catalog, whose fingerprint is checked on
+  // the capture side only; a release build always serves content, which always stamps it.
+  if (content !== null && replay.identity.contentFingerprint !== contentLobbyFingerprint(content)) {
+    throw new Error(recordedByMessage(replay));
+  }
 }
 
 /** A relayed session's world: restored from the snapshot the relay served, else from the boot's save
