@@ -5,7 +5,6 @@ import { formatPeaceLeft, formatSimClock } from '../../summary/model.js';
 import type { SeatArmy, SeatStanding } from '../../summary/standings.js';
 import {
   DEV_GAME_SPEED_STATES,
-  effectiveGameSpeedSpec,
   GAME_SPEED_STATES,
   type GameSpeedControl,
   type RunningGameSpeed,
@@ -14,6 +13,7 @@ import {
 import { GLYPH, menuArt } from '../icons.js';
 import { setAttribute, setClass, setHidden, setTip, setTitle } from '../parts/dom.js';
 import { attachTipLayer } from '../parts/tip-layer.js';
+import { createReplayProgress } from '../replay-bar.js';
 import { createObserverPicker, type ObserverPickerDeps } from './observer-picker.js';
 import { createObserverStandings } from './standings.js';
 import { createHudSummary, type HudSummaryDeps } from './summary.js';
@@ -55,6 +55,9 @@ export interface HudSystemBarDeps {
   /** The bar serves a recorded session's watch: one button cycles ×1→×2→×5→×10 instead of the
    *  segments, so skimming needs no debug tools. */
   readonly replayCycle?: boolean;
+  /** The watch's progress cell: the playback's tick against the recording's last, shown between the
+   *  clock and the speed segments. */
+  readonly replay?: { readonly untilTick: number };
   readonly onMenu: () => void;
   /** The caller's own node standing first in the bar's row (the frame rate, the debug tools). Hidden
    *  while empty. */
@@ -101,6 +104,7 @@ export function createHudSystemBar(plane: HTMLElement, deps: HudSystemBarDeps): 
           goodLabel: deps.summary.goodLabel,
         });
   const summary = createHudSummary(deps.summary);
+  const progress = deps.replay === undefined ? null : createReplayProgress(deps.replay.untilTick);
 
   // The peace's own framed cell: a glyph and the time left, its name and meaning in the label and tip.
   const peace = document.createElement('span');
@@ -186,7 +190,15 @@ export function createHudSystemBar(plane: HTMLElement, deps: HudSystemBarDeps): 
   }
   if (picker !== null) bar.append(picker.element);
   if (standings !== null) bar.append(standings.element);
-  bar.append(summary.element, peace, clock, speed, menu, aside);
+  bar.append(
+    summary.element,
+    peace,
+    clock,
+    ...(progress === null ? [] : [progress.root]),
+    speed,
+    menu,
+    aside,
+  );
   plane.append(bar);
   const showSpeed = (): void => {
     if (control === null) return;
@@ -238,6 +250,7 @@ export function createHudSystemBar(plane: HTMLElement, deps: HudSystemBarDeps): 
           formatMessage(clockCopy.count, { name: clockCopy.clock, count: text }),
         );
       }
+      progress?.update(model.tick);
     },
     setAside: (node) => {
       if (node === null) aside.replaceChildren();

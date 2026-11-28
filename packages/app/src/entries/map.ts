@@ -135,6 +135,7 @@ export async function renderMap(canvas: HTMLCanvasElement, params: URLSearchPara
     ...(replay === null ? { captureReplayFile: worker.captureReplayFile } : {}),
     sessionStartedAt: startedAt,
     replayPlayback: replayDocument !== null,
+    ...(replayDocument !== null ? { replayUntilTick: replayDocument.untilTick } : {}),
     introAtStart: replayDocument === null && stagedSave === null && introParam(params),
   }).catch((err: unknown) => {
     worker.dispose();

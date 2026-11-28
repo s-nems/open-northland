@@ -881,6 +881,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
         if (!sharedClock || !watching) applyGameSpeed(driver, spec, cause);
       },
       ...(deps.replayPlayback === true ? { replayCycle: true } : {}),
+      ...(deps.replayUntilTick !== undefined ? { replay: { untilTick: deps.replayUntilTick } } : {}),
       devSpeeds,
       clockPaused: () => driver.paused,
       pauseHeld: pauseHolds.isHeld,
