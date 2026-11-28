@@ -5,6 +5,7 @@ import { formatPeaceLeft, formatSimClock } from '../../summary/model.js';
 import type { SeatArmy, SeatStanding } from '../../summary/standings.js';
 import {
   DEV_GAME_SPEED_STATES,
+  effectiveGameSpeedSpec,
   GAME_SPEED_STATES,
   type GameSpeedControl,
   type RunningGameSpeed,
@@ -51,6 +52,9 @@ export interface HudSystemBarDeps {
   readonly onSpeed: (running: RunningGameSpeed) => void;
   /** Adds the ×5..×60 and unlimited segments after ×3. */
   readonly devSpeeds?: boolean;
+  /** The bar serves a recorded session's watch: one button cycles ×1→×2→×5→×10 instead of the
+   *  segments, so skimming needs no debug tools. */
+  readonly replayCycle?: boolean;
   readonly onMenu: () => void;
   /** The caller's own node standing first in the bar's row (the frame rate, the debug tools). Hidden
    *  while empty. */
@@ -137,6 +141,13 @@ export function createHudSystemBar(plane: HTMLElement, deps: HudSystemBarDeps): 
   const pause = segment(copy.pause, deps.onPauseToggle);
   pause.textContent = '❚❚';
   const running = new Map<RunningGameSpeed, HTMLButtonElement>();
+  // The watch's one tempo button: ×1 → ×2 → ×5 → ×10 → ×1, whatever the sim then sustains.
+  const REPLAY_CYCLE: readonly RunningGameSpeed[] = ['normal', 'fast', 'dev5', 'dev10'];
+  const cycleButton = segment('', () => {
+    if (control === null) return;
+    const next = REPLAY_CYCLE[(REPLAY_CYCLE.indexOf(control.running) + 1) % REPLAY_CYCLE.length] ?? 'normal';
+    deps.onSpeed(next);
+  });
   for (const spec of [...GAME_SPEED_STATES, ...(deps.devSpeeds === true ? DEV_GAME_SPEED_STATES : [])]) {
     if (!isRunning(spec.state)) continue;
     const state = spec.state;
@@ -149,6 +160,9 @@ export function createHudSystemBar(plane: HTMLElement, deps: HudSystemBarDeps): 
     } else button.textContent = `×${spec.factor}`;
     running.set(state, button);
   }
+  if (deps.replayCycle === true) {
+    for (const [state, button] of running) if (REPLAY_CYCLE.includes(state)) button.hidden = true;
+  } else cycleButton.hidden = true;
 
   const menu = document.createElement('button');
   menu.type = 'button';

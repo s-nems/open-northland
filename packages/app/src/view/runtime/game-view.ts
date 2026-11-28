@@ -233,6 +233,8 @@ export interface GameViewDeps {
   /** When the running session began, which keys and names its replay slot; absent, the first capture
    *  stamps it. */
   readonly sessionStartedAt?: number;
+  /** A playback's recording end: the watch shows the played ticks against it. */
+  readonly replayUntilTick?: number;
   /** The session plays a recording back: no autosave writes a watched state into the save list. */
   readonly replayPlayback?: boolean;
   /** True when the clock is shared with other clients: the menus and sheets that hold a local game
@@ -622,9 +624,11 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       watching = true;
       switchableSeat?.watch(PLAYERS_SIGHT);
     };
-    // A trusted command has no wire: a shared session drops it rather than hand it to the relay.
+    // A trusted command has no wire: a shared session drops it rather than hand it to the relay, and
+    // a playback refuses it whole — its recording alone decides what applies, and a submitted one
+    // would crash the session's clock.
     const issueTrusted = (command: Command): void => {
-      if (!sharedClock) driver.submit(adminCommand(command));
+      if (!sharedClock && deps.replayPlayback !== true) driver.submit(adminCommand(command));
     };
     const playtest = createPlaytest({
       params,
@@ -876,6 +880,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       onSpeed: (spec, cause) => {
         if (!sharedClock || !watching) applyGameSpeed(driver, spec, cause);
       },
+      ...(deps.replayPlayback === true ? { replayCycle: true } : {}),
       devSpeeds,
       clockPaused: () => driver.paused,
       pauseHeld: pauseHolds.isHeld,
