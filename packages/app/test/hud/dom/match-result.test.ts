@@ -26,7 +26,7 @@ function setup(
     localPlayer = 0,
     playerNickOf,
     holdsSeat,
-    saveReplay,
+    recordReplay,
   }: {
     onLoad?: (back: () => void) => void;
     playAgain?: () => void;
@@ -34,7 +34,7 @@ function setup(
     localPlayer?: number | null;
     playerNickOf?: (player: number) => string | undefined;
     holdsSeat?: () => boolean;
-    saveReplay?: { save: () => Promise<'saved' | 'failed'>; auto: () => boolean };
+    recordReplay?: () => Promise<'saved' | 'failed'>;
   } = {},
 ) {
   vi.stubGlobal(
@@ -67,7 +67,7 @@ function setup(
     ...(onLoad !== undefined ? { onLoad } : {}),
     ...(playAgain !== undefined ? { playAgain: { scope: 'thisMap', start: playAgain } } : {}),
     ...(holdsSeat !== undefined ? { holdsSeat } : {}),
-    ...(saveReplay !== undefined ? { saveReplay } : {}),
+    ...(recordReplay !== undefined ? { recordReplay } : {}),
   });
   overlays.push(overlay);
   const body = {
@@ -442,79 +442,32 @@ it('offers a lost local map again behind a confirmation, and not after a victory
   expect(h.overlay.isOpen()).toBe(false);
 });
 
-it('offers saving the session replay at the result, and says what the capture did', async () => {
-  const save = vi.fn(async () => 'saved' as const);
+it('records the session once at the first decisive result, offering no control to do it by hand', async () => {
+  const record = vi.fn(async () => 'saved' as const);
   const copy = messages().hud;
-  const h = setup(false, () => [], { saveReplay: { save, auto: () => false } });
+  const h = setup(false, () => [], { recordReplay: record });
   h.overlay.announce('victory');
-  expect(save).not.toHaveBeenCalled();
+  await vi.waitFor(() => expect(record).toHaveBeenCalledOnce());
+  // The recording happens on its own; the result offers no save control for it.
   expect(h.body.buttons().map((button) => button.textContent)).toEqual([
     copy.matchContinue,
-    copy.matchReplaySave,
     copy.returnToMenu,
   ]);
-  const saveButton = h.body.buttons()[1];
-  saveButton?.click();
-  expect(saveButton?.textContent).toBe(copy.matchReplaySaving);
-  expect(saveButton?.disabled).toBe(true);
-  await vi.waitFor(() => expect(saveButton?.textContent).toBe(copy.matchReplaySaved));
-  expect(save).toHaveBeenCalledOnce();
-  expect(saveButton?.disabled).toBe(true);
-});
-
-it('lets the player retry a replay capture that failed', async () => {
-  let failed = true;
-  const save = vi.fn(async () => (failed ? ('failed' as const) : ('saved' as const)));
-  const copy = messages().hud;
-  const h = setup(false, () => [], { saveReplay: { save, auto: () => false } });
-  h.overlay.announce('defeat');
-  const saveButton = h.body.buttons()[1];
-  saveButton?.click();
-  await vi.waitFor(() => expect(saveButton?.textContent).toBe(copy.matchReplaySaveFailed));
-  expect(saveButton?.disabled).toBe(false);
-  failed = false;
-  saveButton?.click();
-  await vi.waitFor(() => expect(saveButton?.textContent).toBe(copy.matchReplaySaved));
-  expect(save).toHaveBeenCalledTimes(2);
-  expect(saveButton?.disabled).toBe(true);
-});
-
-it('records the replay on its own once at the result, when recording is turned on', async () => {
-  const save = vi.fn(async () => 'saved' as const);
-  const copy = messages().hud;
-  const h = setup(false, () => [], { saveReplay: { save, auto: () => true } });
-  h.overlay.announce('victory');
-  await vi.waitFor(() => expect(save).toHaveBeenCalledOnce());
-  // The open window flips to the recorded state once the capture lands.
-  await vi.waitFor(() => {
-    const saveButton = h.body.buttons().find((button) => button.textContent === copy.matchReplaySaved);
-    expect(saveButton?.disabled).toBe(true);
-  });
-  // A result shown again never writes a second recording.
+  // A result shown again never starts a second recording.
   h.overlay.finish('victory');
   await Promise.resolve();
-  expect(save).toHaveBeenCalledOnce();
-  expect(h.body.buttons().find((button) => button.textContent === copy.matchReplaySaved)?.disabled).toBe(
-    true,
-  );
+  expect(record).toHaveBeenCalledOnce();
 });
 
-it('records nothing on its own when recording is off or no seat has a verdict', async () => {
-  const save = vi.fn(async () => 'saved' as const);
-  const off = setup(false, () => [], { saveReplay: { save, auto: () => false } });
-  off.overlay.announce('victory');
-  expect(save).not.toHaveBeenCalled();
-  off.overlay.dispose();
-
-  const undecided = setup(true, () => [], {
-    saveReplay: { save, auto: () => true },
-    localPlayer: null,
-  });
+it('records nothing when no seat has a verdict or the session keeps no capture', () => {
+  const record = vi.fn(async () => 'saved' as const);
+  const undecided = setup(true, () => [], { recordReplay: record, localPlayer: null });
   undecided.overlay.playersDecided('undecided');
   undecided.overlay.finish('undecided');
-  expect(save).not.toHaveBeenCalled();
-  // The control stays for the person watching, without having recorded anything itself.
-  expect(
-    undecided.body.buttons().find((button) => button.textContent === messages().hud.matchReplaySave),
-  ).not.toBeUndefined();
+  expect(record).not.toHaveBeenCalled();
+  undecided.overlay.dispose();
+
+  const bare = setup(false, () => []);
+  bare.overlay.announce('victory');
+  expect(record).not.toHaveBeenCalled();
 });

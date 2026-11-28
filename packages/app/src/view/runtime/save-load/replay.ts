@@ -13,7 +13,7 @@ import type { SaveBytes } from './codec.js';
 export const REPLAY_KIND = 'open-northland-replay';
 
 /** Single monotonic version of the whole persisted layout; any layout change bumps it. */
-export const REPLAY_FORMAT_VERSION = 1;
+export const REPLAY_FORMAT_VERSION = 2;
 
 /** Every replay plays back as a spectator: the recording decides the commands, so the watching
  *  client issues none, and the spectator's sight shows the whole map. */
@@ -30,6 +30,9 @@ export interface ReplayDocument {
   readonly irVersion: number;
   /** Milliseconds since the epoch, taken at the capture. */
   readonly savedAt: number;
+  /** Milliseconds since the epoch, taken when the recorded session began; two captures of one
+   *  session carry the same stamp, which is what keys the recording's store slot by. */
+  readonly startedAt: number;
   /** The world identity the session ran on, with the seats and rules it was assembled from. */
   readonly descriptor: GameSession;
   /** The tick the world build stands at: entries at or before it belong to the build the playback
@@ -50,6 +53,7 @@ export type SaveGameDocument = Record<string, unknown>;
 /** The pieces a replay capture holds beside the text it assembles them into. */
 export interface ReplayCaptureParts {
   readonly savedAt: number;
+  readonly startedAt: number;
   readonly irVersion: number;
   readonly descriptor: GameSession;
   readonly fromTick: number;
@@ -67,6 +71,7 @@ export function replayDocumentTextOf(parts: ReplayCaptureParts): string {
     `,"formatVersion":${SAVE_FORMAT_VERSION}` +
     `,"irVersion":${parts.irVersion}` +
     `,"savedAt":${parts.savedAt}` +
+    `,"startedAt":${parts.startedAt}` +
     `,"descriptor":${JSON.stringify(parts.descriptor)}` +
     `,"fromTick":${parts.fromTick}` +
     `,"untilTick":${parts.untilTick}` +
@@ -104,6 +109,8 @@ function loggedCommandOf(value: unknown, at: number): LoggedCommand {
  *  recording's save-format stamp is this build's own, so both sides import it rather than pass it. */
 export interface ReplayCaptureOptions {
   readonly savedAt: number;
+  /** The recorded session's own start, which keys its slot; the caller holds it for the session. */
+  readonly startedAt: number;
   readonly irVersion: number;
 }
 
@@ -115,6 +122,8 @@ export interface ReplayCaptureFile {
   readonly untilTick: number;
   /** The capture moment the call carried, echoed for the slot's provenance. */
   readonly savedAt: number;
+  /** The session start the call carried, echoed for the slot's key and name. */
+  readonly startedAt: number;
 }
 
 /** Parse a replay's text: kind, version, ticks, descriptor and every log entry are checked before
@@ -134,6 +143,7 @@ export function parseReplayDocument(text: string): ReplayDocument {
   if (typeof raw.savedAt !== 'number' || !Number.isSafeInteger(raw.savedAt)) {
     throw new Error('replay savedAt must be an integer');
   }
+  const startedAt = safeInteger(raw.startedAt, 'startedAt');
   const untilTick = safeInteger(raw.untilTick, 'untilTick');
   const fromTick = safeInteger(raw.fromTick, 'fromTick');
   if (fromTick > untilTick) throw new Error('replay fromTick must not sit past untilTick');
@@ -147,10 +157,28 @@ export function parseReplayDocument(text: string): ReplayDocument {
     formatVersion: SAVE_FORMAT_VERSION,
     irVersion: raw.irVersion,
     savedAt: raw.savedAt,
+    startedAt,
     descriptor: parseGameSession(raw.descriptor),
     fromTick,
     untilTick,
     initialSave: raw.initialSave as SaveGameDocument | null,
     log: raw.log.map(loggedCommandOf),
   };
+}
+
+/** The store key one recording lives under: its session's start and seed, so two captures of one
+ *  session write the same slot and two games that started in one minute never collide. */
+export function replaySlotKeyOf(startedAt: number, seed: number): string {
+  return `${startedAt}-${seed}`;
+}
+
+/** The name one recording lists under, taken from its session's start: stable across the captures a
+ *  session saves, whatever moment each was taken at. */
+export function replaySlotNameOf(mapId: string, startedAt: number): string {
+  const at = new Date(startedAt);
+  const pad = (value: number): string => String(value).padStart(2, '0');
+  const stamp =
+    `${at.getFullYear()}-${pad(at.getMonth() + 1)}-${pad(at.getDate())}` +
+    ` ${pad(at.getHours())}:${pad(at.getMinutes())}:${pad(at.getSeconds())}`;
+  return mapId === '' ? stamp : `${mapId} · ${stamp}`;
 }

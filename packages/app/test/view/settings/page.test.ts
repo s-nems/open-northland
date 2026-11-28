@@ -68,13 +68,13 @@ describe('the notice filters', () => {
 });
 
 describe('the gameplay tab sections', () => {
-  it('group the scroll rows under controls, then notices, then replays, then tools and reports', () => {
+  it('group the scroll rows under controls, then notices, then tools and reports', () => {
     settingsTab('gameplay', false);
     const headings = [...document.querySelectorAll('.main-menu__settings-heading')];
-    expect(headings).toHaveLength(4);
-    const [controls, notices, replays, tools] = headings;
-    if (controls === undefined || notices === undefined || replays === undefined || tools === undefined) {
-      throw new Error('the gameplay tab lacks one of its four section headings');
+    expect(headings).toHaveLength(3);
+    const [controls, notices, tools] = headings;
+    if (controls === undefined || notices === undefined || tools === undefined) {
+      throw new Error('the gameplay tab lacks one of its three section headings');
     }
     const row = (focus: string): Element => {
       const el = document.querySelector(`[data-settings-focus="${focus}"]`);
@@ -87,10 +87,7 @@ describe('the gameplay tab sections', () => {
     expect(follows(controls, row('keyboard-scroll-speed'))).toBe(true);
     expect(follows(row('invert-drag-scroll'), notices)).toBe(true);
     expect(follows(notices, row('notice-new-soldier'))).toBe(true);
-    expect(follows(row('notice-adult-woman'), replays)).toBe(true);
-    // Replays holds the recording choice; the tools and reports section follows it.
-    expect(follows(replays, row('replay-autosave'))).toBe(true);
-    expect(follows(row('replay-autosave'), tools)).toBe(true);
+    expect(follows(row('notice-adult-woman'), tools)).toBe(true);
     // Tools and reports holds the debug tools, the error reports and the original game's row.
     expect(follows(tools, row('debug-tools'))).toBe(true);
     expect(follows(tools, row('auto-reports'))).toBe(true);

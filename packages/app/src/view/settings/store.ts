@@ -237,9 +237,6 @@ export interface MenuSettings {
   readonly originalGameFolder: string | null;
   readonly autosaveMinutes: AutosaveMinutes;
   readonly autosaveCount: AutosaveCount;
-  /** Records every match's replay on its own at the result, into the replay store; off, the result
-   *  window still offers the save by hand. */
-  readonly replayAutosave: boolean;
   /** Which main-menu news columns the player folded, and what each last showed them. */
   readonly menuNews: MenuNewsColumns;
 }
@@ -325,7 +322,6 @@ export function defaultSettings(): MenuSettings {
     originalGameFolder: null,
     autosaveMinutes: 0,
     autosaveCount: DEFAULT_AUTOSAVE_COUNT,
-    replayAutosave: false,
     menuNews: DEFAULT_MENU_NEWS,
   };
 }
@@ -466,8 +462,6 @@ export function parseStoredSettings(raw: string | null): MenuSettings {
         ? record.autosaveMinutes
         : 0,
     autosaveCount: AUTOSAVE_COUNTS.find((count) => count === record.autosaveCount) ?? DEFAULT_AUTOSAVE_COUNT,
-    replayAutosave:
-      typeof record.replayAutosave === 'boolean' ? record.replayAutosave : defaults.replayAutosave,
     displayMode: record.displayMode === 'fullscreen' ? 'fullscreen' : 'window',
     renderScale: clampRenderScale(record.renderScale),
     backingDensity: parseBackingDensitySetting(record.backingDensity) ?? 'auto',

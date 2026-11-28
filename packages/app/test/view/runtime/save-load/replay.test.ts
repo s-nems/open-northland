@@ -48,6 +48,7 @@ function documentTextOf(parts: {
 }): string {
   return replayDocumentTextOf({
     savedAt: 1764240000000,
+    startedAt: 1764239000000,
     irVersion: 7,
     descriptor: descriptorOf(MAP_ID),
     fromTick: parts.fromTick,
@@ -66,6 +67,7 @@ function recordedText(): string {
   sim.step();
   return replayDocumentTextOf({
     savedAt: 1764240000000,
+    startedAt: 1764239000000,
     irVersion: 7,
     descriptor: descriptorOf(MAP_ID),
     fromTick: 1,
@@ -100,7 +102,7 @@ describe('replay document', () => {
 
   it('refuses another kind and version', () => {
     expect(() => parseReplayDocument('{"kind":"open-northland-save"}')).toThrow(/not a replay/);
-    expect(() => parseReplayDocument(recordedText().replace('"version":1', '"version":2'))).toThrow(
+    expect(() => parseReplayDocument(recordedText().replace('"version":2', '"version":3'))).toThrow(
       /unsupported replay format version/,
     );
   });

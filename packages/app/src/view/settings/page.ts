@@ -366,11 +366,6 @@ export function createSettingsPage(opts: {
       });
       autoReports.setAttribute('aria-label', text.autoReports);
       autoReports.dataset.settingsFocus = 'auto-reports';
-      const replayAutosave = togglePill(settings.replayAutosave, (enabled) => {
-        void opts.settings.update({ replayAutosave: enabled });
-      });
-      replayAutosave.setAttribute('aria-label', text.replayAutosave);
-      replayAutosave.dataset.settingsFocus = 'replay-autosave';
       return [
         settingRow(
           text.language,
@@ -411,8 +406,6 @@ export function createSettingsPage(opts: {
         noticeToggle('noticeNewSoldier', 'notice-new-soldier'),
         noticeToggle('noticeAdultMan', 'notice-adult-man'),
         noticeToggle('noticeAdultWoman', 'notice-adult-woman'),
-        settingsHeading(text.replaysHeading),
-        settingRow(text.replayAutosave, replayAutosave, { tip: text.replayAutosaveTip }),
         settingsHeading(text.debugHeading),
         settingRow(text.debugTools, debugTools, { tip: text.debugToolsTip }),
         settingRow(text.autoReports, autoReports, { tip: text.autoReportsTip }),

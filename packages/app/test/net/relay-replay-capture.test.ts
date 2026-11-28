@@ -83,7 +83,11 @@ it('records a relayed session from its own log: the capture carries the descript
     return world.session.host.tick >= FRAMES;
   });
 
-  const file = await world.session.captureReplayFile({ savedAt: 1721097600000, irVersion: 1 });
+  const file = await world.session.captureReplayFile({
+    savedAt: 1721097600000,
+    startedAt: 1721097500000,
+    irVersion: 1,
+  });
   expect(file.seed).toBe(SANDBOX_SESSION.seed);
   expect(file.untilTick).toBeGreaterThanOrEqual(FRAMES);
   const doc = parseReplayDocument(await decodeSaveText(file.bytes));

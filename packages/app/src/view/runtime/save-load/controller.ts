@@ -7,6 +7,7 @@ import { browserSaveDownload, type PickedSaveFile, pickedSaveOf } from './file-a
 import { displayNameOf } from './list-model.js';
 import { relaunchSearch } from './relaunch.js';
 import type { ReplayCaptureFile, ReplayCaptureOptions } from './replay.js';
+import { replaySlotKeyOf, replaySlotNameOf } from './replay.js';
 import type { ReplaySlotInfo, ReplayStore } from './replay-store.js';
 import type { SaveSlotInfo, SaveStore } from './store.js';
 import type { SavedView } from './view-state.js';
@@ -52,6 +53,9 @@ export interface SaveLoadDeps {
   readonly presentation?: () => string | null;
   /** The running world's seed, which names its playthrough; null when the entry does not know it. */
   readonly worldSeed?: number | null;
+  /** When the running session began, which keys and names its replay slot; absent, the first capture
+   *  stamps it, and the stamp holds for every later capture of the session. */
+  readonly sessionStartedAt?: number;
   /** A small picture of the world for the save list; absent or null, the save lists without one. */
   readonly captureThumbnail?: () => Promise<Blob | null>;
 }
@@ -90,6 +94,13 @@ export interface SaveLoadSession {
  */
 export function saveLoadSession(deps: SaveLoadDeps): SaveLoadSession {
   const { host, worldToken } = deps;
+  // One stamp per session, held from the first capture on: every capture of the session keys and
+  // names its slot by it, so a later capture rewrites the same slot instead of adding one.
+  let startedAt = deps.sessionStartedAt ?? null;
+  const sessionStartedAt = (): number => {
+    if (startedAt === null) startedAt = Date.now();
+    return startedAt;
+  };
   let forced: { priorPaused: boolean } | null = null;
   const forcePause = (): void => {
     if (forced !== null) return;
@@ -200,8 +211,14 @@ export function saveLoadSession(deps: SaveLoadDeps): SaveLoadSession {
       const store = deps.replayStore;
       if (capture === undefined || store === undefined) return { kind: 'failed' };
       try {
-        const file = await capture({ savedAt: Date.now(), irVersion: deps.host.content.manifest.version });
-        await store.write(replaySlotName(file.mapId, file.savedAt), file.bytes, {
+        const at = sessionStartedAt();
+        const file = await capture({
+          savedAt: Date.now(),
+          startedAt: at,
+          irVersion: deps.host.content.manifest.version,
+        });
+        await store.write(replaySlotKeyOf(file.startedAt, file.seed), file.bytes, {
+          name: replaySlotNameOf(file.mapId, file.startedAt),
           mapId: file.mapId,
           untilTick: file.untilTick,
           seed: file.seed,
@@ -261,16 +278,6 @@ export function saveLoadSession(deps: SaveLoadDeps): SaveLoadSession {
 /** Suffix the exported file for the payload it actually carries; a slot name is whatever the player typed. */
 function exportFileName(id: string, bytes: SaveBytes): string {
   return `${displayNameOf(id)}${isGzipSave(bytes) ? '.json.gz' : '.json'}`;
-}
-
-/** Name a replay by its world and the capture's moment, so two replays of one map sort by time. */
-function replaySlotName(mapId: string, savedAt: number): string {
-  const at = new Date(savedAt);
-  const pad = (value: number): string => String(value).padStart(2, '0');
-  const stamp =
-    `${at.getFullYear()}-${pad(at.getMonth() + 1)}-${pad(at.getDate())}` +
-    ` ${pad(at.getHours())}:${pad(at.getMinutes())}`;
-  return mapId === '' ? stamp : `${mapId} · ${stamp}`;
 }
 
 /** The menu screen's backup path over a stored slot: download the slot's bytes under its display name. */

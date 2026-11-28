@@ -442,9 +442,6 @@ export const enSurfaces = {
       invertDragScroll: 'Invert drag scrolling',
       invertDragScrollTip: 'When enabled, dragging right moves the map left, and vice versa.',
       cameraHeading: 'Camera',
-      replaysHeading: 'Replays',
-      replayAutosave: 'Save replays automatically',
-      replayAutosaveTip: 'Records every match you finish on its own; find it under Replays.',
       debugHeading: 'Debug',
       noticesHeading: 'Notices',
       noticeNewSoldier: 'New soldier',
@@ -770,16 +767,10 @@ export const enSurfaces = {
   },
   // Shared by the in-game save panels and the main menu's load screen.
   saveList: {
-    saveReplay: 'Save replay',
-    saveReplayHint:
-      "Records the whole session: its start and every command, replayed from the map's first tick.",
-    replaySaving: 'Recording…',
-    replaySaved: 'Replay saved.',
-    replaySaveFailed: 'Recording the replay failed.',
     replayPlay: 'Watch',
     replayPreparing: 'Preparing…',
     replayCorrupt: 'The recording is damaged or from another build.',
-    emptyReplayHint: 'Save a replay from the in-game menu, and watch it here.',
+    emptyReplayHint: 'Every game records its replay on its own; watch one here.',
     autosave: 'Autosave',
     autosaveOff: 'Off',
     autosaveEvery: '{n} min',

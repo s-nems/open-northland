@@ -667,6 +667,7 @@ export class ServedSession<E> {
         // command ever materializes as an object on either side.
         const text = replayDocumentTextOf({
           savedAt: call.options.savedAt,
+          startedAt: call.options.startedAt,
           irVersion: call.options.irVersion,
           descriptor: this.replaySource.descriptor,
           fromTick: this.replaySource.fromTick,
@@ -681,6 +682,7 @@ export class ServedSession<E> {
           seed: this.replaySource.descriptor.seed,
           untilTick: this.sim.tick,
           savedAt: call.options.savedAt,
+          startedAt: call.options.startedAt,
         };
       }
       case 'profileRows':

@@ -29,20 +29,11 @@ export interface MatchResultDeps {
   readonly onLoad?: (back: () => void) => void;
   /** Starts over from a defeat, as a new match. */
   readonly playAgain?: ReplayOffer;
-  /** Saves this session's replay. Wired only for a session that keeps one, so a playback or a shared
-   *  game offers no control and records nothing. */
-  readonly saveReplay?: MatchResultReplaySave;
+  /** Records this session's replay on its own. Wired only for a session that keeps one, so a
+   *  playback or a shared game records nothing. */
+  readonly recordReplay?: () => Promise<'saved' | 'failed'>;
   /** Whether the viewer of a shared game still holds a seat: closing the window keeps playing with it. */
   readonly holdsSeat?: () => boolean;
-}
-
-/** The session's replay capture, as the result window offers it: by hand, and once on its own when
- *  the player turned recording on. */
-export interface MatchResultReplaySave {
-  /** Saves the recording; `'saved'` once the replay store holds it. */
-  readonly save: () => Promise<'saved' | 'failed'>;
-  /** Whether the match records itself, read when the result first shows. */
-  readonly auto: () => boolean;
 }
 
 /** A fresh start, as a new match: of the map being played, or from a sub-mission of its main map. */
@@ -122,10 +113,8 @@ export function createMatchResultOverlay(deps: MatchResultDeps): MatchResultOver
   let current: { verdict: MatchOutcome; terminal: boolean } | null = null;
   // The result set aside while the load page is open; cleared when anything else replaces it.
   let awayToLoad: { verdict: MatchOutcome; terminal: boolean } | null = null;
-  // A replay the window recorded itself, kept so a re-shown result never writes a second one.
-  let replaySaved = false;
-  /** True from the moment the auto capture starts, so a second show while the first recording is
-   *  still assembling starts none, whatever the first one makes of it. */
+  /** True from the moment the auto capture starts, so a re-shown result never starts a second one
+   *  while the first recording is still assembling. */
   let autoStarted = false;
   const hide = (): void => {
     close?.();
@@ -284,39 +273,12 @@ export function createMatchResultOverlay(deps: MatchResultDeps): MatchResultOver
         }),
       );
     }
-    const saveReplay = deps.saveReplay;
-    if (saveReplay !== undefined) {
-      // The save reads its own label, so a capture in flight and its outcome reword the button.
-      const save = document.createElement('button');
-      save.type = 'button';
-      save.className = 'on-button';
-      save.innerHTML = GLYPH.list;
-      const say = (text: string): void => {
-        (save.lastElementChild as HTMLElement | null)?.replaceChildren(text);
-      };
-      let recording = false;
-      const record = (): void => {
-        if (recording) return;
-        recording = true;
-        save.disabled = true;
-        say(copy.matchReplaySaving);
-        void saveReplay.save().then((outcome) => {
-          recording = false;
-          replaySaved = outcome === 'saved' || replaySaved;
-          save.disabled = replaySaved;
-          say(replaySaved ? copy.matchReplaySaved : copy.matchReplaySaveFailed);
-        });
-      };
-      save.append(line('span', '', replaySaved ? copy.matchReplaySaved : copy.matchReplaySave));
-      if (replaySaved) save.disabled = true;
-      save.addEventListener('click', record, { signal: scope.signal });
-      // The match records itself once, at the first decisive result the window shows, when the
-      // player turned recording on; the control stays for a session the auto pass skipped.
-      if (!autoStarted && !replaySaved && verdict !== 'undecided' && saveReplay.auto()) {
-        autoStarted = true;
-        record();
-      }
-      row.append(save);
+    // The match records itself once, at the first decisive result the window shows. A session that
+    // keeps playing records again when its player leaves to the menu, into the same slot, so the
+    // recording outlives the result the way the session does.
+    if (deps.recordReplay !== undefined && !autoStarted && verdict !== 'undecided') {
+      autoStarted = true;
+      void deps.recordReplay();
     }
     row.append(quit);
     frame.body.append(row);

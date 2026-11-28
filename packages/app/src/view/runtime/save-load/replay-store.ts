@@ -1,7 +1,8 @@
 import { isSaveBytes, type SaveBytes } from './codec.js';
 import { completed, openDb } from './idb.js';
 
-/** The replay list: named recordings of played sessions, newest first, overwritten by name. */
+/** The replay list: recordings keyed by the session each one played, newest first, a session's own
+ *  later capture overwriting its slot. */
 
 const DB_NAME = 'open-northland-replays';
 /** Metadata sits apart from the payloads so a list never materializes megabytes of recording bytes. */
@@ -10,8 +11,9 @@ const BYTES_STORE = 'bytes';
 
 /** One listed replay: the store identity plus the metadata the list UI shows. */
 export interface ReplaySlotInfo {
-  /** Store key; the browser store keys a slot by the name the capture composed. */
+  /** Store key; the browser store keys a slot by the session that recorded it. */
   readonly id: string;
+  /** What the list shows for the slot, held apart from the key it is stored under. */
   readonly name: string;
   readonly mapId: string;
   /** The last tick the recording covers, which lists as the match time it spans. */
@@ -23,17 +25,19 @@ export interface ReplaySlotInfo {
 
 /** The replay header's provenance, recorded beside the bytes so a list never inflates a recording. */
 export interface ReplaySlotMeta {
+  readonly name: string;
   readonly mapId: string;
   readonly untilTick: number;
   readonly seed: number;
   readonly savedAt: number;
 }
 
-/** The replay store: named slots, newest first, overwritten by name. */
+/** The replay store: slots keyed by their session, newest first. */
 export interface ReplayStore {
   list(): Promise<ReplaySlotInfo[]>;
   read(id: string): Promise<SaveBytes | null>;
-  write(name: string, bytes: SaveBytes, meta: ReplaySlotMeta): Promise<void>;
+  /** Write a recording under its session's key, overwriting that session's earlier capture. */
+  write(id: string, bytes: SaveBytes, meta: ReplaySlotMeta): Promise<void>;
   remove(id: string): Promise<void>;
 }
 
@@ -72,7 +76,7 @@ export function browserReplayStore(): ReplayStore {
         if (typeof key !== 'string') return;
         const meta = storedMetaOf(values.result[i]);
         if (meta === null) return;
-        slots.push({ id: key, name: key, ...meta });
+        slots.push({ id: key, ...meta });
       });
       return slots.sort((a, b) => b.savedAt - a.savedAt);
     },
@@ -82,10 +86,10 @@ export function browserReplayStore(): ReplayStore {
       return isSaveBytes(read.result) ? read.result : null;
     },
 
-    async write(name: string, bytes: SaveBytes, meta: ReplaySlotMeta): Promise<void> {
+    async write(id: string, bytes: SaveBytes, meta: ReplaySlotMeta): Promise<void> {
       await inReplaysDb([META_STORE, BYTES_STORE], 'readwrite', (txn) => {
-        txn.objectStore(META_STORE).put(meta, name);
-        txn.objectStore(BYTES_STORE).put(bytes, name);
+        txn.objectStore(META_STORE).put(meta, id);
+        txn.objectStore(BYTES_STORE).put(bytes, id);
       });
     },
 
@@ -98,11 +102,13 @@ export function browserReplayStore(): ReplayStore {
   };
 }
 
-/** Tolerate a foreign or older record shape: an unverifiable slot lists as nothing rather than lying. */
-function storedMetaOf(value: unknown): Omit<ReplaySlotInfo, 'id' | 'name'> | null {
+/** A slot metadata record this build cannot read whole lists as nothing: formats are replaced, never
+ *  migrated, so an unverifiable slot never lies about what it holds. */
+function storedMetaOf(value: unknown): Omit<ReplaySlotInfo, 'id'> | null {
   if (typeof value !== 'object' || value === null) return null;
   const raw = value as Record<string, unknown>;
   if (
+    typeof raw.name !== 'string' ||
     typeof raw.mapId !== 'string' ||
     typeof raw.untilTick !== 'number' ||
     !Number.isSafeInteger(raw.untilTick) ||
@@ -114,5 +120,5 @@ function storedMetaOf(value: unknown): Omit<ReplaySlotInfo, 'id' | 'name'> | nul
   ) {
     return null;
   }
-  return { mapId: raw.mapId, untilTick: raw.untilTick, seed: raw.seed, savedAt: raw.savedAt };
+  return { name: raw.name, mapId: raw.mapId, untilTick: raw.untilTick, seed: raw.seed, savedAt: raw.savedAt };
 }

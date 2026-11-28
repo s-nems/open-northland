@@ -631,5 +631,3 @@ it('always leaves one free observer row after the occupied rows', () => {
   join?.click();
   expect(client.claimSeat).toHaveBeenCalledWith(null);
 });
-
-

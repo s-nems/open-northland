@@ -52,6 +52,7 @@ import { hasDebugFlag } from '../../diag/debug-flags.js';
 import { logGpuContextLoss } from '../../diag/gpu-context.js';
 import {
   currentDiagGameSession,
+  diag,
   FrameStats,
   installSessionInstruments,
   setDiagGameSession,
@@ -229,6 +230,9 @@ export interface GameViewDeps {
   /** Present when the sim runs on another thread: the session's replay capture as file bytes made
    *  there. A session playing a recording back keeps none. */
   readonly captureReplayFile?: SaveLoadSessionOptions['captureReplayFile'];
+  /** When the running session began, which keys and names its replay slot; absent, the first capture
+   *  stamps it. */
+  readonly sessionStartedAt?: number;
   /** The session plays a recording back: no autosave writes a watched state into the save list. */
   readonly replayPlayback?: boolean;
   /** True when the clock is shared with other clients: the menus and sheets that hold a local game
@@ -436,6 +440,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
     host,
     worldToken: deps.worldToken ?? null,
     worldSeed: deps.worldSeed ?? null,
+    ...(deps.sessionStartedAt === undefined ? {} : { sessionStartedAt: deps.sessionStartedAt }),
     captureThumbnail: () => worldThumbnail(renderer, app.screen.width),
     ...(deps.saveEntrySearch !== undefined ? { entrySearch: deps.saveEntrySearch } : {}),
     loadOtherWorld: otherWorldLoader(teardownWorld, deps.validateSavedMap),
@@ -484,20 +489,26 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
   };
   const leaveWorld = createEntryExit({ teardown: teardownWorld });
   const onReturnToMenu = deps.onReturnToMenu;
-  const quitToMenu =
-    onReturnToMenu !== undefined
-      ? (): void => {
+  const quitToMenu = (): void => {
+    // The session's recording is written before the world goes down, so leaving to the menu keeps it
+    // whole; the capture rewrites the slot the session's earlier captures already hold.
+    void saveLoad
+      .saveReplay()
+      .catch((err: unknown) => diag.warn('save', `recording the session on leave failed: ${String(err)}`))
+      .then(() => {
+        if (onReturnToMenu !== undefined) {
           destroy();
           onReturnToMenu();
+          return;
         }
-      : (): void => {
-          const search = new URLSearchParams(menuSearch());
-          if (deps.campaign !== undefined) {
-            search.set('menu', 'campaign');
-            search.set('campaign', deps.campaign.id);
-          }
-          leaveWorld(`?${search}`);
-        };
+        const search = new URLSearchParams(menuSearch());
+        if (deps.campaign !== undefined) {
+          search.set('menu', 'campaign');
+          search.set('campaign', deps.campaign.id);
+        }
+        leaveWorld(`?${search}`);
+      });
+  };
   const replayStart = sharedClock ? null : replayPlan(params, deps.parentSave);
   const replay: ReplayOffer | undefined =
     replayStart === null
@@ -1000,12 +1011,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
         ...(sharedClock ? {} : { onLoad: (back) => systemMenu?.openPage('load', back) }),
         ...(replay !== undefined ? { playAgain: replay } : {}),
         ...(saveLoad.canSaveReplay
-          ? {
-              saveReplay: {
-                save: async (): Promise<'saved' | 'failed'> => (await saveLoad.saveReplay()).kind,
-                auto: () => liveSettings.settings.current().replayAutosave === true,
-              },
-            }
+          ? { recordReplay: () => saveLoad.saveReplay().then((outcome) => outcome.kind) }
           : {}),
         ...(sharedClock ? { holdsSeat: () => !watching } : {}),
         onContinue: () => {

@@ -28,6 +28,8 @@ interface WorkerMapWorld extends HostedMapWorld {
  *  single-player game over the loopback transport. A boot that staged a replay instead plays the
  *  recording back, whose own descriptor, not the search, describes the session. */
 export async function renderMap(canvas: HTMLCanvasElement, params: URLSearchParams): Promise<void> {
+  // This boot's session start, which keys and names the replay its recording writes.
+  const startedAt = Date.now();
   // A sub-mission swaps this document's entry, so the binding ends with the world, not the document.
   const scope = new AbortController();
   bindDisplayMode(params, undefined, scope.signal);
@@ -123,6 +125,7 @@ export async function renderMap(canvas: HTMLCanvasElement, params: URLSearchPara
     captureSaveFile: worker.captureSaveFile,
     // A playback keeps no replay of its own: the recording is the only command source it admits.
     ...(replay === null ? { captureReplayFile: worker.captureReplayFile } : {}),
+    sessionStartedAt: startedAt,
     replayPlayback: replayDocument !== null,
     introAtStart: replayDocument === null && stagedSave === null && introParam(params),
   }).catch((err: unknown) => {
