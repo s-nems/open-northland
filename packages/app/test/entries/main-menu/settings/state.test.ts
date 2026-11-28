@@ -115,7 +115,6 @@ describe('parseStoredSettings', () => {
       autosaveMinutes: 15,
       autosaveCount: 3,
       replayAutosave: true,
-      replayOptOut: true,
       menuNews: {
         news: { collapsed: true, seen: ['0a1b2c3d'] },
         versions: { collapsed: false, seen: ['89abcdef', '01234567'] },

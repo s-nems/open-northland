@@ -97,8 +97,6 @@ export interface RelayClientOptions {
   readonly nick: string;
   /** The flag shown beside the nick; none when absent. */
   readonly flag?: PlayerFlag;
-  /** Whether this client refuses recordings of the matches it plays; carried in every `hello`. */
-  readonly noReplay?: boolean;
   readonly world: WorldPort;
   /** Relay messages after applying them, plus local command refusals: how a display follows the session. */
   readonly onMessage?: (message: ServerMessage) => void;
@@ -199,7 +197,7 @@ export class RelayClient extends RelayLobby implements SessionDriver, RelayClien
   private readonly now: () => number;
 
   constructor(options: RelayClientOptions) {
-    super(options.token, options.nick, options.flag, options.noReplay);
+    super(options.token, options.nick, options.flag);
     this.options = options;
     this.now = options.now ?? (() => performance.now());
     this.latency = new CommandLatency();

@@ -125,15 +125,8 @@ export async function renderRelayGame(canvas: HTMLCanvasElement, params: URLSear
         // which `rejected` swallows.
         if (client.room !== null || requestedEntry) break;
         requestedEntry = true;
-        if (creation !== null)
-          client.createRoom(
-            creation.settings,
-            creation.seats,
-            undefined,
-            readStoredSettings().replayOptOut === true,
-          );
-        else if (roomPlan.kind === 'join')
-          client.joinRoom(roomPlan.id, undefined, readStoredSettings().replayOptOut === true);
+        if (creation !== null) client.createRoom(creation.settings, creation.seats);
+        else if (roomPlan.kind === 'join') client.joinRoom(roomPlan.id);
         break;
       case 'room': {
         compatibility.observe(message.room);

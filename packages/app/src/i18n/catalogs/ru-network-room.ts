@@ -57,6 +57,4 @@ export const ruNetworkRoom = {
   unseated: 'Наблюдатель',
   disconnected: 'Соединение разорвано',
   load: '{ms} мс/такт, в буфере: {buffered}',
-  replayRefusalIgnored:
-    'Этот релей игнорирует запрет записи: матчи здесь всё равно могут записываться. Обновите сервер-релей.',
 } as const;

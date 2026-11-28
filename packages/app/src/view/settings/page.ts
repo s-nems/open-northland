@@ -371,11 +371,6 @@ export function createSettingsPage(opts: {
       });
       replayAutosave.setAttribute('aria-label', text.replayAutosave);
       replayAutosave.dataset.settingsFocus = 'replay-autosave';
-      const replayOptOut = togglePill(settings.replayOptOut, (enabled) => {
-        void opts.settings.update({ replayOptOut: enabled });
-      });
-      replayOptOut.setAttribute('aria-label', text.replayOptOut);
-      replayOptOut.dataset.settingsFocus = 'replay-opt-out';
       return [
         settingRow(
           text.language,
@@ -418,7 +413,6 @@ export function createSettingsPage(opts: {
         noticeToggle('noticeAdultWoman', 'notice-adult-woman'),
         settingsHeading(text.replaysHeading),
         settingRow(text.replayAutosave, replayAutosave, { tip: text.replayAutosaveTip }),
-        settingRow(text.replayOptOut, replayOptOut, { tip: text.replayOptOutTip }),
         settingsHeading(text.debugHeading),
         settingRow(text.debugTools, debugTools, { tip: text.debugToolsTip }),
         settingRow(text.autoReports, autoReports, { tip: text.autoReportsTip }),

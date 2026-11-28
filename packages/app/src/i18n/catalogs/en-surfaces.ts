@@ -445,9 +445,6 @@ export const enSurfaces = {
       replaysHeading: 'Replays',
       replayAutosave: 'Save replays automatically',
       replayAutosaveTip: 'Records every match you finish on its own; find it under Replays.',
-      replayOptOut: 'Refuse replay recordings',
-      replayOptOutTip:
-        'You play without a recording, and in a multiplayer match nobody may record one either.',
       debugHeading: 'Debug',
       noticesHeading: 'Notices',
       noticeNewSoldier: 'New soldier',
@@ -778,7 +775,6 @@ export const enSurfaces = {
       "Records the whole session: its start and every command, replayed from the map's first tick.",
     replaySaving: 'Recording…',
     replaySaved: 'Replay saved.',
-    replayCapturesDenied: 'Replay recordings are denied for this match.',
     replaySaveFailed: 'Recording the replay failed.',
     replayPlay: 'Watch',
     replayPreparing: 'Preparing…',

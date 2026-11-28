@@ -20,7 +20,6 @@ import { endpointPort, type SessionPort } from '../session/worker/port.js';
 import { errorFromWire, type WorkerSessionOptions, wireError } from '../session/worker/protocol.js';
 import type { WorkerReports, WorkerSession } from '../session/worker/worker-session.js';
 import { holdRelayPlace, requestUpdateCheck } from '../update/watcher.js';
-import { onStoredSettingsChange } from '../view/settings/store.js';
 import { RelayClientMirror } from './net-worker-client.js';
 import { type RejoinOutcome, rejoinProbe } from './rejoin.js';
 import { rejoinRefusalText } from './relay-reason.js';
@@ -108,20 +107,16 @@ export class NetworkConnection {
   private disposed = false;
   private workerError: Error | null = null;
   private readonly releasePlace: () => void;
-  private readonly stopFollowingSettings: () => void;
-  /** The recording refusal as the player chose it now, told to the room this client sits in. */
-  private noReplay = false;
   private leaveTimer: ReturnType<typeof setTimeout> | null = null;
 
   constructor(
     readonly url: string,
     /** The token, nick and flag this connection says `hello` with; another connection on the token is
-     *  this client. `noReplay` is the refusal the hello says. */
+     *  this client. */
     readonly identity: {
       readonly token: string;
       readonly nick: string;
       readonly flag?: PlayerFlag;
-      readonly noReplay?: boolean;
     },
     openPort: () => SessionPort = networkWorkerPort,
   ) {
@@ -137,20 +132,6 @@ export class NetworkConnection {
     this.port.listen((data, receiveMs) => this.receive(data as FromNetWorker<MapWorldPlacements>, receiveMs));
     this.port.listenFailure((error) => this.workerFailed(error));
     this.post({ kind: 'connect', url, ...identity });
-    // A changed recording refusal follows the connection: the room it sits in takes it without a
-    // re-entry, and the next hello carries it again.
-    this.noReplay = identity.noReplay === true;
-    this.stopFollowingSettings = onStoredSettingsChange((settings) => {
-      if (settings.replayOptOut !== this.noReplay) this.setNoReplay(settings.replayOptOut === true);
-    });
-  }
-
-  /** The player's recording refusal as it stands now: the room this client sits in takes it without
-   *  a re-entry, and the next hello carries it again. */
-  setNoReplay(noReplay: boolean): void {
-    if (this.disposed || this.workerError !== null) return;
-    this.noReplay = noReplay === true;
-    this.client.setNoReplay(this.noReplay);
   }
 
   /** Whether the relay link is up: what this client sends still goes out, a quiet link included. */
@@ -197,7 +178,6 @@ export class NetworkConnection {
   dispose(leave = true): void {
     if (this.disposed) return;
     this.disposed = true;
-    this.stopFollowingSettings();
     this.releasePlace();
     this.listeners.clear();
     this.client.apply({ kind: 'left' });

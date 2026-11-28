@@ -83,7 +83,6 @@ const CLIENT_MESSAGES: readonly ClientMessage[] = [
   { kind: 'finish', tick: 12, hash: '0123abcd', world: 0 },
   { kind: 'hello', protocol: PROTOCOL_VERSION, token: TOKEN, nick: 'Ania' },
   { kind: 'hello', protocol: PROTOCOL_VERSION, token: TOKEN, nick: 'Ania', flag: 'PL' },
-  { kind: 'hello', protocol: PROTOCOL_VERSION, token: TOKEN, nick: 'Ania', noReplay: true },
   { kind: 'listRooms' },
   {
     kind: 'createRoom',
@@ -545,7 +544,6 @@ const SERVER_MESSAGES: readonly ServerMessage[] = [
         {
           nick: 'Ania',
           flag: 'PL',
-          noReplay: true,
           seat: 0,
           connected: true,
           compatibility: COMPATIBILITY,

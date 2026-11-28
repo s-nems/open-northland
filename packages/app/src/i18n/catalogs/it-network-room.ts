@@ -57,6 +57,4 @@ export const itNetworkRoom = {
   unseated: 'Spettatore',
   disconnected: 'Disconnesso',
   load: '{ms} ms/tick, {buffered} in coda',
-  replayRefusalIgnored:
-    'Questo relay ignora il rifiuto di registrare: le partite possono comunque essere registrate. Aggiorna il server di relay.',
 } as const;

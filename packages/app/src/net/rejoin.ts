@@ -1,5 +1,4 @@
 import type { RelayReason, RoomView, ServerMessage } from '@open-northland/net-protocol';
-import { readStoredSettings } from '../view/settings/store.js';
 
 /** What the probe made of a relay message: it consumed one meant for it, or the room refused the
  *  client its seat back. */
@@ -13,7 +12,7 @@ export type RejoinOutcome = 'passed' | 'consumed' | { readonly refused: RelayRea
  */
 export function rejoinProbe(client: {
   readonly room: Pick<RoomView, 'id' | 'state'> | null;
-  joinRoom(roomId: string, password?: string, noReplay?: boolean): void;
+  joinRoom(roomId: string, password?: string): void;
 }): (message: ServerMessage) => RejoinOutcome {
   let probing = false;
   return (message) => {
@@ -21,9 +20,7 @@ export function rejoinProbe(client: {
       const room = client.room;
       if (room === null || room.state === 'lobby') return 'passed';
       probing = true;
-      // The refusal as the player chose it now: the held seat's record takes it, whatever the hello
-      // that welcomed this client back said.
-      client.joinRoom(room.id, undefined, readStoredSettings().replayOptOut === true);
+      client.joinRoom(room.id);
       return 'passed';
     }
     if (message.kind !== 'rejected' || message.of !== 'joinRoom') return 'passed';

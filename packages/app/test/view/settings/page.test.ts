@@ -88,9 +88,9 @@ describe('the gameplay tab sections', () => {
     expect(follows(row('invert-drag-scroll'), notices)).toBe(true);
     expect(follows(notices, row('notice-new-soldier'))).toBe(true);
     expect(follows(row('notice-adult-woman'), replays)).toBe(true);
-    // Replays holds the two recording choices; the tools and reports section follows them.
+    // Replays holds the recording choice; the tools and reports section follows it.
     expect(follows(replays, row('replay-autosave'))).toBe(true);
-    expect(follows(row('replay-opt-out'), tools)).toBe(true);
+    expect(follows(row('replay-autosave'), tools)).toBe(true);
     // Tools and reports holds the debug tools, the error reports and the original game's row.
     expect(follows(tools, row('debug-tools'))).toBe(true);
     expect(follows(tools, row('auto-reports'))).toBe(true);

@@ -314,7 +314,6 @@ export const deGame = {
     matchReplaySave: 'Replay sichern',
     matchReplaySaving: 'Aufnahme wird gesichert…',
     matchReplaySaved: 'Replay gesichert.',
-    matchReplayCapturesDenied: 'Aufnahmen sind für diese Partie gesperrt.',
     matchReplaySaveFailed: 'Sichern der Aufnahme fehlgeschlagen.',
     matchTribesKicker: 'Das Schicksal der Stämme',
     matchWatchHint: 'Du kannst die Karte und die anderen Spieler beobachten, ohne Befehle zu erteilen.',

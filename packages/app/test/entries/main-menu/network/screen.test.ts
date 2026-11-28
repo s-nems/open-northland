@@ -324,7 +324,7 @@ it("asks a locked room's password in its row, keeps the typing through a repaint
   expect(input.value).toBe(' tajne ');
   expect(document.activeElement).toBe(input);
   input.form?.requestSubmit();
-  expect(fake.client.joinRoom).toHaveBeenCalledExactlyOnceWith('r1', 'tajne', false);
+  expect(fake.client.joinRoom).toHaveBeenCalledExactlyOnceWith('r1', 'tajne');
   fake.relay({ kind: 'rejected', of: 'joinRoom', reason: { code: 'wrongPassword' } });
   expect(input.isConnected).toBe(true);
   expect(input.closest('form')?.textContent).toContain(messages().networkRelay.reasons.wrongPassword);

@@ -485,9 +485,6 @@ export const deSurfaces = {
       replaysHeading: 'Replays',
       replayAutosave: 'Replays automatisch sichern',
       replayAutosaveTip: 'Sichert am Ende jedes Matches die Aufnahme selbst; sie liegt unter Replays.',
-      replayOptOut: 'Replay-Aufnahmen verweigern',
-      replayOptOutTip:
-        'Du spielst ohne Aufnahme, und in einem Multiplayer-Match darf niemand eine aufnehmen.',
       debugHeading: 'Debug',
       noticesHeading: 'Benachrichtigungen',
       noticeNewSoldier: 'Neuer Soldat',
@@ -822,7 +819,6 @@ export const deSurfaces = {
       'Zeichnet die gesamte Sitzung auf: den Anfang und jeden Befehl, abgespielt ab dem ersten Tick der Karte.',
     replaySaving: 'Aufnahme wird gesichert…',
     replaySaved: 'Replay gesichert.',
-    replayCapturesDenied: 'Replay-Aufnahmen sind für diese Partie gesperrt.',
     replaySaveFailed: 'Sichern der Aufnahme fehlgeschlagen.',
     replayPlay: 'Ansehen',
     replayPreparing: 'Wird vorbereitet…',

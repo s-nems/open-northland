@@ -186,9 +186,6 @@ export class RelayClientMirror implements RelayClientView {
   joinRoom(...args: Parameters<RelayLobby['joinRoom']>): void {
     this.lobby('joinRoom', args);
   }
-  setNoReplay(...args: Parameters<RelayLobby['setNoReplay']>): void {
-    this.lobby('setNoReplay', args);
-  }
   leaveRoom(): void {
     this.lobby('leaveRoom', []);
   }

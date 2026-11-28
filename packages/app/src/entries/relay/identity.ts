@@ -11,9 +11,6 @@ export interface RelayIdentity {
   readonly token: string;
   readonly nick: string;
   readonly flag?: PlayerFlag;
-  /** Whether the player refuses recordings of the matches it plays; the relay turns one member's
-   *  refusal into a started session's denial for all. */
-  readonly noReplay: boolean;
 }
 
 /** The flag the player last chose, null for a choice of none; undefined while they never chose. */
@@ -34,15 +31,14 @@ export function rememberFlag(flag: PlayerFlag | undefined): void {
   patchStoredSettings({ netFlag: flag ?? NO_FLAG });
 }
 
-/** A reconnect secret belongs to one relay endpoint; the display name, flag and recording refusal
- *  are shared across relays, and a player who never chose a name shows up under the catalog's
- *  default. */
+/** A reconnect secret belongs to one relay endpoint; the display name and flag are shared across
+ *  relays, and a player who never chose a name shows up under the catalog's default. */
 export function relayIdentity(relayUrl: string, requestedNick: string | null): RelayIdentity {
   const stored = readStoredSettings();
   const token = storedToken(tokenKey(relayUrl));
   const nick = requestedNick?.trim() || stored.netNick || messages().net.defaultNick;
   if (nick !== stored.netNick) patchStoredSettings({ netNick: nick });
-  return { token, nick, ...withFlag(storedFlag() ?? undefined), noReplay: stored.replayOptOut === true };
+  return { token, nick, ...withFlag(storedFlag() ?? undefined) };
 }
 
 /** The developer entry's identity: a nick the URL names gets a secret of its own, so two tabs of one
@@ -54,7 +50,6 @@ export function devRelayIdentity(relayUrl: string, urlNick: string | null): Rela
     token: storedToken(`${tokenKey(relayUrl)}#${nick}`),
     nick,
     ...withFlag(storedFlag() ?? undefined),
-    noReplay: readStoredSettings().replayOptOut === true,
   };
 }
 

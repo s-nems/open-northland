@@ -70,7 +70,7 @@ class RelayConnection<B, E> {
     private readonly post: Post<E>,
     build: RelayedWorldBuilder<B, E>,
     openLink: RelayLinkFactory,
-    { url, token, nick, flag, noReplay }: Connect,
+    { url, token, nick, flag }: Connect,
     private readonly close: () => void,
   ) {
     this.worlds = new RelayedWorldPort(post, build);
@@ -78,7 +78,6 @@ class RelayConnection<B, E> {
       token,
       nick,
       ...withFlag(flag),
-      ...(noReplay === true ? { noReplay: true } : {}),
       world: this.worlds,
       connected: () => this.link.connected,
       onMessage: (message) => this.forward(message),

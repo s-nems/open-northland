@@ -73,9 +73,6 @@ export class Room {
   private joined = 0;
   /** The roster as every client built its world; fixed at the start, whatever the seats do after. */
   private startedSeats: GameSession['seats'] | null = null;
-  /** Whether the started game may record itself: false when any of its members said hello refusing
-   *  recordings. Fixed at the start, so a reconnect hands out the same descriptor as before. */
-  private startedReplayCaptures = true;
   /** The member that left before the clock ran: a game never starts without one of its players. */
   private leftBeforeStart: string | null = null;
   /** A member's load, boot progress or link measurement moved since the last room view went out. */
@@ -335,7 +332,6 @@ export class Room {
     );
     this.transfers.start();
     this.startedSeats = this.seats.sessionSeats();
-    this.startedReplayCaptures = ![...this.members.values()].some((other) => other.noReplay);
     this.startedAt = now;
     this.statusSince = now;
     for (const other of this.members.values()) {
@@ -688,7 +684,7 @@ export class Room {
   }
 
   private sessionFor(member: Member): GameSession {
-    return sessionForMember(member, this.lobby.settings, this.startedSeats, this.startedReplayCaptures);
+    return sessionForMember(member, this.lobby.settings, this.startedSeats);
   }
 
   private deliver(member: Member, message: ServerMessage): void {

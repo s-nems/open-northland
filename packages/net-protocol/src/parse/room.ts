@@ -320,8 +320,6 @@ function parseRoomMemberView(value: unknown, at: string): RoomMemberView {
   return {
     nick: parseNick(raw.nick, `${at}.nick`),
     ...parseFlag(raw, `${at}.flag`),
-    // Absent is the absence of a refusal, never one; a relay this choice predates sends none.
-    ...(raw.noReplay === true ? { noReplay: true } : {}),
     seat: raw.seat === null ? null : parseSeatIndex(raw.seat, `${at}.seat`),
     connected: asBoolean(raw.connected, `${at}.connected`),
     compatibility: parseCompatibility(raw.compatibility, `${at}.compatibility`),

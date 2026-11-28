@@ -57,6 +57,4 @@ export const enNetworkRoom = {
   unseated: 'Observer',
   disconnected: 'Disconnected',
   load: '{ms} ms/tick, {buffered} buffered',
-  replayRefusalIgnored:
-    'This relay ignores the refusal to record: matches here can still be recorded. Update the relay server.',
 } as const;

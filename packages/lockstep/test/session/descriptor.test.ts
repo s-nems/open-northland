@@ -210,19 +210,6 @@ describe('game session descriptor', () => {
   });
 });
 
-describe('replay capture denial', () => {
-  it('rides the session through a JSON round trip, present only once it denies', () => {
-    const allowed = session();
-    expect(allowed.replayCaptures).toBeUndefined();
-    expect(roundTrip(allowed).replayCaptures).toBeUndefined();
-    expect(roundTrip({ ...session(), replayCaptures: false }).replayCaptures).toBe(false);
-    // A descriptor the denial predates keeps its captures.
-    const older = JSON.parse(JSON.stringify(session())) as Record<string, unknown>;
-    expect('replayCaptures' in older).toBe(false);
-    expect(parseGameSession(older).replayCaptures).toBeUndefined();
-  });
-});
-
 describe('roster queries', () => {
   it('split the seats by who plays them', () => {
     const roster = session({

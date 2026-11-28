@@ -5,7 +5,7 @@ import type { Room } from './room.js';
 export type RoomMessage = Exclude<
   ClientMessage,
   {
-    kind: 'hello' | 'listRooms' | 'hallChat' | 'createRoom' | 'joinRoom' | 'noReplay' | 'leaveRoom' | 'pong';
+    kind: 'hello' | 'listRooms' | 'hallChat' | 'createRoom' | 'joinRoom' | 'leaveRoom' | 'pong';
   }
 >;
 

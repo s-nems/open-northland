@@ -39,9 +39,8 @@ export interface MatchResultDeps {
 /** The session's replay capture, as the result window offers it: by hand, and once on its own when
  *  the player turned recording on. */
 export interface MatchResultReplaySave {
-  /** Saves the recording; `'saved'` once the replay store holds it, `'denied'` when the session
-   *  refuses recordings. */
-  readonly save: () => Promise<'saved' | 'failed' | 'denied'>;
+  /** Saves the recording; `'saved'` once the replay store holds it. */
+  readonly save: () => Promise<'saved' | 'failed'>;
   /** Whether the match records itself, read when the result first shows. */
   readonly auto: () => boolean;
 }
@@ -305,13 +304,7 @@ export function createMatchResultOverlay(deps: MatchResultDeps): MatchResultOver
           recording = false;
           replaySaved = outcome === 'saved' || replaySaved;
           save.disabled = replaySaved;
-          say(
-            replaySaved
-              ? copy.matchReplaySaved
-              : outcome === 'denied'
-                ? copy.matchReplayCapturesDenied
-                : copy.matchReplaySaveFailed,
-          );
+          say(replaySaved ? copy.matchReplaySaved : copy.matchReplaySaveFailed);
         });
       };
       save.append(line('span', '', replaySaved ? copy.matchReplaySaved : copy.matchReplaySave));

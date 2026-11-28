@@ -85,8 +85,6 @@ class Client {
   /** The nick `welcome` last named: unique among the connected on `hello`, then the room's. */
   nick = '';
   flag: PlayerFlag | undefined;
-  /** Whether this connection's `hello` refused recordings; false until its first. */
-  noReplay = false;
   /** The client heard the whole hall since it last arrived outside a room. */
   hallSynced = false;
   /** What it last heard of the room list and of presence, and how many hall lines (`Hall.said`);
@@ -558,10 +556,6 @@ export class Relay {
     client.nick = member?.nick ?? uniqueNick(message.nick, this.takenNicks(client));
     // A member keeps the flag it joined with, none included.
     client.flag = member === null ? message.flag : member.flag;
-    // The refusal follows the setting each `hello` carries, so a changed choice reaches the room it
-    // re-enters: unlike the flag, the member takes the connection's latest.
-    client.noReplay = message.noReplay === true;
-    if (member !== null) member.noReplay = client.noReplay;
     this.welcome(client);
     if (room !== undefined && member !== null) {
       client.room = room;
@@ -612,9 +606,6 @@ export class Relay {
       case 'createRoom': {
         if (client.room !== null) return { code: 'alreadyInRoom' };
         if (this.rooms.size >= this.maxRooms) return { code: 'relayFull', rooms: this.maxRooms };
-        // The entry carries the player's refusal as it stands now, so a choice made while connected
-        // reaches the room it hosts without a reconnect; absent is no word, keeping the hello's.
-        if (message.noReplay !== undefined) client.noReplay = message.noReplay;
         const member = this.newMember(client, client.nick);
         const room = new Room(
           this.newRoomId(),
@@ -636,9 +627,6 @@ export class Relay {
         const room = this.rooms.get(message.roomId);
         if (room === undefined) return { code: 'noRoom' };
         if (client.token === null) throw new Error('a joining client must have introduced itself');
-        // The entry carries the player's refusal as it stands now, as a hosted room's entry does;
-        // absent is no word, keeping the hello's.
-        if (message.noReplay !== undefined) client.noReplay = message.noReplay;
         const entry = room.entryRefusal(
           client.token,
           client.connection.address,
@@ -657,17 +645,6 @@ export class Relay {
           this.welcome(client);
         }
         room.welcome(member);
-        return null;
-      }
-      case 'noReplay': {
-        // The choice as it stands now, from a client that may already sit in a room: the room takes
-        // it at once, so a session the host starts afterwards denies its captures for a member who
-        // changed their mind without leaving, and the next `hello` carries the same stand again.
-        client.noReplay = message.noReplay === true;
-        if (client.member !== null) {
-          client.member.noReplay = client.noReplay;
-          client.room?.broadcastView();
-        }
         return null;
       }
       case 'leaveRoom': {
@@ -770,7 +747,6 @@ export class Relay {
       this.now(),
       { delayTicks, roundTripMs, jitterMs, measured: samples > 0 },
       client.flag,
-      client.noReplay,
     );
   }
 

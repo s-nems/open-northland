@@ -1002,7 +1002,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
         ...(saveLoad.canSaveReplay
           ? {
               saveReplay: {
-                save: async (): Promise<'saved' | 'failed' | 'denied'> => (await saveLoad.saveReplay()).kind,
+                save: async (): Promise<'saved' | 'failed'> => (await saveLoad.saveReplay()).kind,
                 auto: () => liveSettings.settings.current().replayAutosave === true,
               },
             }

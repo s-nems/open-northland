@@ -13,9 +13,6 @@ export type RoomClient = Pick<
 export interface NetworkRoomDeps {
   readonly client: RoomClient;
   readonly copy: NetworkRoomCopy;
-  /** Whether this client refuses recordings as the setting stands now: a room view that shows the
-   *  member without the refusal names a relay older than the refusal feature. */
-  readonly refused: () => boolean;
   readonly mapPreview?: (world: SessionWorld) => MapSelectItem | null;
   readonly mapSlots?: () => readonly MapsIndexPlayerSlot[] | null;
   /** The verified map's start relations, beside `mapSlots`. */

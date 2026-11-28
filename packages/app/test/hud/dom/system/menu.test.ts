@@ -55,7 +55,7 @@ function mount(
   const saveLoad: SaveLoadSession = {
     canSaveReplay: false,
     listReplays: async () => [],
-    saveReplay: async () => ({ kind: 'denied' }),
+    saveReplay: async () => ({ kind: 'failed' }),
     worldToken: null,
     worldSeed: null,
     listSaves: async () => [],

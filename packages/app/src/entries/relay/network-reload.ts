@@ -12,7 +12,6 @@ import {
 } from '../../net/relay-reason.js';
 import { dismissBootProgress, mountBootProgress } from '../../view/boot/progress.js';
 import { releaseDocument } from '../../view/platform/navigation-guard.js';
-import { readStoredSettings } from '../../view/settings/store.js';
 import { compatibilityIssuesText } from './compatibility.js';
 import { relayIdentity } from './identity.js';
 import { keptView } from './kept-view.js';
@@ -75,8 +74,7 @@ export function renderNetworkReload(canvas: HTMLCanvasElement, params: URLSearch
     // A refused map request reaches the load as its error, and the room still holds the seat.
     if (mapRequest.observe(message)) return;
     if (message.kind === 'welcome') {
-      // The refusal as the player chose it now: the room record takes it beside the fresh hello.
-      connection.client.joinRoom(roomId, undefined, readStoredSettings().replayOptOut === true);
+      connection.client.joinRoom(roomId);
       mapRequest.relinked();
     }
     // The room took the seat while this tab was away or loading; the `left` follows. A farewell

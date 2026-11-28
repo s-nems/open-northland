@@ -25,7 +25,6 @@ export const CLIENT_KINDS = keysOf<ClientMessageKind>({
   requestMap: true,
   createRoom: true,
   joinRoom: true,
-  noReplay: true,
   leaveRoom: true,
   claimSeat: true,
   setSeat: true,
@@ -70,8 +69,6 @@ export function parseClientMessage(value: unknown): ClientMessage {
         nick: parseNick(raw.nick, 'hello.nick'),
         // A flag this version cannot read is left out: hello must parse for any version.
         ...readableFlag(raw),
-        // Absent is the absence of a refusal, never one.
-        ...(raw.noReplay === true ? { noReplay: true } : {}),
       };
     case 'requestInitialSave':
     case 'requestMap':
@@ -85,19 +82,13 @@ export function parseClientMessage(value: unknown): ClientMessage {
         settings: parseRoomSettings(raw.settings, 'createRoom.settings'),
         seats: parseSeatSetups(raw.seats, 'createRoom.seats'),
         ...parsePassword(raw, 'createRoom.password'),
-        // Absent is no word on the subject, which leaves the hello's refusal standing; a sent
-        // `false` is a retraction.
-        ...(raw.noReplay === undefined ? {} : { noReplay: raw.noReplay === true }),
       };
     case 'joinRoom':
       return {
         kind,
         roomId: asString(raw.roomId, 'joinRoom.roomId', MAX_ROOM_ID_LENGTH),
         ...parsePassword(raw, 'joinRoom.password'),
-        ...(raw.noReplay === undefined ? {} : { noReplay: raw.noReplay === true }),
       };
-    case 'noReplay':
-      return { kind, noReplay: raw.noReplay === true };
     case 'claimSeat':
       return { kind, player: raw.player === null ? null : parseSeatIndex(raw.player, 'claimSeat.player') };
     case 'moveMember':

@@ -24,26 +24,15 @@ export class RelayLobby {
   readonly token: string;
   /** The flag this client says `hello` with; none when absent. */
   readonly flag: PlayerFlag | undefined;
-  /** Whether this client refuses recordings, as the setting stands now: the relay turns one member's
-   *  refusal into the whole started session's denial. `setNoReplay` follows a changed setting, so the
-   *  room takes it without a re-entry and the next `hello` carries it again. */
-  noReplay: boolean;
   protected readonly state: RelayState;
   protected send: (message: ClientMessage) => void = () => {
     throw new Error(`${this.nick} is not attached to a network`);
   };
 
-  constructor(token: string, nick: string, flag?: PlayerFlag, noReplay?: boolean) {
+  constructor(token: string, nick: string, flag?: PlayerFlag) {
     this.token = token;
     this.flag = flag;
-    this.noReplay = noReplay === true;
     this.state = new RelayState(nick);
-  }
-
-  /** The refusal as the player chose it now, told to the room this client sits in. */
-  setNoReplay(noReplay: boolean): void {
-    this.noReplay = noReplay === true;
-    this.send({ kind: 'noReplay', noReplay: this.noReplay });
   }
 
   get nick(): string {
@@ -97,7 +86,6 @@ export class RelayLobby {
       token: this.token,
       nick: this.nick,
       ...withFlag(this.flag),
-      ...(this.noReplay ? { noReplay: true } : {}),
     });
   }
 
@@ -105,29 +93,21 @@ export class RelayLobby {
     this.send({ kind: 'listRooms' });
   }
 
-  /** `password` locks the room: every later join must name it. A given `noReplay` carries the
-   *  player's refusal as it stands now, so a changed choice reaches the room without a reconnect. */
-  createRoom(
-    settings: RoomSettings,
-    seats: readonly RoomSeatSetup[],
-    password?: string,
-    noReplay?: boolean,
-  ): void {
+  /** `password` locks the room: every later join must name it. */
+  createRoom(settings: RoomSettings, seats: readonly RoomSeatSetup[], password?: string): void {
     this.send({
       kind: 'createRoom',
       settings,
       seats,
       ...(password === undefined ? {} : { password }),
-      ...(noReplay === undefined ? {} : { noReplay: noReplay === true }),
     });
   }
 
-  joinRoom(roomId: string, password?: string, noReplay?: boolean): void {
+  joinRoom(roomId: string, password?: string): void {
     this.send({
       kind: 'joinRoom',
       roomId,
       ...(password === undefined ? {} : { password }),
-      ...(noReplay === undefined ? {} : { noReplay: noReplay === true }),
     });
   }
 

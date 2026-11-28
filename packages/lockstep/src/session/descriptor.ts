@@ -137,10 +137,6 @@ export interface GameSession {
   readonly rules: SessionRules;
   /** Wall-clock multiplier the session starts at. */
   readonly speed: number;
-  /** Whether the session may record a replay of itself; absent, it may. The relay denies one for a
-   *  whole session when any of its members says `hello` refusing recordings, and every client of a
-   *  denying session then refuses each capture of it. */
-  readonly replayCaptures?: boolean;
 }
 
 /** The seat a session falls back to: the one a spectator still needs for fog perspective and placement
@@ -206,8 +202,6 @@ export function parseGameSession(value: unknown): GameSession {
     speed: positive(raw.speed, 'speed'),
     ...(raw.initialSave === undefined ? {} : { initialSave: parseInitialSaveIdentity(raw.initialSave) }),
     ...(raw.kickedSeatMode === undefined ? {} : { kickedSeatMode: parseKickedSeatMode(raw.kickedSeatMode) }),
-    // A descriptor without the field predates the refusal, and keeps its captures.
-    ...(raw.replayCaptures === false ? { replayCaptures: false } : {}),
   };
 }
 

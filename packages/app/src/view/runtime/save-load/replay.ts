@@ -12,10 +12,6 @@ import type { SaveBytes } from './codec.js';
 
 export const REPLAY_KIND = 'open-northland-replay';
 
-/** The error the worker throws for a capture a session denies: the descriptor's own `replayCaptures`,
- *  so the save windows can say the recording is locked, not that it failed. */
-export const REPLAY_CAPTURE_DENIED = 'this session denies replay captures';
-
 /** Single monotonic version of the whole persisted layout; any layout change bumps it. */
 export const REPLAY_FORMAT_VERSION = 1;
 

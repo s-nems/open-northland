@@ -98,9 +98,6 @@ export function withFlag(flag: PlayerFlag | undefined): { readonly flag?: Player
 export interface RoomMemberView {
   readonly nick: string;
   readonly flag?: PlayerFlag;
-  /** Whether the member refuses any recording of the matches it plays; false, its presence alone
-   *  lets a session's members record their own view of it. */
-  readonly noReplay?: boolean;
   readonly seat: number | null;
   readonly connected: boolean;
   readonly compatibility: LobbyCompatibility | null;
@@ -281,10 +278,6 @@ export type ClientMessage =
       readonly token: string;
       readonly nick: string;
       readonly flag?: PlayerFlag;
-      /** The player's choice to refuse recordings, carried again on every hello, so a changed
-       *  setting reaches the room it rejoins; the relay then denies a started session's captures
-       *  for all of its members. */
-      readonly noReplay?: boolean;
     }
   | { readonly kind: 'listRooms' }
   | { readonly kind: 'requestInitialSave' }
@@ -296,21 +289,12 @@ export type ClientMessage =
       readonly settings: RoomSettings;
       readonly seats: readonly RoomSeatSetup[];
       readonly password?: string;
-      /** The player's refusal as it stands when the room is entered: a choice made while connected
-       *  reaches the room it hosts without a reconnect. */
-      readonly noReplay?: boolean;
     }
   | {
       readonly kind: 'joinRoom';
       readonly roomId: string;
       readonly password?: string;
-      /** The player's refusal as it stands when the room is entered, as `createRoom` carries it. */
-      readonly noReplay?: boolean;
     }
-  /** The player's refusal as it stands now, from a client that may already sit in a room: the room
-   *  takes it at once, so a started session denies its captures for a member who changed their mind
-   *  without leaving, and the next `hello` carries the same stand again. */
-  | { readonly kind: 'noReplay'; readonly noReplay: boolean }
   | { readonly kind: 'leaveRoom' }
   | { readonly kind: 'claimSeat'; readonly player: number | null }
   | {
