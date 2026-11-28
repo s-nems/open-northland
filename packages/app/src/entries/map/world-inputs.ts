@@ -172,13 +172,13 @@ function refuseForeignReplay(replay: ReplayDocument, content: MapWorldInputs['co
 export function buildRelayedMapWorld(
   boot: MapWorkerBoot,
   snapshot: SaveGame | null,
-  snapshotText: string | null,
+  snapshotBytes: string | null,
 ): RelayedBuild<MapWorldPlacements> {
   assertMapSessionSeats(boot.session.seats, boot.script);
   const { saveText, replayText, ...inputs } = boot;
   if (replayText !== null) throw new Error('a relayed world never plays back a recording');
-  if (snapshot !== null && snapshotText === null)
-    throw new Error('a snapshot restore carries no text to record from');
+  if (snapshot !== null && snapshotBytes === null)
+    throw new Error('a snapshot restore carries no bytes to record from');
   const save = snapshot ?? (saveText === null ? null : parseSaveGame(saveDocumentOf(saveText)));
   const world = buildMapWorldFromInputs({ ...inputs, save });
   const previous =
@@ -208,12 +208,13 @@ export function buildRelayedMapWorld(
           },
         }));
   // The session keeps its own recording, as a single-player world does: one built from the descriptor
-  // or the boot's save records from them, and one restored from a snapshot records from the snapshot's
-  // own text, so every capture plays back from the state its log starts at.
+  // or the boot's save records from them, and one restored from a snapshot records from the
+  // snapshot's compressed bytes, decoded when a capture composes its recording.
   const replaySource = {
     descriptor: inputs.session,
     fromTick: world.sim.tick,
-    initialSaveText: snapshot === null ? saveText : snapshotText,
+    initialSaveText: snapshot === null ? saveText : null,
+    initialSaveSnapshot: snapshot === null ? null : snapshotBytes,
   };
   return {
     ...world,

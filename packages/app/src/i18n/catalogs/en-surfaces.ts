@@ -803,6 +803,8 @@ export const enSurfaces = {
     cancel: 'Cancel',
     deleted: 'Save deleted.',
     deleteFailed: 'Deleting the save failed.',
+    import: 'Import from file',
+    imported: 'Imported {name}.',
     export: 'Export to file',
     exportFailed: 'Exporting the save to a file failed.',
     fromFile: 'Load from file…',

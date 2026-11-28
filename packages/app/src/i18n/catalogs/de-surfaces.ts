@@ -847,6 +847,8 @@ export const deSurfaces = {
     cancel: 'Abbrechen',
     deleted: 'Spielstand gelöscht.',
     deleteFailed: 'Der Spielstand konnte nicht gelöscht werden.',
+    import: 'Aus Datei importieren',
+    imported: '{name} importiert.',
     export: 'In Datei exportieren',
     exportFailed: 'Der Spielstand konnte nicht in eine Datei exportiert werden.',
     fromFile: 'Aus Datei laden…',

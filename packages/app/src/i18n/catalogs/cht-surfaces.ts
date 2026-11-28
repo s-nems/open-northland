@@ -775,6 +775,8 @@ export const chtSurfaces = {
     cancel: '取消',
     deleted: '已刪除存檔。',
     deleteFailed: '刪除存檔失敗。',
+    import: '從檔案匯入',
+    imported: '已匯入 {name}。',
     export: '匯出至檔案',
     exportFailed: '將存檔匯出至檔案失敗。',
     fromFile: '從檔案載入…',

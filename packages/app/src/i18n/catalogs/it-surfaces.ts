@@ -848,6 +848,8 @@ export const itSurfaces = {
     cancel: 'Annulla',
     deleted: 'Salvataggio eliminato.',
     deleteFailed: 'Eliminazione del salvataggio non riuscita.',
+    import: 'Importa da file',
+    imported: '{name} importato.',
     export: 'Esporta su file',
     exportFailed: 'Esportazione del salvataggio su file non riuscita.',
     fromFile: 'Carica da file…',

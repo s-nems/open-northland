@@ -802,6 +802,8 @@ export const plSurfaces = {
     cancel: 'Anuluj',
     deleted: 'Zapis usunięty.',
     deleteFailed: 'Usuwanie zapisu nie powiodło się.',
+    import: 'Importuj z pliku',
+    imported: 'Zaimportowano {name}.',
     export: 'Eksportuj do pliku',
     exportFailed: 'Eksport zapisu do pliku nie powiódł się.',
     fromFile: 'Wczytaj z pliku…',

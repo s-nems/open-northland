@@ -55,11 +55,9 @@ export async function clearPendingLoad(): Promise<void> {
   }
 }
 
-/**
- * Read and delete the staged session in one transaction, so a boot that fails to restore it cannot
- * loop the failure; null on a normal fresh boot or over a record of another shape. A record an older
- * build staged without a kind is a save, the only shape it could write.
- */
+/** Read and delete the staged session in one transaction, so a boot that fails to restore it cannot
+ *  loop the failure; null on a normal fresh boot or over a record of another shape. Formats are
+ *  replaced, never migrated: a record without its `kind` is nothing this build staged. */
 export async function takePendingSession(): Promise<PendingSession | null> {
   const db = await openPendingDb();
   try {
@@ -72,10 +70,13 @@ export async function takePendingSession(): Promise<PendingSession | null> {
     if (typeof value !== 'object' || value === null || !('bytes' in value) || !isSaveBytes(value.bytes)) {
       return null;
     }
-    if ((value as Record<string, unknown>).kind === 'replay') return { kind: 'replay', bytes: value.bytes };
-    const resume = (value as Record<string, unknown>).resume;
-    if (typeof resume !== 'boolean') return null;
-    return { kind: 'save', bytes: value.bytes, resume };
+    const record = value as Record<string, unknown>;
+    const bytes = record.bytes as SaveBytes;
+    if (record.kind === 'replay') return { kind: 'replay', bytes };
+    if (record.kind === 'save' && typeof record.resume === 'boolean') {
+      return { kind: 'save', bytes, resume: record.resume };
+    }
+    return null;
   } finally {
     db.close();
   }

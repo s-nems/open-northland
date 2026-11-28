@@ -11,6 +11,8 @@ import {
   parseReplayDocument,
   type ReplayDocument,
   replayRefusalOn,
+  replaySlotKeyOf,
+  replaySlotNameOf,
 } from '../../../view/runtime/save-load/replay.js';
 import type { ReplaySlotInfo } from '../../../view/runtime/save-load/replay-store.js';
 import { browserReplayStore } from '../../../view/runtime/save-load/replay-store.js';
@@ -34,6 +36,8 @@ export function replaysScreen(open: (screen: MenuScreen) => void, launch: Launch
   const exportButton = button('on-button', GLYPH.download);
   exportButton.append(copy.export);
   exportButton.disabled = true;
+  const importButton = button('on-button', GLYPH.upload);
+  importButton.append(copy.import);
 
   const panel = menuSavesPanel({
     store: replayStoreAsSaves(store),
@@ -51,7 +55,7 @@ export function replaysScreen(open: (screen: MenuScreen) => void, launch: Launch
         : formatMessage(copy.replayOtherVersion, { version: slot.version }),
   });
   const { run } = panel;
-  panel.actions.append(exportButton, play);
+  panel.actions.append(importButton, exportButton, play);
 
   /** Set once a replay is staged: the entry downloading behind the screen owns those bytes, and a
    *  second hand-off would swap them under it. */
@@ -116,9 +120,63 @@ export function replaysScreen(open: (screen: MenuScreen) => void, launch: Launch
     }),
   );
 
+  // A picked file is untrusted: the whole document parses strict before anything of it is stored,
+  // and what parses stands or falls in the list like any recorded one.
+  importButton.addEventListener('click', () =>
+    run(async () => {
+      const file = await pickReplayFile();
+      if (file === null) return null;
+      let text: string;
+      try {
+        text = await decodeSaveText(file.bytes);
+        const document = parseReplayDocument(text);
+        const name = replaySlotNameOf(
+          document.descriptor.world.kind === 'map' ? document.descriptor.world.mapId : '',
+          document.startedAt,
+        );
+        await store.write(replaySlotKeyOf(document.startedAt, document.descriptor.seed), file.bytes, {
+          name,
+          mapId: document.descriptor.world.kind === 'map' ? document.descriptor.world.mapId : '',
+          untilTick: document.untilTick,
+          seed: document.descriptor.seed,
+          savedAt: document.savedAt,
+          clientBuild: document.identity.clientBuild,
+          gameVersion: document.identity.gameVersion,
+        });
+      } catch {
+        return copy.replayCorrupt;
+      }
+      await panel.refresh();
+      return formatMessage(copy.imported, { name: file.name });
+    }),
+  );
+
   section.append(screenHead('replays', open), panel.element);
   void panel.refresh();
   return { element: section, dispose: panel.dispose };
+}
+
+/** A replay file off the player's disk, as the picker read it. */
+async function pickReplayFile(): Promise<{ readonly name: string; readonly bytes: SaveBytes } | null> {
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = '.json,.gz,application/gzip,application/json';
+  input.style.display = 'none';
+  document.body.append(input);
+  try {
+    const picked = await new Promise<File | null>((resolve) => {
+      input.addEventListener('change', () => resolve(input.files?.[0] ?? null), { once: true });
+      input.addEventListener('cancel', () => resolve(null), { once: true });
+      input.click();
+    });
+    if (picked === null) return null;
+    return {
+      name: picked.name.replace(/\.(json\.gz|json|gz)$/, ''),
+      bytes: new Uint8Array(await picked.arrayBuffer()),
+    };
+  } finally {
+    input.remove();
+  }
 }
 
 /** A replay store read through the save slot's shape, so the menu's slot sheet lists, searches and

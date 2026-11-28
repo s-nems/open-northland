@@ -1,6 +1,6 @@
 import type { GameSession, InitialSaveSeatSetup } from '@open-northland/lockstep';
 import { decodeSnapshot, type OpenedWorld, type WorldPort } from '@open-northland/net-client';
-import { type SaveGame, type Simulation, serializeSaveGame } from '@open-northland/sim';
+import type { SaveGame, Simulation } from '@open-northland/sim';
 import type { FromNetWorker, RelayedWorldAnswer } from './net-protocol.js';
 import type { WorkerSessionOptions } from './protocol.js';
 import type { BuiltWorld, ReplaySource } from './serve.js';
@@ -15,11 +15,12 @@ export interface RelayedBuild<E> extends BuiltWorld<E> {
 }
 
 /** Builds a relayed world from the runtime's inputs, or restores it from a snapshot the relay served;
- *  the snapshot's own text crosses beside it, so the restore records from it too. */
+ *  the snapshot crosses as the compressed bytes it arrived as, so the restore records from them
+ *  without holding a serialization of it for the session. */
 export type RelayedWorldBuilder<B, E> = (
   boot: B,
   snapshot: SaveGame | null,
-  snapshotText: string | null,
+  snapshotBytes: string | null,
 ) => RelayedBuild<E>;
 
 /** A world built for the client and not yet adopted: what serving it takes beside the sim. */
@@ -32,7 +33,7 @@ export interface CandidateWorld<E> {
 
 interface PendingRequest {
   readonly snapshot: SaveGame | null;
-  readonly snapshotText: string | null;
+  readonly snapshotBytes: string | null;
   resolve(world: OpenedWorld | null): void;
   reject(error: unknown): void;
 }
@@ -66,9 +67,9 @@ export class RelayedWorldPort<B, E> implements WorldPort {
     if (this.disposed) return null;
     const snapshot = await decodeSnapshot(bytes);
     const { tick, mapId, view } = snapshot.header;
-    // Serialized back out beside the parsed save, so the world's own recording starts from the very
-    // text a playback of it would stand the world up from.
-    return this.request(snapshot, serializeSaveGame(snapshot), (requestId) => ({
+    // The compressed bytes ride beside the parsed save; the capture decodes them when it composes
+    // its recording, instead of holding a text serialization for the whole session.
+    return this.request(snapshot, bytes, (requestId) => ({
       kind: 'restoreWorld',
       requestId,
       session,
@@ -86,7 +87,7 @@ export class RelayedWorldPort<B, E> implements WorldPort {
     const startMs = performance.now();
     let built: RelayedBuild<E>;
     try {
-      built = this.build(answer.boot, request.snapshot, request.snapshotText);
+      built = this.build(answer.boot, request.snapshot, request.snapshotBytes);
     } catch (err) {
       request.reject(err);
       this.post({ kind: 'unadopted', requestId });
@@ -138,13 +139,13 @@ export class RelayedWorldPort<B, E> implements WorldPort {
 
   private request(
     snapshot: SaveGame | null,
-    snapshotText: string | null,
+    snapshotBytes: string | null,
     message: (requestId: number) => FromNetWorker<E>,
   ): Promise<OpenedWorld | null> {
     if (this.disposed) return Promise.resolve(null);
     const requestId = this.nextRequestId++;
     return new Promise((resolve, reject) => {
-      this.pending.set(requestId, { snapshot, snapshotText, resolve, reject });
+      this.pending.set(requestId, { snapshot, snapshotBytes, resolve, reject });
       this.post(message(requestId));
     });
   }

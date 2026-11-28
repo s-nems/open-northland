@@ -774,6 +774,8 @@ export const chsSurfaces = {
     cancel: '取消',
     deleted: '存档已删除。',
     deleteFailed: '删除存档失败。',
+    import: '从文件导入',
+    imported: '已导入 {name}。',
     export: '导出到文件',
     exportFailed: '将存档导出到文件失败。',
     fromFile: '从文件载入…',

@@ -835,6 +835,8 @@ export const ruSurfaces = {
     cancel: 'Отмена',
     deleted: 'Сохранение удалено.',
     deleteFailed: 'Не удалось удалить сохранение.',
+    import: 'Импорт из файла',
+    imported: 'Импортировано {name}.',
     export: 'Экспорт в файл',
     exportFailed: 'Не удалось экспортировать сохранение в файл.',
     fromFile: 'Загрузить из файла…',

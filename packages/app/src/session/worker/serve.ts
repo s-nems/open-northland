@@ -1,10 +1,12 @@
 import type { GameSession, SessionDriver } from '@open-northland/lockstep';
+import { decodeSnapshot } from '@open-northland/net-client';
 import {
   cloneEvents,
   MS_PER_TICK,
   type SimEvent,
   type Simulation,
   SnapshotDeltaStream,
+  serializeSaveGame,
   TICKS_PER_SECOND,
 } from '@open-northland/sim';
 import { diag } from '../../diag/log.js';
@@ -92,7 +94,11 @@ export type WorldBuilder<B, E> = (boot: B, options: WorkerSessionOptions) => Hos
 export interface ReplaySource {
   readonly descriptor: GameSession;
   readonly fromTick: number;
+  /** The restore save as plain text, for a world the boot stood up itself. */
   readonly initialSaveText: string | null;
+  /** The relay snapshot as the compressed bytes it arrived in, for a restored relayed world; the
+   *  capture decodes it, so a serialization of it is never held for the session. */
+  readonly initialSaveSnapshot?: string | null;
 }
 
 /** The runtime's frames a worker may step past the delivered tick: a batch posted on one
@@ -699,7 +705,11 @@ export class ServedSession<E> {
           descriptor: this.replaySource.descriptor,
           fromTick: this.replaySource.fromTick,
           untilTick: this.sim.tick,
-          initialSaveText: this.replaySource.initialSaveText,
+          initialSaveText:
+            this.replaySource.initialSaveSnapshot === undefined ||
+            this.replaySource.initialSaveSnapshot === null
+              ? this.replaySource.initialSaveText
+              : serializeSaveGame(await decodeSnapshot(this.replaySource.initialSaveSnapshot)),
           logText: this.sim.commands.logText(),
         });
         const bytes = await compressSaveText(text);
