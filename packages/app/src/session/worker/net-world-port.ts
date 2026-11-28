@@ -3,16 +3,25 @@ import { decodeSnapshot, type OpenedWorld, type WorldPort } from '@open-northlan
 import type { SaveGame, Simulation } from '@open-northland/sim';
 import type { FromNetWorker, RelayedWorldAnswer } from './net-protocol.js';
 import type { WorkerSessionOptions } from './protocol.js';
-import type { BuiltWorld } from './serve.js';
+import type { BuiltWorld, ReplaySource } from './serve.js';
 
-/** A relayed world as built, with the generation its acknowledgements carry. */
+/** A relayed world as built, with the generation its acknowledgements carry. Its driver is the relay
+ *  client's, which `serve` supplies, so the build carries only the sim and its recording footing. */
 export interface RelayedBuild<E> extends BuiltWorld<E> {
   readonly generation: number;
   readonly initialSeatSetups?: readonly InitialSaveSeatSetup[];
+  /** Where the session's own replay capture reads its start. */
+  readonly replaySource?: ReplaySource;
 }
 
-/** Builds a relayed world from the runtime's inputs, or restores it from a snapshot the relay served. */
-export type RelayedWorldBuilder<B, E> = (boot: B, snapshot: SaveGame | null) => RelayedBuild<E>;
+/** Builds a relayed world from the runtime's inputs, or restores it from a snapshot the relay served;
+ *  the snapshot crosses as the compressed bytes it arrived as, so the restore records from them
+ *  without holding a serialization of it for the session. */
+export type RelayedWorldBuilder<B, E> = (
+  boot: B,
+  snapshot: SaveGame | null,
+  snapshotBytes: string | null,
+) => RelayedBuild<E>;
 
 /** A world built for the client and not yet adopted: what serving it takes beside the sim. */
 export interface CandidateWorld<E> {
@@ -24,6 +33,7 @@ export interface CandidateWorld<E> {
 
 interface PendingRequest {
   readonly snapshot: SaveGame | null;
+  readonly snapshotBytes: string | null;
   resolve(world: OpenedWorld | null): void;
   reject(error: unknown): void;
 }
@@ -45,14 +55,21 @@ export class RelayedWorldPort<B, E> implements WorldPort {
   ) {}
 
   open(session: GameSession, snapshotTick: number | null): Promise<OpenedWorld | null> {
-    return this.request(null, (requestId) => ({ kind: 'openWorld', requestId, session, snapshotTick }));
+    return this.request(null, null, (requestId) => ({
+      kind: 'openWorld',
+      requestId,
+      session,
+      snapshotTick,
+    }));
   }
 
   async restore(session: GameSession, bytes: string): Promise<OpenedWorld | null> {
     if (this.disposed) return null;
     const snapshot = await decodeSnapshot(bytes);
     const { tick, mapId, view } = snapshot.header;
-    return this.request(snapshot, (requestId) => ({
+    // The compressed bytes ride beside the parsed save; the capture decodes them when it composes
+    // its recording, instead of holding a text serialization for the whole session.
+    return this.request(snapshot, bytes, (requestId) => ({
       kind: 'restoreWorld',
       requestId,
       session,
@@ -70,7 +87,7 @@ export class RelayedWorldPort<B, E> implements WorldPort {
     const startMs = performance.now();
     let built: RelayedBuild<E>;
     try {
-      built = this.build(answer.boot, request.snapshot);
+      built = this.build(answer.boot, request.snapshot, request.snapshotBytes);
     } catch (err) {
       request.reject(err);
       this.post({ kind: 'unadopted', requestId });
@@ -88,6 +105,7 @@ export class RelayedWorldPort<B, E> implements WorldPort {
       sim,
       generation: built.generation,
       ...(built.initialSeatSetups === undefined ? {} : { initialSeatSetups: built.initialSeatSetups }),
+      ...(built.replaySource === undefined ? {} : { replaySource: built.replaySource }),
       ...(answer.initialSaveFingerprint === undefined
         ? {}
         : { initialSaveFingerprint: answer.initialSaveFingerprint }),
@@ -121,12 +139,13 @@ export class RelayedWorldPort<B, E> implements WorldPort {
 
   private request(
     snapshot: SaveGame | null,
+    snapshotBytes: string | null,
     message: (requestId: number) => FromNetWorker<E>,
   ): Promise<OpenedWorld | null> {
     if (this.disposed) return Promise.resolve(null);
     const requestId = this.nextRequestId++;
     return new Promise((resolve, reject) => {
-      this.pending.set(requestId, { snapshot, resolve, reject });
+      this.pending.set(requestId, { snapshot, snapshotBytes, resolve, reject });
       this.post(message(requestId));
     });
   }

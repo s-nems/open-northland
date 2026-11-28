@@ -12,6 +12,7 @@ export const ruSurfaces = {
   mainMenu: {
     eyebrow: 'Экономическая стратегия эпохи викингов',
     items: {
+      replays: 'Повторы',
       newGame: 'Начать новую игру',
       load: 'Загрузить игру',
       multiplayer: 'Сетевая игра',
@@ -50,6 +51,7 @@ export const ruSurfaces = {
       newGame: 'Выбор карты',
     },
     screenTitles: {
+      replays: 'Повторы',
       multiplayer: 'Сетевая игра',
       newGame: 'Новая игра',
       catalogue: 'Каталог карт',
@@ -797,6 +799,12 @@ export const ruSurfaces = {
     randomMore: '▶ случайная (+{count} ещё)',
   },
   saveList: {
+    replayPlay: 'Смотреть',
+    replayPreparing: 'Подготовка…',
+    replayCorrupt: 'Запись повреждена или сделана в другой сборке.',
+    emptyReplayHint: 'Каждая игра записывает свой повтор сама; посмотрите его здесь.',
+    replayOtherVersion: 'Записано в версии {version}',
+
     autosave: 'Автосохранение',
     autosaveOff: 'Выключено',
     autosaveEvery: '{n} мин',
@@ -827,6 +835,8 @@ export const ruSurfaces = {
     cancel: 'Отмена',
     deleted: 'Сохранение удалено.',
     deleteFailed: 'Не удалось удалить сохранение.',
+    import: 'Импорт из файла',
+    imported: 'Импортировано {name}.',
     export: 'Экспорт в файл',
     exportFailed: 'Не удалось экспортировать сохранение в файл.',
     fromFile: 'Загрузить из файла…',

@@ -214,6 +214,9 @@ class RelayConnection<B, E> {
             drawn: (ms, ticks) => this.client.drawnTickCost(ms, ticks),
           },
           timeScale: () => clientTimeScale(this.client),
+          // The builder's recording footing, carried with the adopted world: without it the served
+          // session keeps no replay, and every capture of the match fails.
+          ...(world.replaySource === undefined ? {} : { replaySource: world.replaySource }),
         },
         candidate.options,
         candidate.buildMs,

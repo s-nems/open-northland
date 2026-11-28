@@ -4,6 +4,7 @@ import { reloadDocument } from '../../platform/navigation-guard.js';
 import { type SaveLoadDeps, type SaveLoadSession, saveLoadSession } from './controller.js';
 import { browserSaveDownload, pickSaveFile } from './file-access.js';
 import { storePendingLoad } from './pending-store.js';
+import { browserReplayStore } from './replay-store.js';
 import { browserSaveStore } from './store-browser.js';
 
 export { type StagedSession, takeStagedSession } from './boot.js';
@@ -20,6 +21,7 @@ export interface SaveLoadSessionOptions
     | 'presentation'
     | 'captureSave'
     | 'captureSaveFile'
+    | 'captureReplayFile'
     | 'worldSeed'
     | 'captureThumbnail'
   > {
@@ -39,6 +41,7 @@ export function createSaveLoadSession(opts: SaveLoadSessionOptions): SaveLoadSes
     reload: reloadDocument,
     stagePending: storePendingLoad,
     store: browserSaveStore(),
+    replayStore: browserReplayStore(),
     pickFile: pickSaveFile,
     downloadSave: browserSaveDownload,
   });

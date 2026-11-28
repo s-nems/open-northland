@@ -14,6 +14,7 @@ import {
 import { mountMessage } from '../view/overlay.js';
 import { bindDisplayMode } from '../view/platform/fullscreen.js';
 import { releaseDocument, replaceEntryUrl } from '../view/platform/navigation-guard.js';
+import { readStoredSettings } from '../view/settings/store.js';
 import { lobbyCompatibilityReporter } from './relay/compatibility.js';
 import { roomCreation } from './relay/creation.js';
 import { devLobbyAction } from './relay/dev-lobby.js';

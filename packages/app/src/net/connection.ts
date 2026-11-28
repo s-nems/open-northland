@@ -113,7 +113,11 @@ export class NetworkConnection {
     readonly url: string,
     /** The token, nick and flag this connection says `hello` with; another connection on the token is
      *  this client. */
-    readonly identity: { readonly token: string; readonly nick: string; readonly flag?: PlayerFlag },
+    readonly identity: {
+      readonly token: string;
+      readonly nick: string;
+      readonly flag?: PlayerFlag;
+    },
     openPort: () => SessionPort = networkWorkerPort,
   ) {
     this.worldPort = new Promise((resolve) => {

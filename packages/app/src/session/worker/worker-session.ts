@@ -16,6 +16,7 @@ import { type DiagEntry, diag } from '../../diag/log.js';
 import { diagCadenceAt } from '../../diag/session.js';
 import type { SystemProfileRow } from '../../diag/system-profile.js';
 import type { SaveFile } from '../../view/runtime/save-load/codec.js';
+import type { ReplayCaptureFile, ReplayCaptureOptions } from '../../view/runtime/save-load/replay.js';
 import type { OffThreadTickCost, SessionHost, StateHash, SystemSpanSink, TickDiagnostics } from '../host.js';
 import { MirrorTruthWatch } from './mirror-truth-watch.js';
 import type { SessionPort } from './port.js';
@@ -55,6 +56,9 @@ export interface WorkerSession<E> {
   offThreadTickCost(): OffThreadTickCost;
   /** The driver's capture as file bytes, serialized and compressed on the worker. */
   captureSaveFile(options: ExportSaveOptions): Promise<SaveFile>;
+  /** The session's replay as file bytes, assembled and compressed on the worker; rejects when the
+   *  session keeps no replay. */
+  captureReplayFile(options: ReplayCaptureOptions): Promise<ReplayCaptureFile>;
   /** The worker's own diag ring as it stands; never settles once the session is disposed. */
   workerLog(): Promise<readonly DiagEntry[]>;
   /** Make the worker throw an uncaught error, as the `crash-worker` drill asks. */
@@ -80,6 +84,12 @@ export interface WorkerReports extends StallReports {
   /** The worker posted an uncaught error or rejection, or a tick threw there. A `fatal` fault's error
    *  is the one the session then fails with. */
   faulted(error: Error, source: string | undefined, fatal: boolean): void;
+  /** A playback diverged from its recording at its last tick; absent, the mismatch stays in the log. */
+  replayMismatch?(mismatch: {
+    readonly tick: number;
+    readonly expected: string;
+    readonly actual: string;
+  }): void;
 }
 
 export interface WorkerSessionTimings {
@@ -310,6 +320,9 @@ class WorkerClient<E> {
         this.fail(error);
         return;
       }
+      case 'replayMismatch':
+        this.reports.replayMismatch?.(message);
+        return;
       case 'ready':
       case 'bootFailed':
       case 'fault':
@@ -329,6 +342,8 @@ class WorkerClient<E> {
       offThreadTickCost: () => this.lastCost,
       captureSaveFile: (options) =>
         this.call({ method: 'captureSaveFile', options }, true).then(({ value }) => value as SaveFile),
+      captureReplayFile: (options) =>
+        this.call({ method: 'captureReplay', options }, true).then(({ value }) => value as ReplayCaptureFile),
       workerLog: () => this.call({ method: 'diagLog' }).then(({ value }) => value as readonly DiagEntry[]),
       crashDrill: () => void this.call({ method: 'crashDrill' }).catch(() => undefined),
       dispose: () => this.dispose(),

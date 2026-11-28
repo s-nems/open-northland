@@ -414,6 +414,8 @@ export const enGame = {
     },
     dismiss: 'Dismiss',
     speedShortfall: 'The game runs at {delivered} instead of {requested}',
+    replayMismatch: 'The replay diverged from its recording at tick {tick}.',
+
     simStalled: 'The simulation has not responded for {seconds} s.',
     crashTitle: 'The game hit an error',
     crashHint: 'Download the report and attach it to your bug report.',

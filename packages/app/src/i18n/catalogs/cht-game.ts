@@ -405,6 +405,8 @@ export const chtGame = {
     },
     dismiss: '關閉',
     speedShortfall: '遊戲以 {delivered} 而非 {requested} 進行',
+    replayMismatch: '回放在第 {tick} 刻與其錄製內容出現分歧。',
+
     simStalled: '模擬已有 {seconds} 秒沒有回應。',
     crashTitle: '遊戲發生錯誤',
     crashHint: '請下載報告，並附加到你的錯誤回報中。',

@@ -37,6 +37,7 @@ import { mountNewsPanel } from './news/panel.js';
 import { loadMenuNews } from './news/source.js';
 import { originalGameGateScreen } from './original-game/gate-screen.js';
 import { loadScreen } from './saves/load-screen.js';
+import { replaysScreen } from './saves/replays-screen.js';
 import { settingsScreen } from './settings/screen.js';
 import { adoptStoredSettings, menuSettings, onSettingsChange, updateSettings } from './settings/state.js';
 
@@ -200,6 +201,8 @@ export async function renderMainMenu(canvas: HTMLCanvasElement, params: URLSearc
         return networkScreen(show, launch, params, sound);
       case 'load':
         return loadScreen(show, launch);
+      case 'replays':
+        return replaysScreen(show, launch);
       case 'lobby':
         // Only `openLobby` leads here, with its map already set.
         return lobbyMap === null ? screenFor('newGame') : lobbyScreen(lobbyMap, show, rosters, launch);

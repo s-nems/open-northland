@@ -145,6 +145,12 @@ export interface GameToolPanelDeps {
   readonly bindings: KeyBindings;
   readonly onSpeed: (spec: GameSpeedStateSpec, cause: GameSpeedChangeCause) => void;
   readonly devSpeeds?: boolean;
+  /** The bar serves a recorded session's watch: one tempo button cycles ×1→×2→×5→×10
+   *  (`ToolPanelOptions.replayCycle`). */
+  readonly replayCycle?: boolean;
+  /** The watch's progress cell (`ToolPanelOptions.replay`): the tick the playback stands at over
+   *  the tick its recording ends on. */
+  readonly replay?: { readonly untilTick: number };
   /** Whether the session clock stands, whoever stopped it; absent, the bar shows its own pause only. */
   readonly clockPaused?: () => boolean;
   /** True while an overlay holds the game paused (the system menu, the verdict, the mission book). */
@@ -352,6 +358,8 @@ export async function mountGameToolPanel(deps: GameToolPanelDeps): Promise<GameT
     palisadeTools: deps.palisadeTools,
     onSpeedChange: deps.onSpeed,
     ...(deps.devSpeeds !== undefined ? { devSpeeds: deps.devSpeeds } : {}),
+    ...(deps.replayCycle === true ? { replayCycle: true } : {}),
+    ...(deps.replay !== undefined ? { replay: deps.replay } : {}),
     ...(deps.clockPaused !== undefined ? { clockPaused: deps.clockPaused } : {}),
     ...(deps.pauseHeld !== undefined ? { pauseHeld: deps.pauseHeld } : {}),
     screenScale: (c) => screenScale(c, deps.app.renderer.resolution),

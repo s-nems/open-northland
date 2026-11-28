@@ -53,6 +53,9 @@ function mount(
   let current = defaultSettings();
   let hudScale = 1;
   const saveLoad: SaveLoadSession = {
+    canSaveReplay: false,
+    listReplays: async () => [],
+    saveReplay: async () => ({ kind: 'failed' }),
     worldToken: null,
     worldSeed: null,
     listSaves: async () => [],

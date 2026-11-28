@@ -8,7 +8,7 @@ import { readFileSync } from 'node:fs';
 import type { GameSession } from '@open-northland/lockstep';
 import { bytesToBase64, decodeSnapshot, prepareInitialSave } from '@open-northland/net-client';
 import { type RoomSettings, TICK_MS } from '@open-northland/net-protocol';
-import type { SaveGame, Simulation } from '@open-northland/sim';
+import { type SaveGame, type Simulation, serializeSaveGame } from '@open-northland/sim';
 import { TEST_COMPATIBILITY } from '../../../net-server/test/support/compatibility.js';
 import { HeadlessClient } from '../../../net-server/test/support/headless-client.js';
 import {
@@ -239,7 +239,7 @@ export async function runLab(config: LabConfig, hooks: LabHooks = {}): Promise<L
     network: new VirtualNetwork(clock, relay, seededRandom(config.seed ^ NETWORK_SEED_SALT)),
   };
   const buildWorld = async (session: GameSession): Promise<Simulation> =>
-    buildRelayedMapWorld(boot(session), null).sim;
+    buildRelayedMapWorld(boot(session), null, null).sim;
   let probes: ClientProbe[] = [];
   const clientOf = (index: number): HeadlessClient =>
     new HeadlessClient({
@@ -248,7 +248,7 @@ export async function runLab(config: LabConfig, hooks: LabHooks = {}): Promise<L
       buildWorld,
       restoreWorld: async (session, save) => {
         const restoreStart = performance.now();
-        const { sim } = buildRelayedMapWorld(boot(session), save);
+        const { sim } = buildRelayedMapWorld(boot(session), save, serializeSaveGame(save));
         probes[index]?.restored(save.header.tick, performance.now() - restoreStart);
         return sim;
       },

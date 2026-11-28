@@ -85,7 +85,10 @@ describe.runIf(hasRealIr() && existsSync(realMapPath(MAP_ID)))(
         let session: WorkerSession<null> | null = null;
         try {
           const { save: _none, ...bootInputs } = inputs;
-          const booting = startTestSession(bundle.path, { kind: 'map', boot: { ...bootInputs, saveText } });
+          const booting = startTestSession(bundle.path, {
+            kind: 'map',
+            boot: { ...bootInputs, saveText, replayText: null },
+          });
           // Both restores run at once; the finally hands a booted worker to the disposal below.
           let sim: Simulation;
           try {

@@ -358,10 +358,14 @@ export function renderNetworkGame(
     const mine = revision;
     if (closed || world === null || world.hosted.worker !== session) return;
     presentingWorld = world;
+    // This adoption's session start, which keys and names the replay its recording writes.
+    const sessionStartedAt = Date.now();
     presentation = presentMapWorld(world, {
       driver: relayedSessionDriver(session.driver, client),
       offThreadTickCost: session.offThreadTickCost,
       captureSaveFile: session.captureSaveFile,
+      captureReplayFile: world.hosted.worker.captureReplayFile,
+      sessionStartedAt,
       sharedClock: true,
       confirmedMatchEnd: () => deliveredMatchEnd(client, session.host),
       networkSave: networkSaveSession(client, worldId),

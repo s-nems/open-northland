@@ -2,6 +2,7 @@ import { fileURLToPath } from 'node:url';
 import { type GameSession, NO_RULE_OVERRIDES } from '@open-northland/lockstep';
 import { type RoomSeatSetup, type RoomSettings, TICKS_PER_SECOND } from '@open-northland/net-protocol';
 import { MIN_GOVERNED_SPEED, Relay } from '@open-northland/net-server';
+import { serializeSaveGame } from '@open-northland/sim';
 import { afterAll, beforeAll, expect, it } from 'vitest';
 import { HeadlessClient } from '../../../net-server/test/support/headless-client.js';
 import type { Stage } from '../../../net-server/test/support/session-run.js';
@@ -70,6 +71,7 @@ function fallbackBoot(session: GameSession): MapWorkerBoot {
     session: { ...session, localSeat: OWNER_SEAT },
     missions: null,
     saveText: null,
+    replayText: null,
   };
 }
 
@@ -92,8 +94,9 @@ it('governs the room to the rate a slow display draws, and releases it once the 
   const peer = new HeadlessClient({
     token: 'token-peer-0123456789',
     nick: 'Ania',
-    buildWorld: async (session) => buildRelayedMapWorld(fallbackBoot(session), null).sim,
-    restoreWorld: async (session, save) => buildRelayedMapWorld(fallbackBoot(session), save).sim,
+    buildWorld: async (session) => buildRelayedMapWorld(fallbackBoot(session), null, null).sim,
+    restoreWorld: async (session, save) =>
+      buildRelayedMapWorld(fallbackBoot(session), save, serializeSaveGame(save)).sim,
   });
   const hosted = new WorkerHeadlessClient({
     workerPath: bundle.path,

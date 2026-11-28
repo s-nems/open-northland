@@ -126,7 +126,7 @@ export async function buildSaveWorld(
   const session = observerSession(config.mapId, config.seed, 1, setup);
   const boot = await worldBoot(config.mapId);
   const buildStart = performance.now();
-  const { sim } = buildRelayedMapWorld(boot(session), null);
+  const { sim } = buildRelayedMapWorld(boot(session), null, null);
   const buildSeconds = (performance.now() - buildStart) / 1000;
   const rssMb = (): number => Math.round(process.memoryUsage.rss() / BYTES_PER_MB);
   let peakRssMb = rssMb();

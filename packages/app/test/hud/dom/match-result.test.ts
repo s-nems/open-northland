@@ -26,6 +26,7 @@ function setup(
     localPlayer = 0,
     playerNickOf,
     holdsSeat,
+    recordReplay,
   }: {
     onLoad?: (back: () => void) => void;
     playAgain?: () => void;
@@ -33,6 +34,7 @@ function setup(
     localPlayer?: number | null;
     playerNickOf?: (player: number) => string | undefined;
     holdsSeat?: () => boolean;
+    recordReplay?: () => Promise<'saved' | 'failed'>;
   } = {},
 ) {
   vi.stubGlobal(
@@ -65,6 +67,7 @@ function setup(
     ...(onLoad !== undefined ? { onLoad } : {}),
     ...(playAgain !== undefined ? { playAgain: { scope: 'thisMap', start: playAgain } } : {}),
     ...(holdsSeat !== undefined ? { holdsSeat } : {}),
+    ...(recordReplay !== undefined ? { recordReplay } : {}),
   });
   overlays.push(overlay);
   const body = {
@@ -437,4 +440,34 @@ it('offers a lost local map again behind a confirmation, and not after a victory
   expect(h.onQuit).not.toHaveBeenCalled();
   expect(h.onContinue).not.toHaveBeenCalled();
   expect(h.overlay.isOpen()).toBe(false);
+});
+
+it('records the session once at the first decisive result, offering no control to do it by hand', async () => {
+  const record = vi.fn(async () => 'saved' as const);
+  const copy = messages().hud;
+  const h = setup(false, () => [], { recordReplay: record });
+  h.overlay.announce('victory');
+  await vi.waitFor(() => expect(record).toHaveBeenCalledOnce());
+  // The recording happens on its own; the result offers no save control for it.
+  expect(h.body.buttons().map((button) => button.textContent)).toEqual([
+    copy.matchContinue,
+    copy.returnToMenu,
+  ]);
+  // A result shown again never starts a second recording.
+  h.overlay.finish('victory');
+  await Promise.resolve();
+  expect(record).toHaveBeenCalledOnce();
+});
+
+it('records nothing when no seat has a verdict or the session keeps no capture', () => {
+  const record = vi.fn(async () => 'saved' as const);
+  const undecided = setup(true, () => [], { recordReplay: record, localPlayer: null });
+  undecided.overlay.playersDecided('undecided');
+  undecided.overlay.finish('undecided');
+  expect(record).not.toHaveBeenCalled();
+  undecided.overlay.dispose();
+
+  const bare = setup(false, () => []);
+  bare.overlay.announce('victory');
+  expect(record).not.toHaveBeenCalled();
 });

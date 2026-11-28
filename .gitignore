@@ -92,3 +92,4 @@ npm-debug.log*
 
 # Hidden source maps of the last app build (packages/app/build/source-maps.ts); never shipped.
 /packages/app/dist-sourcemaps/
+core

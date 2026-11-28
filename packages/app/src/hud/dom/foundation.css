@@ -2313,6 +2313,40 @@ body.on-game :is(input, textarea, .on-net-chat__list, .on-report__json) {
   padding: 6px 8px 6px 6px;
   text-shadow: 0 1px 2px #000;
 }
+/* The watch's progress: a framed cell after the match clock, framed like the peace's countdown, the
+   playback's tick against its recording's end as game time over a fill that follows the delivered
+   ticks. */
+.on-hud .on-replay-progress {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 148px;
+  height: 26px;
+  margin-left: 3px;
+  padding: 2px 7px;
+  box-sizing: border-box;
+  border: 1px solid var(--bronze-lo);
+  border-radius: 4px;
+  background: #0f1512aa;
+  box-shadow: inset 0 1px 3px #000a;
+  overflow: hidden;
+}
+.on-hud .on-replay-progress__fill {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 0%;
+  height: 3px;
+  background: var(--bronze-hi);
+}
+.on-hud .on-replay-progress__text {
+  font: 700 11px / 1 var(--font-body);
+  font-variant-numeric: tabular-nums;
+  color: var(--text-hi);
+  text-shadow: 0 1px 2px #000;
+  white-space: nowrap;
+}
 /* The lobby peace's countdown: a framed cell before the match clock, framed like the speed strip. */
 .on-hud .on-peace {
   display: inline-flex;

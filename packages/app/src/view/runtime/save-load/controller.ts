@@ -1,4 +1,6 @@
 import type { ExportSaveOptions, SaveGame } from '@open-northland/sim';
+import { CLIENT_BUILD, GAME_VERSION } from '../../../build-version.js';
+import { contentLobbyFingerprint } from '../../../content/lobby-identity.js';
 import { diag } from '../../../diag/index.js';
 import type { SessionHost } from '../../../session/index.js';
 import { isGzipSave, type SaveBytes, type SaveFile, saveFileOf } from './codec.js';
@@ -6,6 +8,9 @@ import { evaluateSaveFile, type SaveRejection } from './evaluate.js';
 import { browserSaveDownload, type PickedSaveFile, pickedSaveOf } from './file-access.js';
 import { displayNameOf } from './list-model.js';
 import { relaunchSearch } from './relaunch.js';
+import type { ReplayCaptureFile, ReplayCaptureOptions } from './replay.js';
+import { replaySlotKeyOf, replaySlotNameOf } from './replay.js';
+import type { ReplaySlotInfo, ReplayStore } from './replay-store.js';
 import type { SaveSlotInfo, SaveStore } from './store.js';
 import type { SavedView } from './view-state.js';
 
@@ -22,6 +27,10 @@ export interface SaveLoadDeps {
   readonly captureSave?: (options: ExportSaveOptions) => SaveGame | Promise<SaveGame>;
   /** The same capture as file bytes, produced where the sim runs; preferred over `captureSave`. */
   readonly captureSaveFile?: (options: ExportSaveOptions) => Promise<SaveFile>;
+  /** The session's replay capture, produced where the sim runs; absent, the session keeps no replay. */
+  readonly captureReplayFile?: (options: ReplayCaptureOptions) => Promise<ReplayCaptureFile>;
+  /** The replay list the capture writes into; absent, nothing records a replay. */
+  readonly replayStore?: ReplayStore;
   readonly parent?: SaveGame;
   /** Hand the page to the entry that boots `save`'s own session, staging `bytes` for it. */
   readonly loadOtherWorld: (save: SaveGame, bytes: SaveBytes) => Promise<void>;
@@ -46,6 +55,9 @@ export interface SaveLoadDeps {
   readonly presentation?: () => string | null;
   /** The running world's seed, which names its playthrough; null when the entry does not know it. */
   readonly worldSeed?: number | null;
+  /** When the running session began, which keys and names its replay slot; absent, the first capture
+   *  stamps it, and the stamp holds for every later capture of the session. */
+  readonly sessionStartedAt?: number;
   /** A small picture of the world for the save list; absent or null, the save lists without one. */
   readonly captureThumbnail?: () => Promise<Blob | null>;
 }
@@ -54,9 +66,15 @@ export interface SaveLoadSession {
   readonly worldToken: string | null;
   /** With `worldToken`, the running playthrough (`SaveSlotInfo.seed`). */
   readonly worldSeed: number | null;
+  /** Whether the session's replay can be captured, so the save window offers it. */
+  readonly canSaveReplay: boolean;
   listSaves(): Promise<SaveSlotInfo[]>;
   /** Write the running game into the named slot, overwriting a same-named save. */
   saveGame(name: string): Promise<SaveOutcome>;
+  /** Record the running session's replay into the replay store, under its auto name. */
+  saveReplay(): Promise<SaveOutcome>;
+  /** Every stored replay, newest first, for the menu's replay screen. */
+  listReplays(): Promise<ReplaySlotInfo[]>;
   /** Stage the running game for this page's next boot to pick up where it stands; no slot is written. */
   stageForReload(): Promise<void>;
   loadSave(id: string): Promise<LoadOutcome>;
@@ -78,6 +96,13 @@ export interface SaveLoadSession {
  */
 export function saveLoadSession(deps: SaveLoadDeps): SaveLoadSession {
   const { host, worldToken } = deps;
+  // One stamp per session, held from the first capture on: every capture of the session keys and
+  // names its slot by it, so a later capture rewrites the same slot instead of adding one.
+  let startedAt = deps.sessionStartedAt ?? null;
+  const sessionStartedAt = (): number => {
+    if (startedAt === null) startedAt = Date.now();
+    return startedAt;
+  };
   let forced: { priorPaused: boolean } | null = null;
   const forcePause = (): void => {
     if (forced !== null) return;
@@ -158,6 +183,7 @@ export function saveLoadSession(deps: SaveLoadDeps): SaveLoadSession {
   return {
     worldToken,
     worldSeed: deps.worldSeed ?? null,
+    canSaveReplay: deps.captureReplayFile !== undefined && deps.replayStore !== undefined,
 
     listSaves: () => deps.store.list(),
 
@@ -180,6 +206,41 @@ export function saveLoadSession(deps: SaveLoadDeps): SaveLoadSession {
         return { kind: 'failed' };
       }
     },
+
+    /** Record the running session's replay into the replay store, under its auto name. */
+    async saveReplay(): Promise<SaveOutcome> {
+      const capture = deps.captureReplayFile;
+      const store = deps.replayStore;
+      if (capture === undefined || store === undefined) return { kind: 'failed' };
+      try {
+        const at = sessionStartedAt();
+        const file = await capture({
+          savedAt: Date.now(),
+          startedAt: at,
+          irVersion: deps.host.content.manifest.version,
+          identity: {
+            clientBuild: CLIENT_BUILD,
+            gameVersion: GAME_VERSION,
+            contentFingerprint: contentLobbyFingerprint(deps.host.content),
+          },
+        });
+        await store.write(replaySlotKeyOf(file.startedAt, file.seed), file.bytes, {
+          name: replaySlotNameOf(file.mapId, file.startedAt),
+          mapId: file.mapId,
+          untilTick: file.untilTick,
+          seed: file.seed,
+          savedAt: file.savedAt,
+          clientBuild: file.identity.clientBuild,
+          gameVersion: file.identity.gameVersion,
+        });
+        return { kind: 'saved' };
+      } catch (err) {
+        diag.warn('save', `writing the session replay failed: ${String(err)}`);
+        return { kind: 'failed' };
+      }
+    },
+
+    listReplays: () => deps.replayStore?.list() ?? Promise.resolve([]),
 
     async loadSave(id: string): Promise<LoadOutcome> {
       let bytes: SaveBytes | null;

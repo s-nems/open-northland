@@ -6,7 +6,7 @@ import {
   WEREWOLF_TRIBE,
 } from '@open-northland/data';
 import { applyInitialSaveSeats, NO_RULE_OVERRIDES } from '@open-northland/lockstep';
-import { components, exportSaveGame, type World } from '@open-northland/sim';
+import { components, exportSaveGame, serializeSaveGame, type World } from '@open-northland/sim';
 import { expect, it } from 'vitest';
 import { buildMapWorld } from '../../../src/entries/map/world.js';
 import { buildRelayedMapWorld } from '../../../src/entries/map/world-inputs.js';
@@ -257,8 +257,17 @@ it('resumes valid Computer and Idle transitions and preserves unchanged controll
     roster,
   );
   expect(previous.seats.map((seat) => seat.mode)).toEqual(['idle', 'computer', 'map-ai', 'idle', 'computer']);
-  const boot = { map, ir: null, script, content: null, session: previous, missions: null, saveText: null };
-  const original = buildRelayedMapWorld(boot, null).sim;
+  const boot = {
+    map,
+    ir: null,
+    script,
+    content: null,
+    session: previous,
+    missions: null,
+    saveText: null,
+    replayText: null,
+  };
+  const original = buildRelayedMapWorld(boot, null, null).sim;
   original.step();
   original.enqueueSetup({ kind: 'setAiControl', player: 2, enabled: true });
   original.enqueueSetup({
@@ -275,7 +284,7 @@ it('resumes valid Computer and Idle transitions and preserves unchanged controll
     initialSave: { tick: save.header.tick, fingerprint: 'a'.repeat(64) },
   };
   expect(next.seats.map((seat) => seat.mode)).toEqual(['computer', 'idle', 'map-ai', 'computer', 'computer']);
-  const restored = buildRelayedMapWorld({ ...boot, session: next }, save);
+  const restored = buildRelayedMapWorld({ ...boot, session: next }, save, serializeSaveGame(save));
   applyInitialSaveSeats(restored.sim, next, restored.initialSeatSetups);
   restored.sim.step();
   for (const player of [0, 3]) {

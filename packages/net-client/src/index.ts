@@ -4,6 +4,7 @@ export { CommandLatency } from './pacing/latency.js';
 export { JITTER_BUFFER_TICKS, paceScale } from './pacing/pacer.js';
 export {
   type AdoptedWorld,
+  type OpenedReplaySource,
   type OpenedWorld,
   RelayClient,
   type RelayClientOptions,

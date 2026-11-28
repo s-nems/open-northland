@@ -12,7 +12,7 @@ export type RejoinOutcome = 'passed' | 'consumed' | { readonly refused: RelayRea
  */
 export function rejoinProbe(client: {
   readonly room: Pick<RoomView, 'id' | 'state'> | null;
-  joinRoom(roomId: string): void;
+  joinRoom(roomId: string, password?: string): void;
 }): (message: ServerMessage) => RejoinOutcome {
   let probing = false;
   return (message) => {

@@ -4,7 +4,9 @@ import type { Room } from './room.js';
 
 export type RoomMessage = Exclude<
   ClientMessage,
-  { kind: 'hello' | 'listRooms' | 'hallChat' | 'createRoom' | 'joinRoom' | 'leaveRoom' | 'pong' }
+  {
+    kind: 'hello' | 'listRooms' | 'hallChat' | 'createRoom' | 'joinRoom' | 'leaveRoom' | 'pong';
+  }
 >;
 
 export function dispatchRoomMessage(room: Room, member: Member, message: RoomMessage, now: number): Refusal {

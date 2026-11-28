@@ -4,7 +4,7 @@ import { mapLobbySlots } from '@open-northland/data';
 import { type GameSession, humanSeatsOf, machineSeatsOf, NO_RULE_OVERRIDES } from '@open-northland/lockstep';
 import type { RoomSeatSetup, RoomSettings } from '@open-northland/net-protocol';
 import { Relay } from '@open-northland/net-server';
-import { playerCommand, type SaveGame, type Simulation } from '@open-northland/sim';
+import { playerCommand, type SaveGame, type Simulation, serializeSaveGame } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import { HeadlessClient } from '../../../../net-server/test/support/headless-client.js';
 import { assembleRoom, runUntil, type Stage } from '../../../../net-server/test/support/session-run.js';
@@ -128,6 +128,7 @@ async function relayedMapBoot(mapId: string): Promise<(session: GameSession) => 
     session,
     missions: null,
     saveText: null,
+    replayText: null,
   });
 }
 
@@ -242,8 +243,9 @@ describe.runIf(RUN_PARITY)('relayed sessions on a decoded map', () => {
     const peer = new HeadlessClient({
       token: 'client-0-token-0123456789',
       nick: 'Gracz 0',
-      buildWorld: async (session) => buildRelayedMapWorld(boot(session), null).sim,
-      restoreWorld: async (session, save) => buildRelayedMapWorld(boot(session), save).sim,
+      buildWorld: async (session) => buildRelayedMapWorld(boot(session), null, null).sim,
+      restoreWorld: async (session, save) =>
+        buildRelayedMapWorld(boot(session), save, serializeSaveGame(save)).sim,
     });
     const hosted = new WorkerHeadlessClient({
       workerPath: bundle.path,

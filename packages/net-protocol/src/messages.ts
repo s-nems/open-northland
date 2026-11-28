@@ -290,7 +290,11 @@ export type ClientMessage =
       readonly seats: readonly RoomSeatSetup[];
       readonly password?: string;
     }
-  | { readonly kind: 'joinRoom'; readonly roomId: string; readonly password?: string }
+  | {
+      readonly kind: 'joinRoom';
+      readonly roomId: string;
+      readonly password?: string;
+    }
   | { readonly kind: 'leaveRoom' }
   | { readonly kind: 'claimSeat'; readonly player: number | null }
   | {

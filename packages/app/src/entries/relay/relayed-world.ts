@@ -25,7 +25,7 @@ export async function hostRelayedWorld(
   start: VerifiedStart | null,
 ): Promise<RelayedMapWorld> {
   const worker = await host(
-    { ...inputs, saveText: start?.text ?? null },
+    { ...inputs, saveText: start?.text ?? null, replayText: null },
     relayedSessionOptions(inputs.session, params),
     start?.fingerprint,
   );

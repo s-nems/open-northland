@@ -13,6 +13,7 @@ export const plSurfaces = {
   mainMenu: {
     eyebrow: 'Strategia ekonomiczna z czasów wikingów',
     items: {
+      replays: 'Powtórki',
       newGame: 'Nowa gra',
       load: 'Wczytaj grę',
       multiplayer: 'Multiplayer',
@@ -48,6 +49,7 @@ export const plSurfaces = {
     },
     backLabels: { main: 'Menu', newGame: 'Wybór mapy' },
     screenTitles: {
+      replays: 'Powtórki',
       multiplayer: 'Gra wieloosobowa',
       newGame: 'Nowa gra',
       catalogue: 'Katalog map',
@@ -764,6 +766,12 @@ export const plSurfaces = {
   },
   // Shared by the in-game save panels and the main menu's load screen.
   saveList: {
+    replayPlay: 'Obejrzyj',
+    replayPreparing: 'Przygotowywanie…',
+    replayCorrupt: 'Nagranie jest uszkodzone lub pochodzi z innej wersji.',
+    emptyReplayHint: 'Każda gra nagrywa swoją powtórkę sama; obejrzyj ją tutaj.',
+    replayOtherVersion: 'Nagranie z wersji {version}',
+
     autosave: 'Autozapis',
     autosaveOff: 'Wyłączony',
     autosaveEvery: '{n} min',
@@ -794,6 +802,8 @@ export const plSurfaces = {
     cancel: 'Anuluj',
     deleted: 'Zapis usunięty.',
     deleteFailed: 'Usuwanie zapisu nie powiodło się.',
+    import: 'Importuj z pliku',
+    imported: 'Zaimportowano {name}.',
     export: 'Eksportuj do pliku',
     exportFailed: 'Eksport zapisu do pliku nie powiódł się.',
     fromFile: 'Wczytaj z pliku…',

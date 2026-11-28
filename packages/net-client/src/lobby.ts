@@ -95,11 +95,20 @@ export class RelayLobby {
 
   /** `password` locks the room: every later join must name it. */
   createRoom(settings: RoomSettings, seats: readonly RoomSeatSetup[], password?: string): void {
-    this.send({ kind: 'createRoom', settings, seats, ...(password === undefined ? {} : { password }) });
+    this.send({
+      kind: 'createRoom',
+      settings,
+      seats,
+      ...(password === undefined ? {} : { password }),
+    });
   }
 
   joinRoom(roomId: string, password?: string): void {
-    this.send({ kind: 'joinRoom', roomId, ...(password === undefined ? {} : { password }) });
+    this.send({
+      kind: 'joinRoom',
+      roomId,
+      ...(password === undefined ? {} : { password }),
+    });
   }
 
   leaveRoom(): void {

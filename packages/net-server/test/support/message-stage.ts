@@ -99,7 +99,12 @@ export function stage(
   };
   const introduce = (token: string, nick: string, address?: string): Peer => {
     const p = peer(address);
-    p.send({ kind: 'hello', protocol: PROTOCOL_VERSION, token, nick });
+    p.send({
+      kind: 'hello',
+      protocol: PROTOCOL_VERSION,
+      token,
+      nick,
+    });
     return p;
   };
   return { relay, now: () => time.ms, advance, peer, introduce };

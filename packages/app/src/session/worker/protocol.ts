@@ -21,6 +21,7 @@ import type {
   SnapshotDelta,
 } from '@open-northland/sim';
 import type { DiagEntry } from '../../diag/log.js';
+import type { ReplayCaptureOptions } from '../../view/runtime/save-load/replay.js';
 import type { SessionHost, TickDiagnostics } from '../host.js';
 
 /**
@@ -105,6 +106,7 @@ export type WorkerCall =
   | { readonly method: 'settle' }
   | { readonly method: 'captureSave'; readonly options: ExportSaveOptions }
   | { readonly method: 'captureSaveFile'; readonly options: ExportSaveOptions }
+  | { readonly method: 'captureReplay'; readonly options: ReplayCaptureOptions }
   | { readonly method: 'profileRows' }
   /** The worker's own diag ring, as it stands. */
   | { readonly method: 'diagLog' }
@@ -297,4 +299,11 @@ export type FromWorker<E> =
       readonly error: WireError;
     }
   | { readonly kind: 'fault'; readonly fault: WorkerFault }
+  /** A playback reached its recording's last tick and its state hash diverged from the recorded one. */
+  | {
+      readonly kind: 'replayMismatch';
+      readonly tick: number;
+      readonly expected: string;
+      readonly actual: string;
+    }
   | { readonly kind: 'pong' };

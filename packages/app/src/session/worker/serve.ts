@@ -1,16 +1,19 @@
-import type { SessionDriver } from '@open-northland/lockstep';
+import type { GameSession, SessionDriver } from '@open-northland/lockstep';
+import { decodeSnapshot } from '@open-northland/net-client';
 import {
   cloneEvents,
   MS_PER_TICK,
   type SimEvent,
   type Simulation,
   SnapshotDeltaStream,
+  serializeSaveGame,
   TICKS_PER_SECOND,
 } from '@open-northland/sim';
 import { diag } from '../../diag/log.js';
 import { diagCadenceAt } from '../../diag/session.js';
 import { profiledInstrument, SystemProfile } from '../../diag/system-profile.js';
-import { type SaveFile, saveFileOfDetached } from '../../view/runtime/save-load/codec.js';
+import { compressSaveText, type SaveFile, saveFileOfDetached } from '../../view/runtime/save-load/codec.js';
+import { type ReplayCaptureFile, replayDocumentTextOf } from '../../view/runtime/save-load/replay.js';
 import type { SessionHost } from '../host.js';
 import { inlineSessionHost } from '../inline-host.js';
 import { changedFacts, WorldFactsReader } from './facts.js';
@@ -61,6 +64,17 @@ export interface HostedBuild<E> extends BuiltWorld<E> {
    *  {@link MAX_LEAD_FRAME_MS}, so a backlog drains at the driver's pace, and keeps to the speed
    *  otherwise: what a slower runtime takes in per frame then holds the clock back. */
   readonly timeScale?: () => number;
+  /** Where a replay capture reads this session's start; absent, the session keeps no replay. */
+  readonly replaySource?: ReplaySource;
+  /** What a playback checks at its recording's last tick; absent, the session steps nothing
+   *  recorded. */
+  readonly replayEnd?: ReplayEnd;
+}
+
+/** The last tick a playback runs and the state hash its recording took there. */
+export interface ReplayEnd {
+  readonly endTick: number;
+  readonly stateHash: string;
 }
 
 /** The tick costs a session's driver cannot measure itself. */
@@ -73,6 +87,19 @@ export interface TickCostSink {
 }
 
 export type WorldBuilder<B, E> = (boot: B, options: WorkerSessionOptions) => HostedBuild<E>;
+
+/** Where a replay capture reads the session's start: the world identity it was assembled from, the
+ *  tick the build stands at, and the save it restored, if any. Set by the world builder; a session
+ *  without one keeps no replay, for its input is not its own command log. */
+export interface ReplaySource {
+  readonly descriptor: GameSession;
+  readonly fromTick: number;
+  /** The restore save as plain text, for a world the boot stood up itself. */
+  readonly initialSaveText: string | null;
+  /** The relay snapshot as the compressed bytes it arrived in, for a restored relayed world; the
+   *  capture decodes it, so a serialization of it is never held for the session. */
+  readonly initialSaveSnapshot?: string | null;
+}
 
 /** The runtime's frames a worker may step past the delivered tick: a batch posted on one
  *  frame's acknowledgement is drawn on the next, so the worker steps one frame ahead of the batch in
@@ -194,6 +221,9 @@ export class ServedSession<E> {
   private readonly awaitsFrames: boolean;
   private readonly costs: TickCostSink | undefined;
   private readonly timeScale: (() => number) | undefined;
+  private readonly replaySource: ReplaySource | undefined;
+  private readonly replayEnd: ReplayEnd | undefined;
+  private replayHashChecked = false;
   private deltas: SnapshotDeltaStream;
   /** Answers the request-shaped reads as the inline host does, over this thread's sim. */
   private readonly answers: SessionHost;
@@ -247,6 +277,8 @@ export class ServedSession<E> {
     this.awaitsFrames = built.awaitsFrames === true;
     this.costs = built.costs;
     this.timeScale = built.timeScale;
+    this.replaySource = built.replaySource;
+    this.replayEnd = built.replayEnd;
     this.outbox = new TickOutbox({
       take: (records, leadTicks) => this.takeBatch(records, leadTicks),
       post: (batch) => this.post({ kind: 'ticks', batch }, fogTransfer(batch.fog)),
@@ -552,6 +584,18 @@ export class ServedSession<E> {
     });
     this.recordedTick = tick;
     this.stepStartMs = performance.now();
+    // A playback's recording took its state hash at its last tick; the same state must reproduce it.
+    if (!this.replayHashChecked && this.replayEnd !== undefined && tick === this.replayEnd.endTick) {
+      this.replayHashChecked = true;
+      const hash = sim.hashState();
+      if (hash !== this.replayEnd.stateHash) {
+        diag.error(
+          'session',
+          `replay mismatch at tick ${tick}: the recording took ${this.replayEnd.stateHash}, the playback stands at ${hash}`,
+        );
+        this.post({ kind: 'replayMismatch', tick, expected: this.replayEnd.stateHash, actual: hash });
+      }
+    }
     return stops;
   };
 
@@ -644,6 +688,41 @@ export class ServedSession<E> {
         // instead of cloning the save's object graph and stringifying it; in slices, so the clock steps
         // on once the capture is taken.
         return saveFileOfDetached(await this.driver.captureSave(call.options), yieldToMessages);
+      case 'captureReplay': {
+        if (this.broken) throw new Error(BROKEN_SESSION_MESSAGE);
+        if (this.replaySource === undefined) {
+          throw new Error('this session keeps no replay: its input is not its own command log');
+        }
+        // The log crosses as the text its queue already holds, joined into the document whole, so no
+        // command ever materializes as an object on either side.
+        const text = replayDocumentTextOf({
+          savedAt: call.options.savedAt,
+          startedAt: call.options.startedAt,
+          irVersion: call.options.irVersion,
+          identity: call.options.identity,
+          mapFingerprint: this.sim.mapFingerprint ?? null,
+          stateHash: this.sim.hashState(),
+          descriptor: this.replaySource.descriptor,
+          fromTick: this.replaySource.fromTick,
+          untilTick: this.sim.tick,
+          initialSaveText:
+            this.replaySource.initialSaveSnapshot === undefined ||
+            this.replaySource.initialSaveSnapshot === null
+              ? this.replaySource.initialSaveText
+              : serializeSaveGame(await decodeSnapshot(this.replaySource.initialSaveSnapshot)),
+          logText: this.sim.commands.logText(),
+        });
+        const bytes = await compressSaveText(text);
+        return {
+          bytes,
+          mapId: worldIdOf(this.replaySource.descriptor),
+          seed: this.replaySource.descriptor.seed,
+          untilTick: this.sim.tick,
+          savedAt: call.options.savedAt,
+          startedAt: call.options.startedAt,
+          identity: call.options.identity,
+        };
+      }
       case 'profileRows':
         return this.profile?.rows() ?? [];
       case 'diagLog':
@@ -698,9 +777,17 @@ export class ServedSession<E> {
   }
 }
 
-/** A save file's bytes move to the runtime rather than being copied; nothing here reads them again. */
+/** A save file's or a recording's bytes move to the runtime rather than being copied; nothing here
+ *  reads them again. */
 function replyTransfer(call: WorkerCall, value: unknown): readonly ArrayBuffer[] {
-  return call.method === 'captureSaveFile' ? [(value as SaveFile).bytes.buffer] : [];
+  if (call.method === 'captureSaveFile') return [(value as SaveFile).bytes.buffer];
+  if (call.method === 'captureReplay') return [(value as ReplayCaptureFile).bytes.buffer];
+  return [];
+}
+
+/** The world a replay names in its capture, for the slot list; a scene world names nothing. */
+function worldIdOf(descriptor: GameSession): string {
+  return descriptor.world.kind === 'map' ? descriptor.world.mapId : '';
 }
 
 function fogTransfer(updates: readonly FogUpdate[]): readonly ArrayBuffer[] {

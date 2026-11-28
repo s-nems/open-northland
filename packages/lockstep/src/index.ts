@@ -5,6 +5,7 @@ export {
   type SessionDriver,
 } from './driver.js';
 export { LOOPBACK_DELAY_TICKS, LoopbackTransport } from './loopback.js';
+export { ReplayDriver, type ReplayDriverOptions, ReplayTransport } from './replay.js';
 export {
   absentSeatsOf,
   type ComputerDifficulty,

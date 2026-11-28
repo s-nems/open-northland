@@ -247,6 +247,11 @@ export interface ToolPanelOptions {
   readonly onSpeedChange: (spec: GameSpeedStateSpec, cause: GameSpeedChangeCause) => void;
   /** The system bar's dev-only tempos (`HudSystemBarDeps.devSpeeds`). */
   readonly devSpeeds?: boolean;
+  /** The bar serves a recorded session's watch: one tempo button cycles ×1→×2→×5→×10. */
+  readonly replayCycle?: boolean;
+  /** The watch's progress cell (`HudSystemBarDeps.replay`): the tick the playback stands at over
+   *  the tick its recording ends on. */
+  readonly replay?: { readonly untilTick: number };
   /** Whether the session clock stands, so the bar lights the pause for any stop, not only its own. */
   readonly clockPaused?: () => boolean;
   /** True while an overlay outside the panel holds the game paused; a speed press then waits. */
@@ -811,6 +816,8 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
       ...(opts.clockPaused !== undefined ? { clockPaused: opts.clockPaused } : {}),
     });
     const systemBar = createHudSystemBar(plane, {
+      replayCycle: opts.replayCycle === true,
+      ...(opts.replay !== undefined ? { replay: opts.replay } : {}),
       ...(opts.observer !== undefined
         ? {
             observer: {

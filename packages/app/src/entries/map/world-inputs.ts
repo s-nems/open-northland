@@ -3,8 +3,10 @@ import { assertMapModulesFitMap, type MapModulesContentNames, mapLobbySlots } fr
 import { type GameSession, localPlayerOf, parseSavedSessionMetadata } from '@open-northland/lockstep';
 import { DESCRIPTOR_WORLD } from '@open-northland/net-protocol';
 import { type Entity, parseSaveGame, type SaveGame } from '@open-northland/sim';
+import { CLIENT_BUILD, GAME_VERSION } from '../../build-version.js';
 import { buildingFootprints } from '../../content/ir/joins.js';
 import type { ContentIr } from '../../content/ir/rows.js';
+import { contentLobbyFingerprint } from '../../content/lobby-identity.js';
 import { resolveAiControlPolicy } from '../../game/match/ai-control-policy.js';
 import { sessionMapScript } from '../../game/match/seat-tribes.js';
 import { assertMapSessionSeats } from '../../game/match/session-roster.js';
@@ -13,8 +15,10 @@ import { sessionWorldOptions } from '../../game/match/session-world.js';
 import { servedOverLoopback } from '../../session/worker/loopback.js';
 import type { RelayedBuild } from '../../session/worker/net-world-port.js';
 import type { WorkerSessionOptions } from '../../session/worker/protocol.js';
+import { servedOverReplay } from '../../session/worker/replay.js';
 import type { BuiltWorld, HostedBuild } from '../../session/worker/serve.js';
 import { saveDocumentOf } from '../../view/runtime/save-load/codec.js';
+import { parseReplayDocument, type ReplayDocument } from '../../view/runtime/save-load/replay.js';
 import { buildMapWorld, restoreMapWorld } from './world.js';
 
 /**
@@ -105,22 +109,62 @@ function contentNamesOf(ir: ContentIr | null): MapModulesContentNames | null {
 export type MapWorldDocuments = Omit<MapWorldInputs, 'save'>;
 
 /**
- * The worker's boot message: the inputs with the staged save as the text it was staged as. The text
- * crosses as one string; the parsed save of the six-AI magiczny_las world at tick 40000 took about
- * 200 ms of this thread's time to post.
+ * The worker's boot message: the inputs with the staged save as the text it was staged as, and a
+ * staged replay's recording when the boot plays one back. The text crosses as one string; the parsed
+ * save of the six-AI magiczny_las world at tick 40000 took about 200 ms of this thread's time to post.
  */
 export interface MapWorkerBoot extends MapWorldDocuments {
   readonly saveText: string | null;
+  readonly replayText: string | null;
 }
 
-/** The world a single-player session serves over the loopback transport. */
+/** The world a single-player session serves over the loopback transport, or plays back when the boot
+ *  staged a replay. */
 export function buildMapWorkerWorld(
   boot: MapWorkerBoot,
   options: WorkerSessionOptions,
 ): HostedBuild<MapWorldPlacements> {
-  const { saveText, ...inputs } = boot;
+  const { saveText, replayText, ...inputs } = boot;
+  const replay = replayText === null ? null : parseReplayDocument(replayText);
+  if (replay !== null) refuseForeignReplay(replay, inputs.content);
   const save = saveText === null ? null : parseSaveGame(saveDocumentOf(saveText));
-  return servedOverLoopback(buildMapWorldFromInputs({ ...inputs, save }), options);
+  const world = buildMapWorldFromInputs({ ...inputs, save });
+  if (replay === null) {
+    return {
+      ...servedOverLoopback(world, options),
+      replaySource: { descriptor: inputs.session, fromTick: world.sim.tick, initialSaveText: saveText },
+    };
+  }
+  // A recording plays only on the terrain it was made on: the built world's own fingerprint names
+  // the map this boot serves, whatever the search asked for.
+  if (replay.mapFingerprint !== null && replay.mapFingerprint !== (world.sim.mapFingerprint ?? null)) {
+    throw new Error(recordedByMessage(replay));
+  }
+  return servedOverReplay(world, options, {
+    log: replay.log,
+    endTick: replay.untilTick,
+    stateHash: replay.stateHash,
+  });
+}
+
+/** What the boot halts with when a replay names another build than this one: the version that
+ *  recorded it, which is all a player can act on. */
+function recordedByMessage(replay: ReplayDocument): string {
+  return `the replay was recorded on game version ${replay.identity.gameVersion}, which this build cannot play`;
+}
+
+/** A replay plays only on the build and content it was recorded on: a sim change without a format
+ *  bump plays a different match, and only the build and content fingerprints name it. The map's
+ *  own fingerprint is checked against the built world. */
+function refuseForeignReplay(replay: ReplayDocument, content: MapWorldInputs['content']): void {
+  if (replay.identity.clientBuild !== CLIENT_BUILD || replay.identity.gameVersion !== GAME_VERSION) {
+    throw new Error(recordedByMessage(replay));
+  }
+  // A checkout without served content runs the sandbox catalog, whose fingerprint is checked on
+  // the capture side only; a release build always serves content, which always stamps it.
+  if (content !== null && replay.identity.contentFingerprint !== contentLobbyFingerprint(content)) {
+    throw new Error(recordedByMessage(replay));
+  }
 }
 
 /** A relayed session's world: restored from the snapshot the relay served, else from the boot's save
@@ -128,9 +172,13 @@ export function buildMapWorkerWorld(
 export function buildRelayedMapWorld(
   boot: MapWorkerBoot,
   snapshot: SaveGame | null,
+  snapshotBytes: string | null,
 ): RelayedBuild<MapWorldPlacements> {
   assertMapSessionSeats(boot.session.seats, boot.script);
-  const { saveText, ...inputs } = boot;
+  const { saveText, replayText, ...inputs } = boot;
+  if (replayText !== null) throw new Error('a relayed world never plays back a recording');
+  if (snapshot !== null && snapshotBytes === null)
+    throw new Error('a snapshot restore carries no bytes to record from');
   const save = snapshot ?? (saveText === null ? null : parseSaveGame(saveDocumentOf(saveText)));
   const world = buildMapWorldFromInputs({ ...inputs, save });
   const previous =
@@ -159,5 +207,19 @@ export function buildRelayedMapWorld(
             ),
           },
         }));
-  return { ...world, generation: save === null ? DESCRIPTOR_WORLD : save.header.tick, initialSeatSetups };
+  // The session keeps its own recording, as a single-player world does: one built from the descriptor
+  // or the boot's save records from them, and one restored from a snapshot records from the
+  // snapshot's compressed bytes, decoded when a capture composes its recording.
+  const replaySource = {
+    descriptor: inputs.session,
+    fromTick: world.sim.tick,
+    initialSaveText: snapshot === null ? saveText : null,
+    initialSaveSnapshot: snapshot === null ? null : snapshotBytes,
+  };
+  return {
+    ...world,
+    replaySource,
+    generation: save === null ? DESCRIPTOR_WORLD : save.header.tick,
+    initialSeatSetups,
+  };
 }

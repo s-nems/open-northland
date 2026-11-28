@@ -10,7 +10,7 @@ type Identity = NetworkConnection['identity'];
 
 /** The part of a connection giving a seat up uses. */
 export interface SurrenderConnection {
-  readonly client: { joinRoom(roomId: string): void };
+  readonly client: { joinRoom(roomId: string, password?: string): void };
   subscribe(listener: (event: ConnectionEvent) => void): () => void;
   dispose(leave: boolean): void;
 }

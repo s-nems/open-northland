@@ -29,6 +29,9 @@ export interface MatchResultDeps {
   readonly onLoad?: (back: () => void) => void;
   /** Starts over from a defeat, as a new match. */
   readonly playAgain?: ReplayOffer;
+  /** Records this session's replay on its own. Wired only for a session that keeps one, so a
+   *  playback or a shared game records nothing. */
+  readonly recordReplay?: () => Promise<'saved' | 'failed'>;
   /** Whether the viewer of a shared game still holds a seat: closing the window keeps playing with it. */
   readonly holdsSeat?: () => boolean;
 }
@@ -110,6 +113,9 @@ export function createMatchResultOverlay(deps: MatchResultDeps): MatchResultOver
   let current: { verdict: MatchOutcome; terminal: boolean } | null = null;
   // The result set aside while the load page is open; cleared when anything else replaces it.
   let awayToLoad: { verdict: MatchOutcome; terminal: boolean } | null = null;
+  /** True from the moment the auto capture starts, so a re-shown result never starts a second one
+   *  while the first recording is still assembling. */
+  let autoStarted = false;
   const hide = (): void => {
     close?.();
     current = null;
@@ -266,6 +272,13 @@ export function createMatchResultOverlay(deps: MatchResultDeps): MatchResultOver
           });
         }),
       );
+    }
+    // The match records itself once, at the first decisive result the window shows. A session that
+    // keeps playing records again when its player leaves to the menu, into the same slot, so the
+    // recording outlives the result the way the session does.
+    if (deps.recordReplay !== undefined && !autoStarted && verdict !== 'undecided') {
+      autoStarted = true;
+      void deps.recordReplay();
     }
     row.append(quit);
     frame.body.append(row);

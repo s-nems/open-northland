@@ -13,6 +13,7 @@ export const chsSurfaces = {
   mainMenu: {
     eyebrow: '一款维京时代的经济策略游戏',
     items: {
+      replays: '录像',
       newGame: '新游戏',
       load: '载入游戏',
       multiplayer: '多人游戏',
@@ -49,6 +50,7 @@ export const chsSurfaces = {
     // A back link names the screen it returns to, not "Back".
     backLabels: { main: '主菜单', newGame: '地图选择' },
     screenTitles: {
+      replays: '录像回放',
       multiplayer: '多人游戏',
       newGame: '新游戏',
       catalogue: '地图库',
@@ -737,6 +739,12 @@ export const chsSurfaces = {
   },
   // Shared by the in-game save panels and the main menu's load screen.
   saveList: {
+    replayPlay: '观看',
+    replayPreparing: '准备中…',
+    replayCorrupt: '录像已损坏，或来自其他版本。',
+    emptyReplayHint: '每局游戏都会自动录制自己的录像，在此观看。',
+    replayOtherVersion: '录制于 {version}',
+
     autosave: '自动存档',
     autosaveOff: '关闭',
     autosaveEvery: '{n} 分钟',
@@ -766,6 +774,8 @@ export const chsSurfaces = {
     cancel: '取消',
     deleted: '存档已删除。',
     deleteFailed: '删除存档失败。',
+    import: '从文件导入',
+    imported: '已导入 {name}。',
     export: '导出到文件',
     exportFailed: '将存档导出到文件失败。',
     fromFile: '从文件载入…',

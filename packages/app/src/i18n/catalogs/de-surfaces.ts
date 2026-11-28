@@ -12,6 +12,7 @@ export const deSurfaces = {
   mainMenu: {
     eyebrow: 'Eine Wirtschaftsstrategie zur Wikingerzeit',
     items: {
+      replays: 'Replays',
       newGame: 'Neues Spiel starten',
       load: 'Spiel laden',
       multiplayer: 'Mehrspieler',
@@ -50,6 +51,7 @@ export const deSurfaces = {
       newGame: 'Kartenauswahl',
     },
     screenTitles: {
+      replays: 'Replays',
       multiplayer: 'Mehrspieler',
       newGame: 'Neues Spiel',
       catalogue: 'Kartenkatalog',
@@ -809,6 +811,12 @@ export const deSurfaces = {
     randomMore: '▶ Zufall (+{count} weitere)',
   },
   saveList: {
+    replayPlay: 'Ansehen',
+    replayPreparing: 'Wird vorbereitet…',
+    replayCorrupt: 'Die Aufnahme ist beschädigt oder stammt aus einem anderen Build.',
+    emptyReplayHint: 'Jedes Spiel zeichnet sein Replay selbst auf; sieh es hier an.',
+    replayOtherVersion: 'Aufgenommen mit {version}',
+
     autosave: 'Autospeichern',
     autosaveOff: 'Aus',
     autosaveEvery: '{n} Min.',
@@ -839,6 +847,8 @@ export const deSurfaces = {
     cancel: 'Abbrechen',
     deleted: 'Spielstand gelöscht.',
     deleteFailed: 'Der Spielstand konnte nicht gelöscht werden.',
+    import: 'Aus Datei importieren',
+    imported: '{name} importiert.',
     export: 'In Datei exportieren',
     exportFailed: 'Der Spielstand konnte nicht in eine Datei exportiert werden.',
     fromFile: 'Aus Datei laden…',

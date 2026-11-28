@@ -417,6 +417,8 @@ export const itGame = {
     },
     dismiss: 'Chiudi',
     speedShortfall: 'Il gioco va a {delivered} invece di {requested}',
+    replayMismatch: 'Il replay ha divergento dalla sua registrazione al tick {tick}.',
+
     simStalled: 'La simulazione non risponde da {seconds} s.',
     crashTitle: 'Il gioco ha incontrato un errore',
     crashHint: 'Scarica il rapporto e allegalo alla tua segnalazione di bug.',

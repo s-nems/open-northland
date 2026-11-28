@@ -54,6 +54,14 @@ export interface MapRuntime {
   readonly offThreadTickCost?: GameViewDeps['offThreadTickCost'];
   /** Present when the sim runs on another thread. */
   readonly captureSaveFile?: GameViewDeps['captureSaveFile'];
+  /** Present when the sim runs on another thread and the session keeps a replay. */
+  readonly captureReplayFile?: GameViewDeps['captureReplayFile'];
+  /** When the running session began, which keys and names its replay slot. */
+  readonly sessionStartedAt?: number;
+  /** The session plays a recording back: the HUD treats it as a watch, the store keeps no autosave. */
+  readonly replayPlayback?: boolean;
+  /** The tick the played-back recording ends on, for the system bar's progress cell. */
+  readonly replayUntilTick?: number;
   /** True for a relayed session, whose clock every client shares. */
   readonly sharedClock?: boolean;
   readonly confirmedMatchEnd?: () => number | null;
@@ -253,6 +261,10 @@ export async function presentMapWorld(
     driver: runtime.driver,
     ...(runtime.offThreadTickCost !== undefined ? { offThreadTickCost: runtime.offThreadTickCost } : {}),
     ...(runtime.captureSaveFile !== undefined ? { captureSaveFile: runtime.captureSaveFile } : {}),
+    ...(runtime.captureReplayFile !== undefined ? { captureReplayFile: runtime.captureReplayFile } : {}),
+    ...(runtime.sessionStartedAt === undefined ? {} : { sessionStartedAt: runtime.sessionStartedAt }),
+    ...(runtime.replayPlayback === true ? { replayPlayback: true } : {}),
+    ...(runtime.replayUntilTick === undefined ? {} : { replayUntilTick: runtime.replayUntilTick }),
     ...(runtime.confirmedMatchEnd === undefined ? {} : { confirmedMatchEnd: runtime.confirmedMatchEnd }),
     ...(runtime.networkSave === undefined ? {} : { networkSave: runtime.networkSave }),
     ...(runtime.sharedClock !== undefined ? { sharedClock: runtime.sharedClock } : {}),

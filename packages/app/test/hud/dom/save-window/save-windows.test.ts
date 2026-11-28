@@ -50,6 +50,9 @@ function mount(initial: SaveSlotInfo[], settingsOverride?: GameSettingsRuntime) 
   let slots = [...initial];
   let clock = 1000;
   const saveLoad: SaveLoadSession = {
+    canSaveReplay: false,
+    listReplays: async () => [],
+    saveReplay: async () => ({ kind: 'failed' }),
     worldToken: HERE,
     worldSeed: SEED,
     listSaves: async () => [...slots].sort((a, b) => (b.savedAt ?? 0) - (a.savedAt ?? 0)),

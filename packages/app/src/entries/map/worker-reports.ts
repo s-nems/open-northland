@@ -35,6 +35,17 @@ export function workerReports(thread: WorkerThread): WorkerReports {
       reportProblem({ trigger: 'sim-stall', facts: { silentMs: Math.round(silentMs), thread } });
     },
     // The world runs again, so the stall's banner goes; a banner another crash took over stays.
+    replayMismatch: (mismatch) => {
+      diag.error('sim', `the played-back recording diverged at tick ${mismatch.tick}`, {
+        tick: mismatch.tick,
+        expected: mismatch.expected,
+        actual: mismatch.actual,
+      });
+      showCrashBanner(
+        formatMessage(messages().hud.replayMismatch, { tick: mismatch.tick }),
+        'replay-mismatch',
+      );
+    },
     recovered: (silentMs) => {
       diag.info('sim', `the ${thread} answered again after ${Math.round(silentMs)} ms`);
       dismissCrashBanner(STALL_BANNER);
