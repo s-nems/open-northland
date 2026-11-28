@@ -1,21 +1,21 @@
 import { MessageChannel } from 'node:worker_threads';
 import { DESCRIPTOR_WORLD, PROTOCOL_VERSION } from '@open-northland/net-protocol';
 import { afterEach, expect, it } from 'vitest';
-import type { MapWorkerBoot, MapWorldPlacements } from '../../src/entries/map/world-inputs.js';
-import { type HostedRelayedWorld, NetworkConnection } from '../../src/net/connection.js';
-import { relayedSessionDriver } from '../../src/net/net-worker-client.js';
-import { createSceneSim, SCENES } from '../../src/scenes/index.js';
-import { serveRelay } from '../../src/session/worker/net-serve.js';
-import type { RelayedWorldBuilder } from '../../src/session/worker/net-world-port.js';
-import { decodeSaveText } from '../../src/view/runtime/save-load/codec.js';
+import type { MapWorkerBoot, MapWorldPlacements } from '../../../src/entries/map/world-inputs.js';
+import { type HostedRelayedWorld, NetworkConnection } from '../../../src/net/connection.js';
+import { relayedSessionDriver } from '../../../src/net/net-worker-client.js';
+import { createSceneSim, SCENES } from '../../../src/scenes/index.js';
+import { serveRelay } from '../../../src/session/worker/net-serve.js';
+import type { RelayedWorldBuilder } from '../../../src/session/worker/net-world-port.js';
+import { decodeSaveText } from '../../../src/view/runtime/save-load/codec.js';
 import {
   parseReplayDocument,
   REPLAY_FORMAT_VERSION,
   REPLAY_KIND,
-} from '../../src/view/runtime/save-load/replay.js';
-import { SANDBOX_SESSION, testLink, until } from '../support/net-worker/in-process-relay.js';
-import { nodeParentPort } from '../support/session-worker/node-ports.js';
-import { DEFAULT_TEST_OPTIONS } from '../support/session-worker/start-worker.js';
+} from '../../../src/view/runtime/save-load/replay.js';
+import { SANDBOX_SESSION, testLink, until } from '../../support/net-worker/in-process-relay.js';
+import { nodeParentPort } from '../../support/session-worker/node-ports.js';
+import { DEFAULT_TEST_OPTIONS } from '../../support/session-worker/start-worker.js';
 
 const FRAMES = 5;
 
