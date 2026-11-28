@@ -40,7 +40,7 @@ describe('giving up a seat a halted game left held', () => {
     const fake = fakeConnection();
     const done = surrenderSeat(URL, IDENTITY, ROOM_ID, () => fake.connection);
     fake.relay({ kind: 'welcome', protocol: PROTOCOL_VERSION, nick: 'Ania' });
-    expect(fake.joinRoom).toHaveBeenCalledWith(ROOM_ID, undefined, false);
+    expect(fake.joinRoom).toHaveBeenCalledWith(ROOM_ID);
     fake.relay({ kind: 'rejected', of: 'joinRoom', reason: { code: 'alreadyInRoom' } });
     expect(fake.dispose).not.toHaveBeenCalled();
     fake.relay(roomView(ROOM_ID));
